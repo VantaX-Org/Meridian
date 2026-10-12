@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 const path = vi.hoisted(() => ({ current: "/home" }));
 vi.mock("next/navigation", () => ({
@@ -19,5 +21,28 @@ describe("one h1 per page", () => {
     render(<><Breadcrumb /><PageHeader title="Page title" /></>);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 2, name: "Page title" })).toHaveLength(1);
+  });
+});
+
+// Source scan: the Breadcrumb owns the only h1. Add a path to ALLOWED only for a page that legitimately owns it (login, error).
+const H1 = /<h1\b|as="h1"|level=\{1\}/;
+const ALLOWED = new Set(["design/shell/Breadcrumb.tsx"]);
+
+function sources(dir: string): string[] {
+  return readdirSync(dir).flatMap((n) => {
+    if (n === "node_modules" || n === ".next" || n === "__tests__") return [];
+    const p = join(dir, n);
+    if (statSync(p).isDirectory()) return sources(p);
+    return /\.tsx?$/.test(n) && !/\.test\.tsx?$/.test(n) ? [p] : [];
+  });
+}
+
+describe("h1 source scan", () => {
+  it("no component outside the Breadcrumb renders an h1", () => {
+    const root = process.cwd();
+    const files = [...sources(join(root, "app")), ...sources(join(root, "design"))];
+    expect(files.length).toBeGreaterThan(50);
+    const hits = files.map((f) => f.slice(root.length + 1)).filter((rel) => !ALLOWED.has(rel) && H1.test(readFileSync(join(root, rel), "utf8")));
+    expect(hits).toEqual([]);
   });
 });

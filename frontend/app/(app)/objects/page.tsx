@@ -212,7 +212,7 @@ export default function ObjectsPage() {
   const notReady = objects.filter((o) => o.readiness === "fail").length; // matches the ?readiness=fail drill
   const blockingFindings = data?.blocking_findings_total;
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
-  const affected = objects.reduce((a, o) => a + o.affected_records, 0);
+  const worst = objects.reduce<(typeof objects)[number] | null>((w, o) => (w === null || o.affected_records > w.affected_records ? o : w), null);
   const atRisk = objects.filter((o) => o.readiness === "warn").length;
   const go = objects.filter((o) => o.readiness === "pass").length;
   const summary = objects.length > 0 && (
@@ -223,7 +223,7 @@ export default function ObjectsPage() {
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={`/objects?run=${run}&readiness=warn`} />
         <Stat label="Not ready" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={`/objects?run=${run}&readiness=fail`} />
         <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" />
-        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Affected records" value={affected.toLocaleString()} />}
+        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Most affected" value={worst ? worst.affected_records.toLocaleString() : "—"} hint={worst ? `records in ${worst.label}` : undefined} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />

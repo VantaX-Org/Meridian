@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
 }));
 
-import { Breadcrumb } from "./Breadcrumb";
+import { Breadcrumb, useBreadcrumbScope } from "./Breadcrumb";
 
 describe("Breadcrumb", () => {
   it("renders exactly one h1 for a page with no drill trail, using the nav title", () => {
@@ -17,9 +17,6 @@ describe("Breadcrumb", () => {
     expect(headings[0]).toHaveTextContent("Import file");
   });
 });
-
-import { act } from "@testing-library/react";
-import { useBreadcrumbScope } from "./Breadcrumb";
 
 function Scope() {
   useBreadcrumbScope(["14 objects", "run 2026-10-11"]);
@@ -32,6 +29,5 @@ describe("Breadcrumb scope", () => {
     const parts = screen.getAllByTestId("crumb-scope");
     expect(parts.map((p) => p.textContent)).toEqual(["14 objects", "run 2026-10-11"]);
     expect(document.body.textContent).not.toContain("\u00B7");
-    act(() => {});
   });
 });

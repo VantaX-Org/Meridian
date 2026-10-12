@@ -1,12 +1,12 @@
 // frontend/app/(app)/runs/page.tsx
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Skeleton, Stat, StatSkeleton, usePrefetch, type CellMeta, type PillTone } from "@/design";
+import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pager, Pill, Select, Skeleton, Stat, StatSkeleton, usePrefetch, type CellMeta, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
@@ -107,6 +107,8 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
   );
 }
 
+const PAGE_SIZE = 100;
+
 export default function RunsPage() {
   const router = useRouter();
   const [system, setSystem] = useUrlState("system");
@@ -114,7 +116,12 @@ export default function RunsPage() {
   const failedOnly = rawStatus === "failed";
   const dayOne = useDayOne();
 
-  const all = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions({ limit: 100 }) });
+  const [page, setPage] = useState(1);
+  const all = useQuery({
+    queryKey: page === 1 ? queryKeys.run("list") : queryKeys.run(`list-page-${page}`),
+    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    placeholderData: keepPreviousData,
+  });
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
 
   const systemName = useMemo(() => new Map((systems.data ?? []).map((s) => [s.id, s.name])), [systems.data]);
@@ -224,6 +231,7 @@ export default function RunsPage() {
       filterBar={filterBar}
       summary={summary}
       table={
+        <>
         <DataTable
           columns={columns}
           data={rows}
@@ -232,6 +240,10 @@ export default function RunsPage() {
           onRowClick={(row) => router.push(`/runs/${row.id}`)}
           bulkActions={(selected) => <CompareBar selected={selected} onCompare={compare} />}
         />
+        {(all.data?.total ?? 0) > PAGE_SIZE && (
+          <Pager page={page} pageCount={Math.ceil((all.data?.total ?? 0) / PAGE_SIZE)} pageSize={PAGE_SIZE} total={all.data?.total ?? 0} onPageChange={setPage} />
+        )}
+        </>
       }
       state={state}
       emptyProps={
