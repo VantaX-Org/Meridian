@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   type ColumnDef,
   type RowSelectionState,
@@ -14,7 +14,13 @@ import {
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Popover } from "@base-ui/react/popover";
 import { Drawer } from "../primitives/Drawer";
+import { Button } from "../primitives/Button";
+import { Checkbox } from "../primitives/Checkbox";
+import { Field } from "../primitives/Field";
+import { Input } from "../primitives/Input";
+import { usePrefetch } from "../hooks/usePrefetch";
 import { BulkBar } from "./BulkBar";
 import { Mono } from "../primitives/Mono";
 import { Menu } from "../primitives/Menu";
@@ -50,19 +56,28 @@ export interface DataTableProps<T> {
   exportOptions?: ExportOption[];
   /** File name (without extension) for the client-side CSV. */
   exportName?: string;
+  /** Title of the row drawer. Defaults to "Detail" for call sites that have not named it yet. */
+  drawerTitle?: ReactNode;
+  /** Route to warm (router.prefetch) when a row is hovered or focused. */
+  rowHref?: (row: T) => string | undefined;
   /** Hide the views / columns / density / export toolbar. */
   hideToolbar?: boolean;
 }
 
-const ROW_H = "var(--m-row-h)";
-const ROW_H_DENSE = "var(--m-row-h-dense)";
-const VIRTUALIZE_ABOVE = 2000;
+const ROW_H = 44;
+const ROW_H_DENSE = 36;
+const VIRTUALIZE_ABOVE = 200;
 const SELECT_COLUMN_ID = "__select";
+
+function PrefetchRow({ href, children, ...rest }: { href?: string } & React.ComponentProps<"tr">) {
+  const prefetch = usePrefetch(href);
+  return <tr {...rest} {...(href ? prefetch : {})}>{children}</tr>;
+}
 
 export function DataTable<T>({
   columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, height = "calc(100vh - 240px)",
   sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = false,
-  tableId, exportOptions = [], exportName = "export", hideToolbar = false,
+  tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref,
 }: DataTableProps<T>) {
   "use no memo";
   // Ruling 4: no BulkBar (or selection column) for users who can change nothing, e.g. viewer and auditor.
@@ -79,28 +94,27 @@ export function DataTable<T>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const viewsKey = tableId ?? columns.map((c, i) => c.id ?? ("accessorKey" in c ? String(c.accessorKey) : String(i))).join("|");
   const [views, setViews] = useState<TableView[]>([]);
-  const [panel, setPanel] = useState<"columns" | "views" | null>(null);
   const [viewName, setViewName] = useState("");
   // localStorage is client-only, so views load after mount rather than during render.
   useEffect(() => setViews(loadViews(viewsKey)), [viewsKey]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [openRow, setOpenRow] = useState<T | null>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const uid = useId();
   const parentRef = useRef<HTMLDivElement>(null);
 
   const selectColumn: ColumnDef<T> = {
     id: SELECT_COLUMN_ID,
     header: ({ table }) => (
-      <input
-        type="checkbox"
+      <Checkbox
         aria-label="Select all rows"
         checked={table.getIsAllRowsSelected()}
         onChange={table.getToggleAllRowsSelectedHandler()}
       />
     ),
     cell: ({ row }) => (
-      <input
-        type="checkbox"
+      <Checkbox
         aria-label={`Select row ${row.id}`}
         checked={row.getIsSelected()}
         onChange={row.getToggleSelectedHandler()}
@@ -134,7 +148,7 @@ export function DataTable<T>({
   const virtualizer = useVirtualizer({
     count: shouldVirtualize ? rowModel.length : 0,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => (dense ? 30 : 36),
+    estimateSize: () => (dense ? ROW_H_DENSE : ROW_H),
   });
 
   const virtualItems = shouldVirtualize ? virtualizer.getVirtualItems() : null;
@@ -166,47 +180,78 @@ export function DataTable<T>({
     setSorting(v.sorting);
   };
 
+  const rowDomId = (i: number) => `${uid}-row-${rowModel[i]?.id}`;
+  const openAt = (i: number) => {
+    const row = rowModel[i];
+    if (!row || !(onRowClick || renderDrawer)) return;
+    onRowClick?.(row.original);
+    if (renderDrawer) setOpenRow(row.original);
+  };
+  const moveTo = (i: number) => {
+    const next = Math.max(0, Math.min(rowModel.length - 1, i));
+    setActiveIndex(next);
+    if (shouldVirtualize) virtualizer.scrollToIndex(next);
+  };
+  const onGridKeyDown = (e: KeyboardEvent<HTMLTableElement>) => {
+    if (e.target !== e.currentTarget) return;
+    const last = rowModel.length - 1;
+    if (e.key === "Escape") {
+      table.resetRowSelection();
+      setOpenRow(null);
+      return;
+    }
+    if (last < 0) return;
+    const cur = Math.min(activeIndex, last);
+    switch (e.key) {
+      case "ArrowDown": e.preventDefault(); moveTo(cur < 0 ? 0 : cur + 1); break;
+      case "ArrowUp": e.preventDefault(); moveTo(cur < 0 ? 0 : cur - 1); break;
+      case "Home": e.preventDefault(); moveTo(0); break;
+      case "End": e.preventDefault(); moveTo(last); break;
+      case "Enter": if (cur >= 0) { e.preventDefault(); openAt(cur); } break;
+      case " ": if (cur >= 0 && bulkActions) { e.preventDefault(); rowModel[cur].toggleSelected(); } break;
+      case "x": if (cur >= 0 && bulkActions) { e.preventDefault(); rowModel[cur].toggleSelected(); } break;
+    }
+  };
+
   return (
     <div>
       {!hideToolbar && (
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px]" role="toolbar" aria-label="Table options">
-          <div className="relative">
-            <button type="button" className="m-btn m-btn-secondary m-btn-sm" aria-expanded={panel === "columns"} onClick={() => setPanel((p) => (p === "columns" ? null : "columns"))}>Columns</button>
-            {panel === "columns" && <div className="m-popup absolute left-0 z-10 mt-1 min-w-48 p-2">
-              {dataColumns.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 py-1">
-                  <input type="checkbox" checked={c.getIsVisible()} onChange={c.getToggleVisibilityHandler()} />
-                  {colLabel(c)}
-                </label>
-              ))}
-            </div>}
-          </div>
-          <div className="relative">
-            <button type="button" className="m-btn m-btn-secondary m-btn-sm" aria-expanded={panel === "views"} onClick={() => setPanel((p) => (p === "views" ? null : "views"))}>Views{views.length > 0 ? ` (${views.length})` : ""}</button>
-            {panel === "views" && <div className="m-popup absolute left-0 z-10 mt-1 min-w-56 p-2">
-              {views.length === 0 && <p className="py-1" style={{ color: "var(--m-ink-3)" }}>No saved views yet.</p>}
-              {views.map((v) => (
-                <div key={v.name} className="flex items-center justify-between gap-2 py-1">
-                  <button type="button" onClick={() => applyView(v)} className="text-left">{v.name}</button>
-                  <button type="button" aria-label={`Delete view ${v.name}`} onClick={() => setViews(deleteView(viewsKey, v.name))}>Remove</button>
-                </div>
-              ))}
-              <form
-                className="mt-1 flex gap-1"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const name = viewName.trim();
-                  if (!name) return;
-                  setViews(saveView(viewsKey, { name, visibility: columnVisibility, dense, sorting }));
-                  setViewName("");
-                }}
-              >
-                <input aria-label="View name" placeholder="Name this view" value={viewName} onChange={(e) => setViewName(e.target.value)}
-                  className="min-w-0 flex-1 rounded border px-2 py-1" style={{ borderColor: "var(--m-line)" }} />
-                <button type="submit" className="m-btn m-btn-secondary m-btn-sm">Save view</button>
-              </form>
-            </div>}
-          </div>
+          <Menu
+            trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Columns</button>}
+            items={dataColumns.map((c) => ({ label: colLabel(c), checked: c.getIsVisible(), onSelect: () => c.toggleVisibility() }))}
+          />
+          <Popover.Root>
+            <Popover.Trigger className="m-btn m-btn-secondary m-btn-sm">Views{views.length > 0 ? ` (${views.length})` : ""}</Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Positioner sideOffset={4}>
+                <Popover.Popup className="m-popup min-w-56 p-2">
+                  {views.length === 0 && <p className="py-1" style={{ color: "var(--m-ink-3)" }}>No saved views yet.</p>}
+                  {views.map((v) => (
+                    <div key={v.name} className="flex items-center justify-between gap-2 py-1">
+                      <button type="button" onClick={() => applyView(v)} className="text-left">{v.name}</button>
+                      <button type="button" aria-label={`Delete view ${v.name}`} onClick={() => setViews(deleteView(viewsKey, v.name))}>Remove</button>
+                    </div>
+                  ))}
+                  <form
+                    className="mt-1 flex items-end gap-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const name = viewName.trim();
+                      if (!name) return;
+                      setViews(saveView(viewsKey, { name, visibility: columnVisibility, dense, sorting }));
+                      setViewName("");
+                    }}
+                  >
+                    <Field label="View name">
+                      <Input placeholder="Name this view" value={viewName} onChange={(e) => setViewName(e.target.value)} />
+                    </Field>
+                    <Button type="submit" variant="secondary" size="sm">Save view</Button>
+                  </form>
+                </Popover.Popup>
+              </Popover.Positioner>
+            </Popover.Portal>
+          </Popover.Root>
           <button type="button" className="m-btn m-btn-secondary m-btn-sm" aria-pressed={dense} onClick={() => setDense((d) => !d)}>
             {dense ? "Comfortable rows" : "Compact rows"}
           </button>
@@ -218,20 +263,22 @@ export function DataTable<T>({
           )}
         </div>
       )}
-      <label>
-        <span className="sr-only">Filter rows</span>
-        <input
-          aria-label="Filter rows"
-          placeholder="Type to filter rows"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="mb-2 rounded border px-3 py-1.5 text-[13px]"
-          style={{ borderColor: "var(--m-line)" }}
-        />
-      </label>
+      <div className="mb-2" style={{ maxWidth: 320 }}>
+        <Field label="Filter rows">
+          <Input placeholder="Type to filter rows" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} />
+        </Field>
+      </div>
       <div className="m-card" style={{ padding: 0, overflow: "hidden" }}>
       <div ref={parentRef} style={{ height, overflow: "auto" }}>
-        <table className="w-full text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>
+        <table
+          className="w-full text-[13px] leading-[18px]"
+          style={{ color: "var(--m-ink)" }}
+          role="grid"
+          tabIndex={0}
+          aria-label="Data table"
+          aria-activedescendant={activeIndex >= 0 && activeIndex < rowModel.length ? rowDomId(activeIndex) : undefined}
+          onKeyDown={onGridKeyDown}
+        >
           <thead className="sticky top-0 z-[1]">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
@@ -244,7 +291,7 @@ export function DataTable<T>({
                       aria-sort={sortable ? (sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none") : undefined}
                       className={`px-2 text-[11px] leading-[14px] font-medium border-b ${(h.column.columnDef.meta as CellMeta | undefined)?.numeric ? "text-right" : "text-left"}`}
                       style={{
-                        height: ROW_H, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
+                        height: dense ? ROW_H_DENSE : ROW_H, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
                         color: sorted ? "var(--m-ink)" : "var(--m-ink-3)",
                       }}
                     >
@@ -267,31 +314,31 @@ export function DataTable<T>({
             ))}
           </thead>
           <tbody style={shouldVirtualize ? { position: "relative", height: virtualizer.getTotalSize() } : undefined}>
+            {rowModel.length === 0 && globalFilter && (
+              <tr>
+                <td colSpan={Math.max(1, table.getVisibleLeafColumns().length)} className="px-2 py-6 text-center" style={{ color: "var(--m-ink-3)" }}>
+                  <span className="mr-2">No rows match this filter</span>
+                  <Button variant="ghost" size="sm" onClick={() => setGlobalFilter("")}>Clear filter</Button>
+                </td>
+              </tr>
+            )}
             {visibleRows.map((row, i) => {
               const virtualRow = virtualItems?.[i];
+              const index = virtualRow ? virtualRow.index : i;
               const activate = onRowClick || renderDrawer
                 ? () => {
+                    setActiveIndex(index);
                     onRowClick?.(row.original);
                     if (renderDrawer) setOpenRow(row.original);
                   }
                 : undefined;
               return (
-                <tr
+                <PrefetchRow
                   key={row.id}
-                  className={`group border-b m-motion-colors ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"}`}
-                  tabIndex={activate ? 0 : undefined}
+                  id={rowDomId(index)}
+                  href={rowHref?.(row.original)}
+                  className={`group border-b m-motion-colors ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"} ${index === activeIndex ? "m-row-active" : ""}`}
                   onClick={activate}
-                  onKeyDown={
-                    activate
-                      ? (e) => {
-                          if (e.target !== e.currentTarget) return;
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            activate();
-                          }
-                        }
-                      : undefined
-                  }
                   style={{
                     borderColor: "var(--m-line)",
                     height: dense ? ROW_H_DENSE : ROW_H,
@@ -314,7 +361,7 @@ export function DataTable<T>({
                       </td>
                     );
                   })}
-                </tr>
+                </PrefetchRow>
               );
             })}
           </tbody>
@@ -325,7 +372,7 @@ export function DataTable<T>({
         <BulkBar count={selectedRows.length} actions={bulkActions(selectedRows)} />
       )}
       {renderDrawer && (
-        <Drawer open={openRow !== null} onOpenChange={(open) => !open && setOpenRow(null)} title="Detail">
+        <Drawer open={openRow !== null} onOpenChange={(open) => !open && setOpenRow(null)} title={drawerTitle ?? "Detail"}>
           {openRow !== null && renderDrawer(openRow)}
         </Drawer>
       )}

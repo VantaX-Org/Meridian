@@ -1,6 +1,9 @@
+"use client";
+
 // frontend/design/shell/DrillLink.tsx
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { usePrefetch } from "../hooks/usePrefetch";
 
 export interface DrillTarget {
   object: string;
@@ -27,8 +30,9 @@ type DrillLinkProps = ((DrillTarget & { run?: string; href?: undefined }) | { hr
 /** Drills to an object (object/dimension/ruleId/filters) or, with `href`, to any route. Numbers stay tabular and never trigger the row click. */
 export function DrillLink(props: DrillLinkProps) {
   const href = props.href ?? buildDrillHref(props as DrillTarget & { run?: string });
+  const prefetch = usePrefetch(href);
   return (
-    <Link href={href} className="m-numeric underline-offset-2 hover:underline" onClick={(e) => e.stopPropagation()}>
+    <Link href={href} {...prefetch} className="m-numeric underline-offset-2 hover:underline" onClick={(e) => e.stopPropagation()}>
       {props.children}
     </Link>
   );

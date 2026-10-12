@@ -100,6 +100,7 @@
   --m-radius-tile: 14px;        /* KPI tiles */
   --m-radius-pill: 999px;
   --m-border: 1px;
+  --m-rail-group-pad: 20px 16px 6px;
   --m-rail-w: 240px;
   --m-rail-w-collapsed: 56px;
   --m-topbar-h: 48px;
@@ -267,3 +268,15 @@
   .m-skeleton-sweep, .m-spin, .m-motion-spin { animation: none; }
   .m-motion-width, .m-motion-fade, .m-motion-colors { transition: none; }
 }
+
+.m-rail-link { color: var(--m-rail-fg); }
+.m-rail-link:hover { color: var(--m-ink); }
+
+/* Form primitives */
+.m-input { height: 32px; padding: 0 var(--m-space-3, 12px); border: 1px solid var(--m-line-strong); border-radius: var(--m-radius-control); background: var(--m-sheet); color: var(--m-ink); font-size: 13px; line-height: 18px; }
+.m-input:focus-visible { outline: 2px solid var(--m-accent); outline-offset: 1px; }
+.m-checkbox { accent-color: var(--m-accent); width: 16px; height: 16px; }
+
+/* DataTable keyboard cursor */
+.m-row-active { outline: 2px solid var(--m-accent); outline-offset: -2px; }
+.m-stat-link { text-align: left; cursor: pointer; }
