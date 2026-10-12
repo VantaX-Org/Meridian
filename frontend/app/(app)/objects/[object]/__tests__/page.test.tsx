@@ -337,5 +337,21 @@ describe("ObjectDetailPage keyboard and gating", () => {
     expect(await screen.findByText("All records pass this rule")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open rules" })).toBeInTheDocument();
   });
+
+  it("shows the header counts and affected records from a complete payload", async () => {
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("Affected records")).toBeInTheDocument();
+    expect(screen.getByText("120")).toBeInTheDocument();
+    expect(await screen.findByText(/1 failing checks, 120 affected records/)).toBeInTheDocument();
+  });
+
+  it("does not throw when composite_score is null and dimension_scores is empty", async () => {
+    vi.spyOn(objectsApi, "getObject").mockResolvedValue({
+      ...OBJECT, composite_score: null, readiness: null, dimension_scores: {},
+    });
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("No dimension scores")).toBeInTheDocument();
+    expect(screen.getByText("Affected records")).toBeInTheDocument();
+  });
 });
 

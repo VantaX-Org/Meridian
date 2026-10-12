@@ -42,10 +42,11 @@ export interface Version {
     | "ai_enriching"
     | "ai_enriched";
   dqs_summary: Record<string, DQSSummary> | null;
+  /** Free-form JSON: system extractions and older runs carry none of modules, file_name or row_count. */
   metadata: {
-    modules: string[];
-    file_name: string;
-    row_count: number;
+    modules?: string[];
+    file_name?: string;
+    row_count?: number;
     columns?: string[];
     parquet_path?: string;
     system_id?: string;
