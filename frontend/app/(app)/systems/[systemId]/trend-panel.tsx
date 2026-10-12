@@ -36,7 +36,7 @@ export function TrendPanel({ systemId }: { systemId: string }) {
   return (
     <Card title="Trend per object">
       {!summary.length ? (
-        <EmptyState title="No analysed run yet" detail="Trends need at least one analysed run." action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run a second analysis</Link>} />} />
+        <EmptyState title="No analysed run yet" detail="Trends need at least one analysed run." action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run analysis</Link>} />} />
       ) : (
         <table className="w-full m-text-body">
           <thead>
@@ -79,6 +79,9 @@ export function TrendPanel({ systemId }: { systemId: string }) {
           </tbody>
         </table>
       )}
+      {summary.length > 0 && Object.values(series).every((s) => s.length < 2) ? (
+        <EmptyState title="Only one analysed run" detail="A second analysis shows how each object moves." action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run a second analysis</Link>} />} />
+      ) : null}
     </Card>
   );
 }

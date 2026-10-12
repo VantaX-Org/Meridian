@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -70,7 +71,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
   return (
     <Card title="Extract objects into a new run" meta={chosen.length ? `${chosen.length} selected` : undefined}>
       {isLoading ? <Skeleton height={160} />
-        : !objects.length ? <EmptyState title="No objects to extract" detail="This system exposes no objects yet. Check the connection on the Health tab." /> : (
+        : !objects.length ? <EmptyState title="No objects to extract" detail="This system exposes no objects yet. Check the connection on the Health tab." action={<Button render={<Link href={`/systems/${id}?tab=health`}>Test connection</Link>} />} /> : (
         <div className="flex flex-col gap-4">
           <DataTable columns={columns} data={objects} getRowId={(o) => o.object} onRowClick={(o) => toggle(o.object)} height={340} />
           {chosen.length > 0 ? (

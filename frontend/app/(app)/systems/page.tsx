@@ -97,10 +97,11 @@ export default function SystemsPage() {
   const configById = new Map(configQ.data?.systems.map((c) => [c.system_id, c]) ?? []);
   const [configFilter, setConfigFilter] = useUrlState("config", "");
   const [rawHealth, setHealthFilter] = useUrlState("health", "");
-  const healthFilter = Object.hasOwn(HEALTH_LABEL, rawHealth) ? rawHealth : "";
+  const healthFilter = rawHealth === "unhealthy" || Object.hasOwn(HEALTH_LABEL, rawHealth) ? rawHealth : "";
+  const isUnhealthy = (h: HealthStatus) => h === "degraded" || h === "unreachable" || h === "auth_failed";
   const shown = systems
     .filter((s) => !configFilter || configById.get(s.id)?.status === configFilter)
-    .filter((s) => !healthFilter || s.health_status === healthFilter);
+    .filter((s) => !healthFilter || (healthFilter === "unhealthy" ? isUnhealthy(s.health_status) : s.health_status === healthFilter));
 
   const cfgTotal = configQ.data?.total ?? 0;
   const cfgLoaded = configQ.data?.loaded ?? 0;
@@ -180,7 +181,7 @@ export default function SystemsPage() {
   const exportOptions = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx") }];
 
   const active = systems.filter((s) => s.is_active !== false);
-  const unhealthy = active.filter((s) => s.health_status === "degraded" || s.health_status === "unreachable" || s.health_status === "auth_failed").length;
+  const unhealthy = active.filter((s) => isUnhealthy(s.health_status)).length;
   const attention = systems.filter((s) => s.health_status !== "healthy").length;
   const filtering = Boolean(configFilter || healthFilter);
 
@@ -195,7 +196,7 @@ export default function SystemsPage() {
       filterBar={
         filtering ? (
           <div className="flex items-center gap-2 m-text-body">
-            <Pill tone="neutral">{healthFilter ? HEALTH_LABEL[healthFilter as HealthStatus] ?? healthFilter : `Configuration ${(CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter).toLowerCase()}`}</Pill>
+            <Pill tone="neutral">{healthFilter ? (healthFilter === "unhealthy" ? "Unhealthy" : HEALTH_LABEL[healthFilter as HealthStatus]) : `Configuration ${(CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter).toLowerCase()}`}</Pill>
             <Button variant="ghost" onClick={() => { setConfigFilter(""); setHealthFilter(""); }}>Clear filter</Button>
           </div>
         ) : undefined
@@ -207,7 +208,7 @@ export default function SystemsPage() {
               label="Unhealthy"
               value={`${unhealthy} of ${active.length}`}
               tone={unhealthy === 0 ? "go" : active.some((s) => s.health_status !== "healthy" && s.health_status !== "degraded" && s.health_status !== "unknown") ? "no-go" : "at-risk"}
-              href="?health=degraded"
+              href="?health=unhealthy"
             />
           ) : null}
           {configQ.data || configQ.isLoading ? (
