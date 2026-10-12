@@ -6,6 +6,7 @@ import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
 
 export function ReportPage({
+  header,
   narrative,
   charts,
   tables,
@@ -15,6 +16,8 @@ export function ReportPage({
   emptyProps,
   errorProps,
 }: {
+  /** Optional page header rendered above the narrative row. */
+  header?: ReactNode;
   narrative: ReactNode;
   charts: ReactNode;
   tables?: ReactNode;
@@ -55,6 +58,7 @@ export function ReportPage({
 
   return (
     <div className="mx-auto flex w-full flex-col gap-6" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+      {header}
       <div className="flex items-start justify-between gap-4">
         <div className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{narrative}</div>
         {exportMenu}

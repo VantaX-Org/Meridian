@@ -1,7 +1,7 @@
 // frontend/app/(app)/runs/[versionId]/vs/[b]/page.tsx
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +9,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
-  Bar,
   Button,
   DataTable,
   Delta,
@@ -17,101 +16,88 @@ import {
   ErrorState,
   ExportMenu,
   Mono,
-  Pager,
   Pill,
   ReportPage,
   Select,
   Skeleton,
-  Sparkline,
   Stat,
-  Waterfall,
-  type ChartPoint,
-  type PillTone,
   type SelectOption,
 } from "@/design";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { RunsPageHeader, RunsPageHeaderSkeleton } from "@/app/(app)/runs/_page-header";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { createBatch, errorText } from "@/lib/api/remediation";
 import { getComparisonReportUrl } from "@/lib/api/reports";
-import { compareRecordKeys, compareRecords, compareVersions, type RecordDiffCheck } from "@/lib/api/versions";
-import { formatDate, formatModuleName, labelOf, round1, roundedDelta } from "@/lib/format";
+import { compareRecordKeys, compareRecords, compareVersions } from "@/lib/api/versions";
+import { formatDate, formatModuleName, roundedDelta } from "@/lib/format";
 import { compareNarrative } from "@/lib/narrative";
 import { queryKeys } from "@/lib/query-keys";
 import type { CheckChange, Version } from "@/types/api";
 
-const KEYS_PAGE_SIZE = 100;
+const KEYS_LIMIT = 50;
 const nf = new Intl.NumberFormat("en-ZA");
 const runLabel = (v: Version) => v.label ?? formatDate(v.run_at, "date");
+const change = (c: CheckChange) => c.v2_affected - c.v1_affected;
 
-function severityTone(severity: string): PillTone {
-  if (severity === "critical" || severity === "high") return "no-go";
-  if (severity === "medium") return "at-risk";
-  return "neutral";
-}
-
-const diffColumns: ColumnDef<RecordDiffCheck>[] = [
-  { accessorKey: "check_id", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-  { accessorKey: "severity", header: "Severity" },
-  { accessorKey: "new", header: "Added" },
-  { accessorKey: "resolved", header: "Resolved" },
-  { accessorKey: "persisting", header: "Persisting" },
+const columns: ColumnDef<CheckChange>[] = [
+  { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+  { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
+  { id: "before", header: "Records before", accessorFn: (c) => c.v1_affected, cell: ({ row }) => nf.format(row.original.v1_affected) },
+  { id: "after", header: "Records after", accessorFn: (c) => c.v2_affected, cell: ({ row }) => nf.format(row.original.v2_affected) },
   {
-    id: "trend",
-    header: "Trend",
-    enableSorting: false,
+    id: "delta",
+    header: "Change",
+    accessorFn: change,
     cell: ({ row }) => {
-      const c = row.original;
-      const points: ChartPoint[] = [
-        { x: "before", y: c.persisting + c.resolved },
-        { x: "after", y: c.persisting + c.new },
-      ];
-      return <Sparkline data={points} />;
+      const d = change(row.original);
+      return <span className="tabular-nums">{d > 0 ? "+" : ""}{nf.format(d)}</span>;
     },
   },
 ];
 
-function CheckList({
-  title,
-  rows,
-  count,
-  onOpen,
-  action,
-  bulk,
-}: {
-  title: string;
-  rows: CheckChange[];
-  count: (c: CheckChange) => number;
-  onOpen: (checkId: string) => void;
-  action?: (c: CheckChange) => ReactNode;
-  bulk?: ReactNode;
-}) {
+function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versionId: string; v1: string | undefined; canFix: boolean }) {
+  const router = useRouter();
+  const qc = useQueryClient();
+  const regressed = change(rule) > 0;
+  const keys = useQuery({
+    queryKey: [...queryKeys.runCompare(versionId, v1 ?? "baseline"), "keys", rule.check_id],
+    queryFn: () => compareRecordKeys(rule.check_id, { v1: v1 ?? "", v2: versionId, change: "new", limit: KEYS_LIMIT, offset: 0 }),
+    enabled: regressed && v1 !== undefined,
+  });
+  const create = useMutation({
+    mutationFn: () => createBatch(`Regressions ${rule.check_id}`, { version_id: versionId, check_id: rule.check_id, module: rule.module }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.remediationBatches() });
+      toast.success("Batch created", { action: { label: "Open batches", onClick: () => router.push("/fix?tab=batches") } });
+    },
+    onError: (e: unknown) => toast.error(errorText(e)),
+  });
+  const list = keys.data?.record_keys ?? [];
+
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <h3 className="text-[13px] font-medium" style={{ color: "var(--m-ink-2)" }}>
-          {title}
-        </h3>
-        {bulk}
-      </div>
-      {rows.length === 0 ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
-          None
-        </p>
+    <div className="flex flex-col gap-3 p-4">
+      <h2 className="font-semibold" style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)" }}>
+        <Mono>{rule.check_id}</Mono>
+      </h2>
+      <Pill tone={regressed ? "no-go" : "neutral"}>{regressed ? "Newly failing" : "Fixed"}</Pill>
+      {regressed ? (
+        <>
+          <p style={{ color: "var(--m-ink-2)" }}>First {KEYS_LIMIT} records that newly fail</p>
+          {keys.isLoading ? <Skeleton height={120} /> : null}
+          {keys.isError ? <ErrorState message={errorText(keys.error)} onRetry={() => keys.refetch()} /> : null}
+          {keys.data && list.length === 0 ? <EmptyState title="No new records" detail="Nothing newly fails for this rule." /> : null}
+          <ul className="flex flex-col gap-1">
+            {list.map((k) => (
+              <li key={k}><Mono>{k}</Mono></li>
+            ))}
+          </ul>
+          {canFix ? (
+            <Button disabled={create.isPending} onClick={() => create.mutate()}>Create fix batch</Button>
+          ) : null}
+        </>
       ) : (
-        <ul className="flex flex-col gap-1">
-          {rows.map((c) => (
-            <li key={c.check_id} className="flex items-center gap-2 text-[13px]">
-              <button type="button" className="flex items-center gap-2" onClick={() => onOpen(c.check_id)}>
-                <Mono>{c.check_id}</Mono>
-                <Pill tone={severityTone(c.severity)}>{labelOf(c.severity)}</Pill>
-                <span className="tabular-nums">{nf.format(count(c))} records</span>
-              </button>
-              {action?.(c)}
-            </li>
-          ))}
-        </ul>
+        <p style={{ color: "var(--m-ink-2)" }}>{nf.format(rule.v1_affected)} records failed before; none fail now.</p>
       )}
     </div>
   );
@@ -119,14 +105,8 @@ function CheckList({
 
 export default function CompareRunsPage() {
   const { versionId, b } = useParams<{ versionId: string; b: string }>();
-  const router = useRouter();
-  const qc = useQueryClient();
   const { can } = useRole();
   const [module, setModule] = useUrlState("module");
-  const [checkId, setCheckId] = useState<string | null>(null);
-  const [keyFilter, setKeyFilter] = useState("");
-  const [keyPage, setKeyPage] = useState(1);
-
   const v1Param = b === "baseline" ? undefined : b;
   const moduleParam = module || undefined;
 
@@ -134,10 +114,7 @@ export default function CompareRunsPage() {
     queryKey: [...queryKeys.runCompare(versionId, b), "modules", moduleParam],
     queryFn: () => compareVersions(v1Param, versionId, moduleParam),
   });
-  // Finding #6: the module Select's options must always come from the unfiltered
-  // comparison, not from `cmp.delta` once a module filter has narrowed it. This query
-  // shares its cache with cmpQ above whenever no module is chosen (same key), so picking
-  // a module costs one extra request, not two.
+  // Module options come from the unfiltered comparison; shares cache with cmpQ when no module is chosen.
   const allModulesQ = useQuery({
     queryKey: [...queryKeys.runCompare(versionId, b), "modules", undefined],
     queryFn: () => compareVersions(v1Param, versionId, undefined),
@@ -147,60 +124,26 @@ export default function CompareRunsPage() {
     queryFn: () => compareRecords(versionId, v1Param, moduleParam),
   });
 
-  const resolvedV1 = diffQ.data?.v1;
-  const debouncedKeyFilter = useDebouncedValue(keyFilter, 300);
-  const keysQ = useQuery({
-    queryKey: [...queryKeys.runCompare(versionId, b), "keys", checkId, "new", debouncedKeyFilter, keyPage],
-    queryFn: () =>
-      compareRecordKeys(checkId ?? "", {
-        v1: resolvedV1 ?? "",
-        v2: versionId,
-        change: "new",
-        search: debouncedKeyFilter || undefined,
-        limit: KEYS_PAGE_SIZE,
-        offset: (keyPage - 1) * KEYS_PAGE_SIZE,
-      }),
-    enabled: checkId !== null && resolvedV1 !== undefined,
-  });
-
   const cmp = cmpQ.data;
   const diff = diffQ.data ?? null;
-  const v2Label = cmp ? runLabel(cmp.v2) : versionId;
+  const sentences = useMemo(() => (cmp ? compareNarrative(cmp, diff) : []), [cmp, diff]);
+  const rows = useMemo(
+    () => (cmp ? [...cmp.checks.newly_failing, ...cmp.checks.fixed].sort((x, y) => change(y) - change(x)) : []),
+    [cmp],
+  );
 
   const moduleOptions: SelectOption[] = Object.keys(allModulesQ.data?.delta ?? cmp?.delta ?? {}).map((m) => ({
     value: m,
     label: formatModuleName(m),
   }));
 
-  const create = useMutation({
-    mutationFn: (c: CheckChange) =>
-      createBatch(`Regressions ${c.check_id} ${v2Label}`, { version_id: versionId, check_id: c.check_id, module: c.module }),
-    // No toast here: it would fire once per batch in the bulk-create loop below. Each
-    // caller (single button, bulk loop) decides its own toast via mutate/mutateAsync options.
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.remediationBatches() }),
-  });
-
-  const sentences = useMemo(() => (cmp ? compareNarrative(cmp, diff) : []), [cmp, diff]);
-
-  const selectCheck = (id: string) => {
-    setCheckId(id);
-    setKeyFilter("");
-    setKeyPage(1);
-  };
-
-  // The server paginates (limit/offset) and searches; a full page back means there may be
-  // another, so the pager's last page is only known once a short page comes back.
-  const pageKeys = keysQ.data?.record_keys ?? [];
-  const keyPageCount = keyPage + (pageKeys.length === KEYS_PAGE_SIZE ? 1 : 0);
-
   const notFound =
     (isAxiosError(cmpQ.error) && cmpQ.error.response?.status === 404) ||
     (isAxiosError(diffQ.error) && diffQ.error.response?.status === 404);
-
   if (notFound) {
     return (
       <EmptyState
-        title="No earlier run to compare with."
+        title="No earlier run to compare"
         detail="Comparison needs two finished runs of the same system."
         action={<Button render={<Link href="/runs">All runs</Link>} />}
       />
@@ -209,40 +152,26 @@ export default function CompareRunsPage() {
 
   const loading = cmpQ.isLoading || diffQ.isLoading;
   const errored = cmpQ.isError || diffQ.isError;
-  const empty = !!cmp && !!diff && Object.keys(cmp.delta).length === 0 && diff.checks.length === 0;
-  const state: "loading" | "error" | "empty" | undefined = loading ? "loading" : errored ? "error" : empty ? "empty" : undefined;
   const deltas = cmp ? Object.values(cmp.delta) : [];
+  const empty = !!cmp && !!diff && deltas.length === 0 && diff.checks.length === 0;
+  const state: "loading" | "error" | "empty" | undefined = loading ? "loading" : errored ? "error" : empty ? "empty" : undefined;
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0);
-  const overallBefore = mean(deltas.map((d) => d.v1_score));
-  const overallAfter = mean(deltas.map((d) => d.v2_score));
+  const before = mean(deltas.map((d) => d.v1_score));
+  const after = mean(deltas.map((d) => d.v2_score));
 
-  if (loading) {
-    return (
-      <div className="mx-auto flex w-full flex-col gap-6" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }} aria-busy="true">
-        <div className="grid grid-cols-3 gap-3">
-          <Skeleton height={88} />
-          <Skeleton height={88} />
-          <Skeleton height={88} />
-        </div>
-        <Skeleton height={240} />
-      </div>
-    );
-  }
-
-  const exportOptions = [
-    { format: "pdf" as const, run: () => downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), "comparison.pdf") },
-  ];
+  const header = cmp ? (
+    <RunsPageHeader
+      title={`${runLabel(cmp.v2)} vs ${runLabel(cmp.v1)}`}
+      meta={`${formatDate(cmp.v2.run_at, "datetime")} and ${formatDate(cmp.v1.run_at, "datetime")}`}
+      status={b === "baseline" ? <Pill>Baseline</Pill> : undefined}
+    />
+  ) : (
+    <RunsPageHeaderSkeleton />
+  );
 
   const narrative = (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-[15px] font-semibold">{cmp ? `${runLabel(cmp.v2)} vs ${runLabel(cmp.v1)}` : "Comparing runs…"}</h2>
-        {b === "baseline" ? <Pill tone="go">Baseline</Pill> : null}
-        <label className="flex items-center gap-1 text-[13px]">
-          <span>Module</span>
-          <Select value={module} onValueChange={setModule} options={moduleOptions} placeholder="All modules" />
-        </label>
-      </div>
+      <Select label="Object" value={module} onValueChange={setModule} options={moduleOptions} placeholder="All objects" />
       {sentences.map((s) => (
         <p key={s}>{s}</p>
       ))}
@@ -250,162 +179,39 @@ export default function CompareRunsPage() {
   );
 
   const charts = cmp ? (
-    <div className="flex flex-col gap-4">
-      {deltas.length > 0 ? (
-        <div className="flex flex-wrap gap-6">
-          <Stat label="Before" href={`/runs/${versionId}`} value={<span className="tabular-nums">{overallBefore.toFixed(1)}</span>} />
-          <Stat label="After" href={`/runs/${versionId}`} value={<span className="tabular-nums">{overallAfter.toFixed(1)}</span>} />
-          <Stat label="Change" href={`/runs/${versionId}`} value={<Delta value={roundedDelta(overallBefore, overallAfter)} />} />
-        </div>
-      ) : null}
-      {Object.entries(cmp.delta).map(([name, d]) => {
-        const failing = cmp.checks.newly_failing.filter((c) => c.module === name);
-        const fixed = cmp.checks.fixed.filter((c) => c.module === name);
-        const canFix = can("apply");
-        const barData: ChartPoint[] = Object.entries(d.dimensions)
-          .filter(([, dim]) => dim.change !== null)
-          .map(([dim, x]) => ({ x: dim, y: round1(x.change as number), dimension: dim }));
-        return (
-          <section
-            key={name}
-            aria-label={formatModuleName(name)}
-            className="flex flex-col gap-3 rounded border p-3"
-            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}
-          >
-            <h2 className="text-[15px] font-semibold">{formatModuleName(name)}</h2>
-            <div className="flex gap-6">
-              <Stat label="Before" href={`/objects/${name}?run=${versionId}`} value={<span className="tabular-nums">{d.v1_score.toFixed(1)}</span>} />
-              <Stat label="After" href={`/objects/${name}?run=${versionId}`} value={<span className="tabular-nums">{d.v2_score.toFixed(1)}</span>} />
-              <Stat label="Change" href={`/objects/${name}?run=${versionId}`} value={<Delta value={roundedDelta(d.v1_score, d.v2_score)} />} />
-            </div>
-            <Bar data={barData} />
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <CheckList
-                title="Newly failing"
-                rows={failing}
-                count={(c) => c.v2_affected}
-                onOpen={selectCheck}
-                action={
-                  canFix
-                    ? (c) => (
-                        <Button
-                          variant="ghost"
-                          disabled={create.isPending}
-                          onClick={() =>
-                            create.mutate(c, {
-                              onSuccess: () =>
-                                toast.success("Batch created", {
-                                  action: { label: "Open batches", onClick: () => router.push("/fix?tab=batches") },
-                                }),
-                              onError: (e: unknown) => toast.error(errorText(e)),
-                            })
-                          }
-                        >
-                          Create fix batch
-                        </Button>
-                      )
-                    : undefined
-                }
-                bulk={
-                  canFix && failing.length > 0 ? (
-                    <Button
-                      variant="ghost"
-                      disabled={create.isPending}
-                      onClick={async () => {
-                        let ok = 0;
-                        let failed = 0;
-                        for (const c of failing) {
-                          await create.mutateAsync(c).then(
-                            () => { ok += 1; },
-                            () => { failed += 1; },
-                          );
-                        }
-                        toast.success(`Created ${ok} of ${failing.length} fix batches`);
-                        if (failed > 0) toast.error(`${failed} fix batch${failed === 1 ? "" : "es"} failed to create`);
-                      }}
-                    >
-                      Create fix batches
-                    </Button>
-                  ) : undefined
-                }
-              />
-              <CheckList title="Fixed" rows={fixed} count={(c) => c.v1_affected} onOpen={selectCheck} />
-            </div>
-          </section>
-        );
-      })}
+    <div className="grid grid-cols-3 gap-3">
+      <Stat label={`DQS ${runLabel(cmp.v1)}`} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
+      <Stat label={`DQS ${runLabel(cmp.v2)}`} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
+      <Stat label="Change" value={<Delta value={roundedDelta(before, after)} />} />
     </div>
   ) : null;
 
-  const waterfallData: ChartPoint[] = diff
-    ? [
-        { x: "Resolved", y: -diff.totals.resolved },
-        { x: "Added", y: diff.totals.new },
-        { x: "Persisting", y: diff.totals.persisting },
-      ]
-    : [];
-
-  const tables = diff ? (
-    <div className="flex flex-col gap-4">
-      <DataTable
-        columns={diffColumns}
-        data={diff.checks}
-        getRowId={(c) => c.check_id}
-        onRowClick={(c) => selectCheck(c.check_id)}
-        height={360}
-      />
-      <Waterfall data={waterfallData} />
-      {checkId && (
-        <div className="flex flex-col gap-2">
-          <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>
-            New record keys for <Mono>{checkId}</Mono>
-          </p>
-          <input
-            type="search"
-            aria-label="Filter record keys"
-            placeholder="Filter record keys"
-            value={keyFilter}
-            onChange={(e) => {
-              setKeyFilter(e.target.value);
-              setKeyPage(1);
-            }}
-            className="h-8 rounded border px-2 text-[13px]"
-            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
-          />
-          {keysQ.isLoading && <Skeleton height={80} />}
-          {keysQ.isError && (
-            <ErrorState message={`Couldn't load the new record keys for this check. ${errorText(keysQ.error)}`} onRetry={() => keysQ.refetch()} />
-          )}
-          {keysQ.data && keysQ.data.record_keys.length === 0 && (
-            <EmptyState title={keyFilter ? "No record keys match your filter." : "No new record keys for this check."} />
-          )}
-          {keysQ.data && keysQ.data.record_keys.length > 0 && (
-            <>
-              <ul className="flex flex-col gap-1">
-                {pageKeys.map((key) => (
-                  <li key={key}>
-                    <Mono>{key}</Mono>
-                  </li>
-                ))}
-              </ul>
-              <Pager page={keyPage} pageCount={keyPageCount} onPageChange={setKeyPage} />
-            </>
-          )}
-        </div>
-      )}
-    </div>
+  const tables = cmp ? (
+    <DataTable
+      columns={columns}
+      data={rows}
+      getRowId={(c) => c.check_id}
+      renderDrawer={(c) => <RuleDrawer rule={c} versionId={versionId} v1={diff?.v1 ?? v1Param} canFix={can("apply")} />}
+    />
   ) : null;
 
   return (
     <ReportPage
+      header={header}
       narrative={narrative}
-      exportMenu={cmp ? <ExportMenu options={exportOptions} /> : undefined}
+      exportMenu={
+        cmp && can("export") ? (
+          <ExportMenu
+            options={[{ format: "pdf" as const, run: () => downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), "comparison.pdf") }]}
+          />
+        ) : undefined
+      }
       charts={charts}
       tables={tables}
       state={state}
-      emptyProps={{ title: "No differences. These two runs have identical results." }}
+      emptyProps={{ title: "No differences", detail: "These two runs have identical results." }}
       errorProps={{
-        message: `Couldn't compare these runs. ${errorText(cmpQ.error ?? diffQ.error)}`,
+        message: errorText(cmpQ.error ?? diffQ.error),
         onRetry: () => {
           cmpQ.refetch();
           diffQ.refetch();
