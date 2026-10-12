@@ -15,7 +15,6 @@ import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
-import { useRole } from "@/hooks/use-role";
 import { exportObject, getObject, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
@@ -405,7 +404,6 @@ export default function ObjectDetailPage() {
   const search = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { can } = useRole();
   const object = params.object;
   const run = search.get("run") ?? "";
   const tab = search.get("tab") ?? "overview";
