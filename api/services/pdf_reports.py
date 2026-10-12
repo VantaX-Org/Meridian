@@ -297,7 +297,6 @@ def _rule(check_id: str) -> dict:
 
 
 @lru_cache(maxsize=1)
-@lru_cache(maxsize=1)
 def _modules() -> frozenset[str]:
     """Every module the rule catalogue knows about, for the object report's 404 on an unknown module."""
     from api.services.tenant_seed import rule_catalogue
