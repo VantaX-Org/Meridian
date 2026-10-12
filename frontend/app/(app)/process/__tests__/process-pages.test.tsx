@@ -104,6 +104,15 @@ describe("process catalogue", () => {
     renderWithQuery(<ProcessCataloguePage />);
     expect((await screen.findByRole("link", { name: "7" })).getAttribute("href")).toBe("/objects?run=v-7&readiness=fail");
   });
+
+  it("shows a dash, not a link, when a count has no DQ run behind it (null dq_version_id)", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
+      { ...reference("PTP"), coverage: "discovered", last_run: lastRun({}), dq_defects: 7, dq_version_id: null },
+      ...L1S.slice(1).map(reference)]);
+    renderWithQuery(<ProcessCataloguePage />);
+    await screen.findByText("PTP process");
+    expect(screen.queryByRole("link", { name: "7" })).toBeNull();
+  });
 });
 
 describe("headline", () => {

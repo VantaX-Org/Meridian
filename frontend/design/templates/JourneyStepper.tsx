@@ -55,6 +55,7 @@ export function JourneyStepper({
               </div>
               <span
                 aria-hidden
+                data-tone={isDone ? "pass" : undefined}
                 className={isCurrent ? "m-motion-rise" : undefined}
                 style={{
                   width: 24,
@@ -66,8 +67,8 @@ export function JourneyStepper({
                   fontSize: 12,
                   fontWeight: 600,
                   background: isDone ? "var(--m-pass)" : isCurrent ? "var(--m-accent-soft)" : "transparent",
-                  border: isDone ? "none" : `1px solid ${isCurrent ? "var(--m-accent)" : "var(--m-line)"}`,
-                  color: isDone ? "var(--m-sheet)" : isCurrent ? "var(--m-accent)" : "var(--m-ink-3)",
+                  border: isDone ? "none" : `1px solid ${isCurrent ? "var(--m-accent)" : "var(--m-line-strong)"}`,
+                  color: isDone ? "var(--m-pass-on)" : isCurrent ? "var(--m-accent)" : "var(--m-ink-3)",
                 }}
               >
                 {isDone ? <Check size={14} /> : i + 1}

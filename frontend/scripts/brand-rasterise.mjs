@@ -35,11 +35,11 @@ const svg = (name) => join(BRAND, name);
 // Transparent-background mark PNGs: PWA fallbacks.
 for (const s of [32, 192, 512]) await png(svg("mark-light.svg"), join(BRAND, `icon-${s}.png`), s);
 
-// Maskable: flat accent ground, the apple icon inside the 80% safe zone.
-const { accent } = JSON.parse(readFileSync(join(BRAND, "brand.json"), "utf8"));
+// Maskable: flat dark ground (brand canvasDark), the apple icon inside the 80% safe zone.
+const { canvasDark } = JSON.parse(readFileSync(join(BRAND, "brand.json"), "utf8"));
 const apple = readFileSync(svg("apple-icon.svg"), "utf8");
 const inner = await sharp(Buffer.from(apple), { density: 384 }).resize(410, 410).png().toBuffer();
-await sharp({ create: { width: 512, height: 512, channels: 4, background: accent } })
+await sharp({ create: { width: 512, height: 512, channels: 4, background: canvasDark } })
   .composite([{ input: inner, gravity: "centre" }])
   .png()
   .toFile(join(BRAND, "maskable-512.png"));

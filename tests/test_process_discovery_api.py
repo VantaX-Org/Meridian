@@ -232,6 +232,10 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()["node"]["dq_defects"] is None
             assert {r["l1"]: r for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()
                     }["PTP"]["dq_defects"] is None
+            # no DQ run: the version id is null too (not "None" or an empty string) on the catalogue and the flow
+            assert all(r["dq_version_id"] is None for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json())
+            nodata = (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()
+            assert nodata["node"]["dq_version_id"] is None and all(n["dq_version_id"] is None for n in nodata["nodes"])
             dq_v = str(uuid.uuid4())
 
             def seed(check_id: str, affected: int) -> None:
