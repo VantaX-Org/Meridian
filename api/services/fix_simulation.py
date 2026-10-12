@@ -129,7 +129,7 @@ def apply_fixes(frames: TableFrames, value_maps: dict[str, dict[str, str]] | Non
     tables}. ``frames`` itself is never modified."""
     out = copy.copy(frames)
     out.frames = dict(frames.frames)
-    out._cache = {}
+    out.reset_caches()
     out.flat = frames.flat
     by_field: dict[str, int] = {}
     unmatched = 0
