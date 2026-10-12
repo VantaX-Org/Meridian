@@ -14,7 +14,10 @@ export function ReportPage({
   state,
   emptyProps,
   errorProps,
+  loading,
 }: {
+  /** Replaces the default skeleton while `state` is "loading", so a page can match its real geometry. */
+  loading?: ReactNode;
   narrative: ReactNode;
   charts: ReactNode;
   tables?: ReactNode;
@@ -34,7 +37,7 @@ export function ReportPage({
     </>
   );
   if (state === "loading") {
-    body = (
+    body = loading ?? (
       <div className="m-motion-stagger flex flex-col gap-2" data-state="loading">
         <Skeleton height={240} />
         <Skeleton height={120} />
@@ -56,7 +59,7 @@ export function ReportPage({
   return (
     <div className="mx-auto flex w-full flex-col gap-6" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
       <div className="flex items-start justify-between gap-4">
-        <div className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{narrative}</div>
+        <div className="m-text-body" style={{ color: "var(--m-ink)" }}>{narrative}</div>
         {exportMenu}
       </div>
       {body}

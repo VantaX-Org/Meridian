@@ -61,7 +61,7 @@ export interface DataTableProps<T> {
   drawerTitle?: ReactNode;
   /** Route to warm (router.prefetch) when a row is hovered or focused. */
   rowHref?: (row: T) => string | undefined;
-  /** Warms a row's route and first query on hover or focus. Supersedes `rowHref` when both are given. */
+  /** Warms a row's route and first query on hover or focus (the page's query prefetch hook). Supersedes `rowHref` when both are given. */
   rowPrefetch?: (row: T) => RowPrefetch | undefined;
   /** Hide the views / columns / density / export toolbar. */
   hideToolbar?: boolean;
