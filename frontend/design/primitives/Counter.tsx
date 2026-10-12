@@ -1,28 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { clsx } from "clsx";
 import { mMotion, reducedMotion } from "../tokens";
 
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
-/** Count-up headline number (spec 9.1). Animates 0 → value once per `versionId`, then holds. */
+/** Count-up headline number. Animates 0 to value over `mMotion.count` once per `versionId`, flashes the settle gradient once, then holds. */
 export function Counter({
   value,
   versionId,
   decimals = 0,
   size,
+  onHero = false,
 }: {
   value: number | null;
   versionId?: string;
   decimals?: 0 | 1;
-  /** Pixel size override; defaults to the hero token (56/60). */
-  size?: number;
+  /** Size override, a pixel number or any CSS length; defaults to the hero token (56/60). */
+  size?: number | string;
+  /** Ink from the hero tokens, for use inside `.m-hero`. */
+  onHero?: boolean;
 }) {
   // Start at 0 (not `value`) so the first paint never flashes the final
   // number before the count-up kicks in.
   const [display, setDisplay] = useState(0);
+  const [settled, setSettled] = useState(false);
   const lastVersion = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -43,7 +48,7 @@ export function Counter({
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / mMotion.draw);
+      const t = Math.min(1, (now - start) / mMotion.count);
       setDisplay(value * easeOutCubic(t));
       if (t < 1) {
         raf = requestAnimationFrame(tick);
@@ -52,6 +57,7 @@ export function Counter({
         // not at effect start — otherwise StrictMode's mount/cleanup/remount
         // double-invoke marks it seen before the first run ever animates.
         lastVersion.current = versionId;
+        setSettled(true);
       }
     };
     raf = requestAnimationFrame(tick);
@@ -60,14 +66,17 @@ export function Counter({
 
   const type = {
     fontSize: size ?? "var(--m-text-hero)",
-    lineHeight: size ? undefined : "var(--m-leading-hero)",
+    lineHeight: size === undefined ? "var(--m-leading-hero)" : size === "inherit" ? "inherit" : undefined,
     letterSpacing: "var(--m-tracking-tight)",
     fontWeight: 600,
+    display: "inline-block",
+    // Reserve the final width so digits arriving never shift the layout.
+    minWidth: value === null ? undefined : `${Math.max(1, Math.round(Math.abs(value)).toString().length + (decimals ? 2 : 0) + (value < 0 ? 1 : 0))}ch`,
   };
 
   if (value === null) {
     return (
-      <span aria-label="No data" className="m-numeric" style={{ ...type, color: "var(--m-ink-3)" }}>
+      <span aria-label="No data" className="m-numeric" style={{ ...type, color: onHero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>
         —
       </span>
     );
@@ -76,8 +85,8 @@ export function Counter({
   return (
     <span
       aria-label={value.toFixed(decimals)}
-      className="m-numeric"
-      style={{ ...type, color: "var(--m-ink)" }}
+      className={clsx("m-numeric", settled && "m-count-settle")}
+      style={{ ...type, color: onHero ? "var(--m-hero-ink)" : "var(--m-ink)" }}
     >
       {display.toFixed(decimals)}
     </span>

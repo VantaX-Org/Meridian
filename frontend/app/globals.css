@@ -206,7 +206,7 @@
   .m-btn-secondary:hover { background: var(--m-sheet-raised); border-color: var(--m-ink-3); }
   .m-btn-ghost { background: transparent; color: var(--m-ink-2); }
   .m-btn-ghost:hover { background: var(--m-sheet-raised); color: var(--m-ink); }
-  .m-btn-danger { background: var(--m-critical); color: var(--m-ink-on-accent); }
+  .m-btn-danger { background: var(--m-critical); color: var(--m-critical-on); }
   .m-btn-danger:hover { background: var(--m-critical-ink); }
   .m-btn-danger:active { background: var(--m-critical-ink); }
   .m-spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; }

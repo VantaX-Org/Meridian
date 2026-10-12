@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { clsx } from "clsx";
+import type { DomainKey } from "../tokens";
 
 export type CardTone = "default" | "critical";
 
 export function Card({
-  title, meta, actions, children, padding = "md", tone,
+  title, meta, actions, children, padding = "md", tone, domain, lift = false,
 }: {
   title?: ReactNode;
   meta?: ReactNode;
@@ -12,12 +13,20 @@ export function Card({
   children?: ReactNode;
   padding?: "sm" | "md" | "lg";
   tone?: CardTone;
+  /** 4px left edge in the domain solid, drawn inset so the card does not change size. */
+  domain?: DomainKey;
+  /** Hover lift for cards that are links or open something. */
+  lift?: boolean;
 }) {
   const hasHeader = title || meta || actions;
   return (
     <section
-      className={clsx("m-card", padding === "sm" && "m-card-sm", padding === "lg" && "m-card-lg")}
-      style={tone === "critical" ? { borderTop: "3px solid var(--m-critical)" } : undefined}
+      className={clsx("m-card", lift && "m-lift", padding === "sm" && "m-card-sm", padding === "lg" && "m-card-lg")}
+      data-domain={domain}
+      style={{
+        ...(tone === "critical" ? { borderTop: "3px solid var(--m-critical)" } : null),
+        ...(domain ? { boxShadow: `inset 4px 0 0 var(--m-dom-${domain}), var(--m-elev-1)` } : null),
+      }}
     >
       {hasHeader && (
         <header className="flex items-center gap-3 mb-3">

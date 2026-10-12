@@ -10,6 +10,7 @@ export * from "./primitives/Card";
 export * from "./primitives/Notice";
 export * from "./primitives/Pill";
 export * from "./primitives/Badge";
+export * from "./primitives/DomainChip";
 export * from "./primitives/Tabs";
 export * from "./primitives/Drawer";
 export * from "./primitives/Dialog";
