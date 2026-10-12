@@ -37,7 +37,7 @@
 <thead><tr><th>Check</th><th>Severity</th><th>Dimension</th><th class="r">Affected</th><th class="r">Of records</th><th class="r">Fail rate</th></tr></thead>
 <tbody>
 {% for r in rules %}
-<tr><td>{{ r.message or r.check_id }}<span class="sub"><span class="mono">{{ r.check_id }}</span>{% if r.field %} · <span class="mono">{{ r.field }}</span>{% endif %}</span></td>
+<tr><td>{{ r.message or r.check_id }}<span class="sub"><span class="mono">{{ r.check_id }}</span>{% if r.field %} – <span class="mono">{{ r.field }}</span>{% endif %}</span></td>
     <td><span class="st {{ r.severity }}">{{ r.severity | capitalize }}</span></td><td>{{ r.dimension | module }}</td>
     <td class="r">{{ r.affected | n }}</td><td class="r">{{ r.total | n }}</td><td class="r">{{ r.fail_pct | pct }}</td></tr>
 {% endfor %}

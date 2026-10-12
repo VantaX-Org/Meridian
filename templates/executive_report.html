@@ -4,13 +4,13 @@
 {% include "_analysis_body.html" %}
 
 {% if ai_summary %}
-<div class="callout"><div class="label">AI-generated summary · figures above are computed, this text is not</div>{{ ai_summary }}</div>
+<div class="callout"><div class="label">AI-generated summary – figures above are computed, this text is not</div>{{ ai_summary }}</div>
 {% endif %}
 
 {% set rem = report.remediations or {} %}
 {% if rem.fix_sequence or report.modules %}
 <h2>Remediation plan</h2>
-<div class="callout"><div class="label">AI-assisted · produced by the analysis agents; verify before acting</div>
+<div class="callout"><div class="label">AI-assisted – produced by the analysis agents; verify before acting</div>
 {% if rem.fix_sequence %}
 <ol class="actions">
 {% for item in rem.fix_sequence[:10] %}<li><span class="mono">{{ item.check_id }}</span> — {{ item.reason | default('—') }}{% if item.estimated_effort %} <span class="muted">({{ item.estimated_effort }})</span>{% endif %}</li>{% endfor %}

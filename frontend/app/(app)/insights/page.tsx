@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Skeleton } from "@/design";
 import { getPredictiveAnalytics } from "@/lib/api/analytics";
-import { getExec, getProvenCost, getReadiness } from "@/lib/api/insights";
+import { getExec, getProvenCost, getReadiness, largestValueAtRisk } from "@/lib/api/insights";
 import { getVersions } from "@/lib/api/versions";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -68,6 +68,7 @@ export default function InsightsIndexPage() {
   const declining = forecast.data?.forecasts.filter((f) => f.trend === "declining" || f.trend === "critical").length;
   const cut = readiness.data?.threshold;
   const below = d && typeof cut === "number" ? d.owner_rows.filter((o) => o.score < cut).length : undefined;
+  const topRisk = cost.data ? largestValueAtRisk(cost.data.value_at_risk_by_l1) : null;
   const empty = !loading && !exec.isError && dayOne.status !== "loading" && !d?.version_id;
 
   return (
@@ -79,14 +80,14 @@ export default function InsightsIndexPage() {
         hero: true,
         stats: [
           { label: "No-go cells", value: noGoCells ?? "—", tone: noGoCells === undefined ? undefined : noGoCells ? "no-go" : "go", to: "/insights/readiness" },
-          { label: "Value at risk", value: cost.data ? formatMoney(cost.data.value_at_risk_total, cost.data.currency) : "—", to: "/insights/impact" },
+          { label: "Largest L1 at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, cost.data?.currency ?? "") : "—", to: "/insights/impact" },
           { label: "Modules trending down", value: declining ?? "—", tone: declining === undefined ? undefined : declining ? "at-risk" : "go", to: "/insights/forecast" },
           { label: "Owners below threshold", value: below ?? "—", tone: below === undefined ? undefined : below ? "at-risk" : "go", to: "/insights/owners" },
         ],
         loading: loading || cost.isLoading || forecast.isLoading,
         situation: { sentence: noGoCells === undefined ? "Checking readiness" : `${noGoCells} ${noGoCells === 1 ? "readiness cell is" : "readiness cells are"} no-go`, tone: noGoCells ? "no-go" : "go" },
         changed: { sentence: declining === undefined ? "—" : `${declining} ${declining === 1 ? "module is" : "modules are"} trending down` },
-        why: { sentence: cost.data ? `${formatMoney(cost.data.value_at_risk_total, cost.data.currency)} of value is at risk` : "—" },
+        why: { sentence: topRisk ? `${topRisk.l1} carries the most value at risk, across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : "—" },
         next: noGoCells
           ? { sentence: "Clear the no-go cells first", action: { label: "Open readiness", href: "/insights/readiness" } }
           : { sentence: "Review owner scores", action: { label: "Open owners", href: "/insights/owners" } },

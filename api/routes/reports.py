@@ -381,5 +381,5 @@ async def report_catalogue(version_id: Optional[uuid.UUID] = None, module: Optio
                 url += ("&" if "?" in url else "?") + f"module={module}"
         out.append({"id": rid, "name": name, "format": fmt, "about": about, "sections": sections,
                     "page_estimate": pages, "requires": requires, "url": url,
-                    "last_built_at": built.isoformat() if stored and built else None, "size_bytes": None})
+                    "last_built_at": built.isoformat() if stored and built else None})
     return out

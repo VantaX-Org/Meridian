@@ -14,7 +14,7 @@ from api.routes.config_impact import get_config_impact
 from api.routes.merge_explain import AUTO_MERGE, REVIEW_FLOOR, build_cluster_graph
 from api.routes.record_issues import _rls
 from api.services import insights_aggregate as agg
-from api.services.insights_impact import feature_l1, tenant_currency, value_at_risk, worst_l1
+from api.services.insights_impact import by_l1, feature_l1, tenant_currency, value_at_risk, worst_l1
 from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
 from api.services.insights_readiness import build_wave_cells
 from api.services.rbac import require_permission
@@ -181,7 +181,7 @@ async def get_proven_cost(
             {"t": str(tenant.id)},
         )).scalar()
         if version_id is None:
-            return {"version_id": None, "currency": currency, "total": 0.0, "rows": [], "value_at_risk_total": 0.0}
+            return {"version_id": None, "currency": currency, "total": 0.0, "rows": [], "value_at_risk_by_l1": []}
 
     res = await db.execute(text("""
         SELECT metric, amount, currency, by_currency, documents, check_ids, items
@@ -200,10 +200,11 @@ async def get_proven_cost(
     total = round(sum(float((r["by_currency"] or {}).get(currency, 0.0)) for r in rows), 2)
 
     impact = await get_impact(version_id, db, tenant)
-    value_at_risk_total = round(sum(r["value_at_risk"] for r in impact["rows"]), 2)
+    # Per-L1 only: value at risk is never summed across L1s.
+    var_by_l1 = [{"l1": k, "value_at_risk": v} for k, v in sorted(by_l1(impact["rows"]).items())]
 
     return {"version_id": str(version_id), "currency": currency, "total": total, "rows": rows,
-            "value_at_risk_total": value_at_risk_total}
+            "value_at_risk_by_l1": var_by_l1}
 
 
 @router.get("/owners", dependencies=[Depends(require_permission("view"))])
@@ -375,6 +376,8 @@ async def _agg(db: AsyncSession, tenant: Tenant, fn, *args, **kw) -> dict:
 @router.get("/overview", dependencies=[Depends(require_permission("view"))])
 async def get_overview(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Board overview for one run. A blocker is a failing rule that is critical, or that the
+    S/4 readiness pack counts as blocking. Blockers are never summed across L1s."""
     return await _agg(db, tenant, agg.overview, version_id and str(version_id), module)
 
 

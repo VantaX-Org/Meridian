@@ -113,7 +113,7 @@
     <td>{{ r.module | module }}</td><td class="r">{{ r.affected | n }}</td><td class="r">{% if r.pass_rate is not none %}{{ (r.pass_rate * 100) | pct }}{% else %}—{% endif %}</td><td class="r">{{ r.impact | n }}</td></tr>{% endfor %}
 </tbody>
 </table>
-{% if rule_total > rule_appendix | length %}<p class="note">Showing the {{ rule_appendix | length }} highest-impact of {{ rule_total | n }} failing rules. The analyst workbook lists all of them.</p>{% endif %}
+{% if rule_total > rule_appendix | length %}<p class="note">Top {{ rule_appendix | length }} of {{ rule_total | n }} rules; full list in workbook.</p>{% endif %}
 {% else %}<div class="empty">No rule fails in this run.</div>{% endif %}
 
 {% include "_methodology.html" %}

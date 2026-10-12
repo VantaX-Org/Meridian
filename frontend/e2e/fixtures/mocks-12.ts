@@ -186,7 +186,7 @@ export async function mockRoutes12(page: Page) {
 
   // Insights.
   await get(/\/api\/v1\/insights\/proven-cost(\?.*)?$/, {
-    version_id: RUN, currency: "EUR", total: 48250, value_at_risk_total: 126400,
+    version_id: RUN, currency: "EUR", total: 48250, value_at_risk_by_l1: [{ l1: "P2P", value_at_risk: 126400 }, { l1: "O2C", value_at_risk: 48000 }],
     rows: [
       {
         metric: "duplicate_payment", label: "Duplicate payments", amount: 31800, currency: "EUR", by_currency: { EUR: 31800 }, documents: 4, check_ids: ["AP017"],

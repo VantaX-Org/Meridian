@@ -72,12 +72,25 @@ export interface ProvenCostRow {
   items: ProvenCostItem[];
 }
 
+export interface ValueAtRiskL1 {
+  l1: string;
+  value_at_risk: number;
+}
+
 export interface ProvenCostResponse {
   version_id: string | null;
   currency: string | null;
   total: number;
   rows: ProvenCostRow[];
-  value_at_risk_total: number;
+  /** Per-L1 only. Value at risk is never summed across L1s. */
+  value_at_risk_by_l1: ValueAtRiskL1[];
+}
+
+/** Largest L1 by value at risk, plus how many processes (L1s) the figure sits among. Never a sum. */
+export function largestValueAtRisk(by_l1: ValueAtRiskL1[]): { l1: string; value_at_risk: number; processes: number } | null {
+  if (by_l1.length === 0) return null;
+  const top = by_l1.reduce((a, b) => (b.value_at_risk > a.value_at_risk ? b : a));
+  return { ...top, processes: by_l1.length };
 }
 
 export async function getProvenCost(params?: { version_id?: string }): Promise<ProvenCostResponse> {

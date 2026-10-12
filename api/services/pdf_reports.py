@@ -368,7 +368,7 @@ def _check_row(f: dict) -> dict:
 
 
 def _scope_label(tenant_name: str, system: Optional[dict]) -> str:
-    return f"{tenant_name} · {system['name']}" if system else f"{tenant_name} · Uploaded data"
+    return f"{tenant_name} – {system['name']}" if system else f"{tenant_name} – Uploaded data"
 
 
 def _system_line(system: Optional[dict]) -> str:
@@ -565,7 +565,7 @@ def cleaning_context(data: dict, *, tenant_name: str, scoring: dict, version: Op
         "overall": composite_dqs([(version or {}).get("dqs_summary") or {}], scoring=scoring),
         "quality_chart": _quality_chart(cleaning_dims), "previous_dqs": None, "top_findings": [],
         "title": "Cleaning and fixes report", "eyebrow": "Data cleaning and remediation", "cover": True,
-        "scope_label": f"{tenant_name} · {'Run ' + (version.get('label') or str(version['id'])) if version else 'All runs'}",
+        "scope_label": f"{tenant_name} – {'Run ' + (version.get('label') or str(version['id'])) if version else 'All runs'}",
         "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("Scope", scope)]
                 + ([("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"]))]

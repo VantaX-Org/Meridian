@@ -9,6 +9,7 @@ import { chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono,
 import {
   getImpact,
   getProvenCost,
+  largestValueAtRisk,
   type ImpactResponse,
   type ImpactRow,
   type ProvenCostItem,
@@ -110,13 +111,17 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
   const rows = query.data?.rows ?? [];
   const currency = query.data?.currency ?? "";
   const total = query.data?.total ?? 0;
-  const valueAtRiskTotal = query.data?.value_at_risk_total ?? 0;
+  const topRisk = largestValueAtRisk(query.data?.value_at_risk_by_l1 ?? []);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-6">
         <Stat label="Proven cost" value={formatMoney(total, currency)} />
-        <Stat label="Value at risk" value={formatMoney(valueAtRiskTotal, currency)} />
+        <Stat
+          label="Largest L1 at risk"
+          value={topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—"}
+          hint={topRisk ? `${topRisk.l1}, across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
+        />
       </div>
       {rows.length === 0 ? (
         <EmptyState title="No proven cost findings yet" detail="Proven cost appears once a run finds posted documents that break a rule." action={<Link href="/rules">Open rules</Link>} />

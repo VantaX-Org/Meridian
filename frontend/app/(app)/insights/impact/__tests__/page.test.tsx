@@ -26,7 +26,7 @@ function mockEmptyProvenCost() {
     currency: "USD",
     total: 0,
     rows: [],
-    value_at_risk_total: 0,
+    value_at_risk_by_l1: [],
   });
 }
 
@@ -53,7 +53,7 @@ describe("ImpactPage", () => {
       version_id: "v1",
       currency: "USD",
       total: 1070,
-      value_at_risk_total: 5000,
+      value_at_risk_by_l1: [{ l1: "P2P", value_at_risk: 5000 }, { l1: "O2C", value_at_risk: 1200 }],
       rows: [
         {
           metric: "late_po",
@@ -70,7 +70,8 @@ describe("ImpactPage", () => {
     renderWithQuery(<ImpactPage />);
 
     await waitFor(() => expect(screen.getByText("Proven cost")).toBeInTheDocument());
-    expect(screen.getAllByText("Value at risk").length).toBeGreaterThan(0);
+    expect(screen.getByText("Largest L1 at risk")).toBeInTheDocument();
+    expect(screen.getByText("P2P, across 2 processes")).toBeInTheDocument();
     expect(screen.getByText("Late purchase orders")).toBeInTheDocument();
     expect(screen.getByText("MM140")).toBeInTheDocument();
     expect(screen.getByText("MM140").closest("a")?.getAttribute("href")).toBe("/rules/MM140");

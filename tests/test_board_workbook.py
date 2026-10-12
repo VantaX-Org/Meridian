@@ -198,7 +198,7 @@ def test_routes_catalogue_audit_and_tenant_isolation(app_engine, seeded, monkeyp
                     "object", "record"} <= set(cat)
             for e in cat.values():
                 assert set(e) == {"id", "name", "format", "about", "sections", "page_estimate", "requires", "url",
-                                  "last_built_at", "size_bytes"}
+                                  "last_built_at"}
             assert cat["board"]["url"] == f"/api/v1/reports/board/{vid}.pdf?compare={prev}"
             assert "module=material_master" in cat["workbook"]["url"]
             assert cat["record"]["url"] is None
