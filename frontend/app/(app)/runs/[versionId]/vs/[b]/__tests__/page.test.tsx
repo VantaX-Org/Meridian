@@ -153,6 +153,44 @@ describe("CompareRunsPage", () => {
     expect(screen.getByRole("option", { name: "Accounts Payable" })).toBeInTheDocument();
   });
 
+  it("creates fix batches in bulk for selected rules, reporting partial success", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({
+      ...cmp,
+      checks: {
+        newly_failing: [
+          { check_id: "MM041", module: "material_master", severity: "critical", v1_affected: 0, v2_affected: 1240 },
+          { check_id: "MM050", module: "material_master", severity: "critical", v1_affected: 0, v2_affected: 10 },
+        ],
+        fixed: [],
+      },
+    });
+    const create = vi
+      .spyOn(remediationApi, "createBatch")
+      .mockResolvedValueOnce({ id: "b1", name: "r1", status: "draft", item_count: 1240 })
+      .mockRejectedValueOnce(new Error("failed"));
+    const { toast } = await import("sonner");
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText("Select row MM041"));
+    fireEvent.click(screen.getByLabelText("Select row MM050"));
+    fireEvent.click(await screen.findByRole("button", { name: "Create fix batches" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches"));
+    expect(toast.error).toHaveBeenCalledWith("1 fix batch failed to create");
+  });
+
+  it("filters record keys in the drawer and shows filter-specific copy", async () => {
+    const keys = vi.spyOn(versionsApi, "compareRecordKeys").mockResolvedValue({ record_keys: [] });
+    const user = userEvent.setup();
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("MM041"));
+    await waitFor(() => expect(screen.getByText("No new records")).toBeInTheDocument());
+    await user.type(screen.getByLabelText("Filter record keys"), "zzz");
+    await waitFor(() => expect(screen.getByText("No records match")).toBeInTheDocument());
+    expect(keys).toHaveBeenCalledWith("MM041", expect.objectContaining({ search: "zzz", offset: 0 }));
+  });
+
   it("shows a loading skeleton while the comparison loads", async () => {
     vi.spyOn(versionsApi, "compareVersions").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<CompareRunsPage />);
