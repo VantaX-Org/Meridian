@@ -100,7 +100,6 @@ export const mColor = {
     toneMedium: "var(--m-hero-tone-medium)",
     tonePass: "var(--m-hero-tone-pass)",
   },
-  glowCritical: "var(--m-glow-critical-fill)",
 } as const;
 
 /** The nine SAP object families that carry a domain hue. */

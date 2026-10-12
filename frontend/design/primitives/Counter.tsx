@@ -30,6 +30,13 @@ export function Counter({
   const [settled, setSettled] = useState(false);
   const lastVersion = useRef<string | undefined>(undefined);
 
+  // The settle flash is one-shot: drop the class once its animation (mMotion.draw) has played.
+  useEffect(() => {
+    if (!settled) return;
+    const id = setTimeout(() => setSettled(false), mMotion.draw);
+    return () => clearTimeout(id);
+  }, [settled]);
+
   useEffect(() => {
     if (value === null) return;
     // Snap without animating. setState runs in a frame callback, not
