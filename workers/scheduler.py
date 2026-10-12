@@ -242,11 +242,11 @@ def weekly_cleaning_batch():
                 # 4. Rollup steward_metrics for the week
                 session.execute(
                     text("""
-                        INSERT INTO steward_metrics (id, tenant_id, user_id, period, period_type,
+                        INSERT INTO steward_metrics (id, tenant_id, user_id, period,
                             items_processed, items_approved, items_rejected, total_review_hours,
                             dqs_impact, created_at)
                         SELECT gen_random_uuid(), :tid, approved_by,
-                            :period, 'weekly',
+                            :period,
                             COUNT(*),
                             COUNT(*) FILTER (WHERE status = 'approved' OR status = 'applied'),
                             COUNT(*) FILTER (WHERE status = 'rejected'),
