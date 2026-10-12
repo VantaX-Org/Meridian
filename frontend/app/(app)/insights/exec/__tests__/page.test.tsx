@@ -35,14 +35,17 @@ describe("ExecPage", () => {
       impact_rows: [{ feature: "Invoice posting", status: "blocked", record_count: 12, value_per_record: 100, value_at_risk: 1200, causing_rules: [] }],
       owner_rows: [{ owner: "me", score: 91, delta: 3, open_by_severity: {}, fixed_since_baseline: 2, oldest_item_age_days: 1, digest: "ok", schedule: "weekly", last_sent: null }],
     });
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
     const download = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
 
     renderWithQuery(<ExecPage />);
 
     expect(await screen.findByText(/readiness improved three points/i)).toBeInTheDocument();
-    const exportButton = await screen.findByRole("button", { name: /executive report \(pdf\)/i });
-    fireEvent.click(exportButton);
-    await waitFor(() => expect(download).toHaveBeenCalledWith("/api/v1/reports/executive/v1.pdf", "executive_v1.pdf"));
+    fireEvent.click(await screen.findByRole("button", { name: /export/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /board pack/i }));
+    await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v1"), "board_v1.pdf"));
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(screen.getAllByRole("grid").length).toBeGreaterThan(0);
   });
 
   it("shows an error state when the exec request fails", async () => {

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
+import * as migrationApi from "@/lib/api/migration";
 import ReadinessPage from "../page";
 
 vi.mock("next/navigation", () => ({
@@ -87,5 +88,17 @@ describe("ReadinessPage", () => {
 
     await waitFor(() => expect(screen.getByText(/no readiness data/i)).toBeInTheDocument());
     expect(getReadiness).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows blockers and warnings from the S/4 areas", async () => {
+    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 70, cells: [{ module: "material_master", wave: "Wave 1", verdict: "go", blocker_count: 0, dqs: 92, score: 100, records_blocked: 0 }], configured: true });
+    vi.spyOn(migrationApi, "getS4Readiness").mockResolvedValue({
+      status: "ok",
+      areas: [{ area: "a", label: "A", simplification_item: null, rules: 5, failing: 5, failing_records: 9, blocking_failing: 2, status: "x" }],
+    });
+    renderWithQuery(<ReadinessPage />);
+    const strip = await screen.findByTestId("s4-strip");
+    await waitFor(() => expect(strip).toHaveTextContent("Blockers2"));
+    expect(strip).toHaveTextContent("Warnings3");
   });
 });

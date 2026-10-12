@@ -1,110 +1,157 @@
 "use client";
 
-/** Insights › Reports: every PDF and JSON report the platform renders, for one chosen run. */
+/** Insights > Reports: the report library. Pick a scope, pick a report, preview it, download it. */
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, Select } from "@/design";
+import { toast } from "sonner";
+import { Button, Card, Field, Input, Pill, Select } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
-import {
-  getAnalysisReportUrl, getCleaningReportUrl, getComparisonReportUrl, getExecutiveReportUrl, getExtractionReportUrl,
-  getReportDownloadUrl, getReportJsonExportUrl,
-} from "@/lib/api/reports";
-import { formatDate } from "@/lib/format";
-import { getVersions } from "@/lib/api/versions";
+import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
+import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
+import { formatDate, formatModuleName } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
-import { MeridianMark } from "@/components/meridian/icons";
-import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
+import { useInsightScope } from "../_components/useInsightScope";
 
-interface ReportRow {
-  id: string;
-  name: string;
-  about: string;
-  format: "PDF" | "JSON";
-  /** null: the report needs an object or record, so it is opened from there. */
-  url: ((versionId: string) => string) | null;
-  file: string;
-}
-
-const REPORTS: ReportRow[] = [
-  { id: "executive", name: "Executive summary", about: "Readiness, value at risk and owners for the run.", format: "PDF", url: getExecutiveReportUrl, file: "executive.pdf" },
-  { id: "analysis", name: "Analysis report", about: "Scores, findings and rule results.", format: "PDF", url: getAnalysisReportUrl, file: "analysis.pdf" },
-  { id: "extraction", name: "Extraction report", about: "Tables read from the source system and their coverage.", format: "PDF", url: getExtractionReportUrl, file: "extraction.pdf" },
-  { id: "cleaning", name: "Cleaning and fixes", about: "Cleaning work across the organisation for this run.", format: "PDF", url: (v) => getCleaningReportUrl(v), file: "cleaning.pdf" },
-  { id: "compare", name: "Run comparison", about: "This run against the baseline or previous run.", format: "PDF", url: (v) => getComparisonReportUrl(v), file: "compare.pdf" },
-  { id: "full", name: "Full report", about: "The stored run report.", format: "PDF", url: getReportDownloadUrl, file: "report.pdf" },
-  { id: "json", name: "Run data", about: "Run results as JSON.", format: "JSON", url: getReportJsonExportUrl, file: "report.json" },
-  { id: "object", name: "Object report", about: "One object's rules and fields. Open it from the object page.", format: "PDF", url: null, file: "" },
-  { id: "record", name: "Record fix sheet", about: "One record's fixes. Open it from the record page.", format: "PDF", url: null, file: "" },
-];
+const NONE = "none";
+const EXT: Record<CatalogueEntry["format"], string> = { PDF: "pdf", XLSX: "xlsx", JSON: "json" };
 
 export default function ReportsPage() {
   const { can } = usePermissions();
+  const { run: scopedRun, runs, versions } = useInsightScope();
   const [picked, setPicked] = useState("");
-  const versions = useQuery({ queryKey: ["versions", "reports"], queryFn: () => getVersions({ limit: 25 }) });
-  const runs = (versions.data?.versions ?? []).filter((v) => v.status === "complete" || v.status === "agents_complete" || v.status === "ai_enriched");
-  const versionId = picked || runs[0]?.id || "";
+  const [compare, setCompare] = useState(NONE);
+  const [module, setModule] = useState(NONE);
+  const [recordKey, setRecordKey] = useState("");
+  const [selected, setSelected] = useState("board");
+  const versionId = picked || scopedRun || "";
+  const cmp = compare === NONE ? undefined : compare;
+  const mod = module === NONE ? undefined : module;
 
-  const columns: ColumnDef<ReportRow>[] = [
-    {
-      id: "cover", header: "", enableSorting: false,
-      cell: () => <span aria-hidden className="m-report-cover flex items-center justify-center" style={{ width: 56, height: 40 }}><MeridianMark size={20} variant="mono" /></span>,
-    },
-    { accessorKey: "name", header: "Report" },
-    { accessorKey: "about", header: "What it covers" },
-    { accessorKey: "format", header: "Format" },
-    {
-      id: "get",
-      header: "",
-      cell: ({ row }) => {
-        const r = row.original;
-        if (r.url && !can("export")) return <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Export needs the auditor or analyst role</span>;
-        return r.url ? (
-          <Button variant="secondary" onClick={() => void downloadAuthenticated(r.url!(versionId), `${r.id}_${versionId}.${r.format.toLowerCase()}`)}>Download</Button>
-        ) : (
-          <Button variant="secondary" render={<Link href="/objects">Open objects</Link>} />
-        );
-      },
-    },
-  ];
+  const catalogue = useQuery({
+    queryKey: queryKeys.reportCatalogue(versionId, mod, cmp),
+    queryFn: () => getReportCatalogue({ version_id: versionId, module: mod, compare: cmp }),
+    enabled: !!versionId && can("export"),
+  });
+  const overview = useQuery({ queryKey: queryKeys.insights("overview", versionId, mod), queryFn: () => getOverview({ version_id: versionId, module: mod }), enabled: !!versionId });
+  const heat = useQuery({ queryKey: queryKeys.insights("heatmap", versionId), queryFn: () => getHeatmap({ version_id: versionId }), enabled: !!versionId });
+
+  const entries = catalogue.data ?? [];
+  const current = entries.find((e) => e.id === selected) ?? entries[0];
+  const key = recordKey.trim();
+  const urlOf = (e: CatalogueEntry): string | null => (e.id === "record" ? (key && versionId ? getRecordReportUrl(versionId, key) : null) : e.url);
+  const href = current ? urlOf(current) : null;
+  const runLabel = (id: string) => { const v = runs.find((r) => r.id === id); return v?.label || (v ? formatDate(v.run_at, "datetime") : id); };
+
+  const onKeys = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const i = entries.findIndex((x) => x.id === current?.id);
+    const next = entries[Math.min(entries.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1)))];
+    if (!next) return;
+    setSelected(next.id);
+    e.currentTarget.querySelector<HTMLElement>(`[data-id="${next.id}"]`)?.focus();
+  };
+
+  const download = () => { if (current && href) void downloadAuthenticated(href, `${current.id}_${versionId}.${EXT[current.format]}`); };
+  const copy = async () => {
+    if (!href) return;
+    try { await navigator.clipboard.writeText(new URL(href, window.location.origin).toString()); toast.success("Link copied"); } catch { toast.error("Could not copy the link"); }
+  };
+
+  const o = overview.data;
+  const scopeLine = [runLabel(versionId), cmp ? `compared with ${runLabel(cmp)}` : "no comparison run", mod ? formatModuleName(mod) : "all objects"].join(", ");
 
   return (
     <InsightFrame
       title="Reports"
-      meta="Latest completed runs"
+      meta={versionId ? `Scope: ${scopeLine}` : "Latest completed runs"}
       skeleton={<CardSkeleton height={300} />}
       insight={{
-        situation: { sentence: `${REPORTS.filter((x) => x.url).length} of ${REPORTS.length} reports can be downloaded for a run, ${runs.length} completed ${runs.length === 1 ? "run is" : "runs are"} available. Reports are rendered from the run you choose.`, tone: runs.length ? "go" : "at-risk" },
+        situation: { sentence: `${runs.length} completed ${runs.length === 1 ? "run is" : "runs are"} available. Reports are rendered from the run you choose.`, tone: runs.length ? "go" : "at-risk" },
         changed: { sentence: "—" },
-        why: { sentence: `${REPORTS.length - REPORTS.filter((x) => x.url).length} reports open from an object or record page instead.` },
-        next: can("export") && versionId
-          ? { sentence: "Download the executive summary for the chosen run.", action: { label: "Download executive summary", onClick: () => void downloadAuthenticated(getExecutiveReportUrl(versionId), `executive_${versionId}.pdf`) } }
-          : { sentence: "Export needs the auditor or analyst role.", action: { label: "Open runs", href: "/runs" } },
+        why: { sentence: can("export") ? `${entries.length} reports in the library.` : "Export needs the auditor or analyst role." },
+        next: can("export") && href
+          ? { sentence: "Download the selected report.", action: { label: `Download ${current?.name ?? "report"}`, onClick: download } }
+          : { sentence: can("export") ? "Choose a run." : "Export needs the auditor or analyst role.", action: { label: "Open runs", href: "/runs" } },
       }}
       actions={
-        <Select
-          label="Analysis run"
-          value={versionId}
-          onValueChange={setPicked}
-          placeholder="Choose a run"
-          options={runs.map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Select label="Analysis run" value={versionId} onValueChange={setPicked} placeholder="Choose a run" options={runs.map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))} />
+          <Select label="Compare with" value={compare} onValueChange={setCompare} options={[{ value: NONE, label: "No comparison" }, ...runs.filter((v) => v.id !== versionId).map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))]} />
+          <Select label="Object" value={module} onValueChange={setModule} options={[{ value: NONE, label: "All objects" }, ...(heat.data?.rows ?? []).map((r) => ({ value: r.module, label: formatModuleName(r.module) }))]} />
+        </div>
       }
       state={versions.isLoading ? "loading" : isListFailure(versions) ? "error" : runs.length === 0 ? "empty" : undefined}
-      emptyProps={{
-        title: "No completed run yet",
-        detail: "Reports are rendered from a finished run.",
-        ghost: "table",
-        action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />,
-      }}
+      emptyProps={{ title: "No completed run yet", detail: "Reports are rendered from a finished run.", ghost: "table", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
     >
-      <Card title="Available reports">
-        <DataTable columns={columns} data={REPORTS} getRowId={(r) => r.id} hideToolbar dense height="auto" />
-      </Card>
+      {!can("export") ? (
+        <Card title="Reports"><p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Export needs the auditor or analyst role.</p></Card>
+      ) : catalogue.isError ? (
+        <Card title="Reports">
+          <div className="flex items-center gap-3 m-text-body" role="alert">
+            <span>The report library did not load. {apiErrorMessage(catalogue.error)}</span>
+            <Button variant="secondary" onClick={() => void catalogue.refetch()}>Retry</Button>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid gap-4 @5xl:grid-cols-12">
+          <div className="@5xl:col-span-5">
+            <Card title="Available reports">
+              {catalogue.isLoading ? <CardSkeleton height={300} /> : (
+                <div role="listbox" aria-label="Reports" onKeyDown={onKeys} className="flex flex-col gap-2">
+                  {entries.map((e) => (
+                    <button
+                      key={e.id} type="button" role="option" data-id={e.id} aria-selected={e.id === current?.id}
+                      tabIndex={e.id === current?.id ? 0 : -1} onClick={() => setSelected(e.id)}
+                      className="m-lift flex flex-col gap-1 rounded p-3 text-left"
+                      style={{ background: e.id === current?.id ? "var(--m-surface-2)" : "var(--m-surface)", color: "var(--m-ink)" }}
+                    >
+                      <span className="flex items-center gap-2 font-medium">{e.name}<Pill tone="neutral">{e.format}</Pill></span>
+                      <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{e.about}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+          <div className="@5xl:col-span-7">
+            <Card title={current ? `Preview: ${current.name}` : "Preview"}>
+              {current && (
+                <div className="flex flex-col gap-3">
+                  <p className="m-text-body">{current.about}</p>
+                  <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`About ${current.page_estimate} pages. Scope: ${scopeLine}.`}</p>
+                  {current.sections.length > 0 && (
+                    <ul className="list-disc pl-5 m-text-body">{current.sections.map((s) => <li key={s}>{s}</li>)}</ul>
+                  )}
+                  {o && (
+                    <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                      {`Key figures: DQS ${o.dqs.composite ?? "not scored"}, ${o.blockers.count} blockers`}
+                      {o.value_at_risk.worst_l1 ? `, largest L1 at risk ${l1Label(o.value_at_risk.worst_l1)} ${formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency)}` : ""}.
+                    </p>
+                  )}
+                  {current.requires.length > 0 && !href && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`Needs: ${current.requires.join(", ")}.`}</p>}
+                  {current.id === "record" && (
+                    <Field label="Record key">
+                      <Input value={recordKey} onChange={(e) => setRecordKey(e.target.value)} placeholder="For example a material number" />
+                    </Field>
+                  )}
+                  {current.last_built_at && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`Last built ${formatDate(current.last_built_at, "datetime")}.`}</p>}
+                  <div className="flex gap-2">
+                    <Button variant="primary" disabled={!href} onClick={download}>Download</Button>
+                    <Button variant="secondary" disabled={!href} onClick={() => void copy()}>Copy link</Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
     </InsightFrame>
   );
 }

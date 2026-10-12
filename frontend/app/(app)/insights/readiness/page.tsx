@@ -6,11 +6,13 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Pill, type PillTone } from "@/design";
+import { getS4Readiness } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { Section } from "../_components/Section";
 import { CardSkeleton, InsightFrame, useRunLabel } from "../_components/InsightFrame";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
@@ -63,6 +65,19 @@ export default function ReadinessPage() {
     queryKey: queryKeys.insights("readiness", run),
     queryFn: () => getReadiness({ version_id: run }),
   });
+
+  const s4 = useQuery({
+    queryKey: queryKeys.insights("s4-readiness", data?.version_id ?? undefined),
+    queryFn: () => getS4Readiness(data?.version_id ?? ""),
+    enabled: !!data?.version_id,
+  });
+  const areas = s4.data?.areas ?? [];
+  let blockingGaps = 0;
+  let warningGaps = 0;
+  for (const a of areas) {
+    blockingGaps += a.blocking_failing;
+    warningGaps += Math.max(0, a.failing - a.blocking_failing);
+  }
 
   let state: "loading" | "empty" | "error" | undefined;
   if (isLoading || dayOne.status === "loading") {
@@ -126,6 +141,20 @@ export default function ReadinessPage() {
         />
         <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>Each cell is a wave and object pair. Select one to open its records.</p>
       </Card>
+      <Section title="Blockers and warnings" height={96} query={s4}>
+        <ul className="grid grid-cols-2 gap-3" data-testid="s4-strip">
+          <li className="flex flex-col gap-1">
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Blockers</span>
+            <span className="m-numeric font-semibold">{blockingGaps.toLocaleString()}</span>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Failing rules that stop an S/4 load</span>
+          </li>
+          <li className="flex flex-col gap-1">
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Warnings</span>
+            <span className="m-numeric font-semibold">{warningGaps.toLocaleString()}</span>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Failing rules that do not stop a load</span>
+          </li>
+        </ul>
+      </Section>
       <Card title="Blockers">
         {blockers.length === 0 ? (
           <EmptyState title="No blockers in this run" detail="Every wave and object cell can load." action={<Button render={<Link href="/objects">Open objects</Link>} />} ghost="grid" />

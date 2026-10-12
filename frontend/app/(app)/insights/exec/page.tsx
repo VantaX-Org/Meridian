@@ -1,18 +1,24 @@
 // frontend/app/(app)/insights/exec/page.tsx
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, Delta, Pill, Stat, Waterfall, type PillTone } from "@/design";
+import Link from "next/link";
+import { Button, Card, DataTable, DrillLink, Delta, ExportMenu, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { getExec, getProvenCost, l1Label, largestValueAtRisk, valueAtRiskByL1, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { getExec, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
+import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
+import { useRole } from "@/hooks/use-role";
+import { formatModuleName } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { CardSkeleton, InsightFrame, formatMoney, statusTone, useRunLabel } from "../_components/InsightFrame";
+import { ruleColumns } from "../_components/RuleColumns";
+import { useFindingOpener } from "../_components/FindingOpener";
+import { Section } from "../_components/Section";
+import { useInsightScope, withScope } from "../_components/useInsightScope";
+import { CardSkeleton, InsightFrame, formatMoney, useRunLabel } from "../_components/InsightFrame";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -39,13 +45,6 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
   },
 ];
 
-const impactColumns: ColumnDef<ImpactRow>[] = [
-  { accessorKey: "feature", header: "Feature", cell: ({ row }) => <DrillLink object={row.original.feature}>{labelOf(row.original.feature)}</DrillLink> },
-  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill> },
-  { accessorKey: "record_count", header: "Blocked records", cell: ({ row }) => <DrillLink href="/insights/impact">{row.original.record_count}</DrillLink> },
-  { accessorKey: "value_at_risk", header: "Value at risk", cell: ({ row }) => plain(row.original.value_at_risk) },
-];
-
 const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
   { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href="/insights/owners">{row.original.score}</DrillLink> },
@@ -53,9 +52,12 @@ const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
 ];
 
 export default function ExecPage() {
-  const search = useSearchParams();
-  const run = search.get("run") ?? undefined;
+  const { run: scopedRun, explicit } = useInsightScope();
+  const run = explicit ?? scopedRun;
   const dayOne = useDayOne();
+  const { can } = useRole();
+  const finding = useFindingOpener(run);
+  const rules = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "top10"), queryFn: () => getRuleRanking({ version_id: run, limit: 10 }), enabled: !!run });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("exec", run),
@@ -74,25 +76,28 @@ export default function ExecPage() {
         ? "empty"
         : undefined;
 
-  const exportHref = data?.version_id ? `/api/v1/reports/executive/${data.version_id}.pdf` : undefined;
+  const vid = data?.version_id ?? undefined;
+  const exportOptions: ExportOption[] = vid ? [
+    { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(vid), `board_${vid}.pdf`) },
+    { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(vid, {}), `workbook_${vid}.xlsx`) },
+  ] : [];
   const noGo = data?.readiness_cells.filter((c) => c.verdict === "no_go").length ?? 0;
   const owners = data?.owner_rows ?? [];
   const up = owners.filter((o) => o.delta > 0).length;
   const down = owners.filter((o) => o.delta < 0).length;
-  const wf = data?.waterfall ?? [];
+  const cells = data?.readiness_cells ?? [];
+  const heatRows = [...new Set(cells.map((c) => formatModuleName(c.module)))];
+  const heatCols = [...new Set(cells.map((c) => c.wave))];
+  const byL1 = new Map<string, ExecWaterfallPoint[]>();
+  for (const pt of data?.waterfall ?? []) byL1.set(pt.l1 || "unassigned", [...(byL1.get(pt.l1 || "unassigned") ?? []), pt]);
+  const l1Tabs = [...byL1].sort(([a], [b]) => a.localeCompare(b));
   const topRisk = data ? largestValueAtRisk(valueAtRiskByL1(data.impact_rows)) : null;
 
   return (
     <InsightFrame
       title="Executive summary"
       meta={runLabel}
-      actions={
-        exportHref ? (
-          <Button variant="primary" onClick={() => void downloadAuthenticated(exportHref, `executive_${data?.version_id}.pdf`)}>
-            Executive report (PDF)
-          </Button>
-        ) : undefined
-      }
+      actions={can("export") ? <ExportMenu options={exportOptions} /> : <Pill tone="info">Export needs auditor or analyst role</Pill>}
       insight={{
         hero: true,
         stats: data ? [
@@ -121,36 +126,72 @@ export default function ExecPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      {wf.length > 0 && (
-        <Card title="Score movement">
-          <Waterfall data={wf} label="Score movement" />
-          <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>{`From ${wf[0].x} to ${wf[wf.length - 1].x}.`}</p>
-        </Card>
-      )}
-      <Card title="Return on investment">
-        {roi.isError ? (
-          <div className="flex items-center gap-3 m-text-body" role="alert">
-            <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
-            <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.roi_multiple}x` : "—"} />
-            <Stat label="Payback" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.payback_months} months` : "—"} />
-            <Stat label="Risk mitigated" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.risk_mitigated) : "—"} />
-            <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.subscription_annual) : "—"} />
+      <div className="grid gap-4 @5xl:grid-cols-12">
+        <div className="@5xl:col-span-12">
+          <Card title="Readiness by wave">
+            {cells.length > 0 && (
+              <div role="region" aria-label="Readiness by object and wave" tabIndex={0} className="mb-3 overflow-x-auto">
+                <Heatmap
+                  rows={heatRows}
+                  cols={heatCols}
+                  cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: VERDICT_TONE[c.verdict] as "go" | "at-risk" | "no-go" }))}
+                  rowHref={(row) => `/objects/${cells.find((c) => formatModuleName(c.module) === row)?.module ?? ""}`}
+                />
+              </div>
+            )}
+            <DataTable columns={readinessColumns} data={cells} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
+          </Card>
+        </div>
+        {l1Tabs.length > 0 && (
+          <div className="@5xl:col-span-7">
+            <Card title="Score movement">
+              <Tabs
+                items={l1Tabs.map(([l1, points]) => ({
+                  value: l1,
+                  label: l1Label(l1),
+                  content: (
+                    <>
+                      <Waterfall data={points} label={`Score movement, ${l1Label(l1)}`} />
+                      <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>{`${l1Label(l1)}: from ${points[0].x} to ${points[points.length - 1].x}.`}</p>
+                    </>
+                  ),
+                }))}
+              />
+            </Card>
           </div>
         )}
-      </Card>
-      <Card title="Readiness by wave">
-        <DataTable columns={readinessColumns} data={data?.readiness_cells ?? []} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
-      </Card>
-      <Card title="Features at risk">
-        <DataTable columns={impactColumns} data={data?.impact_rows ?? []} getRowId={(row) => row.feature} hideToolbar dense height="auto" />
-      </Card>
-      <Card title="Owners">
-        <DataTable columns={ownerColumns} data={data?.owner_rows ?? []} getRowId={(row) => row.owner} hideToolbar dense height="auto" />
-      </Card>
+        <div className={l1Tabs.length > 0 ? "@5xl:col-span-5" : "@5xl:col-span-12"}>
+          <Section title="Fix first" height={240} query={rules} actions={<Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}>
+            <DataTable columns={ruleColumns(run, true)} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
+          </Section>
+        </div>
+        <div className="@5xl:col-span-12">
+          <Card title="Owners">
+            <DataTable columns={ownerColumns} data={data?.owner_rows ?? []} getRowId={(row) => row.owner} hideToolbar dense height="auto" />
+          </Card>
+        </div>
+        <div className="@5xl:col-span-12">
+          <details open={roi.isError || undefined}>
+            <summary className="cursor-pointer m-text-body font-medium">Return on investment</summary>
+            <Card title="Return on investment">
+              {roi.isError ? (
+                <div className="flex items-center gap-3 m-text-body" role="alert">
+                  <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
+                  <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.roi_multiple}x` : "—"} />
+                  <Stat label="Payback" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.payback_months} months` : "—"} />
+                  <Stat label="Risk mitigated" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.risk_mitigated) : "—"} />
+                  <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.subscription_annual) : "—"} />
+                </div>
+              )}
+            </Card>
+          </details>
+        </div>
+      </div>
+      {finding.drawer}
     </InsightFrame>
   );
 }
