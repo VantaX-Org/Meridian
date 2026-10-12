@@ -14,6 +14,7 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { bySeverity } from "../_severity-sort";
 import { FilterChips } from "./_header";
 
 const READINESS_LABEL: Record<"pass" | "warn" | "fail", string> = {
@@ -74,6 +75,7 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
     // Severity-mapped value drives the row bar; the cell still shows the verdict word.
     accessorFn: (o) => (o.readiness === "fail" ? "critical" : o.readiness === "warn" ? "medium" : o.readiness === "pass" ? "pass" : ""),
     header: "Readiness",
+    sortingFn: bySeverity,
     meta: { severity: true } satisfies CellMeta,
     cell: ({ row }) => {
       const readiness = row.original.readiness;

@@ -15,6 +15,7 @@
  * stubbed; see task-11-report.md.
  */
 
+import { bySeverity } from "../_severity-sort";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -164,7 +165,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
     { id: "module", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={formatModuleName(row.original.module)} /> },
     { id: "dimension", header: "Dimension", cell: ({ row }) => valuesOf(row.original, "dimension").map(labelOf).join(", ") || "—" },
     {
-      id: "severity", header: "Severity", accessorFn: (r) => sevOf(r.severity), meta: { severity: true } satisfies CellMeta,
+      id: "severity", header: "Severity", accessorFn: (r) => sevOf(r.severity), sortingFn: bySeverity, meta: { severity: true } satisfies CellMeta,
       cell: ({ row }) => <span className="inline-flex items-center gap-2"><SeverityDot severity={sevOf(row.original.severity)} />{labelOf(row.original.severity)}</span>,
     },
     {
