@@ -9,7 +9,7 @@ import { useRole } from "@/hooks/use-role";
 import { getCatalogue } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { ProcessSkeleton } from "./_components/process-header";
+import { BodySkeleton, ProcessFrame } from "./_components/process-header";
 import { CatalogueTable, NoSystem, SystemSelect, processInsight, useProcessSystem } from "./_components/shared";
 
 const noRun = (i: InsightHeaderProps): InsightHeaderProps =>
@@ -26,14 +26,12 @@ export default function ProcessCataloguePage() {
     refetchInterval: (q) => (q.state.data?.some((r) => r.in_progress) ? 5_000 : false),
   });
 
-  const frame = "mx-auto grid w-full gap-4";
-  const pad = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" };
-  if (systems.isError) return <div className={frame} style={pad}><ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} /></div>;
-  if (systems.isSuccess && !system) return <div className={frame} style={pad}><NoSystem /></div>;
-  if (catalogue.isError) return <div className={frame} style={pad}><ErrorState message={apiErrorMessage(catalogue.error)} onRetry={() => catalogue.refetch()} /></div>;
+  if (systems.isError) return <ProcessFrame><ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
+  if (systems.isSuccess && !system) return <ProcessFrame><NoSystem /></ProcessFrame>;
+  if (catalogue.isError) return <ProcessFrame><ErrorState message={apiErrorMessage(catalogue.error)} onRetry={() => catalogue.refetch()} /></ProcessFrame>;
   const rows = catalogue.data;
   return (
-    <div className={frame} style={pad}>
+    <ProcessFrame>
       <PageHeader title="Processes" meta={system?.name}
         actions={system && (
           <>
@@ -49,7 +47,7 @@ export default function ProcessCataloguePage() {
           <InsightHeader {...noRun(processInsight(rows, system.name, system.id, can("run_process_discovery")))} />
           <CatalogueTable rows={rows} systemId={system.id} jobs={jobs} />
         </>
-      ) : <ProcessSkeleton />}
-    </div>
+      ) : <BodySkeleton />}
+    </ProcessFrame>
   );
 }

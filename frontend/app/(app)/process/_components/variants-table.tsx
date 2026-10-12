@@ -59,7 +59,7 @@ export function VariantsTable({ runId, filters, canExport, onOpenCase }: {
           <p>Fitness against the reference: <Pill tone={fitnessTone(v.fitness)}>{fmtFitness(v.fitness)}</Pill></p>
           {canExport && v.sample_case_ids.length > 0 && (
             <section className="grid gap-1">
-              <h3 className="font-semibold">Sample cases</h3>
+              <h2 className="font-semibold">Sample cases</h2>
               <ul className="flex flex-wrap gap-2">
                 {v.sample_case_ids.map((id) => (
                   <li key={id}><Button variant="ghost" onClick={() => onOpenCase(id)}><Mono>{id}</Mono></Button></li>

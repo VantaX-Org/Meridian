@@ -65,7 +65,7 @@ describe("process catalogue", () => {
     expect(await screen.findByText("0 of 13 processes discovered on KSA PRD; 13 reference only.")).toBeTruthy();
     expect(screen.getAllByText("Reference, not discovered")).toHaveLength(13);
     expect(screen.getAllByText("Not run yet")).toHaveLength(13);
-    const action = screen.getAllByRole("link", { name: /Run discovery/ })[0];
+    const action = screen.getByRole("link", { name: /Run discovery/ });
     expect(action.getAttribute("href")).toBe("/process/runs?system=sys-1&new=1");
   });
 

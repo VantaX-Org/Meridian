@@ -29,7 +29,7 @@ import { ExportDialog } from "../_components/export-dialog";
 import { FlowView } from "../_components/flow-view";
 import { L5Table } from "../_components/l5-table";
 import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, useProcessSystem } from "../_components/shared";
-import { ProcessSkeleton } from "../_components/process-header";
+import { BodySkeleton, ProcessFrame } from "../_components/process-header";
 import { VariantsTable } from "../_components/variants-table";
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -63,16 +63,14 @@ export default function ProcessL1Page() {
   });
   const reference = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference });
 
-  const frame = "mx-auto grid w-full gap-4";
-  const pad = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" };
-  const wrap = (n: ReactNode) => <div className={frame} style={pad}>{n}</div>;
+  const wrap = (n: ReactNode) => <ProcessFrame>{n}</ProcessFrame>;
   if (systems.isError) return wrap(<ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} />);
   if (systems.isSuccess && !system) return wrap(<NoSystem />);
   for (const q of [catalogue, run, model, reference]) {
     if (q.isError) return wrap(<ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />);
   }
   if (!catalogue.data || !reference.data || (runId && !run.data) || (discovered && !model.data)) {
-    return wrap(<ProcessSkeleton />);
+    return wrap(<><PageHeader title={row?.name ?? l1} /><BodySkeleton rows={4} /></>);
   }
   if (!row) {
     return wrap(<EmptyState title="Process not in catalogue" detail={`No level-1 process ${l1} exists.`}
@@ -109,7 +107,7 @@ export default function ProcessL1Page() {
   const items: TabItem[] = available.map((t) => ({ value: t, label: TAB_LABEL[t], content: content[t] }));
 
   return (
-    <div className={frame} style={pad}>
+    <ProcessFrame>
       <Header l1={l1} name={row.name} systemName={system!.name} systemId={system!.id} run={discovered ? r : undefined}
         reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)}
         canRun={can("run_process_discovery")} />
@@ -131,7 +129,7 @@ export default function ProcessL1Page() {
         <ExportDialog open={exporting} onOpenChange={setExporting} runId={runId} l1={l1} node={node}
           nodeName={here?.name ?? l1} filters={filters} />
       )}
-    </div>
+    </ProcessFrame>
   );
 }
 
@@ -144,12 +142,12 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
   if (!run) {
     return (
       <>
-      <PageHeader title={name} meta={`${l1} on ${systemName}`} actions={runLink} />
-      <InsightHeader
-        situation={{ sentence: `${name} on ${systemName} has no discovered flow.` }}
-        changed={{ sentence: "No completed discovery run." }}
-        why={{ sentence: reason ?? "Discovery has not run for this process yet." }}
-        next={{ sentence: "Read the reference model below." }} />
+        <PageHeader title={name} meta={`${l1} on ${systemName}`} actions={runLink} />
+        <InsightHeader
+          situation={{ sentence: `${name} on ${systemName} has no discovered flow.` }}
+          changed={{ sentence: "No completed discovery run." }}
+          why={{ sentence: reason ?? "Discovery has not run for this process yet." }}
+          next={{ sentence: "Read the reference model below." }} />
       </>
     );
   }
@@ -157,19 +155,19 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
   const fitness = s.conformance?.fitness ?? null;
   return (
     <>
-    <PageHeader title={name}
-      meta={`${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants, fitness ${fmtFitness(fitness)}`}
-      status={<Pill tone={fitnessTone(fitness)}>{fmtFitness(fitness)}</Pill>}
-      actions={<>
-        {canExport && <Button variant="secondary" onClick={onExport}>Export to Signavio</Button>}
-        {runLink}
-      </>} />
-    <InsightHeader
-      situation={{ sentence: `${name} on ${systemName}: ${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants.` }}
-      changed={{ sentence: run.finished_at ? `Discovered ${relativeTime(run.finished_at)}.` : "Discovery in progress." }}
-      why={{ sentence: `Fitness ${fmtFitness(fitness)} against the reference, median ${fmtSeconds(s.throughput?.median_seconds)} end to end.`,
-        tone: fitnessTone(fitness) }}
-      next={{ sentence: "Click a step to drill into its records." }} />
+      <PageHeader title={name}
+        meta={`${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants, fitness ${fmtFitness(fitness)}`}
+        status={<Pill tone={fitnessTone(fitness)}>{fmtFitness(fitness)}</Pill>}
+        actions={<>
+          {canExport && <Button variant="secondary" onClick={onExport}>Export to Signavio</Button>}
+          {runLink}
+        </>} />
+      <InsightHeader
+        situation={{ sentence: `${name} on ${systemName}: ${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants.` }}
+        changed={{ sentence: run.finished_at ? `Discovered ${relativeTime(run.finished_at)}.` : "Discovery in progress." }}
+        why={{ sentence: `Fitness ${fmtFitness(fitness)} against the reference, median ${fmtSeconds(s.throughput?.median_seconds)} end to end.`,
+          tone: fitnessTone(fitness) }}
+        next={{ sentence: "Click a step to drill into it" }} />
     </>
   );
 }

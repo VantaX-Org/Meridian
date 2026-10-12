@@ -25,7 +25,7 @@ import { CoveragePill, RunStatusPill } from "./coverage-pill";
 
 export const fitnessTone = (f: number | null | undefined): PillTone =>
   f == null ? "neutral" : f >= 0.8 ? "go" : f >= 0.6 ? "at-risk" : "no-go";
-export const fmtFitness = (f: number | null | undefined) => (f == null ? "—" : `${Math.round(f * 1000) / 10}%`);
+export const fmtFitness = (f: number | null | undefined) => (f == null ? "—" : `${(f * 100).toFixed(1)}%`);
 export const fmtSeconds = (s: number | null | undefined) => (s == null ? "—" : formatDuration(s));
 export const fmtCount = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString());
 
@@ -109,8 +109,8 @@ export function processInsight(rows: CatalogueRow[], systemName: string, systemI
 function Figure({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid gap-0.5">
-      <span className="text-[11px] leading-[14px]" style={{ color: "var(--m-ink-3)" }}>{label}</span>
-      <span className="m-numeric text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{children}</span>
+      <span className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{label}</span>
+      <span className="m-numeric m-text-body" style={{ color: "var(--m-ink)" }}>{children}</span>
     </div>
   );
 }
@@ -127,11 +127,11 @@ export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; 
           <Card key={r.l1} title={r.name} meta={<Mono>{r.l1}</Mono>} padding="sm">
             <div className="grid gap-2">
               <div><CoveragePill coverage={r.coverage} /></div>
-              {r.reason && <p className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>{r.reason}</p>}
+              {r.reason && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{r.reason}</p>}
               {active && (
                 <div className="grid gap-1">
                   <Skeleton height={16} />
-                  <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
+                  <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
                     {stageLabel(jobs.find((j) => j.id === active.job_id)) ?? <RunStatusPill status={active.status} />}
                   </span>
                 </div>
@@ -148,7 +148,7 @@ export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; 
                   <Figure label="Median">{fmtSeconds(run.median_seconds)}</Figure>
                 </div>
               )}
-              <div className="flex items-center justify-between text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
+              <div className="flex items-center justify-between m-text-meta" style={{ color: "var(--m-ink-3)" }}>
                 <span>{run?.finished_at ? `Last run ${relativeTime(run.finished_at)}` : "Not run yet"}</span>
                 <DrillLink href={l1Href(r.l1, systemId, done ? run.id : undefined)}>Open {r.l1}</DrillLink>
               </div>
@@ -185,9 +185,9 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
           </span>
         );
       } },
-    { id: "variants", header: "Variants", accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
-    { id: "cases", header: "Cases", accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
-    { id: "median", header: "Median duration", accessorFn: (r) => r.last_run?.median_seconds ?? -1, cell: ({ row: { original: r } }) => fmtSeconds(r.last_run?.median_seconds) },
+    { id: "variants", header: "Variants", meta: { numeric: true }, accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
+    { id: "cases", header: "Cases", meta: { numeric: true }, accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
+    { id: "median", header: "Median duration", meta: { numeric: true }, accessorFn: (r) => r.last_run?.median_seconds ?? -1, cell: ({ row: { original: r } }) => fmtSeconds(r.last_run?.median_seconds) },
     { id: "finished", header: "Last run", accessorFn: (r) => r.last_run?.finished_at ?? "", cell: ({ row: { original: r } }) => (
         r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Not run yet") },
   ];

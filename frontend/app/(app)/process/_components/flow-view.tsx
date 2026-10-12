@@ -75,7 +75,7 @@ export function FlowView({ runId, doc, node, filters, onDrill }: {
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
+        <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
           {allEdges ? "Every observed edge." : `Edges under ${fmtShare(d.edge_threshold)} of cases are hidden, as in the Signavio export.`}
         </span>
         <Button variant="secondary" aria-pressed={allEdges} onClick={() => setAllEdges((v) => !v)}>
@@ -130,7 +130,7 @@ function L5Drawer({ doc, id, onClose }: { doc: ProcessModelDocument; id: string 
             ))}
           </dl>
           <section className="grid gap-1">
-            <h3 className="font-semibold">Fields</h3>
+            <h2 className="font-semibold">Fields</h2>
             {a.fields.length ? (
               <ul className="grid gap-1">
                 {a.fields.map((f) => (

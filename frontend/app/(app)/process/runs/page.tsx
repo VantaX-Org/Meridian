@@ -9,7 +9,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { ACTIVE_RUN, getCatalogue, listRuns } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { ProcessSkeleton, RowsSkeleton } from "../_components/process-header";
+import { ProcessFrame, RowsSkeleton } from "../_components/process-header";
 import { NewRunDialog } from "../_components/new-run-dialog";
 import { NoSystem, RunsTable, SystemSelect, useProcessSystem } from "../_components/shared";
 
@@ -30,14 +30,12 @@ export default function ProcessRunsPage() {
     enabled: !!system && can("run_process_discovery"),
   });
 
-  const frame = "mx-auto grid w-full gap-4";
-  const pad = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" };
-  if (systems.isError) return <div className={frame} style={pad}><ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} /></div>;
-  if (systems.isSuccess && !system) return <div className={frame} style={pad}><NoSystem /></div>;
-  if (!system) return <div className={frame} style={pad}><ProcessSkeleton /></div>;
+  if (systems.isError) return <ProcessFrame><ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
+  if (systems.isSuccess && !system) return <ProcessFrame><NoSystem /></ProcessFrame>;
+  if (!system) return <ProcessFrame><PageHeader title="Discovery runs" /><RowsSkeleton /></ProcessFrame>;
   const extraction = active.find((j) => j.kind === "extraction" && j.system_id === system.id);
   return (
-    <div className={frame} style={pad}>
+    <ProcessFrame>
       <PageHeader title="Discovery runs" meta={system.name}
         actions={(
           <>
@@ -57,6 +55,6 @@ export default function ProcessRunsPage() {
         <NewRunDialog open={newRun === "1"} onOpenChange={(o) => setNewRun(o ? "1" : "")}
           systemId={system.id} systemName={system.name} rows={catalogue.data} />
       )}
-    </div>
+    </ProcessFrame>
   );
 }
