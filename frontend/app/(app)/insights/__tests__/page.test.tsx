@@ -28,6 +28,8 @@ const exec = {
   owner_rows: [],
 };
 
+const tiles = () => Array.from(screen.getByTestId("insights-index").querySelectorAll("a")).map((a) => a.textContent ?? "");
+
 function mockSide() {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
   vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({ forecasts: [], early_warnings: [] });
@@ -41,10 +43,12 @@ describe("InsightsIndexPage", () => {
     mockSide();
     renderWithQuery(<InsightsIndexPage />);
     expect((await screen.findAllByText("1 readiness cell is no-go")).length).toBeGreaterThan(0);
-    const names = screen.getAllByRole("row").slice(1).map((r) => r.textContent ?? "");
+    const names = tiles();
     expect(names[0]).toMatch(/^Readiness/);
     expect(screen.getByText("Duplicates")).toBeInTheDocument();
     expect(getExec).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("insight-hero-stats")).toBeInTheDocument();
+    expect(screen.getByTestId("insights-index").querySelector("a")).toHaveClass("m-lift");
   });
 
   it("sorts the no-go insight above the rest", async () => {
@@ -52,7 +56,7 @@ describe("InsightsIndexPage", () => {
     mockSide();
     renderWithQuery(<InsightsIndexPage />);
     await screen.findAllByText("1 readiness cell is no-go");
-    const names = screen.getAllByRole("row").slice(1).map((r) => r.textContent ?? "");
+    const names = tiles();
     expect(names[0]).toMatch(/^Readiness/);
     expect(names.findIndex((n) => /^Forecast/.test(n))).toBeGreaterThan(0);
   });

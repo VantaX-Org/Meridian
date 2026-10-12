@@ -2,11 +2,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { DataTable, Delta, Skeleton } from "@/design";
+import { Skeleton } from "@/design";
 import { getPredictiveAnalytics } from "@/lib/api/analytics";
 import { getExec, getProvenCost, getReadiness } from "@/lib/api/insights";
 import { getVersions } from "@/lib/api/versions";
@@ -21,14 +19,14 @@ interface Row {
   name: string;
   headline: string | null; // null while loading, "—" when the index holds no data for it
   description: string;
-  changed?: number;
+  /** Fixed 1 to 6 slot of the chart palette; the tile edge keeps its colour when the list re-sorts. */
+  viz: number;
   rank: number; // no-go first
   /** Own timestamp, only for pages built from the exec payload. */
   stamped?: boolean;
 }
 
 export default function InsightsIndexPage() {
-  const router = useRouter();
   const dayOne = useDayOne();
   const exec = useQuery({ queryKey: queryKeys.insights("exec"), queryFn: () => getExec() });
   const runs = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
@@ -50,7 +48,7 @@ export default function InsightsIndexPage() {
     const below = d && typeof threshold === "number" ? d.owner_rows.filter((o) => o.score < threshold).length : undefined;
     const declining = forecast.data?.forecasts.filter((f) => f.trend === "declining" || f.trend === "critical").length;
     const r = (id: string, name: string, description: string, headline: string | null = "—", rank = 1, stamped = false): Row =>
-      ({ id, href: `/insights/${id}`, name, description, headline, rank, stamped });
+      ({ id, href: `/insights/${id}`, name, description, headline, rank, stamped, viz: 0 });
     return [
       r("readiness", "Readiness", "Go and no-go verdict per module and wave", noGo === undefined ? null : `${noGo} ${noGo === 1 ? "readiness cell is" : "readiness cells are"} no-go`, noGo ? 0 : 1, true),
       r("impact", "Impact", "Value at risk per blocked feature", atRisk === undefined ? null : `${formatMoney(atRisk, cost.data?.currency)} at risk across features`, 1, true),
@@ -63,22 +61,13 @@ export default function InsightsIndexPage() {
       r("mining", "Mining", "Relationships, patterns and anomalies"),
       r("process", "Process", "Readiness per business process"),
       r("reports", "Reports", "Downloadable reports per run"),
-    ].sort((a, b) => a.rank - b.rank);
+    ].map((x, i) => ({ ...x, viz: (i % 6) + 1 })).sort((a, b) => a.rank - b.rank);
   }, [d, cost.data?.currency, readiness.data?.threshold, readiness.isLoading, forecast.data, forecast.isLoading]);
-
-  const columns = useMemo<ColumnDef<Row>[]>(
-    () => [
-      { id: "name", header: "Insight", accessorKey: "name", cell: ({ row }) => <Link href={row.original.href} className="font-medium">{row.original.name}</Link> },
-      { id: "headline", header: "Headline", accessorKey: "headline", enableSorting: false, cell: ({ row }) => (row.original.headline === null ? <Skeleton width={200} height={14} /> : row.original.headline) },
-      { id: "description", header: "Description", accessorKey: "description", enableSorting: false },
-      { id: "changed", header: "Changed", enableSorting: false, cell: ({ row }) => (row.original.changed === undefined ? <span aria-label="No change recorded">—</span> : <Delta value={row.original.changed} />) },
-      { id: "updated", header: "Updated", enableSorting: false, cell: ({ row }) => (!row.original.stamped ? "—" : runs.isLoading ? <Skeleton width={60} height={14} /> : updated) },
-    ],
-    [runs.isLoading, updated],
-  );
 
   const noGoCells = d?.readiness_cells.filter((c) => c.verdict === "no_go").length;
   const declining = forecast.data?.forecasts.filter((f) => f.trend === "declining" || f.trend === "critical").length;
+  const cut = readiness.data?.threshold;
+  const below = d && typeof cut === "number" ? d.owner_rows.filter((o) => o.score < cut).length : undefined;
   const empty = !loading && !exec.isError && dayOne.status !== "loading" && !d?.version_id;
 
   return (
@@ -87,6 +76,13 @@ export default function InsightsIndexPage() {
       meta={run ? `${run.label || "Latest run"}, updated ${updated}` : undefined}
       state={exec.isError ? "error" : empty ? "empty" : undefined}
       insight={{
+        hero: true,
+        stats: [
+          { label: "No-go cells", value: noGoCells ?? "—", tone: noGoCells === undefined ? undefined : noGoCells ? "no-go" : "go", href: "/insights/readiness" },
+          { label: "Value at risk", value: cost.data ? formatMoney(cost.data.value_at_risk_total, cost.data.currency) : "—", href: "/insights/impact" },
+          { label: "Modules trending down", value: declining ?? "—", tone: declining === undefined ? undefined : declining ? "at-risk" : "go", href: "/insights/forecast" },
+          { label: "Owners below threshold", value: below ?? "—", tone: below === undefined ? undefined : below ? "at-risk" : "go", href: "/insights/owners" },
+        ],
         loading: loading || cost.isLoading || forecast.isLoading,
         situation: { sentence: noGoCells === undefined ? "Checking readiness" : `${noGoCells} ${noGoCells === 1 ? "readiness cell is" : "readiness cells are"} no-go`, tone: noGoCells ? "no-go" : "go" },
         changed: { sentence: declining === undefined ? "—" : `${declining} ${declining === 1 ? "module is" : "modules are"} trending down` },
@@ -103,17 +99,27 @@ export default function InsightsIndexPage() {
       }}
       errorProps={{ message: "Could not load insights", onRetry: () => void exec.refetch() }}
     >
-      <DataTable
-          columns={columns}
-          data={rows}
-          getRowId={(x) => x.id}
-          onRowClick={(x) => router.push(x.href)}
-          rowHref={(x) => x.href}
-          dense
-          hideToolbar
-          height="auto"
-          tableId="insights-index"
-        />
+      <ul className="m-motion-stagger grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="insights-index">
+        {rows.map((x) => (
+          <li key={x.id} className="flex">
+            <Link
+              href={x.href}
+              className="m-card m-lift relative flex min-h-28 w-full flex-col gap-1 overflow-hidden"
+              style={{ color: "var(--m-ink)", paddingLeft: 24 }}
+            >
+              <span aria-hidden className="absolute inset-y-0 left-0" style={{ width: 4, background: `var(--m-viz-${x.viz})` }} />
+              <span className="font-medium">{x.name}</span>
+              <span className="m-text-body" style={{ color: "var(--m-ink)" }}>
+                {x.headline === null ? <Skeleton width={200} height={14} /> : x.headline}
+              </span>
+              <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                {x.description}
+                {x.stamped && !runs.isLoading ? `, updated ${updated}` : ""}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </InsightFrame>
   );
 }
