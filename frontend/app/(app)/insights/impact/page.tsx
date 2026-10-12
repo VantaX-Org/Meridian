@@ -202,7 +202,7 @@ export default function ImpactPage() {
           <CardSkeleton height={200} />
         </>
       }
-      insight={{
+      insight={impactQuery.isError ? undefined : {
         situation: {
           sentence: rows.length ? `${formatMoney(totalAtRisk, currency)} sits in ${rows.length} blocked features` : "No feature carries value at risk",
           tone: rows.length ? "at-risk" : "go",

@@ -97,9 +97,9 @@ export default function ReadinessPage() {
       title="Readiness"
       meta={runLabel}
       insight={{
-        situation: { sentence: `${noGo} of ${data?.cells.length ?? 0} readiness cells are no-go`, tone: noGo ? "no-go" : "go" },
+        situation: { sentence: `${noGo} of ${data?.cells.length ?? 0} readiness ${data?.cells.length === 1 ? "cell is" : "cells are"} no-go`, tone: noGo ? "no-go" : "go" },
         changed: { sentence: "—" },
-        why: { sentence: `${blocked.toLocaleString()} records are blocked from loading, against a threshold of ${data?.threshold ?? "—"}%` },
+        why: { sentence: `${blocked.toLocaleString()} records are blocked from loading${typeof data?.threshold === "number" ? `, against a threshold of ${data.threshold}%` : ""}` },
         next: worst
           ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: `/objects/${worst.module}` } }
           : { sentence: "Nothing blocks loading", action: { label: "Open objects", href: "/objects" } },

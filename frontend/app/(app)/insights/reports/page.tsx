@@ -16,7 +16,7 @@ import { formatDate } from "@/lib/format";
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { usePermissions } from "@/lib/permissions";
-import { InsightFrame } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 interface ReportRow {
   id: string;
@@ -70,6 +70,7 @@ export default function ReportsPage() {
     <InsightFrame
       title="Reports"
       meta="Latest completed runs"
+      skeleton={<CardSkeleton height={300} />}
       insight={{
         situation: { sentence: `${REPORTS.filter((x) => x.url).length} of ${REPORTS.length} reports can be downloaded for a run, ${runs.length} completed ${runs.length === 1 ? "run is" : "runs are"} available. Reports are rendered from the run you choose.`, tone: runs.length ? "go" : "at-risk" },
         changed: { sentence: "—" },

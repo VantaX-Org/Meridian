@@ -29,6 +29,7 @@ function Task({ data }: NodeProps<Node<TaskData>>) {
     <div className="m-process-node" data-selected={data.selected}
       data-alignment={data.status ? ALIGN[data.status] : undefined} data-evidence={data.evidence ?? undefined}>
       <Handles />
+      <div className="m-process-node__clip">
       <Card padding="sm">
         <div className="flex flex-col gap-0.5">
           {data.tcode ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}><Mono>{data.tcode}</Mono></span> : null}
@@ -39,6 +40,7 @@ function Task({ data }: NodeProps<Node<TaskData>>) {
           ) : null}
         </div>
       </Card>
+      </div>
       <span className="m-process-node__alignment" />
       {notExtracted ? <span className="m-bpmn-task__evidence" title="No document table extracted for this step" /> : null}
     </div>

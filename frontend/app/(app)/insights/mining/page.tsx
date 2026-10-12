@@ -136,7 +136,7 @@ function EntityLinks() {
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={440} onNodeClick={(id) => setDomain(id === domain ? "" : id)} />
           : (
             <EmptyState
-              title="No relationships recorded yet."
+              title="No relationships recorded yet"
               detail={dayOne.step?.detail ?? "They appear once an analysis has linked records across domains."}
               action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
             />
@@ -198,7 +198,7 @@ function Dependencies() {
     if (dayOne.status === "loading") return <Skeleton height={440} />;
     return (
       <EmptyState
-        title="No SAP systems yet."
+        title="No SAP systems yet"
         detail={dayOne.step?.detail ?? "Connect a system and analyse a download to mine its dependencies."}
         action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
       />
@@ -230,7 +230,7 @@ function Dependencies() {
         </p>
         {profile.isLoading || systems.isLoading || versions.isLoading ? <Skeleton height={480} />
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={480} onNodeClick={() => router.push(profileHref)} />
-          : <EmptyState title="No candidate rules in this object's data." action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
+          : <EmptyState title="No candidate rules in this object's data" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
       </div>
       <DataTableWithMaybeEmpty columns={columns} data={deps} getRowId={(d) => `${d.determinant}>${d.dependent}`} loading={profile.isLoading} empty="No candidate rules." action={<Button render={<Link href="/runs">Open runs</Link>} />} />
     </div>

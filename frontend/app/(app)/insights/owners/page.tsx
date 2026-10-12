@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card, Delta, Pill, Stat, type PillTone } from "@/design";
-import { getOwners, type OwnerCardResponse } from "@/lib/api/insights";
+import { getOwners, getReadiness, type OwnerCardResponse } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
@@ -46,9 +46,11 @@ export default function OwnersPage() {
     queryFn: () => getOwners(),
   });
 
+  const readiness = useQuery({ queryKey: queryKeys.insights("readiness", undefined), queryFn: () => getReadiness() });
   const owners = data?.owners ?? [];
 
-  const below = owners.filter((o) => o.score < 80).length;
+  const threshold = readiness.data?.threshold;
+  const below = typeof threshold === "number" ? owners.filter((o) => o.score < threshold).length : undefined;
   const openTotal = owners.reduce((n, o) => n + Object.values(o.open_by_severity).reduce((a, b) => a + b, 0), 0);
   const worst = [...owners].sort((x, y) => x.score - y.score)[0];
 
@@ -56,7 +58,7 @@ export default function OwnersPage() {
     <InsightFrame
       title="Owners"
       insight={{
-        situation: { sentence: `${below} of ${owners.length} owners are below threshold`, tone: below ? "at-risk" : "go" },
+        situation: { sentence: below === undefined ? "—" : `${below} of ${owners.length} owners are below the ${threshold}% threshold`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
         changed: { sentence: `${owners.filter((o) => o.delta < 0).length} owners lost ground this run` },
         why: { sentence: openTotal ? `${openTotal} open items sit with owners` : "—" },
         next: { sentence: worst ? `Start with ${worst.owner}` : "Assign owners", action: { label: "Open inbox", href: "/inbox" } },

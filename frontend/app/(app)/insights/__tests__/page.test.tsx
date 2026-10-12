@@ -31,6 +31,7 @@ const exec = {
 function mockSide() {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
   vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({ forecasts: [], early_warnings: [] });
+  vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 80, cells: [], configured: true });
   vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ version_id: "v1", currency: "USD", total: 0, rows: [], value_at_risk_total: 0 });
 }
 
@@ -39,7 +40,7 @@ describe("InsightsIndexPage", () => {
     const getExec = vi.spyOn(insightsApi, "getExec").mockResolvedValue(exec);
     mockSide();
     renderWithQuery(<InsightsIndexPage />);
-    expect((await screen.findAllByText("1 readiness cells are no-go")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("1 readiness cell is no-go")).length).toBeGreaterThan(0);
     const names = screen.getAllByRole("row").slice(1).map((r) => r.textContent ?? "");
     expect(names[0]).toMatch(/^Readiness/);
     expect(screen.getByText("Duplicates")).toBeInTheDocument();
@@ -50,7 +51,7 @@ describe("InsightsIndexPage", () => {
     vi.spyOn(insightsApi, "getExec").mockResolvedValue(exec);
     mockSide();
     renderWithQuery(<InsightsIndexPage />);
-    await screen.findAllByText("1 readiness cells are no-go");
+    await screen.findAllByText("1 readiness cell is no-go");
     const names = screen.getAllByRole("row").slice(1).map((r) => r.textContent ?? "");
     expect(names[0]).toMatch(/^Readiness/);
     expect(names.findIndex((n) => /^Forecast/.test(n))).toBeGreaterThan(0);

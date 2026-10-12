@@ -199,7 +199,7 @@ function Editor(p: EditorProps) {
   return (
     <div className="flex flex-col gap-4" style={PAGE}>
       <PageHeader title="Process designer"
-        meta={reference ? "The shipped reference model, read-only. Create a model from it to edit." : `Version ${versionNo} of ${currentVersion}. Changes are saved as a new version.`}
+        meta={reference ? "Read-only reference model, create a model to edit" : `Version ${versionNo} of ${currentVersion}, saved as a new version on change`}
         actions={<>
           <Select
             label="Process model"
