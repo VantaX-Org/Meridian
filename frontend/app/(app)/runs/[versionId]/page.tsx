@@ -12,6 +12,7 @@ import {
   Bar, Button, Card, DataTable, Delta, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Heatmap, Line, Mono, Pager, Pill,
   DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone, type HeatmapCell,
   entityTabs, NextActions,
+  PageHeader,
 } from "@/design";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
@@ -27,7 +28,6 @@ import { getSystems } from "@/lib/api/connectivity";
 import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
-import { RunsPageHeader, RunsPageHeaderSkeleton } from "../_page-header";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, previousRunId } from "@/lib/runs";
 import type { Finding, Version } from "@/types/api";
@@ -498,7 +498,7 @@ export default function RunDetailPage() {
   ];
 
   const header = v ? (
-    <RunsPageHeader
+    <PageHeader
       title={v.label ?? formatDate(v.run_at, "datetime")}
       meta={["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}
       status={
@@ -521,7 +521,7 @@ export default function RunDetailPage() {
       }
     />
   ) : (
-    <RunsPageHeaderSkeleton />
+    <Skeleton height={48} />
   );
 
   return (

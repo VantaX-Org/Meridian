@@ -23,8 +23,8 @@ import {
   Skeleton,
   Stat,
   type SelectOption,
+  PageHeader,
 } from "@/design";
-import { RunsPageHeader, RunsPageHeaderSkeleton } from "@/app/(app)/runs/_page-header";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -199,13 +199,13 @@ export default function CompareRunsPage() {
   const after = mean(deltas.map((d) => d.v2_score));
 
   const header = cmp ? (
-    <RunsPageHeader
+    <PageHeader
       title={`${runLabel(cmp.v2)} vs ${runLabel(cmp.v1)}`}
       meta={`${formatDate(cmp.v2.run_at, "datetime")} and ${formatDate(cmp.v1.run_at, "datetime")}`}
       status={b === "baseline" ? <Pill>Baseline</Pill> : undefined}
     />
   ) : (
-    <RunsPageHeaderSkeleton />
+    <Skeleton height={48} />
   );
 
   const narrative = (

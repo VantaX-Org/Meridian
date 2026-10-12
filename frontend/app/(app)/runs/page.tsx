@@ -6,19 +6,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Stat, type PillTone } from "@/design";
+import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Stat, usePrefetch, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
 import { getSystems } from "@/lib/api/connectivity";
 import { exportRuns } from "@/lib/api/v1/runs";
-import { getVersions } from "@/lib/api/versions";
+import { compareVersions, getVersions } from "@/lib/api/versions";
 import { formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { overallDqs, previousRunId, scopeOf } from "@/lib/runs";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
-import { RunsPageHeader } from "./_page-header";
 
 const STATUS_TONE: Record<string, PillTone> = {
   failed: "no-go",
@@ -72,6 +71,12 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[]): C
 /** Bulk bar for the selection; `c` compares once exactly two runs are selected. */
 function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (a: Version, b: Version) => void }) {
   const two = selected.length === 2;
+  const [newer, older] = two && selected[0].run_at < selected[1].run_at ? [selected[1], selected[0]] : [selected[0], selected[1]];
+  const prefetch = usePrefetch(
+    two ? `/runs/${newer.id}/vs/${older.id}` : undefined,
+    two ? [...queryKeys.runCompare(newer.id, older.id), "modules", undefined] : undefined,
+    () => compareVersions(older.id, newer.id, undefined),
+  );
   useEffect(() => {
     if (!two) return;
     const onKey = (e: KeyboardEvent) => {
@@ -82,7 +87,7 @@ function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [two, selected, onCompare]);
-  return two ? <Button onClick={() => onCompare(selected[0], selected[1])}>Compare</Button> : <span style={{ color: "var(--m-ink-2)" }}>Select two runs</span>;
+  return two ? <Button {...prefetch} onClick={() => onCompare(selected[0], selected[1])}>Compare</Button> : <span style={{ color: "var(--m-ink-2)" }}>Select two runs</span>;
 }
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
@@ -145,7 +150,7 @@ export default function RunsPage() {
   const firstSystem = systems.data?.[0];
 
   const header = (
-    <RunsPageHeader
+    <PageHeader
       title="Runs"
       actions={
         <>
@@ -186,13 +191,10 @@ export default function RunsPage() {
   );
 
   const filterBar = (
-    <div className="flex flex-col gap-4">
-      {header}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select label="System" value={system} onValueChange={setSystem} options={systemOptions} placeholder="All systems" />
-        {system ? <FilterChip label={`System: ${systemName.get(system) ?? system}`} onRemove={() => setSystem("")} /> : null}
-        {failedOnly ? <FilterChip label="Status: failed" onRemove={() => setStatus("")} /> : null}
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <Select label="System" value={system} onValueChange={setSystem} options={systemOptions} placeholder="All systems" />
+      {system ? <FilterChip label={`System: ${systemName.get(system) ?? system}`} onRemove={() => setSystem("")} /> : null}
+      {failedOnly ? <FilterChip label="Status: failed" onRemove={() => setStatus("")} /> : null}
     </div>
   );
 
@@ -203,6 +205,7 @@ export default function RunsPage() {
 
   return (
     <ExplorerPage
+      header={header}
       filterBar={filterBar}
       summary={summary}
       table={
@@ -210,6 +213,7 @@ export default function RunsPage() {
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}
+          rowHref={(row) => `/runs/${row.id}`}
           onRowClick={(row) => router.push(`/runs/${row.id}`)}
           bulkActions={(selected) => <CompareBar selected={selected} onCompare={compare} />}
         />
