@@ -23,18 +23,20 @@ function Sequence({ activities }: { activities: string[] }) {
   );
 }
 
-export function VariantsTable({ runId, filters, canExport, onOpenCase }: {
+export function VariantsTable({ runId, filters, canExport, onOpenCase, onClearFilters }: {
   runId: string;
   filters: ProcessFilterParams;
   canExport: boolean;
   onOpenCase: (caseId: string) => void;
+  onClearFilters?: () => void;
 }) {
   const params = { ...filters, limit: 200 };
   const q = useQuery({ queryKey: queryKeys.processRunView(runId, "variants", params), queryFn: () => getVariants(runId, params) });
   if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   if (!q.data) return <Skeleton height={320} />;
   const rows = q.data.items;
-  if (!rows.length) return <EmptyState title="No variants in this view" detail="Widen the filters to include more cases." />;
+  if (!rows.length) return <EmptyState title="No variants in this view" detail="Widen the filters to include more cases."
+    action={onClearFilters && <Button variant="secondary" onClick={onClearFilters}>Clear filters</Button>} />;
 
   const columns: ColumnDef<VariantRow>[] = [
     { id: "rank", header: "Rank", cell: ({ row }) => (row.original.hash === OTHER_HASH ? "—" : row.index + 1) },

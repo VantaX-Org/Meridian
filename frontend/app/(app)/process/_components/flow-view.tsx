@@ -36,12 +36,14 @@ const NODE_COLUMNS: ColumnDef<NodeStats>[] = [
   { accessorKey: "fitness", header: "Fitness", cell: ({ row }) => fmtFitness(row.original.fitness) },
 ];
 
-export function FlowView({ runId, doc, node, filters, onDrill }: {
+export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
   runId: string;
   doc: ProcessModelDocument;
   node: string | null;
   filters: ProcessFilterParams;
   onDrill: (id: string) => void;
+  /** Moves the drill one level up; absent at the top. */
+  onUp?: () => void;
 }) {
   const [allEdges, setAllEdges] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -51,7 +53,8 @@ export function FlowView({ runId, doc, node, filters, onDrill }: {
   if (dfg.isError) return <ErrorState message={apiErrorMessage(dfg.error)} onRetry={() => dfg.refetch()} />;
   if (!dfg.data) return <Skeleton height={420} />;
   const d = dfg.data;
-  if (!d.nodes.length) return <EmptyState title="No activity below this step" detail="Go up one level to see its flow." />;
+  if (!d.nodes.length) return <EmptyState title="No activity below this step" detail="Go up one level to see its flow."
+    action={onUp && <Button variant="secondary" onClick={onUp}>Go up one level</Button>} />;
 
   // Rank order (most cases first) fixes the Graph's keyboard order (§7.5).
   const ranked = [...d.nodes].sort((a, b) => b.case_count - a.case_count);

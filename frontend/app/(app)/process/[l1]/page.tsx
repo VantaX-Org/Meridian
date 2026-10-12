@@ -89,6 +89,8 @@ export default function ProcessL1Page() {
   const tab: Tab = (available as readonly string[]).includes(drill.tab) ? (drill.tab as Tab) : fallback;
   const filters: ProcessFilterParams = drill.filters;
 
+  const clearFilters = () => drill.set(Object.fromEntries(Object.keys(filters).map((k) => [k, null])));
+
   const notDiscovered = (
     <EmptyState title={isReference ? "Reference, not discovered" : "No completed discovery run yet"}
       detail={isReference ? (reason ?? "This system has no source tables for this process.") : "Run discovery for this process, then come back."}
@@ -96,12 +98,13 @@ export default function ProcessL1Page() {
   );
   const mined = (content: ReactNode) => (discovered && r ? content : notDiscovered);
   const content: Record<Tab, ReactNode> = {
-    flow: mined(<FlowView runId={runId} doc={doc} node={node} filters={filters} onDrill={(id) => drill.set({ node: id })} />),
-    bpmn: mined(<BpmnView doc={doc} node={node} />),
-    variants: mined(<VariantsTable runId={runId} filters={filters} canExport={canExport}
+    flow: mined(<FlowView runId={runId} doc={doc} node={node} filters={filters} onDrill={(id) => drill.set({ node: id })}
+      onUp={crumbs.length > 1 ? () => drill.set({ node: crumbs.length > 2 ? crumbs[crumbs.length - 2].id : null }) : undefined} />),
+    bpmn: mined(<BpmnView doc={doc} node={node} onOpenFlow={() => drill.set({ tab: "flow", case: null })} />),
+    variants: mined(<VariantsTable runId={runId} filters={filters} canExport={canExport} onClearFilters={clearFilters}
       onOpenCase={(id) => drill.set({ tab: "cases", case: id })} />),
-    conformance: mined(<ConformanceView runId={runId} l1={l1} filters={filters} rework={r?.stats.rework} />),
-    cases: mined(<CaseExplorer runId={runId} filters={filters} caseId={drill.caseId} onOpenCase={(id) => drill.set({ case: id })} />),
+    conformance: mined(<ConformanceView runId={runId} l1={l1} filters={filters} rework={r?.stats.rework} onClearFilters={clearFilters} />),
+    cases: mined(<CaseExplorer runId={runId} filters={filters} caseId={drill.caseId} onClearFilters={clearFilters} onOpenCase={(id) => drill.set({ case: id })} />),
     reference: <ReferenceView doc={reference.data} l1={l1} node={node} onOpen={(id) => drill.set({ node: id })} />,
   };
   const items: TabItem[] = available.map((t) => ({ value: t, label: TAB_LABEL[t], content: content[t] }));

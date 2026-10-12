@@ -93,6 +93,32 @@ beforeEach(() => {
 
 const lastReplace = () => new URL(`http://x${h.replace.mock.calls.at(-1)![0]}`).searchParams;
 
+describe("process L1 empty-state actions", () => {
+  it("offers Go up one level on an empty flow below L1", async () => {
+    h.qs = "system=sys-1&node=PTP-01";
+    vi.spyOn(pdApi, "getDfg").mockResolvedValue({ ...dfg(3, node("PTP-01", "Purchasing", 1), [node("x", "x", 1)]), nodes: [] });
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByRole("button", { name: "Go up one level" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["conformance", () => vi.spyOn(pdApi, "getConformance").mockResolvedValue({ case_type: "po_item", fitness: 1, missing: {}, steps: [] })],
+    ["cases", () => vi.spyOn(pdApi, "listCases").mockResolvedValue({ case_type: "po_item", total: 0, items: [] })],
+    ["variants", () => vi.spyOn(pdApi, "getVariants").mockResolvedValue({ case_type: "po_item", total: 0, items: [] })],
+  ])("offers Clear filters on an empty %s tab", async (tab, mock) => {
+    mock();
+    h.qs = `system=sys-1&tab=${tab}&doc_type=ZZ`;
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+  });
+
+  it("offers Open flow on the diagram tab above L4", async () => {
+    h.qs = "system=sys-1&tab=bpmn";
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByRole("button", { name: "Open flow" })).toBeInTheDocument();
+  });
+});
+
 describe("process L1 drill", () => {
   it("opens the latest completed run on the flow tab and drills on a node click", async () => {
     renderWithQuery(<ProcessL1Page />);

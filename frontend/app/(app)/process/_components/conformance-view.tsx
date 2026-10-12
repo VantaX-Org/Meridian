@@ -6,7 +6,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, EmptyState, ErrorState, Notice, Pareto, Skeleton, Stat } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Notice, Pareto, Skeleton, Stat } from "@/design";
 import { getConformance, type Conformance, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -34,17 +34,19 @@ function ParetoPanel({ title, data, id }: { title: string; data: Point[]; id: st
   );
 }
 
-export function ConformanceView({ runId, l1, filters, rework }: {
+export function ConformanceView({ runId, l1, filters, rework, onClearFilters }: {
   runId: string;
   l1: string;
   filters: ProcessFilterParams;
   rework: Record<string, number> | undefined;
+  onClearFilters?: () => void;
 }) {
   const q = useQuery({ queryKey: queryKeys.processRunView(runId, "conformance", filters), queryFn: () => getConformance(runId, filters) });
   if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   if (!q.data) return <Skeleton height={320} />;
   const c = q.data;
-  if (!c.steps.length) return <EmptyState title="No cases to check in this view" detail="Widen the filters to include more cases." />;
+  if (!c.steps.length) return <EmptyState title="No cases to check in this view" detail="Widen the filters to include more cases."
+    action={onClearFilters && <Button variant="secondary" onClick={onClearFilters}>Clear filters</Button>} />;
 
   const tone = fitnessTone(c.fitness);
   const steps: Step[] = c.steps.map((s) => ({ ...s, missing: c.missing[s.activity] ?? 0, rework: rework?.[s.activity] }));
