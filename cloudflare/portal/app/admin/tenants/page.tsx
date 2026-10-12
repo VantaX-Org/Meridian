@@ -78,8 +78,8 @@ export default async function TenantsPage({
           <h1 className="text-2xl font-bold text-white">Tenants</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
             {tenants.length} tenant{tenants.length !== 1 ? "s" : ""}
-            {status && ` · ${status}`}
-            {tier && ` · ${tier}`}
+            {status && `, ${status}`}
+            {tier && `, ${tier}`}
           </p>
         </div>
         <a

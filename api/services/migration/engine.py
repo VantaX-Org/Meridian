@@ -7,12 +7,12 @@ S/4HANA standard dictionary). Every finding names the record, the source and
 target field, the value involved and where the rule came from.
 
 Gap types
-  structural (per field): unmapped_field · target_field_missing · obsolete_target ·
+  structural (per field): unmapped_field, target_field_missing, obsolete_target,
                           target_config_unverified
-  per record:             length_truncation · precision_loss · type_conversion ·
-                          case_change · domain_value · check_table_value ·
-                          value_unmapped · target_mandatory · key_missing ·
-                          key_collision · target_key_exists
+  per record:             length_truncation, precision_loss, type_conversion,
+                          case_change, domain_value, check_table_value,
+                          value_unmapped, target_mandatory, key_missing,
+                          key_collision, target_key_exists
 """
 
 from __future__ import annotations

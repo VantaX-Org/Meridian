@@ -92,7 +92,7 @@ def compare_object(obj: str, source: list[ConfigItem], target: list[ConfigItem])
     exact = {t.key for t in target}
     by_norm = {normalise_key(t.key): t.key for t in target}
     by_desc: dict[str, str] = {}
-    # ponytail: description matching is O(n·m); skipped above DESC_MATCH_MAX target items. Index by token if needed.
+    # ponytail: description matching is O(n*m); skipped above DESC_MATCH_MAX target items. Index by token if needed.
     if len(target) <= DESC_MATCH_MAX:
         for t in target:
             d = _desc(t.values)

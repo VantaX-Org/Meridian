@@ -700,7 +700,7 @@ def contract_freshness():
 def escalate_exceptions():
     """Raise escalation_tier of open exceptions as their SLA deadline approaches.
 
-    Tier 1: >8h left · 2: 2–8h · 3: <2h · 4: SLA breached. Never downgrades.
+    Tier 1: >8h left, 2: 2–8h, 3: <2h, 4: SLA breached. Never downgrades.
     """
     from api.services.exception_engine import ExceptionBillingCalculator
 

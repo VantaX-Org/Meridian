@@ -3,7 +3,7 @@
 No YAML rules — the source system's own DDIC (live snapshot, else SAP
 standard) says what each field may contain:
 
-  type        NUMC digits only · DATS valid calendar date · TIMS valid time ·
+  type        NUMC digits only, DATS valid calendar date, TIMS valid time,
               DEC/CURR/QUAN/INT/FLTP numeric
   length      value longer than the field (CHAR/NUMC …) or more integer /
               decimal digits than the packed field holds

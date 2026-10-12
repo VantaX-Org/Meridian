@@ -17,6 +17,7 @@ from api.services.report_pdf import (
     ReportNotAssembled,
     build_and_store_pdf,
 )
+from api.services.pdf_reports import _modules
 from api.services.rbac import require_permission
 from api.services.storage import download_file
 from api.config import settings
@@ -321,8 +322,6 @@ async def workbook_xlsx(version_id: uuid.UUID, request: Request, module: Optiona
                         tenant: Tenant = Depends(get_tenant)) -> Response:
     """Analyst workbook: summary, modules, rules, findings, record samples, readiness and trend."""
     from api.services.branded_xlsx import xlsx_response
-
-    from api.services.pdf_reports import _modules
 
     await _rls(db, tenant)
     if module and module not in _modules():
