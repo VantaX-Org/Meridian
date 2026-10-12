@@ -1,4 +1,4 @@
-export function Skeleton({ width = "100%", height = 16 }: { width?: number | string; height?: number }) {
+export function Skeleton({ width = "100%", height = 16 }: { width?: number | string; height?: number | string }) {
   return (
     <span
       aria-hidden

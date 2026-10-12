@@ -14,7 +14,10 @@ export function ExplorerPage({
   emptyProps,
   errorProps,
   drawer,
+  dense = true,
 }: {
+  /** Row density of the table this page renders; sizes the loading skeleton. Matches DataTable's default. */
+  dense?: boolean;
   /** Page header slot, rendered above the filter bar (usually a `PageHeader`). */
   header?: ReactNode;
   filterBar?: ReactNode;
@@ -32,17 +35,19 @@ export function ExplorerPage({
 }) {
   let body = table;
   let summarySlot = summary;
-    if (state === "loading") {
-    // A 36px header skeleton plus seven 36px rows, matching the compact table row height.
+  if (state === "loading") {
+    // Toolbar, header and seven rows at the table's real heights, so loading does not shift the layout.
+    const rowH = dense ? "var(--m-row-h-dense)" : "var(--m-row-h)";
     body = (
       <div className="m-motion-stagger flex flex-col gap-1" data-state="loading">
-        <Skeleton height={36} />
-        {Array.from({ length: 7 }, (_, i) => <Skeleton key={i} height={36} />)}
+        <div style={{ height: "var(--m-control-h)" }}><Skeleton width={320} height="100%" /></div>
+        <div style={{ height: rowH }}><Skeleton height="100%" /></div>
+        {Array.from({ length: 7 }, (_, i) => <div key={i} style={{ height: rowH }}><Skeleton height="100%" /></div>)}
       </div>
     );
   } else if (state === "empty") {
     if (emptyProps?.summary) {
-      summarySlot = <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>{emptyProps.summary}</p>;
+      summarySlot = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{emptyProps.summary}</p>;
     }
     body = (
       <EmptyState
