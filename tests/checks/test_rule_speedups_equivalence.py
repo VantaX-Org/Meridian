@@ -13,6 +13,7 @@ from __future__ import annotations
 import io
 import itertools
 import json
+from collections.abc import Callable
 from dataclasses import asdict
 
 import numpy as np
@@ -161,7 +162,9 @@ def _same(a: pd.DataFrame | pd.Series, b: pd.DataFrame | pd.Series) -> None:
         pd.testing.assert_series_equal(a, b, check_exact=True)
 
 
-def _outcome(fn, *args):  # result, or the exception type it raised
+def _outcome(fn: Callable[[pd.Series], pd.Series],
+             *args: pd.Series) -> tuple[pd.Series | None, type[Exception] | None]:
+    # result, or the exception type it raised
     try:
         return fn(*args), None
     except Exception as e:  # noqa: BLE001 - the error itself is part of the result
@@ -232,6 +235,17 @@ def test_typed_cache_serves_the_same_rows_without_parsing_again(monkeypatch: pyt
     assert calls == []
     typed(df.iloc[1:], ["MBEW.ZPLP1"], cache)  # other rows: parsed for them, never sliced
     assert calls == [len(df) - 1]
+
+
+def test_typed_cache_keeps_only_numeric_and_date_columns() -> None:
+    df = _typed_frame()
+    cache = _ByteLRU(10**9)
+    cols = ["MBEW.ZPLP1", "MBEW.ZPLD1", "MARC.WERKS", "ZZ.UNKNOWN"]
+    first = typed(df, cols, cache)
+    assert "typed|MARC.WERKS" not in cache  # char: string memory the byte budget cannot see
+    assert "typed|ZZ.UNKNOWN" not in cache  # unknown (Z) field
+    assert {"typed|MBEW.ZPLP1", "typed|MBEW.ZPLD1"} <= set(cache)
+    pd.testing.assert_frame_equal(typed(df, cols, cache), first)
 
 
 def test_cross_field_check_gives_the_same_result_cached_and_uncached() -> None:

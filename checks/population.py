@@ -91,7 +91,9 @@ def exclude(frame: pd.DataFrame, rules: list[dict], frames=None, norm: dict[str,
         # columns' values (one set per grain, as for ``_stripped``) and the rows
         present = [all(c in frame.columns for c in (x.get("fields") or [x["field"]])) for x in rules]
         key = f"excl|{rules!r}|{present!r}"
-        mask, n = norm.get(key), norm.get(key + "|n")
+        # norm[key] (not .get) so a hit refreshes the entries' LRU recency
+        mask = norm[key] if key in norm else None
+        n = norm[key + "|n"] if key + "|n" in norm else None
         if mask is not None and n is not None and mask.index.equals(frame.index):
             return frame[~mask], {str(k): int(v) for k, v in n.items()}
     out = pd.Series(False, index=frame.index)

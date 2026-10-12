@@ -51,8 +51,10 @@ def typed(df: pd.DataFrame, cols: list[str], cache: dict[str, pd.Series] | None 
     ``.isna()`` / ``.notna()`` and plain comparison operators.
 
     ``cache`` (the lazy frames' per-grain cache, cleared on a grain change) keeps each
-    typed column with the rows it was typed for, and serves it again only to a frame
-    with exactly those rows. A typed column is not row-wise: ``sap_number`` decides the
+    numeric and date typed column with the rows it was typed for, and serves it again
+    only to a frame with exactly those rows. Char and unknown (Z) columns are not
+    cached: they are cheap to type, and a python-backed string column holds far more
+    memory than its ``nbytes`` reports, so the byte budget could not bound them. A typed column is not row-wise: ``sap_number`` decides the
     European format, and the parsers their result dtype, from the rows they see, so a
     column typed for other rows is never sliced to fit.
     """
@@ -62,14 +64,16 @@ def typed(df: pd.DataFrame, cols: list[str], cache: dict[str, pd.Series] | None 
     d = get_dictionary("s4hana")
     out = {}
     for c in cols:
+        f = d.resolve(c)
+        kind = (f.type or "").upper() if f else ""
         key = f"typed|{c}"
-        hit = cache.get(key) if cache is not None else None
+        keep = cache is not None and (kind in _NUMERIC or kind in _DATES)
+        # cache[key] (not .get) so a hit refreshes the entry's LRU recency
+        hit = cache[key] if keep and key in cache else None
         if hit is not None and hit.index.equals(df.index):
             out[c] = hit.set_axis(df.index)
             continue
         s = df[c]
-        f = d.resolve(c)
-        kind = (f.type or "").upper() if f else ""
         blank = is_blank(s)
         if kind in _NUMERIC:
             v = sap_number(s)
@@ -88,7 +92,7 @@ def typed(df: pd.DataFrame, cols: list[str], cache: dict[str, pd.Series] | None 
             # the two with & raises "boolean value of NA is ambiguous" (pandas 3.x).
             v = s.astype("string[python]").str.strip()
         out[c] = v.mask(blank)
-        if cache is not None:
+        if keep:
             cache[key] = out[c]
     return pd.DataFrame(out, index=df.index)
 
