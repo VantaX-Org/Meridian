@@ -7,6 +7,7 @@
  */
 
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 import { MeridianMark } from "@/components/meridian/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -68,19 +69,19 @@ function BrandInstrument({ pct }: { pct: number }) {
   return (
     <div className="relative" style={{ width: RING, height: RING }} aria-hidden>
       <svg width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`} fill="none">
-        <circle cx={mid} cy={mid} r={RING_R} stroke="var(--m-line)" strokeWidth={6} />
+        <circle cx={mid} cy={mid} r={RING_R} stroke="var(--m-brand-track)" strokeWidth={6} />
         {pct > 0 ? (
-          <circle cx={mid} cy={mid} r={RING_R} stroke="var(--m-accent)" strokeWidth={6} strokeLinecap="round"
+          <circle cx={mid} cy={mid} r={RING_R} stroke="var(--m-brand-accent)" strokeWidth={6} strokeLinecap="round"
             strokeDasharray={`${len} ${RING_C}`} transform={`rotate(-90 ${mid} ${mid})`}
             className="m-motion-draw" style={{ ["--m-draw-length" as string]: len }} />
         ) : null}
-        <g className="m-motion-rise" stroke="var(--m-ink)" strokeWidth={1.5} strokeLinecap="round">
+        <g className="m-motion-rise" stroke="var(--m-brand-ink)" strokeWidth={1.5} strokeLinecap="round">
           <path d={`M${mid} 4V316`} strokeOpacity={0.4} />
         </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-14 text-center">
-        <p className="text-[28px] font-semibold leading-[34px]" style={{ color: "var(--m-ink)" }}>SAP data quality, measured.</p>
-        <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-display text-[28px] leading-[34px]" style={{ color: "var(--m-brand-ink)" }}>SAP data quality, measured.</p>
+        <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-brand-ink-2)" }}>
           Every check is deterministic. Every number opens the rows behind it.
         </p>
       </div>
@@ -97,9 +98,9 @@ export function AuthFrame({ title, lead, side, children, ringPct = 72 }: {
   const ready = useSyncExternalStore(noopSubscribe, () => true, () => false); // false on the server and first paint
   return (
     <div className="flex min-h-screen flex-col lg:flex-row" style={{ background: "var(--m-canvas)" }}>
-      <aside style={{ background: "var(--m-sheet-sunken)" }} className="flex h-[160px] shrink-0 flex-col justify-between p-6 lg:h-auto lg:w-[45%] lg:min-w-[440px] lg:max-w-[620px] lg:p-12">
+      <aside className="m-brand-panel flex h-[160px] shrink-0 flex-col justify-between p-6 lg:h-auto lg:w-[45%] lg:min-w-[440px] lg:max-w-[620px] lg:p-12">
         <div className="relative">
-          <span className="inline-flex items-center gap-2 text-[15px] font-semibold" style={{ color: "var(--m-ink)" }}><MeridianMark size={28} />Meridian</span>
+          <Image src="/brand/lockup-dark.svg" width={172} height={32} alt="Meridian" priority unoptimized />
         </div>
         <div className="relative hidden flex-1 items-center justify-center lg:flex">
           <BrandInstrument pct={ringPct} />
@@ -107,13 +108,13 @@ export function AuthFrame({ title, lead, side, children, ringPct = 72 }: {
         <div className="relative flex flex-col gap-6">
           <ul className="hidden grid-cols-2 gap-x-6 gap-y-3 lg:grid">
             {FACTS.map((f) => (
-              <li key={f} className="flex items-center gap-2 text-[12px] leading-4" style={{ color: "var(--m-ink-2)" }}>
-                <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--m-accent)" }} />
+              <li key={f} className="flex items-center gap-2 text-[12px] leading-4" style={{ color: "var(--m-brand-ink-2)" }}>
+                <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--m-brand-accent)" }} />
                 {f}
               </li>
             ))}
           </ul>
-          <div className="w-full" style={{ height: 1, background: "var(--m-line)" }} />
+          <div className="m-meridian-line w-full" />
         </div>
       </aside>
       <main className="relative flex flex-1 flex-col items-center justify-center gap-6 px-4 py-12 max-[720px]:px-3">
@@ -121,7 +122,7 @@ export function AuthFrame({ title, lead, side, children, ringPct = 72 }: {
         <div className="m-elev-1 m-motion-rise flex w-full max-w-[400px] flex-col gap-4 p-8"
           style={{ background: "var(--m-sheet)", borderRadius: "var(--m-radius-tile)" }}>
           <MeridianMark size={24} className="lg:hidden" />
-          <h1 className="text-[28px] font-semibold leading-[34px]" style={{ color: "var(--m-ink)" }}>{title}</h1>
+          <h1 className="m-display text-[28px] leading-[34px]" style={{ color: "var(--m-ink)" }}>{title}</h1>
           {lead ? <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{lead}</p> : null}
           {ready ? children : (
             <div className="m-motion-stagger flex flex-col gap-3" aria-busy>
