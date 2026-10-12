@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as auditApi from "@/lib/api/audit";
 import * as downloadApi from "@/lib/api/download";
 import * as insightsApi from "@/lib/api/insights";
 import * as reportsApi from "@/lib/api/reports";
@@ -29,6 +30,7 @@ function mount() {
     blockers: { count: 2, previous: null, waves: 1 }, auto_fixable: { records: 0, failing_records: 0, pct: null, high_confidence: 0 },
     value_at_risk: { worst_l1: null, worst_l1_amount: 0, currency: "USD", features_blocked: 0 }, narrative: [],
   });
+  vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ total: 1, limit: 5, offset: 0, entries: [{ id: "a1", actor_user_id: null, actor_email: "ana@example.test", action: "report.export", entity_type: "report", entity_id: "v2", method: "GET", path: "/x", status_code: 200, ip: null, user_agent: null, before_json: null, after_json: { kind: "board" }, created_at: "2026-10-12T10:00:00Z" }] });
   vi.spyOn(insightsApi, "getHeatmap").mockResolvedValue({ version_id: "v2", dimensions: [], rows: [] });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}><ReportsPage /></QueryClientProvider>);
@@ -37,6 +39,12 @@ function mount() {
 afterEach(() => vi.restoreAllMocks());
 
 describe("ReportsPage", () => {
+  it("lists the recent export audit events", async () => {
+    perm.allowed = true;
+    mount();
+    expect(await screen.findByText(/board by ana@example.test/)).toBeInTheDocument();
+  });
+
   it("lists reports in a listbox, previews one and downloads it", async () => {
     perm.allowed = true;
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();

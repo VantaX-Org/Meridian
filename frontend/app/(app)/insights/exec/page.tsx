@@ -8,7 +8,7 @@ import { Button, Card, DataTable, DrillLink, Delta, ExportMenu, Heatmap, Pill, S
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
-import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
+import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -52,8 +52,7 @@ const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
 ];
 
 export default function ExecPage() {
-  const { run: scopedRun, explicit } = useInsightScope();
-  const run = explicit ?? scopedRun;
+  const { run } = useInsightScope();
   const dayOne = useDayOne();
   const { can } = useRole();
   const finding = useFindingOpener(run);
@@ -62,6 +61,7 @@ export default function ExecPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("exec", run),
     queryFn: () => getExec({ version_id: run }),
+    enabled: !!run,
   });
   const runLabel = useRunLabel(data?.version_id);
 
@@ -80,6 +80,7 @@ export default function ExecPage() {
   const exportOptions: ExportOption[] = vid ? [
     { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(vid), `board_${vid}.pdf`) },
     { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(vid, {}), `workbook_${vid}.xlsx`) },
+    { format: "json", label: "Run data (JSON)", run: () => downloadAuthenticated(getReportJsonExportUrl(vid), `run_${vid}.json`) },
   ] : [];
   const noGo = data?.readiness_cells.filter((c) => c.verdict === "no_go").length ?? 0;
   const owners = data?.owner_rows ?? [];
@@ -173,7 +174,7 @@ export default function ExecPage() {
         <div className="@5xl:col-span-12">
           <details open={roi.isError || undefined}>
             <summary className="cursor-pointer m-text-body font-medium">Return on investment</summary>
-            <Card title="Return on investment">
+            <Card>
               {roi.isError ? (
                 <div className="flex items-center gap-3 m-text-body" role="alert">
                   <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>

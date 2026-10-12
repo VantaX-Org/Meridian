@@ -19,6 +19,7 @@ import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { useRole } from "@/hooks/use-role";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
 import { Section } from "./_components/Section";
@@ -47,6 +48,7 @@ export default function InsightsOverviewPage() {
   const path = usePathname();
   const dayOne = useDayOne();
   const { run, module, runs, versions, resolving } = useInsightScope();
+  const { can } = useRole();
   const finding = useFindingOpener(run);
   const on = !!run;
   const scope = { version_id: run, module };
@@ -117,7 +119,7 @@ export default function InsightsOverviewPage() {
             placeholder="Choose a run"
             options={runs.map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))}
           />
-          <ExportMenu options={exportOptions} />
+          {can("export") ? <ExportMenu options={exportOptions} /> : <Pill tone="info">Export needs auditor or analyst role</Pill>}
         </div>
       }
       insight={{
@@ -160,7 +162,7 @@ export default function InsightsOverviewPage() {
               <ul className="flex flex-col gap-1">
                 {nl.map((l) => (
                   <li key={l.text} className="m-text-body">
-                    {l.href ? <Link href={withScope(l.href.split("?")[0], { run, module })} className="underline-offset-2 hover:underline">{l.text}</Link> : l.text}
+                    {l.href ? <Link href={withScope(l.href, { run, module })} className="underline-offset-2 hover:underline">{l.text}</Link> : l.text}
                   </li>
                 ))}
               </ul>

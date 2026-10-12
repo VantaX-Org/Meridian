@@ -44,6 +44,9 @@ describe("ExecPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: /export/i }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /board pack/i }));
     await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v1"), "board_v1.pdf"));
+    fireEvent.click(await screen.findByRole("button", { name: /export/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /run data/i }));
+    await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/v1/export.json"), "run_v1.json"));
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getAllByRole("grid").length).toBeGreaterThan(0);
   });

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Card, Field, Input, Pill, Select } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
+import { getAuditEntries } from "@/lib/api/audit";
 import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
 import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
 import { formatDate, formatModuleName } from "@/lib/format";
@@ -21,7 +22,7 @@ const NONE = "none";
 const EXT: Record<CatalogueEntry["format"], string> = { PDF: "pdf", XLSX: "xlsx", JSON: "json" };
 
 export default function ReportsPage() {
-  const { can } = usePermissions();
+  const { can, has } = usePermissions();
   const { run: scopedRun, runs, versions } = useInsightScope();
   const [picked, setPicked] = useState("");
   const [compare, setCompare] = useState(NONE);
@@ -36,6 +37,12 @@ export default function ReportsPage() {
     queryKey: queryKeys.reportCatalogue(versionId, mod, cmp),
     queryFn: () => getReportCatalogue({ version_id: versionId, module: mod, compare: cmp }),
     enabled: !!versionId && can("export"),
+  });
+  const canSeeAudit = has("audit", "view");
+  const recent = useQuery({
+    queryKey: queryKeys.reportExports(5),
+    queryFn: () => getAuditEntries({ action: "report.export", limit: 5 }),
+    enabled: canSeeAudit,
   });
   const overview = useQuery({ queryKey: queryKeys.insights("overview", versionId, mod), queryFn: () => getOverview({ version_id: versionId, module: mod }), enabled: !!versionId });
   const heat = useQuery({ queryKey: queryKeys.insights("heatmap", versionId), queryFn: () => getHeatmap({ version_id: versionId }), enabled: !!versionId });
@@ -150,6 +157,24 @@ export default function ReportsPage() {
               )}
             </Card>
           </div>
+          {canSeeAudit && (
+            <div className="@5xl:col-span-12">
+              <Card title="Recent exports">
+                {recent.isError ? (
+                  <p className="m-text-body" role="alert">{`Recent exports did not load. ${apiErrorMessage(recent.error)}`}</p>
+                ) : (recent.data?.entries ?? []).length === 0 ? (
+                  <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{recent.isLoading ? "Loading" : "No exports yet."}</p>
+                ) : (
+                  <ul className="flex flex-col gap-1 m-text-body">
+                    {recent.data?.entries.map((e) => {
+                      const kind = (e.after_json as { kind?: string } | null)?.kind ?? "report";
+                      return <li key={e.id}>{`${formatDate(e.created_at, "datetime")}: ${kind} by ${e.actor_email ?? "unknown"}`}</li>;
+                    })}
+                  </ul>
+                )}
+              </Card>
+            </div>
+          )}
         </div>
       )}
     </InsightFrame>

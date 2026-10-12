@@ -124,6 +124,7 @@ export const queryKeys = {
   ruleApplicability: (module: string, checkId: string) => ["rule-applicability", module, checkId] as const,
   authRoles: () => ["auth-roles"] as const,
   auditEntries: (limit: number) => ["audit-entries", limit] as const,
+  reportExports: (limit: number) => ["report-exports", limit] as const,
   usersAssignable: () => ["users-assignable"] as const,
   fieldMappings: () => ["field-mappings"] as const,
   llmProviders: () => ["llm-providers"] as const,
@@ -193,6 +194,7 @@ export type TouchedEntity =
   | "rule-detail"
   | "auth-roles"
   | "audit-entries"
+  | "report-exports"
   | "users-assignable"
   | "field-mappings"
   | "llm-providers"

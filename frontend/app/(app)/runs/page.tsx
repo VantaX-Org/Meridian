@@ -202,7 +202,7 @@ export default function RunsPage() {
             hint={delta === null ? "No earlier run" : "vs previous"}
             href={latest ? `/runs/${latest.id}` : undefined}
           />
-          {failedCount > 0 ? <Stat label="Failed runs" hint="in the latest 100" value={failedCount.toLocaleString()} tone="no-go" href="/runs?status=failed" /> : null}
+          {failedCount > 0 ? <Stat label="Failed runs" hint={`in the latest ${PAGE_SIZE}`} value={failedCount.toLocaleString()} tone="no-go" href="/runs?status=failed" /> : null}
         </div>
       ) : null}
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">

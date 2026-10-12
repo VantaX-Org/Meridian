@@ -23,8 +23,9 @@ export function useInsightScope() {
 
 /** `?run=` and `?module=` carried onto a drill link. */
 export function withScope(path: string, params: Record<string, string | undefined>): string {
-  const q = new URLSearchParams();
+  const [base, existing = ""] = path.split("?");
+  const q = new URLSearchParams(existing);
   for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
   const s = q.toString();
-  return s ? `${path}?${s}` : path;
+  return s ? `${base}?${s}` : base;
 }
