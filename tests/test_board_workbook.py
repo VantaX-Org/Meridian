@@ -10,7 +10,6 @@ import asyncio
 import io
 import json
 import re
-import subprocess
 import time
 import uuid
 
@@ -83,8 +82,27 @@ def _seed_big(owner, app) -> tuple[str, str, str, str]:
     return a, b, vid, prev
 
 
-def _pdf_text(data: bytes) -> str:
-    return subprocess.run(["pdftotext", "-layout", "-", "-"], input=data, capture_output=True).stdout.decode()
+def _build_with_text(s, a, kind, vid, vid1) -> tuple[bytes, str]:
+    """Build a PDF and return it with the visible text of the exact HTML WeasyPrint rendered (no poppler
+    needed: the PDF itself is still produced and checked, the text comes from the same template output)."""
+    import html
+    from unittest import mock
+
+    import weasyprint
+
+    from api.services import pdf_reports as pr
+
+    seen: list[str] = []
+
+    class Spy(weasyprint.HTML):
+        def __init__(self, *args, string=None, **kw):
+            seen.append(string or "")
+            super().__init__(*args, string=string, **kw)
+
+    with mock.patch.object(weasyprint, "HTML", Spy):
+        pdf = pr.build(s, a, kind, vid, vid1)
+    body = re.sub(r"(?is)<(style|script)\b.*?</\1>", " ", " ".join(seen))
+    return pdf, html.unescape(re.sub(r"<[^>]+>", " ", body))
 
 
 @pytest.fixture(scope="module")
@@ -124,17 +142,17 @@ def test_board_pdf_29_modules_fast_currency_and_no_cross_l1_total(app_engine, se
         t0 = time.perf_counter()
         pdf = build(s, a, "board", vid, None)
         elapsed = time.perf_counter() - t0
-        with_prev = build(s, a, "board", vid, prev)
-        executive = build(s, a, "executive", vid, None)
+        _, text = _build_with_text(s, a, "board", vid, None)
+        _, with_prev = _build_with_text(s, a, "board", vid, prev)
+        _, executive = _build_with_text(s, a, "executive", vid, None)
     assert pdf.startswith(b"%PDF") and len(pdf) > 5_000
     assert elapsed < 8, elapsed
-    text = _pdf_text(pdf)
     assert "no earlier run" in text.lower()
-    assert "no earlier run" not in _pdf_text(with_prev).lower()
-    for t in (text, _pdf_text(with_prev), _pdf_text(executive)):
+    assert "no earlier run" not in with_prev.lower()
+    for t in (text, with_prev, executive):
         assert CROSS_L1_TOTAL not in re.sub(r"[\s,.]", "", t)
     assert "EUR" in text and "ZAR" not in text
-    assert "ZAR" not in _pdf_text(executive)
+    assert "ZAR" not in executive
     with open("templates/executive_report.html") as f:
         assert "ZAR" not in f.read()  # the currency comes from the context, never a template literal
 
