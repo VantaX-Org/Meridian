@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  buildDrillHref, Card, DataTable, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
+  buildDrillHref, Button, Card, DataTable, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
   type HeatmapCell, type PillTone,
 } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
@@ -157,10 +157,25 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           })();
 
   const capReason = cappedReason(latest);
+  // Up to two distinct critical rules from the loaded findings; none until they load.
+  const capRules = [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, f])).values()].slice(0, 2);
   const capLine = cap || capReason ? (
     <>
       {cap ? (
-        <>Capped at {cap.cap} by <Link href="/findings?severity=critical" style={{ color: "var(--m-accent)" }}>{cap.criticals} critical {cap.criticals === 1 ? "rule" : "rules"}</Link></>
+        <>
+          Capped at {cap.cap} by {cap.criticals} critical {cap.criticals === 1 ? "rule" : "rules"}
+          {capRules.length > 0 && (
+            <>
+              {": "}
+              {capRules.map((f, i) => (
+                <span key={f.check_id}>
+                  {i > 0 && ", "}
+                  <DrillLink href={buildDrillHref({ object: f.module, ruleId: f.check_id, run: latest.id })}><Mono>{f.check_id}</Mono></DrillLink>
+                </span>
+              ))}
+            </>
+          )}
+        </>
       ) : `Capped: ${capReason}`}
     </>
   ) : undefined;
@@ -242,7 +257,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     <>
       <Card title="Score over runs">
         {trendPoints.length < 2 ? (
-          <div style={{ minHeight: 200 }}><EmptyState title="The trend starts with the second run" /></div>
+          <div style={{ minHeight: 200 }}><EmptyState title="The trend starts with the second run" action={<Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button>} /></div>
         ) : (
           <Line
             data={trendPoints}
@@ -275,17 +290,19 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const unhealthy = activeSystems.filter(isFailing).length;
   const notLoaded = Math.max((landscapeQ.data?.total ?? 0) - (landscapeQ.data?.loaded ?? 0), 0);
   const severity = severityTotals(latest);
+  const blocking = severity.critical + severity.high;
+  const countsReady = !!counts;
   const work =
     role === "lead" ? (
       <WorkRow>
-        <Stat label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={`/objects?run=${latest.id}&readiness=fail`} />
-        <Stat label="Blocking findings" value={severity.critical.toLocaleString()} hint={severity.critical ? "critical severity" : "none"} tone={severity.critical ? "no-go" : "go"} href="/findings?severity=critical" />
-        <Stat label="Open inbox" value={counts?.inbox ?? 0} hint={counts?.inbox ? undefined : "clear"} href="/inbox" />
+        <Stat label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={`/objects?run=${latest.id}&verdict=not_ready`} />
+        <Stat label="Blocking findings" value={blocking.toLocaleString()} hint={blocking ? "critical and high" : "none"} tone={blocking ? "no-go" : "go"} href={`/objects?run=${latest.id}&readiness=fail`} />
+        <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
     ) : role === "steward" ? (
       <WorkRow>
-        <Stat label="Open inbox" value={counts?.inbox ?? 0} hint={counts?.inbox ? undefined : "clear"} href="/inbox" />
-        <Stat label="Cleaning proposals" value={(counts?.fix ?? 0).toLocaleString()} hint={counts?.fix ? undefined : "clear"} href="/fix" />
+        <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
+        <Stat label="Cleaning proposals" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
         <Stat
           label="Worst object"
           value={worst?.composite_score?.toFixed(1) ?? "—"}

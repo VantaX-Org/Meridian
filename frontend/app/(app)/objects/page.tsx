@@ -120,7 +120,7 @@ export default function ObjectsPage() {
 
   const objs = objects;
   const ready = objs.filter((o) => o.readiness === "pass").length;
-  const rawVerdict = search.get("verdict");
+  const rawVerdict = search.get("verdict") ?? (search.get("readiness") === "fail" ? "not_ready" : null);
   const verdict = rawVerdict === "ready" || rawVerdict === "not_ready" ? rawVerdict : null;
   const shownObjs = verdict ? objs.filter((o) => (o.readiness === "pass") === (verdict === "ready")) : objs;
   const columns = makeColumns(run, data?.thresholds); // React Compiler memoizes on run and thresholds

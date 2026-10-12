@@ -4,6 +4,7 @@ import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
+import * as findingsApi from "@/lib/api/findings";
 import * as versionsApi from "@/lib/api/versions";
 import * as shellApi from "@/lib/api/shell";
 import * as connectivityApi from "@/lib/api/connectivity";
@@ -85,6 +86,63 @@ describe("PersonaHomePage data layout", () => {
     expect(screen.getAllByText("Material Master").length).toBeGreaterThan(0);
     // No count tile is a button wrapping a link.
     expect(document.querySelector("button a")).toBeNull();
+  });
+});
+
+describe("PersonaHomePage blocking and loading states", () => {
+  const CAPPED: Version = {
+    ...LATEST,
+    dqs_summary: { material_master: { ...LATEST.dqs_summary!.material_master, critical_count: 3, capped: true, cap_reason: "capped at 60 by critical rules" } },
+  };
+  const finding = (check_id: string) => ({ id: check_id, check_id, module: "material_master", severity: "critical" });
+
+  it("names up to two distinct critical rules in the cap line as drill links, never /findings", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [finding("MM-001"), finding("MM-001"), finding("MM-002"), finding("MM-003")],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+
+    const { container } = renderWithQuery(<LeadHomePage />);
+
+    const [link] = await screen.findAllByRole("link", { name: "MM-001" });
+    expect(link).toHaveAttribute("href", "/objects/material_master/rules/MM-001?run=v1");
+    expect(screen.getByRole("link", { name: "MM-002" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "MM-003" })).toBeNull();
+    expect(container.querySelector("a[href^='/findings']")).toBeNull();
+  });
+
+  it("shows plain cap text while findings load", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
+    vi.spyOn(findingsApi, "getFindings").mockReturnValue(new Promise(() => {}));
+
+    renderWithQuery(<LeadHomePage />);
+
+    expect(await screen.findByText(/Capped at 60 by 3 critical rules/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /MM-/ })).toBeNull();
+  });
+
+  it("counts critical plus high as blocking and links it to the objects list", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+
+    renderWithQuery(<LeadHomePage />);
+
+    const stat = (await screen.findByText("Blocking findings")).closest("a");
+    expect(stat).toHaveAttribute("href", "/objects?run=v1&readiness=fail");
+    expect(stat).toHaveTextContent("1");
+  });
+
+  it("shows a dash, no hint, for inbox and proposals until counts load", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(shellApi, "getShellCounts").mockReturnValue(new Promise(() => {}));
+
+    renderWithQuery(<StewardHomePage />);
+
+    const inbox = (await screen.findByText("Open inbox")).closest("a");
+    expect(inbox).toHaveTextContent("—");
+    expect(inbox).not.toHaveTextContent(/clear|0/);
+    expect((await screen.findByText("Cleaning proposals")).closest("a")).not.toHaveTextContent(/clear/);
   });
 });
 
