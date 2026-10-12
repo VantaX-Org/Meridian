@@ -117,7 +117,7 @@ export function HomePage({
               <p
                 data-testid="home-verdict"
                 style={{
-                  fontFamily: "var(--m-font-display)",
+                  fontFamily: "var(--m-font-ui)",
                   fontSize: "var(--m-text-verdict)",
                   lineHeight: "var(--m-leading-verdict)",
                   color:

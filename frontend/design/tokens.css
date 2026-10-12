@@ -72,12 +72,12 @@
   --m-viz-tooltip-ink: var(--m-sheet);
 
   /* ---------- Type ---------- */
-  --m-font-sans: var(--m-font-sans-loaded, "Instrument Sans", system-ui, sans-serif);
-  --m-font-display: var(--m-font-display-loaded, "Instrument Serif", Georgia, serif);
-  --m-font-mono: var(--m-font-mono-loaded, "JetBrains Mono", ui-monospace, monospace);
+  --m-font-ui: var(--font-ui, "Public Sans", system-ui, sans-serif);
+  --m-font-sans: var(--m-font-ui);
+  --m-font-mono: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
 
   --m-text-hero: 56px;      --m-leading-hero: 60px;      /* count-up DQS */
-  --m-text-verdict: 28px;   --m-leading-verdict: 34px;   /* serif verdict sentence */
+  --m-text-verdict: 28px;   --m-leading-verdict: 34px;   /* verdict sentence */
   --m-text-title: 22px;     --m-leading-title: 28px;     /* auth h1, record key */
   --m-text-stat: 26px;      --m-leading-stat: 30px;      /* KPI tile value */
   --m-text-section: 15px;   --m-leading-section: 20px;   /* h2, drawer title */
@@ -97,7 +97,7 @@
   /* ---------- Shape ---------- */
   --m-radius-control: 6px;      /* buttons, inputs, pills' inner shapes */
   --m-radius-sheet: 10px;       /* cards, tables, dialogs */
-  --m-radius-tile: 14px;        /* KPI tiles, auth brand panel */
+  --m-radius-tile: 14px;        /* KPI tiles */
   --m-radius-pill: 999px;
   --m-border: 1px;
   --m-rail-w: 240px;
@@ -115,23 +115,6 @@
   --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(20 21 25 / 0.16);    /* drawer, dialog, palette */
   --m-elev-focus: 0 0 0 2px var(--m-sheet), 0 0 0 4px var(--m-accent);
   --m-elev-accent: 0 1px 2px rgb(43 75 224 / 0.30);                         /* primary button */
-
-  /* ---------- Gradients (the only four) ---------- */
-  --m-grad-meridian: linear-gradient(90deg, transparent 0%, var(--m-accent) 20%, var(--m-accent) 80%, transparent 100%);
-  --m-grad-brand: linear-gradient(160deg, #0F1430 0%, #16214F 45%, #2B4BE0 100%);
-  --m-grad-brand-glow: radial-gradient(60% 50% at 70% 20%, rgb(141 163 255 / 0.35) 0%, transparent 70%);
-  --m-grad-fade-bottom: linear-gradient(180deg, transparent 0%, var(--m-sheet) 100%);
-
-  /* ---------- Auth brand panel (identical in both themes) ---------- */
-  --m-brand-ink: #EDEDF0;
-  --m-brand-ink-2: rgb(237 237 240 / 0.72);
-  --m-brand-accent: #8DA3FF;
-  --m-brand-track: rgb(255 255 255 / 0.10);
-
-  /* ---------- Glass (chrome only) ---------- */
-  --m-glass-bg: rgb(255 255 255 / 0.72);
-  --m-glass-blur: 12px;
-  --m-glass-line: rgb(20 21 25 / 0.08);
 
   /* ---------- Motion ---------- */
   --m-motion-duration: 120ms;    /* hover, focus, colour */
@@ -185,9 +168,6 @@
   --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
   --m-elev-accent: 0 1px 2px rgb(0 0 0 / 0.4);
 
-  --m-grad-brand: linear-gradient(160deg, #07091A 0%, #0F1430 45%, #1E3AB8 100%);
-  --m-glass-bg: rgb(12 13 17 / 0.72);
-  --m-glass-line: rgb(255 255 255 / 0.08);
 }
 
 /* System preference when no explicit theme is set. Keep in sync with the dark block above. */
@@ -208,8 +188,6 @@
     --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
     --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
     --m-elev-accent: 0 1px 2px rgb(0 0 0 / 0.4);
-    --m-grad-brand: linear-gradient(160deg, #07091A 0%, #0F1430 45%, #1E3AB8 100%);
-    --m-glass-bg: rgb(12 13 17 / 0.72); --m-glass-line: rgb(255 255 255 / 0.08);
   }
 }
 
@@ -227,37 +205,16 @@
 }
 
 /* ---------- Effect utilities (components use the class, never the literal) ---------- */
-.m-glass {
-  background: var(--m-glass-bg);
-  -webkit-backdrop-filter: blur(var(--m-glass-blur));
-  backdrop-filter: blur(var(--m-glass-blur));
-  box-shadow: inset 0 -1px 0 var(--m-glass-line);
-}
-.m-scrim-glass {                 /* dialog backdrop: scrim plus a blur of the app behind */
-  background: var(--m-scrim);
-  -webkit-backdrop-filter: blur(var(--m-glass-blur));
-  backdrop-filter: blur(var(--m-glass-blur));
-}
-.m-meridian-line {               /* the 1px signature hairline */
-  height: 1px;
-  background: var(--m-grad-meridian);
-}
-.m-brand-panel {                 /* auth page right panel */
-  background: var(--m-grad-brand);
-  position: relative;
-}
-.m-brand-panel::before {
-  content: "";
-  position: absolute; inset: 0;
-  background: var(--m-grad-brand-glow);
-  pointer-events: none;
-}
-.m-fade-bottom { background: var(--m-grad-fade-bottom); }
+.m-scrim { background: var(--m-scrim); }
 .m-elev-1 { box-shadow: var(--m-elev-1); }
 .m-elev-2 { box-shadow: var(--m-elev-2); }
 .m-elev-3 { box-shadow: var(--m-elev-3); }
+.m-text-label { font-size: 11px; line-height: 14px; }
+.m-text-meta  { font-size: 12px; line-height: 16px; }
+.m-text-body  { font-size: 13px; line-height: 18px; }
+.m-text-h     { font-size: 15px; line-height: 20px; }
+.m-text-title { font-size: 20px; line-height: 26px; }
 .m-numeric { font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1; }
-.m-display { font-family: var(--m-font-display); font-weight: 400; letter-spacing: var(--m-tracking-normal); }
 
 /* ---------- Motion ---------- */
 @keyframes m-shimmer { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
@@ -267,7 +224,6 @@
 @keyframes m-scale-in{ from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 @keyframes m-slide-in-right { from { transform: translateX(16px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes m-spin    { to { transform: rotate(360deg); } }
-@keyframes m-meridian-sweep { from { background-position: -100% 0; } to { background-position: 200% 0; } }
 
 .m-motion-spin    { animation: m-spin var(--m-motion-shimmer) linear infinite; }
 .m-motion-slide   { transition: transform var(--m-motion-slow) var(--m-motion-ease), width var(--m-motion-slow) var(--m-motion-ease); }
@@ -298,12 +254,6 @@
 .m-auth-input:focus-visible { border-color: var(--m-accent); box-shadow: var(--m-elev-focus); }
 .m-auth-input[readonly] { color: var(--m-ink-2); }
 .m-skeleton-sweep { animation: m-shimmer var(--m-motion-shimmer) linear infinite; }
-.m-meridian-live  {   /* top-edge hairline while a job runs */
-  background: var(--m-grad-meridian);
-  background-size: 50% 100%;
-  background-repeat: no-repeat;
-  animation: m-meridian-sweep var(--m-motion-shimmer) var(--m-motion-ease) infinite;
-}
 
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -314,6 +264,6 @@
     --m-motion-rise-y: 0px;
   }
   .m-motion-rise, .m-motion-scale-in, .m-motion-slide-in-right, .m-motion-draw, .m-motion-stagger > *,
-  .m-skeleton-sweep, .m-meridian-live, .m-spin, .m-motion-spin { animation: none; }
+  .m-skeleton-sweep, .m-spin, .m-motion-spin { animation: none; }
   .m-motion-width, .m-motion-fade, .m-motion-colors { transition: none; }
 }
