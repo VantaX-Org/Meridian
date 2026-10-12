@@ -4,30 +4,33 @@
 import { isAxiosError } from "axios";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, DataTable, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Line, Pill, ReportPage,
-  DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone,
-  entityTabs, NextActions, Pareto,
+  Bar, Button, Card, DataTable, Delta, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Heatmap, Line, Mono, Pager, Pill,
+  DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone, type HeatmapCell,
+  entityTabs, NextActions,
+  PageHeader,
 } from "@/design";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { isListFailure } from "@/lib/error";
-import { exportFindings, getFindings, getFindingsAggregate, getScoreHistory } from "@/lib/api/findings";
+import { exportFindings, getFindings, getFindingsAggregate, getScoreHistory, type FindingsAggregate } from "@/lib/api/findings";
 import { errorText } from "@/lib/api/remediation";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
+import { getSystems } from "@/lib/api/connectivity";
 import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, previousRunId } from "@/lib/runs";
-import type { Finding } from "@/types/api";
+import type { Finding, Version } from "@/types/api";
 
 const STATUS_TONE: Record<string, PillTone> = {
   failed: "no-go",
@@ -52,13 +55,13 @@ const SEVERITY_OPTIONS = [
 const DIMENSION_OPTIONS = [{ value: "", label: "All dimensions" }, ...DIMENSIONS.map((d) => ({ value: d.id, label: d.label }))];
 
 const stepColumns: ColumnDef<RunStep>[] = [
-  { accessorKey: "step_number", header: "#" },
   { accessorKey: "step_name", header: "Step" },
   {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill>,
   },
+  { accessorKey: "started_at", header: "Started", cell: ({ row }) => formatDate(row.original.started_at, "datetime") },
   {
     accessorKey: "duration_ms",
     header: "Duration",
@@ -67,19 +70,19 @@ const stepColumns: ColumnDef<RunStep>[] = [
   {
     id: "error",
     header: "Error",
-    cell: ({ row }) => (row.original.error_detail ? <p role="alert">{row.original.error_detail}</p> : "—"),
+    accessorFn: (s) => s.error_detail ?? "",
+    cell: ({ row }) => (row.original.error_detail ? <span className="block max-w-[320px] truncate">{row.original.error_detail}</span> : "—"),
   },
 ];
 
-function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: string }) {
-  const router = useRouter();
+type History = UseQueryResult<Awaited<ReturnType<typeof getScoreHistory>>>;
+const FINDINGS_PAGE = 100;
+const pad = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" } as const;
+const sectionTitle = { fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" } as const;
+
+function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; history: History; onOpenSteps: () => void }) {
   const { can } = useRole();
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
-  const history = useQuery({
-    queryKey: queryKeys.scoreHistory(systemId),
-    queryFn: () => getScoreHistory({ system_id: systemId, limit: 20 }),
-    enabled: systemId != null,
-  });
   const rows = objects.data?.objects ?? [];
   const modules = history.data?.modules ?? {};
 
@@ -92,7 +95,7 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
     },
     {
       id: "composite",
-      header: "Composite score",
+      header: "Composite",
       cell: ({ row }) => (row.original.composite_score == null ? "—" : (
         <DrillLink object={row.original.module} run={versionId}>{row.original.composite_score.toFixed(1)}</DrillLink>
       )),
@@ -132,31 +135,33 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
           columns={columns}
           data={rows}
           getRowId={(o) => o.module}
-          onRowClick={(o) => router.push(`/objects/${o.module}?run=${versionId}`)}
+          rowHref={(o) => `/objects/${o.module}?run=${versionId}`}
         />
       }
       state={objects.isLoading ? "loading" : isListFailure(objects) ? "error" : rows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No objects were scored in this run." }}
+      emptyProps={{ title: "No objects scored", detail: "This run produced no object scores.", action: <Button onClick={onOpenSteps}>Open steps</Button> }}
       errorProps={{ message: errorText(objects.error), onRetry: () => objects.refetch() }}
     />
   );
 }
 
-function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: string }) {
+function SummaryTab({
+  versionId, aggregate, history, systemId, versionLoading,
+}: { versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string; versionLoading: boolean }) {
   const router = useRouter();
-  const aggregate = useQuery({ queryKey: queryKeys.findingsAggregate(versionId), queryFn: () => getFindingsAggregate(versionId) });
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
-  const history = useQuery({
-    queryKey: queryKeys.scoreHistory(systemId),
-    queryFn: () => getScoreHistory({ system_id: systemId, limit: 20 }),
-    enabled: systemId != null,
-  });
 
   if (aggregate.isLoading) {
     return (
-      <div className="flex flex-col gap-4" aria-busy="true">
-        <div className="flex gap-4">{[0, 1, 2].map((i) => <Skeleton key={i} width={160} height={88} />)}</div>
-        <Skeleton height={240} />
+      <div className="flex flex-col gap-4" style={pad} aria-busy="true">
+        <div className="flex flex-wrap items-center gap-8">
+          {[0, 1, 2, 3].map((i) => <Stat key={i} label="" value="" loading />)}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card title="Score by dimension"><Skeleton height={240} /></Card>
+          <Card title="Where findings concentrate"><Skeleton height={240} /></Card>
+        </div>
+        <Card title="Composite over runs"><Skeleton height={240} /></Card>
       </div>
     );
   }
@@ -166,11 +171,20 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
 
   const a = aggregate.data;
   if (a.total === 0) {
-    return <EmptyState title="No findings were produced for this run. Open Steps to see what ran." />;
+    return (
+      <div style={pad}>
+        <EmptyState
+          title="No findings in this run"
+          detail="Open steps to see what ran."
+          action={<Button render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
+        />
+      </div>
+    );
   }
 
   const composite = a.dqs.composite;
   const delta = composite != null && a.previous_dqs != null ? Math.round((composite - a.previous_dqs) * 10) / 10 : null;
+  const blocking = a.severity.critical + a.severity.high;
 
   const dimensionData = Object.entries(a.dqs.dimension_scores).map(([dimension, score]) => ({
     x: DIMENSIONS.find((d) => d.id === dimension)?.label ?? formatModuleName(dimension),
@@ -179,14 +193,28 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
   }));
 
   const historyRows = [...(history.data?.history ?? [])].reverse();
-  const points = historyRows.map((h) => ({ x: formatDate(h.run_at, "date"), y: h.at_the_time.composite ?? 0, runId: h.version_id }));
+  const points = historyRows.flatMap((h) => {
+    const y = h.at_the_time.composite;
+    return y == null ? [] : [{ x: formatDate(h.run_at, "date"), y, runId: h.version_id }];
+  });
   // Mark this run, and any run whose composite fell 5 points or more from the one before it.
   const annotations = points.flatMap((p, i): { x: string; label: string; kind: "event" | "change" }[] => {
     if (p.runId === versionId) return [{ x: p.x, label: "This run", kind: "event" as const }];
     return i > 0 && points[i - 1].y - p.y >= 5 ? [{ x: p.x, label: "Score fell", kind: "change" as const }] : [];
   });
-  const paretoData = a.by_module.map((m) => ({ x: formatModuleName(m.module), y: m.findings, object: m.module }));
-  const next = (prescriptive.data?.actions ?? []).slice(0, 5).map((act) => ({
+
+  const severities = ["critical", "high", "medium", "low"] as const;
+  const moduleByLabel = new Map(a.by_module.map((m) => [formatModuleName(m.module), m.module]));
+  const heatCells: HeatmapCell[] = a.by_module.flatMap((m) =>
+    severities.map((sev): HeatmapCell => ({
+      row: formatModuleName(m.module),
+      col: labelOf(sev),
+      value: m[sev] === 0 ? "go" : sev === "critical" ? "no-go" : "at-risk",
+    })),
+  );
+
+  const presentModules = new Set(a.by_module.map((m) => m.module));
+  const next = (prescriptive.data?.actions ?? []).filter((act) => !act.module || presentModules.has(act.module)).slice(0, 5).map((act) => ({
     id: act.id,
     title: act.title,
     impact: [`${act.affected_count.toLocaleString()} records`, `${act.impact_points.toLocaleString()} impact points`],
@@ -196,57 +224,88 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
   }));
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <p className="text-[13px]">
-        The composite score for this run is {composite != null ? composite.toFixed(1) : "not scored"}.
-        {a.dqs.capped ? " The score is capped by a critical finding." : ""}
-      </p>
+    <div className="flex flex-col gap-6" style={pad}>
       <div className="flex flex-wrap items-center gap-8">
-        <DqsScore agg={a} versionId={versionId} />
-        <Stat
-          label="Composite score"
-          value={composite != null ? composite.toFixed(1) : "—"}
-          href={`/runs/${versionId}?tab=objects`}
-          delta={delta != null ? <span>vs previous run: <span style={{ color: delta >= 0 ? "var(--m-pass)" : "var(--m-critical)" }}>{delta > 0 ? "+" : ""}{delta.toFixed(1)}</span></span> : undefined}
-        />
+        <div className="flex items-center gap-2">
+          <DqsScore agg={a} versionId={versionId} />
+          {delta != null ? <Delta value={delta} run="previous run" /> : null}
+        </div>
+        <Stat label="Blocking findings" value={blocking.toLocaleString()} tone={blocking > 0 ? "no-go" : undefined} href={`/runs/${versionId}?tab=findings&severity=critical`} />
         <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
-        <Stat label="Findings" value={a.total.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
-        {a.cost_at_risk != null ? <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} /> : null}
+        {a.cost_at_risk != null ? (
+          <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+        ) : null}
       </div>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-[13px] font-semibold">Score by dimension</h2>
-        <Bar
-          data={dimensionData}
-          onPointClick={(p) => router.push(`/runs/${versionId}?tab=findings&dimension=${p.dimension ?? ""}`)}
-        />
-      </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-[13px] font-semibold">Where the findings concentrate</h2>
-        <Pareto data={paretoData} onPointClick={(p) => router.push(`/runs/${versionId}?tab=findings&module=${p.object ?? ""}`)} />
-      </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-[13px] font-semibold">Next actions (all systems)</h2>
-        {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
-      </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-[13px] font-semibold">Composite over runs</h2>
-        {history.isLoading ? (
-          <Skeleton height={120} />
-        ) : historyRows.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No score history for this system yet.</p>
-        ) : (
-          <Line
-            data={points}
-            annotations={annotations}
-            onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card title="Score by dimension">
+          <Bar data={dimensionData} onPointClick={(p) => router.push(`/runs/${versionId}?tab=findings&dimension=${p.dimension ?? ""}`)} />
+        </Card>
+        <Card title="Where findings concentrate">
+          <Heatmap
+            rows={a.by_module.map((m) => formatModuleName(m.module))}
+            cols={severities.map(labelOf)}
+            cells={heatCells}
+            onPointClick={(c) => router.push(`/runs/${versionId}?tab=findings&module=${moduleByLabel.get(c.row) ?? ""}&severity=${c.col.toLowerCase()}`)}
           />
+        </Card>
+      </div>
+      <section className="flex flex-col gap-2" data-testid="next-actions-slot" style={{ minHeight: prescriptive.isLoading ? 96 + 28 : undefined }}>
+        <h2 className="font-semibold" style={sectionTitle}>Next actions</h2>
+        {prescriptive.isLoading ? (
+          <Skeleton height={96} />
+        ) : next.length > 0 ? (
+          <NextActions actions={next} />
+        ) : (
+          <p className="text-sm" style={{ color: "var(--m-ink-muted)" }}>No next actions for this run</p>
         )}
       </section>
+      <Card title="Composite over runs">
+        {versionLoading || (systemId != null && history.isLoading) ? (
+          <Skeleton height={240} />
+        ) : systemId == null || historyRows.length <= 1 ? (
+          <EmptyState
+            title="Only one run so far"
+            detail="Scores over time appear after a second run."
+            action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Run analysis</Link>} />}
+          />
+        ) : (
+          <Line data={points} annotations={annotations} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
+        )}
+      </Card>
     </div>
   );
 }
 
-function FindingsTab({ versionId }: { versionId: string }) {
+const findingsKey = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number) =>
+  [...queryKeys.run(versionId), "findings", severity, dimension, moduleFilter, page] as const;
+
+const findingsFetch = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number) =>
+  getFindings({
+    version_id: versionId,
+    severity: severity || undefined,
+    dimension: dimension || undefined,
+    module: moduleFilter || undefined,
+    sort: "severity",
+    limit: FINDINGS_PAGE,
+    offset: (page - 1) * FINDINGS_PAGE,
+  });
+
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Remove filter ${label}`}
+      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors"
+      style={{ background: "var(--m-accent-soft)", color: "var(--m-accent)", fontSize: "var(--m-text-meta)" }}
+    >
+      {label}
+      <span aria-hidden>×</span>
+    </button>
+  );
+}
+
+function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenSteps: () => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { can } = useRole();
@@ -254,16 +313,29 @@ function FindingsTab({ versionId }: { versionId: string }) {
   const dimension = searchParams.get("dimension") ?? "";
   const moduleFilter = searchParams.get("module") ?? "";
   const findingId = searchParams.get("finding");
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
 
+  const push = (params: URLSearchParams) => router.push(`/runs/${versionId}?${params.toString()}`);
   const setFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value); else params.delete(key);
-    router.push(`/runs/${versionId}?${params.toString()}`);
+    params.delete("page");
+    push(params);
+  };
+  const setPage = (n: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (n > 1) params.set("page", String(n)); else params.delete("page");
+    push(params);
   };
   const openFinding = (id: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (id) params.set("finding", id); else params.delete("finding");
-    router.push(`/runs/${versionId}?${params.toString()}`);
+    push(params);
+  };
+  const clearFilters = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    ["severity", "dimension", "module", "page"].forEach((k) => params.delete(k));
+    push(params);
   };
 
   const filters = {
@@ -273,38 +345,51 @@ function FindingsTab({ versionId }: { versionId: string }) {
     module: moduleFilter || undefined,
   };
   const findings = useQuery({
-    queryKey: [...queryKeys.run(versionId), "findings", severity, dimension, moduleFilter],
-    queryFn: () => getFindings({ ...filters, sort: "severity", limit: 200 }),
+    queryKey: findingsKey(versionId, severity, dimension, moduleFilter, page),
+    queryFn: () => findingsFetch(versionId, severity, dimension, moduleFilter, page),
+    placeholderData: (prev) => prev,
   });
   const rows = findings.data?.findings ?? [];
+  const total = findings.data?.total ?? rows.length;
+  const filtered = Boolean(severity || dimension || moduleFilter);
 
   const columns: ColumnDef<Finding>[] = [
     {
       id: "severity",
       header: "Severity",
-      cell: ({ row }) => (isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : row.original.severity),
+      accessorFn: (f) => f.severity,
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-2">
+          {isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : null}
+          {labelOf(row.original.severity)}
+        </span>
+      ),
     },
-    { accessorKey: "check_id", header: "Check" },
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
     { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module) },
     { id: "dimension", header: "Dimension", accessorFn: (f) => labelOf(f.dimension) },
     {
       id: "affected",
-      header: "Affected",
-      accessorFn: (f) => `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()}`,
+      header: "Records",
+      accessorFn: (f) => f.affected_count,
       cell: ({ row }) => (
         <DrillLink href={`/objects/${row.original.module}?run=${versionId}&tab=records&check_id=${row.original.check_id}`}>
           {row.original.affected_count.toLocaleString()} of {row.original.total_count.toLocaleString()}
         </DrillLink>
       ),
     },
+    { id: "message", header: "Message", accessorFn: (f) => f.details.message ?? "—", cell: ({ row }) => <span className="block max-w-[360px] truncate">{row.original.details.message ?? "—"}</span> },
   ];
 
   return (
     <ExplorerPage
       filterBar={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select label="Severity" value={severity} onValueChange={(v) => setFilter("severity", v)} options={SEVERITY_OPTIONS} placeholder="Severity" />
           <Select label="Dimension" value={dimension} onValueChange={(v) => setFilter("dimension", v)} options={DIMENSION_OPTIONS} placeholder="Dimension" />
+          {severity ? <FilterChip label={`Severity: ${labelOf(severity)}`} onRemove={() => setFilter("severity", "")} /> : null}
+          {dimension ? <FilterChip label={`Dimension: ${DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)}`} onRemove={() => setFilter("dimension", "")} /> : null}
+          {moduleFilter ? <FilterChip label={`Object: ${formatModuleName(moduleFilter)}`} onRemove={() => setFilter("module", "")} /> : null}
         </div>
       }
       toolbarEnd={
@@ -313,10 +398,21 @@ function FindingsTab({ versionId }: { versionId: string }) {
         ) : undefined
       }
       table={
-        <DataTable columns={columns} data={rows} getRowId={(f) => f.id} onRowClick={(f) => openFinding(f.id)} />
+        <div className="flex flex-col gap-2">
+          <DataTable columns={columns} data={rows} getRowId={(f) => f.id} onRowClick={(f) => openFinding(f.id)} />
+          <div style={{ minHeight: "var(--m-control-h)" }}>
+            {total > FINDINGS_PAGE ? (
+              <Pager page={page} pageCount={Math.ceil(total / FINDINGS_PAGE)} onPageChange={setPage} pageSize={FINDINGS_PAGE} total={total} />
+            ) : null}
+          </div>
+        </div>
       }
       state={findings.isLoading ? "loading" : isListFailure(findings) ? "error" : rows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No findings match these filters." }}
+      emptyProps={
+        filtered
+          ? { title: "No findings match", detail: "Try removing a filter.", action: <Button onClick={clearFilters}>Clear filters</Button> }
+          : { title: "No findings in this run", detail: "Open steps to see what ran.", action: <Button onClick={onOpenSteps}>Open steps</Button> }
+      }
       errorProps={{ message: errorText(findings.error), onRetry: () => findings.refetch() }}
       drawer={<FindingDrawer findingId={findingId} versionId={versionId} onClose={() => openFinding(null)} />}
     />
@@ -333,32 +429,57 @@ export default function RunDetailPage() {
   const rawTab = searchParams.get("tab") ?? "overview";
   const tab = rawTab === "summary" ? "overview" : rawTab;
 
+  // Everything keyed by the URL id starts on mount, in parallel.
   const version = useQuery({ queryKey: queryKeys.run(versionId), queryFn: () => getVersion(versionId) });
   const steps = useQuery({ queryKey: [...queryKeys.run(versionId), "steps"], queryFn: () => getRunSteps(versionId) });
+  const aggregate = useQuery({ queryKey: queryKeys.findingsAggregate(versionId), queryFn: () => getFindingsAggregate(versionId) });
+  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  useEffect(() => {
+    void qc.prefetchQuery({ queryKey: findingsKey(versionId, "", "", "", 1), queryFn: () => findingsFetch(versionId, "", "", "", 1) });
+  }, [qc, versionId]);
+  const warmObjects = () => void qc.prefetchQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
+  const onTabsHover = (e: { target: EventTarget }) => {
+    if ((e.target as HTMLElement).closest('[role="tab"]')?.textContent === "Objects") warmObjects();
+  };
+  // Only the system id comes from the version; these two wait for it and render skeletons meanwhile.
   const systemId = version.data?.metadata?.system_id;
   const scope = useQuery({
     queryKey: queryKeys.versionsList({ system_id: systemId }),
     queryFn: () => getVersions({ ...(systemId ? { system_id: systemId } : {}), limit: 100 }),
     enabled: version.isSuccess,
   });
+  const history = useQuery({
+    queryKey: queryKeys.scoreHistory(systemId),
+    queryFn: () => getScoreHistory({ system_id: systemId, limit: 20 }),
+    enabled: systemId != null,
+  });
 
   const isBaseline = version.data?.metadata?.baseline === true;
   const pin = useMutation({
     mutationFn: () => pinBaseline(versionId, !isBaseline),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: queryKeys.run(versionId), exact: true });
+      const prev = qc.getQueryData<Version>(queryKeys.run(versionId));
+      if (prev?.metadata) qc.setQueryData<Version>(queryKeys.run(versionId), { ...prev, metadata: { ...prev.metadata, baseline: !isBaseline } });
+      return { prev };
+    },
     onSuccess: () => {
       toast.success(isBaseline ? "Baseline unpinned" : "Pinned as baseline");
-      qc.invalidateQueries({ queryKey: queryKeys.run(versionId) });
       qc.invalidateQueries({ queryKey: queryKeys.run("list") });
       qc.invalidateQueries({ queryKey: ["versions-list"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKeys.run(versionId), ctx.prev);
+      toast.error(e.message);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.run(versionId), exact: true }),
   });
 
   if (version.isError) {
     if (isAxiosError(version.error) && version.error.response?.status === 404) {
       return (
         <EmptyState
-          title="Run not found."
+          title="Run not found"
           detail="It may have been archived."
           action={<Button render={<Link href="/runs">All runs</Link>} />}
         />
@@ -372,12 +493,16 @@ export default function RunDetailPage() {
   const prevId = v ? previousRunId(v, runs) : null;
   const baseId = v ? baselineRunId(v, runs) : null;
   const stepRows = steps.data?.steps ?? [];
+  const systemName = systems.data?.find((s) => s.id === systemId)?.name;
+  const totalMs = stepRows.reduce((n, s) => n + (s.duration_ms ?? 0), 0);
+  const duration = totalMs > 0 ? `${(totalMs / 1000).toFixed(1)}s` : null;
 
   const setTab = (next: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", next);
     router.push(`/runs/${versionId}?${params.toString()}`);
   };
+  const openSteps = () => setTab("steps");
 
   const exportOptions = [
     { format: "xlsx" as const, run: () => exportRunSteps(versionId, "xlsx") },
@@ -398,58 +523,77 @@ export default function RunDetailPage() {
   ];
 
   const header = v ? (
-    <div className="flex flex-col gap-2 p-6 pb-0">
-      <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-2">
-          <span>{v.label ?? versionId}</span>
-          <span>— started {formatDate(v.run_at, "datetime")}.</span>
+    <PageHeader
+      title={v.label ?? formatDate(v.run_at, "datetime")}
+      meta={["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}
+      status={
+        <>
           <Pill tone={statusTone(v.status)}>{labelOf(v.status)}</Pill>
-          {isBaseline ? <Pill tone="go">Baseline</Pill> : null}
-        </p>
-        {can("export") ? <ExportMenu options={exportOptions} /> : null}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {prevId ? <Link href={`/runs/${versionId}/vs/${prevId}`}><Button variant="secondary">Compare with previous</Button></Link> : null}
-        {baseId ? <Link href={`/runs/${versionId}/vs/baseline`}><Button variant="secondary">Compare with baseline</Button></Link> : null}
-        {can("analyse") ? (
-          <Button variant="ghost" disabled={pin.isPending} onClick={() => pin.mutate()}>
-            {isBaseline ? "Unpin baseline" : "Pin as baseline"}
-          </Button>
-        ) : null}
-      </div>
-    </div>
+          {isBaseline ? <Pill>Baseline</Pill> : null}
+        </>
+      }
+      actions={
+        <>
+          {prevId ? <Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`}>Compare with previous</Link>} /> : null}
+          {baseId ? <Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`}>Compare with baseline</Link>} /> : null}
+          {can("analyse") ? (
+            <Button variant="ghost" onClick={() => pin.mutate()}>
+              {isBaseline ? "Unpin baseline" : "Pin as baseline"}
+            </Button>
+          ) : null}
+          {can("export") ? <ExportMenu options={exportOptions} /> : null}
+        </>
+      }
+    />
   ) : (
-    <p className="p-6 pb-0">Run…</p>
+    <Skeleton height={48} />
   );
 
   return (
     <div className="flex flex-col gap-4">
-      {header}
+      <div className="mx-auto w-full" style={{ ...pad, paddingBottom: 0 }}>{header}</div>
+      <div onPointerOver={onTabsHover} onFocus={onTabsHover}>
       <Tabs
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} systemId={systemId} /> },
-          { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} systemId={systemId} /> },
-          { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} /> },
-          { value: "config", label: "Config matches", content: <ConfigMatchesTab versionId={versionId} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} /> },
+          { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
+          { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {
             value: "steps",
             label: "Steps",
             content: (
-              <ReportPage
-                narrative={null}
-                charts={null}
-                tables={<DataTable columns={stepColumns} data={stepRows} getRowId={(s) => String(s.step_number)} />}
+              <ExplorerPage
+                table={
+                  <DataTable
+                    columns={stepColumns}
+                    data={stepRows}
+                    getRowId={(s) => String(s.step_number)}
+                    renderDrawer={(s) => (
+                      <div className="flex flex-col gap-2 p-4">
+                        <h2 className="font-semibold" style={sectionTitle}>{s.step_name}</h2>
+                        <Pill tone={statusTone(s.status)}>{labelOf(s.status)}</Pill>
+                        <p style={{ color: "var(--m-ink-2)" }}>{s.error_detail ?? "No error recorded"}</p>
+                      </div>
+                    )}
+                  />
+                }
                 state={steps.isLoading ? "loading" : isListFailure(steps) ? "error" : stepRows.length === 0 ? "empty" : undefined}
-                emptyProps={{ title: "No step history for this run yet." }}
+                emptyProps={{
+                  title: "No steps recorded",
+                  detail: "This run has no step history.",
+                  action: <Button render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Re-run analysis</Link>} />,
+                }}
                 errorProps={{ message: errorText(steps.error), onRetry: () => steps.refetch() }}
               />
             ),
           },
-          ...entityTabs({ entityType: "versions", entityId: versionId, exportOptions, canExport: can("export") }),
+          { value: "config", label: "Configuration", content: <ConfigMatchesTab versionId={versionId} /> },
+          ...entityTabs({ entityType: "versions", entityId: versionId, skip: ["overview", "related", "history", "export"] }),
         ]}
       />
+      </div>
     </div>
   );
 }
