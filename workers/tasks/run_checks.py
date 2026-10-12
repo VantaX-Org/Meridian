@@ -1,5 +1,8 @@
+import gc
 import json
+from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
+from itertools import groupby
 import logging
 import os
 import threading
@@ -230,6 +233,13 @@ _LOST_ERROR = "checks worker ran out of memory twice; aborted"
 _TIME_LIMIT_ERROR = f"checks exceeded the time limit of {_CHECKS_LIMIT}s; aborted"
 _DELIVERY_TTL = 2 * 24 * 3600
 
+# Check runs at once across all workers (each holds a full dataset in memory); a run that
+# finds every slot taken is retried after _SLOT_WAIT_S. Session advisory locks, so a killed
+# worker frees its slot.
+_CHECKS_SLOTS = max(1, int(os.getenv("MERIDIAN_CHECKS_SLOTS", "1")))
+_SLOT_KEY = "meridian:run_checks:slot:"
+_SLOT_WAIT_S = 60
+
 
 def _delivery_key(task_id: str) -> str:
     return f"meridian:run_checks:deliveries:{task_id}"
@@ -262,14 +272,34 @@ def _clear_deliveries(task_id: str | None) -> None:
 
 
 def _mark_failed(engine: Engine, tenant_id: str, version_id: str, error: str) -> None:
-    """Record a failed check run on the version, its run step and its live progress."""
+    """Record a failed check run on the version, its run step and its live progress.
+
+    Modules the run's checkpoint holds keep their findings: the version is then ``partial``,
+    its DQS summary scores those modules and marks every other one ``missing`` (no score,
+    never counted as clean), and ``metadata.checks_partial`` names both sets."""
     check_step_num, check_step_name = STEP_RUN_CHECKS
     with Session(engine) as session:
         session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-        session.execute(
-            text("UPDATE analysis_versions SET status = 'failed' WHERE id = :vid AND tenant_id = :tid"),
-            {"vid": version_id, "tid": tenant_id},
-        )
+        meta = session.execute(text("SELECT metadata FROM analysis_versions WHERE id = :vid AND tenant_id = :tid"),
+                               {"vid": version_id, "tid": tenant_id}).scalar() or {}
+        done: dict[str, dict] = (meta.get("checks_checkpoint") or {}).get("modules") or {}
+        if done:
+            from api.services.scoring import score_module
+            missing = [m for m in meta.get("modules") or [] if m not in done]
+            summary = {m: e["dqs"] for m, e in done.items()} | {
+                m: {**score_module([], {}, module=m).model_dump(), "missing": True, "reason": error} for m in missing}
+            partial = {"completed": sorted(done), "missing": missing, "error": error,
+                       "at": datetime.now(timezone.utc).isoformat()}
+            session.execute(text(
+                "UPDATE analysis_versions SET status = 'partial', dqs_summary = CAST(:s AS jsonb), "
+                "metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('checks_partial', CAST(:p AS jsonb)) "
+                "WHERE id = :vid AND tenant_id = :tid"),
+                {"vid": version_id, "tid": tenant_id, "s": json.dumps(summary), "p": json.dumps(partial)})
+        else:
+            session.execute(
+                text("UPDATE analysis_versions SET status = 'failed' WHERE id = :vid AND tenant_id = :tid"),
+                {"vid": version_id, "tid": tenant_id},
+            )
         session.commit()
     record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="failed",
                 error_detail=error)
@@ -281,6 +311,144 @@ def _mark_failed(engine: Engine, tenant_id: str, version_id: str, error: str) ->
         total_steps=TOTAL_STEPS,
         error=error,
     )
+
+
+def _open_checkpoint(engine: Engine, tenant_id: str, version_id: str, rule_set: str, dataset: str) -> dict:
+    """``metadata.checks_checkpoint``: the modules an earlier, unfinished run of the same rule
+    set on the same dataset completed, which this run resumes rather than re-runs. Anything
+    else starts the version over, without the failing records an earlier run stored."""
+    with Session(engine) as session:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        cp = session.execute(text("SELECT metadata->'checks_checkpoint' FROM analysis_versions WHERE id = :vid"),
+                             {"vid": version_id}).scalar() or {}
+        if cp.get("rule_set") == rule_set and cp.get("dataset") == dataset and cp.get("modules") is not None:
+            return cp
+        cp = {"rule_set": rule_set, "dataset": dataset, "modules": {}}
+        session.execute(text("DELETE FROM finding_records WHERE version_id = :vid"), {"vid": version_id})
+        session.execute(text(
+            "UPDATE analysis_versions SET metadata = (COALESCE(metadata, '{}'::jsonb) - 'checks_partial') "
+            "|| jsonb_build_object('checks_checkpoint', CAST(:cp AS jsonb)) WHERE id = :vid"),
+            {"vid": version_id, "cp": json.dumps(cp)})
+        session.commit()
+    return cp
+
+
+def _enrich(engine: Engine, tenant_id: str, results: list, cost_model: dict) -> None:
+    """Root cause and cost of poor data quality, on ``results`` in place."""
+    # Root-cause classification against Config Intelligence: bad_data / bad_config / both,
+    # so the Workbench and Fix Playbook show WHY a finding exists. No-op without a CI run.
+    try:
+        from checks.root_cause import enrich_results_with_root_cause
+        enrich_results_with_root_cause(engine, str(tenant_id), results)
+    except Exception as e:
+        reraise_soft_limit(e)
+        logger.warning(f"root_cause enrichment failed, continuing: {e}")
+
+    # Cost of poor data quality + impact ranking. Rule results are priced in the runner
+    # (from their failing records); Z-table and DDIC results here, from their severity.
+    from checks import cost as dq_cost
+    for r in results:
+        if r.error:
+            continue
+        if r.cost_at_risk is None:
+            r.cost_at_risk, r.cost_formula = dq_cost.price(
+                dq_cost.resolve({"id": r.check_id, "module": r.module, "severity": r.severity}, cost_model),
+                r.affected_count)
+        blocked = dq_cost.blocked_features(r.check_id)
+        if blocked and r.affected_count:
+            r.details = {**(r.details or {}), "blocked_features": blocked}
+
+
+def _upsert_findings(session: Session, version_id: str, tenant_id: str, results: list) -> None:
+    """One ``findings`` row per check of this version (a rerun updates it in place)."""
+    from checks import cost as dq_cost
+    finding_rows = [
+        {
+            "version_id": version_id,
+            "tenant_id": tenant_id,
+            "module": check_result.module,
+            "check_id": check_result.check_id,
+            "severity": check_result.severity,
+            "dimension": check_result.dimension,
+            "affected_count": check_result.affected_count,
+            "total_count": check_result.total_count,
+            "pass_rate": check_result.pass_rate,
+            "details": json.dumps({**(check_result.details or {}),
+                                   **({"error": check_result.error} if check_result.error else {})}),
+            "rule_context": json.dumps(check_result.rule_context) if check_result.rule_context else "{}",
+            "value_fix_map": json.dumps(check_result.value_fix_map) if check_result.value_fix_map else "{}",
+            "record_fixes": json.dumps(check_result.record_fixes) if check_result.record_fixes else "[]",
+            "cost_at_risk": check_result.cost_at_risk,
+            "cost_formula": check_result.cost_formula,
+            "impact_score": dq_cost.impact(check_result.cost_at_risk,
+                                           len((check_result.details or {}).get("blocked_features") or []),
+                                           check_result.severity),
+        }
+        for check_result in results
+    ]
+    if finding_rows:  # a single executemany: a per-row loop was ~200x slower on 500+ findings
+        session.execute(
+            text("""
+                INSERT INTO findings (
+                    id, version_id, tenant_id, module, check_id, severity,
+                    dimension, affected_count, total_count, pass_rate, details,
+                    rule_context, value_fix_map, record_fixes,
+                    cost_at_risk, cost_formula, impact_score
+                ) VALUES (
+                    gen_random_uuid(), :version_id, :tenant_id, :module, :check_id,
+                    :severity, :dimension, :affected_count, :total_count, :pass_rate,
+                    CAST(:details AS jsonb),
+                    CAST(:rule_context AS jsonb),
+                    CAST(:value_fix_map AS jsonb),
+                    CAST(:record_fixes AS jsonb),
+                    :cost_at_risk, :cost_formula, :impact_score
+                )
+                ON CONFLICT (version_id, check_id, tenant_id) DO UPDATE SET
+                    module = EXCLUDED.module, severity = EXCLUDED.severity,
+                    dimension = EXCLUDED.dimension, affected_count = EXCLUDED.affected_count,
+                    total_count = EXCLUDED.total_count, pass_rate = EXCLUDED.pass_rate,
+                    details = EXCLUDED.details, rule_context = EXCLUDED.rule_context,
+                    value_fix_map = EXCLUDED.value_fix_map, record_fixes = EXCLUDED.record_fixes,
+                    cost_at_risk = EXCLUDED.cost_at_risk, cost_formula = EXCLUDED.cost_formula,
+                    impact_score = EXCLUDED.impact_score
+            """),
+            finding_rows,
+        )
+
+
+def _restore_module(session: Session, version_id: str, module: str, entry: dict,
+                    keep_keys: set[str], fold: Callable[[str, str, Iterable[str]], None]) -> list:
+    """A checkpointed module's results, read back from its stored findings. Its failing
+    records go to ``fold`` as the run's own rules do, and stay on the results of ``keep_keys``
+    (record-level suppressions)."""
+    from checks.base import CheckResult
+    checks: dict[str, list[str | None]] = entry["checks"]  # check_id -> [grain, field]
+    out: dict[str, CheckResult] = {}
+    for f in session.execute(text(
+            "SELECT check_id, severity, dimension, affected_count, total_count, pass_rate, details, rule_context, "
+            "value_fix_map, record_fixes, cost_at_risk, cost_formula FROM findings "
+            "WHERE version_id = :vid AND check_id = ANY(:ids)"), {"vid": version_id, "ids": list(checks)}):
+        details = dict(f.details or {})
+        grain, field = checks[f.check_id]
+        out[f.check_id] = CheckResult(
+            check_id=f.check_id, module=module, field=field or "", severity=f.severity, dimension=f.dimension,
+            passed=f.affected_count == 0, affected_count=f.affected_count, total_count=f.total_count,
+            pass_rate=float(f.pass_rate), message=str(details.get("message") or ""), details=details,
+            error=details.get("error"), rule_context=f.rule_context or None, value_fix_map=f.value_fix_map or None,
+            record_fixes=f.record_fixes or None, grain=grain,
+            cost_at_risk=None if f.cost_at_risk is None else float(f.cost_at_risk), cost_formula=f.cost_formula)
+    keys: dict[str, list[str]] = {}
+    rows = session.connection().execution_options(stream_results=True, yield_per=50_000).execute(text(
+        "SELECT check_id, record_key FROM finding_records WHERE version_id = :vid AND check_id = ANY(:ids) "
+        "ORDER BY check_id"), {"vid": version_id, "ids": list(out)})
+    for cid, group in groupby(rows, key=lambda row: row[0]):
+        batch = [row[1] for row in group]
+        fold(cid, out[cid].field, batch)
+        if cid in keep_keys:
+            keys[cid] = batch
+    for cid, batch in keys.items():
+        out[cid].failing_record_keys = batch
+    return list(out.values())
 
 
 @celery_app.task(bind=True, name="workers.tasks.run_checks.run_checks",
@@ -298,6 +466,14 @@ def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
         if not lock.execute(text("SELECT pg_try_advisory_lock(hashtext(:v))"), {"v": version_id}).scalar():
             logger.warning(f"run_checks already running for version_id={version_id}, skipping")
             return {"version_id": version_id, "status": "already_running"}
+        # Runs of different versions share the worker's memory too: at most _CHECKS_SLOTS at once
+        # across all workers; the rest wait in the queue (a retry, not a held worker process).
+        slot = next((k for k in (f"{_SLOT_KEY}{i}" for i in range(_CHECKS_SLOTS))
+                     if lock.execute(text("SELECT pg_try_advisory_lock(hashtext(:k))"), {"k": k}).scalar()), None)
+        if slot is None:
+            lock.execute(text("SELECT pg_advisory_unlock(hashtext(:v))"), {"v": version_id})
+            logger.info(f"run_checks for version_id={version_id} waits for a free checks slot")
+            raise self.retry(countdown=_SLOT_WAIT_S, max_retries=None)
         try:
             task_id = self.request.id
             try:  # only a killed worker skips the clearing and leaves its delivery counted
@@ -313,6 +489,7 @@ def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
             finally:
                 _clear_deliveries(task_id)
         finally:
+            lock.execute(text("SELECT pg_advisory_unlock(hashtext(:k))"), {"k": slot})
             lock.execute(text("SELECT pg_advisory_unlock(hashtext(:v))"), {"v": version_id})
     finally:
         lock.close()
@@ -508,9 +685,40 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         trackers = {m: CleanRecords(anchors.get(m) if anchors.get(m) in frames.frames else None,
                                     dictionary.keys(anchors[m]) if anchors.get(m) else (), n)
                     for m, n in module_rows.items()}
+        from api.services.record_issues import store_records
+        from api.services.scoring import score_all_modules, scoring_config
+        governance = {**rule_overrides, "_suppressed": sorted(sup_rules)
+                      + sorted(f"{c}:{k}" for c, ks in sup_records.items() for k in ks)}
+        rule_set = rule_set_fingerprint(modules, governance, fs_rules)
+        resumed: dict[str, dict] = _open_checkpoint(engine, tenant_id, version_id, rule_set, parquet_path)["modules"]
+        # cells a specific rule already reports on that record: the DDIC pass does not report them twice
+        reported: dict[str, set[str]] = {}
+        rule_fields = {r["id"]: r["fields"] for r in fs_rules if r.get("id") and r.get("fields")}  # e.g. swaps
+        lost: set[str] = set()  # checks whose failing records could not be stored
 
-        def feed(r: CheckResult) -> None:
-            """Best effort: a failure here voids the module's clean-record figure, never the run."""
+        def fold(check_id: str, field: str, keys: Iterable[str]) -> None:
+            for col in rule_fields.get(check_id) or ([field] if field and "." in field else []):
+                reported.setdefault(col, set()).update(keys)
+
+        def feed(r: CheckResult, report: bool = True) -> None:
+            """Stream the rule's failing records to finding_records and keep on the result only
+            what the rest of the run reads, so a module's record values never pile up in memory.
+            Best effort: a failure here voids the module's clean-record figure, never the run."""
+            if r.failing_record_keys:
+                try:
+                    with Session(engine) as session:
+                        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                        store_records(session, str(tenant_id), str(version_id), [r])
+                        session.commit()
+                except Exception as e:
+                    reraise_soft_limit(e)
+                    lost.add(r.check_id)
+                    logger.exception(f"failing records of {r.check_id} not stored: {e}")
+                if report:
+                    fold(r.check_id, r.field, r.failing_record_keys)
+                if r.check_id not in sup_records:  # record-level suppressions are discounted at scoring
+                    r.failing_record_keys = None
+            r.failing_record_values = None
             keys = r._all_failing_keys
             tracker = trackers.get(r.module)
             if tracker is None or keys is None or r.check_id in sup_rules:
@@ -524,6 +732,17 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 logger.warning(f"Clean-record tracking failed on {r.check_id}: {e}", exc_info=True)
                 tracker.failing, tracker.reason = None, f"clean-record tracking failed on {r.check_id}"
         for idx, module_name in enumerate(modules):
+            if module_name in resumed:  # completed by an earlier run of the same rules on the same data
+                entry = resumed[module_name]
+                with Session(engine) as session:
+                    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                    all_results.extend(_restore_module(session, version_id, module_name, entry, set(sup_records), fold))
+                skips[module_name] = entry["skips"]
+                outliers.update(entry["outliers"])
+                lost.update(entry.get("lost") or [])
+                trackers.pop(module_name, None)  # its clean-record figure comes from the checkpoint
+                logger.info(f"Resumed checks for module {module_name} from the checkpoint")
+                continue
             logger.info(f"Running checks for module: {module_name}")
             self.update_state(state='PROGRESS', meta={
                 'stage': 'checking',
@@ -551,12 +770,13 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                                      sap_utc_offset_seconds=metadata.get("sap_utc_offset_seconds"),
                                      on_progress=on_rule, stats=skips.setdefault(module_name, {}),
                                      on_result=feed)
-            all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
             frames.clear_cache()
+            module_outliers: dict[str, dict] = {}
             if module_name in data_modules:
                 from checks.outliers import find as find_outliers
-                outliers.update(find_outliers(module_name, frames))  # reported, never scored
+                module_outliers = find_outliers(module_name, frames)  # reported, never scored
+                outliers.update(module_outliers)
                 frames.clear_cache()
                 # Field profile + candidate hidden rules of the module's tables
                 # (checks/profiling.py, ≤ 200k rows per table). Best-effort: a
@@ -568,6 +788,28 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 except Exception as e:
                     reraise_soft_limit(e)
                     logger.error(f"field profiling failed for {module_name}, continuing: {e}", exc_info=True)
+            # Checkpoint: the module's findings, score and run inputs are stored now, so a time limit
+            # or a lost worker later in the run keeps them (the version ends partial) and a rerun of
+            # the same rules on the same data resumes after them.
+            _enrich(engine, tenant_id, results, cost_model)
+            module_dqs = score_all_modules(lifecycle.for_scoring(results, sup_rules, sup_records), tenant_weights,
+                                           {module_name: skips[module_name]})[module_name].model_dump()
+            if module_name in trackers:
+                module_dqs.update(trackers[module_name].result())
+            entry = {"checks": {r.check_id: [r.grain, r.field] for r in results}, "skips": skips[module_name],
+                     "outliers": module_outliers, "dqs": module_dqs,
+                     "lost": sorted(lost & {r.check_id for r in results})}
+            with Session(engine) as session:
+                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                _upsert_findings(session, version_id, tenant_id, results)
+                session.execute(text(
+                    "UPDATE analysis_versions SET metadata = jsonb_set(metadata, "
+                    "ARRAY['checks_checkpoint', 'modules', CAST(:m AS text)], CAST(:e AS jsonb)) WHERE id = :vid"),
+                    {"vid": version_id, "m": module_name, "e": json.dumps(entry)})
+                session.commit()
+            all_results.extend(results)
+            del results
+            gc.collect()  # the module's frames and results are released before the next module loads
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
             record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
@@ -575,6 +817,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             update_task_progress(version_id, **last_progress)
 
         hb_stop.set()  # checks stage over; later stages publish their own progress
+        checkpointed = len(all_results)  # results from here on are the post-passes' (Z-table, DDIC)
 
         frames.clear_cache()  # a failed outlier pass must not leave a decoded frame behind
         # Step 6c: Z-table (customer-namespace) rules. The standard rule
@@ -637,13 +880,6 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                                       if r.get("field") and r.get("check_class") in ("referential_check", "domain_value_check")}
                 except FileNotFoundError:
                     continue
-            # cells a specific rule already reports on that record — not reported twice
-            reported: dict[str, set[str]] = {}
-            rule_fields = {r["id"]: r["fields"] for r in fs_rules if r.get("id") and r.get("fields")}  # e.g. swaps
-            for r in all_results:
-                if r.failing_record_keys:
-                    for col in rule_fields.get(r.check_id) or ([r.field] if r.field and "." in r.field else []):
-                        reported.setdefault(col, set()).update(r.failing_record_keys)
             table_frames = dict(frames.frames)
             if frames.flat is not None:
                 for t in frames.unsplittable:
@@ -652,7 +888,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 keys = [f"{table}.{k}" for k in dictionary.keys(table)]
                 for res in run_conformance(table, tdf, dictionary, owner.get(table, modules[0] if modules else ""),
                                            keys, live_refs, value_checked, reported):
-                    feed(res)
+                    feed(res, report=False)
                     res._all_failing_keys = None
                     all_results.append(res)
         except Exception as e:
@@ -661,36 +897,12 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
 
         logger.info(f"Total check results: {len(all_results)}")
 
-        # Step 6d: Root-cause classification against Config Intelligence.
-        # Enriches failing findings with bad_data / bad_config / both so
-        # the Workbench and Fix Playbook can show the steward WHY the
-        # finding exists, not just WHAT failed. No-ops for tenants without
-        # a Config Intelligence run.
-        try:
-            from checks.root_cause import enrich_results_with_root_cause
-            enrich_results_with_root_cause(engine, str(tenant_id), all_results)
-        except Exception as e:
-            reraise_soft_limit(e)
-            logger.warning(f"root_cause enrichment failed, continuing: {e}")
-
-        # Step 6e: cost of poor data quality + impact ranking. Rule results are priced
-        # in the runner (from their failing records); Z-table and DDIC results here,
-        # from their severity (no failing frame to read a value field from).
-        from checks import cost as dq_cost
-        for r in all_results:
-            if r.error:
-                continue
-            if r.cost_at_risk is None:
-                r.cost_at_risk, r.cost_formula = dq_cost.price(
-                    dq_cost.resolve({"id": r.check_id, "module": r.module, "severity": r.severity}, cost_model),
-                    r.affected_count)
-            blocked = dq_cost.blocked_features(r.check_id)
-            if blocked and r.affected_count:
-                r.details = {**(r.details or {}), "blocked_features": blocked}
+        # root cause and cost of the post-pass results (each module's were set at its checkpoint)
+        post = all_results[checkpointed:]
+        _enrich(engine, tenant_id, post, cost_model)
+        all_results[checkpointed:] = post
 
         # Step 7-8: Score all modules
-        from api.services.scoring import score_all_modules, scoring_config
-
         # suppressed rules / records (rule_suppressions) stay out of the score until they expire
         dqs_results = score_all_modules(lifecycle.for_scoring(all_results, sup_rules, sup_records), tenant_weights,
                                         skips)
@@ -698,66 +910,15 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         for mod, tracker in trackers.items():
             if mod in dqs_summary:
                 dqs_summary[mod].update(tracker.result())
+        for mod, entry in resumed.items():  # clean records of a resumed module: as its checkpoint stored them
+            if mod in dqs_summary:
+                dqs_summary[mod].update({k: entry["dqs"].get(k) for k in ("clean_record_pct", "clean_records")
+                                         if k in entry["dqs"]})
 
-        # Step 9: Insert findings into Postgres via a single executemany call.
-        # Previous code looped per row inside batches, which was ~200x slower
-        # than a true executemany on 500+ findings.
+        # Step 9: findings of the post-passes (every module's were stored at its checkpoint)
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-
-            finding_rows = [
-                {
-                    "version_id": version_id,
-                    "tenant_id": tenant_id,
-                    "module": check_result.module,
-                    "check_id": check_result.check_id,
-                    "severity": check_result.severity,
-                    "dimension": check_result.dimension,
-                    "affected_count": check_result.affected_count,
-                    "total_count": check_result.total_count,
-                    "pass_rate": check_result.pass_rate,
-                    "details": json.dumps({**(check_result.details or {}),
-                                           **({"error": check_result.error} if check_result.error else {})}),
-                    "rule_context": json.dumps(check_result.rule_context) if check_result.rule_context else "{}",
-                    "value_fix_map": json.dumps(check_result.value_fix_map) if check_result.value_fix_map else "{}",
-                    "record_fixes": json.dumps(check_result.record_fixes) if check_result.record_fixes else "[]",
-                    "cost_at_risk": check_result.cost_at_risk,
-                    "cost_formula": check_result.cost_formula,
-                    "impact_score": dq_cost.impact(check_result.cost_at_risk,
-                                                   len((check_result.details or {}).get("blocked_features") or []),
-                                                   check_result.severity),
-                }
-                for check_result in all_results
-            ]
-
-            if finding_rows:
-                session.execute(
-                    text("""
-                        INSERT INTO findings (
-                            id, version_id, tenant_id, module, check_id, severity,
-                            dimension, affected_count, total_count, pass_rate, details,
-                            rule_context, value_fix_map, record_fixes,
-                            cost_at_risk, cost_formula, impact_score
-                        ) VALUES (
-                            gen_random_uuid(), :version_id, :tenant_id, :module, :check_id,
-                            :severity, :dimension, :affected_count, :total_count, :pass_rate,
-                            CAST(:details AS jsonb),
-                            CAST(:rule_context AS jsonb),
-                            CAST(:value_fix_map AS jsonb),
-                            CAST(:record_fixes AS jsonb),
-                            :cost_at_risk, :cost_formula, :impact_score
-                        )
-                        ON CONFLICT (version_id, check_id, tenant_id) DO UPDATE SET
-                            module = EXCLUDED.module, severity = EXCLUDED.severity,
-                            dimension = EXCLUDED.dimension, affected_count = EXCLUDED.affected_count,
-                            total_count = EXCLUDED.total_count, pass_rate = EXCLUDED.pass_rate,
-                            details = EXCLUDED.details, rule_context = EXCLUDED.rule_context,
-                            value_fix_map = EXCLUDED.value_fix_map, record_fixes = EXCLUDED.record_fixes,
-                            cost_at_risk = EXCLUDED.cost_at_risk, cost_formula = EXCLUDED.cost_formula,
-                            impact_score = EXCLUDED.impact_score
-                    """),
-                    finding_rows,
-                )
+            _upsert_findings(session, version_id, tenant_id, post)
 
             self.update_state(state='PROGRESS', meta={
                 'stage': 'saving',
@@ -793,8 +954,11 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             # (savepoint: a failure here never loses the findings above).
             try:
                 from api.services.record_issues import scope_of, track
+                if lost:  # an issue whose records were not stored would be resolved as fixed
+                    raise RuntimeError(f"failing records of {len(lost)} check(s) not stored: {sorted(lost)[:5]}")
                 with session.begin_nested():
-                    stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames)
+                    stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames,
+                                  store=False)
                 logger.info(f"record issues for {version_id}: {stats}")
                 if "lifecycle" not in stats:  # newest run of this system: check exported fix batches
                     from api.services.remediation import reconcile
@@ -829,15 +993,12 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 logger.error(f"triage auto-assign failed for {version_id}: {e}", exc_info=True)
 
             # Step 10: Update version with DQS summary + which rule set produced it
-            governance = {**rule_overrides, "_suppressed": sorted(sup_rules)
-                          + sorted(f"{c}:{k}" for c, ks in sup_records.items() for k in ks)}
-            analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set_fingerprint(modules, governance, fs_rules),
-                        "checks": len(all_results)}
+            analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set, "checks": len(all_results)}
             session.execute(
                 text("""
                     UPDATE analysis_versions
                     SET status = 'complete', dqs_summary = CAST(:summary AS jsonb),
-                        metadata = COALESCE(metadata, '{}'::jsonb)
+                        metadata = (COALESCE(metadata, '{}'::jsonb) - 'checks_checkpoint' - 'checks_partial')
                             || jsonb_build_object('rule_set', CAST(:rs AS text), 'analysed_at', CAST(:at AS text),
                                                   'field_usage', CAST(:fu AS jsonb), 'outliers', CAST(:ol AS jsonb),
                                                   'scoring', CAST(:sc AS jsonb))

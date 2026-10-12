@@ -74,25 +74,21 @@ def present_keys(results, frames) -> set[tuple[str, str]]:
     return out
 
 
-def track(session, tenant_id: str, version_id: str, scope: str, results, frames) -> dict:
-    """Persist finding_records and reconcile record_issues for one version."""
+def store_records(session, tenant_id: str, version_id: str, results) -> int:
+    """Write the failing records of ``results`` to ``finding_records``, replacing what an
+    earlier pass of the same checks on this version stored (a resumed run re-stores a rule)."""
     session.execute(text(
         "CREATE TEMP TABLE IF NOT EXISTS tmp_finding_records "
         "(check_id text, module text, grain text, record_key text, field_values text) ON COMMIT DROP"))
-    session.execute(text(
-        "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
-    session.execute(text("TRUNCATE tmp_finding_records, tmp_present"))
-
+    session.execute(text("TRUNCATE tmp_finding_records"))
     failing = _copy(session, "tmp_finding_records", ("check_id", "module", "grain", "record_key", "field_values"), (
         (r.check_id, r.module, r.grain, k, json.dumps(v) if v else None)
         for r in results if r.failing_record_keys
         for k, v in _keyed_values(r).items()
     ))
-    _copy(session, "tmp_present", ("grain", "record_key"), present_keys(results, frames))
-
-    p = {"tid": tenant_id, "vid": version_id, "scope": scope}
-    # re-analysis of a version replaces its failing records
-    session.execute(text("DELETE FROM finding_records WHERE version_id = :vid"), p)
+    p = {"tid": tenant_id, "vid": version_id}
+    session.execute(text("DELETE FROM finding_records WHERE version_id = :vid AND check_id = ANY(:ids)"),
+                    {**p, "ids": [r.check_id for r in results]})
     session.execute(text("""
         INSERT INTO finding_records (tenant_id, version_id, check_id, module, grain, record_key, field_values)
         SELECT CAST(:tid AS uuid), CAST(:vid AS uuid), check_id, module, NULLIF(grain, ''), record_key,
@@ -100,6 +96,23 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames)
         FROM tmp_finding_records
         ON CONFLICT DO NOTHING
     """), p)
+    return failing
+
+
+def track(session, tenant_id: str, version_id: str, scope: str, results, frames, store: bool = True) -> dict:
+    """Persist finding_records and reconcile record_issues for one version. ``store=False``:
+    the run already streamed its failing records (store_records) as each rule finished."""
+    p = {"tid": tenant_id, "vid": version_id, "scope": scope}
+    if store:
+        # re-analysis of a version replaces its failing records
+        session.execute(text("DELETE FROM finding_records WHERE version_id = :vid"), p)
+        failing = store_records(session, tenant_id, version_id, results)
+    else:
+        failing = session.execute(text("SELECT count(*) FROM finding_records WHERE version_id = :vid"), p).scalar()
+    session.execute(text(
+        "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
+    session.execute(text("TRUNCATE tmp_present"))
+    _copy(session, "tmp_present", ("grain", "record_key"), present_keys(results, frames))
 
     # Only the newest run of this system drives the issue lifecycle — re-analysing
     # an older version must not resolve or re-open anything.
