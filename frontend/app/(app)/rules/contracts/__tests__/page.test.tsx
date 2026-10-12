@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as contractsApi from "@/lib/api/contracts";
@@ -55,11 +55,18 @@ describe("rules contracts page", () => {
 
   it("keeps the Awaiting approval count unfiltered when another status is selected", async () => {
     const pending: Contract = { ...CONTRACT, id: "c2", name: "Pending one", status: "pending_approval" };
-    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [CONTRACT, pending], total: 2 });
+    const rows = [CONTRACT, pending];
+    const spy = vi.spyOn(contractsApi, "getContracts").mockImplementation(async (status) => {
+      const contracts = status ? rows.filter((c) => c.status === status) : rows;
+      return { contracts, total: contracts.length };
+    });
     searchParams.set("status", "breached");
     try {
       renderWithQuery(<ContractsPage />);
-      await waitFor(() => expect(screen.getByText("Awaiting approval").parentElement).toHaveTextContent("1"));
+      const stat = screen.getByText("Awaiting approval").parentElement as HTMLElement;
+      await waitFor(() => expect(within(stat).getByText("1")).toBeInTheDocument());
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy.mock.calls[0]).toEqual([]);
     } finally {
       searchParams.delete("status");
     }
