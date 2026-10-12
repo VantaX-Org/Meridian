@@ -44,7 +44,7 @@ def test_percentage_condition_rate_unit_is_valid():
 # ── numeric length path: the regex form must equal the old split(expand=True) form ──
 
 _NUM_VALUES = ["", None, pd.NA, "-", "+", "1.2.3", "+0012.3400", "000.5", "12", "1,234.50-", ".5", "5.",
-               "abc", "  7.10 ", "-0.0", "99999999999999999999.99999", "12345678", "0", "00", "1e5", "12-"]
+               "abc", "  7.10 ", "-0.0", "99999999999999999999.99999", "12345678", "0", "00", "1e5", "12-", "203.93\n-", "1.5\n", "12\n.5", "1\n2.3", "1.\n2"]
 
 
 def _old_length(s: pd.Series, f) -> pd.Series:

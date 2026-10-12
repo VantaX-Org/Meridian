@@ -59,7 +59,7 @@ def _violations(values: pd.Series, f, check_values: set[str] | None) -> dict[str
         out["type"] = parsed.isna()
         if f.length and t not in ("FLTP", "INT1", "INT2", "INT4", "INT8"):
             u = num.str.lstrip("+-")  # regex replace is ~5x faster than split(expand=True)
-            ints = u.str.replace(r"\..*$", "", regex=True).str.lstrip("0").str.len().fillna(0)
+            ints = u.str.replace(r"(?s)\..*", "", regex=True).str.lstrip("0").str.len().fillna(0)
             decs = u.str.replace(r"^[^.]*\.?", "", regex=True).str.rstrip("0").str.len().fillna(0)
             out["length"] = parsed.notna() & ((ints > (f.length - f.decimals)) | (decs > f.decimals))
     if t in _CHARLIKE and f.length:
