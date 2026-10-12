@@ -57,9 +57,9 @@ export default function ForecastPage() {
     [selected],
   );
 
-  // One line per module, up to the ten series hues; the selected module leads.
+  // One line per module in data order, so a hue always means the same module; the ten series hues cap it.
   const series = useMemo(
-    () => [...forecasts].sort((a, b) => Number(b === selected) - Number(a === selected)).slice(0, 10).map((f) => ({
+    () => (selected && forecasts.indexOf(selected) >= 10 ? [selected] : forecasts.slice(0, 10)).map((f) => ({
       name: formatModuleName(f.module_id),
       data: [
         { x: "Now", y: f.current_score },
@@ -70,6 +70,7 @@ export default function ForecastPage() {
     })),
     [forecasts, selected],
   );
+  const hidden = Math.max(0, forecasts.length - 10);
 
   const state = isLoading ? "loading" : isListFailure({ isError: !!error, error }) ? "error" : forecasts.length === 0 ? "empty" : undefined;
 
@@ -114,6 +115,9 @@ export default function ForecastPage() {
             />
           )}
           {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
+          {hidden > 0 && (
+            <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`+${hidden} more modules, shown one at a time when selected above`}</p>
+          )}
           {selected && (
             <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
               {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${selected.points} runs across ${selected.span_days} days`}

@@ -3,7 +3,8 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Delta, Pill, Stat, type PillTone } from "@/design";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Button, Card, DataTable, Delta, Pill, Stat, type PillTone } from "@/design";
 import { getOwners, getReadiness, type OwnerCardResponse } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -15,6 +16,15 @@ function severityTone(severity: string): PillTone {
   if (severity === "medium") return "at-risk";
   return "neutral";
 }
+
+const openCount = (o: OwnerCardResponse) => Object.values(o.open_by_severity).reduce((a, b) => a + b, 0);
+
+const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
+  { accessorKey: "owner", header: "Owner" },
+  { accessorKey: "score", header: "Score", meta: { numeric: true, heat: "seq", heatRange: [0, 100] } },
+  { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true } },
+  { accessorKey: "fixed_since_baseline", header: "Fixed since baseline", meta: { numeric: true } },
+];
 
 function OwnerCard({ owner }: { owner: OwnerCardResponse }) {
   return (
@@ -78,6 +88,9 @@ export default function OwnersPage() {
           <OwnerCard key={owner.owner} owner={owner} />
         ))}
       </div>
+      <Card title="Score by owner">
+        <DataTable columns={scoreColumns} data={owners} getRowId={(o) => o.owner} hideToolbar dense height="auto" />
+      </Card>
     </InsightFrame>
   );
 }

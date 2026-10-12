@@ -138,7 +138,7 @@ export default function LineagePage() {
     const ids = new Set(keep.map((n) => n.id));
     return {
       capped: g.nodes.length > keep.length,
-      nodes: keep.map((n) => ({ id: n.id, label: n.label, size: 4 + (worst.get(n.id) ? 4 : 0), ...(n.type === "object" ? { domain: domainOf(n.id) } : {}) })),
+      nodes: keep.map((n) => ({ id: n.id, label: n.label, size: 4 + (worst.get(n.id) ? 4 : 0), domain: domainOf(n.id) })),
       edges: g.edges.filter((e) => ids.has(e.source) && ids.has(e.target)).map((e, i) => (
         { id: `${e.source}-${e.target}-${i}`, source: e.source, target: e.target, label: e.rel }
       )),
