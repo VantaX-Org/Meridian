@@ -295,7 +295,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const work =
     role === "lead" ? (
       <WorkRow>
-        <Stat label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={`/objects?run=${latest.id}&verdict=not_ready`} />
+        <Stat label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={`/objects?run=${latest.id}&readiness=fail`} />
         <Stat label="Blocking findings" value={blocking.toLocaleString()} hint={blocking ? "critical and high" : "none"} tone={blocking ? "no-go" : "go"} href={`/objects?run=${latest.id}&readiness=fail`} />
         <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
