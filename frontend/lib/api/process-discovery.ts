@@ -28,6 +28,8 @@ export interface CatalogueRow {
   coverage: Coverage;
   /** Why the L1 has no source on this system type (spec §10); null when it has one. */
   reason: string | null;
+  /** Failing findings on the DQ modules this process touches; null/absent: no mapping or no DQ run. */
+  dq_defects?: number | null;
   last_run: {
     id: string;
     status: RunStatus;
@@ -104,6 +106,8 @@ export interface NodeStats {
   share: number;
   median_seconds: number | null;
   fitness: number | null;
+  /** Failing findings on the DQ modules this node maps to; null/absent: no mapping or no DQ run. */
+  dq_defects?: number | null;
 }
 
 export interface Dfg {

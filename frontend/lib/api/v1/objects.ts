@@ -14,7 +14,7 @@ export interface ObjectSummary {
   /** Optional list-row enrichments; absent on older backends. */
   blocking_rule_id?: string | null;
   blocking_rule_name?: string | null;
-  /** DQS per recent run, oldest first. */
+  /** Composite score of the last <=8 runs of the same system, oldest first, including this run. */
   trend?: number[];
   worst_dimension?: string | null;
   owner?: string | null;

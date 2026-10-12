@@ -16,7 +16,7 @@ import json
 import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Annotated, Literal, Optional, Sequence, Union
+from typing import Annotated, Iterable, Literal, Optional, Sequence, Union
 from zoneinfo import ZoneInfo
 
 from celery import chain
@@ -32,6 +32,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.middleware.audit import _insert_audit_row
 from api.middleware.licence import enforce_licensed_modules
 from api.models.process_model import L1, L2, L3, L4, L5, ProcessModelDocument
+from api.routes.objects import FINISHED as _FINISHED_RUNS
 from api.routes.process_designer import _invalid, _reference, _rls
 from api.services import jobs
 from api.services.bpmn_export import BpmnExportError, ExportMeta, export_node, export_zip, landscape_counts
@@ -177,6 +178,7 @@ class CatalogueEntry(BaseModel):
     last_run: Optional[LastRun]
     in_progress: Optional[RunRef] = None  # the active run, so the UI can say "refreshing" over the last result
     failed: Optional[RunRef] = None       # the newest run, when it failed after the last completed one
+    dq_defects: Optional[int] = None      # failing findings on the DQ modules this process touches; None: no mapping or no DQ run
     sources: list[SourceTable]
 
 
@@ -189,6 +191,7 @@ class NodeStats(BaseModel):
     share: float
     median_seconds: Optional[float]
     fitness: Optional[float]
+    dq_defects: Optional[int] = None  # failing findings on the DQ modules this node maps to; None: no mapping or no DQ run
 
 
 class DfgEdge(BaseModel):
@@ -205,6 +208,13 @@ class DfgResponse(BaseModel):
     edges: list[DfgEdge]
     edge_threshold: float
     cached: bool = False
+
+
+class _DfgCacheEntry(BaseModel):
+    """What the flow cache stores: the graph WITHOUT dq_defects, plus each node's DQ modules, so a hit
+    re-applies fresh defect counts instead of serving ones up to CACHE_TTL old."""
+    dfg: DfgResponse
+    modules: dict[str, list[str]]
 
 
 def _no_none_list(v: Optional[Sequence[str]]) -> list[str]:
@@ -350,6 +360,43 @@ async def _document(db: AsyncSession, tenant: Tenant, run: RunRecord, flt: Proce
     return await db.run_sync(build)
 
 
+# --- DQ defects per process ---------------------------------------------------------------------------------
+
+
+async def _defects_by_module(db: AsyncSession, tenant: Tenant, system_id: str) -> Optional[dict[str, int]]:
+    """{DQ module: failing findings} of the system's newest finished analysis, or None when it has none.
+    Two tenant-scoped queries per request (newest run, then one GROUP BY over its findings), however many
+    processes or nodes read it; the findings scan uses ix_findings_tenant_version."""
+    await _rls(db, tenant)
+    args = {"t": str(tenant.id), "s": system_id, "done": list(_FINISHED_RUNS)}
+    version = (await db.execute(text(
+        "SELECT id FROM analysis_versions WHERE tenant_id = :t AND metadata->>'system_id' = :s "
+        "AND status = ANY(:done) ORDER BY run_at DESC LIMIT 1"), args)).scalar()
+    if version is None:
+        return None
+    rows = (await db.execute(text(
+        "SELECT module, count(*) FROM findings WHERE tenant_id = :t AND version_id = :v AND affected_count > 0 "
+        "GROUP BY module"), {"t": args["t"], "v": version})).fetchall()
+    return {m: n for m, n in rows}
+
+
+def _defects(defects: Optional[dict[str, int]], modules: Iterable[str]) -> Optional[int]:
+    """Sum over the distinct mapped modules; None when nothing maps or there is no DQ run (never a fabricated 0)."""
+    mods = set(modules)
+    return None if defects is None or not mods else sum(defects.get(m, 0) for m in mods)
+
+
+def _node_modules(node: Union[L1, L2, L3, L4, L5]) -> set[str]:
+    """DQ modules of a node: an L1's declared modules, an L5's rule modules, otherwise the union below it."""
+    if isinstance(node, L5):
+        return set(node.rule_modules)
+    if isinstance(node, L1):
+        return set(node.modules) | {m for c in node.l2 for m in _node_modules(c)}
+    kids: Sequence[Union[L2, L3, L4, L5]] = (node.l3 if isinstance(node, L2) else node.l4 if isinstance(node, L3)
+                                              else node.activities)
+    return {m for c in kids for m in _node_modules(c)}
+
+
 # --- catalogue and runs ---------------------------------------------------------------------------------------
 
 
@@ -366,7 +413,9 @@ async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
     newest = {r.l1: _summary(r) for r in (await db.execute(text(f"""
         SELECT DISTINCT ON (l1) {RUN_COLS} FROM process_discovery_runs
         WHERE tenant_id = :t AND system_id = :s ORDER BY l1, started_at DESC, id DESC"""), params)).fetchall()}
-    names = {x.id: x.name for x in reference_document().l1}
+    ref_l1 = {x.id: x for x in reference_document().l1}
+    names = {k: v.name for k, v in ref_l1.items()}
+    defects = await _defects_by_module(db, tenant, _id(system_id))
     out: list[CatalogueEntry] = []
     for l1 in L1S:
         r, n = done.get(l1), newest.get(l1)
@@ -375,6 +424,7 @@ async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
             id=n.id, status=n.status, job_id=n.job_id, error=n.error)
         out.append(CatalogueEntry(
             l1=l1, name=names.get(l1, l1),
+            dq_defects=_defects(defects, _node_modules(ref_l1[l1]) if l1 in ref_l1 else ()),
             coverage=r.coverage if r else "reference",
             reason=reason(l1, system_type),
             last_run=None if r is None else LastRun(
@@ -535,7 +585,15 @@ def _stats(node: Union[Parent, Child]) -> NodeStats:
     d = node.discovery
     return NodeStats(id=node.id, name=node.name, source=node.source, observed=bool(d and d.observed),
                      case_count=d.case_count if d else 0, share=d.share if d else 0.0,
-                     median_seconds=d.median_seconds if d else None, fitness=d.fitness if d else None)
+                     median_seconds=d.median_seconds if d else None, fitness=d.fitness if d else None,
+                     dq_defects=None)  # filled per request by _apply_defects, never cached
+
+
+def _apply_defects(dfg: DfgResponse, modules: dict[str, list[str]],
+                   defects: Optional[dict[str, int]]) -> DfgResponse:
+    def one(n: NodeStats) -> NodeStats:
+        return n.model_copy(update={"dq_defects": _defects(defects, modules.get(n.id, ()))})
+    return dfg.model_copy(update={"node": one(dfg.node), "nodes": [one(n) for n in dfg.nodes]})
 
 
 def _check_level(level: Optional[int], actual: int, parent_id: str) -> None:
@@ -573,18 +631,24 @@ async def dfg(run_id: str, request: Request, level: Optional[int] = Query(None, 
     flt, _ = _filter(request, run)
     client = _redis_client() if flt != ProcessFilter() else None
     key = f"{cache_key(_scope(tenant, run), flt, run.id)}:{node_id or ''}:{int(all_edges)}"
+    defects = await _defects_by_module(db, tenant, run.system_id)  # one lookup shared by every node, never cached
     if client is not None and (hit := client.get(key)):
-        cached = DfgResponse.model_validate_json(hit)
-        _check_level(level, cached.level, cached.node.id)  # a cache hit must not skip the level validation
-        return cached.model_copy(update={"cached": True})
+        try:
+            entry = _DfgCacheEntry.model_validate_json(hit)
+        except ValueError:  # an entry from before dq_defects existed: treat as a miss
+            entry = None
+        if entry is not None:
+            _check_level(level, entry.dfg.level, entry.dfg.node.id)  # a cache hit must not skip the level validation
+            return _apply_defects(entry.dfg, entry.modules, defects).model_copy(update={"cached": True})
     doc = await _document(db, tenant, run, flt)
     lvl, parent, kids = _children(doc, node_id)
     _check_level(level, lvl, parent.id)
     out = DfgResponse(level=lvl, node=_stats(parent), nodes=[_stats(k) for k in kids],
                       edges=_edges(parent, kids, all_edges), edge_threshold=EDGE_THRESHOLD)
+    modules = {n.id: sorted(_node_modules(n)) for n in [parent, *kids]}
     if client is not None:
-        client.setex(key, CACHE_TTL, out.model_dump_json())
-    return out
+        client.setex(key, CACHE_TTL, _DfgCacheEntry(dfg=out, modules=modules).model_dump_json())
+    return _apply_defects(out, modules, defects)
 
 
 def _variant(v: Variant) -> VariantOut:

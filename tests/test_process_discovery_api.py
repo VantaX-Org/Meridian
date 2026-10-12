@@ -228,6 +228,40 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params={**f, "level": 2})).json()["cached"] is True
             assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params={"node_id": "NOPE"})).status_code == 404
 
+            # dq_defects: None without a finished analysis of the system; fresh on every request, cache hit included
+            assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()["node"]["dq_defects"] is None
+            assert {r["l1"]: r for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()
+                    }["PTP"]["dq_defects"] is None
+            dq_v = str(uuid.uuid4())
+
+            def seed(check_id: str, affected: int) -> None:
+                with owner.begin() as conn:
+                    if check_id == "DQ1":
+                        conn.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) VALUES "
+                                          "(:v, :t, 'complete', CAST(:m AS jsonb))"),
+                                     {"v": dq_v, "t": tid, "m": json.dumps({"system_id": sid})})
+                    conn.execute(text("INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, "
+                                      "dimension, affected_count, total_count) VALUES (gen_random_uuid(), :v, :t, "
+                                      "'mm_purchasing', :c, 'low', 'validity', :a, 10)"),
+                                 {"v": dq_v, "t": tid, "c": check_id, "a": affected})
+            seed("DQ1", 5)
+            hit = (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()
+            assert hit["cached"] is True and hit["node"]["dq_defects"] == 1
+            seed("DQ2", 2)
+            hit = (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()
+            assert hit["cached"] is True and hit["node"]["dq_defects"] == 2  # fresh, not the cached 1
+            assert {r["l1"]: r for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()
+                    }["PTP"]["dq_defects"] == 2
+
+            # legacy cache entry (a bare DfgResponse, no dfg/modules keys): a miss, rewritten in the new format
+            ckey = next(k for k, val in redis.data.items() if '"modules"' in val and '"dfg"' in val)
+            legacy = json.dumps(json.loads(redis.data[ckey])["dfg"])
+            redis.data[ckey] = legacy
+            r = await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)
+            assert r.status_code == 200 and r.json()["cached"] is False
+            rewritten = json.loads(redis.data[ckey])
+            assert set(rewritten) == {"dfg", "modules"} and rewritten["dfg"]["node"]["id"] == "PTP"
+
             v = (await c.get(f"{BASE}/runs/{rid}/variants", headers=viewer)).json()
             assert v["case_type"] == "po_item" and v["total"] == len(v["items"]) > 0
             vf = (await c.get(f"{BASE}/runs/{rid}/variants", headers=viewer, params=f)).json()
