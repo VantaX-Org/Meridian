@@ -1,21 +1,22 @@
 // frontend/app/(app)/objects/[object]/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Notice, Pager, Pill, SeverityDot,
-  Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
+  Bar, Button, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, ScoreRing,
+  SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
   entityTabs,
 } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
+import { FilterChips, ObjectsHeader } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
 import { useRole } from "@/hooks/use-role";
-import { exportObject, getObject, type ObjectRule } from "@/lib/api/v1/objects";
+import { exportObject, getObject, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
 import { exportFindingRecords } from "@/lib/api/findings";
@@ -26,10 +27,32 @@ import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName } from "@/lib/format";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
+/** Page-level and tab-level hooks share these keys; a fresh window stops the tab remount refetching. */
+const STALE_MS = 30_000;
 const RULE_HISTORY_RUNS = 8;
 
 const READINESS_TONE: Record<string, "go" | "at-risk" | "no-go"> = { pass: "go", warn: "at-risk", fail: "no-go" };
+const READINESS_LABEL: Record<string, string> = { pass: "Go", warn: "At risk", fail: "No-go" };
+const TAB_KEYS = ["overview", "rules", "fields", "records"] as const;
+const SEVERITIES = ["critical", "high", "medium", "low"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }));
+const isBlocking = (r: ObjectRule) => r.severity === "critical" || r.severity === "high";
+
+const objectQuery = (object: string, run: string) => ({
+  queryKey: queryKeys.object(object, run),
+  queryFn: () => getObject(object, run),
+  enabled: !!run,
+  staleTime: STALE_MS,
+});
+const historyQuery = (object: string, run: string) => ({
+  queryKey: queryKeys.ruleHistoryBatch(run, object),
+  queryFn: () => getRuleHistoryBatch({ version_id: run, module: object, limit_runs: RULE_HISTORY_RUNS }),
+  enabled: !!run,
+  staleTime: STALE_MS,
+});
+
+const fixSheetHref = (object: string, run: string, key: string) =>
+  `/objects/${object}/records/${encodeURIComponent(key)}?run=${run}`;
 
 /** The field's most common value shape (highest share), or "—" when none was profiled. */
 function topShape(shapes: ShapeCount[]): string {
@@ -48,36 +71,36 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dimension = searchParams.get("dimension");
+  const severity = searchParams.get("severity");
   // Blocking = critical or high severity (the same rule the migration export uses). Only "true" filters.
   const blocking = searchParams.get("blocking") === "true";
-  const showAll = () => {
+  const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(searchParams.toString());
-    next.delete("blocking");
+    if (value) next.set(key, value); else next.delete(key);
     router.replace(`/objects/${object}?${next.toString()}`, { scroll: false });
   };
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.object(object, run),
-    queryFn: () => getObject(object, run),
-    enabled: !!run,
-  });
+  const clearFilters = () => {
+    const next = new URLSearchParams(searchParams.toString());
+    for (const k of ["blocking", "dimension", "severity"]) next.delete(k);
+    router.replace(`/objects/${object}?${next.toString()}`, { scroll: false });
+  };
+  const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
+  const batch = useQuery(historyQuery(object, run));
 
   const rulesRanked = data
     ? [...data.rules]
         .filter((r) => !dimension || r.dimension === dimension)
-        .filter((r) => !blocking || r.severity === "critical" || r.severity === "high")
+        .filter((r) => !severity || r.severity === severity)
+        .filter((r) => !blocking || isBlocking(r))
         .sort((a, b) => b.affected_count - a.affected_count)
     : [];
-  const batch = useQuery({
-    queryKey: queryKeys.ruleHistoryBatch(run, object),
-    queryFn: () => getRuleHistoryBatch({ version_id: run, module: object, limit_runs: RULE_HISTORY_RUNS }),
-    enabled: !!run,
-  });
 
   const delta = (checkId: string): number | null => {
     const runs = batch.data?.history[checkId];
     if (!runs || runs.length < 2 || runs[0].pass_rate == null || runs[1].pass_rate == null) return null;
     return runs[0].pass_rate - runs[1].pass_rate;
   };
+  const recordsHref = (checkId: string) => `/objects/${object}?run=${run}&tab=records&check_id=${checkId}`;
 
   const columns: ColumnDef<ObjectRule>[] = [
     {
@@ -86,40 +109,30 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       cell: ({ row }) =>
         isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : row.original.severity,
     },
-    { accessorKey: "check_id", header: "Check" },
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
     { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => row.original.dimension ?? "—" },
     {
       accessorKey: "affected_count",
-      header: "Affected",
-      cell: ({ row }) => (
-        <DrillLink href={`/objects/${object}?run=${run}&tab=records&check_id=${row.original.check_id}`}>
-          {row.original.affected_count}
-        </DrillLink>
-      ),
+      header: "Records failing",
+      cell: ({ row }) => <DrillLink href={recordsHref(row.original.check_id)}>{row.original.affected_count.toLocaleString()}</DrillLink>,
     },
     {
       accessorKey: "pass_rate",
       header: "Pass rate",
-      cell: ({ row }) => (row.original.pass_rate == null ? "—" : (
-        <DrillLink href={`/objects/${object}?run=${run}&tab=rules&check_id=${row.original.check_id}`}>
-          {Math.round(row.original.pass_rate * 100)}%
-        </DrillLink>
-      )),
+      cell: ({ row }) => (row.original.pass_rate == null ? "—" : `${(row.original.pass_rate * 100).toFixed(1)}%`),
     },
     {
       id: "trend",
       header: "Trend",
       cell: ({ row }) => {
         const d = delta(row.original.check_id);
-        if (d == null) return "—";
-        const pct = Math.round(d * 100);
-        if (pct === 0) return "No change.";
-        return (
-          <span style={{ color: pct > 0 ? "var(--m-pass)" : "var(--m-fail)" }}>
-            {pct > 0 ? "+" : ""}{pct} pts vs previous run.
-          </span>
-        );
+        return d == null ? "—" : <Delta value={d * 100} run="previous run" />;
       },
+    },
+    {
+      id: "open",
+      header: "Action",
+      cell: ({ row }) => <Button variant="ghost" size="sm" render={<Link href={recordsHref(row.original.check_id)} onClick={(e) => e.stopPropagation()}>Open records</Link>} />,
     },
   ];
 
@@ -128,50 +141,44 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   if (!data || data.rules.length === 0) {
     return (
       <EmptyState
-        title="No results for this object in this run."
-        ghost="ring"
+        title="No rules ran for this object"
+        ghost="table"
         detail="The run did not include this object's module."
-        action={<Button render={<Link href={`/objects?run=${run}`}>All objects</Link>} />}
-      />
-    );
-  }
-  const banner = blocking ? (
-    <Notice action={<Button variant="ghost" onClick={showAll}>Show all</Button>}>Showing blocking rules only.</Notice>
-  ) : null;
-  if (rulesRanked.length === 0) {
-    if (blocking && !dimension) {
-      return <div className="flex flex-col gap-3">{banner}<EmptyState title="No blocking rules for this object." detail="No critical or high severity check is failing here." /></div>;
-    }
-    return (
-      <EmptyState
-        title={`No ${dimension} checks for this object.`}
-        detail="Clear the dimension filter to see every check."
-        action={<Button render={<Link href={`/objects/${object}?run=${run}&tab=rules`}>Clear filter</Link>} />}
+        action={<Button render={<Link href={`/runs/${run}?tab=steps`}>Open run steps</Link>} />}
       />
     );
   }
   if (batch.isError) return <ErrorState message={apiErrorMessage(batch.error)} onRetry={() => batch.refetch()} />;
 
+  const dimensions = [...new Set(data.rules.map((r) => r.dimension).filter((d): d is string => !!d))].map((d) => ({ value: d, label: d }));
   return (
     <div className="flex flex-col gap-3">
-      {banner}
-      <DataTable
-        columns={columns}
-        data={rulesRanked}
-        getRowId={(row) => row.check_id}
-        onRowClick={(row) => router.push(`/objects/${object}?run=${run}&tab=records&check_id=${row.check_id}`)}
-      />
+      <div className="flex flex-wrap items-center gap-4">
+        <FilterChips label="Severity" value={severity} options={SEVERITIES} onChange={(v) => setParam("severity", v)} />
+        {dimensions.length > 1 ? <FilterChips label="Dimension" value={dimension} options={dimensions} onChange={(v) => setParam("dimension", v)} /> : null}
+        <FilterChips label="Show" value={blocking ? "true" : null} options={[{ value: "true", label: "Blocking only" }]} onChange={(v) => setParam("blocking", v)} />
+      </div>
+      {rulesRanked.length === 0 ? (
+        <EmptyState
+          title="No rules match"
+          detail="No rule fits the current filters."
+          action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>}
+        />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={rulesRanked}
+          getRowId={(row) => row.check_id}
+          onRowClick={(row) => router.push(recordsHref(row.check_id))}
+        />
+      )}
     </div>
   );
 }
 
 function OverviewTab({ object, run }: { object: string; run: string }) {
   const router = useRouter();
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.object(object, run),
-    queryFn: () => getObject(object, run),
-    enabled: !!run,
-  });
+  const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
@@ -182,46 +189,71 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
     y: score,
     dimension,
   }));
+  const blockingRules = data.rules.filter((r) => isBlocking(r) && r.affected_count > 0).length;
+  const rulesHref = `/objects/${object}?run=${run}&tab=rules`;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-6">
-        <Stat label="Composite score" value={data.composite_score != null ? String(data.composite_score) : "—"} href={`/objects/${object}?run=${run}&tab=rules`} />
-        <Stat label="Failing checks" value={String(data.failing_checks)} href={`/objects/${object}?run=${run}&tab=rules`} />
-        <Stat label="Affected records" value={String(data.affected_records)} href={`/objects/${object}?run=${run}&tab=records`} />
+      <div className="flex flex-wrap items-center gap-6">
+        <Card title="DQS" padding="sm">
+          <div className="flex items-center gap-3">
+            {data.composite_score != null ? <ScoreRing score={data.composite_score} size={48} /> : null}
+            <span className="m-numeric font-semibold" style={{ fontSize: "var(--m-text-stat)", minWidth: "4ch" }}>{data.composite_score != null ? String(data.composite_score) : "—"}</span>
+          </div>
+        </Card>
+        <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
+        <Stat label="Affected records" value={data.affected_records.toLocaleString()} href={`/objects/${object}?run=${run}&tab=records`} />
       </div>
-      {dimensionPoints.length === 0 ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No dimension scores for this object in this run.</p>
-      ) : (
-        <Bar
-          data={dimensionPoints}
-          onPointClick={(p) => router.push(`/objects/${object}?run=${run}&tab=rules&dimension=${p.dimension ?? ""}`)}
-        />
-      )}
+      <Card title="Score by dimension">
+        {dimensionPoints.length === 0 ? (
+          <EmptyState
+            title="No dimension scores"
+            detail="This run produced no per-dimension scores for this object."
+            action={<Button render={<Link href={rulesHref}>Open rules</Link>} />}
+          />
+        ) : (
+          <Bar
+            data={dimensionPoints}
+            onPointClick={(p) => router.push(`${rulesHref}&dimension=${p.dimension ?? ""}`)}
+          />
+        )}
+      </Card>
     </div>
   );
 }
 
-function FieldsTab({ object, run }: { object: string; run: string }) {
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.versionProfileByVersion(run, object),
-    queryFn: () => getProfileByVersion(run, object),
-    enabled: !!run,
-  });
+const profileQuery = (object: string, run: string) => ({
+  queryKey: queryKeys.versionProfileByVersion(run, object),
+  queryFn: () => getProfileByVersion(run, object),
+  enabled: !!run,
+  staleTime: STALE_MS,
+});
+const recordsQuery = (run: string, checkId: string, page: number) => ({
+  queryKey: [...queryKeys.rule(checkId, run), page],
+  queryFn: () => getFindingRecords(run, checkId, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+  enabled: !!run && !!checkId,
+  staleTime: STALE_MS,
+});
 
-  if (isLoading) return <Skeleton height={240} />;
+function FieldsTab({ object, run }: { object: string; run: string }) {
+  const { data, isLoading, isError, error, refetch } = useQuery(profileQuery(object, run));
+
+  if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
   if (!data || data.tables.length === 0) {
-    return <EmptyState title="No field profile for this object in this run." />;
+    return (
+      <EmptyState
+        title="No field profile for this object"
+        detail="The run did not profile this object's fields."
+        action={<Button render={<Link href={`/runs/${run}?tab=steps`}>Open run steps</Link>} />}
+      />
+    );
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {data.tables.map((table) => (
-        <section key={table.table} className="flex flex-col gap-2">
-          <h2 className="text-[13px] font-semibold">
-            <Mono>{table.table}</Mono>
-          </h2>
+        <Card key={table.table} title={<Mono>{table.table}</Mono>} padding="sm">
           <DataTable
             columns={[
               {
@@ -243,7 +275,7 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
                 header: "Top values",
                 cell: ({ row }) =>
                   row.original.stats.masked ? (
-                    <span style={{ color: "var(--m-ink-3)" }}>masked: {row.original.stats.mask_reason ?? "unknown"}</span>
+                    <Pill tone="neutral">Masked: {row.original.stats.mask_reason ?? "unknown"}</Pill>
                   ) : (
                     topValues(row.original.stats.top_values)
                   ),
@@ -252,19 +284,33 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
             data={table.fields}
             getRowId={(f) => f.field}
           />
-        </section>
+        </Card>
       ))}
     </div>
   );
 }
 
 function RecordsTab({ object, run, checkId }: { object: string; run: string; checkId: string }) {
+  const router = useRouter();
   const [page, setPage] = useState(1);
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: [...queryKeys.rule(checkId, run), page],
-    queryFn: () => getFindingRecords(run, checkId, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
-    enabled: !!run && !!checkId,
-  });
+  const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, checkId, page));
+  // Fix sheet for the row last hovered or focused; `f` opens it (falls back to the first row).
+  const activeKey = useRef<string | null>(null);
+  const trackRow = (target: EventTarget) => {
+    const key = (target as HTMLElement).closest?.("tr")?.querySelector<HTMLElement>("[data-fix]")?.dataset.fix;
+    if (key) activeKey.current = key;
+  };
+  const firstKey = data?.records[0]?.record_key;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.key !== "f" || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable]")) return;
+      const key = activeKey.current ?? firstKey;
+      if (key) router.push(fixSheetHref(object, run, key));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [firstKey, object, run, router]);
 
   // Spec §5.2: one mono column per field_values key, unioned across the current page of records.
   const fieldValueKeys = useMemo(() => {
@@ -292,26 +338,33 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
         id: "fix",
         header: "Fix sheet",
         cell: ({ row }) => (
-          // DrillLink has no way to address the record fix-sheet route, so this is a plain Link.
-          <Link
-            href={`/objects/${object}/records/${encodeURIComponent(row.original.record_key)}?run=${run}`}
-            style={{ color: "var(--m-accent)" }}
-          >
-            Open fix sheet
-          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            render={
+              <Link
+                href={fixSheetHref(object, run, row.original.record_key)}
+                data-fix={row.original.record_key}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Open fix sheet
+              </Link>
+            }
+          />
         ),
       },
     ],
     [object, run, fieldValueKeys],
   );
 
-  if (isLoading) return <Skeleton height={240} />;
+  if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
   if (!data || data.records.length === 0) {
     return (
       <EmptyState
-        title="No failing records for this rule."
+        title="No failing records for this rule"
         detail="Every record passed this check in this run."
+        action={<Button render={<Link href={`/objects/${object}?run=${run}&tab=rules`}>Back to rules</Link>} />}
       />
     );
   }
@@ -327,14 +380,25 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
         moduleId={data.records[0]?.module ?? ""}
         fields={Object.keys(data.records[0]?.field_values ?? {})}
       />
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>
-          {data.total} record{data.total === 1 ? "" : "s"} fail {checkId}.
-        </p>
-        <ExportMenu options={exportOptions} />
-      </div>
-      <DataTable columns={columns} data={data.records} getRowId={(row) => row.record_key} />
-      <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
+      <Card
+        title={<>{data.total.toLocaleString()} record{data.total === 1 ? "" : "s"} fail <Mono>{checkId}</Mono></>}
+        actions={
+          <>
+            <Button render={<Link href={fixSheetHref(object, run, data.records[0].record_key)}>Open fix sheet</Link>} />
+            <ExportMenu options={exportOptions} />
+          </>
+        }
+      >
+        <div onFocusCapture={(e) => trackRow(e.target)} onPointerOver={(e) => trackRow(e.target)}>
+          <DataTable
+            columns={columns}
+            data={data.records}
+            getRowId={(row) => row.record_key}
+            onRowClick={(row) => router.push(fixSheetHref(object, run, row.record_key))}
+          />
+        </div>
+        <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
+      </Card>
       <RootCauseSection run={run} ruleId={checkId} />
     </div>
   );
@@ -344,6 +408,7 @@ export default function ObjectDetailPage() {
   const params = useParams<{ object: string }>();
   const search = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { can } = useRole();
   const object = params.object;
   const run = search.get("run") ?? "";
@@ -356,19 +421,41 @@ export default function ObjectDetailPage() {
     router.push(`/objects/${object}?${params.toString()}`);
   };
 
-  const { data } = useQuery({
-    queryKey: queryKeys.object(object, run),
-    queryFn: () => getObject(object, run),
-    enabled: !!run,
-  });
+  // All detail queries start together at page level; tabs share these keys, so switching tabs never waterfalls.
+  const { data } = useQuery(objectQuery(object, run));
   const { data: version } = useQuery({
     queryKey: queryKeys.run(run),
     queryFn: () => getVersion(run),
     enabled: !!run,
   });
+  useQuery(historyQuery(object, run));
+  useQuery(profileQuery(object, run));
+  useQuery(recordsQuery(run, checkId, 1));
+
+  // Header content from the list cache while the detail request is in flight.
+  const listed = queryClient
+    .getQueryData<{ objects: ObjectSummary[] }>(queryKeys.objects(run))
+    ?.objects.find((o) => o.module === object);
+  const summary = data ?? listed;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable]")) return;
+      const i = ["1", "2", "3", "4"].indexOf(e.key);
+      if (i >= 0) setTab(TAB_KEYS[i]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   if (!run) {
-    return <EmptyState title="Select a run to see this object's data quality." />;
+    return (
+      <EmptyState
+        title="Select a run to see this object's data quality"
+        action={<Button render={<Link href="/objects">All objects</Link>} />}
+      />
+    );
   }
 
   const exportOptions = [
@@ -383,17 +470,25 @@ export default function ObjectDetailPage() {
         ),
     },
   ];
+  const meta = [
+    version?.label ? `Run ${version.label}` : null,
+    summary ? `${summary.failing_checks.toLocaleString()} failing checks` : null,
+    summary ? `${summary.affected_records.toLocaleString()} affected records` : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <strong>{data?.label ?? object}</strong>
-          {data?.readiness ? <Pill tone={READINESS_TONE[data.readiness] ?? "neutral"}>{data.readiness}</Pill> : null}
-          <OwnerPicker kind="object" refId={object} />
-        </div>
-        <ExportMenu options={data ? exportOptions : emptyExportOptions(exportOptions)} />
-      </header>
+      <ObjectsHeader
+        title={summary?.label ?? formatModuleName(object)}
+        meta={meta || undefined}
+        status={summary?.readiness ? <Pill tone={READINESS_TONE[summary.readiness] ?? "neutral"}>{READINESS_LABEL[summary.readiness] ?? summary.readiness}</Pill> : null}
+        actions={
+          <>
+            <OwnerPicker kind="object" refId={object} />
+            <ExportMenu options={data ? exportOptions : emptyExportOptions(exportOptions)} />
+          </>
+        }
+      />
       <Tabs
         value={tab}
         onValueChange={setTab}
@@ -407,7 +502,11 @@ export default function ObjectDetailPage() {
             content: checkId ? (
               <RecordsTab object={object} run={run} checkId={checkId} />
             ) : (
-              <EmptyState title="Open the rules tab and choose a rule to see its failing records." />
+              <EmptyState
+                title="No rule selected"
+                detail="Choose a rule to see its failing records."
+                action={<Button render={<Link href={`/objects/${object}?run=${run}&tab=rules`}>Open rules</Link>} />}
+              />
             ),
           },
           ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, exportOptions: data ? exportOptions : undefined, canExport: can("export") }),

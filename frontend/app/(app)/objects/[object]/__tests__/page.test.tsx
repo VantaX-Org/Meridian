@@ -14,9 +14,10 @@ const push = vi.fn((href: string) => {
   const q = href.split("?")[1] ?? "";
   searchParams = new URLSearchParams(q);
 });
+const replace = vi.fn();
 vi.mock("next/navigation", () => ({
   useParams: () => ({ object: "material_master" }),
-  useRouter: () => ({ push, replace: vi.fn() }),
+  useRouter: () => ({ push, replace }),
   useSearchParams: () => searchParams,
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
@@ -56,8 +57,8 @@ beforeEach(() => {
 describe("ObjectDetailPage", () => {
   it("renders the overview tab's stats and dimension chart", async () => {
     renderWithQuery(<ObjectDetailPage />);
-    await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
-    expect(screen.getByText("72.5")).toBeInTheDocument();
+    expect(await screen.findByText("72.5")).toBeInTheDocument();
+    expect(screen.getByText("Material Master")).toBeInTheDocument();
   });
 
   it("lists rules on the rules tab and navigates to the records tab on row click", async () => {
@@ -82,7 +83,7 @@ describe("ObjectDetailPage", () => {
     });
     renderWithQuery(<ObjectDetailPage />);
     fireEvent.click(await screen.findByRole("tab", { name: "Rules" }));
-    await waitFor(() => expect(screen.getByText(/pts vs previous run/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^[+-]?\d+\.\d$/)).toBeInTheDocument());
     expect(batch).toHaveBeenCalledTimes(1);
     expect(batch).toHaveBeenCalledWith({ version_id: "v1", module: "material_master", limit_runs: 8 });
   });
@@ -98,7 +99,7 @@ describe("ObjectDetailPage", () => {
     vi.spyOn(objectsApi, "getObject").mockResolvedValue({ ...OBJECT, rules: [] });
     renderWithQuery(<ObjectDetailPage />);
     fireEvent.click(await screen.findByRole("tab", { name: "Rules" }));
-    await waitFor(() => expect(screen.getByText(/no results for this object in this run/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no rules ran for this object/i)).toBeInTheDocument());
   });
 
   it("renders profile rows on the fields tab for an upload-sourced run (no system_id)", async () => {
@@ -139,7 +140,7 @@ describe("ObjectDetailPage", () => {
     renderWithQuery(<ObjectDetailPage />);
     fireEvent.click(await screen.findByRole("tab", { name: "Records" }));
     await waitFor(() =>
-      expect(screen.getByText(/open the rules tab and choose a rule/i)).toBeInTheDocument(),
+      expect(screen.getByText(/choose a rule to see its failing records/i)).toBeInTheDocument(),
     );
   });
 
@@ -153,10 +154,9 @@ describe("ObjectDetailPage", () => {
     });
     renderWithQuery(<ObjectDetailPage />);
     await waitFor(() => expect(screen.getByText("MATNR=100001")).toBeInTheDocument());
-    expect(screen.getByRole("link", { name: /open fix sheet/i })).toHaveAttribute(
-      "href",
-      "/objects/material_master/records/MATNR%3D100001?run=v1",
-    );
+    for (const link of screen.getAllByRole("link", { name: /open fix sheet/i })) {
+      expect(link).toHaveAttribute("href", "/objects/material_master/records/MATNR%3D100001?run=v1");
+    }
   });
 
   it("shows an error state when the object request fails", async () => {
@@ -176,11 +176,9 @@ describe("ObjectDetailPage", () => {
   it("offers to clear the dimension filter when it matches no rules", async () => {
     searchParams = new URLSearchParams("run=v1&tab=rules&dimension=timeliness");
     renderWithQuery(<ObjectDetailPage />);
-    await waitFor(() => expect(screen.getByText(/no timeliness checks for this object/i)).toBeInTheDocument());
-    expect(screen.getByRole("link", { name: /clear filter/i })).toHaveAttribute(
-      "href",
-      "/objects/material_master?run=v1&tab=rules",
-    );
+    await waitFor(() => expect(screen.getByText(/no rule fits the current filters/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /clear filters/i }));
+    expect(replace).toHaveBeenCalledWith("/objects/material_master?run=v1&tab=rules", { scroll: false });
   });
 
   it("preserves check_id when switching tabs away from and back to records", async () => {
@@ -251,7 +249,7 @@ describe("ObjectDetailPage", () => {
     await waitFor(() => expect(screen.getByText("AAAA (90%)")).toBeInTheDocument());
     expect(screen.getByText("AAAA (90%)")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
     expect(screen.getByText("FERT (90)")).toBeInTheDocument();
-    expect(screen.getByText("masked: privacy")).toBeInTheDocument();
+    expect(screen.getByText("Masked: privacy")).toBeInTheDocument();
     expect(screen.getByText("5 (5%)")).toBeInTheDocument();
     expect(screen.getByText("MARA.MTART")).toBeInTheDocument();
     expect(screen.getByText("MARA.MTART")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
@@ -264,20 +262,19 @@ describe("ObjectDetailPage", () => {
   });
 
   describe("?blocking= filter on the rules tab", () => {
-    it("blocking=true keeps only critical and high rules and shows a Showing banner with Show all", async () => {
+    it("blocking=true keeps only critical and high rules and pressed Blocking only chip", async () => {
       searchParams = new URLSearchParams("run=v1&tab=rules&blocking=true");
       renderWithQuery(<ObjectDetailPage />);
       await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
       expect(screen.queryByText("mm_bad_uom")).toBeNull();
-      expect(screen.getByText("Showing blocking rules only.")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Show all" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Blocking only", pressed: true })).toBeInTheDocument();
     });
-    it.each(["constructor", "__proto__", "false", "1", "TRUE"])("blocking=%s applies no filter and shows no banner", async (g) => {
+    it.each(["constructor", "__proto__", "false", "1", "TRUE"])("blocking=%s applies no filter and shows no pressed chip", async (g) => {
       searchParams = new URLSearchParams(`run=v1&tab=rules&blocking=${g}`);
       renderWithQuery(<ObjectDetailPage />);
       await waitFor(() => expect(screen.getByText("mm_bad_uom")).toBeInTheDocument());
       expect(screen.getByText("mm_missing_desc")).toBeInTheDocument();
-      expect(screen.queryByText(/^Showing/)).toBeNull();
+      expect(screen.getByRole("button", { name: "Blocking only", pressed: false })).toBeInTheDocument();
     });
   });
 });
