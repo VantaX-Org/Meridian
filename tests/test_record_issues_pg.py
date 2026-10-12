@@ -147,6 +147,22 @@ def test_lifecycle_and_diff(app_engine):
     assert _issues(app, other) == {}
 
 
+def test_partial_run_does_not_take_over_the_lifecycle(app_engine):
+    from sqlalchemy import text
+
+    owner, app = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'Partial')"), {"t": tid})
+        # a newer run of the same system stopped at the time limit with modules missing
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, run_at, metadata) "
+                       "VALUES (:v, :t, 'partial', now() + interval '1 hour', CAST(:m AS jsonb))"),
+                  {"v": str(uuid.uuid4()), "t": tid, "m": json.dumps({"system_id": sid})})
+
+    _, stats = _run(app, tid, sid, [_result("CHK-A", ["1"])], ["1"])
+    assert "lifecycle" not in stats and stats["created"] == 1
+
+
 def test_issue_and_diff_api(app_engine):
     """Routes against the same database, through asyncpg, as a non-superuser."""
     import asyncio

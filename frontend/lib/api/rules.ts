@@ -262,7 +262,7 @@ export interface RuleVersion {
 }
 
 /** Change history of one rule, by its row id. */
-export async function getRuleVersions(ruleUuid: string): Promise<{ rule_id: string; shipped: boolean; versions: RuleVersion[] }> {
+export async function getRuleVersions(ruleUuid: string): Promise<{ rule_id: string; shipped: { source: string; hash: string; app_version: string; rule: Record<string, unknown> } | null; versions: RuleVersion[] }> {
   const { data } = await apiClient.get(`/api/v1/rules/${ruleUuid}/versions`);
   return data;
 }

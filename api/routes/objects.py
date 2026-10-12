@@ -225,6 +225,8 @@ class ObjectDetailOut(BaseModel):
     label: str
     composite_score: Optional[float] = None
     readiness: Optional[str] = None
+    failing_checks: int
+    affected_records: int
     dimension_scores: dict[str, float]
     rules: list[ObjectRuleOut]
 
@@ -244,11 +246,14 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
     ), {"v": str(run), "t": str(tenant.id), "m": module})).fetchall()
     if not rows and not mod_summary:
         raise HTTPException(404, "Object not found for this run")
+    failing = [r for r in rows if r[3] > 0]  # same definition as list_objects
     return {
         "module": module,
         "label": _label(module),
         "composite_score": score,
         "readiness": tier(score, thresholds) if score is not None else None,
+        "failing_checks": len(failing),
+        "affected_records": sum(r[3] for r in failing),
         "dimension_scores": {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
                              if (mod_summary.get("dimension_coverage") or {}).get(d) != 0},  # coverage 0: not measured
         "rules": [
