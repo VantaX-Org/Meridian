@@ -77,7 +77,7 @@ async def test_impact_computes_value_at_risk_when_feature_priced(two_tenants_wit
     body = r.json()
     assert body["version_id"] == v1
     assert body["rows"] == [{
-        "feature": "three_way_match", "status": "blocked", "record_count": 42,
+        "feature": "three_way_match", "l1": None, "status": "blocked", "record_count": 42,
         "value_per_record": 150.0, "value_at_risk": 6300.0, "causing_rules": ["MM-003"],
     }]
 

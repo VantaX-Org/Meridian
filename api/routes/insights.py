@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,8 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.config_impact import get_config_impact
 from api.routes.merge_explain import AUTO_MERGE, REVIEW_FLOOR, build_cluster_graph
 from api.routes.record_issues import _rls
-from api.services.insights_impact import value_at_risk
+from api.services import insights_aggregate as agg
+from api.services.insights_impact import by_l1, feature_l1, tenant_currency, value_at_risk, worst_l1
 from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
 from api.services.insights_readiness import build_wave_cells
 from api.services.rbac import require_permission
@@ -26,6 +27,15 @@ _METRIC_LABEL = {
     "grir_uom_variance": "GR/IR variance (UoM defects)",
     "blocked_sales": "Sales orders blocked (customer master)",
     "duplicate_payment": "Duplicate vendor payments",
+}
+
+
+# L1 process each proven-cost metric belongs to. Metrics are only ever grouped within one L1.
+_METRIC_L1 = {
+    "late_po": "procure_to_pay",
+    "grir_uom_variance": "procure_to_pay",
+    "duplicate_payment": "procure_to_pay",
+    "blocked_sales": "order_to_cash",
 }
 
 
@@ -140,6 +150,7 @@ async def get_impact(
             continue
         rows.append({
             "feature": r["feature"],
+            "l1": feature_l1().get(r["feature"]),
             "status": r["status"],
             "record_count": r["total_affected_records"],
             "value_per_record": v,
@@ -157,15 +168,13 @@ async def get_proven_cost(
 ):
     await _rls(db, tenant)
 
-    from checks.cost import defaults
-
     # Resolved before the version lookup so the empty ("no rows yet") response still
     # carries the tenant's real currency instead of None.
     cost_model = (await db.execute(
         text("SELECT cost_model FROM tenants WHERE id = :t"),
         {"t": str(tenant.id)},
     )).scalar() or {}
-    currency = cost_model.get("currency") or defaults().get("currency")
+    currency = tenant_currency(cost_model)
 
     # No explicit version — same "latest with rows" idea as get_impact/get_readiness.
     if version_id is None:
@@ -181,7 +190,8 @@ async def get_proven_cost(
             {"t": str(tenant.id)},
         )).scalar()
         if version_id is None:
-            return {"version_id": None, "currency": currency, "total": 0.0, "rows": [], "value_at_risk_total": 0.0}
+            return {"version_id": None, "currency": currency, "rows": [], "cost_by_l1": [],
+                    "value_at_risk_by_l1": []}
 
     res = await db.execute(text("""
         SELECT metric, amount, currency, by_currency, documents, check_ids, items
@@ -193,17 +203,22 @@ async def get_proven_cost(
              "items": r.items}
             for m, label in _METRIC_LABEL.items() if (r := by_metric.get(m))]
     # A metric spanning more than one currency (api/services/proven_cost.py's
-    # _result) carries currency=None with a by_currency breakdown instead; sum each
+    # _result) carries currency=None with a by_currency breakdown instead; take each
     # row's by_currency share of the tenant's chosen currency, never converting the
-    # rest, rather than filtering on row.currency (which would drop the ZAR share of
-    # every mixed-currency metric).
-    total = round(sum(float((r["by_currency"] or {}).get(currency, 0.0)) for r in rows), 2)
+    # rest. Costs are grouped per L1 only: there is deliberately no total across L1s.
+    cost_by_l1: dict[str, float] = {}
+    for r in rows:
+        r["l1"] = _METRIC_L1[r["metric"]]
+        cost_by_l1[r["l1"]] = round(
+            cost_by_l1.get(r["l1"], 0.0) + float((r["by_currency"] or {}).get(currency, 0.0)), 2)
 
     impact = await get_impact(version_id, db, tenant)
-    value_at_risk_total = round(sum(r["value_at_risk"] for r in impact["rows"]), 2)
+    # Per-L1 only: value at risk is never summed across L1s.
+    var_by_l1 = [{"l1": k, "value_at_risk": v} for k, v in sorted(by_l1(impact["rows"]).items())]
 
-    return {"version_id": str(version_id), "currency": currency, "total": total, "rows": rows,
-            "value_at_risk_total": value_at_risk_total}
+    return {"version_id": str(version_id), "currency": currency, "rows": rows,
+            "cost_by_l1": [{"l1": k, "amount": v} for k, v in sorted(cost_by_l1.items())],
+            "value_at_risk_by_l1": var_by_l1}
 
 
 @router.get("/owners", dependencies=[Depends(require_permission("view"))])
@@ -339,19 +354,18 @@ async def get_exec(
     rows = impact["rows"]
     owner_rows = owners["owners"]
     no_go = sum(1 for c in cells if c["verdict"] == "no_go")
-    total_value_at_risk = sum(r["value_at_risk"] for r in rows)
-    waterfall = [{"x": r["feature"], "y": r["value_at_risk"]} for r in rows]
-    proven_cost_total = proven_cost["total"]
+    worst_name, worst_amount = worst_l1(rows)
+    waterfall = [{"x": r["feature"], "y": r["value_at_risk"], "l1": r["l1"]} for r in rows]
+    top_cost = max(proven_cost["cost_by_l1"], key=lambda c: c["amount"], default=None)
 
-    narrative = (
-        f"{no_go} of {len(cells)} readiness cells are no-go. "
-        f"{len(rows)} features carry {total_value_at_risk:,.2f} in value at risk. "
-        f"{len(owner_rows)} owners have open digests."
-    )
+    exposure = (f"{len(rows)} priced features are affected; the largest exposure is {worst_amount:,.2f} in {(worst_name or '').replace('_', ' ')}."
+                if rows else "No priced features are affected.")
+    narrative = f"{no_go} of {len(cells)} readiness cells are no-go. {exposure} {len(owner_rows)} owners have open digests."
     # Only append the proven-cost sentence when there's something to report —
     # otherwise an empty tenant would read "0.00 ZAR proven lost or held".
-    if proven_cost["rows"]:
-        narrative += f" {proven_cost_total:,.2f} {proven_cost['currency']} proven lost or held in transactions."
+    if top_cost:
+        narrative += (f" The largest proven cost is {top_cost['amount']:,.2f} {proven_cost['currency']}"
+                      f" lost or held in transactions in {top_cost['l1'].replace('_', ' ')}.")
 
     return {
         "version_id": str(version_id),
@@ -360,5 +374,58 @@ async def get_exec(
         "waterfall": waterfall,
         "impact_rows": rows,
         "owner_rows": owner_rows,
-        "proven_cost_total": proven_cost_total,
+        "proven_cost_by_l1": proven_cost["cost_by_l1"],
     }
+
+
+# -- aggregate endpoints (insights redesign); all view-gated, deterministic ----------------
+
+async def _agg(db: AsyncSession, tenant: Tenant, fn, *args, **kw) -> dict:
+    await _rls(db, tenant)
+    out = await db.run_sync(lambda s: fn(s, str(tenant.id), *args, **kw))
+    if out is None:
+        raise HTTPException(404, "No completed run found")
+    return out
+
+
+@router.get("/overview", dependencies=[Depends(require_permission("view"))])
+async def get_overview(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+                       db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Board overview for one run. A blocker is a failing rule that is critical, or that the
+    S/4 readiness pack counts as blocking. Blockers are never summed across L1s."""
+    return await _agg(db, tenant, agg.overview, version_id and str(version_id), module)
+
+
+@router.get("/rules", dependencies=[Depends(require_permission("view"))])
+async def get_rule_ranking(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+                           severity: Optional[str] = None, dimension: Optional[str] = None,
+                           auto_fixable: bool = False, s4_only: bool = False,
+                           limit: int = Query(50, ge=1, le=500),
+                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    return await _agg(db, tenant, agg.rules, version_id and str(version_id), module, severity=severity,
+                      dimension=dimension, auto_fixable=auto_fixable, s4_only=s4_only, limit=limit)
+
+
+@router.get("/root-causes", dependencies=[Depends(require_permission("view"))])
+async def get_root_causes(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+                          db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    return await _agg(db, tenant, agg.root_causes, version_id and str(version_id), module)
+
+
+@router.get("/heatmap", dependencies=[Depends(require_permission("view"))])
+async def get_heatmap(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+                      db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    return await _agg(db, tenant, agg.heatmap, version_id and str(version_id), module)
+
+
+@router.get("/trends", dependencies=[Depends(require_permission("view"))])
+async def get_trends(version_id: Optional[uuid.UUID] = None, system_id: Optional[str] = None,
+                     limit: int = Query(12, ge=1, le=50),
+                     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    return await _agg(db, tenant, agg.trends, version_id and str(version_id), system_id, limit)
+
+
+@router.get("/cleansing", dependencies=[Depends(require_permission("view"))])
+async def get_cleansing(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    return await _agg(db, tenant, agg.cleansing, version_id and str(version_id), module)

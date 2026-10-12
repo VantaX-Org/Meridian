@@ -1,0 +1,120 @@
+{% extends "_base.html" %}
+{% block body %}
+{% set ov = overview %}
+
+<h2>Executive summary</h2>
+{% if narrative %}
+<p>{{ narrative | join(" ") }}</p>
+{% else %}
+<div class="empty">This run has no score to summarise.</div>
+{% endif %}
+<div class="figures">
+    <div class="figure primary"><div class="v">{% if ov.dqs.composite is not none %}{{ ov.dqs.composite | n(1) }}<small> / 100</small>{% else %}<span class="muted">—</span>{% endif %}</div>
+        <div class="k">Data quality score{% if ov.dqs.delta is not none %}, {{ ov.dqs.delta | signed(1) }} pts since the earlier run{% else %}, no earlier run{% endif %}</div></div>
+    <div class="figure"><div class="v">{{ ov.blockers.count | n }}</div>
+        <div class="k">Blocking rules{% if ov.blockers.previous is not none %}, {{ (ov.blockers.count - ov.blockers.previous) | signed(0) }} since the earlier run{% else %}, no earlier run{% endif %}</div></div>
+    <div class="figure"><div class="v">{% if ov.auto_fixable.pct is not none %}{{ ov.auto_fixable.pct | pct(0) }}{% else %}<span class="muted">—</span>{% endif %}</div>
+        <div class="k">Failing records with a proposed fix</div></div>
+    <div class="figure"><div class="v">{% if ov.value_at_risk.worst_l1 %}{{ currency }} {{ ov.value_at_risk.worst_l1_amount | n }}{% else %}<span class="muted">—</span>{% endif %}</div>
+        <div class="k">{% if ov.value_at_risk.worst_l1 %}Largest value at risk, in {{ ov.value_at_risk.worst_l1 }}{% else %}Value at risk, no priced features{% endif %}</div></div>
+</div>
+{% if l1_rows %}
+<p class="note">Value at risk by business process ({{ currency }}). Processes are not added together:
+{% for r in l1_rows %}{{ r.l1 or "Unassigned" }} {{ r.amount | n }}{% if not loop.last %}; {% endif %}{% endfor %}.</p>
+{% endif %}
+
+<h3>Top root causes</h3>
+{% if cluster_chart %}
+<div class="chart">{{ cluster_chart }}</div>
+<p class="note">Impact is failing records weighted by severity, grouped by the field the rules check.</p>
+{% else %}
+<div class="empty">No failing rules to group.</div>
+{% endif %}
+{% if ai_summary %}
+<div class="callout"><div class="label">AI-generated summary. Figures in this report are computed, this text is not</div>{{ ai_summary }}</div>
+{% endif %}
+
+<h2 class="page-break">Scorecards</h2>
+<table class="data keep">
+<thead><tr><th>Dimension</th><th class="r">Score</th><th class="r">Earlier run</th><th class="r">Change</th></tr></thead>
+<tbody>
+{% for d in dim_rows %}
+<tr><td>{{ d.name | capitalize }}</td><td class="r">{{ d.score | n(1) }}</td>
+    <td class="r">{% if compared %}{{ d.previous | n(1) }}{% else %}<span class="muted">no earlier run</span>{% endif %}</td>
+    <td class="r">{% if d.delta is not none %}{{ d.delta | signed(1) }}{% else %}<span class="muted">{% if compared %}—{% else %}no earlier run{% endif %}</span>{% endif %}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<h3>Score over the last {{ trend_count }} run{{ "s" if trend_count != 1 }}</h3>
+{% if trend_chart %}<div class="chart">{{ trend_chart }}</div>{% else %}<div class="empty">No earlier runs to chart.</div>{% endif %}
+<h3>Biggest module movements</h3>
+{% if delta_chart %}<div class="chart">{{ delta_chart }}</div>{% else %}<div class="empty">No earlier run to compare with.</div>{% endif %}
+
+<h2 class="page-break">Migration readiness</h2>
+<h3>Modules by wave</h3>
+{% if waves %}
+<table class="data">
+<thead><tr><th>Wave</th><th>Module</th><th class="r">Score</th><th class="r">Blocking rules</th></tr></thead>
+<tbody>
+{% for w in waves %}{% for m in w.modules %}
+<tr><td>{% if loop.first %}{{ w.name }}{% endif %}</td><td>{{ m.name | module }}</td><td class="r">{{ m.score | n(1) }}</td><td class="r">{{ m.blockers | n }}</td></tr>
+{% else %}<tr><td>{{ w.name }}</td><td colspan="3"><span class="muted">No scored modules</span></td></tr>{% endfor %}{% endfor %}
+</tbody>
+</table>
+{% else %}<div class="empty">No migration waves are planned.</div>{% endif %}
+<div class="cols">
+<div><h3>Blocking rules by S/4HANA area</h3>{% if area_blocking_chart %}<div class="chart">{{ area_blocking_chart }}</div>{% else %}<div class="empty">No readiness rules evaluated.</div>{% endif %}</div>
+<div><h3>Warnings by S/4HANA area</h3>{% if area_warning_chart %}<div class="chart">{{ area_warning_chart }}</div>{% else %}<div class="empty">No readiness rules evaluated.</div>{% endif %}</div>
+</div>
+<h3>Top blockers</h3>
+{% if blockers %}
+<table class="data">
+<thead><tr><th>Rule</th><th>Object</th><th class="r">Failing records</th><th class="r">Impact</th></tr></thead>
+<tbody>
+{% for r in blockers %}<tr><td><span class="st {{ r.severity }}">{{ r.severity | capitalize }}</span> <span class="mono">{{ r.check_id }}</span><div class="sub">{{ r.name }}</div></td>
+    <td>{{ r.module | module }}</td><td class="r">{{ r.affected | n }}</td><td class="r">{{ r.impact | n }}</td></tr>{% endfor %}
+</tbody>
+</table>
+{% if blocker_total > blockers | length %}<p class="note">{{ blocker_total - (blockers | length) }} more blocking rules are listed in the rule appendix.</p>{% endif %}
+{% else %}<div class="empty">No blocking rules fail in this run.</div>{% endif %}
+
+{% for g in groups %}
+{% for m in g.modules %}
+{% if loop.first %}<h2 class="page-break">{{ g.label }}</h2>{% endif %}
+<h3 {% if not loop.first %}class="page-break"{% endif %}>{{ m.name | module }}</h3>
+<div class="figures">
+    <div class="figure primary"><div class="v">{{ m.score | n(1) }}<small> / 100</small></div><div class="k">Composite score{% if m.cap_reason %}. {{ m.cap_reason }}{% endif %}</div></div>
+    <div class="figure"><div class="v">{% if m.delta is not none %}{{ m.delta | signed(1) }}{% else %}<span class="muted">—</span>{% endif %}</div><div class="k">{% if compared %}Change since the earlier run{% else %}No earlier run{% endif %}</div></div>
+    <div class="figure"><div class="v">{{ m.blockers | n }}</div><div class="k">Blocking rules</div></div>
+    <div class="figure"><div class="v">{{ m.critical | n }}</div><div class="k">Critical failures</div></div>
+</div>
+<div class="chart">{{ m.chart }}</div>
+{% if m.rules %}
+<table class="data keep">
+<thead><tr><th>Top failing rules</th><th class="r">Failing records</th><th class="r">Impact</th></tr></thead>
+<tbody>{% for r in m.rules %}<tr><td><span class="st {{ r.severity }}">{{ r.severity | capitalize }}</span> <span class="mono">{{ r.check_id }}</span><div class="sub">{{ r.name }}</div></td><td class="r">{{ r.affected | n }}</td><td class="r">{{ r.impact | n }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<div class="empty">No rule fails in this module.</div>{% endif %}
+{% endfor %}
+{% endfor %}
+
+<h2 class="page-break">Cleansing funnel</h2>
+{% if funnel_chart %}
+<div class="chart">{{ funnel_chart }}</div>
+<p class="note">Each step is a subset of the one above. Proposed values need approval before they are applied to SAP.</p>
+{% else %}<div class="empty">No cleansing activity for this run.</div>{% endif %}
+
+<h2 class="page-break">Rule appendix</h2>
+{% if rule_appendix %}
+<table class="data">
+<thead><tr><th>Rule</th><th>Object</th><th class="r">Failing records</th><th class="r">Pass rate</th><th class="r">Impact</th></tr></thead>
+<tbody>
+{% for r in rule_appendix %}<tr><td><span class="st {{ r.severity }}">{{ r.severity | capitalize }}</span> <span class="mono">{{ r.check_id }}</span><div class="sub">{{ r.name }}</div></td>
+    <td>{{ r.module | module }}</td><td class="r">{{ r.affected | n }}</td><td class="r">{% if r.pass_rate is not none %}{{ (r.pass_rate * 100) | pct }}{% else %}—{% endif %}</td><td class="r">{{ r.impact | n }}</td></tr>{% endfor %}
+</tbody>
+</table>
+{% if rule_total > rule_appendix | length %}<p class="note">Top {{ rule_appendix | length }} of {{ rule_total | n }} rules; full list in workbook.</p>{% endif %}
+{% else %}<div class="empty">No rule fails in this run.</div>{% endif %}
+
+{% include "_methodology.html" %}
+{% endblock %}

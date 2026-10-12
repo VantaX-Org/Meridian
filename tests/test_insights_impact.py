@@ -11,3 +11,13 @@ def test_value_at_risk_rounds_to_two_decimals():
 
 def test_value_at_risk_zero_blocked_is_zero():
     assert value_at_risk(0, 999.0) == 0.0
+
+
+def test_every_config_impact_rule_has_an_l1():
+    from pathlib import Path
+
+    import yaml
+
+    rules = yaml.safe_load((Path(__file__).resolve().parents[1] / "db/seeds/config_impact_rules.yaml").read_text())["rules"]
+    assert rules
+    assert [r["check_id"] for r in rules if not r.get("l1")] == []

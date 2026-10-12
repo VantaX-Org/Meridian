@@ -186,13 +186,14 @@ export async function mockRoutes12(page: Page) {
 
   // Insights.
   await get(/\/api\/v1\/insights\/proven-cost(\?.*)?$/, {
-    version_id: RUN, currency: "EUR", total: 48250, value_at_risk_total: 126400,
+    version_id: RUN, currency: "EUR", cost_by_l1: [{ l1: "procure_to_pay", amount: 48250 }],
+    value_at_risk_by_l1: [{ l1: "procure_to_pay", value_at_risk: 126400 }, { l1: "order_to_cash", value_at_risk: 48000 }],
     rows: [
       {
-        metric: "duplicate_payment", label: "Duplicate payments", amount: 31800, currency: "EUR", by_currency: { EUR: 31800 }, documents: 4, check_ids: ["AP017"],
+        metric: "duplicate_payment", l1: "procure_to_pay", label: "Duplicate payments", amount: 31800, currency: "EUR", by_currency: { EUR: 31800 }, documents: 4, check_ids: ["AP017"],
         items: [{ doc_key: "BELNR=5100000321|GJAHR=2026", master_key: "LIFNR=100004", amount: 12400, detail: "Same amount and reference paid twice", check_ids: ["AP017"] }],
       },
-      { metric: "late_po", label: "Late purchase orders", amount: 16450, currency: "EUR", by_currency: { EUR: 16450 }, documents: 11, check_ids: ["MM551"], items: [] },
+      { metric: "late_po", l1: "procure_to_pay", label: "Late purchase orders", amount: 16450, currency: "EUR", by_currency: { EUR: 16450 }, documents: 11, check_ids: ["MM551"], items: [] },
     ],
   });
   const ref = (id: string, label: string) => ({ id, label });

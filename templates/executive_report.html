@@ -4,13 +4,13 @@
 {% include "_analysis_body.html" %}
 
 {% if ai_summary %}
-<div class="callout"><div class="label">AI-generated summary · figures above are computed, this text is not</div>{{ ai_summary }}</div>
+<div class="callout"><div class="label">AI-generated summary – figures above are computed, this text is not</div>{{ ai_summary }}</div>
 {% endif %}
 
 {% set rem = report.remediations or {} %}
 {% if rem.fix_sequence or report.modules %}
 <h2>Remediation plan</h2>
-<div class="callout"><div class="label">AI-assisted · produced by the analysis agents; verify before acting</div>
+<div class="callout"><div class="label">AI-assisted – produced by the analysis agents; verify before acting</div>
 {% if rem.fix_sequence %}
 <ol class="actions">
 {% for item in rem.fix_sequence[:10] %}<li><span class="mono">{{ item.check_id }}</span> — {{ item.reason | default('—') }}{% if item.estimated_effort %} <span class="muted">({{ item.estimated_effort }})</span>{% endif %}</li>{% endfor %}
@@ -31,7 +31,7 @@
 <tr><td>Duplicate candidates</td><td>{% if dedup.total %}{{ dedup.merged or 0 }} merged, {{ dedup.pending or 0 }} pending review, of {{ dedup.total | n }} pairs{% else %}<span class="muted">None detected</span>{% endif %}</td><td>All runs</td></tr>
 <tr><td>Exceptions</td><td>{% if exceptions.total %}{{ exceptions.open_count or 0 }} open ({{ exceptions.critical or 0 }} critical, {{ exceptions.high or 0 }} high), of {{ exceptions.total | n }}{% else %}<span class="muted">None raised</span>{% endif %}</td><td>All runs</td></tr>
 <tr><td>Data contracts</td><td>{% if contracts.total %}{{ contracts.active or 0 }} active, {% if contracts.breached %}<span class="st bad">{{ contracts.breached }} breached</span>{% else %}none breached{% endif %}, of {{ contracts.total | n }}{% else %}<span class="muted">None defined</span>{% endif %}</td><td>All runs</td></tr>
-<tr><td>Financial impact</td><td>{% if impact.record_count %}ZAR {{ impact.total_risk | n }} annual risk; ZAR {{ impact.total_avoidance | n }} mitigated{% else %}<span class="muted">Not calculated for this run</span>{% endif %}</td><td>This run</td></tr>
+<tr><td>Financial impact</td><td>{% if impact.record_count %}{{ currency }} {{ impact.total_risk | n }} annual risk; {{ currency }} {{ impact.total_avoidance | n }} mitigated{% else %}<span class="muted">Not calculated for this run</span>{% endif %}</td><td>This run</td></tr>
 <tr><td>MDM health</td><td>{% if mdm_snapshot %}{{ mdm_snapshot.mdm_health_score | n(1) }} / 100; golden record coverage {{ mdm_snapshot.golden_record_coverage_pct | pct }}{% else %}<span class="muted">No snapshot taken yet</span>{% endif %}</td><td>Latest snapshot</td></tr>
 </tbody>
 </table>
@@ -54,4 +54,5 @@
 {% else %}
 <div class="empty">No score history yet. History builds up as runs complete.</div>
 {% endif %}
+{% include "_methodology.html" %}
 {% endblock %}

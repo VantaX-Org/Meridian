@@ -73,9 +73,9 @@ async def test_get_exec_returns_report_for_latest_version(tenant_a_version, monk
     assert isinstance(body["impact_rows"], list)
     assert isinstance(body["owner_rows"], list)
     # No proven_cost_results rows seeded for this tenant/version — the narrative must
-    # not claim a bogus "0.00 None proven lost or held", and proven_cost_total is 0.0.
-    assert "proven lost or held" not in body["narrative"]
-    assert body["proven_cost_total"] == 0.0
+    # not claim a bogus "0.00 None proven lost or held", and there is no proven cost.
+    assert "lost or held" not in body["narrative"]
+    assert body["proven_cost_by_l1"] == []
 
 
 @pytest.mark.anyio
@@ -103,8 +103,9 @@ async def test_get_exec_includes_proven_cost_narrative(tenant_a_version, monkeyp
             r = await client.get("/api/v1/insights/exec", headers=headers)
         assert r.status_code == 200, r.text
         body = r.json()
-        assert "proven lost or held" in body["narrative"]
-        assert body["proven_cost_total"] == 1070.0
+        assert "lost or held" in body["narrative"]
+        assert {c["l1"]: c["amount"] for c in body["proven_cost_by_l1"]}["procure_to_pay"] == 1070.0
+        assert "proven_cost_total" not in body
     finally:
         with engine.begin() as conn:
             conn.execute(text("DELETE FROM proven_cost_results WHERE tenant_id = :t"), {"t": t1})

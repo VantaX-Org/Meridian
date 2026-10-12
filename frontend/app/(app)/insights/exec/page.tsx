@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, DrillLink, Delta, Pill, Stat, Waterfall, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { getExec, getProvenCost, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
+import { getExec, getProvenCost, l1Label, largestValueAtRisk, valueAtRiskByL1, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -80,7 +80,7 @@ export default function ExecPage() {
   const up = owners.filter((o) => o.delta > 0).length;
   const down = owners.filter((o) => o.delta < 0).length;
   const wf = data?.waterfall ?? [];
-  const atRisk = data?.impact_rows.reduce((s, r) => s + r.value_at_risk, 0) ?? 0;
+  const topRisk = data ? largestValueAtRisk(valueAtRiskByL1(data.impact_rows)) : null;
 
   return (
     <InsightFrame
@@ -97,13 +97,13 @@ export default function ExecPage() {
         hero: true,
         stats: data ? [
           { label: "No-go cells", value: noGo, tone: noGo ? "no-go" : "go", to: "/insights/readiness" },
-          { label: "Value at risk", value: formatMoney(atRisk, currency), to: "/insights/impact" },
+          { label: "Largest L1 at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", to: "/insights/impact" },
           { label: "Owners improved", value: up, to: "/insights/owners" },
           { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: "/insights/owners" },
         ] : undefined,
         situation: { sentence: data?.narrative || `${noGo} no-go cells across the waves` , tone: noGo ? "no-go" : "go" },
         changed: { sentence: up + down === 0 ? "—" : `${up} owners improved, ${down} slipped since the last run` },
-        why: { sentence: `${formatMoney(atRisk, currency)} value at risk`, href: "/insights/impact" },
+        why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "No value at risk", href: "/insights/impact" },
         next: { sentence: noGo ? "Clear the no-go cells first" : "Share the report", action: { label: "Open readiness", href: "/insights/readiness" } },
       }}
       state={state}

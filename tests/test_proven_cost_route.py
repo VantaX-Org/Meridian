@@ -101,9 +101,13 @@ async def test_proven_cost_excludes_other_currencies_and_orders_rows(seeded, mon
     assert body["version_id"] == v_new
     assert body["currency"] == "ZAR"
     # duplicate_payment is a mixed-currency row (currency=None, by_currency split
-    # ZAR/USD): only its ZAR share (150) counts toward the total, the USD share (200)
-    # is reported in by_currency but never converted or summed.
-    assert body["total"] == 1950.0
+    # ZAR/USD): only its ZAR share (150) counts toward its L1, the USD share (200)
+    # is reported in by_currency but never converted or summed. No cross-L1 total exists.
+    assert "total" not in body
+    assert body["cost_by_l1"] == [{"l1": "order_to_cash", "amount": 300.0},
+                                  {"l1": "procure_to_pay", "amount": 1650.0}]
+    assert [r["l1"] for r in body["rows"]] == [
+        "procure_to_pay", "procure_to_pay", "order_to_cash", "procure_to_pay"]
     assert [r["metric"] for r in body["rows"]] == [
         "late_po", "grir_uom_variance", "blocked_sales", "duplicate_payment",
     ]
@@ -111,7 +115,8 @@ async def test_proven_cost_excludes_other_currencies_and_orders_rows(seeded, mon
     assert body["rows"][0]["check_ids"] == ["MM140"]
     assert body["rows"][3]["currency"] is None
     assert body["rows"][3]["by_currency"] == {"ZAR": 150, "USD": 200}
-    assert body["value_at_risk_total"] == 0.0
+    assert "value_at_risk_total" not in body
+    assert body["value_at_risk_by_l1"] == []
 
 
 @pytest.mark.anyio
@@ -140,7 +145,7 @@ async def test_proven_cost_is_tenant_isolated(seeded, monkeypatch):
         # currency is resolved from cost_model/defaults() before the version lookup,
         # so an empty response still carries the real currency (ZAR, checks/cost_model.yaml's
         # default — tenant 2 has no cost_model of its own), never None.
-        assert r.json() == {"version_id": None, "currency": "ZAR", "total": 0.0, "rows": [], "value_at_risk_total": 0.0}
+        assert r.json() == {"version_id": None, "currency": "ZAR", "rows": [], "cost_by_l1": [], "value_at_risk_by_l1": []}
 
         r2 = await client.get(f"/api/v1/insights/proven-cost?version_id={v_new}", headers=headers)
         assert r2.status_code == 200

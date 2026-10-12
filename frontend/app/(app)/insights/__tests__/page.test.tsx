@@ -34,7 +34,7 @@ function mockSide() {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
   vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({ forecasts: [], early_warnings: [] });
   vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 80, cells: [], configured: true });
-  vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ version_id: "v1", currency: "USD", total: 0, rows: [], value_at_risk_total: 0 });
+  vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ version_id: "v1", currency: "USD", rows: [], cost_by_l1: [], value_at_risk_by_l1: [] });
 }
 
 describe("InsightsIndexPage", () => {

@@ -1,0 +1,25 @@
+{# How the numbers are made. Included at the end of the board, analysis and executive reports.
+   Needs `methodology` (pdf_reports.methodology_block). Renders nothing without it. #}
+{% if methodology %}
+<h2 class="page-break">Methodology</h2>
+<p>Every figure in this report is computed by deterministic checks over the extracted records. No language model is involved in any score, count or ranking.</p>
+
+<h3>Score</h3>
+<p>Each check yields a record-level pass rate. A dimension score is the check-weighted average of those pass rates, with each check weighted by its severity. A module score is the weighted mean of its dimension scores. The data quality score (DQS) is the weighted mean of the module scores.</p>
+<table class="data keep" style="width:70%">
+<thead><tr><th>Dimension</th><th class="r">Weight</th></tr></thead>
+<tbody>{% for d, w in methodology.weights.items() %}<tr><td>{{ d | capitalize }}</td><td class="r">{{ (w * 100) | n(0) }}%</td></tr>{% endfor %}</tbody>
+</table>
+<p class="note">Bands: {{ methodology.thresholds.target | n(0) }} or more meets the target, {{ methodology.thresholds.warning | n(0) }} to below {{ methodology.thresholds.target | n(0) }} is a warning, below {{ methodology.thresholds.warning | n(0) }} fails. A dimension that no check measured is reported as not measured, never as a perfect score.</p>
+
+<h3>Critical cap</h3>
+<p>Failing critical checks cap a module score: one failure caps it at 85, two or more at 70, once the failures exceed the tenant's tolerance for the module.</p>
+
+<h3>Impact</h3>
+<p>Rule impact is the number of failing records multiplied by a severity weight:
+{% for sev, w in methodology.impact_weights.items() %}{{ sev }} {{ w }}{% if not loop.last %}, {% endif %}{% endfor %}.
+A root cause cluster adds up the impact of the rules that fail on the same field. Impact ranks work. It is not a currency value. Priced value at risk is shown per business process (L1) and is never added across processes.</p>
+
+<h3>Sources</h3>
+<p>Findings, scores and run history come from the analysis runs stored in this installation. Migration readiness uses the S/4HANA readiness rule map shipped with the product. Cleansing counts come from the proposed, approved and applied corrections recorded against the run. Times are South African Standard Time.</p>
+{% endif %}

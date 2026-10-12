@@ -39,7 +39,7 @@
 <h3>Improvements</h3>
 {% if improvers %}
 <table class="data"><thead><tr><th>Check</th><th class="r">Failing records</th></tr></thead><tbody>
-{% for c in improvers %}<tr><td>{{ c.message or c.check_id }}<span class="sub">{{ c.module | module }} · <span class="mono">{{ c.check_id }}</span></span></td><td class="r">{{ delta(c.change, invert=true) }}</td></tr>{% endfor %}
+{% for c in improvers %}<tr><td>{{ c.message or c.check_id }}<span class="sub">{{ c.module | module }} – <span class="mono">{{ c.check_id }}</span></span></td><td class="r">{{ delta(c.change, invert=true) }}</td></tr>{% endfor %}
 </tbody></table>
 {% else %}<div class="empty">No check has fewer failing records than in the earlier run.</div>{% endif %}
 </div>
@@ -47,7 +47,7 @@
 <h3>Regressions</h3>
 {% if regressions %}
 <table class="data"><thead><tr><th>Check</th><th class="r">Failing records</th></tr></thead><tbody>
-{% for c in regressions %}<tr><td>{{ c.message or c.check_id }}<span class="sub">{{ c.module | module }} · <span class="mono">{{ c.check_id }}</span></span></td><td class="r">{{ delta(c.change, invert=true) }}</td></tr>{% endfor %}
+{% for c in regressions %}<tr><td>{{ c.message or c.check_id }}<span class="sub">{{ c.module | module }} – <span class="mono">{{ c.check_id }}</span></span></td><td class="r">{{ delta(c.change, invert=true) }}</td></tr>{% endfor %}
 </tbody></table>
 {% else %}<div class="empty">No check has more failing records than in the earlier run.</div>{% endif %}
 </div>
