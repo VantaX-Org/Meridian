@@ -52,7 +52,8 @@ export function ExplorerPage({
         {Array.from({ length: 12 }, (_, i) => <div key={i} style={{ height: rowH }}><Skeleton height="100%" /></div>)}
       </div>
     );
-    summarySlot = <div className="m-stat-grid" data-testid="explorer-stat-skeleton">{[0, 1, 2, 3].map((i) => <StatSkeleton key={i} />)}</div>;
+    // A page that passes its own summary keeps it (it reserves its own loading geometry).
+    summarySlot = summary || <div className="m-stat-grid" data-testid="explorer-stat-skeleton">{[0, 1, 2, 3].map((i) => <StatSkeleton key={i} />)}</div>;
   } else if (state === "empty") {
     if (emptyProps?.summary) {
       summarySlot = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{emptyProps.summary}</p>;
@@ -80,7 +81,7 @@ export function ExplorerPage({
       ) : (
         filterBar
       )}
-      {summarySlot && (state === "loading" || state === "empty" ? summarySlot : <div className="m-stat-grid">{summarySlot}</div>)}
+      {summarySlot}
       {strip}
       {aside ? (
         <div className="grid gap-4 @5xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

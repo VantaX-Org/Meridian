@@ -202,7 +202,7 @@ export default function SystemsPage() {
         ) : undefined
       }
       summary={
-        <div className="flex flex-wrap items-center gap-6 m-motion-stagger">
+        <div className="m-stat-grid m-motion-stagger">
           {isLoading || systems.length > 0 ? (
             <Stat
               label="Unhealthy"

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Skeleton, Stat, usePrefetch, type CellMeta, type PillTone } from "@/design";
+import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Skeleton, Stat, StatSkeleton, usePrefetch, type CellMeta, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
@@ -59,6 +59,8 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[]): C
         );
       },
     },
+    { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical", size: 90, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => row.original.severity_counts ? row.original.severity_counts.critical.toLocaleString() : "—" },
+    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 80, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => row.original.severity_counts ? row.original.severity_counts.high.toLocaleString() : "—" },
     {
       id: "baseline",
       header: "Baseline",
@@ -167,7 +169,7 @@ export default function RunsPage() {
 
   const summary = all.isLoading ? (
     <div className="flex flex-col gap-4" aria-busy="true">
-      <div className="flex flex-wrap gap-6"><Stat label="Latest DQS" value="" loading /></div>
+      <div className="m-stat-grid"><StatSkeleton /><StatSkeleton /></div>
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
         <Skeleton height="var(--m-leading-section)" />
         <Skeleton height={160} />
@@ -176,7 +178,8 @@ export default function RunsPage() {
   ) : (
     <div className="flex flex-col gap-4">
       {rows.length > 0 || scoped.length > 0 ? (
-        <div className="flex flex-wrap gap-6 m-motion-stagger">
+        <div className="m-stat-grid m-motion-stagger">
+          <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > allVersions.length ? `showing ${allVersions.length} of ${all.data.total.toLocaleString()}` : undefined} />
           <Stat
             label="Latest DQS"
             value={latest && latestDqs !== null ? latestDqs.toFixed(1) : "—"}

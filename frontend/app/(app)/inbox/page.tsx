@@ -451,7 +451,7 @@ export default function InboxPage() {
       errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
       summary={
         <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap gap-6">
+          <div className="m-stat-grid">
             <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} href={isExceptions ? undefined : "/inbox?view=breached"} />
             {!isExceptions && <Stat label="Due today" value={counts.today} loading={isLoading} href="/inbox?view=today" />}
           </div>
