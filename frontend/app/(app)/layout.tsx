@@ -105,7 +105,8 @@ function RunSelectorSlot() {
   const runs: RunOption[] = versions.map((v) => ({
     id: v.id,
     systemId: v.metadata?.system_id,
-    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"} · ${formatDate(v.run_at, "date")}`,
+    at: v.run_at,
+    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"}, ${formatDate(v.run_at, "date")}`,
   }));
   return <RunSelector runs={runs} systems={scopeFilter.systems} />;
 }

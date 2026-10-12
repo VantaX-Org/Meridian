@@ -1,12 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getPageTitle } from "@/lib/nav";
 import { Menu } from "../primitives/Menu";
 import { useDrill, type Crumb } from "./useDrill";
 
 const MAX_LEADING = 3;
+
+/** Scope suffix after the title (e.g. object count, run). Pages publish it with `useBreadcrumbScope`; each part renders as its own element. */
+let scope: readonly string[] = [];
+const listeners = new Set<() => void>();
+function setScope(next: readonly string[]) {
+  scope = next;
+  listeners.forEach((l) => l());
+}
+export function useBreadcrumbScope(parts: readonly string[]) {
+  const key = parts.join("\u0000");
+  useEffect(() => {
+    setScope(key ? key.split("\u0000") : []);
+    return () => setScope([]);
+  }, [key]);
+}
 
 function Dot() {
   return <span aria-hidden="true" className="shrink-0 rounded-full" style={{ width: 3, height: 3, background: "var(--m-ink-4)" }} />;
@@ -31,6 +47,7 @@ function Overflow({ crumbs }: { crumbs: Crumb[] }) {
  */
 export function Breadcrumb() {
   const { crumbs } = useDrill();
+  const scopeParts = useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; }, () => scope, () => scope);
   const pathname = usePathname();
   const title = crumbs.length > 0 ? crumbs[crumbs.length - 1]!.label : getPageTitle(pathname);
   const leadingCrumbs = crumbs.slice(0, -1);
@@ -53,6 +70,9 @@ export function Breadcrumb() {
       <h1 className="m-text-h truncate font-semibold" style={{ color: "var(--m-ink)" }}>
         {title}
       </h1>
+      {scopeParts.map((part) => (
+        <span key={part} data-testid="crumb-scope" className="truncate" style={{ color: "var(--m-ink-3)" }}>{part}</span>
+      ))}
     </nav>
   );
 }

@@ -17,3 +17,21 @@ describe("Breadcrumb", () => {
     expect(headings[0]).toHaveTextContent("Import file");
   });
 });
+
+import { act } from "@testing-library/react";
+import { useBreadcrumbScope } from "./Breadcrumb";
+
+function Scope() {
+  useBreadcrumbScope(["14 objects", "run 2026-10-11"]);
+  return null;
+}
+
+describe("Breadcrumb scope", () => {
+  it("renders each scope part as its own element with no middle dot", () => {
+    render(<><Breadcrumb /><Scope /></>);
+    const parts = screen.getAllByTestId("crumb-scope");
+    expect(parts.map((p) => p.textContent)).toEqual(["14 objects", "run 2026-10-11"]);
+    expect(document.body.textContent).not.toContain("·");
+    act(() => {});
+  });
+});

@@ -81,7 +81,7 @@ export function RouteInsight() {
   const loading = versionsQ.isLoading || (hasRun && aggQ.isLoading);
 
   return (
-    <div className="px-6 pt-4">
+    <div className="@container mx-auto w-full" style={{ padding: "16px var(--m-page-pad) 0", maxWidth: "var(--m-page-max)" }}>
       <InsightHeader
         {...cells}
         loading={loading}
