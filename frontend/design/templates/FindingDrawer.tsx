@@ -10,15 +10,18 @@ import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
 import { Mono } from "../primitives/Mono";
 import { SeverityDot } from "../primitives/SeverityDot";
-import { isSeverity } from "../tokens";
+import { Pill, type PillTone } from "../primitives/Pill";
+import { isSeverity, type Severity } from "../tokens";
 import { buildDrillHref } from "../shell/DrillLink";
 import { getFinding } from "@/lib/api/findings";
 import { getFindingImpact } from "@/lib/api/analytics";
 import { queryKeys } from "@/lib/query-keys";
 import { apiErrorMessage } from "@/lib/error";
-import { checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/format";
+import { labelOf, checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/format";
 
 const heading = "text-[13px] font-semibold";
+// Pill has no high tone: high shares the at-risk fill with medium.
+const SEVERITY_PILL: Record<Severity, PillTone> = { critical: "no-go", high: "at-risk", medium: "at-risk", low: "neutral", pass: "go" };
 const dim = { color: "var(--m-ink-3)" } as const;
 
 /** getFinding (lib/api/findings.ts) throws a plain Error rather than a 404 when the id doesn't match any finding in scope. */
@@ -76,6 +79,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                 <h3 className={heading} style={{ color: "var(--m-ink)" }}>What failed</h3>
                 <div className="flex items-center gap-2 text-[13px]">
                   {isSeverity(finding.severity) && <SeverityDot severity={finding.severity} />}
+                  {isSeverity(finding.severity) && <Pill tone={SEVERITY_PILL[finding.severity]} variant="solid">{labelOf(finding.severity)}</Pill>}
                   <Mono>{finding.check_id}</Mono>
                   <span style={dim}>{formatModuleName(finding.module)}</span>
                 </div>

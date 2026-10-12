@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { Button, Card, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, Card, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, domainOf, type RecordStatus } from "@/design";
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -126,7 +126,7 @@ export default function RecordFixSheetPage() {
       <div className="flex justify-end">
         <ExportMenu options={exportOptions} />
       </div>
-      <Card title="Identity">
+      <Card title="Identity" domain={domainOf(object)}>
         <dl className="m-text-body grid grid-cols-2 gap-x-6 gap-y-1">
           <dt style={{ color: "var(--m-ink-3)" }}>Description</dt>
           <dd>{material.description ?? "—"}</dd>
