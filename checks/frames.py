@@ -560,7 +560,7 @@ class TableFrames:
                     for f, v in edge.prefer:
                         col = f"{edge.child}.{f}"
                         if col in r.columns:
-                            order -= (r[col].astype("string").str.strip() == v).astype(int)
+                            order -= (r[col].astype("string").str.strip() == v).fillna(False).astype(int)  # NA: not preferred
                     r = r.assign(_prefer=order).sort_values("_prefer", kind="stable").drop(columns="_prefer")
             rnorm = pd.DataFrame({k: r[k].astype("string").str.strip() for k in rk}).assign(_pos=r["_pos"])
             rnorm = rnorm.drop_duplicates(subset=rk)
@@ -660,7 +660,7 @@ def _join(left: pd.DataFrame, right: pd.DataFrame, edge: Edge, cols: list[str],
             for f, v in edge.prefer:
                 col = f"{edge.child}.{f}"
                 if col in r.columns:
-                    order -= (r[col].astype("string").str.strip() == v).astype(int)
+                    order -= (r[col].astype("string").str.strip() == v).fillna(False).astype(int)  # NA: not preferred
             r = r.assign(_prefer=order).sort_values("_prefer", kind="stable").drop(columns="_prefer")
     keep = list(dict.fromkeys(rk + [c for c in cols if c in r.columns and c not in left.columns]))
     lnorm = left[lk].astype("string").apply(lambda s: s.str.strip())
