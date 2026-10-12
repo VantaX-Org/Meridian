@@ -8,7 +8,7 @@ const ALIGN: Record<DqColour, string> = { green: "aligned", amber: "drifting", r
 
 export interface TaskData extends Record<string, unknown> {
   name: string; tcode: string | null; fields: number; rules: number;
-  status?: DqColour; evidence?: Evidence | null; selected: boolean;
+  status?: DqColour; failing?: number; affected?: number; evidence?: Evidence | null; selected: boolean;
 }
 export interface MarkData extends Record<string, unknown> { label: string; end?: boolean; selected: boolean; parallel?: boolean }
 
@@ -32,6 +32,9 @@ function Task({ data }: NodeProps<Node<TaskData>>) {
       {data.tcode ? <span className="m-bpmn-task__tcode"><Mono>{data.tcode}</Mono></span> : null}
       <span className="m-process-node__label">{data.name}</span>
       <span className="m-bpmn-task__meta">{plural(data.fields, "field")}, {plural(data.rules, "rule")}</span>
+      {data.failing != null && data.failing > 0 ? (
+        <span className="m-bpmn-task__meta">{plural(data.failing, "rule")} failing, {plural(data.affected ?? 0, "record")} open</span>
+      ) : null}
       <span className="m-process-node__alignment" />
       {notExtracted ? <span className="m-bpmn-task__evidence" title="No document table extracted for this step" /> : null}
     </div>

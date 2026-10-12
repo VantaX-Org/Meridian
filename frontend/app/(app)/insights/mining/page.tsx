@@ -66,12 +66,12 @@ function GraphTally() {
   const anomalies = sum.data?.new_anomalies ?? 0;
   return (
     <div className="flex flex-row gap-8">
-      <Stat label="Entities" value={rel.isLoading ? <Skeleton width={32} /> : domains} />
-      <Stat label="Links" value={rel.isLoading ? <Skeleton width={32} /> : (rel.data?.total ?? rels.length)}
+      <Stat label="Entities" loading={rel.isLoading} value={domains} />
+      <Stat label="Links" loading={rel.isLoading} value={(rel.data?.total ?? rels.length)}
         delta={`${rels.filter((r) => r.ai_inferred).length.toLocaleString()} inferred`} />
-      <Stat label="Patterns" value={sum.isLoading ? <Skeleton width={32} /> : (sum.data?.total_patterns ?? 0)}
+      <Stat label="Patterns" loading={sum.isLoading} value={(sum.data?.total_patterns ?? 0)}
         delta={`${(sum.data?.stable_patterns ?? 0).toLocaleString()} stable`} />
-      <Stat label="New anomalies" value={sum.isLoading ? <Skeleton width={32} /> : anomalies}
+      <Stat label="New anomalies" loading={sum.isLoading} value={anomalies}
         delta="Seen in the last 30 days" />
     </div>
   );

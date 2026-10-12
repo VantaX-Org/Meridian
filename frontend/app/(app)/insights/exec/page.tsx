@@ -4,7 +4,7 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, Delta, Pill, Skeleton, Stat, Waterfall, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, Pill, Stat, Waterfall, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
@@ -106,21 +106,19 @@ export default function ExecPage() {
         <p className="mt-2 text-[13px]" style={{ color: "var(--m-ink-2)" }}>Waterfall of score movement from the baseline to this run.</p>
       </Card>
       <Card title="Return on investment">
-        {roi.isLoading ? (
-          <Skeleton height={48} />
-        ) : roi.isError ? (
+        {roi.isError ? (
           <div className="flex items-center gap-3 text-[13px]" role="alert">
             <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
             <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
           </div>
-        ) : roi.data ? (
+        ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="ROI multiple" value={`${roi.data.roi.roi_multiple}x`} />
-            <Stat label="Payback" value={`${roi.data.roi.payback_months} months`} />
-            <Stat label="Risk mitigated" value={money(roi.data.roi.risk_mitigated)} />
-            <Stat label="Annual subscription" value={money(roi.data.roi.subscription_annual)} />
+            <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.roi_multiple}x` : "—"} />
+            <Stat label="Payback" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.payback_months} months` : "—"} />
+            <Stat label="Risk mitigated" loading={roi.isLoading} value={roi.data ? money(roi.data.roi.risk_mitigated) : "—"} />
+            <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data ? money(roi.data.roi.subscription_annual) : "—"} />
           </div>
-        ) : null}
+        )}
       </Card>
       <Card title="Readiness by wave">
         <DataTable columns={readinessColumns} data={data?.readiness_cells ?? []} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />

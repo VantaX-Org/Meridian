@@ -1,11 +1,11 @@
 // frontend/app/(app)/insights/readiness/page.tsx
 "use client";
 
-import { Fragment } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, DrillLink, Pill, type PillTone } from "@/design";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Pill, type PillTone } from "@/design";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -19,13 +19,31 @@ const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   no_go: "no-go",
 };
 
+const HEAT: Record<ReadinessCell["verdict"], "go" | "at-risk" | "no-go"> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
+
 const VERDICT_LABEL: Record<ReadinessCell["verdict"], string> = {
   go: "Go",
   at_risk: "At risk",
   no_go: "No-go",
 };
 
+const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
+  { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
+  { accessorKey: "wave", header: "Wave" },
+  { id: "verdict", header: "Readiness", accessorFn: (c) => VERDICT_LABEL[c.verdict], cell: ({ row }) => <Pill tone={VERDICT_TONE[row.original.verdict]}>{VERDICT_LABEL[row.original.verdict]}</Pill> },
+  { accessorKey: "blocker_count", header: "Blocking gaps", meta: { numeric: true } },
+  {
+    accessorKey: "records_blocked",
+    header: "Records blocked",
+    meta: { numeric: true },
+    cell: ({ row }) => (
+      <DrillLink object={row.original.module} filters={{ blocking: "true" }} run={run}>{row.original.records_blocked.toLocaleString("en-ZA")}</DrillLink>
+    ),
+  },
+];
+
 export default function ReadinessPage() {
+  const router = useRouter();
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
   const dayOne = useDayOne();
@@ -57,6 +75,7 @@ export default function ReadinessPage() {
   const modules = Array.from(new Set(data?.cells.map((c) => c.module) ?? []));
   const waves = Array.from(new Set(data?.cells.map((c) => c.wave) ?? []));
 
+  const blockers = (data?.cells ?? []).filter((c) => c.records_blocked > 0 || c.blocker_count > 0).sort((a, b) => b.records_blocked - a.records_blocked);
   const runLabel = useRunLabel(data?.version_id);
   const noGo = data?.cells.filter((c) => c.verdict === "no_go").length ?? 0;
   const blocked = data?.cells.reduce((n, c) => n + c.records_blocked, 0) ?? 0;
@@ -75,59 +94,31 @@ export default function ReadinessPage() {
       emptyProps={{ title: emptyTitle, detail: emptyDetail, action: emptyAction, ghost: "grid" }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <Card title="Readiness by wave">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr>
-              <th scope="col" className="text-left p-2">Object</th>
-              {waves.map((w) => (
-                <Fragment key={w}>
-                  <th scope="col" className="text-left p-2">{w}</th>
-                  {/* Sub-headers repeat their wave name so each cell's accessible name
-                      is unambiguous to screen readers when there are 2+ waves. */}
-                  <th scope="col" className="text-right p-2">{`${w} readiness`}</th>
-                  <th scope="col" className="text-right p-2">{`${w} records blocked`}</th>
-                </Fragment>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {modules.map((module) => (
-              <tr key={module}>
-                <td className="p-2">{formatModuleName(module)}</td>
-                {waves.map((wave) => {
-                  const cell = data?.cells.find((c) => c.module === module && c.wave === wave);
-                  if (!cell) {
-                    return (
-                      <Fragment key={wave}>
-                        <td className="p-2">—</td>
-                        <td className="text-right tabular-nums">—</td>
-                        <td className="text-right tabular-nums">—</td>
-                      </Fragment>
-                    );
-                  }
-                  return (
-                    <Fragment key={wave}>
-                      <td className="p-2">
-                        {/* DrillLink filters is Record<string, string>; stringify the boolean */}
-                        <DrillLink object={module} filters={{ blocking: "true" }} run={run}>
-                          <Pill tone={VERDICT_TONE[cell.verdict]}>{VERDICT_LABEL[cell.verdict]}</Pill>
-                        </DrillLink>
-                      </td>
-                      <td className="text-right tabular-nums">
-                        {cell.score === null ? "—" : <DrillLink object={module} filters={{ blocking: "true" }} run={run}>{`${cell.score.toFixed(1)}%`}</DrillLink>}
-                      </td>
-                      <td className="text-right tabular-nums">
-                        <DrillLink object={module} filters={{ blocking: "true" }} run={run}>{cell.records_blocked.toLocaleString()}</DrillLink>
-                      </td>
-                    </Fragment>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <Card title="Which waves are blocked">
+        <Heatmap
+          rows={modules.map(formatModuleName)}
+          cols={waves}
+          cells={(data?.cells ?? []).map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: HEAT[c.verdict] }))}
+          onPointClick={(cell) => {
+            const mod = modules.find((m) => formatModuleName(m) === cell.row);
+            if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), wave: cell.col })}`);
+          }}
+        />
         <p className="mt-2 text-[13px]" style={{ color: "var(--m-ink-2)" }}>Select a cell to see its blocking records.</p>
+      </Card>
+      <Card title="Blockers">
+        {blockers.length === 0 ? (
+          <EmptyState title="No blockers in this run" detail="Every wave and object cell can load." action={<Button render={<Link href="/objects">Open objects</Link>} />} ghost="grid" />
+        ) : (
+          <DataTable
+            columns={blockerColumns(run)}
+            data={blockers}
+            getRowId={(c) => `${c.module}-${c.wave}`}
+            hideToolbar
+            dense
+            height="auto"
+          />
+        )}
       </Card>
     </InsightFrame>
   );

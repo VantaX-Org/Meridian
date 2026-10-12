@@ -45,6 +45,7 @@ function CanvasInner(p: CanvasProps) {
       const data: TaskData = {
         name: act?.name ?? n.label ?? "Activity", tcode: act?.tcode ?? null, fields: act?.fields.length ?? 0,
         rules: act?.check_ids.length ?? 0, status: act ? overlay?.[act.id]?.dq_status : undefined,
+        failing: act ? overlay?.[act.id]?.finding_count : undefined, affected: act ? overlay?.[act.id]?.affected_count : undefined,
         evidence: n.evidence ?? act?.evidence, selected: isSel,
       };
       return { id: n.id, type: "bpmnTask", position: pos, data, width: 220, height: 72 };
