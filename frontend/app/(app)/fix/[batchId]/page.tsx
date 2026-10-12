@@ -2,11 +2,11 @@
 
 import { toast } from "sonner";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, Skeleton, ExportMenu, Mono, Pill, type ExportOption } from "@/design";
+import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, Skeleton, ExportMenu, Mono, Notice, Pill, type ExportOption } from "@/design";
 import {
   approveCleaning,
   bulkApprove,
@@ -64,13 +64,33 @@ export default function BatchPage() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: queryKeys.batch(batchId) });
 
+  const [failure, setFailure] = useState<string | null>(null);
+  type Page = NonNullable<typeof data>;
+  /** Optimistically set one item's status; the snapshot restores it if the call fails. */
+  const markItem = async (id: string, status: string) => {
+    setFailure(null);
+    await qc.cancelQueries({ queryKey: queryKeys.batch(batchId) });
+    const prev = qc.getQueryData<Page>(queryKeys.batch(batchId));
+    if (prev) qc.setQueryData<Page>(queryKeys.batch(batchId), { ...prev, items: prev.items.map((i) => (i.id === id ? { ...i, status } : i)) });
+    return { prev };
+  };
+  const restore = (prev: Page | undefined, verb: string, e: unknown) => {
+    if (prev) qc.setQueryData(queryKeys.batch(batchId), prev);
+    setFailure(`${verb}: ${apiErrorMessage(e)}`);
+  };
   const approve = useMutation({
     mutationFn: (id: string) => approveCleaning(id),
-    onSuccess: () => { toast("Approved"); invalidate(); },
+    onMutate: (id: string) => markItem(id, "approved"),
+    onSuccess: () => { toast("Approved"); },
+    onError: (e, _id, ctx) => restore(ctx?.prev, "Not approved", e),
+    onSettled: () => void invalidate(),
   });
   const reject = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectCleaning(id, reason),
-    onSuccess: () => { toast("Rejected"); invalidate(); },
+    onMutate: ({ id }: { id: string; reason: string }) => markItem(id, "rejected"),
+    onSuccess: () => { toast("Rejected"); },
+    onError: (e, _v, ctx) => restore(ctx?.prev, "Not rejected", e),
+    onSettled: () => void invalidate(),
   });
   const acceptHighConfidence = useMutation({
     mutationFn: () => bulkApprove({ max_count: confident.length }),
@@ -138,7 +158,8 @@ export default function BatchPage() {
     <ExplorerPage
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{
-        title: "Batch not found.",
+        title: "Batch not found",
+        detail: "It may have been removed or fully applied",
         action: <Button render={<Link href="/fix?tab=batches">All batches</Link>} />,
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
@@ -159,7 +180,12 @@ export default function BatchPage() {
           />
         </div>
       }
-      table={<DataTable columns={columns} data={items} getRowId={(row) => row.id} />}
+      table={
+        <div className="flex flex-col gap-3">
+          {failure ? <Notice tone="danger">{failure}</Notice> : null}
+          <DataTable columns={columns} data={items} getRowId={(row) => row.id} />
+        </div>
+      }
     />
     } />
   );

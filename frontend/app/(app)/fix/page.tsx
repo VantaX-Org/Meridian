@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, ExportMenu, Mono, Pager, Pill, Tabs, emptyExportOptions } from "@/design";
+import { DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pager, Pill, Tabs, emptyExportOptions } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadCleaningExport, getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -54,7 +54,7 @@ function CleaningQueueTab() {
     <ExplorerPage
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : batches.length === 0 ? "empty" : undefined}
       emptyProps={{
-        title: "No cleaning proposals.",
+        title: "No cleaning proposals",
         detail: dayOne.step?.detail ?? "Proposals are generated when a run finishes and rules find fixable values.",
         action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
       }}
@@ -68,7 +68,7 @@ function CleaningQueueTab() {
             getRowId={(row) => row.batch_id}
             onRowClick={(row) => router.push(`/fix/${row.batch_id}`)}
           />
-          {pageCount > 1 && <Pager page={page} pageCount={pageCount} pageSize={100} total={data?.total ?? 0} onPageChange={setPage} />}
+          {(data?.total ?? 0) > 100 && <Pager page={page} pageCount={pageCount} pageSize={100} total={data?.total ?? 0} onPageChange={setPage} />}
         </div>
       }
     />
@@ -80,6 +80,8 @@ export default function FixPage() {
   const tab = oneOf(tabRaw, ["cleaning", "batches", "monitor", "dedup"], "cleaning");
 
   return (
+    <div className="flex flex-col gap-4">
+    <PageHeader title="Fix" meta="Review proposals, approve batches and hand them to SAP" />
     <Tabs
       value={tab}
       onValueChange={setTab}
@@ -87,8 +89,9 @@ export default function FixPage() {
         { value: "cleaning", label: "Cleaning queue", content: <CleaningQueueTab /> },
         { value: "batches", label: "Batches", content: <BatchesTab /> },
         { value: "monitor", label: "Monitor", content: <MonitorTab /> },
-        { value: "dedup", label: "Dedup", content: <DedupTab /> },
+        { value: "dedup", label: "Duplicates", content: <DedupTab /> },
       ]}
     />
+    </div>
   );
 }

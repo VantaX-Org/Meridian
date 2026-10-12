@@ -18,7 +18,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip,
+  Button, Card, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip,
   type PillTone, type SelectOption, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useNowSec } from "@/hooks/use-now";
@@ -220,12 +220,12 @@ export function BatchesTab() {
         <ErrorState message={errorText(q.error)} onRetry={() => q.refetch()} />
       ) : batches.length === 0 ? (
         <EmptyState
-          title="No batches."
+          title="No batches"
           detail="Approve proposals in the cleaning queue to create a batch."
           action={<Button render={<Link href="/fix?tab=cleaning">Cleaning queue</Link>} />}
         />
       ) : visible.length === 0 ? (
-        <EmptyState title="Nothing in this view." action={<Button variant="ghost" onClick={clearFilters}>Show everything</Button>} />
+        <EmptyState title="Nothing in this view" action={<Button variant="ghost" onClick={clearFilters}>Show everything</Button>} />
       ) : (
         <DataTable
           columns={columns}
@@ -262,6 +262,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   const [draftValue, setDraftValue] = useState("");
   const [format, setFormat] = useState<ExportFormat>("cockpit_xlsx");
   const [crType, setCrType] = useState("");
+  const [failure, setFailure] = useState<string | null>(null);
   const [ask, setAsk] = useState<"approve" | "export" | null>(null);
 
   const refresh = () => {
@@ -278,8 +279,20 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   });
   const approve = useMutation({
     mutationFn: () => approveBatch(batchId),
-    onSuccess: () => { toast.success("Batch approved"); setAsk(null); refresh(); },
-    onError: (e) => toast.error(errorText(e)),
+    onMutate: async () => {
+      setFailure(null);
+      await qc.cancelQueries({ queryKey: queryKeys.remediationBatch(batchId) });
+      const prev = qc.getQueryData<typeof detail.data>(queryKeys.remediationBatch(batchId));
+      if (prev) qc.setQueryData(queryKeys.remediationBatch(batchId), { ...prev, batch: { ...prev.batch, status: "approved" } });
+      setAsk(null);
+      return { prev };
+    },
+    onSuccess: () => { toast.success("Batch approved"); },
+    onError: (e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKeys.remediationBatch(batchId), ctx.prev);
+      setFailure(`Batch not approved: ${errorText(e)}`);
+    },
+    onSettled: () => refresh(),
   });
   const patch = useMutation({
     mutationFn: ({ itemId, value }: { itemId: string; value: string | null }) => patchItem(batchId, itemId, value),
@@ -298,7 +311,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   });
 
   if (detail.isLoading) return <Skeleton height={240} />;
-  if (detail.isError || !detail.data) return <EmptyState title="This batch could not be found. It may have been removed." />;
+  if (detail.isError || !detail.data) return <EmptyState title="Batch not found" detail="It may have been removed" />;
 
   const { batch, items } = detail.data;
   const isCreator = !!currentUserId && batch.created_by === currentUserId;
@@ -383,8 +396,9 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
         </p>
       ) : null}
 
+      {failure ? <Notice tone="danger">{failure}</Notice> : null}
       {ask ? (
-        <div className="flex flex-col gap-2 rounded border p-3">
+        <Card padding="sm">
           <p className="m-text-body">
             Meridian never posts to SAP. {ask === "export" ? "This hands a file to the Migration Cockpit or a mass-change template." : "This is Meridian's record only."}
           </p>
@@ -408,7 +422,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             </Button>
             <Button variant="ghost" onClick={() => setAsk(null)}>Not now</Button>
           </div>
-        </div>
+        </Card>
       ) : (
         <div className="flex items-center gap-2">
           {batch.status === "draft" && highConfidence.length > 0 && canApprove ? (
@@ -442,7 +456,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             {items.length > ITEM_PAGE_SIZE ? <Pager page={itemPage} pageCount={pageCount} pageSize={ITEM_PAGE_SIZE} total={items.length} onPageChange={setItemPage} /> : null}
           </>
         ) : (
-          <EmptyState title="No items in this batch." />
+          <EmptyState title="No items in this batch" />
         )}
       </section>
 
@@ -538,7 +552,7 @@ function MonitoringSection({ onOpenBatch }: { onOpenBatch: (id: string) => void 
       ) : monitor.isError ? (
         <ErrorState message={errorText(monitor.error)} onRetry={() => monitor.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState title="No system has a pinned baseline yet. Pin a run after a cleanup to start monitoring it." />
+        <EmptyState title="No pinned baseline yet" detail="Pin a run after a cleanup to start monitoring it" />
       ) : (
         <div className="flex flex-col gap-3">
           {items.map((m) => <MonitorRow key={m.scope} item={m} onOpenBatch={onOpenBatch} />)}
@@ -555,7 +569,7 @@ function MonitorRow({ item: m, onOpenBatch }: { item: MonitorItem; onOpenBatch: 
   const changed = m.monitor;
   const delta = m.baseline.dqs != null && m.latest.dqs != null ? Math.round((m.latest.dqs - m.baseline.dqs) * 10) / 10 : null;
   return (
-    <div className="flex flex-col gap-1 rounded border p-3">
+    <Card padding="sm">
       <div className="flex items-center justify-between">
         <strong className="m-text-body">{scopeLabel(m)}</strong>
         <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
@@ -590,6 +604,6 @@ function MonitorRow({ item: m, onOpenBatch }: { item: MonitorItem; onOpenBatch: 
           <span style={{ color: "var(--m-ink-2)" }}>This system has not been checked in over 36 hours. The comparison above may not reflect recent SAP changes.</span>
         </p>
       ) : null}
-    </div>
+    </Card>
   );
 }

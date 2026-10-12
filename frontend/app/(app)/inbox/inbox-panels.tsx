@@ -41,7 +41,7 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
   });
   return (
     <div className="flex flex-col gap-3 m-text-body">
-      <p>{issue.message ?? "No message."}</p>
+      <p>{issue.message ?? "No message"}</p>
       <p style={note}><Mono>{issue.record_key}</Mono>{issue.field ? <>, field {issue.field}</> : null}</p>
       {q.isLoading ? <Skeleton height={80} /> : q.error ? <p style={note}>{apiErrorMessage(q.error)}</p> : (
         <ol className="flex flex-col gap-2">
@@ -103,7 +103,7 @@ export function IssuesPanel() {
       </div>
       <Panel q={q}>
         {items.length === 0 ? (
-          <EmptyState title="No record issues." detail="Issues open when an analysis finds a failing SAP record, and close when it passes." />
+          <EmptyState title="No record issues" detail="Issues open when an analysis finds a failing SAP record, and close when it passes." />
         ) : (
           <DataTable columns={cols} data={items} getRowId={(i) => i.id} height={460} exportName="record-issues"
             exportOptions={[{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", filter) }]}
@@ -136,7 +136,7 @@ export function SapMonitorPanel() {
   return (
     <Panel q={q}>
       {list.length === 0 ? (
-        <EmptyState title="No SAP monitor exceptions." detail="Signals such as failed jobs and locked records appear here as they are raised." />
+        <EmptyState title="No SAP monitor exceptions" detail="Signals such as failed jobs and locked records appear here as they are raised." />
       ) : (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-6">
@@ -175,7 +175,7 @@ export function ApprovalsPanel() {
     { id: "when", header: "Requested", cell: ({ row }) => row.original.created_at ? relativeTime(row.original.created_at) : "—" },
     { id: "act", header: "", cell: ({ row }) => (
       <Button variant="secondary" disabled={approve.isPending || !q.data?.live_enabled || (user != null && row.original.requested_by === user.id)}
-        title={user != null && row.original.requested_by === user.id ? "You requested this; another approver must approve it." : undefined}
+        title={user != null && row.original.requested_by === user.id ? "You requested this; another approver must approve it" : undefined}
         onClick={() => approve.mutate(row.original.id)}>Approve</Button>
     ) },
   ], [approve, q.data?.live_enabled, user]);
@@ -187,7 +187,7 @@ export function ApprovalsPanel() {
           <Notice>Live SAP write-back is off on this deployment. Export fixes as an LSMW or BAPI file and load them in SAP.</Notice>
         ) : null}
         <p className="m-text-body" style={note}>A different person than the requester must approve each request.</p>
-        {list.length === 0 ? <EmptyState title="No write-backs waiting for approval." /> : (
+        {list.length === 0 ? <EmptyState title="No write-backs waiting" detail="Approved fixes queue here before they reach SAP" /> : (
           <DataTable columns={cols} data={list} getRowId={(a) => a.id} height={380} exportName="writeback-approvals" />
         )}
       </div>

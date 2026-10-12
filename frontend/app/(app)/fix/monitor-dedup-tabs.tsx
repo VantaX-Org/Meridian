@@ -55,7 +55,7 @@ export function DedupTab() {
   return (
     <ExplorerPage
       state={q.isLoading ? "loading" : isListFailure({ isError: q.isError, error: q.error }) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No duplicate candidates.", detail: "Candidates appear after matching runs on a master-data object." }}
+      emptyProps={{ title: "No duplicate candidates", detail: "Candidates appear after matching runs on a master-data object." }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={dedupColumns} data={items} getRowId={(r) => r.id} />}
     />

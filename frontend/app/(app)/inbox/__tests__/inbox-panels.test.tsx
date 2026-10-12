@@ -43,6 +43,6 @@ describe("ApprovalsPanel", () => {
   it("shows an empty state when nothing is pending", async () => {
     vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({ approvals: [], live_enabled: true });
     renderWithQuery(<ApprovalsPanel />);
-    expect(await screen.findByText(/no .*approval/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no write-backs/i)).toBeInTheDocument();
   });
 });
