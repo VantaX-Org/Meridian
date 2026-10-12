@@ -25,7 +25,13 @@ export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDe
                 </BaseMenu.Item>
               ) : (
                 <BaseMenu.CheckboxItem key={item.label} checked={item.checked} onCheckedChange={item.onSelect} closeOnClick={false} className="m-popup-item">
-                  <span aria-hidden className="inline-block w-4">{item.checked ? "\u2713" : ""}</span>
+                  <span aria-hidden className="inline-block w-4">
+                    {item.checked && (
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 4.2 3.2 6.4 7 1.6" />
+                      </svg>
+                    )}
+                  </span>
                   {item.label}
                 </BaseMenu.CheckboxItem>
               ),
