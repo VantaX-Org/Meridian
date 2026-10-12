@@ -32,7 +32,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.middleware.audit import _insert_audit_row
 from api.middleware.licence import enforce_licensed_modules
 from api.models.process_model import L1, L2, L3, L4, L5, ProcessModelDocument
-from api.routes.objects import _FINISHED as _FINISHED_RUNS
+from api.routes.objects import FINISHED as _FINISHED_RUNS
 from api.routes.process_designer import _invalid, _reference, _rls
 from api.services import jobs
 from api.services.bpmn_export import BpmnExportError, ExportMeta, export_node, export_zip, landscape_counts
@@ -208,6 +208,13 @@ class DfgResponse(BaseModel):
     edges: list[DfgEdge]
     edge_threshold: float
     cached: bool = False
+
+
+class _DfgCacheEntry(BaseModel):
+    """What the flow cache stores: the graph WITHOUT dq_defects, plus each node's DQ modules, so a hit
+    re-applies fresh defect counts instead of serving ones up to CACHE_TTL old."""
+    dfg: DfgResponse
+    modules: dict[str, list[str]]
 
 
 def _no_none_list(v: Optional[Sequence[str]]) -> list[str]:
@@ -574,12 +581,19 @@ def _children(doc: ProcessModelDocument, node_id: Optional[str]) -> tuple[int, P
     raise HTTPException(status_code=404, detail="Node not found")
 
 
-def _stats(node: Union[Parent, Child], defects: Optional[dict[str, int]] = None) -> NodeStats:
+def _stats(node: Union[Parent, Child]) -> NodeStats:
     d = node.discovery
     return NodeStats(id=node.id, name=node.name, source=node.source, observed=bool(d and d.observed),
                      case_count=d.case_count if d else 0, share=d.share if d else 0.0,
                      median_seconds=d.median_seconds if d else None, fitness=d.fitness if d else None,
-                     dq_defects=_defects(defects, _node_modules(node)))
+                     dq_defects=None)  # filled per request by _apply_defects, never cached
+
+
+def _apply_defects(dfg: DfgResponse, modules: dict[str, list[str]],
+                   defects: Optional[dict[str, int]]) -> DfgResponse:
+    def one(n: NodeStats) -> NodeStats:
+        return n.model_copy(update={"dq_defects": _defects(defects, modules.get(n.id, ()))})
+    return dfg.model_copy(update={"node": one(dfg.node), "nodes": [one(n) for n in dfg.nodes]})
 
 
 def _check_level(level: Optional[int], actual: int, parent_id: str) -> None:
@@ -617,19 +631,24 @@ async def dfg(run_id: str, request: Request, level: Optional[int] = Query(None, 
     flt, _ = _filter(request, run)
     client = _redis_client() if flt != ProcessFilter() else None
     key = f"{cache_key(_scope(tenant, run), flt, run.id)}:{node_id or ''}:{int(all_edges)}"
+    defects = await _defects_by_module(db, tenant, run.system_id)  # one lookup shared by every node, never cached
     if client is not None and (hit := client.get(key)):
-        cached = DfgResponse.model_validate_json(hit)
-        _check_level(level, cached.level, cached.node.id)  # a cache hit must not skip the level validation
-        return cached.model_copy(update={"cached": True})
+        try:
+            entry = _DfgCacheEntry.model_validate_json(hit)
+        except ValueError:  # an entry from before dq_defects existed: treat as a miss
+            entry = None
+        if entry is not None:
+            _check_level(level, entry.dfg.level, entry.dfg.node.id)  # a cache hit must not skip the level validation
+            return _apply_defects(entry.dfg, entry.modules, defects).model_copy(update={"cached": True})
     doc = await _document(db, tenant, run, flt)
     lvl, parent, kids = _children(doc, node_id)
     _check_level(level, lvl, parent.id)
-    defects = await _defects_by_module(db, tenant, run.system_id)  # one lookup shared by every node
-    out = DfgResponse(level=lvl, node=_stats(parent, defects), nodes=[_stats(k, defects) for k in kids],
+    out = DfgResponse(level=lvl, node=_stats(parent), nodes=[_stats(k) for k in kids],
                       edges=_edges(parent, kids, all_edges), edge_threshold=EDGE_THRESHOLD)
+    modules = {n.id: sorted(_node_modules(n)) for n in [parent, *kids]}
     if client is not None:
-        client.setex(key, CACHE_TTL, out.model_dump_json())
-    return out
+        client.setex(key, CACHE_TTL, _DfgCacheEntry(dfg=out, modules=modules).model_dump_json())
+    return _apply_defects(out, modules, defects)
 
 
 def _variant(v: Variant) -> VariantOut:

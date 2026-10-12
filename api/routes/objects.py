@@ -52,7 +52,7 @@ class ObjectSummaryOut(BaseModel):
 class ObjectsListOut(BaseModel):
     run_id: Optional[str] = None
     objects: list[ObjectSummaryOut]
-    blocking_findings_total: int = 0  # failing critical-severity findings in the run, across all objects
+    blocking_findings_total: int = 0  
     # the tenant's DQS bands {target, warning, critical}, for the score rings
     thresholds: dict[str, float] = DEFAULT_THRESHOLDS
 
@@ -60,7 +60,7 @@ class ObjectsListOut(BaseModel):
 # Finished runs, as api/routes/versions.py's _DONE minus 'failed': run_agents.py and
 # ai_enrich_report.py move a run past 'complete' once checks are in, so the newest
 # finished run is often not status = 'complete'.
-_FINISHED = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched")
+FINISHED = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched")
 
 
 async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> Optional[str]:
@@ -71,7 +71,7 @@ async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> Optional[s
         row = (await db.execute(text(
             "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND status = ANY(:done) "
             "ORDER BY run_at DESC LIMIT 1"
-        ), {"t": str(tenant.id), "done": list(_FINISHED)})).fetchone()
+        ), {"t": str(tenant.id), "done": list(FINISHED)})).fetchone()
         return row[0] if row else None
     try:
         uuid.UUID(run)
@@ -100,23 +100,25 @@ def _worst_dimension(mod_summary: dict) -> Optional[str]:
 
 
 _SEVERITY_RANK = ("critical", "high", "medium", "low")
+# One definition of "blocking" for the list: used by the per-object blocking rule and the list total.
+BLOCKING_SEVERITIES: tuple[str, ...] = ("critical", "high")
 _TREND_RUNS = 8
 
 
 async def _enrichments(db: AsyncSession, tenant: Tenant, run_id: str) -> tuple[dict[str, tuple[str, Optional[str]]], dict[str, str], list[dict], int]:
     """Four tenant-scoped queries for the whole list, none per object:
-    blocking rule per module (DISTINCT ON over the run's findings, one pass), their names (one rules lookup),
+    blocking rule per module (DISTINCT ON over the run's critical/high failing findings, one pass), their names (one rules lookup),
     owners (one data_owners join) and the last 8 runs' summaries of this run's system (8 rows).
     Returns (blocking {module: (check_id, name)}, owners {module: name}, trend rows, critical total)."""
     t = {"t": str(tenant.id), "v": run_id}
     block = (await db.execute(text(
         "SELECT DISTINCT ON (module) module, check_id FROM findings "
-        "WHERE version_id = :v AND tenant_id = :t AND affected_count > 0 "
+        "WHERE version_id = :v AND tenant_id = :t AND affected_count > 0 AND severity = ANY(:blocking) "
         "ORDER BY module, array_position(CAST(:rank AS text[]), severity) NULLS LAST, affected_count DESC, check_id"
-    ), {**t, "rank": list(_SEVERITY_RANK)})).fetchall()
-    critical = (await db.execute(text(
+    ), {**t, "rank": list(_SEVERITY_RANK), "blocking": list(BLOCKING_SEVERITIES)})).fetchall()
+    blocking_total = (await db.execute(text(
         "SELECT count(*) FROM findings WHERE version_id = :v AND tenant_id = :t "
-        "AND affected_count > 0 AND severity = 'critical'"), t)).scalar() or 0
+        "AND affected_count > 0 AND severity = ANY(:blocking)"), {**t, "blocking": list(BLOCKING_SEVERITIES)})).scalar() or 0
     names: dict[str, str] = {}
     if block:
         names = {r[0]: r[1] for r in (await db.execute(text(
@@ -134,8 +136,8 @@ async def _enrichments(db: AsyncSession, tenant: Tenant, run_id: str) -> tuple[d
         "AND COALESCE(v.metadata->>'system_id', 'upload') = "
         "(SELECT COALESCE(c.metadata->>'system_id', 'upload') FROM analysis_versions c WHERE c.id = :v AND c.tenant_id = :t) "
         "AND v.run_at <= (SELECT c.run_at FROM analysis_versions c WHERE c.id = :v AND c.tenant_id = :t) "
-        "ORDER BY v.run_at DESC LIMIT :n"), {**t, "done": list(_FINISHED), "n": _TREND_RUNS})).fetchall()
-    return blocking, owners, [r[0] or {} for r in reversed(trend_rows)], critical
+        "ORDER BY v.run_at DESC LIMIT :n"), {**t, "done": list(FINISHED), "n": _TREND_RUNS})).fetchall()
+    return blocking, owners, [r[0] or {} for r in reversed(trend_rows)], blocking_total
 
 
 @router.get("", response_model=ObjectsListOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
@@ -154,7 +156,7 @@ async def list_objects(run: str = Query(..., alias="run"),
     ), {"v": run_id, "t": str(tenant.id)})).fetchall()
     by_module = {r[0]: (r[1], r[2]) for r in rows}
 
-    blocking, owners, history, critical_total = await _enrichments(db, tenant, run_id)
+    blocking, owners, history, blocking_total = await _enrichments(db, tenant, run_id)
 
     modules = sorted(set(summary.keys()) | set(by_module.keys()))
     objects = []
@@ -177,7 +179,7 @@ async def list_objects(run: str = Query(..., alias="run"),
             "owner": owners.get(module),
         })
     return {"run_id": run_id, "objects": objects, "thresholds": thresholds,
-            "blocking_findings_total": critical_total}
+            "blocking_findings_total": blocking_total}
 
 
 _OBJECTS_EXPORT_COLUMNS = [

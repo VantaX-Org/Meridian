@@ -47,6 +47,9 @@ def seeded():
         c.execute(text("INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, "
                        "affected_count, total_count) VALUES (gen_random_uuid(), :v, :t, 'vendor', 'V-CRIT', 'critical', "
                        "'validity', 3, 10)"), {"v": last, "t": t})
+        c.execute(text("INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, "
+                       "affected_count, total_count) VALUES (gen_random_uuid(), :v, :t, 'customer', 'C-LOW', 'low', "
+                       "'validity', 40, 100)"), {"v": last, "t": t})
         c.execute(text("INSERT INTO rules (tenant_id, name, module, category, severity, enabled, conditions, source) "
                        "VALUES (:t, 'MM-HIGH-B: Base unit missing', 'material_master', 'completeness', 'high', true, "
                        "'{}'::jsonb, 'builtin')"), {"t": t})
@@ -77,7 +80,10 @@ async def test_objects_list_enrichment(seeded, monkeypatch):
     assert mm["trend"] == [51.0, 52.0, 53.0, 54.0, 55.0, 56.0, 57.0, 58.0]  # last 8 of system A, oldest first
     assert mm["worst_dimension"] == "validity"  # uniqueness (10) has coverage 0, so it is not measured
     assert mm["owner"] == "Olive Owner"
-    assert body["blocking_findings_total"] == 1  # V-CRIT only; MM-CRIT-OK affects 0 records
+    # failing critical+high: MM-HIGH-A, MM-HIGH-B, V-CRIT; MM-CRIT-OK affects 0 records, low ones do not block
+    assert body["blocking_findings_total"] == 3
+    assert by["customer"]["failing_checks"] == 1 and by["customer"]["blocking_rule_id"] is None
+    assert by["customer"]["blocking_rule_name"] is None
     vendor = by["vendor"]
     assert vendor["blocking_rule_id"] == "V-CRIT" and vendor["blocking_rule_name"] is None
     assert vendor["worst_dimension"] is None and vendor["owner"] is None
