@@ -242,18 +242,6 @@
 .m-motion-stagger > :nth-child(5) { animation-delay: 160ms; }
 .m-motion-stagger > :nth-child(n+6) { animation-delay: 200ms; }
 .m-spin { animation: m-spin var(--m-motion-shimmer) linear infinite; transform-origin: center; }
-.m-auth-input {                  /* signed-out form inputs */
-  width: 100%; height: 40px; padding: 0 12px;
-  font-size: 13px; line-height: 18px; color: var(--m-ink);
-  background: var(--m-sheet);
-  border: 1px solid var(--m-line-strong);
-  border-radius: var(--m-radius-control);
-  outline: none;
-  transition: border-color var(--m-motion-duration) var(--m-motion-ease-out), box-shadow var(--m-motion-duration) var(--m-motion-ease-out);
-}
-.m-auth-input:hover { border-color: var(--m-ink-3); }
-.m-auth-input:focus-visible { border-color: var(--m-accent); box-shadow: var(--m-elev-focus); }
-.m-auth-input[readonly] { color: var(--m-ink-2); }
 .m-skeleton-sweep { animation: m-shimmer var(--m-motion-shimmer) linear infinite; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -273,8 +261,6 @@
 .m-rail-link:hover { color: var(--m-ink); }
 
 /* Form primitives */
-.m-input { height: 32px; padding: 0 var(--m-space-3, 12px); border: 1px solid var(--m-line-strong); border-radius: var(--m-radius-control); background: var(--m-sheet); color: var(--m-ink); font-size: 13px; line-height: 18px; }
-.m-input:focus-visible { outline: 2px solid var(--m-accent); outline-offset: 1px; }
 .m-checkbox { accent-color: var(--m-accent); width: 16px; height: 16px; }
 
 /* DataTable keyboard cursor */
