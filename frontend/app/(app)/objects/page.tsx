@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, ScoreRing, Sparkline, Stat, emptyExportOptions, type PillTone, type ScoreBands } from "@/design";
+import { DataTable, DomainChip, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, ScoreRing, Sparkline, Stat, emptyExportOptions, type CellMeta, type PillTone, type ScoreBands } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -14,6 +14,7 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { bySeverity } from "../_severity-sort";
 import { FilterChips } from "./_header";
 
 const READINESS_LABEL: Record<"pass" | "warn" | "fail", string> = {
@@ -54,7 +55,7 @@ const makeColumns = (run: string, bands: ScoreBands | undefined, objects: Object
 };
 
 const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<ObjectSummary>[] => [
-  { accessorKey: "label", header: "Object" },
+  { accessorKey: "label", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={row.original.label} /> },
   {
     accessorKey: "composite_score",
     header: "DQS",
@@ -70,12 +71,16 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
     },
   },
   {
-    accessorKey: "readiness",
+    id: "readiness",
+    // Severity-mapped value drives the row bar; the cell still shows the verdict word.
+    accessorFn: (o) => (o.readiness === "fail" ? "critical" : o.readiness === "warn" ? "medium" : o.readiness === "pass" ? "pass" : ""),
     header: "Readiness",
+    sortingFn: bySeverity,
+    meta: { severity: true } satisfies CellMeta,
     cell: ({ row }) => {
       const readiness = row.original.readiness;
       if (!readiness) return "—";
-      return <Pill tone={READINESS_TONE[readiness]}>{READINESS_LABEL[readiness]}</Pill>;
+      return <Pill tone={READINESS_TONE[readiness]} variant="solid">{READINESS_LABEL[readiness]}</Pill>;
     },
   },
   {
@@ -181,7 +186,7 @@ export default function ObjectsPage() {
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
   const summary = objects.length > 0 && (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-6">
+      <div className="flex flex-wrap gap-6 m-motion-stagger">
         <Stat label="Not ready" value={notReady} hint={`of ${objects.length} objects`} tone={notReady > 0 ? "no-go" : "go"} href={`/objects?run=${run}&readiness=fail`} />
         <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" />
         {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : null}
