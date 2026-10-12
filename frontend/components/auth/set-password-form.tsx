@@ -6,8 +6,8 @@ import { useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AuthFrame, AuthNotice, AuthSpinner, PasswordField, authActionsClass, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
-import { Button } from "@/design";
+import { AuthFrame, PasswordField, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { Button, Notice } from "@/design";
 
 /** Server-side minimum (api.routes.auth._MIN_PASSWORD_LENGTH = 12). */
 const MIN_PASSWORD_LENGTH = 12;
@@ -50,17 +50,15 @@ export function SetPasswordForm({ title, lead, intro, submitLabel, missingToken,
       {intro}
       <form className={authFormClass} onSubmit={onSubmit} noValidate>
         {error ? (
-          <AuthNotice tone="danger">
+          <Notice tone="danger">
             {error}
             {retryHref ? <> <Link className="underline" href={retryHref}>Request a new link</Link></> : null}
-          </AuthNotice>
+          </Notice>
         ) : null}
         <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password"
           helper={`At least ${MIN_PASSWORD_LENGTH} characters.`} />
         <PasswordField label="Confirm password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
-        <div className={authActionsClass}>
-          <Button type="submit" disabled={submitting} className="h-10 w-full">{submitting ? <><AuthSpinner /> Saving…</> : submitLabel}</Button>
-        </div>
+        <Button type="submit" pending={submitting} className="w-full">{submitLabel}</Button>
       </form>
       <Link className={authLinkClass} style={authLinkStyle} href="/sign-in">Back to sign in</Link>
     </AuthFrame>

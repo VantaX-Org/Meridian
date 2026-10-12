@@ -29,10 +29,10 @@ import ResetPasswordPage from "@/app/reset-password/page";
 import AcceptInvitePage from "@/app/accept-invite/page";
 
 describe("signed-out pages render with the redesigned AuthFrame", () => {
-  it("sign-in renders exactly one h1 and the brand panel copy", () => {
+  it("sign-in renders exactly one h1 and no marketing copy", () => {
     const { container } = render(<SignInPage />);
     expect(container.querySelectorAll("h1")).toHaveLength(1);
-    expect(container.textContent).toContain("Your SAP data stays on this server.");
+    expect(container.textContent).not.toContain("800+");
   });
 
   it("forgot-password renders exactly one h1", () => {

@@ -1,15 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180" fill="none">
-  <defs>
-    <linearGradient id="brand" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2B4BE0"/>
-      <stop offset="1" stop-color="#1A2F9E"/>
-    </linearGradient>
-  </defs>
-  <!-- iOS applies its own corner mask; the canvas stays square -->
-  <rect width="180" height="180" fill="url(#brand)"/>
-  <!-- mark at 4x, centred: (180 - 128) / 2 = 26 -->
-  <g transform="translate(26 26) scale(4)">
-    <path d="M21.74 7.81A10 10 0 1 1 10.26 7.81" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
-    <path d="M16 3V29" stroke="#C7D2FF" stroke-width="3" stroke-linecap="round"/>
+  <rect width="180" height="180" fill="#4F46E5"/>
+  <g transform="translate(26 26) scale(4)" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round">
+    <path d="M21.74 7.81A10 10 0 1 1 10.26 7.81"/>
+    <path d="M16 3V29"/>
   </g>
 </svg>
