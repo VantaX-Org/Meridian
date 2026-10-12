@@ -96,6 +96,14 @@ describe("process catalogue", () => {
     renderWithQuery(<ProcessCataloguePage />);
     expect(await screen.findByText("Mining")).toBeTruthy();
   });
+
+  it("links an L1's DQ defects to the failing objects and dashes an unmapped L1", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
+      { ...reference("PTP"), coverage: "discovered", last_run: lastRun({}), dq_defects: 7 },
+      { ...reference("OTC"), dq_defects: null }]);
+    renderWithQuery(<ProcessCataloguePage />);
+    expect((await screen.findByRole("link", { name: "7" })).getAttribute("href")).toBe("/objects?run=latest&readiness=fail");
+  });
 });
 
 describe("headline", () => {

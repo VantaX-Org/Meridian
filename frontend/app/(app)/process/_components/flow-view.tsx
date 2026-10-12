@@ -16,7 +16,7 @@ import { queryKeys } from "@/lib/query-keys";
 import type { L4, ProcessModelDocument } from "@/types/process-model";
 import { findActivity, locate } from "@/app/(app)/insights/process/designer/_components/doc";
 import { L5Table } from "./l5-table";
-import { fmtCount, fmtFitness, fmtSeconds, fmtShare, ViewAsTable } from "./shared";
+import { DqDefects, fmtCount, fmtFitness, fmtSeconds, fmtShare, ViewAsTable } from "./shared";
 
 /** Lazy chunk with a fixed 420px slot so the flow does not shift when it arrives. */
 const Graph = dynamic(() => import("@/design/charts/Graph").then((m) => m.Graph), {
@@ -34,6 +34,7 @@ const NODE_COLUMNS: ColumnDef<NodeStats>[] = [
   { accessorKey: "share", header: "Share", cell: ({ row }) => fmtShare(row.original.share) },
   { accessorKey: "median_seconds", header: "Median", cell: ({ row }) => fmtSeconds(row.original.median_seconds) },
   { accessorKey: "fitness", header: "Fitness", cell: ({ row }) => fmtFitness(row.original.fitness) },
+  { id: "dq_defects", header: "DQ defects", accessorFn: (n) => n.dq_defects ?? -1, cell: ({ row }) => <DqDefects n={row.original.dq_defects} /> },
 ];
 
 export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {

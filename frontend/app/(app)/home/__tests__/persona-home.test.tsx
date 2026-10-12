@@ -133,6 +133,15 @@ describe("PersonaHomePage blocking and loading states", () => {
     expect(stat).toHaveTextContent("1");
   });
 
+  it("prefers the API's blocking_findings_total over the run's severity counts", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS, blocking_findings_total: 42 });
+
+    renderWithQuery(<LeadHomePage />);
+
+    await waitFor(() => expect((screen.getByText("Blocking findings")).closest("a")).toHaveTextContent("42"));
+  });
+
   it("shows a dash, no hint, for inbox and proposals until counts load", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
     vi.spyOn(shellApi, "getShellCounts").mockReturnValue(new Promise(() => {}));

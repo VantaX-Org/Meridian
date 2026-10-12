@@ -290,7 +290,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const unhealthy = activeSystems.filter(isFailing).length;
   const notLoaded = Math.max((landscapeQ.data?.total ?? 0) - (landscapeQ.data?.loaded ?? 0), 0);
   const severity = severityTotals(latest);
-  const blocking = severity.critical + severity.high;
+  const blocking = objectsQ.data?.blocking_findings_total ?? severity.critical + severity.high;
   const countsReady = !!counts;
   const work =
     role === "lead" ? (
