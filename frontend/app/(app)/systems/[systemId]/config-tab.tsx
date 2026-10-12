@@ -3,7 +3,7 @@
 import { useMemo, type ReactNode } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone } from "@/design";
+import { Card, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone } from "@/design";
 import {
   getConfigAlignment, getConfigDrift, getConfigGhost, getConfigHealth, getConfigInventory, getConfigLicence,
   getConfigProcesses, getConfigShadow,
@@ -17,8 +17,6 @@ const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-g
 const STATUS_TONE: Record<string, PillTone> = { active: "go", partial: "at-risk", dormant: "at-risk", inactive: "no-go", ghost: "no-go" };
 const n = (v: number) => v.toLocaleString();
 const dash = (v: string | null | undefined) => v ?? "—";
-const card = "rounded border p-3";
-const cardStyle = { borderColor: "var(--m-line)" };
 const note = { color: "var(--m-ink-2)" };
 
 /** One config-intelligence list: loading, 404 (no analysis yet) as an honest empty state, error, then the body. */
@@ -140,16 +138,12 @@ function GhostShadowSection() {
   const shadow = useCfg("shadow", getConfigShadow);
   return (
     <div className="flex flex-col gap-4">
-      <div className={card} style={cardStyle}>
-        <p className="mb-1 m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Ghost configuration</p>
-        <p className="mb-2 m-text-body" style={note}>Configured in SAP but never used in a transaction.</p>
+      <Card title="Ghost configuration" meta="Configured in SAP but never used in a transaction.">
         <Feed q={ghost} empty="Ghost configuration is configured but unused.">{(d) => <FindingsTable rows={d.findings} name="config-ghost" />}</Feed>
-      </div>
-      <div className={card} style={cardStyle}>
-        <p className="mb-1 m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Shadow configuration</p>
-        <p className="mb-2 m-text-body" style={note}>Used in transactions but missing from the configuration.</p>
+      </Card>
+      <Card title="Shadow configuration" meta="Used in transactions but missing from the configuration.">
         <Feed q={shadow} empty="Shadow configuration is used but not configured.">{(d) => <FindingsTable rows={d.findings} name="config-shadow" />}</Feed>
-      </div>
+      </Card>
     </div>
   );
 }

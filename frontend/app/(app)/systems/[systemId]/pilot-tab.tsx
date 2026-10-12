@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, Stat } from "@/design";
 import { getScorecard, uploadKnownIssues, type KnownIssue, type RuleScore } from "@/lib/api/pilot";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
@@ -13,8 +13,6 @@ import { queryKeys } from "@/lib/query-keys";
 
 const pct = (v: number | null) => (v === null ? "—" : `${(v * 100).toFixed(1)}%`);
 const n = (v: number) => v.toLocaleString();
-const card = "rounded border p-3";
-const cardStyle = { borderColor: "var(--m-line)" };
 const note = "m-text-body";
 const noteStyle = { color: "var(--m-ink-2)" };
 
@@ -64,7 +62,7 @@ export function PilotTab({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={card} style={cardStyle}>
+      <Card>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Stat label="Precision" href={`/systems/${id}?tab=pilot#rules`} value={p?.precision == null ? "—" : `${(p.precision * 100).toFixed(1)}%`}
             delta={p ? `${n(p.reviewed - p.false_positives)} of ${n(p.reviewed)} reviewed issues were real.` : "No issues reviewed yet."} />
@@ -75,13 +73,9 @@ export function PilotTab({ id }: { id: string }) {
           <Stat label="Known issues missed" href={`/systems/${id}?tab=pilot#missed`} value={n(rec?.missed_total ?? 0)}
             delta={rec?.known ? `${n(rec.missed_total)} of ${n(rec.known)} were not flagged.` : "Upload known issues to measure recall."} />
         </div>
-      </div>
+      </Card>
 
-      <div className={card} style={cardStyle}>
-        <div className="flex items-center justify-between">
-          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Precision per rule</p>
-          <p className={note} style={noteStyle}>{data?.rules.length ?? 0} rules</p>
-        </div>
+      <Card title="Precision per rule" meta={`${data?.rules.length ?? 0} rules`}>
         <p className={`${note} mt-1`} style={noteStyle} id="rules">
           A reviewed issue is one closed as false positive, accepted risk or fixed. A rule is rated once {p?.min_reviewed_per_rule ?? 10} of its
           issues are reviewed, and needs tuning below {pct(p?.target ?? 0.9)}.
@@ -92,14 +86,12 @@ export function PilotTab({ id }: { id: string }) {
           <EmptyState title="No record issues yet. Run an analysis of this system first."
             action={<Link href="/analyse" style={{ color: "var(--m-accent)" }}>Open Analyse</Link>} />
         )}
-      </div>
+      </Card>
 
-      <div className={card} style={cardStyle}>
-        <div className="flex items-center justify-between">
-          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Known issues Meridian missed</p>
-          <div className="flex items-center gap-2">
-            {rec?.known ? <p className={note} style={noteStyle}>{n(rec.missed_total)} of {n(rec.known)}</p> : null}
-            {can("manage_systems") ? (
+      <Card
+        title="Known issues Meridian missed"
+        meta={rec?.known ? `${n(rec.missed_total)} of ${n(rec.known)}` : undefined}
+        actions={can("manage_systems") ? (
               <>
                 <input ref={input} type="file" accept=".csv,text/csv" hidden
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
@@ -107,23 +99,20 @@ export function PilotTab({ id }: { id: string }) {
                   {rec?.known ? "Replace known issues" : "Upload known issues"}
                 </Button>
               </>
-            ) : null}
-          </div>
-        </div>
+        ) : undefined}
+      >
         <p className={`${note} mt-1`} style={noteStyle} id="missed">
           Upload the records your stewards know are wrong as CSV with columns object, record and note. Object is the Meridian object, for example
           accounts_payable, or blank for any. Record is the SAP key with parts separated by a pipe, for example 1000|100001. Leading zeros do not matter.
         </p>
         {rec?.objects_not_analysed.length ? (
-          <div className="mt-2 rounded border px-3 py-2 m-text-body" style={{ borderColor: "var(--m-medium)", color: "var(--m-ink)" }}>
-            <p className="font-medium" style={{ color: "var(--m-medium)" }}>Objects not analysed yet</p>
-            <p className="mt-1" style={noteStyle}>
-              {rec.objects_not_analysed.map(formatModuleName).join(", ")}. Their known issues count as missed until they are downloaded and analysed.
-            </p>
-          </div>
+          <Notice tone="warning" title="Objects not analysed yet">
+            {rec.objects_not_analysed.map(formatModuleName).join(", ")}. Their known issues count as missed until they are downloaded and analysed.
+          </Notice>
         ) : null}
         {!rec?.known ? (
-          <EmptyState title="No known issues uploaded." />
+          <EmptyState title="No known issues uploaded"
+            action={can("manage_systems") ? <Button variant="secondary" onClick={() => input.current?.click()}>Upload known issues</Button> : undefined} />
         ) : !rec.missed_total ? (
           <EmptyState title="Every known issue was caught." />
         ) : (
@@ -132,7 +121,7 @@ export function PilotTab({ id }: { id: string }) {
             {rec.missed_total > rec.missed.length ? <p className="m-text-meta mt-1" style={{ color: "var(--m-ink-3)" }}>{n(rec.missed_total - rec.missed.length)} more not shown.</p> : null}
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

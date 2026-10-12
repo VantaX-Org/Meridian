@@ -36,7 +36,7 @@ describe("TrendPanel", () => {
   it("says so when nothing has been analysed", async () => {
     vi.spyOn(systemObjectsApi, "getTrends").mockResolvedValue({ summary: [], series: {} });
     renderWithQuery(<TrendPanel systemId="s1" />);
-    await waitFor(() => expect(screen.getByText("No analysed run yet.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("No analysed run yet")).toBeInTheDocument());
   });
 
   it("shows a retryable error", async () => {
@@ -45,6 +45,6 @@ describe("TrendPanel", () => {
     await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     spy.mockResolvedValue({ summary: [], series: {} });
     screen.getByRole("button", { name: /retry/i }).click();
-    await waitFor(() => expect(screen.getByText("No analysed run yet.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("No analysed run yet")).toBeInTheDocument());
   });
 });

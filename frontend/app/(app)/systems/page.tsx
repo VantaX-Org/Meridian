@@ -2,16 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
-import { ArrowDown, ArrowUp } from "lucide-react";
-import { DrillLink, Button, DataTable, ExplorerPage, ExportMenu, Mono, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { DrillLink, Button, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { useSystemScope } from "@/lib/permissions";
-import { useRole } from "@/hooks/use-role";
-import { getSystems, testConnection } from "@/lib/api/connectivity";
+import { getSystems } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSyncProfiles } from "@/lib/api/systems";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
@@ -69,10 +66,7 @@ function configSub(c: {
 
 export default function SystemsPage() {
   const router = useRouter();
-  const qc = useQueryClient();
   const systemScope = useSystemScope();
-  // POST /connectivity/health-check needs trigger_sync; the Test button is absent without it.
-  const canTest = useRole().can("trigger_sync");
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, select: systemScope });
   const systems = data ?? [];
   const versionsQ = useQueries({
@@ -122,13 +116,6 @@ export default function SystemsPage() {
   const cfgVerdictTone: PillTone = (cfgCounts.failed ?? 0) > 0 ? "no-go" : (cfgCounts.loading ?? 0) > 0 ? "neutral" : cfgNotLoaded > 0 ? "at-risk" : "go";
   const cfgHref = (cfgCounts.failed ?? 0) > 0 ? "?config=failed" : (cfgCounts.loading ?? 0) > 0 ? "?config=loading" : cfgNotLoaded > 0 ? "?config=not_loaded" : undefined;
 
-  const test = useMutation({
-    mutationFn: (systemId: string) => testConnection(systemId),
-    onSuccess: (res) => toast(res.status === "ok" || res.status === "healthy" ? "Connection OK" : res.message),
-    onError: () => toast.error("Connection test failed"),
-    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.systems() }),
-  });
-
   const columns: ColumnDef<SAPSystemExtended>[] = [
     { accessorKey: "name", header: "System", cell: ({ row }) => (<span className="inline-flex items-baseline gap-2">{row.original.name}<Mono>{row.original.client ? `${row.original.environment}/${row.original.client}` : row.original.environment}</Mono></span>) },
     { accessorKey: "system_type", header: "Type" },
@@ -152,12 +139,11 @@ export default function SystemsPage() {
             <DrillLink href={`/systems/${row.original.id}?tab=overview`}>{d.dqs.toFixed(1)}</DrillLink>
             {t != null && Math.abs(t) >= 0.05 ? (
               <span
-                className="inline-flex items-center m-text-meta"
-                style={{ color: t > 0 ? "var(--m-pass)" : "var(--m-critical)" }}
+                className="m-text-meta m-numeric"
+                style={{ color: "var(--m-ink-2)" }}
                 aria-label={`${t > 0 ? "Up" : "Down"} ${Math.abs(t).toFixed(1)} since the previous run`}
               >
-                {t > 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-                {Math.abs(t).toFixed(1)}
+                {t > 0 ? "+" : "-"}{Math.abs(t).toFixed(1)}
               </span>
             ) : null}
           </span>
@@ -188,20 +174,9 @@ export default function SystemsPage() {
       },
     },
     {
-      id: "actions",
-      header: "",
-      cell: ({ row }) => canTest && (
-        <Button
-          variant="secondary"
-          disabled={test.isPending}
-          onClick={(e) => {
-            e.stopPropagation();
-            test.mutate(row.original.id);
-          }}
-        >
-          Test
-        </Button>
-      ),
+      id: "last_sync",
+      header: "Last extracted",
+      cell: ({ row }) => (row.original.last_sync_at ? relativeTime(row.original.last_sync_at) : "Never"),
     },
   ];
 
@@ -212,43 +187,34 @@ export default function SystemsPage() {
 
   const exportOptions = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx") }];
 
+  const attention = systems.filter((s) => s.health_status !== "healthy").length;
+  const filtering = Boolean(configFilter || healthFilter);
+
   return (
     <ExplorerPage
+      header={
+        <PageHeader
+          title="Systems"
+          meta={isLoading ? undefined : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}`}
+        />
+      }
       filterBar={
-        configFilter || healthFilter ? (
+        filtering ? (
           <div className="flex items-center gap-2 m-text-body">
-            <span style={{ color: "var(--m-ink-2)" }}>
-              {healthFilter ? `Showing ${HEALTH_LABEL[healthFilter as HealthStatus]?.toLowerCase() ?? healthFilter} systems.` : `Showing systems with configuration ${CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter}.`}
-            </span>
-            <Button variant="secondary" onClick={() => { setConfigFilter(""); setHealthFilter(""); }}>Show all systems</Button>
+            <Pill tone="neutral">{healthFilter ? HEALTH_LABEL[healthFilter as HealthStatus] ?? healthFilter : `Configuration ${(CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter).toLowerCase()}`}</Pill>
+            <Button variant="ghost" onClick={() => { setConfigFilter(""); setHealthFilter(""); }}>Clear filter</Button>
           </div>
         ) : undefined
       }
       summary={
         <div className="flex flex-wrap items-center gap-6">
-          {systems.length > 0 ? (
-            <>
-              <Stat label="Systems" value={systems.length} />
-              <Stat
-                label="Healthy"
-                value={systems.filter((s) => s.health_status === "healthy").length}
-                tone={systems.some((s) => s.health_status !== "healthy") ? "at-risk" : "go"}
-                hint={`${systems.filter((s) => s.health_status !== "healthy").length} need attention`}
-                href="/systems?health=healthy"
-              />
-            </>
-          ) : null}
-          {configQ.data ? (
+          {configQ.data || configQ.isLoading ? (
             <Stat
               label="Configuration loaded"
-              value={
-                cfgHref ? (
-                  <Link href={cfgHref} className="underline">{`${cfgLoaded} of ${cfgTotal}`}</Link>
-                ) : (
-                  `${cfgLoaded} of ${cfgTotal}`
-                )
-              }
+              loading={configQ.isLoading}
+              value={`${cfgLoaded} of ${cfgTotal}`}
               delta={<Pill tone={cfgVerdictTone}>{cfgVerdict}</Pill>}
+              onClick={cfgHref ? () => { setHealthFilter(""); setConfigFilter(cfgHref.slice("?config=".length)); } : undefined}
             />
           ) : null}
           <ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
@@ -260,12 +226,14 @@ export default function SystemsPage() {
           data={shown}
           getRowId={(r) => r.id}
           onRowClick={(r) => router.push(`/systems/${r.id}`)}
+          rowHref={(r) => `/systems/${r.id}`}
         />
       }
       state={state}
       emptyProps={{
-        title: "No systems yet. Connect your first SAP system to start measuring.",
-        detail: "Or import a file if you have an export.",
+        title: "No systems yet",
+        detail: "Import a file from an SAP export to start measuring.",
+        action: <Button render={<Link href="/import">Import file</Link>} />,
         ghost: "table",
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}

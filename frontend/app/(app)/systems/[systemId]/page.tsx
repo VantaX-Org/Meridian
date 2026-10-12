@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Line, Mono, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
+  Bar, Button, Card, Checkbox, DataTable, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
   emptyExportOptions, type PillTone,
   entityTabs,
 } from "@/design";
@@ -157,16 +157,12 @@ export default function SystemPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>{system.name}</p>
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
-            <Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>{" "}
-            {labelOf(system.system_type)}, {system.environment}.{" "}
-            {system.last_sync_at ? `Last extraction ${relativeTime(system.last_sync_at)}.` : "Nothing extracted yet."}
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader
+        title={system.name}
+        status={<Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>}
+        meta={`${labelOf(system.system_type)}, ${system.environment}. ${system.last_sync_at ? `Last extraction ${relativeTime(system.last_sync_at)}.` : "Nothing extracted yet."}`}
+        actions={
+        <>
           <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name}
             onClick={() => setExtractOpen(true)}>
             Extract now
@@ -184,11 +180,12 @@ export default function SystemPage() {
             }
           />
           {can("manage_systems") ? <Button onClick={() => setEditOpen(true)}>Edit</Button> : null}
-        </div>
-      </div>
+        </>
+        }
+      />
 
       {versionsQ.data?.download?.status === "running" || versionsQ.data?.download?.status === "queued" ? (
-        <div className="rounded border px-3 py-2 m-text-body" style={{ borderColor: "var(--m-line)", color: "var(--m-ink-2)" }}>
+        <Notice tone="info">
           Extraction in progress.
           {versionsQ.data.download.table ? (
             <>
@@ -196,18 +193,19 @@ export default function SystemPage() {
             </>
           ) : null}
           {versionsQ.data.download.percent != null ? ` ${versionsQ.data.download.percent} of 100 percent done.` : null}
-        </div>
+        </Notice>
       ) : null}
 
       <div className="grid grid-cols-4 gap-4">
         <Stat label="Health" value={HEALTH_LABEL[system.health_status]} href={`/systems/${systemId}?tab=health`} />
-        <Stat label="Objects" value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
+        <Stat label="Objects" loading={modulesQ.isLoading} value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
         <Stat
           label="Latest DQS"
+          loading={versionsQ.isLoading}
           value={dqs === null ? "—" : <span className="inline-flex items-center gap-2">{aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <ScoreRing score={dqs} size={48} />}{dqs.toFixed(1)}</span>}
           href={latest ? findingsHref(latest.id) : undefined}
         />
-        <Stat label="Open findings" value={latest ? aggQ.data?.total ?? "…" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
+        <Stat label="Open findings" loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
       </div>
 
       <Tabs
@@ -281,8 +279,7 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Score per run</p>
+        <Card title="Score per run">
           {scored.length < 2 ? (
             <EmptyState title="Two analysed runs are needed to draw a trend." />
           ) : (
@@ -294,9 +291,8 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
               }}
             />
           )}
-        </div>
-        <div>
-          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Objects by rows</p>
+        </Card>
+        <Card title="Objects by rows">
           {!byRows.length ? (
             <EmptyState title="No object has rows yet." />
           ) : (
@@ -308,17 +304,16 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
               }}
             />
           )}
-        </div>
+        </Card>
       </div>
       <TrendPanel systemId={systemId} />
-      <div>
-        <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Last 5 runs</p>
+      <Card title="Last 5 runs">
         {versions.length ? (
           <DataTable columns={runCols} data={versions.slice(0, 5)} getRowId={(v) => v.id} onRowClick={(v) => router.push(`/runs/${v.id}`)} />
         ) : (
-          <EmptyState title="Nothing has been extracted from this system yet." />
+          <EmptyState title="Nothing extracted yet" detail="Extract from the Objects tab to create the first run." />
         )}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -481,10 +476,10 @@ function Health({ id, system, canSync, canManage, onChanged }: {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-        <div className="flex items-center justify-between">
-          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Connection</p>
-          <div className="flex gap-2">
+      <Card
+        title="Connection"
+        actions={
+          <>
             {canSync ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
             {canSync && !hasNoConfig(system.system_type) ? (
               <ConfigLoadButton running={cfg.running} loaded={!!cfg.load} onClick={() => cfg.start.mutate()} />
@@ -494,9 +489,10 @@ function Health({ id, system, canSync, canManage, onChanged }: {
                 {running ? "Discovering" : snap ? "Discover again" : "Discover design"}
               </Button>
             ) : null}
-          </div>
-        </div>
-        <p className="m-text-body mt-1" style={{ color: "var(--m-ink-2)" }}>{verdict}</p>
+          </>
+        }
+      >
+        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{verdict}</p>
         <dl className="mt-2 grid grid-cols-2 gap-2 m-text-body">
           <Field label="Health"><Pill tone={HEALTH_TONE[system.health_status] ?? "no-go"}>{HEALTH_LABEL[system.health_status]}</Pill></Field>
           <Field label="Last health check"><span>{when(system.last_health_check, "Never")}</span></Field>
@@ -504,20 +500,21 @@ function Health({ id, system, canSync, canManage, onChanged }: {
           <Field label="SAP release"><Mono>{design?.sap_release ?? "Unknown"}</Mono></Field>
         </dl>
         {snap?.error ? (
-          <div className="mt-2 rounded border px-3 py-2 m-text-body" style={{ borderColor: "var(--m-medium)", color: "var(--m-medium)" }}>
-            Discovery {labelOf(snap.status)}: {snap.error}
-          </div>
+          <Notice tone="warning">Discovery {labelOf(snap.status)}: {snap.error}</Notice>
         ) : null}
-      </div>
+      </Card>
 
       <ConfigLoadPanel systemId={id} systemType={system.system_type} canLoad={canSync} />
       <SchedulesPanel id={id} canManage={canManage} />
       {canManage ? <ReferencePanel id={id} /> : null}
 
-      <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-        <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Design discovery</p>
+      <Card title="Design discovery">
         {!snap ? (
-          <EmptyState title="Not discovered yet. Discover design reads this system's data dictionary and configuration." />
+          <EmptyState
+            title="Not discovered yet"
+            detail="Discover design reads this system's data dictionary and configuration."
+            action={canSync ? <Button variant="secondary" disabled={discover.isPending || running} onClick={() => discover.mutate()}>Discover design</Button> : undefined}
+          />
         ) : (
           <Tabs
             value={part}
@@ -530,7 +527,7 @@ function Health({ id, system, canSync, canManage, onChanged }: {
             ]}
           />
         )}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -569,9 +566,7 @@ function EditForm({ system, targets, onDone, onDeleted }: {
       onSubmit={(e) => { e.preventDefault(); if (name.trim()) save.mutate(); }}
     >
       <Field label="Alias">
-        <input
-          className="w-full rounded border px-3 py-1.5 m-text-body"
-          style={{ borderColor: "var(--m-line)" }}
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -600,30 +595,30 @@ function EditForm({ system, targets, onDone, onDeleted }: {
         </Field>
       ) : null}
       <Field label="Description">
-        <input
-          className="w-full rounded border px-3 py-1.5 m-text-body"
-          style={{ borderColor: "var(--m-line)" }}
+        <Input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
       </Field>
       <label className="flex items-center gap-2 m-text-body">
-        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active
+        <Checkbox aria-label="Active" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active
       </label>
       <div className="flex gap-2">
         <Button type="submit" disabled={!name.trim() || save.isPending}>Save</Button>
         {!confirming ? <Button type="button" variant="secondary" onClick={() => setConfirming(true)}>Delete</Button> : null}
       </div>
       {confirming ? (
-        <div className="rounded border p-3" style={{ borderColor: "var(--m-critical)" }}>
-          <p className="m-text-body" style={{ color: "var(--m-ink)" }}>
-            Remove {system.name}? Its credentials and sync profiles go with it. Downloaded runs and findings stay.
-          </p>
-          <div className="mt-2 flex gap-2">
-            <Button type="button" variant="secondary" disabled={del.isPending} onClick={() => del.mutate()}>Remove</Button>
-            <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>Keep</Button>
-          </div>
-        </div>
+        <Notice
+          tone="danger"
+          action={
+            <>
+              <Button type="button" variant="secondary" disabled={del.isPending} onClick={() => del.mutate()}>Remove</Button>
+              <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>Keep</Button>
+            </>
+          }
+        >
+          Remove {system.name}? Its credentials and sync profiles go with it. Downloaded runs and findings stay.
+        </Notice>
       ) : null}
     </form>
   );

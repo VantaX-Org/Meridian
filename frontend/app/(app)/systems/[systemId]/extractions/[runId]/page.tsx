@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Pill, ReportPage, type PillTone } from "@/design";
+import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Notice, Pill, ReportPage, type PillTone } from "@/design";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
@@ -62,13 +62,7 @@ export default function ExtractionPage() {
     <>
       Extraction run <Mono>{runId}</Mono>
       {failedStep ? (
-        <div
-          role="alert"
-          className="mt-2 rounded border px-3 py-2 m-text-body"
-          style={{ borderColor: "var(--m-critical)", color: "var(--m-critical)" }}
-        >
-          {failedStep.step_name} failed: {failedStep.error_detail}
-        </div>
+        <Notice tone="danger">{failedStep.step_name} failed: {failedStep.error_detail}</Notice>
       ) : null}
     </>
   );
