@@ -21,7 +21,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from typing import Iterable
+from typing import Iterable, Iterator
 
 from sqlalchemy import text
 
@@ -35,16 +35,33 @@ def scope_of(metadata: dict) -> str:
     return str(metadata.get("system_id") or "upload")
 
 
-def _copy(session, table: str, columns: tuple[str, ...], rows: Iterable[tuple]) -> int:
-    buf = io.StringIO()
-    w = csv.writer(buf)
+_COPY_CHUNK = 1_000_000  # rows per COPY: bounds the buffer on a 100M-row extract
+
+
+def _copy(session, table: str, columns: tuple[str, ...], rows: Iterable[tuple], chunk: int = _COPY_CHUNK) -> int:
+    sql = f"COPY {table} ({', '.join(columns)}) FROM STDIN WITH (FORMAT csv, NULL '')"
     n = 0
-    for r in rows:
-        w.writerow(["" if v is None else v for v in r])
-        n += 1
-    buf.seek(0)
     with session.connection().connection.cursor() as cur:
-        cur.copy_expert(f"COPY {table} ({', '.join(columns)}) FROM STDIN WITH (FORMAT csv, NULL '')", buf)
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        k = 0
+
+        def flush() -> None:
+            buf.seek(0)
+            cur.copy_expert(sql, buf)
+            buf.seek(0)
+            buf.truncate()
+
+        for r in rows:
+            w.writerow(["" if v is None else v for v in r])
+            k += 1
+            if k == chunk:
+                flush()
+                n += k
+                k = 0
+        if k:
+            flush()
+            n += k
     return n
 
 
@@ -57,9 +74,10 @@ def _keyed_values(r) -> dict[str, dict | None]:
     return out
 
 
-def present_keys(results, frames) -> set[tuple[str, str]]:
-    """(grain, record_key) of every record evaluated in this run, per key layout used."""
-    out: set[tuple[str, str]] = set()
+def present_keys(results, frames) -> Iterator[tuple[str, str]]:
+    """(grain, record_key) of every record evaluated in this run, per key layout used.
+    Streamed, unique within a layout only: a key can repeat across layouts, which the
+    EXISTS semijoin on tmp_present does not mind, and one set of 100M keys would not fit."""
     seen: set[tuple[str, tuple[str, ...]]] = set()
     for r in results:
         keys = tuple((r.details or {}).get("record_key_fields") or ())
@@ -70,8 +88,8 @@ def present_keys(results, frames) -> set[tuple[str, str]]:
         df = frames.frames.get(r.grain) if r.grain else frames.flat
         if df is None or any(k not in df.columns for k in keys):
             continue
-        out.update((layout[0], k) for k in record_keys(df, list(keys)).dropna().unique())
-    return out
+        for k in record_keys(df, list(keys)).dropna().unique():
+            yield layout[0], k
 
 
 def store_records(session, tenant_id: str, version_id: str, results) -> int:
@@ -109,11 +127,6 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
         failing = store_records(session, tenant_id, version_id, results)
     else:
         failing = session.execute(text("SELECT count(*) FROM finding_records WHERE version_id = :vid"), p).scalar()
-    session.execute(text(
-        "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
-    session.execute(text("TRUNCATE tmp_present"))
-    _copy(session, "tmp_present", ("grain", "record_key"), present_keys(results, frames))
-
     # Only the newest run of this system drives the issue lifecycle — re-analysing
     # an older version must not resolve or re-open anything.
     newest = session.execute(text("""
@@ -124,6 +137,11 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     if newest and newest != str(version_id):
         return {"failing_records": failing, "created": 0, "reopened": 0, "auto_resolved": 0,
                 "lifecycle": "skipped (not the newest run)"}
+
+    session.execute(text(
+        "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
+    session.execute(text("TRUNCATE tmp_present"))
+    _copy(session, "tmp_present", ("grain", "record_key"), present_keys(results, frames))
 
     reopened = session.execute(text("""
         WITH hit AS (
