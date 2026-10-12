@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, EmptyState, ErrorState, Mono, Pill, ReportPage, Skeleton, Stat } from "@/design";
+import { DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pill, Skeleton, Stat } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -18,6 +18,7 @@ import {
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { InsightFrame, useRunLabel } from "../_components/InsightFrame";
 
 /** Real route for a single check/rule, independent of any module context —
  * unlike `/objects/[object]`, this resolves from the check id alone. */
@@ -49,7 +50,7 @@ const impactColumns: ColumnDef<ImpactRow>[] = [
       </DrillLink>
     ),
   },
-  { accessorKey: "status", header: "Status" },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone="no-go">{row.original.status}</Pill> },
   { accessorKey: "record_count", header: "Blocked records" },
   {
     accessorKey: "value_at_risk",
@@ -112,7 +113,7 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
         <Stat label="Value at risk" value={`${valueAtRiskTotal.toLocaleString()} ${currency}`.trim()} />
       </div>
       {rows.length === 0 ? (
-        <EmptyState title="No proven cost findings for this run yet." />
+        <EmptyState title="No proven cost findings yet" />
       ) : (
         <DataTable
           columns={provenCostColumns}
@@ -148,13 +149,13 @@ function ImpactPanel({
   if (rows.length === 0) {
     return (
       <EmptyState
-        title="No impact results yet."
+        title="No impact results yet"
         detail={dayOne.step?.detail ?? "Impact builds up once a run has blocked or degraded features."}
         action={<DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />}
       />
     );
   }
-  return <DataTable columns={impactColumns} data={rows} getRowId={(row) => row.feature} />;
+  return <DataTable columns={impactColumns} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
 }
 
 export default function ImpactPage() {
@@ -171,16 +172,27 @@ export default function ImpactPage() {
     queryFn: () => getProvenCost({ version_id: run }),
   });
 
+  const runLabel = useRunLabel(impactQuery.data?.version_id);
+  const rows = impactQuery.data?.rows ?? [];
+  const top = [...rows].sort((x, y) => y.value_at_risk - x.value_at_risk)[0];
+
   return (
-    <ReportPage
-      narrative="Value at risk is the record count times the value per record."
-      charts={null}
-      tables={
-        <div className="flex flex-col gap-8">
-          <ProvenCostPanel query={provenCostQuery} />
-          <ImpactPanel query={impactQuery} dayOne={dayOne} />
-        </div>
-      }
-    />
+    <InsightFrame
+      title="Impact"
+      meta={runLabel}
+      insight={{
+        situation: { sentence: `${rows.length} features carry value at risk`, tone: rows.length ? "at-risk" : "go" },
+        changed: { sentence: `${provenCostQuery.data?.rows.length ?? 0} proven cost metrics found` },
+        why: { sentence: "Value at risk is the record count times the value per record" },
+        next: { sentence: top ? `Fix the rules behind ${top.feature}` : "Run an analysis", action: { label: "Open rules", href: "/rules" } },
+      }}
+    >
+      <Card title="Proven cost findings">
+        <ProvenCostPanel query={provenCostQuery} />
+      </Card>
+      <Card title="Features at risk">
+        <ImpactPanel query={impactQuery} dayOne={dayOne} />
+      </Card>
+    </InsightFrame>
   );
 }

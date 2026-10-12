@@ -4,13 +4,14 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, ExportMenu, Pill, ReportPage, Skeleton, Stat, Waterfall, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, Pill, Skeleton, Stat, Waterfall, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { InsightFrame, useRunLabel } from "../_components/InsightFrame";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -18,13 +19,17 @@ const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   no_go: "no-go",
 };
 
+const VERDICT_LABEL: Record<ReadinessCell["verdict"], string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
+
+const money = (n: number) => n.toLocaleString("en-ZA", { maximumFractionDigits: 0 });
+
 const readinessColumns: ColumnDef<ReadinessCell>[] = [
   { accessorKey: "module", header: "Object" },
   { accessorKey: "wave", header: "Wave" },
   {
     accessorKey: "verdict",
     header: "Verdict",
-    cell: ({ row }) => <Pill tone={VERDICT_TONE[row.original.verdict]}>{row.original.verdict}</Pill>,
+    cell: ({ row }) => <Pill tone={VERDICT_TONE[row.original.verdict]}>{VERDICT_LABEL[row.original.verdict]}</Pill>,
   },
   {
     accessorKey: "blocker_count",
@@ -35,15 +40,15 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
 
 const impactColumns: ColumnDef<ImpactRow>[] = [
   { accessorKey: "feature", header: "Feature" },
-  { accessorKey: "status", header: "Status" },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone="no-go">{row.original.status}</Pill> },
   { accessorKey: "record_count", header: "Blocked records", cell: ({ row }) => <DrillLink href="/insights/impact">{row.original.record_count}</DrillLink> },
-  { accessorKey: "value_at_risk", header: "Value at risk", cell: ({ row }) => row.original.value_at_risk.toLocaleString() },
+  { accessorKey: "value_at_risk", header: "Value at risk", cell: ({ row }) => money(row.original.value_at_risk) },
 ];
 
 const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
   { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href="/insights/owners">{row.original.score}</DrillLink> },
-  { accessorKey: "delta", header: "Delta" },
+  { accessorKey: "delta", header: "Change", cell: ({ row }) => <Delta value={row.original.delta} /> },
 ];
 
 export default function ExecPage() {
@@ -55,6 +60,7 @@ export default function ExecPage() {
     queryKey: queryKeys.insights("exec", run),
     queryFn: () => getExec({ version_id: run }),
   });
+  const runLabel = useRunLabel(data?.version_id);
 
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
@@ -66,57 +72,64 @@ export default function ExecPage() {
         : undefined;
 
   const exportHref = data?.version_id ? `/api/v1/reports/executive/${data.version_id}.pdf` : undefined;
+  const noGo = data?.readiness_cells.filter((c) => c.verdict === "no_go").length ?? 0;
+  const atRisk = data?.impact_rows.reduce((s, r) => s + r.value_at_risk, 0) ?? 0;
 
   return (
-    <ReportPage
-      narrative={data?.narrative ?? ""}
-      exportMenu={
+    <InsightFrame
+      title="Executive summary"
+      meta={runLabel}
+      actions={
         exportHref ? (
-          <ExportMenu
-            options={[{ format: "pdf", run: () => downloadAuthenticated(exportHref, `executive_${data?.version_id}.pdf`) }]}
-          />
+          <Button variant="primary" onClick={() => void downloadAuthenticated(exportHref, `executive_${data?.version_id}.pdf`)}>
+            Executive report (PDF)
+          </Button>
         ) : undefined
       }
-      charts={<Waterfall data={data?.waterfall ?? []} />}
-      tables={
-        <div className="flex flex-col gap-6">
-          {(roi.isLoading || roi.isError) && (
-            <Card title="Return on investment">
-              {roi.isLoading ? (
-                <Skeleton height={48} />
-              ) : (
-                <div className="flex items-center gap-3 text-[13px]" role="alert">
-                  <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
-                  <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
-                </div>
-              )}
-            </Card>
-          )}
-          {roi.data && (
-            <Card title="Return on investment">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <Stat label="ROI multiple" value={`${roi.data.roi.roi_multiple}x`} />
-                <Stat label="Payback" value={`${roi.data.roi.payback_months} months`} />
-                <Stat label="Risk mitigated" value={roi.data.roi.risk_mitigated.toLocaleString()} />
-                <Stat label="Annual subscription" value={roi.data.roi.subscription_annual.toLocaleString()} />
-              </div>
-            </Card>
-          )}
-          <DataTable columns={readinessColumns} data={data?.readiness_cells ?? []} getRowId={(row) => `${row.module}-${row.wave}`} />
-          <DataTable columns={impactColumns} data={data?.impact_rows ?? []} getRowId={(row) => row.feature} />
-          <DataTable columns={ownerColumns} data={data?.owner_rows ?? []} getRowId={(row) => row.owner} />
-        </div>
-      }
+      insight={{
+        situation: { sentence: data?.narrative || `${noGo} no-go cells across the waves` , tone: noGo ? "no-go" : "go" },
+        changed: { sentence: `${data?.readiness_cells.length ?? 0} cells tracked this run` },
+        why: { sentence: `${money(atRisk)} value at risk`, href: "/insights/impact" },
+        next: { sentence: noGo ? "Clear the no-go cells first" : "Share the report", action: { label: "Open readiness", href: "/insights/readiness" } },
+      }}
       state={state}
       emptyProps={{
-        title: "No executive summary data for this run yet.",
-        detail: dayOne.step?.detail,
+        title: "No executive summary yet",
+        detail: dayOne.step?.detail ?? "It appears once a run has finished analysing.",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
-      errorProps={{
-        message: apiErrorMessage(error),
-        onRetry: () => refetch(),
-      }}
-    />
+      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+    >
+      <Card title="Readiness trend">
+        <Waterfall data={data?.waterfall ?? []} />
+        <p className="mt-2 text-[13px]" style={{ color: "var(--m-ink-2)" }}>Waterfall of score movement from the baseline to this run.</p>
+      </Card>
+      <Card title="Return on investment">
+        {roi.isLoading ? (
+          <Skeleton height={48} />
+        ) : roi.isError ? (
+          <div className="flex items-center gap-3 text-[13px]" role="alert">
+            <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
+            <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
+          </div>
+        ) : roi.data ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Stat label="ROI multiple" value={`${roi.data.roi.roi_multiple}x`} />
+            <Stat label="Payback" value={`${roi.data.roi.payback_months} months`} />
+            <Stat label="Risk mitigated" value={money(roi.data.roi.risk_mitigated)} />
+            <Stat label="Annual subscription" value={money(roi.data.roi.subscription_annual)} />
+          </div>
+        ) : null}
+      </Card>
+      <Card title="Readiness by wave">
+        <DataTable columns={readinessColumns} data={data?.readiness_cells ?? []} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
+      </Card>
+      <Card title="Features at risk">
+        <DataTable columns={impactColumns} data={data?.impact_rows ?? []} getRowId={(row) => row.feature} hideToolbar dense height="auto" />
+      </Card>
+      <Card title="Owners">
+        <DataTable columns={ownerColumns} data={data?.owner_rows ?? []} getRowId={(row) => row.owner} hideToolbar dense height="auto" />
+      </Card>
+    </InsightFrame>
   );
 }

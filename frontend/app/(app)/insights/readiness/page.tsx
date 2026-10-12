@@ -5,12 +5,13 @@ import { Fragment } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
+import { Button, Card, DrillLink, Pill, type PillTone } from "@/design";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { InsightFrame, useRunLabel } from "../_components/InsightFrame";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -44,8 +45,8 @@ export default function ReadinessPage() {
   }
 
   const emptyTitle = data && !data.configured
-    ? "Readiness waves not set."
-    : "No readiness data for this run yet.";
+    ? "Readiness waves not set"
+    : "No readiness data yet";
   const emptyDetail = data && !data.configured
     ? "Set readiness waves under Settings > Alert Thresholds."
     : dayOne.step?.detail;
@@ -56,9 +57,25 @@ export default function ReadinessPage() {
   const modules = Array.from(new Set(data?.cells.map((c) => c.module) ?? []));
   const waves = Array.from(new Set(data?.cells.map((c) => c.wave) ?? []));
 
+  const runLabel = useRunLabel(data?.version_id);
+  const noGo = data?.cells.filter((c) => c.verdict === "no_go").length ?? 0;
+  const blocked = data?.cells.reduce((n, c) => n + c.records_blocked, 0) ?? 0;
+
   return (
-    <ExplorerPage
-      table={
+    <InsightFrame
+      title="Readiness"
+      meta={runLabel}
+      insight={{
+        situation: { sentence: `${noGo} of ${data?.cells.length ?? 0} wave and object cells are no-go`, tone: noGo ? "no-go" : "go" },
+        changed: { sentence: `Threshold is ${data?.threshold ?? "—"}% readiness` },
+        why: { sentence: `${blocked.toLocaleString("en-ZA")} records are blocked from loading` },
+        next: { sentence: noGo ? "Fix blockers in the worst cell first" : "Hold the line", action: { label: "Open inbox", href: "/inbox" } },
+      }}
+      state={state}
+      emptyProps={{ title: emptyTitle, detail: emptyDetail, action: emptyAction, ghost: "grid" }}
+      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+    >
+      <Card title="Readiness by wave">
         <table className="w-full text-[13px]">
           <thead>
             <tr>
@@ -110,13 +127,8 @@ export default function ReadinessPage() {
             ))}
           </tbody>
         </table>
-      }
-      state={state}
-      emptyProps={{ title: emptyTitle, detail: emptyDetail, action: emptyAction, ghost: "grid" }}
-      errorProps={{
-        message: apiErrorMessage(error),
-        onRetry: () => refetch(),
-      }}
-    />
+        <p className="mt-2 text-[13px]" style={{ color: "var(--m-ink-2)" }}>Select a cell to see its blocking records.</p>
+      </Card>
+    </InsightFrame>
   );
 }

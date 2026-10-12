@@ -3,10 +3,11 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Delta, ExplorerPage, Pill, Stat, type PillTone } from "@/design";
+import { Button, Delta, Pill, Stat, type PillTone } from "@/design";
 import { getOwners, type OwnerCardResponse } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { InsightFrame } from "../_components/InsightFrame";
 
 /** No direct severity->PillTone mapping exists yet; critical/high read as blocking (no-go), medium as at-risk, low/other as neutral. */
 function severityTone(severity: string): PillTone {
@@ -52,24 +53,32 @@ export default function OwnersPage() {
 
   const owners = data?.owners ?? [];
 
+  const below = owners.filter((o) => o.score < 80).length;
+  const worst = [...owners].sort((x, y) => x.score - y.score)[0];
+
   return (
-    <ExplorerPage
-      table={
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-          {owners.map((owner) => (
-            <OwnerCard key={owner.owner} owner={owner} />
-          ))}
-        </div>
-      }
+    <InsightFrame
+      title="Owners"
+      insight={{
+        situation: { sentence: `${below} of ${owners.length} owners are below threshold`, tone: below ? "at-risk" : "go" },
+        changed: { sentence: `${owners.filter((o) => o.delta < 0).length} owners lost ground this run` },
+        why: { sentence: "Owners fix the records their rules flag" },
+        next: { sentence: worst ? `Start with ${worst.owner}` : "Assign owners", action: { label: "Open inbox", href: "/inbox" } },
+      }}
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : owners.length === 0 ? "empty" : undefined}
       emptyProps={{
-        title: "No owners scored yet.",
+        title: "No owners scored yet",
+        detail: "Owners appear after the first analysis.",
+        ghost: "list",
         action: <Button render={<Link href="/inbox">Open inbox</Link>} />,
       }}
-      errorProps={{
-        message: apiErrorMessage(error),
-        onRetry: () => refetch(),
-      }}
-    />
+      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+    >
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+        {owners.map((owner) => (
+          <OwnerCard key={owner.owner} owner={owner} />
+        ))}
+      </div>
+    </InsightFrame>
   );
 }
