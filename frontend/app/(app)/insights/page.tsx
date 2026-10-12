@@ -78,10 +78,10 @@ export default function InsightsIndexPage() {
       insight={{
         hero: true,
         stats: [
-          { label: "No-go cells", value: noGoCells ?? "—", tone: noGoCells === undefined ? undefined : noGoCells ? "no-go" : "go", href: "/insights/readiness" },
-          { label: "Value at risk", value: cost.data ? formatMoney(cost.data.value_at_risk_total, cost.data.currency) : "—", href: "/insights/impact" },
-          { label: "Modules trending down", value: declining ?? "—", tone: declining === undefined ? undefined : declining ? "at-risk" : "go", href: "/insights/forecast" },
-          { label: "Owners below threshold", value: below ?? "—", tone: below === undefined ? undefined : below ? "at-risk" : "go", href: "/insights/owners" },
+          { label: "No-go cells", value: noGoCells ?? "—", tone: noGoCells === undefined ? undefined : noGoCells ? "no-go" : "go", to: "/insights/readiness" },
+          { label: "Value at risk", value: cost.data ? formatMoney(cost.data.value_at_risk_total, cost.data.currency) : "—", to: "/insights/impact" },
+          { label: "Modules trending down", value: declining ?? "—", tone: declining === undefined ? undefined : declining ? "at-risk" : "go", to: "/insights/forecast" },
+          { label: "Owners below threshold", value: below ?? "—", tone: below === undefined ? undefined : below ? "at-risk" : "go", to: "/insights/owners" },
         ],
         loading: loading || cost.isLoading || forecast.isLoading,
         situation: { sentence: noGoCells === undefined ? "Checking readiness" : `${noGoCells} ${noGoCells === 1 ? "readiness cell is" : "readiness cells are"} no-go`, tone: noGoCells ? "no-go" : "go" },

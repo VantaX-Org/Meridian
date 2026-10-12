@@ -24,7 +24,8 @@ export interface InsightHeaderProps {
   loading?: boolean;
   /** Opt-in hero zone: dark band with up to four hero stats above the sentences. One per page. */
   hero?: boolean;
-  stats?: Pick<StatProps, "label" | "value" | "hint" | "tone" | "href" | "decimals" | "versionId">[];
+  /** `to` is the route the stat opens. */
+  stats?: (Pick<StatProps, "label" | "value" | "hint" | "tone" | "decimals" | "versionId"> & { to?: string })[];
 }
 
 const HERO_TONE: Record<PillTone, string> = {
@@ -69,7 +70,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
     >
       {hero && stats && stats.length > 0 && (
         <div className="m-motion-stagger mb-4 grid grid-cols-2 gap-4 md:grid-cols-4" data-testid="insight-hero-stats">
-          {stats.slice(0, 4).map((x) => <Stat key={x.label} hero loading={loading} {...x} />)}
+          {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
         </div>
       )}
       <div className="grid gap-px md:grid-cols-4">
