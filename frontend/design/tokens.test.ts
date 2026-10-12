@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { mColor, mSpace, mRadius, mMotion, dqsBand, reducedMotion } from "./tokens";
 
 describe("design tokens", () => {
-  it("exposes 8 chart series colours as CSS var references", () => {
-    expect(mColor.viz).toHaveLength(8);
-    for (const v of mColor.viz) expect(v).toMatch(/^var\(--m-viz-\d\)$/);
+  it("exposes 10 chart series colours as CSS var references", () => {
+    expect(mColor.viz).toHaveLength(10);
+    for (const v of mColor.viz) expect(v).toMatch(/^var\(--m-viz-\d+\)$/);
   });
 
   it("exposes the 4px space scale", () => {

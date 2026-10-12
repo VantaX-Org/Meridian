@@ -7,6 +7,7 @@ import { Button } from "../primitives/Button";
 import { Skeleton } from "../primitives/Skeleton";
 import { AiSummary, type AiSummaryProps } from "../primitives/AiSummary";
 import type { PillTone } from "../primitives/Pill";
+import { Stat, type StatProps } from "../primitives/Stat";
 
 export interface InsightCell {
   sentence: ReactNode;
@@ -21,7 +22,19 @@ export interface InsightHeaderProps {
   next: InsightCell & { action?: { label: string; href?: string; onClick?: () => void; impact?: string } };
   aiSummary?: AiSummaryProps;
   loading?: boolean;
+  /** Opt-in hero zone: dark band with up to four hero stats above the sentences. One per page. */
+  hero?: boolean;
+  /** `to` is the route the stat opens. */
+  stats?: (Pick<StatProps, "label" | "value" | "hint" | "tone" | "decimals" | "versionId"> & { to?: string })[];
 }
+
+const HERO_TONE: Record<PillTone, string> = {
+  neutral: "var(--m-hero-ink-3)",
+  go: "var(--m-hero-tone-pass)",
+  "at-risk": "var(--m-hero-tone-medium)",
+  "no-go": "var(--m-hero-tone-critical)",
+  info: "var(--m-hero-ink-2)",
+};
 
 const TONE: Record<PillTone, string> = {
   neutral: "var(--m-ink-3)",
@@ -31,43 +44,57 @@ const TONE: Record<PillTone, string> = {
   info: "var(--m-info)",
 };
 
-function Cell({ label, cell, loading, children }: { label: string; cell: InsightCell; loading?: boolean; children?: ReactNode }) {
-  const body = loading ? <Skeleton height={16} /> : cell.sentence;
+function Cell({ label, cell, loading, hero, children }: { label: string; cell: InsightCell; loading?: boolean; hero?: boolean; children?: ReactNode }) {
+  const body = loading ? <Skeleton height={16} hero={hero} /> : cell.sentence;
+  const ink = hero ? "var(--m-hero-ink)" : "var(--m-ink)";
   return (
-    <div className="grid content-start gap-1 p-3" style={{ borderTop: `2px solid ${TONE[cell.tone ?? "neutral"]}` }}>
-      <span className="text-[11px] leading-[14px] font-medium" style={{ color: "var(--m-ink-3)" }}>{label}</span>
+    <div className="grid content-start gap-1 p-3" style={{ borderTop: `2px solid ${(hero ? HERO_TONE : TONE)[cell.tone ?? "neutral"]}` }}>
+      <span className="m-text-meta font-medium" style={{ color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{label}</span>
       {cell.href && !loading ? (
-        <Link href={cell.href} className="text-[13px] leading-[18px] underline-offset-2 hover:underline" style={{ color: "var(--m-ink)" }}>{body}</Link>
+        <Link href={cell.href} className="m-text-body underline-offset-2 hover:underline" style={{ color: ink }}>{body}</Link>
       ) : (
-        <span className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{body}</span>
+        <span className="m-text-body" style={{ color: ink }}>{body}</span>
       )}
       {children}
     </div>
   );
 }
 
-export function InsightHeader({ situation, changed, why, next, aiSummary, loading }: InsightHeaderProps) {
+export function InsightHeader({ situation, changed, why, next, aiSummary, loading, hero, stats }: InsightHeaderProps) {
   const a = next.action;
   return (
-    <section aria-label="Insight" className="m-motion-rise rounded" style={{ background: "var(--m-sheet)", boxShadow: "var(--m-elev-1)", borderRadius: "var(--m-radius-sheet)" }}>
+    <section
+      aria-label="Insight"
+      className={hero ? "m-hero m-motion-rise" : "m-motion-rise rounded"}
+      style={hero ? undefined : { background: "var(--m-sheet)", boxShadow: "var(--m-elev-1)", borderRadius: "var(--m-radius-sheet)" }}
+    >
+      {hero && stats && stats.length > 0 && (
+        <div className="m-motion-stagger mb-4 grid grid-cols-2 gap-4 md:grid-cols-4" data-testid="insight-hero-stats">
+          {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
+        </div>
+      )}
       <div className="grid gap-px md:grid-cols-4">
-        <Cell label="Situation" cell={situation} loading={loading} />
-        <Cell label="What changed" cell={changed} loading={loading} />
-        <Cell label="Why it matters" cell={why} loading={loading} />
-        <Cell label="Do next" cell={next} loading={loading}>
+        <Cell label="Situation" cell={situation} loading={loading} hero={hero} />
+        <Cell label="What changed" cell={changed} loading={loading} hero={hero} />
+        <Cell label="Why it matters" cell={why} loading={loading} hero={hero} />
+        <Cell label="Do next" cell={next} loading={loading} hero={hero}>
           {a && !loading && (
             <span className="mt-1 inline-flex items-center gap-2">
               {a.href ? (
-                <Button render={<Link href={a.href}>{a.label}</Link>} />
+                <Button variant={hero ? "secondary" : undefined} render={<Link href={a.href}>{a.label}</Link>} />
               ) : (
-                <Button onClick={a.onClick}>{a.label}</Button>
+                <Button variant={hero ? "secondary" : undefined} onClick={a.onClick}>{a.label}</Button>
               )}
-              {a.impact && <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{a.impact}</span>}
+              {a.impact && <span className="m-text-meta" style={{ color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{a.impact}</span>}
             </span>
           )}
         </Cell>
       </div>
-      {aiSummary && <div className="px-3 pb-3"><AiSummary {...aiSummary} /></div>}
+      {aiSummary && (
+        <div className="px-3 pb-3 pt-2">
+          {hero ? <div className="p-3" style={{ background: "var(--m-sheet)", borderRadius: "var(--m-radius-sheet)" }}><AiSummary {...aiSummary} /></div> : <AiSummary {...aiSummary} />}
+        </div>
+      )}
     </section>
   );
 }

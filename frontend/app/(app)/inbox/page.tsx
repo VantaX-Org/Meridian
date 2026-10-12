@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type PillTone, Input } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type CellMeta, type PillTone, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -62,7 +62,7 @@ const NO_DUE = Number.MAX_SAFE_INTEGER;
 const BULK_CONFIDENCE = 0.85;
 const isToday = (iso: string | null, now: number) => !!iso && new Date(iso).toDateString() === new Date(now).toDateString();
 
-/** 45m · 5h · 3d */
+/** 45m, 5h, 3d */
 function span(ms: number): string {
   const h = Math.abs(ms) / HOUR;
   if (h < 1) return `${Math.max(1, Math.round(h * 60))}m`;
@@ -377,7 +377,7 @@ export default function InboxPage() {
         return <span>{focused ? "> " : ""}{row.original.title} <span style={{ color: "var(--m-ink-3)" }}>in {row.original.category}</span></span>;
       },
     },
-    { id: "severity", header: "Severity", accessorFn: (e) => e.severity, cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity]}>{labelOf(row.original.severity)}</Pill> },
+    { id: "severity", header: "Severity", accessorFn: (e) => e.severity, meta: { severity: true } satisfies CellMeta, cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity]}>{labelOf(row.original.severity)}</Pill> },
     { id: "status", header: "Status", accessorFn: (e) => e.status, cell: ({ row }) => <Pill tone={EXC_STATUS_TONE[row.original.status]}>{labelOf(row.original.status)}</Pill> },
     { id: "assignee", header: "Assignee", accessorFn: (e) => who(e.assigned_to), cell: ({ row }) => who(row.original.assigned_to) },
     {

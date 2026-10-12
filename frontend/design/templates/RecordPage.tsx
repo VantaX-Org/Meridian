@@ -1,6 +1,7 @@
 // frontend/design/templates/RecordPage.tsx
 import type { ReactNode } from "react";
 import { Pill, type PillTone } from "../primitives/Pill";
+import { DomainChip } from "../primitives/DomainChip";
 import { Mono } from "../primitives/Mono";
 import { Skeleton } from "../primitives/Skeleton";
 
@@ -35,6 +36,7 @@ export function RecordPage({
           <Mono>{recordKey}</Mono>
         </span>
         <span style={{ color: "var(--m-ink-3)" }}>{object}</span>
+        <DomainChip moduleId={object} />
         <Pill tone={status.tone}>{status.label}</Pill>
       </header>
       {children}

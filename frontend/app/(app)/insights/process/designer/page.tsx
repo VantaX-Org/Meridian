@@ -13,6 +13,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
+import { domainOf } from "@/design/tokens";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
 import "./designer.css";
 import { AttributeDrawer } from "./_components/attributes";
@@ -276,7 +277,7 @@ function Editor(p: EditorProps) {
                 <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{l4.name}</h2>
                 <Button variant="secondary" onClick={() => go({ attr: l4.id })}>Sub-process details</Button>
               </div>
-              <DesignerCanvas key={l4.id} l4={l4} overlay={ov} selected={attr} editable={editable} canDesign={canDesign} onBlocked={blocked}
+              <DesignerCanvas key={l4.id} l4={l4} domain={domainOf(doc.l1.find((x) => D.locate({ ...doc, l1: [x] }, l4.id))?.modules[0])} overlay={ov} selected={attr} editable={editable} canDesign={canDesign} onBlocked={blocked}
                 onSelect={(id) => go({ attr: id })}
                 onMove={(id, x, y) => edit((d) => D.moveNode(d, l4.id, id, x, y))}
                 onConnect={(s, t) => edit((d) => D.connect(d, l4.id, s, t))}

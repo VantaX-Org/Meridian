@@ -94,6 +94,13 @@ export default function ExecPage() {
         ) : undefined
       }
       insight={{
+        hero: true,
+        stats: data ? [
+          { label: "No-go cells", value: noGo, tone: noGo ? "no-go" : "go", to: "/insights/readiness" },
+          { label: "Value at risk", value: formatMoney(atRisk, currency), to: "/insights/impact" },
+          { label: "Owners improved", value: up, to: "/insights/owners" },
+          { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: "/insights/owners" },
+        ] : undefined,
         situation: { sentence: data?.narrative || `${noGo} no-go cells across the waves` , tone: noGo ? "no-go" : "go" },
         changed: { sentence: up + down === 0 ? "—" : `${up} owners improved, ${down} slipped since the last run` },
         why: { sentence: `${formatMoney(atRisk, currency)} value at risk`, href: "/insights/impact" },

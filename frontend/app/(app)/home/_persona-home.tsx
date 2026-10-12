@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  buildDrillHref, Button, Card, DataTable, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
+  buildDrillHref, Button, Card, DataTable, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
   type HeatmapCell, type PillTone,
 } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
@@ -38,6 +38,8 @@ const TABLE_ROWS = 8;
 // Chart bundles load after first paint; the skeleton has the chart's final height.
 const Line = dynamic(() => import("@/design/charts/Line").then((m) => m.Line), { ssr: false, loading: () => <Skeleton height={200} /> });
 const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={TABLE_ROWS * 32 + 32} /> });
+
+const READINESS_SEVERITY = { fail: "critical", warn: "medium", pass: "pass" } as const;
 
 const READINESS_PILL: Record<NonNullable<ObjectSummary["readiness"]>, { tone: PillTone; label: string }> = {
   pass: { tone: "go", label: "Go" },
@@ -181,8 +183,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   ) : undefined;
 
   const dims = runDimensions(latest);
+  const dimSeries = (d: (typeof DIMENSIONS)[number]) =>
+    finished.slice().reverse().map((v) => runDimensions(v)?.[d]).filter((y): y is number => typeof y === "number");
   const dimensionStrip = (
-    <div className="flex snap-x gap-4 overflow-x-auto lg:grid lg:grid-cols-6 lg:overflow-visible" data-testid="home-dimensions">
+    <div className="m-motion-stagger flex snap-x gap-4 overflow-x-auto lg:grid lg:grid-cols-6 lg:overflow-visible" data-testid="home-dimensions">
       {DIMENSIONS.map((d) => {
         const score = dims?.[d] ?? null;
         return (
@@ -192,6 +196,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
               value={score === null ? "—" : score.toFixed(1)}
               hint={score === null ? "Not measured" : undefined}
               tone={score === null ? undefined : readinessOf(score, bands)}
+              spark={score === null ? undefined : dimSeries(d)}
               href={score === null ? undefined : `/objects?run=${latest.id}&dimension=${d}`}
             />
           </div>
@@ -207,7 +212,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     .map((o) => ({ ...o, blocking: blockingByModule.get(o.module), trend: objectTrend(versions, o.module) }));
 
   const columns: ColumnDef<ObjectRow>[] = [
-    { accessorKey: "label", header: "Object" },
+    {
+      accessorKey: "label", header: "Object",
+      cell: ({ row: { original: o } }) => <span className="inline-flex items-center gap-2">{o.label}<DomainChip moduleId={o.module} /></span>,
+    },
     {
       id: "dqs", header: "DQS", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
@@ -216,10 +224,11 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       ),
     },
     {
-      id: "readiness", header: "Readiness",
+      id: "readiness", header: "Readiness", meta: { severity: true },
+      accessorFn: (o) => (o.readiness ? READINESS_SEVERITY[o.readiness] : ""),
       cell: ({ row: { original: o } }) => {
         const p = o.readiness ? READINESS_PILL[o.readiness] : null;
-        return p ? <Pill tone={p.tone}>{p.label}</Pill> : <Pill>Not analysed</Pill>;
+        return p ? <Pill tone={p.tone} variant="solid">{p.label}</Pill> : <Pill>Not analysed</Pill>;
       },
     },
     {

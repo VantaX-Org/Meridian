@@ -58,7 +58,7 @@ function configSub(c: {
       return "No configuration to read";
     case "loaded":
     case "with_gaps":
-      return c.loaded_at ? `${relativeTime(c.loaded_at)} · ${c.areas_loaded} of ${c.areas_total} areas` : "—";
+      return c.loaded_at ? `${relativeTime(c.loaded_at)}, ${c.areas_loaded} of ${c.areas_total} areas` : "—";
     default:
       return "—";
   }
@@ -202,7 +202,7 @@ export default function SystemsPage() {
         ) : undefined
       }
       summary={
-        <div className="flex flex-wrap items-center gap-6">
+        <div className="flex flex-wrap items-center gap-6 m-motion-stagger">
           {isLoading || systems.length > 0 ? (
             <Stat
               label="Unhealthy"
@@ -217,6 +217,7 @@ export default function SystemsPage() {
               label="Configuration missing"
               loading={configQ.isLoading}
               value={cfgNotLoaded}
+              tone={configQ.isLoading ? undefined : cfgNotLoaded > 0 ? "at-risk" : "go"}
               href="?config=not_loaded"
             />
           ) : null}
@@ -225,6 +226,7 @@ export default function SystemsPage() {
               label="Configuration loaded"
               loading={configQ.isLoading}
               value={`${cfgLoaded} of ${cfgTotal}`}
+              tone={configQ.isLoading || cfgVerdictTone === "neutral" ? undefined : cfgVerdictTone}
               delta={<Pill tone={cfgVerdictTone}>{cfgVerdict}</Pill>}
               onClick={cfgHref ? () => { setHealthFilter(""); setConfigFilter(cfgHref.slice("?config=".length)); } : undefined}
             />

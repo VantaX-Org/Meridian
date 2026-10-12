@@ -45,7 +45,19 @@ export default function DuplicatesPage() {
     enabled: !!object && !!recordId,
   });
 
-  const nodes = useMemo(() => cluster.data?.nodes ?? [], [cluster.data]);
+  // Cluster index = connected component over the matched pairs, so unlinked records get their own colour.
+  const nodes = useMemo(() => {
+    const raw = cluster.data?.nodes ?? [];
+    const parent = new Map(raw.map((n) => [n.id, n.id]));
+    const find = (x: string): string => (parent.get(x) === x ? x : find(parent.get(x) ?? x));
+    for (const e of cluster.data?.edges ?? []) if (parent.has(e.source) && parent.has(e.target)) parent.set(find(e.source), find(e.target));
+    const index = new Map<string, number>();
+    return raw.map((n) => {
+      const root = find(n.id);
+      if (!index.has(root)) index.set(root, index.size);
+      return { ...n, cluster: index.get(root) };
+    });
+  }, [cluster.data]);
 
   // The underlying match_score_id for each pair is carried in `label` by the
   // cluster endpoint (see insights.ts's DuplicateClusterResponse); copy it

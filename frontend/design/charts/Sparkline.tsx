@@ -5,10 +5,21 @@ import type { DotItemDotProps } from "recharts";
 import { LineChart, Line as RLine, ResponsiveContainer } from "recharts";
 import { chartTheme, type ChartPoint } from "./theme";
 
-export function Sparkline({ data, width = 80, height = 24 }: { data: ChartPoint[]; width?: number; height?: number }) {
+export function Sparkline({
+  data,
+  width = 80,
+  height = 24,
+  color: override,
+}: {
+  data: ChartPoint[];
+  width?: number;
+  height?: number;
+  /** Stroke override (a CSS colour or token reference), used inside a Stat. Default: pass or critical by direction. */
+  color?: string;
+}) {
   const last = data[data.length - 1]?.y ?? 0;
   const first = data[0]?.y ?? 0;
-  const color = last >= first ? chartTheme.pass : chartTheme.critical;
+  const color = override ?? (last >= first ? chartTheme.pass : chartTheme.critical);
   return (
     <div aria-hidden="true">
     <ResponsiveContainer width={width} height={height}>

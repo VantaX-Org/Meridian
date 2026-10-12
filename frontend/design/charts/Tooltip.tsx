@@ -8,7 +8,7 @@ interface Entry {
   color?: string;
 }
 
-/** Custom recharts tooltip shared by every chart (spec 7.12): inverted panel, no arrow. */
+/** Custom recharts tooltip shared by every chart (inverted panel, no arrow, 8px square swatch per series). */
 export function ChartTooltip({
   active, payload, label,
 }: { active?: boolean; payload?: ReadonlyArray<Entry>; label?: ReactNode }) {
@@ -24,11 +24,13 @@ export function ChartTooltip({
         color: chartTheme.tooltipInk,
         borderRadius: "var(--m-radius-control)",
         padding: "8px 10px",
+        boxShadow: "var(--m-elev-2)",
       }}
     >
       {label != null && label !== "" && <div>{label}</div>}
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2">
+          {p.color && <span aria-hidden style={{ width: 8, height: 8, flexShrink: 0, background: p.color }} />}
           {p.name != null && <span>{p.name}</span>}
           <span className="m-numeric font-semibold">{p.value}</span>
         </div>

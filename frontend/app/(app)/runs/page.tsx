@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Skeleton, Stat, usePrefetch, type PillTone } from "@/design";
+import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Skeleton, Stat, usePrefetch, type CellMeta, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
@@ -37,11 +37,11 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[]): C
       id: "status",
       accessorFn: (v) => v.status,
       header: "Status",
-      cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill>,
+      cell: ({ row }) => <Pill tone={statusTone(row.original.status)} variant="solid">{labelOf(row.original.status)}</Pill>,
     },
     { id: "run_at", accessorFn: (v) => v.run_at, header: "Started", cell: ({ row }) => formatDate(row.original.run_at, "datetime") },
     { id: "system", accessorFn: (v) => systemName.get(v.metadata?.system_id ?? "") ?? "—", header: "System" },
-    { id: "objects", accessorFn: (v) => v.metadata?.modules?.length ?? 0, header: "Objects" },
+    { id: "objects", accessorFn: (v) => v.metadata?.modules?.length ?? 0, header: "Objects", meta: { numeric: true, heat: "seq" } satisfies CellMeta },
     {
       id: "dqs",
       accessorFn: (v) => overallDqs(v) ?? -1,
@@ -176,7 +176,7 @@ export default function RunsPage() {
   ) : (
     <div className="flex flex-col gap-4">
       {rows.length > 0 || scoped.length > 0 ? (
-        <div className="flex flex-wrap gap-6">
+        <div className="flex flex-wrap gap-6 m-motion-stagger">
           <Stat
             label="Latest DQS"
             value={latest && latestDqs !== null ? latestDqs.toFixed(1) : "—"}

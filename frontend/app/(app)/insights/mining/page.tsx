@@ -35,6 +35,7 @@ import {
   Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs,
   type GraphEdge, type GraphNode, type PillTone,
 } from "@/design";
+import { domainOf } from "@/design/tokens";
 import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
 import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
 import { getRelationships } from "@/lib/api/relationships";
@@ -96,7 +97,7 @@ function EntityLinks() {
       const p = pairs.get(key) ?? pairs.set(key, { from: r.from_domain, to: r.to_domain, type: r.relationship_type, n: 0 }).get(key)!;
       p.n += 1;
     }
-    const nodes: GraphNode[] = Array.from(stats, ([d, s]) => ({ id: d, size: s.out + s.in, label: formatModuleName(d) }));
+    const nodes: GraphNode[] = Array.from(stats, ([d, s]) => ({ id: d, size: s.out + s.in, label: formatModuleName(d), domain: domainOf(d) }));
     const edges: GraphEdge[] = Array.from(pairs.values()).sort((a, b) => b.n - a.n).slice(0, MAX_EDGES).map((p) => ({
       id: `${p.from}>${p.to}>${p.type}`, source: p.from, target: p.to, label: `${p.type}, ${p.n.toLocaleString()}`,
     }));
@@ -253,7 +254,7 @@ function Patterns() {
     { id: "type", header: "Type", cell: ({ row }) => <Pill>{row.original.pattern_type}</Pill> },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity]}>{SEVERITY_LABEL[row.original.severity]}</Pill> },
-    { id: "confidence", header: "Confidence", cell: ({ row }) => pct(row.original.confidence, 0) },
+    { id: "confidence", header: "Confidence", accessorFn: (p) => p.confidence, meta: { numeric: true, heat: "seq", heatRange: [0, 1] }, cell: ({ row }) => pct(row.original.confidence, 0) },
     { id: "occurrences", header: "Occurrences", cell: ({ row }) => row.original.occurrences.toLocaleString() },
     { id: "seen", header: "Last seen", cell: ({ row }) => relativeTime(row.original.last_seen) },
     { id: "rule", header: "", cell: ({ row }) => row.original.promoted_to_rule ? <Pill tone="go">is a rule</Pill> : null },

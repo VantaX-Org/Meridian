@@ -28,6 +28,17 @@ import { Menu } from "../primitives/Menu";
 import { exportOptionLabel, runExportOption, type ExportOption } from "../primitives/ExportMenu";
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
 import type { CellMeta } from "./columns";
+import { rampStep } from "../tokens";
+
+const SEVERITIES = ["critical", "high", "medium", "low", "pass"] as const;
+const DIV_STEPS = ["neg-2", "neg-1", "mid", "pos-1", "pos-2"] as const;
+
+/** Heat class for a numeric value, or undefined when the value is not a finite number. */
+export function heatClass(mode: "seq" | "div", value: unknown, range: readonly [number, number]): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const step = rampStep(value, range[0], range[1]);
+  return mode === "seq" ? `m-heat-seq-${step}` : `m-heat-div-${DIV_STEPS[step - 1]}`;
+}
 import { canBulkEdit, usePermissionsContext } from "../../lib/permissions";
 
 export interface DataTableProps<T> {
@@ -182,6 +193,18 @@ export function DataTable<T>({
   const activeIndex = activeId === null ? -1 : rowModel.findIndex((r) => r.id === activeId);
   const activeRendered = activeIndex >= 0 && (!virtualItems || virtualItems.some((v) => v.index === activeIndex));
   const firstTextColumnId = table.getAllLeafColumns().find((c) => c.id !== SELECT_COLUMN_ID && !(c.columnDef.meta as CellMeta | undefined)?.numeric)?.id;
+  const severityColumnId = table.getAllLeafColumns().find((c) => (c.columnDef.meta as CellMeta | undefined)?.severity)?.id;
+  const heatRanges = new Map<string, readonly [number, number]>();
+  for (const c of table.getAllLeafColumns()) {
+    const m = c.columnDef.meta as CellMeta | undefined;
+    if (!m?.heat) continue;
+    if (m.heatRange) { heatRanges.set(c.id, m.heatRange); continue; }
+    const vals = rowModel.map((r) => r.getValue(c.id)).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    const lo = vals.length ? Math.min(...vals) : 0;
+    const hi = vals.length ? Math.max(...vals) : 1;
+    const abs = Math.max(Math.abs(lo), Math.abs(hi)) || 1;
+    heatRanges.set(c.id, m.heat === "div" ? [-abs, abs] : [lo, hi]);
+  }
   const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
 
   const dataColumns = table.getAllLeafColumns().filter((c) => c.id !== SELECT_COLUMN_ID);
@@ -322,6 +345,7 @@ export function DataTable<T>({
                 {hg.headers.map((h) => {
                   const sortable = h.column.getCanSort();
                   const sorted = h.column.getIsSorted();
+                  const headHeat = (h.column.columnDef.meta as CellMeta | undefined)?.heat;
                   return (
                     <th
                       key={h.id}
@@ -340,9 +364,13 @@ export function DataTable<T>({
                         >
                           {flexRender(h.column.columnDef.header, h.getContext())}
                           {sorted === "asc" ? <ArrowUp size={12} aria-hidden /> : sorted === "desc" ? <ArrowDown size={12} aria-hidden /> : null}
+                          {headHeat && <span aria-hidden className={`m-legend-strip m-legend-strip-${headHeat} ml-1`} />}
                         </button>
                       ) : (
-                        flexRender(h.column.columnDef.header, h.getContext())
+                        <>
+                          {flexRender(h.column.columnDef.header, h.getContext())}
+                          {headHeat && <span aria-hidden className={`m-legend-strip m-legend-strip-${headHeat} ml-1`} />}
+                        </>
                       )}
                     </th>
                   );
@@ -366,6 +394,8 @@ export function DataTable<T>({
             )}
             {visibleRows.map((row, i) => {
               const index = virtualItems ? virtualItems[i].index : i;
+              const sevValue = severityColumnId ? String(row.getValue(severityColumnId) ?? "").toLowerCase() : "";
+              const sevClass = (SEVERITIES as readonly string[]).includes(sevValue) ? `m-row-severity-${sevValue}` : "";
               const activate = onRowClick || renderDrawer
                 ? () => {
                     setActiveId(row.id);
@@ -380,7 +410,7 @@ export function DataTable<T>({
                   aria-rowindex={index + 2}
                   aria-selected={bulkActions ? row.getIsSelected() : undefined}
                   prefetchInfo={prefetchFor(row.original)}
-                  className={`group border-b m-motion-colors ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"} ${index === activeIndex ? "m-row-active" : ""}`}
+                  className={`group border-b m-motion-colors ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"} ${index === activeIndex ? "m-row-active" : ""} ${sevClass}`}
                   onClick={activate}
                   style={{
                     borderColor: "var(--m-line)",
@@ -391,11 +421,12 @@ export function DataTable<T>({
                   {row.getVisibleCells().map((cell) => {
                     const meta = cell.column.columnDef.meta as CellMeta | undefined;
                     const content = flexRender(cell.column.columnDef.cell, cell.getContext());
+                    const heat = meta?.heat ? heatClass(meta.heat, cell.getValue(), heatRanges.get(cell.column.id) ?? [0, 1]) : undefined;
                     const firstText = onRowClick && cell.column.id === firstTextColumnId;
                     return (
                       <td
                         key={cell.id}
-                        className={`px-2 ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""}`}
+                        className={`px-2 ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""} ${heat ?? ""}`}
                       >
                         {meta?.mono ? <Mono>{content}</Mono> : content}
                       </td>

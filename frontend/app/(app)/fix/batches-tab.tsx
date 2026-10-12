@@ -122,7 +122,7 @@ export function BatchesTab() {
       id: "status",
       accessorFn: (b) => STATUS_LABEL[b.status],
       header: "Status",
-      cell: ({ row }) => <Pill tone={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Pill>,
+      cell: ({ row }) => <Pill tone={STATUS_TONE[row.original.status]} variant="solid">{STATUS_LABEL[row.original.status]}</Pill>,
     },
     { accessorKey: "items", header: "Items" },
     {
@@ -164,19 +164,19 @@ export function BatchesTab() {
       <MonitoringSection onOpenBatch={setBatchId} />
 
       <div className="flex flex-col gap-2">
-        <div className="flex gap-6">
+        <div className="flex gap-6 m-motion-stagger">
           <Link href="?tab=batches&status=draft" className="text-left">
             <Stat label="Draft batches" value={counts.draft}
               delta={counts.draft ? "Waiting for proposals to be accepted and approved." : "No batches in draft."} />
           </Link>
           <Link href="?tab=batches&status=approved" className="text-left">
-            <Stat label="Waiting for export" value={counts.approved}
+            <Stat label="Waiting for export" value={counts.approved} tone={counts.approved ? "at-risk" : "go"}
               delta={counts.approved
                 ? <Pill tone="at-risk">Approved but not exported yet.</Pill>
                 : "Nothing waiting for export."} />
           </Link>
           <Link href="?tab=batches&status=exported" className="text-left">
-            <Stat label="Still failing after export" value={stillFailing}
+            <Stat label="Still failing after export" value={stillFailing} tone={stillFailing ? "no-go" : "go"}
               delta={stillFailing
                 ? <Pill tone="at-risk">Exported records that were checked again and still fail.</Pill>
                 : "No exported record is still failing."} />

@@ -4,45 +4,91 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { clsx } from "clsx";
 import { Skeleton } from "./Skeleton";
+import { Counter } from "./Counter";
+import { Sparkline } from "../charts/Sparkline";
 import { usePrefetch } from "../hooks/usePrefetch";
+import type { DomainKey } from "../tokens";
 
 export type StatTone = "go" | "at-risk" | "no-go";
+
+/** Tone to the dark-set hero tone token (the hero is dark in both themes). */
+const HERO_TONE: Record<StatTone, string> = {
+  go: "var(--m-hero-tone-pass)",
+  "at-risk": "var(--m-hero-tone-medium)",
+  "no-go": "var(--m-hero-tone-critical)",
+};
 
 export interface StatProps {
   label: string;
   value: ReactNode;
-  /** A ReactNode so legacy string call sites keep working. */
+  /** A ReactNode so legacy string call sites keep working. Sits right of the value; use `<Delta>`. */
   delta?: ReactNode;
   hint?: ReactNode;
   /** Renders a Link and prefetches the route on hover or focus. */
   href?: string;
   /** Renders a `<button className="m-stat m-stat-link">`. Ignored when `href` is set. */
   onClick?: () => void;
+  /** 4px left edge in the status tone. Wins over `domain`. */
   tone?: StatTone;
-  /** Shows a 28px skeleton in the value slot. */
+  /** 4px left edge in the domain solid, when no `tone` is set. */
+  domain?: DomainKey;
+  /** Hero mode: translucent tile for use inside `.m-hero`, hero ink, 56/60 value, count-up on by default. */
+  hero?: boolean;
+  /** Sparkline under the value, drawn when at least 3 points. */
+  spark?: number[];
+  /** Count the value up from 0. Needs a numeric `value`. Default on for `hero`, off otherwise. */
+  countUp?: boolean;
+  /** Count-up runs once per version id, so a refetch of the same run does not replay it. */
+  versionId?: string;
+  /** Decimals for the count-up value. */
+  decimals?: 0 | 1;
+  /** Shows a skeleton in the value slot. The tile keeps its 88px (112px hero) height. */
   loading?: boolean;
 }
 
 /** KPI tile. */
-export function Stat({ label, value, delta, hint, href, onClick, tone, loading }: StatProps) {
+export function Stat({ label, value, delta, hint, href, onClick, tone, domain, hero = false, spark, countUp, versionId, decimals = 0, loading }: StatProps) {
   const prefetch = usePrefetch(href);
+  const edge = tone ? (hero ? HERO_TONE[tone] : `var(--m-${tone})`) : domain ? `var(--m-dom-${domain})` : undefined;
+  const animate = (countUp ?? hero) && typeof value === "number";
+  const sparkColor = hero ? "var(--m-hero-ink-2)" : tone ? `var(--m-${tone})` : "var(--m-accent)";
   const body = (
     <>
-      {tone && <span data-tone={tone} aria-hidden className="absolute inset-x-0 top-0" style={{ height: 3, background: `var(--m-${tone})` }} />}
-      <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>{label}</span>
-      <span className="m-numeric font-semibold" style={{ minWidth: "4ch", fontSize: "var(--m-text-stat)", lineHeight: "var(--m-leading-stat)", letterSpacing: "var(--m-tracking-tight)", color: "var(--m-ink)" }}>
-        {loading ? <Skeleton width="4ch" height={28} /> : value}
-      </span>
-      {(delta != null || hint != null) && (
-        <span className="flex items-center gap-2 text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
-          {delta != null && <span>{delta}</span>}{hint != null && <span>{hint}</span>}
+      <span
+        aria-hidden
+        className="m-stat-edge"
+        data-tone={tone}
+        data-domain={tone ? undefined : domain}
+        style={edge ? { background: edge } : undefined}
+      />
+      <span className="text-[12px] leading-4" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+      <span className="flex items-baseline gap-2">
+        <span
+          className="m-numeric font-semibold"
+          style={{
+            minWidth: "4ch",
+            fontSize: hero ? "var(--m-text-hero)" : "var(--m-text-stat)",
+            lineHeight: hero ? "var(--m-leading-hero)" : "var(--m-leading-stat)",
+            letterSpacing: "var(--m-tracking-tight)",
+            color: hero ? "var(--m-hero-ink)" : "var(--m-ink)",
+          }}
+        >
+          {loading ? <Skeleton width="4ch" height={hero ? 56 : 28} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : value}
         </span>
+        {delta != null && !loading && <span>{delta}</span>}
+      </span>
+      {spark && spark.length >= 3 && !loading && (
+        <Sparkline data={spark.map((y, x) => ({ x: String(x), y }))} width={60} height={16} color={sparkColor} />
+      )}
+      {hint != null && (
+        <span style={{ fontSize: "var(--m-text-micro)", lineHeight: "var(--m-leading-micro)", color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
       )}
     </>
   );
   const interactive = Boolean(href || onClick);
-  const cls = clsx("m-stat relative flex flex-col gap-1 overflow-hidden", interactive && "m-stat-link m-motion-colors");
-  if (href) return <Link href={href} className={cls} {...prefetch}>{body}</Link>;
-  if (onClick) return <button type="button" className={cls} onClick={onClick}>{body}</button>;
-  return <div className={cls}>{body}</div>;
+  const cls = clsx("m-stat relative flex flex-col gap-1 overflow-hidden", hero && "m-stat-hero", interactive && "m-stat-link m-lift m-motion-colors");
+  const minHeight = hero ? 112 : 88;
+  if (href) return <Link href={href} className={cls} style={{ minHeight }} {...prefetch}>{body}</Link>;
+  if (onClick) return <button type="button" className={cls} style={{ minHeight }} onClick={onClick}>{body}</button>;
+  return <div className={cls} style={{ minHeight }}>{body}</div>;
 }

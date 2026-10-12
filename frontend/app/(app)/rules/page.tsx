@@ -15,13 +15,14 @@
  * stubbed; see task-11-report.md.
  */
 
+import { bySeverity } from "../_severity-sort";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Switch, Tabs, Textarea, emptyExportOptions } from "@/design";
+import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Switch, Tabs, Textarea, emptyExportOptions, type CellMeta } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
@@ -161,10 +162,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
   const columns = useMemo<ColumnDef<Rule>[]>(() => [
     { id: "code", header: "Rule", cell: ({ row }) => <Mono>{codeOf(row.original) || "—"}</Mono> },
     { id: "rule", header: "Name", cell: ({ row }) => <strong>{nameOf(row.original)}</strong> },
-    { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "module", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={formatModuleName(row.original.module)} /> },
     { id: "dimension", header: "Dimension", cell: ({ row }) => valuesOf(row.original, "dimension").map(labelOf).join(", ") || "—" },
     {
-      id: "severity", header: "Severity",
+      id: "severity", header: "Severity", accessorFn: (r) => sevOf(r.severity), sortingFn: bySeverity, meta: { severity: true } satisfies CellMeta,
       cell: ({ row }) => <span className="inline-flex items-center gap-2"><SeverityDot severity={sevOf(row.original.severity)} />{labelOf(row.original.severity)}</span>,
     },
     {
@@ -208,7 +209,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
     [facets.modules, rules, awareByModule],
   );
   const coverageColumns = useMemo<ColumnDef<(typeof coverageRows)[number]>[]>(() => [
-    { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "object", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={formatModuleName(row.original.module)} /> },
     { id: "total", header: "Total", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{row.original.total.toLocaleString()}</DrillLink> },
     { id: "configured", header: "Configured", cell: ({ row }) => row.original.aware ? <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{(row.original.aware.applicable - row.original.aware.by_default).toLocaleString()}</DrillLink> : "—" },
     { id: "default", header: "Applies by default", cell: ({ row }) => row.original.aware ? <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{row.original.aware.by_default.toLocaleString()}</DrillLink> : "—" },

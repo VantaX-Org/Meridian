@@ -10,6 +10,7 @@ export * from "./primitives/Card";
 export * from "./primitives/Notice";
 export * from "./primitives/Pill";
 export * from "./primitives/Badge";
+export * from "./primitives/DomainChip";
 export * from "./primitives/Tabs";
 export * from "./primitives/Drawer";
 export * from "./primitives/Dialog";
@@ -49,6 +50,8 @@ export * from "./charts/Radar";
 export * from "./charts/Heatmap";
 export * from "./charts/Sparkline";
 export * from "./charts/Graph";
+export * from "./charts/Legend";
+export * from "./charts/HoverBar";
 export * from "./charts/Funnel";
 export * from "./charts/Pareto";
 

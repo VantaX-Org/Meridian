@@ -4,7 +4,7 @@ import { clsx } from "clsx";
 
 const button = cva("m-btn m-motion-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed", {
   variants: {
-    variant: { primary: "m-btn-primary", secondary: "m-btn-secondary", ghost: "m-btn-ghost", danger: "m-btn-danger" },
+    variant: { primary: "m-btn-primary m-lift-sm", secondary: "m-btn-secondary", ghost: "m-btn-ghost", danger: "m-btn-danger" },
     size: { sm: "m-btn-sm", md: "", lg: "m-btn-lg" },
   },
   defaultVariants: { variant: "primary", size: "md" },

@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/format";
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { usePermissions } from "@/lib/permissions";
+import { MeridianMark } from "@/components/meridian/icons";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 interface ReportRow {
@@ -48,6 +49,10 @@ export default function ReportsPage() {
   const versionId = picked || runs[0]?.id || "";
 
   const columns: ColumnDef<ReportRow>[] = [
+    {
+      id: "cover", header: "", enableSorting: false,
+      cell: () => <span aria-hidden className="m-report-cover flex items-center justify-center" style={{ width: 56, height: 40 }}><MeridianMark size={20} variant="mono" /></span>,
+    },
     { accessorKey: "name", header: "Report" },
     { accessorKey: "about", header: "What it covers" },
     { accessorKey: "format", header: "Format" },

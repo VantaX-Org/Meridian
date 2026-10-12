@@ -475,7 +475,7 @@ export default function ObjectDetailPage() {
     version?.label ? `Run ${version.label}` : null,
     summary ? `${summary.failing_checks.toLocaleString()} failing checks` : null,
     summary ? `${summary.affected_records.toLocaleString()} affected records` : null,
-  ].filter(Boolean).join(" · ");
+  ].filter(Boolean).join(", ");
 
   return (
     <div className="flex flex-col gap-4 p-6">
