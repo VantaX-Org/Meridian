@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Pill, Select } from "@/design";
+import { Button, Card, Input, Pill, Select } from "@/design";
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { createSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
@@ -44,8 +44,8 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
           onValueChange={(v) => { setCustom(v === CUSTOM); if (v !== CUSTOM) onChange(v); }} />
       </div>
       {custom && (
-        <input aria-label="Cron expression" placeholder="min hour day month weekday" disabled={disabled}
-          className="rounded border px-3 py-1.5 text-[13px] font-mono" style={{ borderColor: "var(--m-line)" }}
+        <Input aria-label="Cron expression" placeholder="min hour day month weekday" disabled={disabled}
+          className="font-mono"
           value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) onChange(text.trim()); }}
           onBlur={() => { if (text.trim() && text.trim() !== value) onChange(text.trim()); }} />
@@ -81,16 +81,15 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
   const addable = (catalogue?.objects ?? []).filter((o) => !scheduled.has(o.object));
 
   return (
-    <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-      <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Scheduled re-evaluation</p>
-      <div className="mt-2 flex flex-col gap-3">
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+    <Card title="Scheduled re-evaluation">
+      <div className="flex flex-col gap-3">
+        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
           Each schedule re-downloads the object and re-runs its checks, so the trends and alert thresholds pick up every run.
           Times are server time; the scheduler looks for due runs every 5 minutes.
           &ldquo;Changes only&rdquo; re-reads just the records SAP&rsquo;s change log shows changed since the last download, and does a full download at least weekly.
         </p>
         {profiles.length ? (
-          <table className="w-full text-[13px]">
+          <table className="w-full m-text-body">
             <thead><tr>
               <th className={th} style={thStyle}>Object</th><th className={th} style={thStyle}>Schedule</th>
               <th className={th} style={thStyle}>Download</th>
@@ -131,7 +130,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
             </tbody>
           </table>
         ) : (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
             No schedules yet — objects are only re-evaluated when someone downloads them.
           </p>
         )}
@@ -151,6 +150,6 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

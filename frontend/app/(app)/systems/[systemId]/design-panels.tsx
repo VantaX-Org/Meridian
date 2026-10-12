@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Drawer, Pager, Pill, Select, type PillTone } from "@/design";
+import { Button, Card, Drawer, Input, Pager, Pill, Select, type PillTone } from "@/design";
 import {
   getConfigDeviation,
   getDesignConfig,
@@ -27,10 +27,8 @@ const th = "px-3 py-2 text-left font-medium";
 const thStyle = { color: "var(--m-ink-3)" };
 const td = "px-3 py-1.5 border-t";
 const tdStyle = { borderColor: "var(--m-line)" };
-const muted = "text-[13px]";
+const muted = "m-text-body";
 const mutedStyle = { color: "var(--m-ink-2)" };
-const field = "w-full rounded border px-3 py-1.5 text-[13px]";
-const fieldStyle = { borderColor: "var(--m-line)" };
 
 export function TablesTab({ id }: { id: string }) {
   const [search, setSearch] = useState("");
@@ -45,13 +43,13 @@ export function TablesTab({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <input className={field} style={fieldStyle} placeholder="Search table or description, then Enter" aria-label="Search tables"
+        <Input className="w-full" placeholder="Search table or description, then Enter" aria-label="Search tables"
           onKeyDown={(e) => { if (e.key === "Enter") { setSearch(e.currentTarget.value); setOffset(0); } }} />
         <Button variant={customerOnly ? "primary" : "secondary"} onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
           Customer extensions only
         </Button>
       </div>
-      <table className="w-full text-[13px]">
+      <table className="w-full m-text-body">
         <thead><tr>
           <th className={th} style={thStyle}>Table</th><th className={th} style={thStyle}>Description</th>
           <th className={th} style={thStyle}>Delivery class</th>
@@ -99,7 +97,7 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
               <Pill tone="at-risk">{data.standard_fields_missing.length} standard fields absent</Pill>
             )}
           </div>
-          <table className="w-full text-[13px]">
+          <table className="w-full m-text-body">
             <thead><tr>
               <th className={th} style={thStyle}>Field</th><th className={th} style={thStyle}>This system</th>
               <th className={th} style={thStyle}>SAP standard</th><th className={th} style={thStyle}>Check table</th>
@@ -109,7 +107,7 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
               {data.fields.map((f) => (
                 <tr key={f.name}>
                   <td className={`${td} font-mono`} style={tdStyle}>{f.key ? <strong>{f.name}</strong> : f.name}
-                    <div className="text-[11px]" style={{ color: "var(--m-ink-3)" }}>{f.description}</div></td>
+                    <div className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{f.description}</div></td>
                   <td className={`${td} font-mono`} style={tdStyle}>{f.type}({f.length}{f.decimals ? `,${f.decimals}` : ""}) {f.domain ?? ""}</td>
                   <td className={`${td} font-mono`} style={tdStyle}>{f.standard ? `${f.standard.type}(${f.standard.length}) ${f.standard.domain ?? ""}` : "—"}</td>
                   <td className={`${td} font-mono`} style={tdStyle}>{f.check_table ?? ""}</td>
@@ -149,7 +147,7 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
             {data.synced_at ? `, ${relativeTime(data.synced_at)}` : ""}. Checks validate against these values, so customer-configured codes count as valid.
           </p>
           <div className="max-h-[480px] overflow-auto">
-            <table className="w-full text-[13px]">
+            <table className="w-full m-text-body">
               <thead className="sticky top-0" style={{ background: "var(--m-sheet-raised)" }}>
                 <tr>{cols.map((c) => <th key={c} className={th} style={thStyle}>{c}</th>)}</tr>
               </thead>
@@ -172,9 +170,8 @@ function DeviationPanel({ id }: { id: string }) {
   if (!data?.tables.length) return null;
   const list = (vals: string[]) => (vals.length ? vals.slice(0, 12).join(", ") + (vals.length > 12 ? ` +${vals.length - 12}` : "") : "—");
   return (
-    <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-      <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Deviation from SAP standard</p>
-      <table className="w-full text-[13px]">
+    <Card title="Deviation from SAP standard">
+      <table className="w-full m-text-body">
         <thead><tr>
           <th className={th} style={thStyle}>Check table</th>
           <th className={th} style={thStyle}>Custom (not in SAP standard)</th>
@@ -190,7 +187,7 @@ function DeviationPanel({ id }: { id: string }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }
 
@@ -204,8 +201,7 @@ export function CoverageTab({ id }: { id: string }) {
         this release; &ldquo;failed&rdquo; usually means a missing RFC authorisation (S_TABU_DIS / S_TABU_NAM).
       </p>
       {parts.map(([part, items]) => (
-        <div key={part} className="flex flex-col gap-2">
-          <p className="text-[13px] font-semibold" style={{ color: "var(--m-ink)" }}>{part}</p>
+        <Card key={part} title={part}>
           <div className="flex flex-wrap gap-2">
             {items.map((c) => (
               <span key={c.table} title={c.detail}><Pill tone={tone(c.status)}>
@@ -213,7 +209,7 @@ export function CoverageTab({ id }: { id: string }) {
               </Pill></span>
             ))}
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
@@ -230,7 +226,7 @@ export function SnapshotsTab({ id }: { id: string }) {
   const opts = done.map((s) => ({ value: s.id, label: `${s.started_at ? formatDate(s.started_at, "datetime") : s.id}, ${s.tables} tables` }));
   return (
     <div className="flex flex-col gap-4">
-      <table className="w-full text-[13px]">
+      <table className="w-full m-text-body">
         <thead><tr>
           <th className={th} style={thStyle}>Started</th><th className={th} style={thStyle}>Status</th>
           <th className={`${th} text-right`} style={thStyle}>Tables</th>
@@ -250,14 +246,13 @@ export function SnapshotsTab({ id }: { id: string }) {
         </tbody>
       </table>
       {done.length > 1 ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-[13px] font-semibold" style={{ color: "var(--m-ink)" }}>Design drift</p>
+        <Card title="Design drift">
           <div className="flex gap-2">
             <Select label="Compare from" value={a} options={opts} onValueChange={setFrom} />
             <Select label="Compare to" value={b} options={opts} onValueChange={setTo} />
           </div>
           {diff && (diff.changes.length === 0 ? <p className={muted} style={mutedStyle}>No dictionary changes between these snapshots.</p> : (
-            <table className="w-full text-[13px]">
+            <table className="w-full m-text-body">
               <thead><tr>
                 <th className={th} style={thStyle}>Table</th><th className={th} style={thStyle}>Field</th>
                 <th className={th} style={thStyle}>Change</th><th className={th} style={thStyle}>Detail</th>
@@ -276,7 +271,7 @@ export function SnapshotsTab({ id }: { id: string }) {
               </tbody>
             </table>
           ))}
-        </div>
+        </Card>
       ) : <p className={muted} style={mutedStyle}>Drift appears once the system has been discovered twice.</p>}
     </div>
   );
