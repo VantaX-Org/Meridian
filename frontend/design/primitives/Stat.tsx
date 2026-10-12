@@ -81,7 +81,7 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
         <Sparkline data={spark.map((y, x) => ({ x: String(x), y }))} width={60} height={16} color={sparkColor} />
       )}
       {hint != null && (
-        <span className="text-[11px] leading-4" style={{ color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
+        <span style={{ fontSize: "var(--m-text-micro)", lineHeight: "var(--m-leading-micro)", color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
       )}
     </>
   );
