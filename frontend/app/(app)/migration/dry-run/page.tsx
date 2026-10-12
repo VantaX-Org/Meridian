@@ -79,7 +79,7 @@ export default function DryRunPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex w-full flex-col gap-6" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }} aria-busy="true">
+      <div className="flex flex-col gap-4" aria-busy="true">
         <div className="grid grid-cols-3 gap-3">
           <Skeleton height={88} />
           <Skeleton height={88} />

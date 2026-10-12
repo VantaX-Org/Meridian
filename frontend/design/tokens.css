@@ -148,7 +148,9 @@
   --m-space-1: 4px;  --m-space-2: 8px;  --m-space-3: 12px; --m-space-4: 16px;
   --m-space-5: 20px; --m-space-6: 24px; --m-space-8: 32px; --m-space-10: 40px;
   --m-space-12: 48px; --m-space-16: 64px; --m-space-24: 96px;
-  --m-page-max: 1280px;
+  --m-page-max: 1600px;
+  --m-page-max-reading: 760px;
+  --m-page-pad-sm: 16px;
   --m-page-pad: var(--m-space-6);
 
   /* ---------- Shape ---------- */
@@ -157,12 +159,12 @@
   --m-radius-tile: 14px;        /* KPI tiles */
   --m-radius-pill: 999px;
   --m-border: 1px;
-  --m-rail-group-pad: 20px 16px 6px;
+  --m-rail-group-pad: 16px 16px 4px;
   --m-rail-w: 240px;
   --m-rail-w-collapsed: 56px;
   --m-topbar-h: 48px;
-  --m-row-h: 44px;
-  --m-row-h-dense: 36px;
+  --m-row-h: 36px;
+  --m-row-h-dense: 30px;
   --m-control-h: 32px;
   --m-control-h-lg: 40px;
 
@@ -524,6 +526,14 @@
 .m-stat-hero { background: rgb(255 255 255 / 0.06); box-shadow: none; border: 1px solid var(--m-hero-line); color: var(--m-hero-ink); }
 
 /* DataTable severity bar: inset shadow on the first cell, no layout shift */
+.m-bar-fill[data-tone="pass"] { background: var(--m-pass); }
+.m-bar-fill[data-tone="medium"] { background: var(--m-medium); }
+.m-bar-fill[data-tone="critical"] { background: var(--m-critical); }
+.m-bar-fill[data-step="1"] { background: var(--m-seq-1); }
+.m-bar-fill[data-step="2"] { background: var(--m-seq-2); }
+.m-bar-fill[data-step="3"] { background: var(--m-seq-3); }
+.m-bar-fill[data-step="4"] { background: var(--m-seq-4); }
+.m-bar-fill[data-step="5"] { background: var(--m-seq-5); }
 .m-row-severity-critical > :first-child { box-shadow: inset 3px 0 0 var(--m-critical); }
 .m-row-severity-high > :first-child { box-shadow: inset 3px 0 0 var(--m-high); }
 .m-row-severity-medium > :first-child { box-shadow: inset 3px 0 0 var(--m-medium); }

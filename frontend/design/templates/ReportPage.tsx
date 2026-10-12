@@ -1,4 +1,5 @@
 // frontend/design/templates/ReportPage.tsx
+import { PageFrame } from "./PageFrame";
 import type { ReactNode } from "react";
 import { Button } from "../primitives/Button";
 import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
@@ -60,7 +61,7 @@ export function ReportPage({
   }
 
   return (
-    <div className="mx-auto flex w-full flex-col gap-6" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+    <PageFrame gap={4}>
       {header}
       <div className="flex items-start justify-between gap-4">
         <div className="m-text-body" style={{ color: "var(--m-ink)" }}>{narrative}</div>
@@ -68,6 +69,6 @@ export function ReportPage({
       </div>
       {body}
       {!exportMenu && onExport && <Button variant="secondary" onClick={onExport}>Export</Button>}
-    </div>
+    </PageFrame>
   );
 }

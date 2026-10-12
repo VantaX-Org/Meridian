@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Skeleton, Stat, type PillTone, PageFrame } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
@@ -122,7 +122,7 @@ export default function ImportPage() {
   const pct = run.isPending && !job ? uploadPct : job?.percent ?? 0;
 
   return (
-    <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+    <PageFrame>
       <PageHeader
         title="Import file"
         meta="Check how columns map to standard SAP fields, then run the analysis, and every import becomes a version"
@@ -229,6 +229,6 @@ export default function ImportPage() {
           />
         )}
       </Card>
-    </div>
+    </PageFrame>
   );
 }

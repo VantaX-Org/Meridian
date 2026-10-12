@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
 import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
+import { PageFrame } from "./PageFrame";
 
 export function ExplorerPage({
   header,
@@ -62,7 +63,7 @@ export function ExplorerPage({
   }
 
   return (
-    <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+    <PageFrame gap={4}>
       {header}
       {toolbarEnd ? (
         <div className="flex items-start justify-between gap-4">
@@ -75,6 +76,6 @@ export function ExplorerPage({
       {summarySlot}
       {body}
       {drawer}
-    </div>
+    </PageFrame>
   );
 }

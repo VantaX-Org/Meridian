@@ -24,7 +24,6 @@ import { LevelTable } from "./_components/level-table";
 import { ProcessTree, type TreeActions } from "./_components/tree";
 import { OldVersionBanner, VersionsMenu } from "./_components/versions";
 
-const PAGE = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" } as const;
 const NEW_NAME = ["New process", "New process area", "New process group", "New sub-process"];
 
 export default function ProcessDesigner() {
@@ -57,7 +56,7 @@ export default function ProcessDesigner() {
   const failed = reference ? ref.error : saved.error;
   if (!doc) {
     return (
-      <div className="flex flex-col gap-4" style={PAGE}>
+      <div className="flex flex-col gap-4">
         <PageHeader title="Process designer" meta="Design the process model and see where the data behind it breaks." />
         {failed ? (
           <ErrorState message={apiErrorMessage(failed)}
@@ -198,7 +197,7 @@ function Editor(p: EditorProps) {
     signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip");
 
   return (
-    <div className="flex flex-col gap-4" style={PAGE}>
+    <div className="flex flex-col gap-4">
       <PageHeader title="Process designer"
         meta={reference ? "Read-only reference model, create a model to edit" : `Version ${versionNo} of ${currentVersion}, saved as a new version on change`}
         actions={<>

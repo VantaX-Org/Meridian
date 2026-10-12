@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, ErrorState, PageHeader, InsightHeader, Skeleton, Stat, type StatTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, ErrorState, PageHeader, Skeleton, StatSkeleton, Stat, type StatTone, PageFrame } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
@@ -12,11 +12,10 @@ import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import {
-  NoSystem, RunsTable, SystemSelect, fitnessTone, fmtCount, fmtFitness, l1Href, headline, processInsight, useProcessSystem,
+  NoSystem, RunsTable, SystemSelect, fitnessTone, fmtCount, fmtFitness, l1Href, headline, useProcessSystem,
 } from "../../process/_components/shared";
 import { CoveragePill } from "../../process/_components/coverage-pill";
 
-const FRAME = { padding: "var(--m-page-pad)", gap: "var(--m-space-6)", maxWidth: "var(--m-page-max)" } as const;
 
 const columns = (systemId: string, canRun: boolean): ColumnDef<CatalogueRow>[] => [
   { id: "process", header: "Process", accessorFn: (r) => r.name, cell: ({ row: { original: r } }) => <DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink> },
@@ -48,27 +47,26 @@ export default function ProcessHomePage() {
     enabled: !!system,
   });
 
-  const framed = (node: React.ReactNode) => <div className="mx-auto flex flex-col" style={FRAME}>{node}</div>;
+  const framed = (node: React.ReactNode) => <PageFrame>{node}</PageFrame>;
   if (systems.isError) return framed(<ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} />);
   if (systems.isSuccess && !system) return framed(<NoSystem />);
   if (catalogue.isError) return framed(<ErrorState message={apiErrorMessage(catalogue.error)} onRetry={() => catalogue.refetch()} />);
   const rows = catalogue.data;
   if (!rows || !system) {
     return (
-      <div className="mx-auto flex flex-col" style={FRAME} data-testid="home-loading">
+      <PageFrame data-testid="home-loading">
         <Skeleton height={26} width={160} />
         <Skeleton height={112} />
-        <div className="grid grid-cols-2 gap-4"><Skeleton height={88} /><Skeleton height={88} /></div>
+        <div className="grid grid-cols-2 gap-4"><StatSkeleton /><StatSkeleton /></div>
         <Skeleton height={240} />
-      </div>
+      </PageFrame>
     );
   }
   const h = headline(rows);
   const catalogueHref = `/process?system=${system.id}`;
   return (
-    <div className="mx-auto flex flex-col" style={FRAME}>
+    <PageFrame>
       <PageHeader title="Home" meta={`${system.name}, ${rows.length} processes`} actions={<SystemSelect value={system.id} onValueChange={setSystem} systems={list} />} />
-      <InsightHeader {...processInsight(rows, system.name, system.id, can("run_process_discovery"))} />
       <div className="grid grid-cols-2 gap-4">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />
         <Stat label="Median fitness" value={fmtFitness(h.fitness)}
@@ -82,6 +80,6 @@ export default function ProcessHomePage() {
           ? <ErrorState message={apiErrorMessage(runs.error)} onRetry={() => runs.refetch()} />
           : runs.data ? <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} hideToolbar /> : <Skeleton height={120} />}
       </Card>
-    </div>
+    </PageFrame>
   );
 }

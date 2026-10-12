@@ -4,6 +4,7 @@ import { Pill, type PillTone } from "../primitives/Pill";
 import { DomainChip } from "../primitives/DomainChip";
 import { Mono } from "../primitives/Mono";
 import { Skeleton } from "../primitives/Skeleton";
+import { PageFrame } from "./PageFrame";
 
 export interface RecordStatus {
   label: "passing" | "failing" | "in batch" | "fixed";
@@ -20,17 +21,16 @@ export function RecordPage({
   /** Header 32 + body 120 skeletons (screens.md 3.3) while the record loads. */
   loading?: boolean;
 }) {
-  const wrap = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" };
   if (loading) {
     return (
-      <div className="m-motion-stagger mx-auto flex w-full flex-col gap-6" style={wrap} data-state="loading">
+      <PageFrame gap={4} className="m-motion-stagger" data-state="loading">
         <Skeleton height={32} />
         <Skeleton height={120} />
-      </div>
+      </PageFrame>
     );
   }
   return (
-    <div className="mx-auto flex w-full flex-col gap-6" style={wrap}>
+    <PageFrame gap={4}>
       <header className="flex items-center gap-3">
         <span style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", fontWeight: 600 }}>
           <Mono>{recordKey}</Mono>
@@ -40,6 +40,6 @@ export function RecordPage({
         <Pill tone={status.tone}>{status.label}</Pill>
       </header>
       {children}
-    </div>
+    </PageFrame>
   );
 }

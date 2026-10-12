@@ -9,6 +9,7 @@ import { Stat } from "../primitives/Stat";
 import { PageHeader } from "../primitives/PageHeader";
 import { Skeleton } from "../primitives/Skeleton";
 import { ErrorState } from "../primitives/ErrorState";
+import { PageFrame } from "./PageFrame";
 import { JourneyStepper } from "./JourneyStepper";
 import type { DayOneStep } from "../../hooks/use-day-one";
 import { relativeTime } from "../../lib/format";
@@ -80,10 +81,7 @@ export function HomePage({
   );
 
   return (
-    <div
-      className="mx-auto flex flex-col"
-      style={{ padding: "var(--m-page-pad)", gap: "var(--m-space-6)", maxWidth: "var(--m-page-max)" }}
-    >
+    <PageFrame gap={4}>
       {header}
 
       {state === "error" && (
@@ -158,6 +156,6 @@ export function HomePage({
       )}
       {state === "data" && work}
       {lists}
-    </div>
+    </PageFrame>
   );
 }

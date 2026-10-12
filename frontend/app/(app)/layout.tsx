@@ -5,7 +5,7 @@ import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RunSelector, type RunOption } from "@/design";
+import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RootPageFrame, RunSelector, type RunOption } from "@/design";
 import { UserMenu } from "@/components/user-menu";
 import { useJobs } from "@/hooks/use-jobs";
 import { AuthGuard } from "@/components/auth/auth-guard";
@@ -141,7 +141,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
             <Suspense fallback={null}><RouteInsight /></Suspense>
-            {children}
+            <RootPageFrame>{children}</RootPageFrame>
           </main>
         </div>
       </div>

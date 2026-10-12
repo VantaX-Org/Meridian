@@ -75,3 +75,4 @@ export * from "./shell/CommandPalette";
 export * from "./shell/useDrill";
 export * from "./shell/DrillLink";
 export * from "./shell/Toaster";
+export * from "./templates/PageFrame";
