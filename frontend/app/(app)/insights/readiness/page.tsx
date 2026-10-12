@@ -31,7 +31,7 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
   { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
   { accessorKey: "wave", header: "Wave" },
   { id: "verdict", header: "Readiness", accessorFn: (c) => VERDICT_LABEL[c.verdict], cell: ({ row }) => (
-      <DrillLink href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), wave: row.original.wave })}`}>
+      <DrillLink href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`}>
         <span aria-label={`${formatModuleName(row.original.module)}, wave ${row.original.wave}: ${VERDICT_LABEL[row.original.verdict]}`}>
           <Pill tone={VERDICT_TONE[row.original.verdict]}>{VERDICT_LABEL[row.original.verdict]}</Pill>
         </span>
@@ -121,7 +121,7 @@ export default function ReadinessPage() {
           cells={(data?.cells ?? []).map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: HEAT[c.verdict] }))}
           onPointClick={(cell) => {
             const mod = modules.find((m) => formatModuleName(m) === cell.row);
-            if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), wave: cell.col })}`);
+            if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: cell.col })}`);
           }}
         />
         <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>Each cell is a wave and object pair. Select one to open its records.</p>
