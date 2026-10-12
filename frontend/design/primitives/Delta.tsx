@@ -9,7 +9,7 @@ export function Delta({ value, run, invert = false, hero = false }: { value: num
   const good = invert ? value < 0 : value > 0;
   const bad = invert ? value > 0 : value < 0;
   const tone = good ? "good" : bad ? "bad" : "zero";
-  const sign = dir === "down" ? "−" : dir === "up" ? "+" : "";
+  const sign = dir === "down" ? "-" : dir === "up" ? "+" : "";
   return (
     <span
       className={clsx("m-delta m-numeric", `m-delta-${dir}`, `m-delta-${tone}`, hero && "m-delta-hero")}
