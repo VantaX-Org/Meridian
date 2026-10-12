@@ -6,9 +6,9 @@ import { Providers } from "@/lib/providers";
 import brand from "../public/brand/brand.json";
 import "./globals.css";
 
-// Public Sans for UI, JetBrains Mono for SAP identifiers. tokens.css reads --font-ui and --font-mono.
+// Public Sans for UI, JetBrains Mono for SAP identifiers. tokens.css reads --font-ui and --font-jbm.
 const sans = Public_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-ui", display: "swap" });
-const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono", display: "swap" });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jbm", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Meridian",
@@ -30,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <AuthProvider>
-      {/* Font variables sit on <html> so tokens.css (:root) can resolve --font-ui and --font-mono. */}
+      {/* Font variables sit on <html> so tokens.css (:root) can resolve --font-ui and --font-jbm. */}
       <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
         <head>
           {/* Sets data-theme before first paint; keys match hooks/use-theme.ts (old aurora:theme is read as a fallback). "system" leaves it to prefers-color-scheme in tokens.css, but is resolved here too so dark users never flash light. */}
