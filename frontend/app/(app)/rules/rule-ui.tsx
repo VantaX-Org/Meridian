@@ -1,49 +1,22 @@
 "use client";
 
 /**
- * Page-local building blocks for the rules pages. If the shared
- * foundations ship a Switch and Textarea, swap RuleSwitch and TextArea.
+ * Page-local building blocks for the rules pages.
  */
 
-import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { Mono } from "@/design";
 import { checkClassLabel } from "@/lib/format";
-
-export const TextArea = forwardRef<HTMLTextAreaElement, ComponentPropsWithoutRef<"textarea">>(function TextArea({ className, ...p }, ref) {
-  return <textarea ref={ref} className={`m-input ${className ?? ""}`} {...p} />;
-});
-
-/** Accessible on/off switch; the caller owns the (optimistic) state. */
-export function RuleSwitch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
-      className="m-motion-colors relative inline-flex shrink-0 items-center"
-      style={{ width: 28, height: 16, borderRadius: 8, background: checked ? "var(--m-accent)" : "var(--m-line-strong)", opacity: disabled ? 0.5 : 1 }}
-    >
-      <span
-        aria-hidden
-        className="m-motion-colors absolute"
-        style={{ top: 2, left: checked ? 14 : 2, width: 12, height: 12, borderRadius: 6, background: "var(--m-sheet)" }}
-      />
-    </button>
-  );
-}
 
 export type FilterChip = { key: string; label: string; clear: () => void };
 
 /** Removable chips for every active filter, with one "Clear all". */
 export function FilterChips({ chips, onClearAll }: { chips: FilterChip[]; onClearAll: () => void }) {
-  if (!chips.length) return null;
+  // Fixed-height slot so the first chip does not shift the page.
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Active filters">
-      {chips.map((c) => (
+    <div className="flex flex-wrap items-center gap-2" style={{ minHeight: 24 }} aria-label="Active filters">
+      {chips.length ? chips.map((c) => (
         <button
           key={c.key}
           type="button"
@@ -54,8 +27,8 @@ export function FilterChips({ chips, onClearAll }: { chips: FilterChip[]; onClea
         >
           {c.label}<X size={12} aria-hidden />
         </button>
-      ))}
-      <button type="button" onClick={onClearAll} className="m-text-meta px-1" style={{ color: "var(--m-accent)" }}>Clear all</button>
+      )) : null}
+      {chips.length ? <button type="button" onClick={onClearAll} className="m-text-meta px-1" style={{ color: "var(--m-accent)" }}>Clear all</button> : null}
     </div>
   );
 }

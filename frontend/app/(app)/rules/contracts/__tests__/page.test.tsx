@@ -5,6 +5,12 @@ import * as contractsApi from "@/lib/api/contracts";
 import type { Contract } from "@/types/api";
 import ContractsPage from "../page";
 
+const searchParams = new URLSearchParams();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => "/rules/contracts",
+  useSearchParams: () => searchParams,
+}));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const CONTRACT: Contract = {

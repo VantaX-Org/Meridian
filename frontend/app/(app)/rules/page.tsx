@@ -21,7 +21,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions } from "@/design";
+import { DrillLink, Button, Card, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Switch, Tabs, Textarea, emptyExportOptions } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
@@ -35,7 +35,7 @@ import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { FeedbackPanel, SuppressionsPanel } from "./rule-panels";
-import { ConditionList, FilterChips, Rows, RuleSwitch, TextArea, ThresholdTable, type FilterChip } from "./rule-ui";
+import { ConditionList, FilterChips, Rows, ThresholdTable, type FilterChip } from "./rule-ui";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -151,10 +151,13 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       toast.error((e as Error).message || "Rule not updated");
     },
     onSuccess: (_d, v) => toast.success(v.enabled ? "Rule enabled" : "Rule disabled"),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["rules"] }),
+    // Only the last in-flight toggle refetches, so an earlier settle cannot overwrite a later optimistic flip.
+    onSettled: () => { if (qc.isMutating() === 1) qc.invalidateQueries({ queryKey: ["rules"] }); },
   });
 
   const toggleRule = toggle.mutate;
+  // Per-rule applicability comes from the same coverage query (not_applicable_rules); no extra request.
+  const naReason = useMemo(() => new Map((awareQ.data?.modules ?? []).flatMap((m) => m.not_applicable_rules.map((n) => [n.check_id, n.reason] as const))), [awareQ.data]);
   const columns = useMemo<ColumnDef<Rule>[]>(() => [
     { id: "code", header: "Rule", cell: ({ row }) => <Mono>{codeOf(row.original) || "—"}</Mono> },
     { id: "rule", header: "Name", cell: ({ row }) => <strong>{nameOf(row.original)}</strong> },
@@ -169,9 +172,25 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       cell: ({ row }) => {
         const r = row.original;
         return canManage
-          ? <RuleSwitch checked={r.enabled} label={`${r.enabled ? "Disable" : "Enable"} ${nameOf(r)}`} onChange={(enabled) => toggleRule({ id: r.id, enabled })} />
+          ? (
+            <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+              <Switch
+                checked={r.enabled}
+                label={r.enabled ? "On" : "Off"}
+                aria-label={`Enabled: ${nameOf(r)}`}
+                style={{ minWidth: 24, minHeight: 24 }}
+                onCheckedChange={(enabled) => toggleRule({ id: r.id, enabled })}
+              />
+            </span>
+          )
           : <Pill tone={r.enabled ? "go" : "neutral"}>{labelOf(r.enabled ? "enabled" : "disabled")}</Pill>;
       },
+    },
+    {
+      id: "na", header: "Not applicable",
+      cell: ({ row }) => (naReason.has(row.original.id) || naReason.has(codeOf(row.original))
+        ? <span title={naReason.get(row.original.id) ?? naReason.get(codeOf(row.original)) ?? undefined}>Not applicable</span>
+        : "—"),
     },
     {
       id: "last", header: "Last run",
@@ -182,7 +201,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
         </span>
       ),
     },
-  ], [canManage, toggleRule]);
+  ], [canManage, toggleRule, naReason]);
 
   const coverageRows = useMemo(
     () => facets.modules.map((m) => ({ module: m, total: rules.filter((r) => r.module === m).length, aware: awareByModule.get(m) })),
@@ -282,31 +301,27 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       </div>
       {filterBar}
       <FilterChips chips={chips} onClearAll={clearFilters} />
-      {coverageRows.length ? (
-        <div className="flex flex-col gap-2">
-          <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Coverage by object</h2>
-          {dayOne.status === "loading" ? (
-            <Skeleton height={160} />
+      {coverageRows.length || rulesQ.isLoading ? (
+        <Card title="Coverage by object" padding="sm">
+          {dayOne.status === "loading" || rulesQ.isLoading ? (
+            <Skeleton height={coverageRows.length ? coverageRows.length * 40 + 40 : 240} />
           ) : hasFinishedRun ? (
             <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} />
           ) : (
-            <div className="m-text-body flex items-center gap-2" style={{ color: "var(--m-ink-3)" }}>
-              <span>Coverage is measured on a finished run.</span>
-              <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />
-            </div>
+            <EmptyState title="Coverage is measured on a finished run" action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
           )}
-        </div>
+        </Card>
       ) : null}
       {rulesQ.isLoading ? (
         <Skeleton height={320} />
       ) : rulesQ.error ? (
         <ErrorState message={apiErrorMessage(rulesQ.error)} onRetry={() => rulesQ.refetch()} />
       ) : visible.length ? (
-        <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} tableId="rules-library" />
+        <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" />
       ) : filtered ? (
         <EmptyState
           title="No rules match"
-          detail="Built-in rules ship with Meridian, HQ rules arrive through sync, mined and custom rules come from your stewards."
+          detail="Try fewer filters"
           action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>}
         />
       ) : (
@@ -425,7 +440,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         {cls === "regex_check" && textInput("pattern", "Pattern (regular expression -- values that do not match fail, e.g. ^[0-9]{10}$)")}
         {(cls === "domain_value_check" || cls === "uniqueness_check") && (
           <Field label={cls === "domain_value_check" ? "Allowed values (comma or newline separated)" : "Fields that must be unique together (comma or newline separated)"}>
-            <TextArea
+            <Textarea
               rows={3}
               value={values}
               onChange={(e) => { setValues(e.target.value); setResult(null); }}
@@ -434,7 +449,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         )}
         {cls === "cross_field_check" && (
           <Field label="Fails when (backtick columns; use == != < > and, or, not, .isna() / .notna(), e.g. `LFA1.LAND1` == 'ZA' and `LFA1.STCD1`.isna())">
-            <TextArea
+            <Textarea
               rows={3}
               value={draft.fail_when ?? ""}
               onChange={(e) => setDraft({ fail_when: e.target.value })}
@@ -497,7 +512,7 @@ export default function RulesPage() {
     <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
       <PageHeader
         title="Rules"
-        meta={summary.data ? `${total.toLocaleString()} rules · ${enabled.toLocaleString()} enabled` : "Loading rules"}
+        meta={summary.data ? `${total.toLocaleString()} rules · ${enabled.toLocaleString()} enabled` : "\u00a0"}
         actions={canManage ? <Button onClick={() => { setTab("all"); setAuthoring(true); }}>New rule</Button> : undefined}
       />
       <Tabs

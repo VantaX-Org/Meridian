@@ -4,16 +4,17 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, Pill, Select, Stat, type PillTone } from "@/design";
-import { TextArea } from "../rule-ui";
+import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Stat, Textarea, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { activateContract, createContract, getContractCompliance, getContracts } from "@/lib/api/contracts";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { relativeTime, formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { Contract, ContractStatus } from "@/types/api";
 
-const STATUSES: ("all" | ContractStatus)[] = ["all", "active", "pending_approval", "draft", "expired"];
+type StatusFilter = "all" | "breached" | ContractStatus;
+const STATUSES: StatusFilter[] = ["all", "breached", "active", "pending_approval", "draft", "expired"];
 const breached = (c: Contract) => c.status === "active" && c.latest_compliant === false;
 const TONE: Record<ContractStatus, PillTone> = { active: "go", pending_approval: "at-risk", draft: "neutral", expired: "no-go" };
 const TERMS: [keyof Contract, string][] = [["schema_contract", "Schema"], ["quality_contract", "Quality"], ["freshness_contract", "Freshness"], ["volume_contract", "Volume"]];
@@ -24,15 +25,16 @@ export default function ContractsPage() {
   // Backend guards (api/routes/contracts.py): create/update need manage_rules, activate needs approve.
   const canCreate = can("manage_rules");
   const canActivate = can("approve");
-  const [status, setStatus] = useState<"all" | ContractStatus>("all");
+  const [statusRaw, setStatus] = useUrlState("status", "all");
+  const status = oneOf<StatusFilter>(statusRaw, STATUSES, "all");
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const q = useQuery({ queryKey: queryKeys.contracts({ status }), queryFn: () => getContracts(status === "all" ? undefined : status) });
+  const q = useQuery({ queryKey: queryKeys.contracts({ status }), queryFn: () => getContracts(status === "all" ? undefined : status === "breached" ? "active" : status) });
   const all = useMemo(() => q.data?.contracts ?? [], [q.data]);
   const term = search.trim().toLowerCase();
-  const visible = all.filter((c) => !term || [c.name, c.producer, c.consumer, c.description ?? ""].join(" ").toLowerCase().includes(term));
+  const visible = all.filter((c) => (status !== "breached" || breached(c)) && (!term || [c.name, c.producer, c.consumer, c.description ?? ""].join(" ").toLowerCase().includes(term)));
   const selected = selectedId ? all.find((c) => c.id === selectedId) ?? null : null;
   const refresh = () => qc.invalidateQueries({ queryKey: ["contracts"] });
 
@@ -74,6 +76,7 @@ export default function ContractsPage() {
 
   return (
     <ExplorerPage
+      header={<PageHeader title="Data contracts" meta={q.isLoading ? "\u00a0" : `${all.length.toLocaleString()} contracts`} />}
       filterBar={
         <div className="flex items-end justify-between gap-3">
           <div className="flex items-end gap-3">
@@ -83,7 +86,7 @@ export default function ContractsPage() {
             <Field label="Status">
               <Select
                 value={status}
-                onValueChange={(v) => setStatus(v as "all" | ContractStatus)}
+                onValueChange={setStatus}
                 options={STATUSES.map((s) => ({ value: s, label: s === "all" ? "All" : labelOf(s) }))}
               />
             </Field>
@@ -93,7 +96,7 @@ export default function ContractsPage() {
       }
       summary={
         <div className="flex gap-4">
-          <Stat label="Breached" value={q.isLoading ? "–" : counts.breached.toLocaleString()} loading={q.isLoading} />
+          <Stat label="Breached" value={q.isLoading ? "–" : counts.breached.toLocaleString()} loading={q.isLoading} tone={counts.breached ? "no-go" : undefined} href="/rules/contracts?status=breached" />
           <Stat label="Awaiting approval" value={q.isLoading ? "–" : counts.pending.toLocaleString()} loading={q.isLoading} onClick={() => setStatus("pending_approval")} />
         </div>
       }
@@ -152,7 +155,14 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
           {terms.map(([k, title]) => (
             <div key={k}>
               <Card title={`${title} terms`} padding="sm">
-                <pre className="m-text-meta font-mono overflow-x-auto">{JSON.stringify(c[k], null, 2)}</pre>
+                <dl className="m-text-body grid grid-cols-[140px_1fr] gap-y-1">
+                  {Object.entries(c[k] as Record<string, unknown>).map(([key, v]) => (
+                    <div key={key} className="contents">
+                      <dt style={{ color: "var(--m-ink-3)" }}>{key.replace(/_/g, " ")}</dt>
+                      <dd><Mono>{typeof v === "string" ? v : JSON.stringify(v)}</Mono></dd>
+                    </div>
+                  ))}
+                </dl>
               </Card>
             </div>
           ))}
@@ -206,7 +216,7 @@ function NewContractForm({ onDone }: { onDone: () => void }) {
       <Field label="Producer system"><Input value={d.producer} onChange={(e) => setD({ ...d, producer: e.target.value })} placeholder="ECC PRD" /></Field>
       <Field label="Consumer system"><Input value={d.consumer} onChange={(e) => setD({ ...d, consumer: e.target.value })} placeholder="S/4HANA Cloud" /></Field>
       <Field label="What the contract governs">
-        <TextArea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} />
+        <Textarea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} />
       </Field>
       <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>It starts as a draft. Add schema, quality, freshness and volume terms, then activate it.</p>
       <div><Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Creating…" : "Create draft"}</Button></div>

@@ -112,8 +112,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <PageHeader title="Scoring and alerts" meta="How the data quality score is weighted, when Meridian raises an alert, and who hears about it." />
-      {!write ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Read only. Changing these settings needs the manage_settings permission.</p> : null}
+      <PageHeader title="Scoring and alerts" meta="Score weights, alert thresholds and who is told" />
+      {!write ? <Notice tone="info">These settings are read only for your role</Notice> : null}
 
       {!agg.isError && !agg.isLoading && current === null ? (
         <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Save weights; the preview uses the latest findings once a run completes.</p>
@@ -130,7 +130,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           ) : (
             <ScoreRing score={current} size={96} />
           )}
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{capped ? "A severity cap is in force." : current === null ? "No analysis has run yet." : "From the latest run."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{capped ? "A severity cap is in force" : current === null ? "No analysis has run yet" : "From the latest run"}</span>
         </div>
         <div className="flex flex-col gap-1">
           <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>With these weights</span>
@@ -138,13 +138,13 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
             {capValue !== null && rawPreview !== null && rawPreview > capValue
               ? `Capped at ${capValue} by ${criticals} critical ${criticals === 1 ? "finding" : "findings"}.`
-              : delta === null ? "Needs a scored run." : delta === 0 ? "Same as now." : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points.`}
+              : delta === null ? "Needs a scored run" : delta === 0 ? "Same as now" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points`}
           </span>
         </div>
         <div className="flex flex-col gap-1">
           <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Weights sum</span>
           <span className="m-text-title font-semibold" style={{ color: sumOk ? undefined : "var(--m-critical)" }}>{sum.toFixed(2)}</span>
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{sumOk ? "Sums to one." : "Must sum to 1.00 before you can save."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{sumOk ? "Sums to one" : "Must sum to 1.00 before you can save"}</span>
         </div>
       </div>
       )}
