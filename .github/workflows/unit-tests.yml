@@ -78,6 +78,15 @@ jobs:
           pip install -r requirements.txt
           pip install "pytest>=8.0.0" "pytest-asyncio>=0.24.0"
 
+      # Fast drift gates (seconds, before the ~70 min suite): shipped rules must
+      # reconcile with the SAP field dictionary, and the DDIC-derived sidecars
+      # must be up to date with scripts/generate_ddic_rules.py.
+      - name: Rule reconciliation (--strict)
+        run: python -m checks.rule_reconciler --strict
+
+      - name: Generated sidecars up to date
+        run: python scripts/generate_ddic_rules.py --check
+
       # Fast fail on collection errors (import breaks) before running anything.
       - name: Collect tests
         run: pytest tests/ --collect-only -q

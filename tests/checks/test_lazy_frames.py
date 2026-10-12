@@ -130,7 +130,8 @@ def test_lazy_run_is_identical_to_eager_run(bundle: dict[str, bytes]) -> None:
         assert eager == lazy, name
 
 
-PACKS = sorted(p.stem for c in CATEGORIES for p in (RULES_DIR / c).glob("*.yaml") if p.stem != "column_map")
+PACKS = sorted(p.stem for c in CATEGORIES for p in (RULES_DIR / c).glob("*.yaml")
+               if p.stem != "column_map" and not p.stem.endswith(".generated"))
 
 
 def _pack_bundle(module: str, rows: int = 30) -> dict[str, bytes]:
