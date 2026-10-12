@@ -56,7 +56,7 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
   } else {
     body = (
       <div className="flex flex-col gap-3">
-        <table className="w-full text-[13px]" style={{ color: "var(--m-ink)" }}>
+        <table className="w-full m-text-body" style={{ color: "var(--m-ink)" }}>
           <thead>
             <tr style={{ color: "var(--m-ink-2)" }}>
               <th className="text-left font-medium">Object</th>
@@ -84,9 +84,9 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
         </table>
         {object && data.rows.length > 0 ? (
           <div className="flex flex-col gap-1">
-            <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}><Mono>{object}</Mono> values</p>
+            <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}><Mono>{object}</Mono> values</p>
             {data.rows.map((r) => (
-              <div key={r.source_key} className="flex items-center justify-between gap-2 rounded border px-3 py-1.5 text-[13px]" style={{ borderColor: "var(--m-line)" }}>
+              <div key={r.source_key} className="flex items-center justify-between gap-2 rounded border px-3 py-1.5 m-text-body" style={{ borderColor: "var(--m-line)" }}>
                 <span className="flex items-center gap-2">
                   <Mono>{r.source_key}</Mono>
                   {r.target_key && r.target_key !== r.source_key ? <span style={{ color: "var(--m-ink-2)" }}>to <Mono>{r.target_key}</Mono></span> : null}
@@ -104,11 +104,11 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
     <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>
+          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>
             Compared with {data?.target.label ?? "the target"}
           </p>
           {data?.target.baseline ? (
-            <p className="text-[12px]" style={{ color: "var(--m-medium)" }}>
+            <p className="m-text-meta" style={{ color: "var(--m-medium)" }}>
               The target is the SAP standard baseline, so differences are flagged, not blocking.
             </p>
           ) : null}

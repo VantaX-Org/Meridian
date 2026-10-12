@@ -30,7 +30,7 @@ function useZ<T>(key: string, fn: () => Promise<T>) {
 function ProfileDetail({ entry }: { entry: ZRegistryEntry }) {
   const q = useQuery({ queryKey: ["z-objects", "profile", entry.id], queryFn: () => getZProfile(entry.id), retry: false });
   return (
-    <div className="flex flex-col gap-3 text-[13px]">
+    <div className="flex flex-col gap-3 m-text-body">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
         <dt style={note}>Category</dt><dd>{labelOf(entry.category)}</dd>
         <dt style={note}>Standard equivalent</dt><dd>{dash(entry.standard_equivalent)}</dd>
@@ -135,7 +135,7 @@ function DriftSection() {
 export function CustomObjectsTab() {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13px]" style={note}>Custom (Z) objects found across every connected system in this workspace.</p>
+      <p className="m-text-body" style={note}>Custom (Z) objects found across every connected system in this workspace.</p>
       <Tabs
         items={[
           { value: "registry", label: "Registry", content: <RegistrySection /> },

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, Field, Mono, Skeleton } from "@/design";
+import { Button, Card, DataTable, EmptyState, Field, Mono, Notice, Skeleton } from "@/design";
 import { getSystemObjects, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -16,9 +16,8 @@ const SCOPE_LABEL: Record<ScopeKey, string> = {
   purchasing_orgs: "Purchasing organisations",
 };
 const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
-const field = "w-full rounded border px-3 py-1.5 text-[13px]";
-const fieldStyle = { borderColor: "var(--m-line)" };
-const note = "text-[13px]";
+const field = "m-input w-full";
+const note = "m-text-body";
 const noteStyle = { color: "var(--m-ink-2)" };
 
 /** Choose objects and scope, confirm inline, then extract into a new run. */
@@ -70,41 +69,37 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
   ], [picked]);
 
   return (
-    <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-      <div className="flex items-center justify-between">
-        <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Extract objects into a new run</p>
-        {chosen.length ? <p className={note} style={noteStyle}>{chosen.length} selected</p> : null}
-      </div>
+    <Card title="Extract objects into a new run" meta={chosen.length ? `${chosen.length} selected` : undefined}>
       {isLoading ? <Skeleton height={160} />
-        : !objects.length ? <EmptyState title="This system offers no objects yet." /> : (
-        <div className="mt-2 flex flex-col gap-4">
+        : !objects.length ? <EmptyState title="No objects to extract" detail="This system exposes no objects yet. Check the connection on the Health tab." /> : (
+        <div className="flex flex-col gap-4">
           <DataTable columns={columns} data={objects} getRowId={(o) => o.object} onRowClick={(o) => toggle(o.object)} height={340} />
           {chosen.length > 0 ? (
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {filters.map((k) => (
                   <Field key={k} label={`${SCOPE_LABEL[k]} — comma-separated, empty reads all`}>
-                    <input className={field} style={fieldStyle} value={scopeText[k] ?? ""} placeholder="1000, 2000" onChange={(e) => setScopeText({ ...scopeText, [k]: e.target.value })} />
+                    <input className={field} value={scopeText[k] ?? ""} placeholder="1000, 2000" onChange={(e) => setScopeText({ ...scopeText, [k]: e.target.value })} />
                   </Field>
                 ))}
                 {windowed.length > 0 ? (
                   <>
                     <Field label={`Documents from — replaces the default window for ${windowed.join(", ")}`}>
-                      <input className={field} style={fieldStyle} type="date" value={dates.date_from ?? ""} onChange={(e) => setDates({ ...dates, date_from: e.target.value || undefined })} />
+                      <input className={field} type="date" value={dates.date_from ?? ""} onChange={(e) => setDates({ ...dates, date_from: e.target.value || undefined })} />
                     </Field>
                     <Field label="Documents to">
-                      <input className={field} style={fieldStyle} type="date" value={dates.date_to ?? ""} onChange={(e) => setDates({ ...dates, date_to: e.target.value || undefined })} />
+                      <input className={field} type="date" value={dates.date_to ?? ""} onChange={(e) => setDates({ ...dates, date_to: e.target.value || undefined })} />
                     </Field>
                   </>
                 ) : null}
                 <Field label="Run label — optional">
-                  <input className={field} style={fieldStyle} value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
+                  <input className={field} value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
                 </Field>
               </div>
               <p className={note} style={noteStyle}>
                 Organisational filters restrict every table that carries the field. General data without it is read in full so no record loses its context.
               </p>
-              <label className="flex items-center gap-2 text-[13px]" style={{ color: "var(--m-ink)" }}>
+              <label className="flex items-center gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>
                 <input type="checkbox" checked={excludeDeleted} onChange={(e) => setExcludeDeleted(e.target.checked)} />
                 Skip records flagged for deletion
               </label>
@@ -117,21 +112,21 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
                   <Button variant="secondary" onClick={() => setConfirm(true)}>Extract and analyse</Button>
                 </div>
               ) : (
-                <div className="rounded border px-3 py-2 text-[13px]" style={{ borderColor: "var(--m-medium)", color: "var(--m-ink)" }}>
-                  <p className="font-medium" style={{ color: "var(--m-medium)" }}>
-                    {`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"}${confirm ? " and analyse" : ""}?`}
-                  </p>
-                  <p className="mt-1" style={noteStyle}>Only the selected objects and scope are read, into a new run.</p>
-                  <div className="mt-2 flex gap-2">
+                <Notice
+                  tone="warning"
+                  title={`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"}${confirm ? " and analyse" : ""}?`}
+                  action={<>
                     <Button onClick={() => download.mutate(confirm)} disabled={download.isPending}>Confirm</Button>
                     <Button variant="ghost" onClick={() => setConfirm(null)}>Keep scope</Button>
-                  </div>
-                </div>
+                  </>}
+                >
+                  Only the selected objects and scope are read, into a new run.
+                </Notice>
               )}
             </div>
           ) : <p className={note} style={noteStyle}>Select the objects to extract.</p>}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

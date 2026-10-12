@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { DrillLink, EmptyState, ErrorState, Pill, Skeleton, Sparkline } from "@/design";
+import Link from "next/link";
+import { Button, Card, DrillLink, EmptyState, ErrorState, Pill, Skeleton, Sparkline } from "@/design";
 import { getTrends, type TrendFlag } from "@/lib/api/system-objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
@@ -33,12 +34,11 @@ export function TrendPanel({ systemId }: { systemId: string }) {
   const summary = q.data?.summary ?? [];
   const series = q.data?.series ?? {};
   return (
-    <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-      <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Trend per object</p>
+    <Card title="Trend per object">
       {!summary.length ? (
-        <EmptyState title="No analysed run yet." />
+        <EmptyState title="No analysed run yet" detail="Trends need at least one analysed run." action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />} />
       ) : (
-        <table className="mt-2 w-full text-[13px]">
+        <table className="w-full m-text-body">
           <thead>
             <tr>
               <th className={th} style={thStyle}>Object</th><th className={th} style={thStyle}>DQS</th>
@@ -79,6 +79,6 @@ export function TrendPanel({ systemId }: { systemId: string }) {
           </tbody>
         </table>
       )}
-    </div>
+    </Card>
   );
 }

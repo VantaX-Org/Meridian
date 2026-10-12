@@ -64,7 +64,7 @@ export default function ExtractionPage() {
       {failedStep ? (
         <div
           role="alert"
-          className="mt-2 rounded border px-3 py-2 text-[13px]"
+          className="mt-2 rounded border px-3 py-2 m-text-body"
           style={{ borderColor: "var(--m-critical)", color: "var(--m-critical)" }}
         >
           {failedStep.step_name} failed: {failedStep.error_detail}

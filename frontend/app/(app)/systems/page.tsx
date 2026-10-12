@@ -152,7 +152,7 @@ export default function SystemsPage() {
             <DrillLink href={`/systems/${row.original.id}?tab=overview`}>{d.dqs.toFixed(1)}</DrillLink>
             {t != null && Math.abs(t) >= 0.05 ? (
               <span
-                className="inline-flex items-center text-[12px]"
+                className="inline-flex items-center m-text-meta"
                 style={{ color: t > 0 ? "var(--m-pass)" : "var(--m-critical)" }}
                 aria-label={`${t > 0 ? "Up" : "Down"} ${Math.abs(t).toFixed(1)} since the previous run`}
               >
@@ -182,7 +182,7 @@ export default function SystemsPage() {
         return (
           <Link href={`/systems/${row.original.id}?tab=health&part=config`} className="flex flex-col" onClick={(e) => e.stopPropagation()}>
             <Pill tone={CONFIG_TONE[c.status]}>{CONFIG_LABEL[c.status]}</Pill>
-            <span className="text-[12px]" style={{ color: "var(--m-ink-2)" }}>{configSub(c)}</span>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>{configSub(c)}</span>
           </Link>
         );
       },
@@ -216,7 +216,7 @@ export default function SystemsPage() {
     <ExplorerPage
       filterBar={
         configFilter || healthFilter ? (
-          <div className="flex items-center gap-2 text-[13px]">
+          <div className="flex items-center gap-2 m-text-body">
             <span style={{ color: "var(--m-ink-2)" }}>
               {healthFilter ? `Showing ${HEALTH_LABEL[healthFilter as HealthStatus]?.toLowerCase() ?? healthFilter} systems.` : `Showing systems with configuration ${CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter}.`}
             </span>

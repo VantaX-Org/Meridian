@@ -15,7 +15,7 @@ const pct = (v: number | null) => (v === null ? "—" : `${(v * 100).toFixed(1)}
 const n = (v: number) => v.toLocaleString();
 const card = "rounded border p-3";
 const cardStyle = { borderColor: "var(--m-line)" };
-const note = "text-[13px]";
+const note = "m-text-body";
 const noteStyle = { color: "var(--m-ink-2)" };
 
 /** Pilot scorecard: how right Meridian is on this system, judged by the stewards' own decisions. */
@@ -41,7 +41,7 @@ export function PilotTab({ id }: { id: string }) {
     { id: "rule", header: "Rule", cell: ({ row }) => (
       <span className="flex flex-col">
         <Link href={`/findings?${new URLSearchParams({ check_id: row.original.check_id, module: row.original.module })}`} style={{ color: "var(--m-accent)" }}><Mono>{row.original.check_id}</Mono></Link>
-        <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{formatModuleName(row.original.module)}{row.original.message ? `. ${row.original.message}` : ""}</span>
+        <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{formatModuleName(row.original.module)}{row.original.message ? `. ${row.original.message}` : ""}</span>
       </span>) },
     { id: "flagged", header: "Flagged", cell: ({ row }) => n(row.original.flagged) },
     { id: "reviewed", header: "Reviewed", cell: ({ row }) => n(row.original.reviewed) },
@@ -79,7 +79,7 @@ export function PilotTab({ id }: { id: string }) {
 
       <div className={card} style={cardStyle}>
         <div className="flex items-center justify-between">
-          <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Precision per rule</p>
+          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Precision per rule</p>
           <p className={note} style={noteStyle}>{data?.rules.length ?? 0} rules</p>
         </div>
         <p className={`${note} mt-1`} style={noteStyle} id="rules">
@@ -96,7 +96,7 @@ export function PilotTab({ id }: { id: string }) {
 
       <div className={card} style={cardStyle}>
         <div className="flex items-center justify-between">
-          <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Known issues Meridian missed</p>
+          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Known issues Meridian missed</p>
           <div className="flex items-center gap-2">
             {rec?.known ? <p className={note} style={noteStyle}>{n(rec.missed_total)} of {n(rec.known)}</p> : null}
             {can("manage_systems") ? (
@@ -115,7 +115,7 @@ export function PilotTab({ id }: { id: string }) {
           accounts_payable, or blank for any. Record is the SAP key with parts separated by a pipe, for example 1000|100001. Leading zeros do not matter.
         </p>
         {rec?.objects_not_analysed.length ? (
-          <div className="mt-2 rounded border px-3 py-2 text-[13px]" style={{ borderColor: "var(--m-medium)", color: "var(--m-ink)" }}>
+          <div className="mt-2 rounded border px-3 py-2 m-text-body" style={{ borderColor: "var(--m-medium)", color: "var(--m-ink)" }}>
             <p className="font-medium" style={{ color: "var(--m-medium)" }}>Objects not analysed yet</p>
             <p className="mt-1" style={noteStyle}>
               {rec.objects_not_analysed.map(formatModuleName).join(", ")}. Their known issues count as missed until they are downloaded and analysed.
@@ -129,7 +129,7 @@ export function PilotTab({ id }: { id: string }) {
         ) : (
           <>
             <DataTable columns={missedCols} data={rec.missed} getRowId={(m) => `${m.module}/${m.record_ref}`} height={340} />
-            {rec.missed_total > rec.missed.length ? <p className="text-[12px] mt-1" style={{ color: "var(--m-ink-3)" }}>{n(rec.missed_total - rec.missed.length)} more not shown.</p> : null}
+            {rec.missed_total > rec.missed.length ? <p className="m-text-meta mt-1" style={{ color: "var(--m-ink-3)" }}>{n(rec.missed_total - rec.missed.length)} more not shown.</p> : null}
           </>
         )}
       </div>

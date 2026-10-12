@@ -90,7 +90,7 @@ function ProcessesSection() {
       {(d) => d.processes.length === 0 ? <EmptyState title="No processes detected." /> : (
         <DataTable columns={cols} data={d.processes} getRowId={(p) => p.process_id} height={360} exportName="config-processes"
           renderDrawer={(p) => (
-            <ol className="flex flex-col gap-2 text-[13px]">
+            <ol className="flex flex-col gap-2 m-text-body">
               {p.steps.map((s) => (
                 <li key={s.step_number} className="flex items-center justify-between gap-3">
                   <span>{s.step_number}. {s.step_name} <Mono>{s.sap_table}</Mono></span>
@@ -121,7 +121,7 @@ function FindingsTable({ rows, name }: { rows: AlignmentFinding[]; name: string 
   return (
     <DataTable columns={cols} data={rows} getRowId={(f) => `${f.check_id}/${f.module}/${f.title}`} height={380} exportName={name}
       renderDrawer={(f) => (
-        <div className="flex flex-col gap-2 text-[13px]">
+        <div className="flex flex-col gap-2 m-text-body">
           <p>{f.description}</p>
           {f.remediation ? <p style={note}>Remediation: {f.remediation}</p> : null}
           {f.affected_elements.length ? <p style={note}>Affected: {f.affected_elements.join(", ")}</p> : null}
@@ -141,13 +141,13 @@ function GhostShadowSection() {
   return (
     <div className="flex flex-col gap-4">
       <div className={card} style={cardStyle}>
-        <p className="mb-1 text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Ghost configuration</p>
-        <p className="mb-2 text-[13px]" style={note}>Configured in SAP but never used in a transaction.</p>
+        <p className="mb-1 m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Ghost configuration</p>
+        <p className="mb-2 m-text-body" style={note}>Configured in SAP but never used in a transaction.</p>
         <Feed q={ghost} empty="Ghost configuration is configured but unused.">{(d) => <FindingsTable rows={d.findings} name="config-ghost" />}</Feed>
       </div>
       <div className={card} style={cardStyle}>
-        <p className="mb-1 text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Shadow configuration</p>
-        <p className="mb-2 text-[13px]" style={note}>Used in transactions but missing from the configuration.</p>
+        <p className="mb-1 m-text-body font-medium" style={{ color: "var(--m-ink)" }}>Shadow configuration</p>
+        <p className="mb-2 m-text-body" style={note}>Used in transactions but missing from the configuration.</p>
         <Feed q={shadow} empty="Shadow configuration is used but not configured.">{(d) => <FindingsTable rows={d.findings} name="config-shadow" />}</Feed>
       </div>
     </div>
@@ -167,7 +167,7 @@ function DriftSection() {
       {(d) => d.drift_entries.length === 0 ? <EmptyState title="No drift between the last two runs." /> : (
         <DataTable columns={cols} data={d.drift_entries} getRowId={(e) => `${e.module}/${e.element_type}/${e.element_value}`} height={380} exportName="config-drift"
           renderDrawer={(e) => (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[13px]">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 m-text-body">
               <dt style={note}>Previous run</dt><dd><Mono>{d.previous_run_id}</Mono></dd>
               <dt style={note}>Current run</dt><dd><Mono>{d.current_run_id}</Mono></dd>
               <dt style={note}>Previous value</dt><dd><Mono>{dash(e.previous_value)}</Mono></dd>
@@ -207,7 +207,7 @@ function LicenceSection() {
 export function ConfigurationTab({ systemId, canPropose }: { systemId: string; canPropose: boolean }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13px]" style={note}>Configuration analysis covers every connected system in this workspace, from the latest run.</p>
+      <p className="m-text-body" style={note}>Configuration analysis covers every connected system in this workspace, from the latest run.</p>
       <Tabs
         items={[
           { value: "health", label: "Health", content: <HealthSection /> },
