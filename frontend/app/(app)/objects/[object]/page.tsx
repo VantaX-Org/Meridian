@@ -198,7 +198,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
       <div className="flex flex-wrap items-center gap-6">
         <div className="flex items-center gap-3">
           {data.composite_score != null ? <ScoreRing score={data.composite_score} size={48} /> : null}
-          <Stat label="DQS" value={data.composite_score != null ? String(data.composite_score) : "—"} loading={isLoading} />
+          <Stat label="DQS" value={data.composite_score != null ? String(data.composite_score) : "—"} />
         </div>
         <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         <Stat label="Affected records" value={data.affected_records.toLocaleString()} href={`/objects/${object}?run=${run}&tab=records`} />
@@ -440,7 +440,7 @@ export default function ObjectDetailPage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable]")) return;
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable],[role=dialog]")) return;
       const i = ["1", "2", "3", "4"].indexOf(e.key);
       if (i >= 0) setTab(TAB_KEYS[i]);
     };

@@ -46,7 +46,14 @@ type ReadinessFilter = (typeof READINESS_FILTER)[number]["value"];
 /** `?verdict=` is the legacy form of `?readiness=` (ready means pass; not_ready has no equivalent and is ignored). */
 const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 
-const makeColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<ObjectSummary>[] => [
+/** Optional enrichment columns appear only when some row carries the field (older backends omit them). */
+const makeColumns = (run: string, bands: ScoreBands | undefined, objects: ObjectSummary[]): ColumnDef<ObjectSummary>[] => {
+  const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 2);
+  const hasBlocking = objects.some((o) => o.blocking_rule_id);
+  return allColumns(run, bands).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking));
+};
+
+const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<ObjectSummary>[] => [
   { accessorKey: "label", header: "Object" },
   {
     accessorKey: "composite_score",
@@ -167,9 +174,9 @@ export default function ObjectsPage() {
     if (next) params.set(key, next); else params.delete(key);
     router.replace(`/objects?${params.toString()}`);
   };
-  const columns = makeColumns(runId ?? run, data?.thresholds); // React Compiler memoizes on run and thresholds
+  const columns = makeColumns(runId ?? run, data?.thresholds, objects); // React Compiler memoizes on run and thresholds
 
-  const notReady = objects.filter((o) => o.readiness !== "pass").length;
+  const notReady = objects.filter((o) => o.readiness === "fail").length; // matches the ?readiness=fail drill
   const blockingFindings = data?.blocking_findings_total;
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
   const summary = objects.length > 0 && (

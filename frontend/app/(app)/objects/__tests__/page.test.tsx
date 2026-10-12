@@ -1,5 +1,7 @@
 // frontend/app/(app)/objects/__tests__/page.test.tsx
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
@@ -127,5 +129,25 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(screen.getByText("Blocking findings")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
+  });
+
+  it("omits Trend and Blocking rule columns when no row has the fields", async () => {
+    currentSearch = "run=v1";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "fail", 50)] });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(screen.getByText("AAA")).toBeInTheDocument());
+    expect(screen.queryByRole("columnheader", { name: "Trend" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Blocking rule" })).toBeNull();
+  });
+
+  it("row click seeds the object summary cache under the resolved run id", async () => {
+    currentSearch = "run=latest";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v9", objects: [mk("a", "AAA", "fail", 50)] });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><ObjectsPage /></QueryClientProvider>);
+    fireEvent.click(await screen.findByText("AAA"));
+    expect(qc.getQueryData(queryKeys.objectSummary("a", "v9"))).toMatchObject({ module: "a" });
+    currentSearch = "run=v1";
   });
 });
