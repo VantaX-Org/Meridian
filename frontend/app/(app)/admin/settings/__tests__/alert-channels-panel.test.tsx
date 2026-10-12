@@ -16,7 +16,7 @@ describe("AlertChannelsPanel", () => {
     const test = vi.spyOn(notificationsApi, "testAlertChannel").mockResolvedValue({ delivered: true });
     renderWithQuery(<AlertChannelsPanel />);
     await waitFor(() => expect(screen.getByText("hooks.example")).toBeInTheDocument());
-    expect(within(screen.getByRole("table")).getByText("Daily digest")).toBeInTheDocument();
+    expect(within(screen.getByRole("grid")).getByText("Daily digest")).toBeInTheDocument();
     expect(screen.getByText("Immediate")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Send test" }));
     await waitFor(() => expect(test.mock.calls[0]?.[0]).toBe("c1"));
@@ -26,7 +26,7 @@ describe("AlertChannelsPanel", () => {
     vi.spyOn(notificationsApi, "getAlertChannels").mockResolvedValue([]);
     const create = vi.spyOn(notificationsApi, "createAlertChannel").mockResolvedValue(CHANNEL);
     renderWithQuery(<AlertChannelsPanel />);
-    await waitFor(() => expect(screen.getByText("No alert channel yet.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("No alert channel yet")).toBeInTheDocument());
     const add = screen.getByRole("button", { name: "Add channel" });
     expect(add).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Target"), { target: { value: " https://hooks.example/abc " } });

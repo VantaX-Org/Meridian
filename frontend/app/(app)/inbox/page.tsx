@@ -407,7 +407,7 @@ export default function InboxPage() {
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.breached;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
   const header = (
-    <PageHeader title="Inbox" meta={`${openCount} open · ${overdue} overdue`} />
+    <PageHeader title="Inbox" meta={`${openCount} open, ${overdue} overdue`} />
   );
 
   if (kind === "issues" || kind === "sap" || kind === "approvals") {

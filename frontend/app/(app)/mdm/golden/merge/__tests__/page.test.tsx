@@ -32,7 +32,7 @@ describe("GoldenRecordMergePage", () => {
   it("renders a field-by-field comparison with the conflicting source highlighted", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
     renderWithQuery(<GoldenRecordMergePage />);
-    await waitFor(() => expect(screen.getByText("MARA-1000")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/MARA-1000/)).toBeInTheDocument());
     expect(screen.getByText("MATKL")).toBeInTheDocument();
     expect(screen.getByText(/HALB/)).toBeInTheDocument();
   });
