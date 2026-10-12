@@ -57,7 +57,7 @@ function WorkRow({ children }: { children: ReactNode }) {
 /** Failed or degraded: "unknown" means not tested yet, which is not a failure. */
 const isFailing = (s: { health_status?: string | null }) => s.health_status != null && s.health_status !== "healthy" && s.health_status !== "unknown";
 
-type ObjectRow = ObjectSummary & { blocking?: Finding; trend: { x: string; y: number }[] };
+type ObjectRow = Omit<ObjectSummary, "trend"> & { blocking?: Finding; trend: { x: string; y: number }[] };
 
 /** Shared by the persona pages (lead/steward/basis): fetches every source the home page needs in parallel
  * and hands the derived pieces to the `HomePage` frame. `lists` fills the persona-independent list slot
