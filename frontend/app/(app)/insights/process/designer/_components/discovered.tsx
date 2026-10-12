@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Button, Mono } from "@/design";
+import { Button, Card, Mono } from "@/design";
 import type { ProcessVariant } from "@/types/process-model";
 import { addChild, newId, type Doc } from "./doc";
 
@@ -58,26 +58,26 @@ export function Discovered({ variants, onCreate }: { variants: ProcessVariant[];
   const groups = useMemo(() => groupDiscovered(variants), [variants]);
   if (!groups.length) return null;
   return (
-    <section className="aurora-designer__discovered" id="discovered" aria-label="Discovered, unmapped">
-      <h2 className="aurora-designer__rail-title">Discovered, unmapped</h2>
-      <ul className="ui-ranked">
+    <Card title="Discovered, unmapped" padding="sm">
+      <ul className="flex flex-col gap-3" id="discovered" aria-label="Discovered, unmapped" style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {groups.map((g) => (
-          <li key={g.process_id}>
-            <div className="ui-ranked__row">
-              <span className="ui-ranked__title">{NAMES[g.process_id] ?? <Mono>{g.process_id}</Mono>}</span>
-              <span className="ui-ranked__num">{g.count.toLocaleString()}</span>
-              <span className="ui-ranked__meta">
-                {g.tables.length} {g.tables.length === 1 ? "step" : "steps"}
+          <li key={g.process_id} className="flex flex-col gap-1">
+            <div className="flex items-baseline justify-between gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>
+              <span>{NAMES[g.process_id] ?? <Mono>{g.process_id}</Mono>}</span>
+              <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+                {g.count.toLocaleString()} variants, {g.tables.length} {g.tables.length === 1 ? "step" : "steps"}
               </span>
             </div>
-            <Button variant="ghost" onClick={() => onCreate(g)}>Create L1 from discovered</Button>
-            {AS_IS_L1[g.process_id] && (
-              // Without ?run= the drill opens the latest completed run of that L1.
-              <Button variant="ghost" render={<Link href={`/process/${AS_IS_L1[g.process_id]}`}>Open as-is model</Link>} />
-            )}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => onCreate(g)}>Create L1 from discovered</Button>
+              {AS_IS_L1[g.process_id] && (
+                // Without ?run= the drill opens the latest completed run of that L1.
+                <Button variant="ghost" render={<Link href={`/process/${AS_IS_L1[g.process_id]}`}>Open as-is model</Link>} />
+              )}
+            </div>
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   );
 }

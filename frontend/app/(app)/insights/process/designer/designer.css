@@ -1,0 +1,207 @@
+/** Process designer styles. Scoped to the designer; values are `var(--m-*)` tokens only. */
+
+.m-designer-focus:focus-visible {
+  outline: 2px solid var(--m-accent);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Process graph canvas (React Flow) + node/gateway/event chrome.
+\* ------------------------------------------------------------------ */
+.m-process-graph {
+  position: relative;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius-sheet);
+  background: var(--m-canvas);
+  overflow: hidden;
+}
+.m-process-graph .react-flow__controls {
+  background: var(--m-sheet-raised);
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius-control);
+  overflow: hidden;
+}
+.m-process-graph .react-flow__controls-button {
+  background: var(--m-sheet-raised);
+  border-bottom: 1px solid var(--m-line);
+  color: var(--m-ink-2);
+  width: 28px;
+  height: 28px;
+}
+.m-process-graph .react-flow__controls-button:hover {
+  background: var(--m-sheet);
+  color: var(--m-ink);
+}
+.m-process-graph .react-flow__controls-button svg {
+  fill: currentColor;
+}
+.m-process-graph .react-flow__edge-path {
+  stroke: var(--m-line);
+}
+.m-process-graph .react-flow__edge-textbg {
+  fill: var(--m-sheet-raised);
+}
+.m-process-graph .react-flow__edge-text {
+  fill: var(--m-ink-2);
+  font-size: var(--m-text-micro);
+}
+.m-process-graph .react-flow__handle {
+  width: 6px;
+  height: 6px;
+  background: var(--m-ink-3);
+  border: none;
+}
+
+.m-process-node {
+  position: relative;
+  width: 220px;
+  height: 104px; /* keep equal to SIZE.task.h in _components/layout.ts */
+  border-radius: var(--m-radius-sheet);
+}
+/* Content can run to four lines; clip it to the layout slot so nodes never overlap. */
+.m-process-node__clip {
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--m-radius-sheet);
+}
+.m-process-node[data-selected="true"] {
+  outline: 2px solid var(--m-accent);
+  outline-offset: 1px;
+}
+.m-process-node[data-kind="approval"] {
+  outline: 1px dashed var(--m-line-strong);
+}
+.m-process-node__alignment {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--m-radius-pill);
+  background: var(--m-ink-3);
+}
+.m-process-node[data-alignment="aligned"] .m-process-node__alignment {
+  background: var(--m-pass);
+}
+.m-process-node[data-alignment="drifting"] .m-process-node__alignment {
+  background: var(--m-high);
+}
+.m-process-node[data-alignment="blocked"] .m-process-node__alignment {
+  background: var(--m-critical);
+}
+
+/* ------------------------------------------------------------------ *\
+ * Designer shell. Rail-style tree rows, canvas frame, BPMN marks.
+\* ------------------------------------------------------------------ */
+.m-designer__canvas {
+  height: 560px;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius-sheet);
+  background: var(--m-sheet-raised);
+}
+.m-designer__canvas[data-connect] {
+  border-color: var(--m-accent);
+}
+.m-designer__tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.m-designer__row {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  gap: var(--m-space-1);
+  padding-left: calc(var(--m-space-2) + (var(--m-level, 1) - 1) * var(--m-space-4));
+  border-radius: var(--m-radius-control);
+}
+.m-designer__row:hover { background: var(--m-rail-hover); }
+.m-designer__row[data-selected] { background: var(--m-accent-soft); }
+.m-designer__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--m-space-2);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 28px;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.m-designer__row[data-selected] .m-designer__label { color: var(--m-accent-ink); font-weight: 600; }
+.m-designer__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-designer__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--m-radius-pill);
+  background: var(--m-ink-3);
+}
+.m-designer__dot[data-tone="danger"] { background: var(--m-critical); }
+.m-designer__dot[data-tone="warning"] { background: var(--m-high); }
+.m-designer__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--m-space-1);
+}
+/* Row actions appear on hover, focus or selection, and stay visible where there is no hover (touch). */
+@media (hover: hover) {
+  .m-designer__row:not(:hover, :focus-within, [data-selected]) > .m-designer__actions:not([data-open]) {
+    visibility: hidden;
+  }
+}
+
+.m-bpmn-task__evidence {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--m-radius-pill);
+  border: 1px dashed var(--m-ink-3);
+}
+
+.m-bpmn-gateway {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+.m-bpmn-gateway__shape {
+  position: absolute;
+  inset: 8px;
+  background: var(--m-sheet-raised);
+  border: 1px solid var(--m-line);
+  transform: rotate(45deg);
+}
+.m-bpmn-gateway[data-parallel] .m-bpmn-gateway__shape { border-style: dashed; }
+.m-bpmn-gateway[data-selected="true"] .m-bpmn-gateway__shape {
+  border-color: var(--m-accent);
+  border-width: 2px;
+}
+.m-bpmn-gateway__label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.m-bpmn-event {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--m-radius-pill);
+  background: var(--m-sheet-raised);
+  border: 1px solid var(--m-line);
+}
+.m-bpmn-event[data-end] {
+  border-width: 3px;
+  border-color: var(--m-ink-2);
+}
+.m-bpmn-event[data-selected="true"] { border-color: var(--m-accent); }

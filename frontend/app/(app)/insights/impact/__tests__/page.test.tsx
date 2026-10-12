@@ -36,14 +36,14 @@ describe("ImpactPage", () => {
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({
       version_id: "v1",
       rows: [
-        { feature: "MIGO", status: "blocked", record_count: 42, value_per_record: 150, value_at_risk: 6300, causing_rules: ["MM-003"] },
+        { feature: "MIGO", status: "Blocked", record_count: 42, value_per_record: 150, value_at_risk: 6300, causing_rules: ["MM-003"] },
       ],
     });
     renderWithQuery(<ImpactPage />);
     await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
-    expect(screen.getByText("blocked")).toBeInTheDocument();
+    expect(screen.getByText("Blocked")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
-    expect(screen.getByText(/6[,.  ]?300/)).toBeInTheDocument();
+    expect(screen.getAllByText(/6[,. ]?300/).length).toBeGreaterThan(0);
   });
 
   it("renders the proven-cost panel with headline stats, row and linked check", async () => {
@@ -79,7 +79,7 @@ describe("ImpactPage", () => {
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({
       version_id: "v1",
       rows: [
-        { feature: "MIGO", status: "blocked", record_count: 42, value_per_record: 150, value_at_risk: 6300, causing_rules: ["MM-003"] },
+        { feature: "MIGO", status: "Blocked", record_count: 42, value_per_record: 150, value_at_risk: 6300, causing_rules: ["MM-003"] },
       ],
     });
     vi.spyOn(insightsApi, "getProvenCost").mockRejectedValue(new Error("proven-cost network error"));

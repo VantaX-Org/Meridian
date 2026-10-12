@@ -1,41 +1,15 @@
-// frontend/app/(app)/insights/forecast/page.tsx
-/**
- * Port of the predictive-analytics forecast (previously only shown inline on
- * the legacy command-centre overview) onto
- * @/design, as its own report page.
- *
- * Deviations from the task-25 brief:
- * - The brief's `PredictiveResponse` shape (`{ forecast: DqsForecast; ... }`)
- *   is wrong; the real `lib/api/analytics.ts` returns
- *   `{ forecasts: DqsForecast[]; early_warnings: EarlyWarning[] }` (plural,
- *   one forecast per module) — ported against the real shape.
- * - `getPredictiveAnalytics` takes a bare `moduleId?: string`, not a params
- *   object — called with no args here, same as the legacy overview widget.
- * - There was no standalone legacy `/analytics` page to delete — the dashboard
- *   never had one; the forecast was embedded inline in the command-centre
- *   overview and the workbench progress widget. Only the `/analytics` redirect
- *   destination changes, from `/` to `/insights/forecast`.
- * - `queryKeys` has no `analytics` factory; reused the pre-existing ad-hoc
- *   `["analytics.predictive"]` array the legacy overview already used, per
- *   ponytail rung 2 (reuse, don't wrap).
- * - `ReportPage`'s real props are `{narrative, charts, tables?, onExport?,
- *   state?, emptyProps?, errorProps?}`, not the brief's placeholder
- *   `{title, loading, error}`.
- * - `@/design`'s `Line` chart takes a single-series `ChartPoint[]`
- *   (`{x, y}`); since forecasts are per-module, a `Select` picks the module
- *   whose 4-point trend (now/7d/30d/90d) is charted.
- */
 "use client";
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, EmptyState, Line, Pill, ReportPage, Select, type PillTone } from "@/design";
+import { Button, Card, DataTable, EmptyState, Line, Pill, Select, type PillTone } from "@/design";
 import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning } from "@/lib/api/analytics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
   red: "no-go",
@@ -43,12 +17,14 @@ const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
   green: "go",
 };
 
+const SIGNAL_LABEL: Record<EarlyWarning["signal"], string> = { red: "Red", amber: "Amber", green: "Green" };
+
 const warningColumns: ColumnDef<EarlyWarning>[] = [
   { accessorKey: "module_id", header: "Module", cell: ({ row }) => formatModuleName(row.original.module_id) },
   {
     accessorKey: "signal",
     header: "Signal",
-    cell: ({ row }) => <Pill tone={SIGNAL_TONE[row.original.signal]}>{row.original.signal}</Pill>,
+    cell: ({ row }) => <Pill tone={SIGNAL_TONE[row.original.signal]}>{SIGNAL_LABEL[row.original.signal]}</Pill>,
   },
   { accessorKey: "message", header: "Message" },
   { accessorKey: "recommended_action", header: "Recommended action" },
@@ -83,50 +59,61 @@ export default function ForecastPage() {
 
   const state = isLoading ? "loading" : isListFailure({ isError: !!error, error }) ? "error" : forecasts.length === 0 ? "empty" : undefined;
 
+  const declining = forecasts.filter((f) => f.trend === "declining" || f.trend === "critical");
+  const worst = [...forecasts].sort((x, y) => x.forecast_30d - y.forecast_30d)[0];
+
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h2 className="text-[20px] font-medium" style={{ color: "var(--m-ink)" }}>DQS forecast</h2>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-muted)" }}>
-          Projected data quality score by module, and the early warnings behind it.
-        </p>
-      </div>
-      <ReportPage
-        state={state}
-        errorProps={{
-          message: apiErrorMessage(error),
-          onRetry: () => refetch(),
-        }}
-        emptyProps={{
-          title: "Not enough runs to forecast.",
-          action: <Button render={<Link href="/runs">Open runs</Link>} />,
-        }}
-        narrative={
-          selected
-            ? `${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${selected.points} runs across ${selected.span_days} days.`
-            : "Select a module to see its forecast."
-        }
-        charts={
-          <div className="flex flex-col gap-3">
-            {forecasts.length > 0 && (
-              <Select
-                label="Object"
-                value={selected?.module_id ?? ""}
-                onValueChange={setModuleId}
-                options={forecasts.map((f) => ({ value: f.module_id, label: formatModuleName(f.module_id) }))}
-              />
-            )}
-            {points.length > 0 ? <Line data={points} /> : <EmptyState title="No forecast for this module" />}
-          </div>
-        }
-        tables={
-          <DataTable
-            columns={warningColumns}
-            data={warnings}
-            getRowId={(w) => `${w.module_id}-${w.signal}-${w.message}`}
-          />
-        }
-      />
-    </div>
+    <InsightFrame
+      title="Forecast"
+      insight={{
+        situation: {
+          sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d}% DQS in 30 days` : "Not enough runs to forecast",
+          tone: declining.length ? "at-risk" : "go",
+        },
+        changed: { sentence: `${declining.length} modules are declining` },
+        why: { sentence: warnings.length ? `${warnings.length} early warnings are open` : "—" },
+        next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: "Open runs", href: "/runs" } },
+      }}
+      state={state}
+      skeleton={
+        <>
+          <CardSkeleton height={320} />
+          <CardSkeleton height={160} />
+        </>
+      }
+      emptyProps={{
+        title: "Not enough runs to forecast",
+        detail: "A forecast needs at least two analyses.",
+        ghost: "chart",
+        action: <Button render={<Link href="/runs">Open runs</Link>} />,
+      }}
+      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+    >
+      <Card title="Predicted DQS">
+        <div className="flex flex-col gap-3">
+          {forecasts.length > 0 && (
+            <Select
+              label="Object"
+              value={selected?.module_id ?? ""}
+              onValueChange={setModuleId}
+              options={forecasts.map((f) => ({ value: f.module_id, label: formatModuleName(f.module_id) }))}
+            />
+          )}
+          {points.length > 0 ? <Line data={points} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
+          {selected && (
+            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+              {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${selected.points} runs across ${selected.span_days} days`}
+            </p>
+          )}
+        </div>
+      </Card>
+      <Card title="Early warnings">
+        {warnings.length === 0 ? (
+          <EmptyState title="No early warnings" detail="Every module is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
+        ) : (
+        <DataTable columns={warningColumns} data={warnings} getRowId={(w) => `${w.module_id}-${w.signal}-${w.message}`} hideToolbar dense height="auto" />
+        )}
+      </Card>
+    </InsightFrame>
   );
 }

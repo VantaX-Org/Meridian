@@ -2,7 +2,7 @@ import dagre from "@dagrejs/dagre";
 import type { Diagram, DiagramNode } from "@/types/process-model";
 
 export const SIZE: Record<DiagramNode["type"], { w: number; h: number }> = {
-  task: { w: 220, h: 72 },
+  task: { w: 220, h: 104 },
   exclusiveGateway: { w: 56, h: 56 },
   parallelGateway: { w: 56, h: 56 },
   startEvent: { w: 36, h: 36 },

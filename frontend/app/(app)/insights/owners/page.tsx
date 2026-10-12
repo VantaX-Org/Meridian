@@ -3,10 +3,11 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Delta, ExplorerPage, Pill, Stat, type PillTone } from "@/design";
-import { getOwners, type OwnerCardResponse } from "@/lib/api/insights";
+import { Button, Card, Delta, Pill, Stat, type PillTone } from "@/design";
+import { getOwners, getReadiness, type OwnerCardResponse } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 /** No direct severity->PillTone mapping exists yet; critical/high read as blocking (no-go), medium as at-risk, low/other as neutral. */
 function severityTone(severity: string): PillTone {
@@ -17,30 +18,25 @@ function severityTone(severity: string): PillTone {
 
 function OwnerCard({ owner }: { owner: OwnerCardResponse }) {
   return (
-    <div
-      data-testid="owner-card"
-      className="flex flex-col gap-3 p-4 rounded border"
-      style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}
-    >
-      <div className="flex items-center justify-between">
-        <span className="font-semibold">{owner.owner}</span>
-        <Stat label="Score" value={owner.score} delta={<Delta value={owner.delta} />} />
-      </div>
-      <div className="flex gap-2 text-[13px]">
+    <Card title={owner.owner} padding="md">
+    <div data-testid="owner-card" className="flex flex-col gap-3">
+      <Stat label="Score" value={owner.score} delta={<Delta value={owner.delta} />} href="/inbox" />
+      <div className="flex gap-2 m-text-body">
         {Object.entries(owner.open_by_severity).map(([severity, count]) => (
           <Pill key={severity} tone={severityTone(severity)}>
             {severity}: {count}
           </Pill>
         ))}
       </div>
-      <div className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+      <div className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
         Fixed since baseline: {owner.fixed_since_baseline}, oldest open item: {owner.oldest_item_age_days}d
       </div>
-      <p className="text-[13px]">{owner.digest}</p>
-      <div className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-body">{owner.digest}</p>
+      <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
         {owner.schedule} digest, last sent {owner.last_sent ?? "never"}
       </div>
     </div>
+    </Card>
   );
 }
 
@@ -50,26 +46,38 @@ export default function OwnersPage() {
     queryFn: () => getOwners(),
   });
 
+  const readiness = useQuery({ queryKey: queryKeys.insights("readiness", undefined), queryFn: () => getReadiness() });
   const owners = data?.owners ?? [];
 
+  const threshold = readiness.data?.threshold;
+  const below = typeof threshold === "number" ? owners.filter((o) => o.score < threshold).length : undefined;
+  const openTotal = owners.reduce((n, o) => n + Object.values(o.open_by_severity).reduce((a, b) => a + b, 0), 0);
+  const worst = [...owners].sort((x, y) => x.score - y.score)[0];
+
   return (
-    <ExplorerPage
-      table={
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-          {owners.map((owner) => (
-            <OwnerCard key={owner.owner} owner={owner} />
-          ))}
-        </div>
-      }
+    <InsightFrame
+      title="Owners"
+      insight={{
+        situation: { sentence: below === undefined ? "—" : `${below} of ${owners.length} owners are below the ${threshold}% threshold`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
+        changed: { sentence: `${owners.filter((o) => o.delta < 0).length} owners lost ground this run` },
+        why: { sentence: openTotal ? `${openTotal} open items sit with owners` : "—" },
+        next: { sentence: worst ? `Start with ${worst.owner}` : "Assign owners", action: { label: "Open inbox", href: "/inbox" } },
+      }}
+      skeleton={<CardSkeleton height={220} />}
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : owners.length === 0 ? "empty" : undefined}
       emptyProps={{
-        title: "No owners scored yet.",
+        title: "No owners scored yet",
+        detail: "Owners appear after the first analysis.",
+        ghost: "list",
         action: <Button render={<Link href="/inbox">Open inbox</Link>} />,
       }}
-      errorProps={{
-        message: apiErrorMessage(error),
-        onRetry: () => refetch(),
-      }}
-    />
+      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+    >
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+        {owners.map((owner) => (
+          <OwnerCard key={owner.owner} owner={owner} />
+        ))}
+      </div>
+    </InsightFrame>
   );
 }
