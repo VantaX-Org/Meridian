@@ -8,10 +8,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   Button,
-  ExplorerPage,
+  Card,
+  EmptyState,
+  ErrorState,
   Field,
   Graph,
   Select,
+  Skeleton,
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
@@ -19,6 +22,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
+import { InsightFrame } from "../_components/InsightFrame";
 
 export default function DuplicatesPage() {
   const search = useSearchParams();
@@ -87,9 +91,18 @@ export default function DuplicatesPage() {
   const state: "loading" | "empty" | "error" | undefined =
     objects.isLoading ? "loading" : !object || !recordId ? "empty" : cluster.isLoading ? "loading" : cluster.isError ? "error" : nodes.length === 0 ? "empty" : undefined;
 
+  const picked = !!object && !!recordId;
   return (
-    <ExplorerPage
-      filterBar={
+    <InsightFrame
+      title="Duplicates"
+      insight={{
+        situation: { sentence: picked ? `${nodes.length} records are in this cluster` : "Pick a record to see its cluster" },
+        changed: { sentence: masterId ? "A surviving record is chosen" : "No surviving record chosen yet" },
+        why: { sentence: "Duplicates split history and inflate counts" },
+        next: { sentence: "Choose the surviving record, then propose the merge" },
+      }}
+    >
+      <Card title="Find a cluster">
         <div className="flex gap-3 items-end">
           <Field label="Object">
             <Select
@@ -115,30 +128,31 @@ export default function DuplicatesPage() {
             />
           </Field>
         </div>
-      }
-      table={
-        <div className="flex flex-col gap-4">
-          <Graph nodes={nodes} edges={edges} onNodeClick={(id) => setMasterId(id)} />
-          <ClusterPanel nodes={nodes} masterId={masterId} onPick={setMasterId} mergeImpactCount={mergeImpactCount} />
-          <Button onClick={handleCreateMergeProposals} disabled={!canPropose}>
-            Create merge proposal
-          </Button>
-        </div>
-      }
-      state={state}
-      emptyProps={
-        !object || !recordId
-          ? { title: "Pick an object and a record to see its duplicate cluster." }
-          : {
-              title: "No duplicate clusters.",
-              action: <Button render={<Link href="/mdm/match-rules">Match rules</Link>} />,
-            }
-      }
-      errorProps={{
-        message: apiErrorMessage(cluster.error),
-        onRetry: () => cluster.refetch(),
-      }}
-    />
+      </Card>
+      {state === "loading" ? (
+        <div data-state="loading"><Skeleton height={240} /></div>
+      ) : state === "error" ? (
+        <ErrorState message={apiErrorMessage(cluster.error)} onRetry={() => void cluster.refetch()} />
+      ) : state === "empty" ? (
+        picked ? (
+          <EmptyState title="No duplicate clusters" detail="This record has no matches." ghost="grid" action={<Button render={<Link href="/mdm/match-rules">Match rules</Link>} />} />
+        ) : (
+          <EmptyState title="Pick an object and a record to see its duplicate cluster" ghost="grid" />
+        )
+      ) : (
+        <Card title="Cluster">
+          <div className="flex flex-col gap-4">
+            <Graph nodes={nodes} edges={edges} onNodeClick={(id) => setMasterId(id)} />
+            <ClusterPanel nodes={nodes} masterId={masterId} onPick={setMasterId} mergeImpactCount={mergeImpactCount} />
+            <div>
+              <Button onClick={handleCreateMergeProposals} disabled={!canPropose}>
+                Create merge proposal
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+    </InsightFrame>
   );
 }
 
@@ -171,7 +185,7 @@ function ClusterPanel({
         </label>
       ))}
       <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
-        Merge impact: {mergeImpactCount} document{mergeImpactCount === 1 ? "" : "s"} would move.
+        Merge impact: {mergeImpactCount} document{mergeImpactCount === 1 ? "" : "s"} would move
       </p>
     </fieldset>
   );

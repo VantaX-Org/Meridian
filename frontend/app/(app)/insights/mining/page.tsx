@@ -24,6 +24,7 @@
  *   real legacy component never calls either, so this port doesn't either.
  */
 
+import { InsightFrame } from "../_components/InsightFrame";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -296,17 +297,13 @@ export default function MiningPage() {
   const lens = useSearchParams().get("lens") ?? "";
   const tab = oneOf(tabRaw, TABS, oneOf(lens, TABS, "links"));
   return (
-    <div className="flex flex-col gap-4 p-6">
-      <div>
-        <h2 className="text-[22px] font-semibold">Mining</h2>
-        <p style={{ color: "var(--m-ink-2)" }}>What links the master data together: entity relationships, mined field dependencies and mined patterns.</p>
-      </div>
+    <InsightFrame title="Mining" meta="What links the master data together: entity relationships, mined field dependencies and mined patterns">
       <GraphTally />
       <Tabs value={tab} onValueChange={setTab} items={[
         { value: "links", label: "Entity links", content: <EntityLinks /> },
         { value: "dependencies", label: "Mined dependencies", content: <Dependencies /> },
         { value: "patterns", label: "Patterns", content: <Patterns /> },
       ]} />
-    </div>
+    </InsightFrame>
   );
 }

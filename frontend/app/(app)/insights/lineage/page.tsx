@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Button, DataTable, Drawer, EmptyState, ErrorState, Graph, type GraphEdge, type GraphNode,
-  Mono, Pill, type PillTone, ReportPage, Select, Skeleton,
+  Card, Mono, Pill, type PillTone, Select, Skeleton,
 } from "@/design";
 import { useLatestVersion } from "@/components/process/shared";
 import {
@@ -24,12 +24,14 @@ import {
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { InsightFrame } from "../_components/InsightFrame";
 
 const pct = (v: number | null | undefined) => (v == null ? "" : `${(v * 100).toFixed(1)}%`);
 // ponytail: force layout past this many nodes is unreadable. Narrow the trace depth to see the rest.
 const MAX_NODES = 150;
 
 const SEV_TONE: Record<Severity, PillTone> = { low: "neutral", medium: "at-risk", high: "no-go", critical: "no-go" };
+const SEV_LABEL: Record<Severity, string> = { low: "Low", medium: "Medium", high: "High", critical: "Critical" };
 const TYPE_LABEL: Record<ImpactRow["type"], string> = { kpi: "KPI", process: "Process", feature: "Feature" };
 
 function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) {
@@ -154,18 +156,18 @@ export default function LineagePage() {
     },
     {
       id: "worst", header: "Worst", accessorFn: (r) => r.worst_severity ?? "",
-      cell: ({ row }) => row.original.worst_severity ? <Pill tone={SEV_TONE[row.original.worst_severity]}>{row.original.worst_severity}</Pill> : null,
+      cell: ({ row }) => row.original.worst_severity ? <Pill tone={SEV_TONE[row.original.worst_severity]}>{SEV_LABEL[row.original.worst_severity]}</Pill> : null,
     },
   ], []);
 
   const trace = (id: string) => { setDraft(id); setFocus(id); setSelId(id); };
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (draft.trim()) { setFocus(draft.trim()); setSelId(null); } };
 
-  if (modelQ.isLoading) return <div className="p-6"><Skeleton height={240} /></div>;
+  if (modelQ.isLoading) return <InsightFrame title="Lineage" state="loading" />;
   if (modelQ.error) {
-    return <div className="p-6"><ErrorState message={apiErrorMessage(modelQ.error)} onRetry={() => void modelQ.refetch()} /></div>;
+    return <InsightFrame title="Lineage" state="error" errorProps={{ message: apiErrorMessage(modelQ.error), onRetry: () => void modelQ.refetch() }} />;
   }
-  if (!modelQ.data) return <div className="p-6"><EmptyState title="The lineage model could not be read." /></div>;
+  if (!modelQ.data) return <InsightFrame title="Lineage" state="empty" emptyProps={{ title: "The lineage model could not be read", action: <Button onClick={() => void modelQ.refetch()}>Retry</Button> }} />;
   const model = modelQ.data;
   const sel: LineageNode | null = selId ? graphQ.data?.nodes.find((n) => n.id === selId) ?? null : null;
   const neighbours = sel ? (graphQ.data?.edges ?? []).filter((e) => e.source === sel.id || e.target === sel.id) : [];
@@ -175,9 +177,28 @@ export default function LineagePage() {
 
   return (
     <>
-      <ReportPage
-        narrative={`SAP field to config, process step, SAP feature and business KPI. Model ${model.model_version}, ${model.edge_count.toLocaleString()} edges. ${impact ? `${kpis.toLocaleString()} KPIs and ${features.toLocaleString()} features at risk.` : "Impact needs a completed analysis."}`}
-        charts={
+      <InsightFrame
+        title="Lineage"
+        meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} edges`}
+        insight={{
+          situation: { sentence: impact ? `${kpis.toLocaleString()} KPIs and ${features.toLocaleString()} features are at risk` : "Impact needs a completed analysis", tone: kpis ? "at-risk" : "neutral" },
+          changed: { sentence: `Tracing ${focus}, ${nodes.length} nodes in view` },
+          why: { sentence: "A failing field reaches the processes and KPIs it guards" },
+          next: { sentence: rows[0] ? `Trace ${rows[0].label}` : "Run an analysis", action: rows[0] ? { label: "Trace it", onClick: () => trace(rows[0].id) } : undefined },
+        }}
+        state={impactQ.isLoading || dayOne.status === "loading" ? "loading" : isListFailure(impactQ) ? "error" : rows.length === 0 ? "empty" : undefined}
+        emptyProps={
+          latest
+            ? { title: "No failing rule reaches a KPI, process or feature", action: <Button render={<Link href="/rules">Open rules</Link>} /> }
+            : {
+                title: "No lineage yet",
+                detail: dayOne.step?.detail ?? "Impact needs a completed analysis.",
+                action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+              }
+        }
+        errorProps={{ message: apiErrorMessage(impactQ.error), onRetry: () => void impactQ.refetch() }}
+      >
+        <Card title="Field to KPI trace">
           <div className="flex flex-col gap-3">
             <form onSubmit={onSubmit} className="flex items-center gap-2">
               <input
@@ -200,29 +221,13 @@ export default function LineagePage() {
                   <Graph nodes={nodes} edges={edges} height={420} onNodeClick={(id) => setSelId(id)} />
                   {capped ? <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>Nearest {MAX_NODES} of {graphQ.data?.nodes.length.toLocaleString()} nodes shown.</p> : null}
                 </>
-              ) : <EmptyState title="Nothing is linked to this node." />}
+              ) : <EmptyState title="Nothing is linked to this node" action={<Button onClick={() => { setDraft("LFB1.ZTERM"); setFocus("LFB1.ZTERM"); }}>Trace a sample field</Button>} />}
           </div>
-        }
-        tables={
-          <DataTable
-            columns={columns}
-            data={rows}
-            getRowId={(r) => r.id}
-            onRowClick={(r) => trace(r.id)}
-          />
-        }
-        state={impactQ.isLoading || dayOne.status === "loading" ? "loading" : isListFailure(impactQ) ? "error" : rows.length === 0 ? "empty" : undefined}
-        emptyProps={
-          latest
-            ? { title: "No failing rule reaches a KPI, process or feature." }
-            : {
-                title: "No lineage yet.",
-                detail: dayOne.step?.detail ?? "Impact needs a completed analysis.",
-                action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
-              }
-        }
-        errorProps={{ message: apiErrorMessage(impactQ.error), onRetry: () => impactQ.refetch() }}
-      />
+        </Card>
+        <Card title="KPIs, processes and features at risk">
+          <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />
+        </Card>
+      </InsightFrame>
 
       <Drawer open={!!sel} onOpenChange={(o) => { if (!o) setSelId(null); }} title={sel?.label ?? ""}>
         {sel ? (
