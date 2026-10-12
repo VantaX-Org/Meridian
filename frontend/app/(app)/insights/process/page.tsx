@@ -20,11 +20,12 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs,
+  Button, Card, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs,
   type PillTone,
 } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
@@ -174,10 +175,9 @@ function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
     () => [...results].sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.total_affected_records - a.total_affected_records),
     [results],
   );
-  if (!sorted.length) return <EmptyState title="No features were assessed for this version." />;
+  if (!sorted.length) return <EmptyState title="No features assessed yet" detail="Features are assessed after a configuration load." action={<Button variant="secondary" render={<Link href="/systems">Open systems</Link>} />} />;
   return (
-    <div>
-      <h3 className="font-semibold mb-2">SAP features at risk</h3>
+    <Card title="SAP features at risk">
       <ul className="flex flex-col gap-2">
         {sorted.slice(0, 20).map((r) => (
           <li key={`${r.system}:${r.feature}`} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
@@ -188,7 +188,7 @@ function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </Card>
   );
 }
 
@@ -231,7 +231,7 @@ function ReadinessView() {
   if (versionsLoading || bp.isLoading || dayOne.status === "loading") return <Skeleton height={240} />;
   if (versionsError) return <ErrorState message={versionsError.message} onRetry={() => void refetchVersions()} />;
   if (!latest) {
-    return <EmptyState title="No process readiness yet." detail={dayOne.step?.detail ?? "Readiness is read from the latest completed analysis. Sync a system and run an analysis."}
+    return <EmptyState title="No process readiness yet" detail={dayOne.step?.detail ?? "Readiness is read from the latest completed analysis. Sync a system and run an analysis."}
       action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />} />;
   }
 
@@ -244,7 +244,7 @@ function ReadinessView() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex gap-3 items-center">{objectPicker}</div>
-        <EmptyState title={`${formatModuleName(object)} has no process definition. Readiness covers objects with an L1 to L5 definition, such as procure to pay and order to cash.`} />
+        <EmptyState title={`${formatModuleName(object)} has no process definition`} detail="Readiness covers objects with an L1 to L5 definition, such as procure to pay and order to cash." action={<Button variant="secondary" render={<Link href="/objects">Open objects</Link>} />} />
       </div>
     );
   }
@@ -312,8 +312,7 @@ function ReadinessView() {
         <Stat label="Records failing" value={failing.toLocaleString()} />
       </div>
 
-      <div>
-        <h3 className="font-semibold mb-2">{l1.l1_name} — gates</h3>
+      <Card title={`${l1.l1_name} — gates`}>
         <ul className="flex flex-col gap-2">
           {gates.map((g) => (
             <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
@@ -325,11 +324,10 @@ function ReadinessView() {
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <h3 className="font-semibold mb-2">Blocking findings</h3>
+        <Card title="Blocking findings">
           {blockingFindings.length ? (
             <ul className="flex flex-col gap-2">
               {blockingFindings.slice(0, 10).map((b) => (
@@ -341,10 +339,9 @@ function ReadinessView() {
                 </li>
               ))}
             </ul>
-          ) : <EmptyState title="Nothing blocks go-live." />}
-        </div>
-        <div>
-          <h3 className="font-semibold mb-2">Recommendations</h3>
+          ) : <EmptyState title="Nothing blocks go-live" action={<Button variant="secondary" render={<Link href="/inbox">Open inbox</Link>} />} />}
+        </Card>
+        <Card title="Recommendations">
           {recommendations.length ? (
             <ul className="flex flex-col gap-2">
               {recommendations.map((r) => (
@@ -354,13 +351,13 @@ function ReadinessView() {
                 </li>
               ))}
             </ul>
-          ) : <EmptyState title="No open recommendations." />}
-        </div>
+          ) : <EmptyState title="No open recommendations" action={<Button variant="secondary" render={<Link href="/rules">Open rules</Link>} />} />}
+        </Card>
       </div>
 
       {awareL1 ? (
-        <div id="applicability" className="flex flex-col gap-3">
-          <h3 className="font-semibold">Rules by process step</h3>
+        <Card title="Rules by step" >
+          <div id="applicability" className="flex flex-col gap-3">
           {!aware.data?.config_load ? (
             <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
               All {awareL1.applicable.toLocaleString()} rules apply by default. Load configuration to narrow this.
@@ -370,7 +367,8 @@ function ReadinessView() {
           {awareL1.l2.map((l2) => (
             <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} configuredIn={l2.configured_in} />
           ))}
-        </div>
+          </div>
+        </Card>
       ) : null}
 
       {impact.data ? <FeaturesList results={impact.data.results} /> : null}
@@ -425,12 +423,12 @@ function MapView() {
   if (isLoading || dayOne.status === "loading") return <Skeleton height={240} />;
   if (error) return <ErrorState message={apiErrorMessage(error)} onRetry={() => void refetch()} />;
   if (!latest) {
-    return <EmptyState title="The map is mined from a completed analysis. Sync a system and run an analysis to see its process."
-      detail={dayOne.step?.detail}
+    return <EmptyState title="No process map yet"
+      detail={dayOne.step?.detail ?? "The map is mined from a completed analysis."}
       action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />} />;
   }
   if (!modules.length) {
-    return <EmptyState title="This analysis has no object with a process map. Analyse a purchasing, sales, vendor, customer, material or G/L object to see one." />;
+    return <EmptyState title="No object with a process map" detail="Analyse a purchasing, sales, vendor, customer, material or G/L object to see one." action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />;
   }
 
   return (
@@ -452,11 +450,10 @@ function MapView() {
 
           {activities.length ? (
             <Graph nodes={graphNodes} edges={graphEdges} onNodeClick={setNode} height={420} />
-          ) : <EmptyState title="No mined activities for this module." />}
+          ) : <EmptyState title="No mined activities for this module" />}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="font-semibold mb-2">Failing steps</h3>
+            <Card title="Failing steps">
               {bottlenecks.length ? (
                 <ol className="flex flex-col gap-2">
                   {bottlenecks.slice(0, 8).map((b) => (
@@ -467,10 +464,9 @@ function MapView() {
                     </li>
                   ))}
                 </ol>
-              ) : <EmptyState title="Every step passes its checks." />}
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Variants</h3>
+              ) : <EmptyState title="Every step passes its checks" />}
+            </Card>
+            <Card title="Variants">
               {variants.length ? (
                 <ul className="flex flex-col gap-2">
                   {variants.slice(0, 8).map((v) => (
@@ -481,8 +477,8 @@ function MapView() {
                     </li>
                   ))}
                 </ul>
-              ) : <EmptyState title="No variants found for this module." />}
-            </div>
+              ) : <EmptyState title="No variants found for this module" />}
+            </Card>
           </div>
         </>
       )}
@@ -508,15 +504,11 @@ export default function ProcessInsightsPage() {
   const [tabRaw, setTab] = useUrlState("tab", "readiness");
   const tab = (["readiness", "map"] as string[]).includes(tabRaw) ? tabRaw : "readiness";
   return (
-    <div className="flex flex-col gap-4 p-6">
-      <div>
-        <h2 className="text-[22px] font-semibold">Process</h2>
-        <p style={{ color: "var(--m-ink-2)" }}>How ready each process step is, and the mined activity map behind it.</p>
-      </div>
+    <InsightFrame title="Process" meta="How ready each process step is, and the mined activity map behind it">
       <Tabs value={tab} onValueChange={setTab} items={[
         { value: "readiness", label: "Readiness", content: <ReadinessView /> },
         { value: "map", label: "Map", content: <MapView /> },
       ]} />
-    </div>
+    </InsightFrame>
   );
 }
