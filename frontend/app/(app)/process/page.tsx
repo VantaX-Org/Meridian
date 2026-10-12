@@ -3,7 +3,7 @@
 /** Process › As-is processes: one row per L1 for the chosen system (process-discovery spec §7.3, §7.4). */
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { PageHeader, Button, ErrorState, InsightHeader } from "@/design";
+import { PageHeader, Button, ErrorState, InsightHeader, type InsightHeaderProps } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue } from "@/lib/api/process-discovery";
@@ -11,6 +11,9 @@ import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { ProcessSkeleton } from "./_components/process-header";
 import { CatalogueTable, NoSystem, SystemSelect, processInsight, useProcessSystem } from "./_components/shared";
+
+const noRun = (i: InsightHeaderProps): InsightHeaderProps =>
+  i.next.action?.label.includes("discovery") ? { ...i, next: { sentence: i.next.sentence } } : i;
 
 export default function ProcessCataloguePage() {
   const { can } = useRole();
@@ -42,7 +45,8 @@ export default function ProcessCataloguePage() {
         )} />
       {rows && system ? (
         <>
-          <InsightHeader {...processInsight(rows, system.name, system.id, can("run_process_discovery"))} />
+          {/* The header already carries "Run discovery"; keep the sentence, drop the duplicate button. */}
+          <InsightHeader {...noRun(processInsight(rows, system.name, system.id, can("run_process_discovery")))} />
           <CatalogueTable rows={rows} systemId={system.id} jobs={jobs} />
         </>
       ) : <ProcessSkeleton />}

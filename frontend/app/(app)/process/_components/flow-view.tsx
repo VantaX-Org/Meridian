@@ -6,9 +6,10 @@
  * A node click drills one level, to L4 at most; at L4 the L5 nodes open a Drawer.
  */
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Skeleton } from "@/design";
+import { Button, DataTable, Drawer, EmptyState, ErrorState, Mono, Skeleton } from "@/design";
 import { getDfg, type Dfg, type NodeStats, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -16,6 +17,11 @@ import type { L4, ProcessModelDocument } from "@/types/process-model";
 import { findActivity, locate } from "@/app/(app)/insights/process/designer/_components/doc";
 import { L5Table } from "./l5-table";
 import { fmtCount, fmtFitness, fmtSeconds, fmtShare, ViewAsTable } from "./shared";
+
+/** Lazy chunk with a fixed 420px slot so the flow does not shift when it arrives. */
+const Graph = dynamic(() => import("@/design/charts/Graph").then((m) => m.Graph), {
+  ssr: false, loading: () => <Skeleton height={420} />,
+});
 
 type Edge = Dfg["edges"][number];
 const PSEUDO = new Set(["START", "END"]);
@@ -43,7 +49,7 @@ export function FlowView({ runId, doc, node, filters, onDrill }: {
   const dfg = useQuery({ queryKey: queryKeys.processRunView(runId, "dfg", params), queryFn: () => getDfg(runId, params) });
 
   if (dfg.isError) return <ErrorState message={apiErrorMessage(dfg.error)} onRetry={() => dfg.refetch()} />;
-  if (!dfg.data) return <Skeleton height={400} />;
+  if (!dfg.data) return <Skeleton height={420} />;
   const d = dfg.data;
   if (!d.nodes.length) return <EmptyState title="No activity below this step" detail="Go up one level to see its flow." />;
 

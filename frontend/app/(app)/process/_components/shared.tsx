@@ -171,16 +171,19 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
     { id: "coverage", header: "Coverage", accessorFn: (r) => r.coverage, cell: ({ row: { original: r } }) => <CoveragePill coverage={r.coverage} /> },
     { id: "fitness", header: "Fitness", accessorFn: (r) => r.last_run?.fitness ?? -1, cell: ({ row: { original: r } }) => {
         const f = r.last_run?.fitness;
-        if (r.in_progress) {
-          return stageLabel(jobs.find((j) => j.id === r.in_progress?.job_id)) ?? <RunStatusPill status={r.in_progress.status} />;
-        }
         const last = f == null ? "—" : (
           <DrillLink href={l1Href(r.l1, systemId, r.last_run!.id, "conformance")}>
             <Pill tone={fitnessTone(f)}>{fmtFitness(f)}</Pill>
           </DrillLink>
         );
-        if (!r.failed) return last;
-        return <span className="flex items-center gap-2">{last}<DrillLink href={`/process/runs/${r.failed.id}`}>See the error</DrillLink></span>;
+        if (!r.failed && !r.in_progress) return last;
+        const live = r.in_progress && (stageLabel(jobs.find((j) => j.id === r.in_progress?.job_id)) ?? <RunStatusPill status={r.in_progress.status} />);
+        return (
+          <span className="flex items-center gap-2">{last}
+            {live && <span style={{ color: "var(--m-ink-3)" }}>{live}</span>}
+            {r.failed && <DrillLink href={`/process/runs/${r.failed.id}`}>See the error</DrillLink>}
+          </span>
+        );
       } },
     { id: "variants", header: "Variants", accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
     { id: "cases", header: "Cases", accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
