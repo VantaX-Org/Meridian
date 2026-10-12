@@ -48,6 +48,7 @@ def rule_catalogue() -> tuple[dict, ...]:
         "name": f"{r['id']}: {r.get('message', r['id'])}"[:255],
         "description": str(r.get("why_it_matters") or r.get("message") or "")[:1000],
         "severity": r.get("severity", "medium"),
+        "enabled": bool(r.get("enabled", True)),
         "conditions": json.dumps([{"field": r.get("field"), "check_class": r.get("check_class"),
                                    "dimension": r.get("dimension"), "pattern": r.get("pattern"),
                                    "domain_values": r.get("domain_values")}]),
@@ -74,7 +75,7 @@ def seed_tenant(conn, tenant_id: str) -> dict[str, int]:
         conn.execute(text("""
             INSERT INTO rules (tenant_id, name, description, module, category, severity, enabled,
                                conditions, source_yaml, source)
-            VALUES (:tid, :name, :description, :module, :category, :severity, true,
+            VALUES (:tid, :name, :description, :module, :category, :severity, :enabled,
                     CAST(:conditions AS jsonb), :source_yaml, 'yaml')
             ON CONFLICT (tenant_id, name, module) DO NOTHING
         """), rules)

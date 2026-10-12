@@ -480,7 +480,7 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
     from checks.config_rules import fields_for as config_fields
     from checks.country_rules import fields_for as country_fields
     from checks.value_placement import fields_for as placement_fields
-    from checks.runner import _find_module_yaml, rule_columns, target_columns
+    from checks.runner import module_rules, rule_columns, target_columns
 
     edges, _ = _graph()
     joinable = {t for e in edges for t in (e.parent, e.child)}
@@ -497,7 +497,7 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
 
     for module in modules:
         try:
-            rules = yaml.safe_load(_find_module_yaml(module).read_text()).get("rules", [])
+            rules = module_rules(module)
         except FileNotFoundError:
             continue
         for rule in rules:
