@@ -2,7 +2,8 @@
 import type { ReactNode } from "react";
 import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
 import { ErrorState } from "../primitives/ErrorState";
-import { Skeleton } from "../primitives/Skeleton";
+import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
+import { PageFrame } from "./PageFrame";
 
 export function ExplorerPage({
   header,
@@ -14,6 +15,8 @@ export function ExplorerPage({
   emptyProps,
   errorProps,
   drawer,
+  strip,
+  aside,
   dense = true,
 }: {
   /** Row density of the table this page renders; sizes the loading skeleton. Matches DataTable's default. */
@@ -32,19 +35,25 @@ export function ExplorerPage({
   errorProps?: { message: string; onRetry?: () => void };
   /** A drawer rendered alongside the page, e.g. a row-detail panel. */
   drawer?: ReactNode;
+  /** A band under the stats and above the table, e.g. the runs systems strip. */
+  strip?: ReactNode;
+  /** Right column beside the table: 8/4 at the 5xl container width, stacked below it. */
+  aside?: ReactNode;
 }) {
   let body = table;
   let summarySlot = summary;
   if (state === "loading") {
-    // Toolbar, header and seven rows at the table's real heights, so loading does not shift the layout.
+    // Stat row (84), toolbar, table header (28) and twelve rows (30), so loading does not shift the layout.
     const rowH = dense ? "var(--m-row-h-dense)" : "var(--m-row-h)";
     body = (
       <div className="m-motion-stagger flex flex-col gap-1" data-state="loading">
         <div style={{ height: "var(--m-control-h)" }}><Skeleton width={320} height="100%" /></div>
-        <div style={{ height: rowH }}><Skeleton height="100%" /></div>
-        {Array.from({ length: 7 }, (_, i) => <div key={i} style={{ height: rowH }}><Skeleton height="100%" /></div>)}
+        <div style={{ height: 28 }}><Skeleton height="100%" /></div>
+        {Array.from({ length: 12 }, (_, i) => <div key={i} style={{ height: rowH }}><Skeleton height="100%" /></div>)}
       </div>
     );
+    // A page that passes its own summary keeps it (it reserves its own loading geometry).
+    summarySlot = summary || <div className="m-stat-grid" data-testid="explorer-stat-skeleton">{[0, 1, 2, 3].map((i) => <StatSkeleton key={i} />)}</div>;
   } else if (state === "empty") {
     if (emptyProps?.summary) {
       summarySlot = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{emptyProps.summary}</p>;
@@ -62,7 +71,7 @@ export function ExplorerPage({
   }
 
   return (
-    <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+    <PageFrame gap={4}>
       {header}
       {toolbarEnd ? (
         <div className="flex items-start justify-between gap-4">
@@ -73,8 +82,14 @@ export function ExplorerPage({
         filterBar
       )}
       {summarySlot}
-      {body}
+      {strip}
+      {aside ? (
+        <div className="grid gap-4 @5xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="min-w-0">{body}</div>
+          <div className="min-w-0">{aside}</div>
+        </div>
+      ) : body}
       {drawer}
-    </div>
+    </PageFrame>
   );
 }

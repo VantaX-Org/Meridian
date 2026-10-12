@@ -11,6 +11,9 @@ export interface ObjectSummary {
   readiness: "pass" | "warn" | "fail" | null;
   failing_checks: number;
   affected_records: number;
+  /** Failing checks by severity (list only; absent on older backends). */
+  critical_checks?: number;
+  high_checks?: number;
   /** Optional list-row enrichments; absent on older backends. */
   blocking_rule_id?: string | null;
   blocking_rule_name?: string | null;
@@ -18,6 +21,8 @@ export interface ObjectSummary {
   trend?: number[];
   worst_dimension?: string | null;
   owner?: string | null;
+  /** Measured dimension scores for the run (unmeasured dimensions omitted). */
+  dimension_scores?: Record<string, number>;
 }
 
 export interface ObjectRule {

@@ -97,7 +97,7 @@ export default function ContractsPage() {
         </div>
       }
       summary={
-        <div className="flex gap-4">
+        <div className="m-stat-grid">
           <Stat label="Breached" value={q.isLoading ? "–" : counts.breached.toLocaleString()} loading={q.isLoading} tone={counts.breached ? "no-go" : undefined} href="/rules/contracts?status=breached" />
           <Stat label="Awaiting approval" value={q.isLoading ? "–" : counts.pending.toLocaleString()} loading={q.isLoading} onClick={() => setStatus("pending_approval")} />
         </div>

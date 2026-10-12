@@ -76,7 +76,7 @@ async def create_simulation(body: SimulationRequest, db: AsyncSession = Depends(
     if not row[0]:
         raise HTTPException(status_code=409, detail="This version has no stored dataset to simulate on.")
     sid = str(uuid.uuid4())
-    jobs.start_job(str(tenant.id), sid, "simulation", f"Fix simulation{f' · {row[2]}' if row[2] else ''}",
+    jobs.start_job(str(tenant.id), sid, "simulation", f"Fix simulation{f' | {row[2]}' if row[2] else ''}",
                    status="queued", version_id=str(body.version_id), system_id=row[1])
     run_simulation.delay(str(tenant.id), sid, str(body.version_id), body.model_dump(mode="json"))
     return SimulationQueued(simulation_id=sid, job_id=sid, status="queued")

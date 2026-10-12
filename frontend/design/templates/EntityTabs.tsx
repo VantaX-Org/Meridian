@@ -14,8 +14,8 @@ import { Skeleton } from "../primitives/Skeleton";
 import { usePermissionsContext } from "../../lib/permissions";
 import { ExportMenu, type ExportOption } from "../primitives/ExportMenu";
 
-/** The five tabs every detail page carries, in this order. */
-export type EntityTabValue = "overview" | "related" | "history" | "audit" | "export";
+/** The four tabs every detail page carries, in this order. */
+export type EntityTabValue = "overview" | "related" | "history" | "audit";
 
 export interface EntityTabsOptions {
   /** First path segment under /api/v1 that mutations on this entity go through, e.g. "systems", "rules". */
@@ -28,9 +28,9 @@ export interface EntityTabsOptions {
   history?: ReactNode;
   /** Replaces the generic Audit tab for entities whose trail lives in their own log (e.g. cleaning batches). */
   audit?: ReactNode;
-  /** Export options for this entity. Omit for the designed empty state. */
+  /** Export options for this entity: an ExportMenu above the tabs, not a tab of its own. */
   exportOptions?: ExportOption[];
-  /** False leaves the Export tab out (rbac.md §5: exports are for roles holding `export`). Omitted means shown. */
+  /** False hides the ExportMenu (rbac.md §5: exports are for roles holding `export`). Omitted means shown. */
   canExport?: boolean;
   /**
    * Request-path fragment that the audit rows of this entity carry, for nested resources
@@ -69,44 +69,44 @@ export function AuditTab({ entityType, entityId, auditPath }: { entityType: stri
   if (q.isLoading) return <Skeleton height={120} />;
   if (q.isError) {
     if (isAxiosError(q.error) && q.error.response?.status === 403) {
-      return <EmptyState title="Audit history is restricted" detail="Your role does not include access to the audit log. Ask an administrator for audit access." ghost="list" />;
+      return <EmptyState variant="inline" title="Audit history is restricted" detail="Your role does not include access to the audit log. Ask an administrator for audit access." />;
     }
     return <ErrorState message="Could not load the audit trail." onRetry={() => void q.refetch()} />;
   }
   const entries = q.data?.entries ?? [];
   if (entries.length === 0) {
-    return <EmptyState title="No changes recorded" detail="Edits, approvals and runs against this record are logged here as they happen." ghost="list" />;
+    return <EmptyState variant="inline" title="No changes recorded" detail="Edits, approvals and runs against this record are logged here as they happen." />;
   }
-  return <DataTable columns={AUDIT_COLUMNS} data={entries} getRowId={(r) => r.id} tableId={`audit-${entityType}`} exportName={`audit-${entityType}`} height={360} />;
+  return <DataTable columns={AUDIT_COLUMNS} data={entries} getRowId={(r) => r.id} tableId={`audit-${entityType}`} exportName={`audit-${entityType}`} height="calc(100vh - 320px)" />;
 }
 
-/** Related, History, Audit and Export tab items. Append to a page's own tabs after its Overview. */
-export function entityTabs({ entityType, entityId, related, history, exportOptions, auditPath, audit, canExport = true, skip = [] }: EntityTabsOptions): TabItem[] {
+/** Related, History and Audit tab items. Append to a page's own tabs after its Overview. */
+export function entityTabs({ entityType, entityId, related, history, auditPath, audit, skip = [] }: EntityTabsOptions): TabItem[] {
   const items: TabItem[] = [
     {
       value: "related", label: "Related",
-      content: related ?? <EmptyState title="No related items yet" detail="Linked rules, records and runs appear here once this record is connected to them." ghost="list" />,
+      content: related ?? <EmptyState variant="inline" title="No related items yet" detail="Linked rules, records and runs appear here once this record is connected." />,
     },
     {
       value: "history", label: "History",
-      content: history ?? <EmptyState title="No history to show" detail="This record does not keep a change history of its own. The Audit tab lists every logged action against it." ghost="chart" />,
+      content: history ?? <EmptyState variant="inline" title="No history to show" detail="The Audit tab lists every logged action against this record." />,
     },
     { value: "audit", label: "Audit", content: audit ?? <AuditTab entityType={entityType} entityId={entityId} auditPath={auditPath} /> },
-    {
-      value: "export", label: "Export",
-      content: exportOptions && exportOptions.length > 0
-        ? <ExportMenu options={exportOptions} />
-        : <EmptyState title="Nothing to export here" detail="There is no export for this record yet. Use the Audit tab to export its audit trail." ghost="table" />,
-    },
   ];
-  return items.filter((i) => !skip.includes(i.value as EntityTabValue) && (canExport || i.value !== "export"));
+  return items.filter((i) => !skip.includes(i.value as EntityTabValue));
 }
 
-/** Overview/Related/History/Audit/Export tab set for detail pages that have no tabs of their own. */
-export function EntityTabs({ overview, extraTabs = [], ...opts }: EntityTabsOptions & { overview: ReactNode; extraTabs?: TabItem[] }) {
+/** Overview/Related/History/Audit tab set for detail pages that have no tabs of their own. */
+export function EntityTabs({ overview, extraTabs = [], exportOptions, ...opts }: EntityTabsOptions & { overview: ReactNode; extraTabs?: TabItem[] }) {
   const perms = usePermissionsContext();
   // no provider (tests, public pages) keeps the tab; inside one, the export grant decides
-  const [rest0, ...rest] = entityTabs({ canExport: perms ? perms.can("export") : true, ...opts });
+  const canExport = opts.canExport ?? (perms ? perms.can("export") : true);
+  const [rest0, ...rest] = entityTabs(opts);
   const items: TabItem[] = [{ value: "overview", label: "Overview", content: overview }, ...(rest0 ? [rest0] : []), ...extraTabs, ...rest];
-  return <Tabs items={items} />;
+  return (
+    <div className="flex flex-col gap-3">
+      {canExport && exportOptions && exportOptions.length > 0 && <div className="flex justify-end"><ExportMenu options={exportOptions} /></div>}
+      <Tabs items={items} />
+    </div>
+  );
 }

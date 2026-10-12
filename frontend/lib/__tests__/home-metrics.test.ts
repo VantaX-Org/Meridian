@@ -129,7 +129,7 @@ describe("home-metrics", () => {
   it("dimensionBarPoints labels each of the six dimensions", () => {
     const points = dimensionBarPoints(version("v1", "2026-01-01", { a: 80 }));
     expect(points).toHaveLength(6);
-    expect(points[0]).toEqual({ x: "Completeness · 25%", y: 80, dimension: "completeness" });
+    expect(points[0]).toEqual({ x: "Completeness (25%)", y: 80, dimension: "completeness" });
   });
 
   it("dimensionHeatmapCells builds one cell per object x dimension for modules present in the run", () => {
@@ -200,7 +200,7 @@ describe("runCap", () => {
 describe("dimensionBarPoints weights", () => {
   it("labels each dimension with its weight share, from defaults or tenant weights", () => {
     const v = version("v1", "2026-01-01", { a: 80 });
-    expect(dimensionBarPoints(v).map((p) => p.x)).toContain("Completeness · 25%");
-    expect(dimensionBarPoints(v, { completeness: 1, accuracy: 1, consistency: 1, timeliness: 1, uniqueness: 1, validity: 1 })[0].x).toMatch(/17%$/);
+    expect(dimensionBarPoints(v).map((p) => p.x)).toContain("Completeness (25%)");
+    expect(dimensionBarPoints(v, { completeness: 1, accuracy: 1, consistency: 1, timeliness: 1, uniqueness: 1, validity: 1 })[0].x).toMatch(/17%\)$/);
   });
 });

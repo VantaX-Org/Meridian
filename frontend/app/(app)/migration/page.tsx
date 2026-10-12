@@ -105,7 +105,7 @@ export default function MigrationPage() {
     <>
       <ExplorerPage
         summary={data.length > 0 ? (
-          <div className="flex flex-wrap gap-6">
+          <div className="m-stat-grid">
             <Stat label="Waves" value={data.length} />
             <Stat label="Go" value={goCount} tone="go" href="/migration?verdict=go" />
             <Stat label="At risk" value={atRiskCount} tone={atRiskCount > 0 ? "at-risk" : undefined} href="/migration?verdict=at_risk" />

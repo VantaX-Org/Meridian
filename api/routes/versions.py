@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.services.rbac import require_permission, scope_from_path
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -33,6 +33,8 @@ class VersionResponse(BaseModel):
     status: str
     dqs_summary: Optional[dict]
     metadata: Optional[dict]
+    # open findings per severity ({critical, high, medium, low}) for the run; the list endpoint fills it, other callers leave None
+    severity_counts: Optional[dict[str, int]] = None
 
 
 class PatchVersionRequest(BaseModel):
@@ -77,10 +79,27 @@ async def list_versions(
         )
     if system_id:
         stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("system_id") == system_id)
+    # total of the filtered set, so a capped list can say "N of total" instead of silently stopping
+    total = (await db.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))).scalar() or 0
     stmt = stmt.offset(offset).limit(limit)
     result = await db.execute(stmt)
     versions = result.scalars().all()
-    return {"versions": [_version_to_response(v) for v in versions]}
+    # one grouped query for the whole page of runs, none per run
+    counts: dict[str, dict[str, int]] = {}
+    if versions:
+        rows = (await db.execute(text(
+            "SELECT version_id, severity, count(*) FROM findings "
+            "WHERE tenant_id = :t AND version_id = ANY(CAST(:ids AS uuid[])) AND affected_count > 0 "
+            "GROUP BY version_id, severity"), {"t": str(tenant.id), "ids": [str(v.id) for v in versions]})).fetchall()
+        for vid, sev, n in rows:
+            counts.setdefault(str(vid), {})[sev] = n
+    out = []
+    for v in versions:
+        r = _version_to_response(v)
+        c = counts.get(str(v.id), {})
+        r.severity_counts = {k: c.get(k, 0) for k in ("critical", "high", "medium", "low")}
+        out.append(r)
+    return {"versions": out, "total": total}
 
 
 ARCHIVE_SQL = """
@@ -398,7 +417,7 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
     await db.execute(text("UPDATE analysis_versions SET status = 'pending' WHERE id = :v"), {"v": vid})
     await db.commit()
     jobs.start_job(str(tenant.id), version_id, "analysis",
-                   f"{'Analysis' if row[0] == 'extracted' else 'Re-analysis'}{f' · {row[3]}' if row[3] else ''}",
+                   f"{'Analysis' if row[0] == 'extracted' else 'Re-analysis'}{f' | {row[3]}' if row[3] else ''}",
                    status="queued", progress_key=version_id, version_id=version_id, system_id=row[2])
     job = run_checks.delay(version_id, str(tenant.id), row[1], reanalyse=row[0] != "extracted")
     return {"version_id": version_id, "task_id": job.id, "job_id": version_id, "status": "pending"}

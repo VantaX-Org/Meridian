@@ -56,10 +56,14 @@ export interface Version {
     /** Records downloaded per object (system downloads). */
     object_rows?: Record<string, number>;
   } | null;
+  /** Open findings per severity; set by the list endpoint only. */
+  severity_counts?: { critical: number; high: number; medium: number; low: number } | null;
 }
 
 export interface VersionList {
   versions: Version[];
+  /** Runs matching the filters, before limit and offset. */
+  total?: number;
 }
 
 /* ─── Version comparison ─── */

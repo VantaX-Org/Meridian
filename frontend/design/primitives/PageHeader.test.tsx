@@ -4,7 +4,7 @@ import { Pill } from "./Pill";
 import { PageHeader } from "./PageHeader";
 
 describe("PageHeader", () => {
-  it("renders one h1 with meta, status and actions", () => {
+  it("renders an h2 (Breadcrumb owns the h1) with meta, status and actions", () => {
     render(<PageHeader title="Rules" meta="12 rules" status={<Pill tone="go">Ready</Pill>} actions={<button>Run</button>} />);
     expect(screen.getByRole("heading", { level: 2, name: "Rules" })).toBeTruthy();
     expect(screen.getByText("12 rules")).toBeTruthy();

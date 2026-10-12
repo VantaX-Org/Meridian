@@ -3,7 +3,9 @@ import type { ReactNode } from "react";
 import { Pill, type PillTone } from "../primitives/Pill";
 import { DomainChip } from "../primitives/DomainChip";
 import { Mono } from "../primitives/Mono";
-import { Skeleton } from "../primitives/Skeleton";
+import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
+import { Stat, type StatProps } from "../primitives/Stat";
+import { PageFrame } from "./PageFrame";
 
 export interface RecordStatus {
   label: "passing" | "failing" | "in batch" | "fixed";
@@ -11,26 +13,28 @@ export interface RecordStatus {
 }
 
 export function RecordPage({
-  recordKey, object, status, children, loading = false,
+  recordKey, object, status, children, stats, loading = false,
 }: {
   recordKey: string;
   object: string;
   status: RecordStatus;
   children: ReactNode;
+  /** Stat row under the header (rule failures, dimensions failing, fields failing, batches, last changed, owner). */
+  stats?: Pick<StatProps, "label" | "value" | "hint" | "tone">[];
   /** Header 32 + body 120 skeletons (screens.md 3.3) while the record loads. */
   loading?: boolean;
 }) {
-  const wrap = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" };
   if (loading) {
     return (
-      <div className="m-motion-stagger mx-auto flex w-full flex-col gap-6" style={wrap} data-state="loading">
+      <PageFrame gap={4} className="m-motion-stagger" data-state="loading">
         <Skeleton height={32} />
+        <div className="m-stat-grid">{[0, 1, 2, 3, 4, 5].map((i) => <StatSkeleton key={i} />)}</div>
         <Skeleton height={120} />
-      </div>
+      </PageFrame>
     );
   }
   return (
-    <div className="mx-auto flex w-full flex-col gap-6" style={wrap}>
+    <PageFrame gap={4}>
       <header className="flex items-center gap-3">
         <span style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", fontWeight: 600 }}>
           <Mono>{recordKey}</Mono>
@@ -39,7 +43,8 @@ export function RecordPage({
         <DomainChip moduleId={object} />
         <Pill tone={status.tone}>{status.label}</Pill>
       </header>
+      {stats && stats.length > 0 && <div className="m-stat-grid">{stats.map((x) => <Stat key={x.label} {...x} />)}</div>}
       {children}
-    </div>
+    </PageFrame>
   );
 }

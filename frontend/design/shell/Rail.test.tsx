@@ -44,7 +44,7 @@ describe("Rail", () => {
     window.sessionStorage.clear();
     // Rail defaults to expanded at narrow widths only when no stored preference exists;
     // force a wide viewport so these tests see the same expanded-by-default start state
-    // regardless of the ≥1280px default-expanded rule.
+    // regardless of the ≥1440px default-expanded rule.
     Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1440 });
   });
 
@@ -90,6 +90,14 @@ describe("Rail", () => {
     expect(screen.queryByText("Home")).not.toBeInTheDocument();
     // the link is still reachable by its accessible name even with the text node hidden
     expect(screen.getByRole("link", { name: "Systems" })).toBeInTheDocument();
+  });
+
+  it("brand home link keeps its accessible name in both rail states", async () => {
+    renderRail();
+    expect(await screen.findByRole("link", { name: "Meridian" })).toHaveAttribute("href", expect.stringContaining("/home/"));
+    (await screen.findByRole("button", { name: "Collapse navigation" })).click();
+    await screen.findByRole("button", { name: "Expand navigation" });
+    expect(screen.getByRole("link", { name: "Meridian" })).toBeInTheDocument();
   });
 
   it("persists the collapsed state to sessionStorage and restores it on remount", async () => {

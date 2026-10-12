@@ -42,7 +42,7 @@ export interface StatProps {
   versionId?: string;
   /** Decimals for the count-up value. */
   decimals?: 0 | 1;
-  /** Shows a skeleton in the value slot. The tile keeps its 88px (112px hero) height. */
+  /** Shows a skeleton in the value slot. The tile is a fixed 84px (112px hero) height. */
   loading?: boolean;
 }
 
@@ -61,7 +61,7 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
         data-domain={tone ? undefined : domain}
         style={edge ? { background: edge } : undefined}
       />
-      <span className="text-[12px] leading-4" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+      <span className="text-[12px] leading-4 truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
       <span className="flex items-baseline gap-2">
         <span
           className="m-numeric font-semibold"
@@ -73,21 +73,23 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
             color: hero ? "var(--m-hero-ink)" : "var(--m-ink)",
           }}
         >
-          {loading ? <Skeleton width="4ch" height={hero ? 56 : 28} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : value}
+          {loading ? <Skeleton width="4ch" height={hero ? 56 : 30} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : value}
         </span>
         {delta != null && !loading && <span>{delta}</span>}
       </span>
       {spark && spark.length >= 3 && !loading && (
-        <Sparkline data={spark.map((y, x) => ({ x: String(x), y }))} width={60} height={16} color={sparkColor} />
+        <span className="absolute" style={{ top: 12, right: 16 }}>
+          <Sparkline data={spark.map((y, x) => ({ x: String(x), y }))} width={60} height={16} color={sparkColor} />
+        </span>
       )}
       {hint != null && (
-        <span style={{ fontSize: "var(--m-text-micro)", lineHeight: "var(--m-leading-micro)", color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
+        <span className="truncate" style={{ fontSize: "var(--m-text-micro)", lineHeight: "var(--m-leading-micro)", color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
       )}
     </>
   );
   const interactive = Boolean(href || onClick);
-  const cls = clsx("m-stat relative flex flex-col gap-1 overflow-hidden", hero && "m-stat-hero", interactive && "m-stat-link m-lift m-motion-colors");
-  const minHeight = hero ? 112 : 88;
+  const cls = clsx("m-stat relative flex flex-col overflow-hidden", hero && "m-stat-hero", interactive && "m-stat-link m-lift m-motion-colors");
+  const minHeight = undefined;
   if (href) return <Link href={href} className={cls} style={{ minHeight }} {...prefetch}>{body}</Link>;
   if (onClick) return <button type="button" className={cls} style={{ minHeight }} onClick={onClick}>{body}</button>;
   return <div className={cls} style={{ minHeight }}>{body}</div>;

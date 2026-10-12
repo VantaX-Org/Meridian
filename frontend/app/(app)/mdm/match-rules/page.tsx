@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input, PageFrame } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createMatchRule, deleteMatchRule, getMatchRules, simulateMatchRules, updateMatchRule,
@@ -57,7 +57,7 @@ export default function MatchRulesPage() {
   const [tabRaw, setTab] = useUrlState("tab", "rules");
   const tab = (["rules", "tuning", "constraints"] as string[]).includes(tabRaw) ? tabRaw : "rules";
   return (
-    <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+    <PageFrame>
       <PageHeader
         title="Match rules"
         meta="How the matcher scores duplicate candidates, what a change would do, and the pairs stewards have pinned"
@@ -71,7 +71,7 @@ export default function MatchRulesPage() {
           { value: "constraints", label: "Constraints", content: <ConstraintsTab /> },
         ]}
       />
-    </div>
+    </PageFrame>
   );
 }
 

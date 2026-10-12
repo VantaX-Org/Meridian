@@ -57,7 +57,7 @@ describe("HomePage data state", () => {
 
   it("omits the objects column when there is no objects slot", () => {
     render(<HomePage persona="basis" state="data" verdict={{ dqs: 70, sentence: "x" }} run={run} trend={<div data-testid="t" />} />);
-    expect(screen.getByTestId("t").parentElement?.className).toContain("lg:col-span-12");
+    expect(screen.getByTestId("t").parentElement?.className).toContain("@5xl:col-span-12");
   });
 
   it("loading shows skeletons only", () => {

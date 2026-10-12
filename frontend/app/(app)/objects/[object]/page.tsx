@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, ScoreRing,
+  Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill,
   SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
   entityTabs,
 } from "@/design";
@@ -15,7 +15,6 @@ import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
-import { useRole } from "@/hooks/use-role";
 import { exportObject, getObject, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
@@ -160,6 +159,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       </div>
       {rulesRanked.length === 0 ? (
         <EmptyState
+          variant="inline"
           title="No rules match"
           detail="No rule fits the current filters."
           action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>}
@@ -195,17 +195,16 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-6">
-        <div className="flex items-center gap-3">
-          {data.composite_score != null ? <ScoreRing score={data.composite_score} size={48} /> : null}
-          <Stat label="DQS" value={data.composite_score != null ? String(data.composite_score) : "—"} />
-        </div>
+      <div className="m-stat-grid">
+        <Stat label="DQS" value={data.composite_score != null ? String(data.composite_score) : "—"} />
+        <Stat label="Failing checks" value={data.failing_checks.toLocaleString()} href={rulesHref} />
         <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         <Stat label="Affected records" value={data.affected_records.toLocaleString()} href={`/objects/${object}?run=${run}&tab=records`} />
       </div>
       <Card title="Score by dimension">
         {dimensionPoints.length === 0 ? (
           <EmptyState
+            variant="inline"
             title="No dimension scores"
             detail="This run produced no per-dimension scores for this object."
             action={<Button render={<Link href={rulesHref}>Open rules</Link>} />}
@@ -405,7 +404,6 @@ export default function ObjectDetailPage() {
   const search = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { can } = useRole();
   const object = params.object;
   const run = search.get("run") ?? "";
   const tab = search.get("tab") ?? "overview";
@@ -510,7 +508,7 @@ export default function ObjectDetailPage() {
               />
             ),
           },
-          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, exportOptions: data ? exportOptions : undefined, canExport: can("export") }),
+          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}` }),
         ]}
       />
     </div>

@@ -121,7 +121,15 @@ export default function RecordFixSheetPage() {
   ];
 
   return (
-    <RecordPage recordKey={material.matnr} object={object} status={status}>
+    <RecordPage
+      recordKey={material.matnr}
+      object={object}
+      status={status}
+      stats={[
+        { label: "Missing fields", value: material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0), tone: hasMissing ? "no-go" : "go" },
+        { label: "Views", value: material.views.length },
+      ]}
+    >
       <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} exportOptions={exportOptions} overview={<>
       <div className="flex justify-end">
         <ExportMenu options={exportOptions} />

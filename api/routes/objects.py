@@ -41,12 +41,16 @@ class ObjectSummaryOut(BaseModel):
     readiness: Optional[str] = None
     failing_checks: int
     affected_records: int
+    critical_checks: int = 0                  # failing checks of severity critical (same definition as failing_checks)
+    high_checks: int = 0                      # failing checks of severity high
     # Optional enrichments (all backward compatible; None / [] when there is no source)
     blocking_rule_id: Optional[str] = None    # check_id of the highest-severity failing rule, ties: most records failing
     blocking_rule_name: Optional[str] = None  # that rule's title from the tenant's rules table, when it has one
     trend: list[float] = []                   # composite score of the last <=8 runs of the same system, oldest first
     worst_dimension: Optional[str] = None     # measured DAMA dimension with the lowest score
     owner: Optional[str] = None               # data_owners (kind 'object', ref = module) owner's name
+    # measured DAMA dimension scores from the run summary (coverage 0 = not measured, omitted); {} when there is none
+    dimension_scores: dict[str, float] = {}
 
 
 class ObjectsListOut(BaseModel):
@@ -97,6 +101,12 @@ def _worst_dimension(mod_summary: dict) -> Optional[str]:
     scores = {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
               if v is not None and coverage.get(d) != 0}  # coverage 0: not measured
     return min(scores, key=lambda d: scores[d]) if scores else None
+
+
+def _measured_dimensions(mod_summary: dict) -> dict[str, float]:
+    coverage = mod_summary.get("dimension_coverage") or {}
+    return {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
+            if v is not None and coverage.get(d) != 0}
 
 
 _SEVERITY_RANK = ("critical", "high", "medium", "low")
@@ -150,11 +160,12 @@ async def list_objects(run: str = Query(..., alias="run"),
     summary, thresholds = await _version_summary(db, tenant, run_id)
 
     rows = (await db.execute(text(
-        "SELECT module, count(*) AS failing, coalesce(sum(affected_count), 0) AS affected "
+        "SELECT module, count(*) AS failing, coalesce(sum(affected_count), 0) AS affected, "
+        "count(*) FILTER (WHERE severity = 'critical') AS crit, count(*) FILTER (WHERE severity = 'high') AS high "
         "FROM findings WHERE version_id = :v AND tenant_id = :t AND affected_count > 0 "
         "GROUP BY module"
     ), {"v": run_id, "t": str(tenant.id)})).fetchall()
-    by_module = {r[0]: (r[1], r[2]) for r in rows}
+    by_module = {r[0]: (r[1], r[2], r[3], r[4]) for r in rows}
 
     blocking, owners, history, blocking_total = await _enrichments(db, tenant, run_id)
 
@@ -163,7 +174,7 @@ async def list_objects(run: str = Query(..., alias="run"),
     for module in modules:
         mod_summary = summary.get(module) or {}
         score = mod_summary.get("composite_score")
-        failing, affected = by_module.get(module, (0, 0))
+        failing, affected, crit, high = by_module.get(module, (0, 0, 0, 0))
         objects.append({
             "module": module,
             "label": _label(module),
@@ -171,12 +182,15 @@ async def list_objects(run: str = Query(..., alias="run"),
             "readiness": tier(score, thresholds) if score is not None else None,
             "failing_checks": failing,
             "affected_records": affected,
+            "critical_checks": crit,
+            "high_checks": high,
             "blocking_rule_id": blocking.get(module, (None, None))[0],
             "blocking_rule_name": blocking.get(module, (None, None))[1],
             "trend": [float(h[module]["composite_score"]) for h in history
                       if isinstance(h.get(module), dict) and h[module].get("composite_score") is not None],
             "worst_dimension": _worst_dimension(mod_summary),
             "owner": owners.get(module),
+            "dimension_scores": _measured_dimensions(mod_summary),
         })
     return {"run_id": run_id, "objects": objects, "thresholds": thresholds,
             "blocking_findings_total": blocking_total}

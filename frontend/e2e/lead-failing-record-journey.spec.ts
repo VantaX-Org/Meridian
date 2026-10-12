@@ -5,10 +5,12 @@ test("lead reaches a failing record in three clicks", async ({ app }) => {
   const VERSION_ID = "65988d5a-0243-4f9b-bdff-52779e71c6ed";
 
   await app.goto(`/objects?run=${VERSION_ID}`, { waitUntil: "load" });
-  await expect(app.getByText("Material master")).toBeVisible();
+  // Scoped to the grid (DataTable is role=grid): the "Most affected" stat hint also names the object.
+  const objectCell = app.getByRole("grid").getByText("Material master");
+  await expect(objectCell).toBeVisible();
 
   // Click 1: objects list -> object detail, rules tab.
-  await app.getByText("Material master").click();
+  await objectCell.click();
   await expect(app).toHaveURL(/\/objects\/material_master\?run=/);
   await expect(app.getByText("MM551")).toBeVisible();
 

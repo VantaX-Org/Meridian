@@ -132,7 +132,7 @@ export function Rail() {
       /* storage blocked: fall through to the width default */
     }
     if (stored === "collapsed" || stored === "expanded") setExpanded(stored === "expanded");
-    else setExpanded(window.innerWidth >= 1280);
+    else setExpanded(window.innerWidth >= 1440);
   }, []);
 
   // "[" toggles the rail, like a shortcut — ignored while typing or with a modifier held.
@@ -292,7 +292,7 @@ export function Rail() {
 
     const rowWrapperClassName = "m-motion-colors group relative flex items-center hover:bg-[var(--m-rail-hover)]";
     const rowWrapperStyle = {
-      height: depth === 0 ? 32 : 28,
+      height: depth === 0 && active ? 32 : 28,
       margin: "0 8px",
       borderRadius: "var(--m-radius-control)",
       background: active ? "var(--m-accent-soft)" : undefined,
@@ -319,7 +319,7 @@ export function Rail() {
         onMouseLeave={() => closeFlyout()}
         className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full m-text-body m-rail-link"
         style={{
-          ["--m-rail-fg" as string]: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
+          ["--m-rail-fg" as string]: active ? "var(--m-ink)" : "var(--m-ink-2)",
           fontWeight: active ? 600 : 500,
           paddingLeft: expanded && depth === 1 ? 28 : undefined,
           borderRadius: "var(--m-radius-control)",
@@ -396,6 +396,7 @@ export function Rail() {
     >
       <Link
         href={withRun(resolveNavHref("/home/lead", role))}
+        aria-label="Meridian"
         className="flex items-center gap-2 shrink-0 font-semibold"
         style={{ height: "var(--m-topbar-h)", paddingLeft: expanded ? 16 : 0, justifyContent: expanded ? "flex-start" : "center", color: "var(--m-ink)" }}
       >
@@ -413,7 +414,7 @@ export function Rail() {
         {!navLoading && groups.map((group) => (
           <div key={group.group} className="flex flex-col gap-0.5">
             {expanded ? (
-              <p className="m-text-label font-medium" style={{ color: "var(--m-ink-3)", padding: "var(--m-rail-group-pad)" }}>
+              <p className="m-text-label font-medium" style={{ color: "var(--m-ink-4)", padding: "var(--m-rail-group-pad)" }}>
                 {group.group}
               </p>
             ) : (

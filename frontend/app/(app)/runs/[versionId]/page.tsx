@@ -77,7 +77,6 @@ const stepColumns: ColumnDef<RunStep>[] = [
 
 type History = UseQueryResult<Awaited<ReturnType<typeof getScoreHistory>>>;
 const FINDINGS_PAGE = 100;
-const pad = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" } as const;
 const sectionTitle = { fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" } as const;
 
 function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; history: History; onOpenSteps: () => void }) {
@@ -153,7 +152,7 @@ function SummaryTab({
 
   if (aggregate.isLoading) {
     return (
-      <div className="flex flex-col gap-4" style={pad} aria-busy="true">
+      <div className="flex flex-col gap-4" aria-busy="true">
         <div className="flex flex-wrap items-center gap-8">
           {[0, 1, 2, 3].map((i) => <Stat key={i} label="" value="" loading />)}
         </div>
@@ -172,7 +171,7 @@ function SummaryTab({
   const a = aggregate.data;
   if (a.total === 0) {
     return (
-      <div style={pad}>
+      <div>
         <EmptyState
           title="No findings in this run"
           detail="Open steps to see what ran."
@@ -224,7 +223,7 @@ function SummaryTab({
   }));
 
   return (
-    <div className="flex flex-col gap-6" style={pad}>
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-8">
         <div className="flex items-center gap-2">
           <DqsScore agg={a} versionId={versionId} />
@@ -551,7 +550,7 @@ export default function RunDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="mx-auto w-full" style={{ ...pad, paddingBottom: 0 }}>{header}</div>
+      <div>{header}</div>
       <div onPointerOver={onTabsHover} onFocus={onTabsHover}>
       <Tabs
         value={tab}
@@ -590,7 +589,7 @@ export default function RunDetailPage() {
             ),
           },
           { value: "config", label: "Configuration", content: <ConfigMatchesTab versionId={versionId} /> },
-          ...entityTabs({ entityType: "versions", entityId: versionId, skip: ["overview", "related", "history", "export"] }),
+          ...entityTabs({ entityType: "versions", entityId: versionId, skip: ["overview", "related", "history"] }),
         ]}
       />
       </div>

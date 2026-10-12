@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DomainChip, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, ScoreRing, Sparkline, Stat, emptyExportOptions, type CellMeta, type PillTone, type ScoreBands } from "@/design";
+import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, ScoreRing, Sparkline, Stat, emptyExportOptions, type CellMeta, type PillTone, type ScoreBands } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -14,6 +14,9 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { barFill } from "@/design/table/columns";
+import { DIMENSIONS } from "@/lib/home-metrics";
+import { formatModuleName } from "@/lib/format";
 import { bySeverity } from "../_severity-sort";
 import { FilterChips } from "./_header";
 
@@ -51,7 +54,9 @@ const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 const makeColumns = (run: string, bands: ScoreBands | undefined, objects: ObjectSummary[]): ColumnDef<ObjectSummary>[] => {
   const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 2);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
-  return allColumns(run, bands).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking));
+  const hasSev = objects.some((o) => o.critical_checks != null);
+  const hasDims = objects.some((o) => o.dimension_scores && Object.keys(o.dimension_scores).length > 0);
+  return allColumns(run, bands).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (c.id !== "dimensions" || hasDims) && ((c.id !== "critical" && c.id !== "high") || hasSev));
 };
 
 const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<ObjectSummary>[] => [
@@ -84,8 +89,27 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
     },
   },
   {
+    id: "dimensions",
+    header: "Dimensions",
+    enableSorting: false,
+    size: 96,
+    cell: ({ row }) => {
+      const scores = row.original.dimension_scores ?? {};
+      return (
+        <span className="inline-flex items-center gap-0.5" role="img" aria-label={DIMENSIONS.map((d) => `${formatModuleName(d)} ${scores[d] === undefined ? "not measured" : scores[d].toFixed(0)}`).join(", ")}>
+          {DIMENSIONS.map((d) => {
+            const v = scores[d];
+            return <span key={d} className="m-bar-fill" {...(v === undefined ? {} : barFill(v, { max: 100, tone: "rate" })?.attr)} style={{ width: 10, height: 14, borderRadius: 2, background: v === undefined ? "var(--m-line)" : undefined }} />;
+          })}
+        </span>
+      );
+    },
+  },
+  {
     id: "trend",
     header: "Trend",
+    size: 96,
+    meta: { numeric: true } satisfies CellMeta,
     cell: ({ row }) => {
       const t = row.original.trend;
       return t && t.length >= 2 ? <Sparkline data={t.map((y, x) => ({ x, y }))} /> : "—";
@@ -104,8 +128,10 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
       );
     },
   },
-  { accessorKey: "failing_checks", header: "Failing checks", cell: ({ row }) => drill(row.original, run, row.original.failing_checks) },
-  { accessorKey: "affected_records", header: "Affected records", cell: ({ row }) => drill(row.original, run, row.original.affected_records.toLocaleString()) },
+  { id: "critical", accessorFn: (o) => o.critical_checks ?? -1, header: "Critical", size: 90, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.critical_checks == null ? "—" : drill(row.original, run, row.original.critical_checks)) },
+  { id: "high", accessorFn: (o) => o.high_checks ?? -1, header: "High", size: 80, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.high_checks == null ? "—" : drill(row.original, run, row.original.high_checks)) },
+  { accessorKey: "failing_checks", header: "Failing checks", size: 120, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => drill(row.original, run, row.original.failing_checks) },
+  { accessorKey: "affected_records", header: "Affected records", size: 130, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => drill(row.original, run, row.original.affected_records.toLocaleString()) },
 ];
 
 export default function ObjectsPage() {
@@ -131,6 +157,8 @@ export default function ObjectsPage() {
   // Ruling 7: objects outside a module-scoped user's grants are hidden (UI filter; the API enforces scope).
   const { scopeFilter } = usePermissions();
   const objects = (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
+
+  useBreadcrumbScope(data ? [`${objects.length} objects`, ...(version?.label ? [`run ${version.label}`] : [])] : []);
 
   let state: "loading" | "empty" | "error" | undefined;
   let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = { title: "No objects in this run", ghost: "table" };
@@ -184,12 +212,18 @@ export default function ObjectsPage() {
   const notReady = objects.filter((o) => o.readiness === "fail").length; // matches the ?readiness=fail drill
   const blockingFindings = data?.blocking_findings_total;
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
+  const worst = objects.reduce<(typeof objects)[number] | null>((w, o) => (w === null || o.affected_records > w.affected_records ? o : w), null);
+  const atRisk = objects.filter((o) => o.readiness === "warn").length;
+  const go = objects.filter((o) => o.readiness === "pass").length;
   const summary = objects.length > 0 && (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-6 m-motion-stagger">
-        <Stat label="Not ready" value={notReady} hint={`of ${objects.length} objects`} tone={notReady > 0 ? "no-go" : "go"} href={`/objects?run=${run}&readiness=fail`} />
+      <div className="m-stat-grid m-motion-stagger">
+        <Stat label="Objects" value={objects.length} hint="in this run" href={`/objects?run=${run}`} />
+        <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={`/objects?run=${run}&readiness=pass`} />
+        <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={`/objects?run=${run}&readiness=warn`} />
+        <Stat label="Not ready" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={`/objects?run=${run}&readiness=fail`} />
         <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" />
-        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : null}
+        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Most affected" value={worst ? worst.affected_records.toLocaleString() : "—"} hint={worst ? `records in ${worst.label}` : undefined} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />

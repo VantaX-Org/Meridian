@@ -48,8 +48,8 @@ function Cell({ label, cell, loading, hero, children }: { label: string; cell: I
   const body = loading ? <Skeleton height={16} hero={hero} /> : cell.sentence;
   const ink = hero ? "var(--m-hero-ink)" : "var(--m-ink)";
   return (
-    <div className="grid content-start gap-1 p-3" style={{ borderTop: `2px solid ${(hero ? HERO_TONE : TONE)[cell.tone ?? "neutral"]}` }}>
-      <span className="m-text-meta font-medium" style={{ color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{label}</span>
+    <div className="grid content-start gap-1 p-3 @5xl:flex @5xl:min-h-9 @5xl:items-center @5xl:gap-2 @5xl:px-3 @5xl:py-1" style={{ borderTop: `2px solid ${(hero ? HERO_TONE : TONE)[cell.tone ?? "neutral"]}` }}>
+      <span className="m-text-meta shrink-0 font-medium @5xl:text-[11px]" style={{ color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{label}</span>
       {cell.href && !loading ? (
         <Link href={cell.href} className="m-text-body underline-offset-2 hover:underline" style={{ color: ink }}>{body}</Link>
       ) : (
@@ -73,7 +73,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
           {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
         </div>
       )}
-      <div className="grid gap-px md:grid-cols-4">
+      <div className="grid gap-px md:grid-cols-4 @5xl:grid-cols-4">
         <Cell label="Situation" cell={situation} loading={loading} hero={hero} />
         <Cell label="What changed" cell={changed} loading={loading} hero={hero} />
         <Cell label="Why it matters" cell={why} loading={loading} hero={hero} />

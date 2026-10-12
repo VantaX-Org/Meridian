@@ -106,13 +106,25 @@ export function EmptyState({
   detail,
   action,
   ghost,
+  variant = "card",
 }: {
   title: string;
   detail?: string;
   /** Required by spec: every empty state offers a next step. Optional in the type only until all call sites supply one. */
   action?: ReactNode;
   ghost?: EmptyStateGhost;
+  /** "inline": one 36px line for a region inside a card, no ghost or chrome. */
+  variant?: "card" | "inline";
 }) {
+  if (variant === "inline") {
+    return (
+      <div data-state="empty" className="flex items-center gap-3 text-[13px]" style={{ minHeight: 36, padding: "0 var(--m-space-3)", color: "var(--m-ink-2)" }}>
+        <span>{title}</span>
+        {detail && <span style={{ color: "var(--m-ink-3)" }}>{detail}</span>}
+        {action}
+      </div>
+    );
+  }
   return (
     <div
       data-state="empty"

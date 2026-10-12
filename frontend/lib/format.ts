@@ -201,3 +201,53 @@ export function recordKeyLabel(key: string): string {
   const text = parts.map(([k, v]) => `${keyFieldLabel(k)} ${v}`).join(", ");
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
+
+const NULL_DASH = "—";
+const isNum = (n: number | null | undefined): n is number => typeof n === "number" && Number.isFinite(n);
+const INT_FMT = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+
+/** "12,480". Null or non-finite is an em dash, never 0. */
+export function formatInt(n: number | null | undefined): string {
+  return isNum(n) ? INT_FMT.format(n) : NULL_DASH;
+}
+
+/** "1.2M", "123.5K" from 100,000 up (Stat tiles and chart axes only); below that the full grouped integer. */
+export function formatCompact(n: number | null | undefined): string {
+  if (!isNum(n)) return NULL_DASH;
+  const a = Math.abs(n);
+  if (a >= 1_000_000) return `${round1(n / 1_000_000)}M`;
+  if (a >= 100_000) return `${round1(n / 1_000)}K`;
+  return formatInt(n);
+}
+
+/** Scores keep one decimal, including a trailing zero: "87.0". */
+export function formatScore(n: number | null | undefined): string {
+  return isNum(n) ? round1(n).toFixed(1) : NULL_DASH;
+}
+
+/** Percent from a 0..100 number: "96%" at 10 and above, "3.4%" below, "<0.1%" floor, "0%" for exactly 0. */
+export function formatPct(p: number | null | undefined): string {
+  if (!isNum(p)) return NULL_DASH;
+  if (p === 0) return "0%";
+  if (p > 0 && p < 0.1) return "<0.1%";
+  return p >= 10 ? `${Math.round(p)}%` : `${round1(p)}%`;
+}
+
+/** "+2.1" or "−0.8" (U+2212), one decimal; zero is "0.0". */
+export function formatDelta(n: number | null | undefined): string {
+  if (!isNum(n)) return NULL_DASH;
+  const r = round1(n);
+  if (r === 0) return "0.0";
+  return r > 0 ? `+${r.toFixed(1)}` : `−${Math.abs(r).toFixed(1)}`;
+}
+
+/** "42s", "4m 12s", "1h 03m". Under a second is "<1s". */
+export function formatDuration(ms: number | null | undefined): string {
+  if (!isNum(ms)) return NULL_DASH;
+  const s = Math.round(ms / 1000);
+  if (ms < 1000) return "<1s";
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${String(s % 60).padStart(2, "0")}s`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+}

@@ -36,6 +36,7 @@ export * from "./primitives/SeverityDot";
 export * from "./primitives/ScoreRing";
 export * from "./primitives/AiSummary";
 export * from "./primitives/ScoreExplainer";
+export * from "./primitives/DimensionBars";
 
 export * from "./table/DataTable";
 export * from "./table/columns";
@@ -75,3 +76,4 @@ export * from "./shell/CommandPalette";
 export * from "./shell/useDrill";
 export * from "./shell/DrillLink";
 export * from "./shell/Toaster";
+export * from "./templates/PageFrame";

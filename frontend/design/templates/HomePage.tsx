@@ -7,8 +7,9 @@ import { Delta } from "../primitives/Delta";
 import { Pill } from "../primitives/Pill";
 import { Stat } from "../primitives/Stat";
 import { PageHeader } from "../primitives/PageHeader";
-import { Skeleton } from "../primitives/Skeleton";
+import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { ErrorState } from "../primitives/ErrorState";
+import { PageFrame } from "./PageFrame";
 import { JourneyStepper } from "./JourneyStepper";
 import type { DayOneStep } from "../../hooks/use-day-one";
 import { relativeTime } from "../../lib/format";
@@ -52,7 +53,7 @@ const row36 = Array.from({ length: 8 }, (_, i) => i);
  * component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, journey, error, dimensions, objects, trend, work, lists, headerActions,
+  state, verdict, run, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions,
 }: {
   persona: string;
   state: "loading" | "no-data" | "data" | "error";
@@ -60,12 +61,14 @@ export function HomePage({
   run?: HomeRunInfo | null;
   journey?: HomeJourney;
   error?: { message: string; onRetry: () => void };
-  /** Six dimension `Stat`s. */
+  /** Right of the trend (5/12): the dimension inline bars. */
   dimensions?: ReactNode;
-  /** Left column (7/12): the worst-objects table. */
+  /** Right column of the lower panel (5/12): the worst-objects table. */
   objects?: ReactNode;
-  /** Right column (5/12): the trend line and heatmap. */
+  /** Left of the first panel (7/12): the score trend line. */
   trend?: ReactNode;
+  /** Left of the lower panel (7/12): the dimension-by-object heatmap. */
+  heatmap?: ReactNode;
   /** The persona's work row of `Stat`s. */
   work?: ReactNode;
   lists?: ReactNode;
@@ -80,10 +83,7 @@ export function HomePage({
   );
 
   return (
-    <div
-      className="mx-auto flex flex-col"
-      style={{ padding: "var(--m-page-pad)", gap: "var(--m-space-6)", maxWidth: "var(--m-page-max)" }}
-    >
+    <PageFrame gap={4}>
       {header}
 
       {state === "error" && (
@@ -91,14 +91,16 @@ export function HomePage({
       )}
 
       {state === "loading" && (
-        <div className="flex flex-col" style={{ gap: "var(--m-space-6)" }} data-testid="home-loading">
+        <div className="flex flex-col gap-4" data-testid="home-loading">
           <div className="m-hero"><Skeleton height={112} hero /></div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} height={88} />)}
+          <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
+            <div className="@5xl:col-span-7"><Skeleton height={200} /></div>
+            <div className="@5xl:col-span-5"><Skeleton height={200} /></div>
           </div>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            <div className="flex flex-col gap-1 lg:col-span-7">{row36.map((i) => <Skeleton key={i} height={36} />)}</div>
-            <div className="lg:col-span-5"><Skeleton height={200} /></div>
+          <div className="m-stat-grid">{Array.from({ length: 6 }, (_, i) => <StatSkeleton key={i} />)}</div>
+          <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
+            <div className="@5xl:col-span-7"><Skeleton height={232} /></div>
+            <div className="flex flex-col gap-1 @5xl:col-span-5">{row36.map((i) => <Skeleton key={i} height={30} />)}</div>
           </div>
         </div>
       )}
@@ -149,15 +151,20 @@ export function HomePage({
         </section>
       )}
 
-      {state === "data" && dimensions}
-      {state === "data" && (objects || trend) && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          {objects && <div className="min-w-0 lg:col-span-7">{objects}</div>}
-          <div className={`flex min-w-0 flex-col gap-6 ${objects ? "lg:col-span-5" : "lg:col-span-12"}`}>{trend}</div>
+      {state === "data" && (trend || dimensions) && (
+        <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
+          {trend && <div className={`min-w-0 ${dimensions ? "@5xl:col-span-7" : "@5xl:col-span-12"}`}>{trend}</div>}
+          {dimensions && <div className={`min-w-0 ${trend ? "@5xl:col-span-5" : "@5xl:col-span-12"}`}>{dimensions}</div>}
         </div>
       )}
       {state === "data" && work}
+      {state === "data" && (heatmap || objects) && (
+        <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
+          {heatmap && <div className={`min-w-0 ${objects ? "@5xl:col-span-7" : "@5xl:col-span-12"}`}>{heatmap}</div>}
+          {objects && <div className={`min-w-0 ${heatmap ? "@5xl:col-span-5" : "@5xl:col-span-12"}`}>{objects}</div>}
+        </div>
+      )}
       {lists}
-    </div>
+    </PageFrame>
   );
 }
