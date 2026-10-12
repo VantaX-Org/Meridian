@@ -31,6 +31,16 @@ describe("ReportsPage", () => {
     expect(dl).toHaveBeenCalledWith(expect.stringContaining("compare.pdf?v2=v2"), "compare_v2.pdf");
   });
 
+  it("puts a 56 by 40 cover on every report row", async () => {
+    perm.allowed = true;
+    const { container } = mount();
+    await screen.findByText("Run comparison");
+    const covers = container.querySelectorAll(".m-report-cover");
+    expect(covers).toHaveLength(9);
+    expect((covers[0] as HTMLElement).style.width).toBe("56px");
+    expect((covers[0] as HTMLElement).style.height).toBe("40px");
+  });
+
   it("shows no Download button without the export permission", async () => {
     perm.allowed = false;
     mount();
