@@ -5,7 +5,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
-import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Menu, Pill, Mono, Select, Skeleton, Tabs, Input } from "@/design";
+import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantsPicker, scopeLabel } from "@/components/admin/grants-picker";
 import { InviteForm } from "@/components/admin/invite-form";
@@ -36,9 +36,8 @@ export default function AdminRolesPage() {
 
   if (!can("manage_users")) {
     return (
-      <div className="flex flex-col gap-2 p-6">
-        <strong>Roles and access needs the <Mono>manage_users</Mono> permission</strong>
-        <p className="m-text-body" style={dim}>Ask an administrator to change roles or grants.</p>
+      <div className="p-6">
+        <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or grants." ghost="list" />
       </div>
     );
   }
@@ -46,15 +45,13 @@ export default function AdminRolesPage() {
   const custom = roles.filter((r) => !r.built_in).length;
   return (
     <div className="flex flex-col gap-6 p-6">
-      <header className="flex flex-col gap-1" aria-label="Summary">
-        <p className="m-text-body">{roles.length} roles, {custom} custom. Built-in roles are read-only; clone one to change it.</p>
-        <p className="m-text-body" style={dim}>Grant a role at a system or module to scope it. Why: least access that still lets people do their work. Do next: review open requests.</p>
-      </header>
+      <PageHeader title="Roles and access" meta={`${roles.length} roles, ${custom} custom`} />
+      <Notice tone="info">Built-in roles are read-only, clone one to change it. Grant a role at a system or module to scope it, so people get the least access that lets them work.</Notice>
       <Tabs
         value={tab} onValueChange={setTab}
         items={[
           { value: "roles", label: "Roles", content: <RolesTab roles={roles} loading={rolesQ.isLoading} error={rolesQ.isError ? rolesQ.error : null} retry={() => rolesQ.refetch()} /> },
-          { value: "users", label: "Users & scopes", content: <UsersTab roles={roles} /> },
+          { value: "users", label: "Users & scopes", content: <UsersTab roles={roles} onInvite={() => setTab("invite")} /> },
           { value: "invite", label: "Invite", content: <InviteTab /> },
           { value: "requests", label: "Requests", content: <RequestsTab roles={roles} /> },
           { value: "history", label: "History", content: <HistoryTab /> },
@@ -99,7 +96,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
 
   if (error) return <ErrorState message={apiErrorMessage(error)} onRetry={retry} />;
   if (loading) return <Skeleton height={240} />;
-  if (!roles.length) return <EmptyState title="No roles yet. Built-in roles appear once the tenant is set up." />;
+  if (!roles.length) return <EmptyState title="No roles yet" detail="Built-in roles appear once the tenant is set up." ghost="list" />;
   return (
     <>
       <DataTable columns={columns} data={roles} getRowId={(r) => r.key} onRowClick={setOpen} />
@@ -208,7 +205,7 @@ function EditForm({ role, onClose, onDone }: { role: Role; onClose: () => void; 
   );
 }
 
-function UsersTab({ roles }: { roles: Role[] }) {
+function UsersTab({ roles, onInvite }: { roles: Role[]; onInvite: () => void }) {
   const [sel, setSel] = useState<User | null>(null);
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
   const users = usersQ.data?.users ?? [];
@@ -220,7 +217,7 @@ function UsersTab({ roles }: { roles: Role[] }) {
   ], []);
   if (usersQ.isError) return <ErrorState message={apiErrorMessage(usersQ.error)} onRetry={() => usersQ.refetch()} />;
   if (usersQ.isLoading) return <Skeleton height={240} />;
-  if (!users.length) return <EmptyState title="No users yet. Invite the first one." />;
+  if (!users.length) return <EmptyState title="No users yet" detail="Invite the first one from the Invite tab." ghost="list" action={<Button onClick={() => onInvite()}>Invite user</Button>} />;
   return (
     <>
       <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowClick={setSel} />
@@ -250,30 +247,27 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="m-text-body" style={dim}>{user.email}</p>
-      <section className="flex flex-col gap-2">
-        <h3 className="m-text-body font-semibold">Grants</h3>
+      <Card title="Grants">
         <GrantsPicker
           grants={grantsQ.data ?? []} roles={roles} systems={systems} busy={add.isPending || rem.isPending}
           onAdd={(g) => add.mutate(g)} onRemove={(g) => rem.mutate(g.id)}
         />
-      </section>
+      </Card>
       {legacy ? (
-        <section className="flex flex-col gap-2">
-          <h3 className="m-text-body font-semibold">Legacy object approvals</h3>
+        <Card title="Legacy object approvals">
           <Button variant="secondary" disabled={conv.isPending} onClick={() => conv.mutate(false)}>Convert to grants</Button>
           {result ? (
             <div className="m-text-meta flex flex-col gap-1">
               <p>Skipped (approve entries cannot become grants): {result.skipped.length ? result.skipped.join(", ") : "none"}</p>
               <p>Kept: {result.kept.length ? result.kept.join(", ") : "none"}</p>
-              {!result.confirmed ? <Button onClick={() => conv.mutate(true)} disabled={conv.isPending}>Confirm conversion</Button> : <p>Conversion applied.</p>}
+              {!result.confirmed ? <Button onClick={() => conv.mutate(true)} disabled={conv.isPending}>Confirm conversion</Button> : <p>Conversion applied</p>}
             </div>
           ) : null}
-        </section>
+        </Card>
       ) : null}
-      <section className="flex flex-col gap-2">
-        <h3 className="m-text-body font-semibold">Effective permissions</h3>
+      <Card title="Effective permissions">
         <EffectivePermissionsView userId={user.id} systems={systems} />
-      </section>
+      </Card>
     </div>
   );
 }
@@ -310,7 +304,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
   if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   if (q.isLoading) return <Skeleton height={160} />;
   const rows = q.data ?? [];
-  if (!rows.length) return <EmptyState title="No open requests." />;
+  if (!rows.length) return <EmptyState title="No open requests" detail="Access requests from users appear here for a decision." ghost="list" />;
   return (
     <>
       <ul className="flex flex-col gap-3" aria-label="Open access requests">
@@ -325,7 +319,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       </ul>
       <Dialog open={!!granting} onOpenChange={(o) => { if (!o) setGranting(null); }} title="Grant access">
         <div className="flex flex-col gap-3">
-          {granting ? <p className="m-text-body">{who(granting.user_id)}, {granting.resource} {granting.action}, scope: {where(granting) === "all" ? "all systems" : where(granting)}. The grant is created at this scope.</p> : null}
+          {granting ? <p className="m-text-body">{who(granting.user_id)}, {granting.resource} {granting.action}, scope: {where(granting) === "all" ? "all systems" : where(granting)}. The grant is created at this scope</p> : null}
           <Field label="Role"><Select options={roles.map((r) => ({ value: r.key, label: r.name }))} value={role} onValueChange={setRole} placeholder="Choose a role" /></Field>
           <div className="flex gap-2">
             <Button disabled={!role || decide.isPending} onClick={() => granting && decide.mutate({ id: granting.id, body: { decision: "granted", role_key: role } })}>Grant access</Button>
@@ -355,25 +349,21 @@ function HistoryTab() {
   if (qs.some((q) => q.isError)) return <ErrorState message={apiErrorMessage(qs.find((q) => q.isError)?.error)} onRetry={() => qs.forEach((q) => q.refetch())} />;
   if (qs.some((q) => q.isLoading)) return <Skeleton height={240} />;
   const entries: AuditEntry[] = qs.flatMap((q) => q.data?.entries ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at));
-  if (!entries.length) return <EmptyState title="No role changes yet." />;
-  return (
-    <table className="m-text-meta" aria-label="Role change history">
-      <thead><tr><th scope="col" className="text-left pr-3">When</th><th scope="col" className="text-left pr-3">Actor</th><th scope="col" className="text-left pr-3">Action</th><th scope="col" className="text-left">Change</th></tr></thead>
-      <tbody>
-        {entries.map((e) => (
-          <tr key={e.id}>
-            <td className="pr-3 py-1"><time dateTime={e.created_at}>{relativeTime(e.created_at)}</time></td>
-            <td className="pr-3">{e.actor_email ?? "system"}</td>
-            <td className="pr-3"><Mono>{e.action}</Mono> {e.entity_id ?? ""}</td>
-            <td>
-              <details>
-                <summary>Before and after</summary>
-                <pre>{JSON.stringify({ before: e.before_json, after: e.after_json }, null, 2)}</pre>
-              </details>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+  if (!entries.length) return <EmptyState title="No role changes yet" detail="Role, grant and request changes are listed here." ghost="list" />;
+  return <DataTable columns={historyCols} data={entries} getRowId={(e) => e.id} />;
 }
+
+const historyCols: ColumnDef<AuditEntry, unknown>[] = [
+  { id: "when", header: "When", cell: ({ row }) => <time dateTime={row.original.created_at}>{relativeTime(row.original.created_at)}</time> },
+  { id: "who", header: "Actor", cell: ({ row }) => row.original.actor_email ?? "system" },
+  { id: "act", header: "Action", cell: ({ row }) => <span><Mono>{row.original.action}</Mono> {row.original.entity_id ?? ""}</span> },
+  {
+    id: "chg", header: "Change",
+    cell: ({ row }) => (
+      <details>
+        <summary>Before and after</summary>
+        <pre>{JSON.stringify({ before: row.original.before_json, after: row.original.after_json }, null, 2)}</pre>
+      </details>
+    ),
+  },
+];
