@@ -169,6 +169,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
           columns={columns}
           data={rulesRanked}
           getRowId={(row) => row.check_id}
+          rowHref={(row) => recordsHref(row.check_id)}
           onRowClick={(row) => router.push(recordsHref(row.check_id))}
         />
       )}
@@ -195,12 +196,10 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-6">
-        <Card title="DQS" padding="sm">
-          <div className="flex items-center gap-3">
-            {data.composite_score != null ? <ScoreRing score={data.composite_score} size={48} /> : null}
-            <span className="m-numeric font-semibold" style={{ fontSize: "var(--m-text-stat)", minWidth: "4ch" }}>{data.composite_score != null ? String(data.composite_score) : "—"}</span>
-          </div>
-        </Card>
+        <div className="flex items-center gap-3">
+          {data.composite_score != null ? <ScoreRing score={data.composite_score} size={48} /> : null}
+          <Stat label="DQS" value={data.composite_score != null ? String(data.composite_score) : "—"} loading={isLoading} />
+        </div>
         <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         <Stat label="Affected records" value={data.affected_records.toLocaleString()} href={`/objects/${object}?run=${run}&tab=records`} />
       </div>
@@ -253,7 +252,7 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       {data.tables.map((table) => (
-        <Card key={table.table} title={<Mono>{table.table}</Mono>} padding="sm">
+        <Card key={table.table} title={<Mono>{table.table}</Mono>} meta={`${table.fields.length} fields`} padding="sm">
           <DataTable
             columns={[
               {
@@ -275,7 +274,7 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
                 header: "Top values",
                 cell: ({ row }) =>
                   row.original.stats.masked ? (
-                    <Pill tone="neutral">Masked: {row.original.stats.mask_reason ?? "unknown"}</Pill>
+                    <span title={row.original.stats.mask_reason ?? "unknown"}><Pill tone="neutral">Masked</Pill></span>
                   ) : (
                     topValues(row.original.stats.top_values)
                   ),
@@ -299,7 +298,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (e.key !== "f" || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable]")) return;
+      if (e.key !== "f" || e.repeat || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable],[role=dialog]")) return;
       const rowId = document.querySelector("[role=grid][aria-activedescendant]")?.getAttribute("aria-activedescendant");
       const key = (rowId ? document.getElementById(rowId)?.querySelector<HTMLElement>("[data-fix]")?.dataset.fix : undefined) ?? firstKey;
       if (key) router.push(fixSheetHref(object, run, key));
@@ -358,9 +357,9 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
   if (!data || data.records.length === 0) {
     return (
       <EmptyState
-        title="No failing records for this rule"
+        title="All records pass this rule"
         detail="Every record passed this check in this run."
-        action={<Button render={<Link href={`/objects/${object}?run=${run}&tab=rules`}>Back to rules</Link>} />}
+        action={<Button render={<Link href={`/objects/${object}?run=${run}&tab=rules`}>Open rules</Link>} />}
       />
     );
   }
@@ -377,7 +376,8 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
         fields={Object.keys(data.records[0]?.field_values ?? {})}
       />
       <Card
-        title={<>{data.total.toLocaleString()} record{data.total === 1 ? "" : "s"} fail <Mono>{checkId}</Mono></>}
+        title={checkId}
+        meta={<><Mono>{checkId}</Mono>, {data.total.toLocaleString()} record{data.total === 1 ? "" : "s"}</>}
         actions={
           <>
             <Button render={<Link href={fixSheetHref(object, run, data.records[0].record_key)}>Open fix sheet</Link>} />
@@ -389,6 +389,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
           columns={columns}
           data={data.records}
           getRowId={(row) => row.record_key}
+          rowHref={(row) => fixSheetHref(object, run, row.record_key)}
           onRowClick={(row) => router.push(fixSheetHref(object, run, row.record_key))}
         />
         <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
@@ -427,9 +428,13 @@ export default function ObjectDetailPage() {
   useQuery(recordsQuery(run, checkId, 1));
 
   // Header content from the list cache while the detail request is in flight.
-  const listed = queryClient
-    .getQueryData<{ objects: ObjectSummary[] }>(queryKeys.objects(run))
-    ?.objects.find((o) => o.module === object);
+  // Seeded by the list on row click (keyed by resolved run id); falls back to the list cache on a direct load.
+  const { data: listed } = useQuery({
+    queryKey: queryKeys.objectSummary(object, run),
+    queryFn: () => getObject(object, run),
+    enabled: false,
+    initialData: () => queryClient.getQueryData<{ objects: ObjectSummary[] }>(queryKeys.objects(run))?.objects.find((o) => o.module === object),
+  });
   const summary = data ?? listed;
 
   useEffect(() => {
@@ -441,13 +446,14 @@ export default function ObjectDetailPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [object, search]); // eslint-disable-line react-hooks/exhaustive-deps -- setTab closes over both
 
   if (!run) {
     return (
       <EmptyState
-        title="Select a run to see this object's data quality"
-        action={<Button render={<Link href="/objects">All objects</Link>} />}
+        title="No run selected"
+        detail="Select a run to see this object's data quality."
+        action={<Button render={<Link href="/runs">Open runs</Link>} />}
       />
     );
   }

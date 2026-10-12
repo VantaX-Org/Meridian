@@ -249,7 +249,7 @@ describe("ObjectDetailPage", () => {
     await waitFor(() => expect(screen.getByText("AAAA (90%)")).toBeInTheDocument());
     expect(screen.getByText("AAAA (90%)")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
     expect(screen.getByText("FERT (90)")).toBeInTheDocument();
-    expect(screen.getByText("Masked: privacy")).toBeInTheDocument();
+    expect(screen.getByText("Masked").closest("[title]")).toHaveAttribute("title", "privacy");
     expect(screen.getByText("5 (5%)")).toBeInTheDocument();
     expect(screen.getByText("MARA.MTART")).toBeInTheDocument();
     expect(screen.getByText("MARA.MTART")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
@@ -278,3 +278,64 @@ describe("ObjectDetailPage", () => {
     });
   });
 });
+
+describe("ObjectDetailPage keyboard and gating", () => {
+  it("keys 1-4 switch tabs", async () => {
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("Material Master");
+    fireEvent.keyDown(document.body, { key: "2" });
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("tab=rules"));
+    fireEvent.keyDown(document.body, { key: "4" });
+    expect(push).toHaveBeenLastCalledWith(expect.stringContaining("tab=records"));
+  });
+
+  it("1-4 ignored while typing in an input", async () => {
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("Material Master");
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    fireEvent.keyDown(input, { key: "2" });
+    expect(push).not.toHaveBeenCalled();
+    input.remove();
+  });
+
+  it("f opens the first fix sheet, ignores repeat and dialogs", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=records&check_id=mm_missing_desc");
+    vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
+      version_id: "v1", check_id: "mm_missing_desc", total: 1,
+      records: [{ record_key: "K1", grain: "G", module: "material_master", field_values: null }],
+    });
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("K1");
+    fireEvent.keyDown(document.body, { key: "f", repeat: true });
+    expect(push).not.toHaveBeenCalled();
+    const dlg = document.createElement("div");
+    dlg.setAttribute("role", "dialog");
+    document.body.appendChild(dlg);
+    fireEvent.keyDown(dlg, { key: "f" });
+    expect(push).not.toHaveBeenCalled();
+    dlg.remove();
+    fireEvent.keyDown(document.body, { key: "f" });
+    expect(push).toHaveBeenCalledWith("/objects/material_master/records/K1?run=v1");
+  });
+
+  it("does not fetch records without check_id", async () => {
+    const spy = vi.spyOn(versionsApi, "getFindingRecords");
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("Material Master");
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("empty-state copy: no run, no rule, all records pass", async () => {
+    searchParams = new URLSearchParams("");
+    const a = renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("No run selected")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open runs" })).toBeInTheDocument();
+    a.unmount();
+    searchParams = new URLSearchParams("run=v1&tab=records&check_id=mm_missing_desc");
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("All records pass this rule")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open rules" })).toBeInTheDocument();
+  });
+});
+
