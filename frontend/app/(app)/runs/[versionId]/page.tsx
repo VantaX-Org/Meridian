@@ -249,12 +249,16 @@ function SummaryTab({
           />
         </Card>
       </div>
-      {prescriptive.isLoading || next.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="font-semibold" style={sectionTitle}>Next actions</h2>
-          {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
-        </section>
-      ) : null}
+      <section className="flex flex-col gap-2" data-testid="next-actions-slot" style={{ minHeight: prescriptive.isLoading ? 96 + 28 : undefined }}>
+        <h2 className="font-semibold" style={sectionTitle}>Next actions</h2>
+        {prescriptive.isLoading ? (
+          <Skeleton height={96} />
+        ) : next.length > 0 ? (
+          <NextActions actions={next} />
+        ) : (
+          <p className="text-sm" style={{ color: "var(--m-ink-muted)" }}>No next actions for this run</p>
+        )}
+      </section>
       <Card title="Composite over runs">
         {versionLoading || (systemId != null && history.isLoading) ? (
           <Skeleton height={240} />

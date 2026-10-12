@@ -59,6 +59,32 @@ const newer = version({ id: "v2", label: "Oct 8 upload", dqs_summary: { material
 const older = version({ id: "v1", label: "Oct 1 upload", run_at: "2026-10-01T00:00:00Z", dqs_summary: { material_master: dqs(71.2) } });
 
 describe("RunsPage", () => {
+  describe("chart slot", () => {
+    it("is reserved while loading", () => {
+      vi.spyOn(versionsApi, "getVersions").mockReturnValue(new Promise(() => {}));
+      vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+      renderWithQuery(<RunsPage />);
+      expect(screen.getByTestId("runs-chart-slot")).toBeInTheDocument();
+    });
+
+    it("holds a muted placeholder with one run", async () => {
+      vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer] });
+      vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+      renderWithQuery(<RunsPage />);
+      await waitFor(() => expect(screen.getByText("Trend appears after two runs")).toBeInTheDocument());
+      expect(within(screen.getByTestId("runs-chart-slot")).getByText("Trend appears after two runs")).toBeInTheDocument();
+    });
+
+    it("holds the chart with two runs", async () => {
+      vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+      vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+      renderWithQuery(<RunsPage />);
+      await waitFor(() => expect(screen.getByText("Score per run, ECC Prod")).toBeInTheDocument());
+      expect(within(screen.getByTestId("runs-chart-slot")).getByText("Score per run, ECC Prod")).toBeInTheDocument();
+      expect(screen.queryByText("Trend appears after two runs")).toBeNull();
+    });
+  });
+
   it("shows the DQS column and a score chart for the latest system", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);

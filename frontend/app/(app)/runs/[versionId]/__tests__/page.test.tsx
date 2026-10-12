@@ -2,6 +2,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import * as analyticsApi from "@/lib/api/analytics";
 import * as downloadApi from "@/lib/api/download";
 import * as findingsApi from "@/lib/api/findings";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
@@ -62,6 +63,31 @@ beforeEach(() => {
 });
 
 describe("RunDetailPage", () => {
+  describe("next actions slot", () => {
+    const withFindings = () => {
+      vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+      vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    };
+
+    it("is reserved while the query loads", async () => {
+      withFindings();
+      vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockReturnValue(new Promise(() => {}));
+      renderWithQuery(<RunDetailPage />);
+      const slot = await screen.findByTestId("next-actions-slot");
+      expect(slot.style.minHeight).not.toBe("");
+    });
+
+    it("shows a muted line when there are no actions", async () => {
+      withFindings();
+      vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
+        actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 },
+      } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+      renderWithQuery(<RunDetailPage />);
+      expect(await screen.findByText("No next actions for this run")).toBeInTheDocument();
+      expect(screen.getByTestId("next-actions-slot")).toBeInTheDocument();
+    });
+  });
+
   it("renders the decisive error of a failed step", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(version({ id: "v2", label: "Oct 8", status: "failed" }));
     vi.spyOn(runsApi, "getRunSteps").mockResolvedValue({

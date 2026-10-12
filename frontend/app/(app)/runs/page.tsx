@@ -168,7 +168,10 @@ export default function RunsPage() {
   const summary = all.isLoading ? (
     <div className="flex flex-col gap-4" aria-busy="true">
       <div className="flex flex-wrap gap-6"><Stat label="Latest DQS" value="" loading /></div>
-      <Skeleton height={160} />
+      <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
+        <Skeleton height="var(--m-leading-section)" />
+        <Skeleton height={160} />
+      </div>
     </div>
   ) : (
     <div className="flex flex-col gap-4">
@@ -184,14 +187,18 @@ export default function RunsPage() {
           {failedCount > 0 ? <Stat label="Failed runs" value={failedCount.toLocaleString()} tone="no-go" href="/runs?status=failed" /> : null}
         </div>
       ) : null}
-      {points.length > 1 ? (
-        <div className="flex flex-col gap-1">
-          <h2 className="font-semibold" style={{ fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" }}>
-            {`Score per run, ${systemName.get(chartScope) ?? "latest system"}`}
-          </h2>
+      <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
+        <h2 className="font-semibold" style={{ fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" }}>
+          {`Score per run, ${systemName.get(chartScope) ?? "latest system"}`}
+        </h2>
+        {points.length > 1 ? (
           <Line data={points} height={160} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
-        </div>
-      ) : null}
+        ) : (
+          <div className="flex items-center justify-center text-sm" style={{ height: 160, background: "var(--m-sheet-sunken)", color: "var(--m-ink-muted)" }}>
+            Trend appears after two runs
+          </div>
+        )}
+      </div>
     </div>
   );
 
