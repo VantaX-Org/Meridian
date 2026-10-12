@@ -5,16 +5,19 @@
  * Node size is cases, edge width is count, the edge label is the median wait.
  * A node click drills one level, to L4 at most; at L4 the L5 nodes open a Drawer.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, Drawer, EmptyState, ErrorState, Mono, Skeleton } from "@/design";
+import { GraphLegend } from "@/design/charts/Graph";
+import { domainOf } from "@/design/tokens";
 import { getDfg, type Dfg, type NodeStats, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { L4, ProcessModelDocument } from "@/types/process-model";
 import { findActivity, locate } from "@/app/(app)/insights/process/designer/_components/doc";
+import { bottleneckKeys, isRework } from "./edge-marks";
 import { L5Table } from "./l5-table";
 import { DqDefects, fmtCount, fmtFitness, fmtSeconds, fmtShare, ViewAsTable } from "./shared";
 
@@ -49,6 +52,7 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
   const [allEdges, setAllEdges] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const params = { ...filters, ...(node ? { node_id: node } : {}), ...(allEdges ? { all_edges: true } : {}) };
+  const firstLoad = useRef<string | null>(null);
   const dfg = useQuery({ queryKey: queryKeys.processRunView(runId, "dfg", params), queryFn: () => getDfg(runId, params) });
 
   if (dfg.isError) return <ErrorState message={apiErrorMessage(dfg.error)} onRetry={() => dfg.refetch()} />;
@@ -63,6 +67,14 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
   const name = (id: string) => PSEUDO_LABEL[id] ?? names.get(id) ?? id;
   const used = new Set(d.edges.flatMap((e) => [e.source, e.target]));
   const max = Math.max(1, ...d.edges.map((e) => e.count));
+  // The L1 owner module colours every node; the pulse plays for the first load only, not on filter changes.
+  const owner = doc.l1.find((x) => locate({ ...doc, l1: [x] }, d.node.id))?.modules[0];
+  const domain = domainOf(owner);
+  const orderOf = (id: string) => locate(doc, id)?.item.order;
+  const bottlenecks = bottleneckKeys(d.edges);
+  const reworks = new Set(d.edges.filter((e) => isRework(e, orderOf)).map((e) => `${e.source}>${e.target}`));
+  const key = JSON.stringify(params);
+  firstLoad.current ??= key;
   const l4 = d.level === 5 ? (locate(doc, d.node.id)?.item as L4 | undefined) : undefined;
   const click = (id: string) => {
     if (PSEUDO.has(id)) return;
@@ -88,13 +100,18 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
       </div>
       <ViewAsTable
         chart={
-          <div className="overflow-x-auto">
+          <div className="grid gap-2">
+            <GraphLegend domains={[domain]} bottleneck={bottlenecks.size > 0} rework={reworks.size > 0} />
+            <div className="overflow-x-auto">
             <Graph title={`${d.node.name} flow`} weighted width={900} height={420}
-              nodes={[...[...PSEUDO].filter((p) => used.has(p)).map((p) => ({ id: p, size: 0, label: name(p) })),
-                ...ranked.map((n) => ({ id: n.id, size: n.case_count, label: n.name }))]}
+              nodes={[...[...PSEUDO].filter((p) => used.has(p)).map((p) => ({ id: p, size: 0, label: name(p), kind: p === "START" ? ("start" as const) : ("end" as const) })),
+                ...ranked.map((n) => ({ id: n.id, size: n.case_count, label: n.name, domain }))]}
               edges={d.edges.map((e) => ({ source: e.source, target: e.target, weight: e.count / max,
+                bottleneck: bottlenecks.has(`${e.source}>${e.target}`) || undefined,
+                rework: reworks.has(`${e.source}>${e.target}`) || undefined,
                 label: e.median_seconds == null ? undefined : fmtSeconds(e.median_seconds) }))}
-              onNodeClick={click} />
+              pulse={key === firstLoad.current} onNodeClick={click} />
+            </div>
           </div>
         }
         table={
@@ -138,7 +155,7 @@ function L5Drawer({ doc, id, onClose }: { doc: ProcessModelDocument; id: string 
             {a.fields.length ? (
               <ul className="grid gap-1">
                 {a.fields.map((f) => (
-                  <li key={f.field}><Mono>{f.field}</Mono>{f.mandatory ? " · mandatory" : ""}{f.description ? ` · ${f.description}` : ""}</li>
+                  <li key={f.field}><Mono>{f.field}</Mono>{f.mandatory ? ", mandatory" : ""}{f.description ? `, ${f.description}` : ""}</li>
                 ))}
               </ul>
             ) : <p style={{ color: "var(--m-ink-3)" }}>No fields recorded for this step.</p>}

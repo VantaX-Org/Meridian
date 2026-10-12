@@ -2,6 +2,7 @@
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { Card, Mono } from "@/design";
+import { mColor, type DomainKey } from "@/design/tokens";
 import type { DqColour, Evidence } from "@/types/process-model";
 
 const ALIGN: Record<DqColour, string> = { green: "aligned", amber: "drifting", red: "blocked" };
@@ -9,6 +10,7 @@ const ALIGN: Record<DqColour, string> = { green: "aligned", amber: "drifting", r
 export interface TaskData extends Record<string, unknown> {
   name: string; tcode: string | null; fields: number; rules: number;
   status?: DqColour; failing?: number; affected?: number; evidence?: Evidence | null; selected: boolean;
+  domain?: DomainKey;
 }
 export interface MarkData extends Record<string, unknown> { label: string; end?: boolean; selected: boolean; parallel?: boolean }
 
@@ -30,6 +32,7 @@ function Task({ data }: NodeProps<Node<TaskData>>) {
       data-alignment={data.status ? ALIGN[data.status] : undefined} data-evidence={data.evidence ?? undefined}>
       <Handles />
       <div className="m-process-node__clip">
+      {data.domain ? <span aria-hidden data-domain={data.domain} style={{ position: "absolute", inset: "0 auto 0 0", width: 4, background: mColor.dom[data.domain], zIndex: 1 }} /> : null}
       <Card padding="sm">
         <div className="flex flex-col gap-0.5">
           {data.tcode ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}><Mono>{data.tcode}</Mono></span> : null}

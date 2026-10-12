@@ -52,7 +52,7 @@ export function ConformanceView({ runId, l1, filters, rework, onClearFilters }: 
   const steps: Step[] = c.steps.map((s) => ({ ...s, missing: c.missing[s.activity] ?? 0, rework: rework?.[s.activity] }));
   const columns: ColumnDef<Step>[] = [
     { accessorKey: "activity", header: "Step" },
-    { accessorKey: "step_fitness", header: "Step fitness", cell: ({ row }) => fmtFitness(row.original.step_fitness) },
+    { accessorKey: "step_fitness", header: "Step fitness", meta: { numeric: true, heat: "seq", heatRange: [0, 1] }, cell: ({ row }) => fmtFitness(row.original.step_fitness) },
     { accessorKey: "missing", header: "Missing", cell: ({ row }) => fmtShare(row.original.missing) },
     { accessorKey: "out_of_order", header: "Out of order", cell: ({ row }) => fmtShare(row.original.out_of_order) },
     { id: "rework", header: "Rework", accessorFn: (s) => s.rework ?? -1, cell: ({ row }) => fmtShare(row.original.rework) },

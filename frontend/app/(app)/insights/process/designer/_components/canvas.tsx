@@ -8,12 +8,15 @@ import {
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { LayoutGrid, Plus, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/design";
+import type { DomainKey } from "@/design/tokens";
 import type { ActivityOverlay, L4, NodeType } from "@/types/process-model";
 import { layoutDiagram, SIZE } from "./layout";
 import { nodeTypes, type MarkData, type TaskData } from "./nodes";
 
 export interface CanvasProps {
   l4: L4;
+  /** Owning domain of the L1 this diagram belongs to: tasks carry its edge. */
+  domain?: DomainKey;
   overlay: Record<string, ActivityOverlay> | null;
   /** Selected node, activity or flow id (the `attr` URL param). */
   selected: string | null;
@@ -34,6 +37,7 @@ export interface CanvasProps {
 export function buildNodes(
   l4: L4, overlay: Record<string, ActivityOverlay> | null, selected: string | null,
   drag: Record<string, { x: number; y: number }>, auto: Record<string, { x: number; y: number }>,
+  domain?: DomainKey,
 ): Node[] {
   const acts = new Map(l4.activities.map((a) => [a.id, a]));
   return l4.diagram.nodes.map((n) => {
@@ -46,7 +50,7 @@ export function buildNodes(
         name: act?.name ?? n.label ?? "Activity", tcode: act?.tcode ?? null, fields: act?.fields.length ?? 0,
         rules: act?.check_ids.length ?? 0, status: act ? overlay?.[act.id]?.dq_status : undefined,
         failing: act ? overlay?.[act.id]?.finding_count : undefined, affected: act ? overlay?.[act.id]?.affected_count : undefined,
-        evidence: n.evidence ?? act?.evidence, selected: isSel,
+        evidence: n.evidence ?? act?.evidence, selected: isSel, domain,
       };
       return { id: n.id, type: "bpmnTask", position: pos, data, ...size };
     }
@@ -63,7 +67,7 @@ function CanvasInner(p: CanvasProps) {
   const [askDelete, setAskDelete] = useState<string | null>(null);
   const auto = useMemo(() => layoutDiagram(l4.diagram), [l4.diagram]);
 
-  const nodes = useMemo<Node[]>(() => buildNodes(l4, overlay, selected, drag, auto), [l4, overlay, selected, drag, auto]);
+  const nodes = useMemo<Node[]>(() => buildNodes(l4, overlay, selected, drag, auto, p.domain), [l4, overlay, selected, drag, auto, p.domain]);
 
   const edges = useMemo<Edge[]>(() => l4.diagram.flows.map((f) => ({
     id: f.id, source: f.source, target: f.target, type: "smoothstep", label: f.label ?? f.condition ?? undefined,

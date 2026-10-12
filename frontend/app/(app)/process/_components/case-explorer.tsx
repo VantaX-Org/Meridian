@@ -79,7 +79,7 @@ function CaseDrawer({ runId, filters, caseId, onClose }: {
                     {e.automated === true && <Pill tone="info">Automated</Pill>}
                   </span>
                   <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
-                    {formatDate(e.ts, "datetime")}{e.resource ? ` · ${e.resource}` : ""}{e.doc_type ? ` · document type ${e.doc_type}` : ""}
+                    {formatDate(e.ts, "datetime")}{e.resource ? `, ${e.resource}` : ""}{e.doc_type ? `, document type ${e.doc_type}` : ""}
                   </span>
                   {e.object_refs && (
                     <span className="flex flex-wrap gap-2">
