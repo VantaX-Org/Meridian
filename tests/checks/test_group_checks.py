@@ -121,6 +121,39 @@ def test_blocks_and_near_pairs_helpers():
     assert 0.9 <= pairs[0][2] < 1.0
 
 
+def test_similarity_check_matches_previous_implementation():
+    # Expected values were produced by running the per-row Series-lookup implementation at
+    # origin/main 6213b51a on this exact frame; the dict-lookup version must not change them.
+    # Non-default index labels catch any positional/label mix-up.
+    from checks.types.similarity_check import SimilarityCheck
+
+    df = pd.DataFrame({
+        "N": ["HYDRAULIC FILTER ELEMENT", "HYDRAULC FILTER ELEMENT", "HYDRAULIC FILTER ELEMENT", None, float("nan"),
+              "GEAR PUMP ASSY", "GEAR PUMP ASSY", "LONELY PART NAME", "ACME ENGINEERING", "WIDGET ALPHA",
+              "WIDGET ALPHA", "WIDGET ALPHB"],
+        "C": ["A", "A", "A", "A", "A", "B", "B", "C", "D", "E", "E", "E"],
+        "E": [f"M{i}" for i in range(12)],
+    }, index=[50, 7, 31, 2, 99, 14, 3, 60, 8, 41, 42, 43])
+    rule = {"id": "T", "module": "material_master", "field": "N", "block_by": ["C"], "evidence_key": "E",
+            "check_class": "similarity_check", "severity": "medium", "message": "m"}
+
+    def run(exact: bool, max_block: int) -> tuple[list[int], list[int], dict]:
+        ev = SimilarityCheck({**rule, "exact_rule": exact, "max_block": max_block}).evaluate(df)
+        return (sorted(df.index[ev.failing.to_numpy()]), sorted(df.index[ev.population.to_numpy()]), ev.details)
+
+    in_scope = [3, 7, 8, 14, 31, 41, 42, 43, 50, 60]  # NaN/None names (2, 99) never compared
+    assert run(False, 3) == ([3, 7, 14, 31, 41, 42, 43, 50], in_scope, {
+        "near_duplicate_pairs": [["M0", "M1"], ["M0", "M2"], ["M1", "M2"], ["M5", "M6"],
+                                 ["M9", "M10"], ["M9", "M11"], ["M10", "M11"]],
+        "blocks_skipped_too_large": 0, "records_not_compared": 0, "threshold": 0.9})
+    assert run(True, 3) == ([7, 31, 41, 42, 43, 50], in_scope, {
+        "near_duplicate_pairs": [["M0", "M1"], ["M1", "M2"], ["M9", "M11"], ["M10", "M11"]],
+        "blocks_skipped_too_large": 0, "records_not_compared": 0, "threshold": 0.9})
+    assert run(False, 2) == ([3, 14], [3, 8, 14, 60], {
+        "near_duplicate_pairs": [["M5", "M6"]],
+        "blocks_skipped_too_large": 2, "records_not_compared": 6, "threshold": 0.9})
+
+
 def test_near_pairs_prefilter_matches_brute_force_ratio():
     # near_pairs() short-circuits SequenceMatcher via real_quick_ratio/quick_ratio before
     # calling ratio(); this must not change which pairs (or scores) come out, for a block

@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from collections.abc import Callable
 from typing import Any
@@ -89,8 +90,9 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None
             # open_ended (date never ends: blank or SAP's 31.12.9999 in any form
             # the connector delivers it — YYYYMMDD, ISO date, or ISO timestamp).
             if "contains_any" in allowed:
-                chars = {str(v) for v in allowed["contains_any"]}
-                mask &= values.map(lambda v: isinstance(v, str) and any(c in v for c in chars)).astype(bool)
+                # one vectorised substring match: a Python call per row took over a minute at MARC grain
+                pattern = "|".join(re.escape(str(v)) for v in allowed["contains_any"])
+                mask &= values.str.contains(pattern, regex=True, na=False).astype(bool) if allowed["contains_any"] else False
             if "not_in" in allowed:
                 mask &= ~values.isin({str(v).strip() for v in allowed["not_in"]}).fillna(False)
             if allowed.get("populated"):
