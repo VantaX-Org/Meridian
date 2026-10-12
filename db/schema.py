@@ -1983,6 +1983,8 @@ class MdmMetric(Base):
 
     __table_args__ = (
         Index("ix_mdm_metrics_tenant_date", "tenant_id", "snapshot_date"),
+        Index("uq_mdm_metrics_tenant_date_domain", "tenant_id", "snapshot_date", "domain",
+              unique=True, postgresql_nulls_not_distinct=True),
     )
 
 
