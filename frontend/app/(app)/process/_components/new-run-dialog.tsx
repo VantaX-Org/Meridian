@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button, Dialog, Field, Mono, Notice } from "@/design";
+import { Button, Checkbox, Dialog, Field, Input, Mono, Notice } from "@/design";
 import { startRuns, type CatalogueRow, type RunMode } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 
@@ -42,7 +42,7 @@ export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows }:
           <div className="grid grid-cols-2 gap-1">
             {rows.map((r) => (
               <label key={r.l1} className="flex items-center gap-2">
-                <input type="checkbox" checked={l1s.includes(r.l1)} onChange={() => toggle(r.l1)} />
+                <Checkbox aria-label={`Include ${r.l1}`} checked={l1s.includes(r.l1)} onChange={() => toggle(r.l1)} />
                 <Mono>{r.l1}</Mono> {r.name}
               </label>
             ))}
@@ -61,7 +61,7 @@ export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows }:
         </fieldset>
         {mode === "full" && (
           <Field label="Period start (blank: the whole history)">
-            <input type="date" className="m-input" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+            <Input type="date" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
           </Field>
         )}
         {start.isError && <Notice tone="danger" title="Could not start the run">{apiErrorMessage(start.error)}</Notice>}

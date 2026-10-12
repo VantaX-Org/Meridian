@@ -6,9 +6,10 @@
  * A node click drills one level, to L4 at most; at L4 the L5 nodes open a Drawer.
  */
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Skeleton } from "@/design";
+import { Button, DataTable, Drawer, EmptyState, ErrorState, Mono, Skeleton } from "@/design";
 import { getDfg, type Dfg, type NodeStats, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -16,6 +17,11 @@ import type { L4, ProcessModelDocument } from "@/types/process-model";
 import { findActivity, locate } from "@/app/(app)/insights/process/designer/_components/doc";
 import { L5Table } from "./l5-table";
 import { fmtCount, fmtFitness, fmtSeconds, fmtShare, ViewAsTable } from "./shared";
+
+/** Lazy chunk with a fixed 420px slot so the flow does not shift when it arrives. */
+const Graph = dynamic(() => import("@/design/charts/Graph").then((m) => m.Graph), {
+  ssr: false, loading: () => <Skeleton height={420} />,
+});
 
 type Edge = Dfg["edges"][number];
 const PSEUDO = new Set(["START", "END"]);
@@ -30,12 +36,14 @@ const NODE_COLUMNS: ColumnDef<NodeStats>[] = [
   { accessorKey: "fitness", header: "Fitness", cell: ({ row }) => fmtFitness(row.original.fitness) },
 ];
 
-export function FlowView({ runId, doc, node, filters, onDrill }: {
+export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
   runId: string;
   doc: ProcessModelDocument;
   node: string | null;
   filters: ProcessFilterParams;
   onDrill: (id: string) => void;
+  /** Moves the drill one level up; absent at the top. */
+  onUp?: () => void;
 }) {
   const [allEdges, setAllEdges] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -43,9 +51,10 @@ export function FlowView({ runId, doc, node, filters, onDrill }: {
   const dfg = useQuery({ queryKey: queryKeys.processRunView(runId, "dfg", params), queryFn: () => getDfg(runId, params) });
 
   if (dfg.isError) return <ErrorState message={apiErrorMessage(dfg.error)} onRetry={() => dfg.refetch()} />;
-  if (!dfg.data) return <Skeleton height={400} />;
+  if (!dfg.data) return <Skeleton height={420} />;
   const d = dfg.data;
-  if (!d.nodes.length) return <EmptyState title="No activity below this step" detail="Go up one level to see its flow." />;
+  if (!d.nodes.length) return <EmptyState title="No activity below this step" detail="Go up one level to see its flow."
+    action={onUp && <Button variant="secondary" onClick={onUp}>Go up one level</Button>} />;
 
   // Rank order (most cases first) fixes the Graph's keyboard order (§7.5).
   const ranked = [...d.nodes].sort((a, b) => b.case_count - a.case_count);
@@ -69,7 +78,7 @@ export function FlowView({ runId, doc, node, filters, onDrill }: {
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
+        <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
           {allEdges ? "Every observed edge." : `Edges under ${fmtShare(d.edge_threshold)} of cases are hidden, as in the Signavio export.`}
         </span>
         <Button variant="secondary" aria-pressed={allEdges} onClick={() => setAllEdges((v) => !v)}>
@@ -124,7 +133,7 @@ function L5Drawer({ doc, id, onClose }: { doc: ProcessModelDocument; id: string 
             ))}
           </dl>
           <section className="grid gap-1">
-            <h3 className="font-semibold">Fields</h3>
+            <h2 className="font-semibold">Fields</h2>
             {a.fields.length ? (
               <ul className="grid gap-1">
                 {a.fields.map((f) => (
