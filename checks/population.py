@@ -81,9 +81,21 @@ def _stripped(frame: pd.DataFrame, col: str, norm: dict[str, pd.Series] | None) 
 def exclude(frame: pd.DataFrame, rules: list[dict], frames=None, norm: dict[str, pd.Series] | None = None
             ) -> tuple[pd.DataFrame, dict[str, int]]:
     """Drop excluded records; count each once, under its first reason. ``norm`` memoizes the
-    stripped string form of a column across rules (valid while ``frame`` keeps the same rows)."""
+    stripped string form of a column across rules (valid while ``frame`` keeps the same rows), and the
+    mask and counts of a set of exclusions, served again only to a frame with the same rows."""
     if not rules:
         return frame, {}
+    key = None
+    if norm is not None:
+        # the result depends on the exclusions, which of them have their columns here, those
+        # columns' values (one set per grain, as for ``_stripped``) and the rows
+        present = [all(c in frame.columns for c in (x.get("fields") or [x["field"]])) for x in rules]
+        key = f"excl|{rules!r}|{present!r}"
+        # norm[key] (not .get) so a hit refreshes the entries' LRU recency
+        mask = norm[key] if key in norm else None
+        n = norm[key + "|n"] if key + "|n" in norm else None
+        if mask is not None and n is not None and mask.index.equals(frame.index):
+            return frame[~mask], {str(k): int(v) for k, v in n.items()}
     out = pd.Series(False, index=frame.index)
     counts: dict[str, int] = {}
     for x in rules:
@@ -107,4 +119,7 @@ def exclude(frame: pd.DataFrame, rules: list[dict], frames=None, norm: dict[str,
         if hit.any():
             counts[x["id"]] = counts.get(x["id"], 0) + int(hit.sum())
             out |= hit
+    if key is not None:
+        norm[key] = out
+        norm[key + "|n"] = pd.Series(counts, dtype="int64")
     return frame[~out], counts

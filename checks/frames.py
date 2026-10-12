@@ -253,8 +253,8 @@ class _ByteLRU(dict):
 
 
 def _nbytes(value: object) -> int:
-    try:
-        return int(getattr(value, "nbytes", 0))
+    try:  # a Series' own nbytes leaves out its index
+        return int(getattr(value, "nbytes", 0)) + int(getattr(getattr(value, "index", None), "nbytes", 0))
     except Exception:  # an array type that cannot size itself
         return 0
 

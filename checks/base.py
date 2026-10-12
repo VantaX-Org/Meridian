@@ -238,6 +238,7 @@ class BaseCheck(ABC):
 
     def __init__(self, rule: dict):
         self.rule = rule
+        self.evaluation: Evaluation | None = None  # what the last run() evaluated, before dedupe_on
 
     # Columns the check reads; a missing one means "not in this extract" → skip.
     def columns(self) -> list[str]:
@@ -256,6 +257,7 @@ class BaseCheck(ABC):
     def run(self, df: pd.DataFrame, key_cols: list[str] | None = None,
             grain: str | None = None) -> CheckResult | None:
         """Evaluate and build the result. Return None to skip (field not in extract)."""
+        self.evaluation = None
         if any(c not in df.columns for c in self.columns()):
             return None
         try:
@@ -264,6 +266,7 @@ class BaseCheck(ABC):
             raise
         except Exception as e:  # rule-level error is visible, never silent
             return self._error(df, str(e))
+        self.evaluation = ev
         if ev is None:
             return None
         dedupe_on = self.rule.get("dedupe_on")

@@ -38,7 +38,7 @@ export default function ReportsPage() {
     queryFn: () => getReportCatalogue({ version_id: versionId, module: mod, compare: cmp }),
     enabled: !!versionId && can("export"),
   });
-  const canSeeAudit = has("audit", "view");
+  const canSeeAudit = has("audit", "view") || has("users", "admin");
   const recent = useQuery({
     queryKey: queryKeys.reportExports(5),
     queryFn: () => getAuditEntries({ action: "report.export", limit: 5 }),
@@ -97,6 +97,7 @@ export default function ReportsPage() {
       emptyProps={{ title: "No completed run yet", detail: "Reports are rendered from a finished run.", ghost: "table", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
     >
+      <>
       {!can("export") ? (
         <Card title="Reports"><p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Export needs the auditor or analyst role.</p></Card>
       ) : catalogue.isError ? (
@@ -157,26 +158,27 @@ export default function ReportsPage() {
               )}
             </Card>
           </div>
-          {canSeeAudit && (
-            <div className="@5xl:col-span-12">
-              <Card title="Recent exports">
-                {recent.isError ? (
-                  <p className="m-text-body" role="alert">{`Recent exports did not load. ${apiErrorMessage(recent.error)}`}</p>
-                ) : (recent.data?.entries ?? []).length === 0 ? (
-                  <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{recent.isLoading ? "Loading" : "No exports yet."}</p>
-                ) : (
-                  <ul className="flex flex-col gap-1 m-text-body">
-                    {recent.data?.entries.map((e) => {
-                      const kind = (e.after_json as { kind?: string } | null)?.kind ?? "report";
-                      return <li key={e.id}>{`${formatDate(e.created_at, "datetime")}: ${kind} by ${e.actor_email ?? "unknown"}`}</li>;
-                    })}
-                  </ul>
-                )}
-              </Card>
-            </div>
-          )}
         </div>
       )}
+      {canSeeAudit && (
+        <div className="mt-4">
+          <Card title="Recent exports">
+            {recent.isError ? (
+              <p className="m-text-body" role="alert">{`Recent exports did not load. ${apiErrorMessage(recent.error)}`}</p>
+            ) : (recent.data?.entries ?? []).length === 0 ? (
+              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{recent.isLoading ? "Loading" : "No exports yet."}</p>
+            ) : (
+              <ul className="flex flex-col gap-1 m-text-body">
+                {recent.data?.entries.map((e) => {
+                  const kind = (e.after_json as { kind?: string } | null)?.kind ?? "report";
+                  return <li key={e.id}>{`${formatDate(e.created_at, "datetime")}: ${kind} by ${e.actor_email ?? "unknown"}`}</li>;
+                })}
+              </ul>
+            )}
+          </Card>
+        </div>
+      )}
+      </>
     </InsightFrame>
   );
 }

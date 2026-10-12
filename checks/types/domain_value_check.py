@@ -45,8 +45,11 @@ def _parse_dates(s: pd.Series) -> pd.Series:
     txt = s.astype("string").str.strip()
     # SAP timestamps (TZNTSTMPS DEC 15 / TZNTSTMPL DEC 21,7): YYYYMMDDhhmmss[.fraction]
     stamp = txt.str.fullmatch(r"\d{14}(?:[.,]\d+)?", na=False)
+    d8 = txt.str.fullmatch(r"\d{8}", na=False)  # DATS, including the initial date 00000000 (NaT)
     ts = pd.to_datetime(txt.where(stamp).str[:14], format="%Y%m%d%H%M%S", errors="coerce")
-    dats = pd.to_datetime(txt.where(txt.str.fullmatch(r"\d{8}", na=False)), format="%Y%m%d", errors="coerce")
-    other = pd.to_datetime(txt.where(~txt.str.fullmatch(r"\d{8}", na=False) & ~stamp), errors="coerce", utc=True,
+    dats = pd.to_datetime(txt.where(d8), format="%Y%m%d", errors="coerce")
+    # blanks are NaT either way; leaving them out keeps the slow per-value "mixed" parser
+    # for genuinely odd values (an all-blank column used to go through it row by row)
+    other = pd.to_datetime(txt.where(~d8 & ~stamp & txt.ne("").fillna(False)), errors="coerce", utc=True,
                            format="mixed")
     return ts.fillna(dats).fillna(other.dt.tz_localize(None) if hasattr(other, "dt") else other)

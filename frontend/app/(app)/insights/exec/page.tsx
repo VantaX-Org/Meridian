@@ -65,7 +65,7 @@ export default function ExecPage() {
   });
   const runLabel = useRunLabel(data?.version_id);
 
-  const cost = useQuery({ queryKey: queryKeys.insights("proven-cost", run), queryFn: () => getProvenCost({ version_id: run }) });
+  const cost = useQuery({ queryKey: queryKeys.insights("proven-cost", run), queryFn: () => getProvenCost({ version_id: run }), enabled: !!run });
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
