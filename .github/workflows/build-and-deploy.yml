@@ -1,4 +1,4 @@
-name: Build & Deploy Multi-Platform Images
+name: Build & Deploy Images
 
 on:
   push:
@@ -161,27 +161,33 @@ jobs:
           cache-to: type=gha,mode=max,scope=garage
       
       - name: Create GitHub Release
-        uses: actions/create-release@v1
+        # gh CLI (preinstalled on the runner) rather than actions/create-release@v1:
+        # that action is archived and runs on the removed node12 runtime, so the
+        # release step fails on current runners.
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          release_name: Release ${{ steps.version.outputs.VERSION }}
-          body: |
-            ## Meridian Platform ${{ steps.version.outputs.VERSION }}
-            
-            ### Docker Images (Multi-Platform: amd64 + arm64)
-            ```
-            ghcr.io/vantax-org/meridian-api:${{ steps.version.outputs.VERSION }}
-            ghcr.io/vantax-org/meridian-frontend:${{ steps.version.outputs.VERSION }}
-            ghcr.io/vantax-org/meridian-worker:${{ steps.version.outputs.VERSION }}
-            ghcr.io/vantax-org/meridian-garage:${{ steps.version.outputs.VERSION }}
-            ```
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.VERSION }}" \
+            --title "Release ${{ steps.version.outputs.VERSION }}" \
+            --notes "$(cat <<'NOTES'
+          ## Meridian Platform
 
-            ### Installation
-            ```bash
-            sudo bash scripts/meridian-deploy.sh
-            ```
+          ### Docker Images (linux/amd64)
+          ```
+          ghcr.io/vantax-org/meridian-api:VERSION
+          ghcr.io/vantax-org/meridian-frontend:VERSION
+          ghcr.io/vantax-org/meridian-worker:VERSION
+          ghcr.io/vantax-org/meridian-garage:VERSION
+          ghcr.io/vantax-org/meridian-nginx:VERSION
+          ghcr.io/vantax-org/meridian-updater:VERSION
+          ```
+
+          ### Installation
+          ```bash
+          sudo bash scripts/meridian-deploy.sh
+          ```
+          NOTES
+          )"
           draft: false
           prerelease: false
 
@@ -209,15 +215,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # build-and-push already resolved the version and pushed the tag; reuse that
+      # output rather than re-reading `git tag`, which races any other tag push and
+      # could name this image differently from the one it was built with.
       - name: Get version from build job
         id: version
-        run: |
-          LATEST_TAG=$(git tag --sort=-version:refname \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
-          if [ -z "$LATEST_TAG" ]; then
-            LATEST_TAG="v0.0.0"
-          fi
-          echo "VERSION=$LATEST_TAG" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${{ needs.build-and-push.outputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Build and push nginx image
         uses: docker/build-push-action@v6
@@ -256,15 +259,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # build-and-push already resolved the version and pushed the tag; reuse that
+      # output rather than re-reading `git tag`, which races any other tag push and
+      # could name this image differently from the one it was built with.
       - name: Get version from build job
         id: version
-        run: |
-          LATEST_TAG=$(git tag --sort=-version:refname \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
-          if [ -z "$LATEST_TAG" ]; then
-            LATEST_TAG="v0.0.0"
-          fi
-          echo "VERSION=$LATEST_TAG" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${{ needs.build-and-push.outputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Build and push updater image
         uses: docker/build-push-action@v6
