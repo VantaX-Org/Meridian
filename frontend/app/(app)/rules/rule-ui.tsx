@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * Page-local building blocks for the rules pages. Swap points once the shared
- * foundations land: RulesHeader -> `PageHeader`, RuleSwitch -> `Switch`,
- * TextInput / TextArea -> `Input`.
+ * Page-local building blocks for the rules pages. If the shared
+ * foundations ship a Switch and Textarea, swap RuleSwitch and TextArea.
  */
 
 import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
@@ -11,33 +10,9 @@ import { X } from "lucide-react";
 import { Mono } from "@/design";
 import { checkClassLabel } from "@/lib/format";
 
-const CONTROL: React.CSSProperties = {
-  borderRadius: "var(--m-radius-control)",
-  border: "1px solid var(--m-line-strong)",
-  background: "var(--m-sheet)",
-  color: "var(--m-ink)",
-};
-
-export const TextInput = forwardRef<HTMLInputElement, ComponentPropsWithoutRef<"input">>(function TextInput({ style, className, ...p }, ref) {
-  return <input ref={ref} className={`m-text-body m-motion-colors w-full px-3 ${className ?? ""}`} style={{ ...CONTROL, height: 32, ...style }} {...p} />;
+export const TextArea = forwardRef<HTMLTextAreaElement, ComponentPropsWithoutRef<"textarea">>(function TextArea({ className, ...p }, ref) {
+  return <textarea ref={ref} className={`m-input ${className ?? ""}`} {...p} />;
 });
-
-export const TextArea = forwardRef<HTMLTextAreaElement, ComponentPropsWithoutRef<"textarea">>(function TextArea({ style, className, ...p }, ref) {
-  return <textarea ref={ref} className={`m-text-body m-motion-colors w-full px-3 py-2 ${className ?? ""}`} style={{ ...CONTROL, ...style }} {...p} />;
-});
-
-/** Page title, one meta line, status and actions on the right. */
-export function RulesHeader({ title, meta, actions }: { title: string; meta?: ReactNode; actions?: ReactNode }) {
-  return (
-    <header className="flex items-start justify-between gap-4 pb-2">
-      <div className="min-w-0">
-        <h1 className="m-text-title font-semibold" style={{ color: "var(--m-ink)" }}>{title}</h1>
-        {meta != null ? <p className="m-text-body" style={{ color: "var(--m-ink-2)", minHeight: 18 }}>{meta}</p> : null}
-      </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
-    </header>
-  );
-}
 
 /** Accessible on/off switch; the caller owns the (optimistic) state. */
 export function RuleSwitch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean }) {
