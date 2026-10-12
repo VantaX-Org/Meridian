@@ -13,7 +13,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, DataTable, Drawer, EmptyState, ErrorState, Graph, type GraphEdge, type GraphNode,
+  Button, DataTable, Drawer, EmptyState, ErrorState, Graph, Input, type GraphEdge, type GraphNode,
   Card, Mono, Pill, type PillTone, Select, Skeleton,
 } from "@/design";
 import { useLatestVersion } from "@/components/process/shared";
@@ -24,7 +24,7 @@ import {
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { InsightFrame } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 const pct = (v: number | null | undefined) => (v == null ? "" : `${(v * 100).toFixed(1)}%`);
 // ponytail: force layout past this many nodes is unreadable. Narrow the trace depth to see the rest.
@@ -44,7 +44,7 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
   const d = q.data;
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
         {d.steps.length.toLocaleString()} {d.steps.length === 1 ? "step feeds" : "steps feed"} this node.{" "}
         {d.coverage_gaps.length ? `${d.coverage_gaps.length.toLocaleString()} have no guarding rule.` : "Every step has a guarding rule."}
       </p>
@@ -53,9 +53,9 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
           <li key={s.id} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
             <div className="flex items-center gap-3">
               <span className="flex-1">{s.label}</span>
-              <span className="text-[13px]">{s.guard_count} {s.guard_count === 1 ? "rule" : "rules"}</span>
+              <span className="m-text-body">{s.guard_count} {s.guard_count === 1 ? "rule" : "rules"}</span>
             </div>
-            <div className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+            <div className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
               {s.tcode ? <><Mono>{s.tcode}</Mono>, </> : null}
               {s.min_pass_rate != null ? `lowest pass rate ${pct(s.min_pass_rate)}` : "no pass rate"}
               {s.unguarded_fields.length ? `. Unguarded: ${s.unguarded_fields.join(", ")}` : ""}
@@ -78,7 +78,7 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
   if (!d.failing_records) return <EmptyState title={`No failing records are stored for ${checkId} in this version.`} />;
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
         {d.failing_records.toLocaleString()} failing {d.grain ?? ""} {d.failing_records === 1 ? "record" : "records"}{d.keys_truncated ? " (capped)" : ""} on{" "}
         {d.object ?? "an unmapped object"} touch {d.processes_touched.length.toLocaleString()} {d.processes_touched.length === 1 ? "process" : "processes"}.
       </p>
@@ -88,9 +88,9 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
             <li key={t.table} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
               <div className="flex items-center gap-3">
                 <span className="flex-1">{t.label}</span>
-                <span className="text-[13px]">{t.status === "ok" ? `${t.documents.toLocaleString()} documents` : ""}</span>
+                <span className="m-text-body">{t.status === "ok" ? `${t.documents.toLocaleString()} documents` : ""}</span>
               </div>
-              <div className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+              <div className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
                 <Mono>{t.table}</Mono>
                 {t.status === "ok" ? `, ${t.objects_touched.toLocaleString()} master records, joined on ${t.joined_on.join(", ")}`
                   : t.status === "not_extracted" ? ", not extracted" : ", record key lacks the join field"}
@@ -104,8 +104,8 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
 }
 
 export default function LineagePage() {
-  const [draft, setDraft] = useState("LFB1.ZTERM");
-  const [focus, setFocus] = useState("LFB1.ZTERM");
+  const [draft, setDraft] = useState("");
+  const [focusPick, setFocus] = useState("");
   const [direction, setDirection] = useState<LineageDirection>("both");
   const [depth, setDepth] = useState(4);
   const [selId, setSelId] = useState<string | null>(null);
@@ -118,14 +118,16 @@ export default function LineagePage() {
     queryFn: () => getLineageImpact(latest!.id),
     enabled: !!latest,
   });
+  const impact = impactQ.data;
+  const rows = useMemo(() => (impact ? [...impact.kpis, ...impact.processes, ...impact.features] : []), [impact]);
+  // Until the viewer traces something, trace the worst real node from the impact rows.
+  const focus = focusPick || rows[0]?.id || "";
   const graphQ = useQuery({
     queryKey: queryKeys.lineageGraph(focus, direction, depth),
     queryFn: () => getLineage({ node: focus, direction, depth }),
     retry: false,
+    enabled: !!focus,
   });
-
-  const impact = impactQ.data;
-  const rows = useMemo(() => (impact ? [...impact.kpis, ...impact.processes, ...impact.features] : []), [impact]);
   const worst = useMemo(() => new Map(rows.map((r) => [r.id, r.worst_impact])), [rows]);
 
   const { nodes, edges, capped } = useMemo(() => {
@@ -182,63 +184,58 @@ export default function LineagePage() {
         meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} edges`}
         insight={{
           situation: { sentence: impact ? `${kpis.toLocaleString()} KPIs and ${features.toLocaleString()} features are at risk` : "Impact needs a completed analysis", tone: kpis ? "at-risk" : "neutral" },
-          changed: { sentence: `Tracing ${focus}, ${nodes.length} nodes in view` },
-          why: { sentence: "A failing field reaches the processes and KPIs it guards" },
+          changed: { sentence: focus ? `${nodes.length} nodes in the current trace` : "—" },
+          why: { sentence: impact ? `${rows.length.toLocaleString()} KPIs, processes and features are reached by failing rules` : "—" },
           next: { sentence: rows[0] ? `Trace ${rows[0].label}` : "Run an analysis", action: rows[0] ? { label: "Trace it", onClick: () => trace(rows[0].id) } : undefined },
         }}
-        state={impactQ.isLoading || dayOne.status === "loading" ? "loading" : isListFailure(impactQ) ? "error" : rows.length === 0 ? "empty" : undefined}
-        emptyProps={
-          latest
-            ? { title: "No failing rule reaches a KPI, process or feature", action: <Button render={<Link href="/rules">Open rules</Link>} /> }
-            : {
-                title: "No lineage yet",
-                detail: dayOne.step?.detail ?? "Impact needs a completed analysis.",
-                action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
-              }
-        }
-        errorProps={{ message: apiErrorMessage(impactQ.error), onRetry: () => void impactQ.refetch() }}
+        state={dayOne.status === "loading" ? "loading" : undefined}
+        skeleton={<><CardSkeleton height={520} /><CardSkeleton height={200} /></>}
       >
         <Card title="Field to KPI trace">
           <div className="flex flex-col gap-3">
             <form onSubmit={onSubmit} className="flex items-center gap-2">
-              <input
-                aria-label="Node to trace" value={draft} onChange={(e) => setDraft(e.target.value)}
-                placeholder="LFB1.ZTERM, AP017, kpi:dpo"
-                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
-              />
+              <Input aria-label="Node to trace" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Field, rule or KPI id" />
               <Select label="Direction" value={direction} onValueChange={(v) => setDirection(v as LineageDirection)}
                 options={[{ value: "both", label: "Up and downstream" }, { value: "down", label: "Downstream" }, { value: "up", label: "Upstream" }]} />
               <Select label="Depth" value={String(depth)} onValueChange={(v) => setDepth(Number(v))}
                 options={[2, 3, 4, 6, 8, 12].map((n) => ({ value: String(n), label: `Depth ${n}` }))} />
               <Button type="submit">Trace</Button>
             </form>
-            {graphQ.isLoading ? <Skeleton height={240} />
+            {!focus ? <EmptyState title="Enter a field, rule or KPI to trace" detail="The trace shows what feeds it and what it feeds." ghost="grid" />
+              : graphQ.isLoading ? <Skeleton height={240} />
               : graphQ.error ? (
                 <ErrorState message={apiErrorMessage(graphQ.error)} onRetry={() => void graphQ.refetch()} />
               )
               : nodes.length ? (
                 <>
                   <Graph nodes={nodes} edges={edges} height={420} onNodeClick={(id) => setSelId(id)} />
-                  {capped ? <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>Nearest {MAX_NODES} of {graphQ.data?.nodes.length.toLocaleString()} nodes shown.</p> : null}
+                  {capped ? <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Nearest {MAX_NODES} of {graphQ.data?.nodes.length.toLocaleString()} nodes shown.</p> : null}
                 </>
-              ) : <EmptyState title="Nothing is linked to this node" action={<Button onClick={() => { setDraft("LFB1.ZTERM"); setFocus("LFB1.ZTERM"); }}>Trace a sample field</Button>} />}
+              ) : <EmptyState title="Nothing is linked to this node" detail="Try a node from the table below, or a wider depth." action={rows[0] ? <Button onClick={() => trace(rows[0].id)}>{`Trace ${rows[0].label}`}</Button> : <Button render={<Link href="/rules">Open rules</Link>} />} />}
           </div>
         </Card>
         <Card title="KPIs, processes and features at risk">
-          <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />
+          {impactQ.isLoading ? <Skeleton height={160} />
+            : isListFailure(impactQ) ? <ErrorState message={apiErrorMessage(impactQ.error)} onRetry={() => void impactQ.refetch()} />
+            : rows.length === 0 ? (
+              latest
+                ? <EmptyState title="No failing rule reaches a KPI, process or feature" action={<Button render={<Link href="/rules">Open rules</Link>} />} />
+                : <EmptyState title="No lineage yet" detail={dayOne.step?.detail ?? "Impact needs a completed analysis."} action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
+            )
+            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />}
         </Card>
       </InsightFrame>
 
       <Drawer open={!!sel} onOpenChange={(o) => { if (!o) setSelId(null); }} title={sel?.label ?? ""}>
         {sel ? (
           <div className="flex flex-col gap-3">
-            <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
               <Mono>{sel.id}</Mono>{sel.tcode ? <>, <Mono>{sel.tcode}</Mono></> : null}
             </p>
-            {sel.definition ? <p className="text-[13px]">{sel.definition}</p> : null}
-            <div><Button onClick={() => { setDraft(sel.id); setFocus(sel.id); }}>Trace from here</Button></div>
+            {sel.definition ? <p className="m-text-body">{sel.definition}</p> : null}
+            <div><Button onClick={() => trace(sel.id)}>Trace from here</Button></div>
             {sel.type === "object" ? (
-              <p className="text-[13px]"><Link className="underline" href={`/analyse/object/${encodeURIComponent(sel.label)}`}>Open the object</Link></p>
+              <p className="m-text-body"><Link className="underline" href={`/analyse/object/${encodeURIComponent(sel.label)}`}>Open the object</Link></p>
             ) : null}
             {sel.type === "kpi" || sel.type === "feature" || sel.type === "process" || sel.type === "step"
               ? <GuardsPanel node={sel.id} versionId={latest?.id} /> : null}
@@ -251,7 +248,7 @@ export default function LineagePage() {
                   <li key={i} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
                     <div className="flex items-center gap-3">
                       <span className="flex-1">{label(e.source === sel.id ? e.target : e.source)}</span>
-                      <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>{e.source === sel.id ? "downstream" : "upstream"}, {e.rel}</span>
+                      <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{e.source === sel.id ? "downstream" : "upstream"}, {e.rel}</span>
                     </div>
                   </li>
                 ))}

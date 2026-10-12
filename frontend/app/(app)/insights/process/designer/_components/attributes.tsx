@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Button, Drawer, Field, Mono, Pill, type PillTone } from "@/design";
+import { Button, Checkbox, Drawer, Field, Input, Mono, Pill, type PillTone } from "@/design";
+import type { ReactNode } from "react";
 import { getDdicFields } from "@/lib/api/rules";
 import { formatModuleName } from "@/lib/format";
 import type { ActivityOverlay, Classification, FieldRef, L4, ProcessVariant } from "@/types/process-model";
@@ -15,6 +16,22 @@ const DQ: Record<ActivityOverlay["dq_status"], { tone: PillTone; label: string }
   green: { tone: "go", label: "Passing" }, amber: { tone: "at-risk", label: "Some fields failing" }, red: { tone: "no-go", label: "Blocking failures" },
 };
 const FIELD = /^[A-Z0-9_/]+\.[A-Z0-9_/]+$/;
+
+const note = { color: "var(--m-ink-2)" } as const;
+const Note = ({ children }: { children: ReactNode }) => <p className="m-text-meta" style={note}>{children}</p>;
+const Heading = ({ children }: { children: ReactNode }) => <h3 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{children}</h3>;
+const Ranked = ({ children }: { children: ReactNode }) => <ul className="flex flex-col gap-2" style={{ listStyle: "none", margin: 0, padding: 0 }}>{children}</ul>;
+const Item = ({ title, num, meta, children }: { title: ReactNode; num?: ReactNode; meta?: ReactNode; children?: ReactNode }) => (
+  <li className="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <div className="flex flex-1 min-w-0 flex-col gap-0.5">
+      <div className="flex flex-wrap items-center gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>{title}{num}</div>
+      {meta ? <div className="m-text-meta" style={note}>{meta}</div> : null}
+    </div>
+    {children}
+  </li>
+);
+const linkCls = "underline m-text-body";
+const linkStyle = { color: "var(--m-accent-ink)" } as const;
 
 function FieldChip({ table, field }: { table: string; field: string }) {
   return <Pill>{`${table}.${field}`}</Pill>;
@@ -49,26 +66,23 @@ export function AttributeDrawer(p: AttributeProps) {
   const title = hit?.act.name ?? l4?.name ?? (diag?.flow ? "Flow" : diag?.node ? "Decision" : "Details");
   return (
     <Drawer open={!!(hit || l4 || diag)} onOpenChange={(o) => { if (!o) p.onClose(); }} title={title}>
-      <div className="ui-detail flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {hit ? <Activity {...p} hit={hit} /> : null}
         {l4 ? <SubProcess {...p} l4={l4} /> : null}
         {diag?.node && diag.node.type !== "task" ? (
           <Field label="Label">
-            <input key={diag.node.id} defaultValue={diag.node.label ?? ""} disabled={!p.editable}
-              className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+            <Input key={diag.node.id} defaultValue={diag.node.label ?? ""} disabled={!p.editable}
               onBlur={(e) => e.target.value !== (diag.node!.label ?? "") && p.patchNode(diag.x.id, diag.node!.id, e.target.value)} />
           </Field>
         ) : null}
         {diag?.flow ? (
           <>
             <Field label="Label">
-              <input key={`${diag.flow.id}l`} defaultValue={diag.flow.label ?? ""} disabled={!p.editable}
-                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+              <Input key={`${diag.flow.id}l`} defaultValue={diag.flow.label ?? ""} disabled={!p.editable}
                 onBlur={(e) => e.target.value !== (diag.flow!.label ?? "") && p.patchFlow(diag.x.id, diag.flow!.id, { label: e.target.value || null })} />
             </Field>
             <Field label="Condition">
-              <input key={`${diag.flow.id}c`} defaultValue={diag.flow.condition ?? ""} disabled={!p.editable}
-                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+              <Input key={`${diag.flow.id}c`} defaultValue={diag.flow.condition ?? ""} disabled={!p.editable}
                 onBlur={(e) => e.target.value !== (diag.flow!.condition ?? "") && p.patchFlow(diag.x.id, diag.flow!.id, { condition: e.target.value || null })} />
             </Field>
           </>
@@ -102,72 +116,63 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
   return (
     <>
       <Field label="Name">
-        <input key={act.id} defaultValue={act.name} disabled={!p.editable}
-          className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+        <Input key={act.id} defaultValue={act.name} disabled={!p.editable}
           onBlur={(e) => e.target.value.trim() && e.target.value !== act.name && p.patchActivity(act.id, { name: e.target.value.trim() })} />
       </Field>
       <Field label="Description">
         <textarea key={`${act.id}d`} rows={3} defaultValue={act.description} disabled={!p.editable}
-          className="rounded border px-2 py-1 text-[13px] w-full" style={{ borderColor: "var(--m-line)" }}
+          className="m-input w-full" style={{ height: "auto", padding: "var(--m-space-2) var(--m-space-3)" }}
           onBlur={(e) => e.target.value !== act.description && p.patchActivity(act.id, { description: e.target.value })} />
       </Field>
       <Field label="T-code">
-        <input key={`${act.id}t`} defaultValue={act.tcode ?? ""} disabled={!p.editable}
-          className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+        <Input key={`${act.id}t`} defaultValue={act.tcode ?? ""} disabled={!p.editable}
           onBlur={(e) => e.target.value !== (act.tcode ?? "") && p.patchActivity(act.id, { tcode: e.target.value.trim().toUpperCase() || null })} />
       </Field>
-      {act.evidence === "not_extracted" ? <p className="ui-note">No document table extracted for this step.</p> : null}
+      {act.evidence === "not_extracted" ? <Note>No document table extracted for this step.</Note> : null}
       {dq ? (
-        <p className="ui-note">
+        <Note>
           <Pill tone={DQ[dq.dq_status].tone}>{DQ[dq.dq_status].label}</Pill>{" "}
           {dq.finding_count.toLocaleString()} {dq.finding_count === 1 ? "check has" : "checks have"} findings, {dq.affected_count.toLocaleString()} records affected.
-        </p>
+        </Note>
       ) : null}
       <section aria-label="Fields">
-        <h3 className="ui-drawer-head__title">Fields</h3>
-        <ul className="ui-ranked">
+        <Heading>Fields</Heading>
+        <Ranked>
           {act.fields.map((f) => {
             const [table, col] = f.field.split(".");
             const finding = f.check_id ? link(f.check_id) : undefined;
             return (
-              <li key={f.field}>
-                <div className="ui-ranked__row">
-                  <span className="ui-ranked__title"><FieldChip table={table} field={col} /></span>
-                  <span className="ui-ranked__num">
-                    {f.check_id ? <Link className="ui-link" href={`/analyse/rule/${f.check_id}`}><Mono>{f.check_id}</Mono></Link> : null}
-                  </span>
-                  <span className="ui-ranked__meta">
-                    {f.description}{f.config_source ? <>{" "}Config source <Mono>{f.config_source}</Mono>.</> : null}
-                    {finding ? <>{" "}<Link className="ui-link" href={finding}>Open finding</Link></> : null}
-                  </span>
-                </div>
+              <Item key={f.field} title={<FieldChip table={table} field={col} />}
+                num={f.check_id ? <Link className={linkCls} style={linkStyle} href={`/analyse/rule/${f.check_id}`}><Mono>{f.check_id}</Mono></Link> : null}
+                meta={<>
+                  {f.description}{f.config_source ? <>{" "}Config source <Mono>{f.config_source}</Mono>.</> : null}
+                  {finding ? <>{" "}<Link className="underline" style={linkStyle} href={finding}>Open finding</Link></> : null}
+                </>}>
                 {p.canDesign === false ? (
-                  <span className="ui-note">{f.mandatory ? "Mandatory" : "Optional"}</span>
+                  <span className="m-text-meta" style={note}>{f.mandatory ? "Mandatory" : "Optional"}</span>
                 ) : (
-                  <label className="ui-note">
-                    <input type="checkbox" checked={f.mandatory} disabled={!p.editable}
+                  <span className="inline-flex items-center gap-2 m-text-meta" style={note}>
+                    <Checkbox aria-label={`Mandatory ${f.field}`} checked={f.mandatory} disabled={!p.editable}
                       onChange={(e) => set(act.fields.map((x) => (x === f ? { ...x, mandatory: e.target.checked } : x)))} /> Mandatory
-                  </label>
+                  </span>
                 )}
                 {p.canDesign !== false ? <Button variant="ghost" disabled={!p.editable} aria-label={`Remove ${f.field}`}
                   onClick={() => set(act.fields.filter((x) => x !== f))}>Remove</Button> : null}
-              </li>
+              </Item>
             );
           })}
-        </ul>
+        </Ranked>
         {p.editable ? (
-          <form className="m-designer__addrow" onSubmit={(e) => { e.preventDefault(); void add(); }}>
+          <form className="flex flex-col gap-2 mt-3" onSubmit={(e) => { e.preventDefault(); void add(); }}>
             <Field label="Add field" error={error ?? undefined}>
-              <input value={row.field} placeholder="Table name, a dot, then the field name." onChange={(e) => setRow({ ...row, field: e.target.value })}
-                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: error ? "var(--m-critical)" : "var(--m-line)" }} />
+              <Input value={row.field} placeholder="Table name, a dot, then the field name." onChange={(e) => setRow({ ...row, field: e.target.value })} />
             </Field>
             <Field label="Rule">
-              <input value={row.check} onChange={(e) => setRow({ ...row, check: e.target.value })}
-                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }} />
+              <Input value={row.check} onChange={(e) => setRow({ ...row, check: e.target.value })} />
             </Field>
             <Button variant="secondary" type="submit">Add field</Button>
           </form>
-        ) : p.canDesign === false ? null : <p className="ui-note"><Button variant="ghost" onClick={p.onBlocked}>Create a model to edit fields</Button></p>}
+        ) : p.canDesign === false ? null : <Note><Button variant="ghost" onClick={p.onBlocked}>Create a model to edit fields</Button></Note>}
       </section>
     </>
   );
@@ -179,8 +184,7 @@ function SubProcess(p: AttributeProps & { l4: L4 }) {
   const candidates = p.unmapped.filter((v) => tables.has(v.sap_table)).slice(0, 12);
   const text = (label: string, key: "name" | "tcode" | "config_dependency") => (
     <Field label={label}>
-      <input key={`${l4.id}${key}`} defaultValue={l4[key] ?? ""} disabled={!p.editable}
-        className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+      <Input key={`${l4.id}${key}`} defaultValue={l4[key] ?? ""} disabled={!p.editable}
         onBlur={(e) => e.target.value !== (l4[key] ?? "") && p.patchL4(l4.id, { [key]: key === "name" ? e.target.value.trim() || l4.name : e.target.value.trim() || null })} />
     </Field>
   );
@@ -190,38 +194,33 @@ function SubProcess(p: AttributeProps & { l4: L4 }) {
       {text("T-code", "tcode")}
       {text("Config dependency", "config_dependency")}
       <section aria-label="Variants">
-        <h3 className="ui-drawer-head__title">Variants</h3>
+        <Heading>Variants</Heading>
         {l4.variants.length ? (
-          <ul className="ui-ranked">
+          <Ranked>
             {l4.variants.map((v) => (
-              <li key={`${v.sap_table}.${v.sap_field}.${v.value}`}>
-                <div className="ui-ranked__row">
-                  <span className="ui-ranked__title"><FieldChip table={v.sap_table} field={v.sap_field} /> <Mono>{v.value}</Mono></span>
-                  <span className="ui-ranked__num"><Pill>{CLASS_LABEL[v.classification]}</Pill></span>
-                </div>
-              </li>
+              <Item key={`${v.sap_table}.${v.sap_field}.${v.value}`}
+                title={<><FieldChip table={v.sap_table} field={v.sap_field} /> <Mono>{v.value}</Mono></>}
+                num={<Pill>{CLASS_LABEL[v.classification]}</Pill>} />
             ))}
-          </ul>
-        ) : <p className="ui-note">No variants are attached to this sub-process.</p>}
+          </Ranked>
+        ) : <Note>No variants are attached to this sub-process.</Note>}
       </section>
       {candidates.length && p.canDesign !== false ? (
         <section aria-label="Unmapped variants">
-          <h3 className="ui-drawer-head__title">Unmapped variants on its tables</h3>
-          {!p.canAdopt ? <p className="ui-note">Save the model, and open a saved model, to adopt a variant.</p> : null}
-          <ul className="ui-ranked">
+          <Heading>Unmapped variants on its tables</Heading>
+          {!p.canAdopt ? <Note>Save the model, and open a saved model, to adopt a variant.</Note> : null}
+          <Ranked>
             {candidates.map((v) => (
-              <li key={v.id ?? `${v.sap_table}${v.sap_field}${v.value}`}>
-                <div className="ui-ranked__row">
-                  <span className="ui-ranked__title"><FieldChip table={v.sap_table} field={v.sap_field} /> <Mono>{v.value}</Mono></span>
-                  <span className="ui-ranked__num"><Pill>{CLASS_LABEL[v.classification]}</Pill></span>
-                </div>
+              <Item key={v.id ?? `${v.sap_table}${v.sap_field}${v.value}`}
+                title={<><FieldChip table={v.sap_table} field={v.sap_field} /> <Mono>{v.value}</Mono></>}
+                num={<Pill>{CLASS_LABEL[v.classification]}</Pill>}>
                 <Button variant="secondary" disabled={!p.canAdopt || !v.id} onClick={() => v.id && p.onAdopt(v.id, l4.id)}>Adopt</Button>
-              </li>
+              </Item>
             ))}
-          </ul>
+          </Ranked>
         </section>
       ) : null}
-      <p className="ui-note">Modules: {l1Of(p.doc, l4.id)?.modules.map(formatModuleName).join(", ") || "none"}.</p>
+      <Note>Modules: {l1Of(p.doc, l4.id)?.modules.map(formatModuleName).join(", ") || "none"}.</Note>
     </>
   );
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pill, Skeleton, Stat } from "@/design";
+import { DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pill, Skeleton, Stat, Waterfall } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -19,7 +19,7 @@ import { labelOf } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { InsightFrame, useRunLabel } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame, formatMoney, statusTone, useRunLabel } from "../_components/InsightFrame";
 
 /** Real route for a single check/rule, independent of any module context —
  * unlike `/objects/[object]`, this resolves from the check id alone. */
@@ -51,8 +51,12 @@ const impactColumns: ColumnDef<ImpactRow>[] = [
       </DrillLink>
     ),
   },
-  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone="no-go">{labelOf(row.original.status)}</Pill> },
-  { accessorKey: "record_count", header: "Blocked records" },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill> },
+  {
+    accessorKey: "record_count",
+    header: "Blocked records",
+    cell: ({ row }) => <DrillLink object={row.original.feature}>{row.original.record_count.toLocaleString()}</DrillLink>,
+  },
   {
     accessorKey: "value_at_risk",
     header: "Value at risk",
@@ -60,7 +64,7 @@ const impactColumns: ColumnDef<ImpactRow>[] = [
   },
   {
     id: "causing_rules",
-    header: "Causing rules",
+    header: "Blocking rule",
     cell: ({ row }) => <CheckChips ids={row.original.causing_rules} />,
   },
 ];
@@ -110,11 +114,11 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-6">
-        <Stat label="Proven cost" value={`${total.toLocaleString()} ${currency}`.trim()} />
-        <Stat label="Value at risk" value={`${valueAtRiskTotal.toLocaleString()} ${currency}`.trim()} />
+        <Stat label="Proven cost" value={formatMoney(total, currency)} />
+        <Stat label="Value at risk" value={formatMoney(valueAtRiskTotal, currency)} />
       </div>
       {rows.length === 0 ? (
-        <EmptyState title="No proven cost findings yet" />
+        <EmptyState title="No proven cost findings yet" detail="Proven cost appears once a run finds posted documents that break a rule." action={<Link href="/rules">Open rules</Link>} />
       ) : (
         <DataTable
           columns={provenCostColumns}
@@ -136,7 +140,7 @@ function ImpactPanel({
   query: UseQueryResult<ImpactResponse, Error>;
   dayOne: ReturnType<typeof useDayOne>;
 }) {
-  if (query.isLoading || dayOne.status === "loading") return <Skeleton height={240} />;
+  if (query.isLoading || dayOne.status === "loading") return <Skeleton height={160} />;
   if (isListFailure(query)) {
     return (
       <ErrorState
@@ -176,18 +180,45 @@ export default function ImpactPage() {
   const runLabel = useRunLabel(impactQuery.data?.version_id);
   const rows = impactQuery.data?.rows ?? [];
   const top = [...rows].sort((x, y) => y.value_at_risk - x.value_at_risk)[0];
+  const currency = provenCostQuery.data?.currency;
+  const totalAtRisk = rows.reduce((n, r) => n + r.value_at_risk, 0);
+  const waterfall = [
+    ...[...rows].sort((x, y) => y.value_at_risk - x.value_at_risk).map((r) => ({ x: labelOf(r.feature), y: r.value_at_risk })),
+    { x: "Total", y: totalAtRisk, total: true },
+  ];
+
+  const loading = impactQuery.isLoading || dayOne.status === "loading";
+  const state: "loading" | undefined = loading ? "loading" : undefined;
 
   return (
     <InsightFrame
-      title="Impact"
+      title="Value at risk"
       meta={runLabel}
+      state={state}
+      skeleton={
+        <>
+          <CardSkeleton height={240} />
+          <CardSkeleton height={160} />
+          <CardSkeleton height={200} />
+        </>
+      }
       insight={{
-        situation: { sentence: `${rows.length} features carry value at risk`, tone: rows.length ? "at-risk" : "go" },
-        changed: { sentence: `${provenCostQuery.data?.rows.length ?? 0} proven cost metrics found` },
-        why: { sentence: "Value at risk is the record count times the value per record" },
-        next: { sentence: top ? `Fix the rules behind ${top.feature}` : "Run an analysis", action: { label: "Open rules", href: "/rules" } },
+        situation: {
+          sentence: rows.length ? `${formatMoney(totalAtRisk, currency)} sits in ${rows.length} blocked features` : "No feature carries value at risk",
+          tone: rows.length ? "at-risk" : "go",
+        },
+        changed: { sentence: provenCostQuery.data ? `${provenCostQuery.data.rows.length} proven cost metrics found` : "—" },
+        why: { sentence: "Value at risk is the blocked record count times the value per record" },
+        next: top
+          ? { sentence: `Fix the rules behind ${labelOf(top.feature)}`, action: { label: "Open rules", href: "/rules" } }
+          : { sentence: "Run an analysis", action: { label: "Open runs", href: "/runs" } },
       }}
     >
+      {rows.length > 0 && (
+        <Card title="Cost by feature">
+          <Waterfall data={waterfall} label="Value at risk by feature" />
+        </Card>
+      )}
       <Card title="Proven cost findings">
         <ProvenCostPanel query={provenCostQuery} />
       </Card>

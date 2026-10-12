@@ -6,13 +6,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, Card, DataTable, Select, Stat } from "@/design";
+import { Bar, Button, Card, DataTable, EmptyState, Select, Stat } from "@/design";
 import { getAssignableUsers } from "@/lib/api/users";
 import {
   getOperational, getSprints, getTeamPerformance, type Bottleneck, type SprintPlan,
 } from "@/lib/api/analytics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { InsightFrame } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 const bottleneckColumns: ColumnDef<Bottleneck>[] = [
   { accessorKey: "stage", header: "Stage" },
@@ -53,7 +53,7 @@ function TeamCard() {
             <Stat label="Hours per item" value={s.avg_review_hours} />
           </div>
         ) : (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Pick someone to see their throughput and approval rate.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Pick someone to see their throughput and approval rate.</p>
         )}
       </div>
     </Card>
@@ -79,28 +79,41 @@ export default function OperationsPage() {
       insight={{
         situation: { sentence: `${k?.items_in_flight ?? 0} items in flight, ${k ? `${k.sla_compliance_pct}%` : "—"} within SLA` },
         changed: { sentence: `${bottlenecks.length} stages are holding work` },
-        why: { sentence: cap?.recommendation || "Queue age drives missed deadlines" },
+        why: { sentence: cap?.recommendation || "—" },
         next: { sentence: worst ? `Unblock ${worst.stage} first` : "Nothing is blocked", action: { label: "Open inbox", href: "/inbox" } },
       }}
+      skeleton={
+        <>
+          <CardSkeleton height={160} />
+          <CardSkeleton height={240} />
+          <CardSkeleton height={160} />
+        </>
+      }
       state={loading ? "loading" : failed ? "error" : empty ? "empty" : undefined}
       emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href="/inbox">Open inbox</Link>} /> }}
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
     >
       <Card title="Throughput and capacity">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="Throughput" value={k?.throughput ?? "—"} />
+          <Stat label="Throughput" href="/inbox" value={k?.throughput ?? "—"} />
           <Stat label="Automation rate" value={k ? `${k.automation_rate}%` : "—"} />
-          <Stat label="Time to resolve (h)" value={k?.mttr_hours ?? "—"} />
+          <Stat label="Time to resolve (h)" href="/inbox" value={k?.mttr_hours ?? "—"} />
           <Stat label="SLA compliance" value={k ? `${k.sla_compliance_pct}%` : "—"} />
-          <Stat label="In flight" value={k?.items_in_flight ?? "—"} />
-          <Stat label="Average queue age (h)" value={k?.avg_queue_age_hours ?? "—"} />
+          <Stat label="In flight" href="/inbox" value={k?.items_in_flight ?? "—"} />
+          <Stat label="Average queue age (h)" href="/inbox" value={k?.avg_queue_age_hours ?? "—"} />
           <Stat label="Stewards needed" value={cap?.needed ?? "—"} hint={cap ? `${cap.current} now` : undefined} />
           <Stat label="Capacity gap" value={cap?.surplus_deficit ?? "—"} />
         </div>
       </Card>
       <Card title="Queue age by stage">
-        <Bar data={bottlenecks.map((b) => ({ x: b.stage, y: b.avg_age_hours }))} label="Average age by stage (hours)" />
-        <p className="mt-2 text-[13px]" style={{ color: "var(--m-ink-2)" }}>Older stages hold work longest.</p>
+        {bottlenecks.length === 0 ? (
+          <EmptyState title="No stage is holding work" detail="Queue age shows here once items wait in a stage." action={<Button render={<Link href="/inbox">Open inbox</Link>} />} />
+        ) : (
+          <>
+            <Bar data={bottlenecks.map((b) => ({ x: b.stage, y: b.avg_age_hours }))} label="Average age by stage (hours)" />
+            {worst && <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>{`${worst.stage} holds work longest, at ${worst.avg_age_hours} hours on average.`}</p>}
+          </>
+        )}
       </Card>
       <TeamCard />
       <Card title="Bottlenecks">

@@ -4,7 +4,7 @@
 // InsightHeader, then the cards.
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type EmptyStateGhost, type InsightHeaderProps } from "@/design";
+import { Card, EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type EmptyStateGhost, type PillTone, type InsightHeaderProps } from "@/design";
 import { getVersions } from "@/lib/api/versions";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -21,20 +21,51 @@ export interface InsightFrameProps {
   /** Run label or one line of context. */
   meta?: ReactNode;
   actions?: ReactNode;
-  insight?: Omit<InsightHeaderProps, "loading">;
+  insight?: InsightHeaderProps;
   state?: "loading" | "empty" | "error";
   emptyProps?: { title: string; detail?: string; action: ReactNode; ghost?: EmptyStateGhost };
   errorProps?: { message: string; onRetry?: () => void };
+  /** Loading body shaped like the final cards so nothing shifts. */
+  skeleton?: ReactNode;
   children?: ReactNode;
 }
 
-export function InsightFrame({ title, meta, actions, insight, state, emptyProps, errorProps, children }: InsightFrameProps) {
+/** Status text from the API to a pill tone: degraded and at-risk are amber, only blocked or no-go is red. */
+export function statusTone(status: string): PillTone {
+  const s = status.toLowerCase().replace(/[\s_]+/g, "-");
+  if (s === "go" || s === "ready" || s === "passed") return "go";
+  if (s === "no-go" || s === "blocked" || s === "failed") return "no-go";
+  if (s === "at-risk" || s === "degraded" || s === "warning") return "at-risk";
+  return "neutral";
+}
+
+/** A Card-shaped placeholder at the final body height. */
+export function CardSkeleton({ height }: { height: number }) {
+  return (
+    <Card>
+      <Skeleton height={height} />
+    </Card>
+  );
+}
+
+/** Currency amounts use the code the API sends, in the viewer's locale. */
+export function formatMoney(n: number, currency?: string | null): string {
+  const base = { maximumFractionDigits: 0 };
+  try {
+    return currency
+      ? new Intl.NumberFormat(undefined, { ...base, style: "currency", currency, currencyDisplay: "code" }).format(n)
+      : new Intl.NumberFormat(undefined, base).format(n);
+  } catch {
+    return `${new Intl.NumberFormat(undefined, base).format(n)} ${currency ?? ""}`.trim();
+  }
+}
+
+export function InsightFrame({ title, meta, actions, insight, state, emptyProps, errorProps, skeleton, children }: InsightFrameProps) {
   let body: ReactNode = children;
   if (state === "loading") {
     body = (
       <div aria-busy="true" className="flex flex-col gap-4">
-        <Skeleton height={240} />
-        <Skeleton height={120} />
+        {skeleton ?? <CardSkeleton height={240} />}
       </div>
     );
   } else if (state === "empty" && emptyProps) {
@@ -46,7 +77,7 @@ export function InsightFrame({ title, meta, actions, insight, state, emptyProps,
     <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
       <PageHeader title={title} meta={meta} actions={actions} />
       {insight && state !== "empty" && state !== "error" && (
-        <InsightHeader {...insight} loading={state === "loading"} />
+        <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />
       )}
       {body}
     </div>

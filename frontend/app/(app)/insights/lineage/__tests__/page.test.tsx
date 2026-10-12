@@ -47,7 +47,8 @@ describe("LineagePage", () => {
       start: "LFB1.ZTERM", model_version: 1, nodes: [], edges: [], paths_to_kpis: [],
     });
     renderWithQuery(<LineagePage />);
-    await waitFor(() => expect(lineageApi.getLineage).toHaveBeenCalled());
+    await screen.findByText(/Enter a field, rule or KPI to trace/i);
+    expect(lineageApi.getLineage).not.toHaveBeenCalled();
   });
 
   it("shows the API error message for the lineage model and retries on click", async () => {

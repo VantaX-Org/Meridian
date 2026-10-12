@@ -43,7 +43,7 @@ describe("ImpactPage", () => {
     await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
     expect(screen.getByText("Blocked")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
-    expect(screen.getByText(/6[,.  ]?300/)).toBeInTheDocument();
+    expect(screen.getAllByText(/6[,. ]?300/).length).toBeGreaterThan(0);
   });
 
   it("renders the proven-cost panel with headline stats, row and linked check", async () => {

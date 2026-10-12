@@ -56,7 +56,7 @@ export default function ReportsPage() {
       header: "",
       cell: ({ row }) => {
         const r = row.original;
-        if (r.url && !can("export")) return <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Export needs the auditor or analyst role</span>;
+        if (r.url && !can("export")) return <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Export needs the auditor or analyst role</span>;
         return r.url ? (
           <Button variant="secondary" onClick={() => void downloadAuthenticated(r.url!(versionId), `${r.id}_${versionId}.${r.format.toLowerCase()}`)}>Download</Button>
         ) : (
@@ -69,6 +69,15 @@ export default function ReportsPage() {
   return (
     <InsightFrame
       title="Reports"
+      meta="Latest completed runs"
+      insight={{
+        situation: { sentence: `${REPORTS.filter((x) => x.url).length} of ${REPORTS.length} reports can be downloaded for a run, ${runs.length} completed ${runs.length === 1 ? "run is" : "runs are"} available. Reports are rendered from the run you choose.`, tone: runs.length ? "go" : "at-risk" },
+        changed: { sentence: "—" },
+        why: { sentence: `${REPORTS.length - REPORTS.filter((x) => x.url).length} reports open from an object or record page instead.` },
+        next: can("export") && versionId
+          ? { sentence: "Download the executive summary for the chosen run.", action: { label: "Download executive summary", onClick: () => void downloadAuthenticated(getExecutiveReportUrl(versionId), `executive_${versionId}.pdf`) } }
+          : { sentence: "Export needs the auditor or analyst role.", action: { label: "Open runs", href: "/runs" } },
+      }}
       actions={
         <Select
           label="Analysis run"

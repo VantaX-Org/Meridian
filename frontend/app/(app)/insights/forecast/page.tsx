@@ -9,7 +9,7 @@ import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning } from "@/l
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { InsightFrame } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
   red: "no-go",
@@ -71,10 +71,16 @@ export default function ForecastPage() {
           tone: declining.length ? "at-risk" : "go",
         },
         changed: { sentence: `${declining.length} modules are declining` },
-        why: { sentence: "Early warnings flag scores heading below threshold" },
+        why: { sentence: warnings.length ? `${warnings.length} early warnings are open` : "—" },
         next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: "Open runs", href: "/runs" } },
       }}
       state={state}
+      skeleton={
+        <>
+          <CardSkeleton height={320} />
+          <CardSkeleton height={160} />
+        </>
+      }
       emptyProps={{
         title: "Not enough runs to forecast",
         detail: "A forecast needs at least two analyses.",
@@ -93,16 +99,20 @@ export default function ForecastPage() {
               options={forecasts.map((f) => ({ value: f.module_id, label: formatModuleName(f.module_id) }))}
             />
           )}
-          {points.length > 0 ? <Line data={points} /> : <EmptyState title="No forecast for this module" />}
+          {points.length > 0 ? <Line data={points} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
           {selected && (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
               {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${selected.points} runs across ${selected.span_days} days`}
             </p>
           )}
         </div>
       </Card>
       <Card title="Early warnings">
+        {warnings.length === 0 ? (
+          <EmptyState title="No early warnings" detail="Every module is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
+        ) : (
         <DataTable columns={warningColumns} data={warnings} getRowId={(w) => `${w.module_id}-${w.signal}-${w.message}`} hideToolbar dense height="auto" />
+        )}
       </Card>
     </InsightFrame>
   );

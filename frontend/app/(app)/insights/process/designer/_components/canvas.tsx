@@ -6,7 +6,8 @@ import {
   type Edge, type Node, type NodeChange,
 } from "@xyflow/react";
 import { useMemo, useState, type KeyboardEvent } from "react";
-import { Button } from "@/design";
+import { LayoutGrid, Plus, Trash2 } from "lucide-react";
+import { Button, IconButton } from "@/design";
 import type { ActivityOverlay, L4, NodeType } from "@/types/process-model";
 import { layoutDiagram } from "./layout";
 import { nodeTypes, type MarkData, type TaskData } from "./nodes";
@@ -94,16 +95,16 @@ function CanvasInner(p: CanvasProps) {
 
   return (
     <div className="m-designer__canvas-wrap" onKeyDown={onKeyDown}>
-      {p.canDesign !== false ? <div className="m-designer__toolbar" role="toolbar" aria-label="Diagram tools">
-        <Button variant="secondary" onClick={guard(() => p.onAdd("task"))}>Add activity</Button>
+      {p.canDesign !== false ? <div className="flex flex-wrap items-center gap-2 mb-2" role="toolbar" aria-label="Diagram tools">
+        <Button variant="secondary" onClick={guard(() => p.onAdd("task"))}><Plus size={14} aria-hidden /> Add activity</Button>
         <Button variant="secondary" onClick={guard(() => p.onAdd("exclusiveGateway"))}>Add gateway</Button>
         <Button variant="secondary" onClick={guard(() => p.onAdd("endEvent"))}>Add event</Button>
-        <Button variant="secondary" onClick={guard(p.onLayout)}>Auto-layout</Button>
+        <Button variant="secondary" onClick={guard(p.onLayout)}><LayoutGrid size={14} aria-hidden /> Auto-layout</Button>
         <Button variant={connectMode ? "primary" : "secondary"} aria-pressed={connectMode}
           onClick={() => (p.editable ? setConnectMode((v) => !v) : p.onBlocked())}>Connect mode</Button>
-        <Button variant="ghost" disabled={!selNode && !selFlow} onClick={remove}>Delete selected</Button>
+        <IconButton aria-label="Delete selected" disabled={!selNode && !selFlow} onClick={remove}><Trash2 size={16} aria-hidden /></IconButton>
         {askDelete ? (
-          <span className="m-designer__ask" role="alertdialog" aria-label="Delete activity">
+          <span className="inline-flex items-center gap-2 m-text-body" style={{ color: "var(--m-ink-2)" }} role="alertdialog" aria-label="Delete activity">
             Also delete the activity?
             <Button variant="secondary" onClick={() => { p.onDeleteNode(askDelete, true); setAskDelete(null); }}>Delete both</Button>
             <Button variant="ghost" onClick={() => { p.onDeleteNode(askDelete, false); setAskDelete(null); }}>Step only</Button>

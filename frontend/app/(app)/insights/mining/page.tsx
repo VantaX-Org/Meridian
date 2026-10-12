@@ -26,13 +26,13 @@
 
 import { InsightFrame } from "../_components/InsightFrame";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs,
+  Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs,
   type GraphEdge, type GraphNode, type PillTone,
 } from "@/design";
 import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
@@ -129,7 +129,7 @@ function EntityLinks() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
           Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}.
         </p>
         {q.isLoading || dayOne.status === "loading" ? <Skeleton height={440} />
@@ -142,7 +142,7 @@ function EntityLinks() {
             />
           )}
       </div>
-      <DataTableWithMaybeEmpty columns={columns} data={shown} getRowId={(r) => r.id} loading={q.isLoading} empty="No relationships." />
+      <DataTableWithMaybeEmpty columns={columns} data={shown} getRowId={(r) => r.id} loading={q.isLoading} empty="No relationships." action={<Button render={<Link href="/systems">Open systems</Link>} />} />
     </div>
   );
 }
@@ -213,7 +213,7 @@ function Dependencies() {
           onValueChange={(v) => { setVersionId(v); setObject(""); }} />
         <Select label="Object" value={obj} options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}
           onValueChange={setObject} />
-        {sid && vid ? <Link href={profileHref} className="text-[13px] underline">Open profile</Link> : null}
+        {sid && vid ? <Link href={profileHref} className="m-text-body underline">Open profile</Link> : null}
         {sid && vid ? (
           <ExportMenu options={[{ format: "xlsx", run: () => exportVersionProfile(sid, vid, "xlsx", obj || undefined) }]} />
         ) : null}
@@ -225,14 +225,14 @@ function Dependencies() {
         />
       ) : null}
       <div>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
           One field decides another in at least 99 % of records. Click a field to open its profile.
         </p>
         {profile.isLoading || systems.isLoading || versions.isLoading ? <Skeleton height={480} />
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={480} onNodeClick={() => router.push(profileHref)} />
-          : <EmptyState title="No candidate rules in this object's data." />}
+          : <EmptyState title="No candidate rules in this object's data." action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
       </div>
-      <DataTableWithMaybeEmpty columns={columns} data={deps} getRowId={(d) => `${d.determinant}>${d.dependent}`} loading={profile.isLoading} empty="No candidate rules." />
+      <DataTableWithMaybeEmpty columns={columns} data={deps} getRowId={(d) => `${d.determinant}>${d.dependent}`} loading={profile.isLoading} empty="No candidate rules." action={<Button render={<Link href="/runs">Open runs</Link>} />} />
     </div>
   );
 }
@@ -274,7 +274,7 @@ function Patterns() {
         label="Pattern type"
         placeholder="All types" value={type} onValueChange={setType}
         options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: formatModuleName(t) }))} />
-      <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet." />
+      <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet." action={<Button render={<Link href="/runs">Open runs</Link>} />} />
     </div>
   );
 }
@@ -282,11 +282,11 @@ function Patterns() {
 /* ---------------------------------------------------------------------- Table helper */
 
 /** `@/design`'s DataTable has no `empty` prop; this wraps it with the legacy loading/empty text. */
-function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty }: {
-  columns: ColumnDef<T>[]; data: T[]; getRowId: (row: T) => string; loading: boolean; empty: string;
+function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty, action }: {
+  columns: ColumnDef<T>[]; data: T[]; getRowId: (row: T) => string; loading: boolean; empty: string; action: ReactNode;
 }) {
   if (loading) return <Skeleton height={200} />;
-  if (!data.length) return <EmptyState title={empty} />;
+  if (!data.length) return <EmptyState title={empty} action={action} />;
   return <DataTable<T> columns={columns} data={data} getRowId={getRowId} />;
 }
 
@@ -296,8 +296,28 @@ export default function MiningPage() {
   // Legacy bookmarks used ?lens=; honour it only when ?tab= is absent, through the same whitelist.
   const lens = useSearchParams().get("lens") ?? "";
   const tab = oneOf(tabRaw, TABS, oneOf(lens, TABS, "links"));
+  const rel = useQuery({ queryKey: queryKeys.relationships({ include_inactive: true }), queryFn: () => getRelationships({ include_inactive: true }) });
+  const sum = useQuery({ queryKey: queryKeys.miningSummary(30), queryFn: () => getMiningSummary(30) });
+  const rels = rel.data?.relationships ?? [];
+  const links = rel.data?.total ?? rels.length;
+  const domains = new Set(rels.flatMap((r) => [r.from_domain, r.to_domain])).size;
+  const inferred = rels.filter((r) => r.ai_inferred).length;
+  const anomalies = sum.data?.new_anomalies ?? 0;
+  const patternsTotal = sum.data?.total_patterns ?? 0;
   return (
-    <InsightFrame title="Mining" meta="What links the master data together: entity relationships, mined field dependencies and mined patterns">
+    <InsightFrame
+      title="Mining"
+      meta="Entity links, mined dependencies and mined patterns"
+      insight={{
+        loading: rel.isLoading || sum.isLoading,
+        situation: { sentence: `${links.toLocaleString()} links across ${domains.toLocaleString()} entities`, tone: anomalies ? "at-risk" : "go" },
+        changed: { sentence: `${anomalies.toLocaleString()} new anomalies in the last 30 days` },
+        why: { sentence: `${inferred.toLocaleString()} of the links are inferred and ${patternsTotal.toLocaleString()} patterns are mined` },
+        next: anomalies
+          ? { sentence: "Review the new anomalies", action: { label: "Open patterns", onClick: () => setTab("patterns") } }
+          : { sentence: "Review the entity links", action: { label: "Open links", onClick: () => setTab("links") } },
+      }}
+    >
       <GraphTally />
       <Tabs value={tab} onValueChange={setTab} items={[
         { value: "links", label: "Entity links", content: <EntityLinks /> },

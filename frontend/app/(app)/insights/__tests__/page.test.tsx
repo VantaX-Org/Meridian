@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
+import * as analyticsApi from "@/lib/api/analytics";
 import * as versionsApi from "@/lib/api/versions";
 import InsightsIndexPage from "../page";
 
@@ -27,28 +28,44 @@ const exec = {
   owner_rows: [],
 };
 
+function mockSide() {
+  vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+  vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({ forecasts: [], early_warnings: [] });
+  vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ version_id: "v1", currency: "USD", total: 0, rows: [], value_at_risk_total: 0 });
+}
+
 describe("InsightsIndexPage", () => {
-  it("lists every insight with the no-go one first and one exec fetch", async () => {
+  it("lists every insight and fetches exec once", async () => {
     const getExec = vi.spyOn(insightsApi, "getExec").mockResolvedValue(exec);
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    mockSide();
     renderWithQuery(<InsightsIndexPage />);
-    expect(await screen.findByText("1 wave and module cells are no-go")).toBeInTheDocument();
+    expect((await screen.findAllByText("1 readiness cells are no-go")).length).toBeGreaterThan(0);
     const names = screen.getAllByRole("row").slice(1).map((r) => r.textContent ?? "");
     expect(names[0]).toMatch(/^Readiness/);
     expect(screen.getByText("Duplicates")).toBeInTheDocument();
     expect(getExec).toHaveBeenCalledTimes(1);
   });
 
+  it("sorts the no-go insight above the rest", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue(exec);
+    mockSide();
+    renderWithQuery(<InsightsIndexPage />);
+    await screen.findAllByText("1 readiness cells are no-go");
+    const names = screen.getAllByRole("row").slice(1).map((r) => r.textContent ?? "");
+    expect(names[0]).toMatch(/^Readiness/);
+    expect(names.findIndex((n) => /^Forecast/.test(n))).toBeGreaterThan(0);
+  });
+
   it("shows the empty state when there is no run", async () => {
     vi.spyOn(insightsApi, "getExec").mockResolvedValue({ ...exec, version_id: null, readiness_cells: [] });
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    mockSide();
     renderWithQuery(<InsightsIndexPage />);
     expect(await screen.findByText("No insights yet")).toBeInTheDocument();
   });
 
   it("shows a retry control when the load fails", async () => {
     vi.spyOn(insightsApi, "getExec").mockRejectedValue(new Error("network error"));
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    mockSide();
     renderWithQuery(<InsightsIndexPage />);
     expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
