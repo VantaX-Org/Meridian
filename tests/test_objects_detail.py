@@ -29,6 +29,11 @@ def tenant_with_material_findings():
             "INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, affected_count, total_count, pass_rate) "
             "VALUES (gen_random_uuid(), :v, :t, 'material_master', 'mm_missing_desc', 'high', 'completeness', 12, 500, 97.6)"
         ), {"v": v1, "t": t1})
+        conn.execute(text(
+            "INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, affected_count, total_count, pass_rate) "
+            "VALUES (gen_random_uuid(), :v, :t, 'material_master', 'mm_missing_uom', 'low', 'completeness', 3, 500, 99.4), "
+            "(gen_random_uuid(), :v, :t, 'material_master', 'mm_all_pass', 'low', 'validity', 0, 500, 100)"
+        ), {"v": v1, "t": t1})
     yield t1, v1
     with engine.begin() as conn:
         conn.execute(text("DELETE FROM findings WHERE version_id = :v"), {"v": v1})
@@ -50,6 +55,9 @@ async def test_object_detail_returns_rules(tenant_with_material_findings, monkey
     body = resp.json()
     assert body["composite_score"] == 72.5
     assert body["rules"][0]["check_id"] == "mm_missing_desc"
+    # only rows with affected_count > 0 count, as in GET /objects
+    assert body["failing_checks"] == 2
+    assert body["affected_records"] == 15
 
 
 @pytest.mark.anyio

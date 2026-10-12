@@ -9,7 +9,7 @@ Role visibility:
   - Viewer, process_analyst (RESTRICTED_ROLES): empty MDM data (they only see DQS / process views)
 """
 
-from typing import Optional
+from typing import Optional, Sequence
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -78,6 +78,30 @@ async def _get_user_role(request: Request, tenant: Tenant, db: AsyncSession) -> 
     return "analyst"
 
 
+def _metric_dict(r: Sequence[object]) -> dict:
+    """Row -> MdmMetricOut kwargs. The columns are NOT NULL with default 0, so a
+    NULL can only come from a hand-edited row; treat it as the column default
+    (0) instead of failing the whole dashboard with a 500."""
+    def f(v: object) -> float:
+        return float(v) if v is not None else 0.0  # type: ignore[arg-type]
+
+    return {
+        "snapshot_date": str(r[0]),
+        "domain": r[1],
+        "golden_record_count": r[2] or 0,
+        "golden_record_coverage_pct": f(r[3]),
+        "avg_match_confidence": f(r[4]),
+        "steward_sla_compliance_pct": f(r[5]),
+        "source_consistency_pct": f(r[6]),
+        "mdm_health_score": f(r[7]),
+        "backlog_count": r[8] or 0,
+        "sync_coverage_pct": f(r[9]),
+        "ai_narrative": r[10],
+        "ai_projected_score": float(r[11]) if r[11] is not None else None,
+        "ai_risk_flags": r[12],
+    }
+
+
 def _strip_ai_fields(metric: dict) -> dict:
     """Remove AI narrative fields for roles without view_ai_confidence."""
     metric["ai_narrative"] = None
@@ -131,21 +155,7 @@ async def get_mdm_dashboard(
     row = result.fetchone()
     latest = None
     if row:
-        latest = {
-            "snapshot_date": str(row[0]),
-            "domain": row[1],
-            "golden_record_count": row[2],
-            "golden_record_coverage_pct": float(row[3]),
-            "avg_match_confidence": float(row[4]),
-            "steward_sla_compliance_pct": float(row[5]),
-            "source_consistency_pct": float(row[6]),
-            "mdm_health_score": float(row[7]),
-            "backlog_count": row[8],
-            "sync_coverage_pct": float(row[9]),
-            "ai_narrative": row[10],
-            "ai_projected_score": float(row[11]) if row[11] is not None else None,
-            "ai_risk_flags": row[12],
-        }
+        latest = _metric_dict(row)
         if not _should_see_ai_panel(user_role):
             latest = _strip_ai_fields(latest)
 
@@ -165,21 +175,7 @@ async def get_mdm_dashboard(
     )
     trend = []
     for r in trend_result.fetchall():
-        entry = {
-            "snapshot_date": str(r[0]),
-            "domain": r[1],
-            "golden_record_count": r[2],
-            "golden_record_coverage_pct": float(r[3]),
-            "avg_match_confidence": float(r[4]),
-            "steward_sla_compliance_pct": float(r[5]),
-            "source_consistency_pct": float(r[6]),
-            "mdm_health_score": float(r[7]),
-            "backlog_count": r[8],
-            "sync_coverage_pct": float(r[9]),
-            "ai_narrative": r[10],
-            "ai_projected_score": float(r[11]) if r[11] is not None else None,
-            "ai_risk_flags": r[12],
-        }
+        entry = _metric_dict(r)
         if not _should_see_ai_panel(user_role):
             entry = _strip_ai_fields(entry)
         trend.append(entry)
@@ -247,21 +243,7 @@ async def get_mdm_history(
 
     history = []
     for r in result.fetchall():
-        entry = {
-            "snapshot_date": str(r[0]),
-            "domain": r[1],
-            "golden_record_count": r[2],
-            "golden_record_coverage_pct": float(r[3]),
-            "avg_match_confidence": float(r[4]),
-            "steward_sla_compliance_pct": float(r[5]),
-            "source_consistency_pct": float(r[6]),
-            "mdm_health_score": float(r[7]),
-            "backlog_count": r[8],
-            "sync_coverage_pct": float(r[9]),
-            "ai_narrative": r[10],
-            "ai_projected_score": float(r[11]) if r[11] is not None else None,
-            "ai_risk_flags": r[12],
-        }
+        entry = _metric_dict(r)
         if not _should_see_ai_panel(user_role):
             entry = _strip_ai_fields(entry)
         history.append(entry)
