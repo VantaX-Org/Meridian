@@ -44,8 +44,10 @@ def blocks(df: pd.DataFrame, field: str, block_by: list[str],
         populated &= ~is_blank(df[c])
     scope = populated & (name_key(df[field]).fillna("").str.len() >= 5)
     # fillna: rows with a blank block field are already excluded via scope below, but the
-    # join itself runs over the whole frame first and NA breaks str.join before that mask applies.
-    group = (df[block_by].astype("string").fillna("").apply(lambda s: s.str.strip().str.upper()).agg("|".join, axis=1)
+    # join itself runs over the whole frame first and NA breaks the join before that mask applies.
+    # Joined column-wise (str.cat), not row by row: the same "A|B" keys, as "str" like before.
+    parts = [df[c].astype("string").fillna("").str.strip().str.upper() for c in block_by]
+    group = ((parts[0].str.cat(parts[1:], sep="|") if len(parts) > 1 else parts[0]).astype("str")
              if block_by else pd.Series("", index=df.index))
     kept: list[pd.Index] = []
     oversized: list[pd.Index] = []
