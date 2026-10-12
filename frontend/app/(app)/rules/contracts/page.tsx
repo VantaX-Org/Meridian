@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Stat, Textarea, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
@@ -21,6 +22,7 @@ const TERMS: [keyof Contract, string][] = [["schema_contract", "Schema"], ["qual
 
 export default function ContractsPage() {
   const qc = useQueryClient();
+  const router = useRouter();
   const { can } = useRole();
   // Backend guards (api/routes/contracts.py): create/update need manage_rules, activate needs approve.
   const canCreate = can("manage_rules");
@@ -31,10 +33,10 @@ export default function ContractsPage() {
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const q = useQuery({ queryKey: queryKeys.contracts({ status }), queryFn: () => getContracts(status === "all" ? undefined : status === "breached" ? "active" : status) });
+  const q = useQuery({ queryKey: queryKeys.contracts({}), queryFn: () => getContracts() });
   const all = useMemo(() => q.data?.contracts ?? [], [q.data]);
   const term = search.trim().toLowerCase();
-  const visible = all.filter((c) => (status !== "breached" || breached(c)) && (!term || [c.name, c.producer, c.consumer, c.description ?? ""].join(" ").toLowerCase().includes(term)));
+  const visible = all.filter((c) => (status === "all" || (status === "breached" ? breached(c) : c.status === status)) && (!term || [c.name, c.producer, c.consumer, c.description ?? ""].join(" ").toLowerCase().includes(term)));
   const selected = selectedId ? all.find((c) => c.id === selectedId) ?? null : null;
   const refresh = () => qc.invalidateQueries({ queryKey: ["contracts"] });
 
@@ -108,7 +110,7 @@ export default function ContractsPage() {
           : {
               title: "No data contracts yet",
               detail: "A contract turns a rule into a promise with an owner",
-              action: canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined,
+              action: canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : <Button variant="secondary" onClick={() => router.push("/rules")}>Open rules</Button>,
             }
       }
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}

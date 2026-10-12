@@ -187,19 +187,19 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       },
     },
     {
-      id: "na", header: "Not applicable",
-      cell: ({ row }) => (naReason.has(row.original.id) || naReason.has(codeOf(row.original))
-        ? <span title={naReason.get(row.original.id) ?? naReason.get(codeOf(row.original)) ?? undefined}>Not applicable</span>
-        : "—"),
-    },
-    {
       id: "last", header: "Last run",
       cell: ({ row }) => (
         <span>
           {row.original.last_run_at ? formatDate(row.original.last_run_at, "datetime") : "Not run yet"}
-          {row.original.last_pass_rate != null ? ` · ${pct(row.original.last_pass_rate)}` : ""}
+          {row.original.last_pass_rate != null ? `, ${pct(row.original.last_pass_rate)}` : ""}
         </span>
       ),
+    },
+    {
+      id: "na", header: "Not applicable",
+      cell: ({ row }) => (naReason.has(row.original.id) || naReason.has(codeOf(row.original))
+        ? <span title={naReason.get(row.original.id) ?? naReason.get(codeOf(row.original)) ?? undefined}>Not applicable</span>
+        : "—"),
     },
   ], [canManage, toggleRule, naReason]);
 
@@ -512,7 +512,7 @@ export default function RulesPage() {
     <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
       <PageHeader
         title="Rules"
-        meta={summary.data ? `${total.toLocaleString()} rules · ${enabled.toLocaleString()} enabled` : "\u00a0"}
+        meta={summary.data ? `${total.toLocaleString()} rules, ${enabled.toLocaleString()} enabled` : "\u00a0"}
         actions={canManage ? <Button onClick={() => { setTab("all"); setAuthoring(true); }}>New rule</Button> : undefined}
       />
       <Tabs

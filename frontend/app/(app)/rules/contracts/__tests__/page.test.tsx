@@ -6,12 +6,14 @@ import type { Contract } from "@/types/api";
 import ContractsPage from "../page";
 
 const searchParams = new URLSearchParams();
+const push = vi.fn();
+let allowed = true;
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => "/rules/contracts",
   useSearchParams: () => searchParams,
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => allowed }) }));
 
 const CONTRACT: Contract = {
   id: "c1",
@@ -49,5 +51,30 @@ describe("rules contracts page", () => {
     spy.mockResolvedValue({ contracts: [CONTRACT], total: 1 });
     retry.click();
     await waitFor(() => expect(screen.getByText("Vendor master to S/4HANA")).toBeInTheDocument());
+  });
+
+  it("keeps the Awaiting approval count unfiltered when another status is selected", async () => {
+    const pending: Contract = { ...CONTRACT, id: "c2", name: "Pending one", status: "pending_approval" };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [CONTRACT, pending], total: 2 });
+    searchParams.set("status", "breached");
+    try {
+      renderWithQuery(<ContractsPage />);
+      await waitFor(() => expect(screen.getByText("Awaiting approval").parentElement).toHaveTextContent("1"));
+    } finally {
+      searchParams.delete("status");
+    }
+  });
+
+  it("offers a link to rules in the empty state without manage_rules", async () => {
+    allowed = false;
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [], total: 0 });
+    try {
+      renderWithQuery(<ContractsPage />);
+      const btn = await screen.findByRole("button", { name: "Open rules" });
+      btn.click();
+      expect(push).toHaveBeenCalledWith("/rules");
+    } finally {
+      allowed = true;
+    }
   });
 });
