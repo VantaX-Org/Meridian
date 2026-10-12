@@ -99,6 +99,17 @@ def test_startswith_operator():
     assert out.index.tolist() == [0, 1]
 
 
+def test_contains_any_matches_any_code_as_substring():
+    """Status strings (MARC.PSTAT 'KVEDLB') match on any listed code; regex metacharacters are
+    literal; blanks and nulls never match. Vectorised: a Python call per row took over a
+    minute per rule at 18M MARC rows."""
+    df = pd.DataFrame({"MARC.PSTAT": ["KVEDLB", " V ", "KDE", "", None, "A.B", "AxB", "CT"]})
+    out = apply_context(df, {"MARC.PSTAT": {"contains_any": ["V", "."]}})
+    assert out.index.tolist() == [0, 1, 5]
+    assert apply_context(df, {"MARC.PSTAT": {"contains_any": ["CT", "x"]}}).index.tolist() == [6, 7]
+    assert apply_context(df, {"MARC.PSTAT": {"contains_any": []}}).empty
+
+
 def test_today_relative_date_operators():
     today = pd.Timestamp.today().normalize()
     day = lambda n: (today - pd.Timedelta(days=n)).strftime("%Y%m%d")

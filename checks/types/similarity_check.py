@@ -61,9 +61,11 @@ def near_pairs(df: pd.DataFrame, field: str, groups: list[pd.Index], threshold: 
     Names with different numbers never pair. Identical compact keys score 1.0, or are
     skipped when ``exact_elsewhere`` (an exact-duplicate rule reports them)."""
     from checks.value_placement import name_key
-    key = _key(df[field])
-    compact = name_key(df[field]).fillna("")  # the exact-duplicate rule's own key
-    digits = key.str.replace(r"[^0-9]", "", regex=True)
+    # plain dicts: a Series lookup per pair costs more than the comparison itself
+    key_s = _key(df[field])
+    compact = name_key(df[field]).fillna("").to_dict()  # the exact-duplicate rule's own key
+    digits = key_s.str.replace(r"[^0-9]", "", regex=True).to_dict()
+    key = key_s.to_dict()
     out: list[tuple[Hashable, Hashable, float]] = []
     for idx in groups:
         for a, b in combinations(idx, 2):
@@ -101,10 +103,12 @@ class SimilarityCheck(BaseCheck):
         failing = pd.Series(False, index=df.index)
         ev_col = r.get("evidence_key") or r["field"]  # evidence_key: show this column's values, not the compared (personal) field
         pairs: list[list[str]] = []
+        hit: set[Hashable] = set()
         for a, b, _ in near_pairs(df, r["field"], kept, threshold, bool(r.get("exact_rule"))):
-            failing[a] = failing[b] = True
+            hit.update((a, b))
             if len(pairs) < 20:
                 pairs.append([str(df.at[a, ev_col]), str(df.at[b, ev_col])])
+        failing |= df.index.isin(list(hit))
         return Evaluation(scope, failing, {"near_duplicate_pairs": pairs,
                                            "blocks_skipped_too_large": len(oversized),
                                            "records_not_compared": sum(len(g) for g in oversized),
