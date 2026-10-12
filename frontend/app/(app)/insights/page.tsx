@@ -82,7 +82,7 @@ export default function InsightsIndexPage() {
       errorProps={{ message: "Could not load insights", onRetry: () => void exec.refetch() }}
     >
       {loading ? (
-        <div data-state="loading" aria-busy="true" className="flex flex-col gap-px">
+        <div aria-busy="true" className="flex flex-col gap-px">
           <Skeleton height={36} />
           {Array.from({ length: 12 }, (_, i) => <Skeleton key={i} height={36} />)}
         </div>
@@ -92,6 +92,7 @@ export default function InsightsIndexPage() {
           data={rows}
           getRowId={(x) => x.id}
           onRowClick={(x) => router.push(x.href)}
+          rowHref={(x) => x.href}
           dense
           hideToolbar
           height="auto"

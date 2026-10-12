@@ -8,6 +8,7 @@ import { Button, Card, DataTable, DrillLink, Delta, Pill, Skeleton, Stat, Waterf
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
+import { labelOf } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -40,7 +41,7 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
 
 const impactColumns: ColumnDef<ImpactRow>[] = [
   { accessorKey: "feature", header: "Feature" },
-  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone="no-go">{row.original.status}</Pill> },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone="no-go">{labelOf(row.original.status)}</Pill> },
   { accessorKey: "record_count", header: "Blocked records", cell: ({ row }) => <DrillLink href="/insights/impact">{row.original.record_count}</DrillLink> },
   { accessorKey: "value_at_risk", header: "Value at risk", cell: ({ row }) => money(row.original.value_at_risk) },
 ];

@@ -130,7 +130,7 @@ export default function DuplicatesPage() {
         </div>
       </Card>
       {state === "loading" ? (
-        <div data-state="loading"><Skeleton height={240} /></div>
+        <div aria-busy="true"><Skeleton height={240} /></div>
       ) : state === "error" ? (
         <ErrorState message={apiErrorMessage(cluster.error)} onRetry={() => void cluster.refetch()} />
       ) : state === "empty" ? (

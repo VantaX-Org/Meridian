@@ -64,7 +64,6 @@
   border: 1px solid var(--m-line);
   border-radius: var(--m-radius-sheet);
   position: relative;
-  transition: border-color var(--m-motion-duration) var(--m-motion-ease);
 }
 .m-process-node[data-selected="true"] {
   border-color: var(--m-accent);

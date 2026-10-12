@@ -15,6 +15,7 @@ import {
   type ProvenCostResponse,
   type ProvenCostRow,
 } from "@/lib/api/insights";
+import { labelOf } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -50,7 +51,7 @@ const impactColumns: ColumnDef<ImpactRow>[] = [
       </DrillLink>
     ),
   },
-  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone="no-go">{row.original.status}</Pill> },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone="no-go">{labelOf(row.original.status)}</Pill> },
   { accessorKey: "record_count", header: "Blocked records" },
   {
     accessorKey: "value_at_risk",

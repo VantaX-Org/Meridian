@@ -57,7 +57,7 @@ export default function ProcessDesigner() {
     return (
       <div className="flex flex-col gap-4 p-6">
         <div>
-          <h1 className="font-semibold" style={{ fontSize: "var(--m-text-title)" }}>Process designer</h1>
+          <h2 className="font-semibold" style={{ fontSize: "var(--m-text-section)" }}>Process designer</h2>
           <p style={{ color: "var(--m-ink-2)" }}>Design the process model and see where the data behind it breaks.</p>
         </div>
         {failed ? (
@@ -202,7 +202,7 @@ function Editor(p: EditorProps) {
     <div className="flex flex-col gap-4 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-semibold" style={{ fontSize: "var(--m-text-title)" }}>Process designer</h1>
+          <h2 className="font-semibold" style={{ fontSize: "var(--m-text-section)" }}>Process designer</h2>
           <p style={{ color: "var(--m-ink-2)" }}>
             {reference ? "The shipped reference model, read-only. Create a model from it to edit." : `Version ${versionNo} of ${currentVersion}. Changes are saved as a new version.`}
           </p>
