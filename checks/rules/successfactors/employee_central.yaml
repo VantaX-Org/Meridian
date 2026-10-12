@@ -196,14 +196,10 @@ rules:
   check_class: domain_value_check
   allowed_values:
   - A
-  - U
-  - P
+  - I
   - T
-  - R
   - S
-  - D
-  - O
-  - F
+  - R
   severity: critical
   dimension: accuracy
   message: 'Employment status must be a valid SAP code: A (active), I (inactive/leave), T (terminated), S (suspended),
@@ -216,14 +212,10 @@ rules:
     accruals may be applied incorrectly.
   valid_values_with_labels:
     A: Active
-    U: Unpaid Leave
-    P: Paid Leave
+    I: Inactive (leave)
     T: Terminated
-    R: Retired
     S: Suspended
-    D: Discarded
-    O: Dormant
-    F: Furlough
+    R: Retired
   fix_map:
     __blank__: Assign the correct employment status via Admin Center > Employment Information. Use A (active), I
       (inactive/leave), T (terminated), S (suspended), or R (retired).

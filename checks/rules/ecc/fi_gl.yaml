@@ -344,7 +344,6 @@ rules:
     - A
     - D
     - K
-    - V
     severity: critical
     dimension: validity
     message: Reconciliation account indicator must be blank (not a recon account), D (customer), K (vendor), or A (asset)
