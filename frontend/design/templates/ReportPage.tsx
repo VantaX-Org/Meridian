@@ -2,11 +2,14 @@
 import { PageFrame } from "./PageFrame";
 import type { ReactNode } from "react";
 import { Button } from "../primitives/Button";
+import { PageHeader } from "../primitives/PageHeader";
 import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
 import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
 
 export function ReportPage({
+  title,
+  meta,
   header,
   narrative,
   charts,
@@ -20,7 +23,11 @@ export function ReportPage({
 }: {
   /** Replaces the default skeleton while `state` is "loading", so a page can match its real geometry. */
   loading?: ReactNode;
-  /** Optional page header rendered above the narrative row. */
+  /** Page title, rendered by `PageHeader` as an h2 (the shell Breadcrumb owns the single h1). With `title` set, `exportMenu` sits in the header actions. */
+  title?: string;
+  /** One line under the title: run label, as-of time, scope. */
+  meta?: ReactNode;
+  /** Optional page header rendered above the narrative row. Use `title` instead for a standard header. */
   header?: ReactNode;
   narrative: ReactNode;
   charts: ReactNode;
@@ -62,10 +69,10 @@ export function ReportPage({
 
   return (
     <PageFrame gap={4}>
-      {header}
+      {title ? <PageHeader title={title} meta={meta} actions={exportMenu} /> : header}
       <div className="flex items-start justify-between gap-4">
         <div className="m-text-body" style={{ color: "var(--m-ink)" }}>{narrative}</div>
-        {exportMenu}
+        {title ? null : exportMenu}
       </div>
       {body}
       {!exportMenu && onExport && <Button variant="secondary" onClick={onExport}>Export</Button>}

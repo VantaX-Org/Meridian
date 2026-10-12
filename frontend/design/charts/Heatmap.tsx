@@ -18,10 +18,17 @@ export interface HeatmapCell {
  */
 export type HeatmapMode = "tone" | "seq" | "div";
 
-function cellStyle(value: HeatmapCell["value"], mode: HeatmapMode, range: readonly [number, number]) {
-  if (typeof value !== "number") {
-    return { background: `var(--m-${value}-soft)`, boxShadow: `inset 3px 0 0 var(--m-${value})`, color: `var(--m-${value}-ink)`, label: value };
-  }
+const toneLook = (t: HeatmapTone) => ({ background: `var(--m-${t}-soft)`, boxShadow: `inset 3px 0 0 var(--m-${t})`, color: `var(--m-${t}-ink)` });
+
+/** Maps a backend tier string (go, at_risk, no_go) onto a heatmap tone. Unknown tiers return undefined. */
+export function toneOfTier(tier: string | null | undefined): HeatmapTone | undefined {
+  const t = (tier ?? "").replace(/_/g, "-");
+  return t === "go" || t === "at-risk" || t === "no-go" ? t : undefined;
+}
+
+function cellStyle(value: HeatmapCell["value"], mode: HeatmapMode, range: readonly [number, number], tone?: HeatmapTone) {
+  if (typeof value !== "number") return { ...toneLook(value), label: value };
+  if (tone) return { ...toneLook(tone), label: `${Math.round(value * 10) / 10}, ${tone.replace("-", " ")}` };
   const step = rampStep(value, range[0], range[1]);
   const label = String(Math.round(value * 10) / 10);
   return mode === "div"
@@ -31,7 +38,7 @@ function cellStyle(value: HeatmapCell["value"], mode: HeatmapMode, range: readon
 
 /** Grid heatmap for the readiness cockpit (spec 8.1) — not a recharts chart, a styled table. */
 export function Heatmap({
-  rows, cols, cells, onPointClick, cellSize = 32, rowHref, draw = false, mode = "tone", range = mode === "div" ? [-1, 1] : [0, 100],
+  rows, cols, cells, onPointClick, cellSize = 32, rowHref, draw = false, mode = "tone", range = mode === "div" ? [-1, 1] : [0, 100], tone,
 }: {
   rows: string[];
   cols: string[];
@@ -43,6 +50,8 @@ export function Heatmap({
   mode?: HeatmapMode;
   /** Value range mapped onto the ramp in `seq` and `div` modes. Defaults to 0 to 100, or -1 to 1 for `div`. */
   range?: readonly [number, number];
+  /** Picks a tone for a numeric cell: the cell then shows its number on the tone fill and bar instead of the ramp. */
+  tone?: (cell: HeatmapCell) => HeatmapTone | undefined;
 }) {
   const byKey = new Map(cells.map((c) => [`${c.row}:${c.col}`, c]));
   let cellIndex = 0;
@@ -65,7 +74,7 @@ export function Heatmap({
             {cols.map((c, ci) => {
               const cell = byKey.get(`${r}:${c}`);
               const index = cellIndex++;
-              const look = cell ? cellStyle(cell.value, mode, range) : null;
+              const look = cell ? cellStyle(cell.value, mode, range, tone?.(cell)) : null;
               return (
                 <td key={`${ci}:${c}`} className="p-0">
                   <button
@@ -87,7 +96,7 @@ export function Heatmap({
                       animationDelay: draw ? `calc(var(--m-motion-duration) * ${index / 10})` : undefined,
                     }}
                   >
-                    {look && typeof cell?.value === "number" && look.label}
+                    {look && typeof cell?.value === "number" && String(Math.round(cell.value * 10) / 10)}
                   </button>
                 </td>
               );

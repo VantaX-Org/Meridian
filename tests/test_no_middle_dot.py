@@ -6,7 +6,7 @@ from pathlib import Path
 from api.services.pdf_reports import _scope_label
 
 ROOT = Path(__file__).resolve().parent.parent
-DOT = "·"
+DOT = "\u00b7"
 
 
 def test_scope_label_has_no_middle_dot():

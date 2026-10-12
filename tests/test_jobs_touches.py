@@ -83,7 +83,7 @@ def test_start_job_config_load_sets_touches(monkeypatch):
 def test_run_sync_registers_job_with_touches(monkeypatch):
     client, store = _make_client()
     monkeypatch.setattr(jobs, "_redis_client", lambda: client)
-    jobs.start_job("t1", "sync-run-1", "extraction", "Sync · ECC PRD", system_id="sys1")
+    jobs.start_job("t1", "sync-run-1", "extraction", "Sync, ECC PRD", system_id="sys1")
     jobs.finish_job("t1", "sync-run-1", "completed", result={"version_id": "v1"})
     saved = json.loads(store[jobs._key("t1", "sync-run-1")])
     assert saved["touches"] == ["systems", "run"]

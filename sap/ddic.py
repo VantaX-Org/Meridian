@@ -93,7 +93,7 @@ class Table:
     fields: dict[str, Field]
     keys: tuple[str, ...]            # business key, client field excluded
     category: str = "TRANSP"
-    delivery_class: Optional[str] = None  # A master/transaction data · C/G/E/S customizing
+    delivery_class: Optional[str] = None  # A master/transaction data, C/G/E/S customizing
     foreign_keys: tuple[dict, ...] = ()
     obsolete_in: Optional[str] = None  # e.g. "s4hana" with a replacement note
     note: Optional[str] = None

@@ -9,12 +9,13 @@ import { useRole } from "../../hooks/use-role";
 import { Button } from "./Button";
 import { Menu } from "./Menu";
 
-export type ExportFormat = "xlsx" | "csv" | "pdf";
+export type ExportFormat = "xlsx" | "csv" | "pdf" | "json";
 
 const DEFAULT_LABEL: Record<ExportFormat, string> = {
   xlsx: "Excel (.xlsx)",
   csv: "CSV",
   pdf: "PDF",
+  json: "JSON",
 };
 
 export interface ExportOption {

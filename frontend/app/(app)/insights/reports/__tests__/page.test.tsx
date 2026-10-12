@@ -2,7 +2,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as auditApi from "@/lib/api/audit";
 import * as downloadApi from "@/lib/api/download";
+import * as insightsApi from "@/lib/api/insights";
+import * as reportsApi from "@/lib/api/reports";
 import * as versionsApi from "@/lib/api/versions";
 import ReportsPage from "../page";
 
@@ -12,9 +15,23 @@ vi.mock("@/lib/permissions", async (orig) => ({
   usePermissions: () => ({ can: () => perm.allowed, has: () => perm.allowed }),
   usePermissionsContext: () => null,
 }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("") }));
+
+const entry = (id: string, name: string, url: string | null) => ({
+  id, name, format: "PDF" as const, about: `${name} about`, sections: ["Cover", "Scores"], page_estimate: 4, requires: [], url, last_built_at: null,
+});
 
 function mount() {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v2", label: "Run 2", status: "complete" }] } as never);
+  vi.spyOn(reportsApi, "getReportCatalogue").mockResolvedValue([entry("board", "Board pack", "/api/v1/reports/board/v2.pdf"), entry("compare", "Run comparison", "/api/v1/reports/compare/v2.pdf"), entry("record", "Record fix sheet", null)]);
+  vi.spyOn(insightsApi, "getOverview").mockResolvedValue({
+    version_id: "v2", run_label: "Run 2", run_at: null, previous_version_id: null,
+    dqs: { composite: 80, previous: null, delta: null, tier: "go", capped: false, cap_reason: null },
+    blockers: { count: 2, previous: null, waves: 1 }, auto_fixable: { records: 0, failing_records: 0, pct: null, high_confidence: 0 },
+    value_at_risk: { worst_l1: null, worst_l1_amount: 0, currency: "USD", features_blocked: 0 }, narrative: [],
+  });
+  vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ total: 1, limit: 5, offset: 0, entries: [{ id: "a1", actor_user_id: null, actor_email: "ana@example.test", action: "report.export", entity_type: "report", entity_id: "v2", method: "GET", path: "/x", status_code: 200, ip: null, user_agent: null, before_json: null, after_json: { kind: "board" }, created_at: "2026-10-12T10:00:00Z" }] });
+  vi.spyOn(insightsApi, "getHeatmap").mockResolvedValue({ version_id: "v2", dimensions: [], rows: [] });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}><ReportsPage /></QueryClientProvider>);
 }
@@ -22,30 +39,46 @@ function mount() {
 afterEach(() => vi.restoreAllMocks());
 
 describe("ReportsPage", () => {
-  it("lists the comparison report and downloads it for the chosen run", async () => {
+  it("lists the recent export audit events", async () => {
+    perm.allowed = true;
+    mount();
+    expect(await screen.findByText(/board by ana@example.test/)).toBeInTheDocument();
+  });
+
+  it("lists reports in a listbox, previews one and downloads it", async () => {
     perm.allowed = true;
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
     mount();
-    expect(await screen.findByText("Run comparison")).toBeInTheDocument();
-    await userEvent.click((await screen.findAllByRole("button", { name: "Download" }))[4]);
-    expect(dl).toHaveBeenCalledWith(expect.stringContaining("compare.pdf?v2=v2"), "compare_v2.pdf");
+    expect(await screen.findByRole("listbox", { name: "Reports" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    await userEvent.click(await screen.findByRole("option", { name: /Run comparison/ }));
+    expect(screen.getByText(/Key figures: DQS 80/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare/v2.pdf", "compare_v2.pdf");
   });
 
-  it("puts a 56 by 40 cover on every report row", async () => {
+  it("moves the selection with the arrow keys", async () => {
     perm.allowed = true;
-    const { container } = mount();
-    await screen.findByText("Run comparison");
-    const covers = container.querySelectorAll(".m-report-cover");
-    expect(covers).toHaveLength(9);
-    expect((covers[0] as HTMLElement).style.width).toBe("56px");
-    expect((covers[0] as HTMLElement).style.height).toBe("40px");
+    mount();
+    const first = await screen.findByRole("option", { name: /Board pack/ });
+    first.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("option", { name: /Run comparison/ })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("shows no Download button without the export permission", async () => {
+  it("disables record download until a key is typed", async () => {
+    perm.allowed = true;
+    mount();
+    await userEvent.click(await screen.findByRole("option", { name: /Record fix sheet/ }));
+    expect(screen.getByRole("button", { name: "Download" })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Record key"), "M1");
+    expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
+  });
+
+  it("shows no library without the export permission", async () => {
     perm.allowed = false;
     mount();
-    expect(await screen.findByText("Run comparison")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Download" })).toBeNull();
-    expect(screen.getAllByText(/needs the auditor or analyst role/i).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/needs the auditor or analyst role/i)).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 });

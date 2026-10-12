@@ -16,8 +16,8 @@ Shape of a job::
      tables: [{table, status, rows, expected, ...}],  # extraction: one row per SAP table
      error, result, started_at, updated_at, finished_at}
 
-``kind`` is one of extraction · config_sync · analysis · upload · simulation. ``status`` is
-queued · running · completed · failed.
+``kind`` is one of extraction, config_sync, analysis, upload, simulation. ``status`` is
+queued, running, completed, failed.
 """
 
 from __future__ import annotations

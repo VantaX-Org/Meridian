@@ -122,6 +122,12 @@ export default function RunsPage() {
     queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
     placeholderData: keepPreviousData,
   });
+  // Summary stats and the trend use the newest page only, whichever table page is showing. Page 1 shares the cache key above.
+  const head = useQuery({
+    queryKey: queryKeys.run("list"),
+    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: 0 }),
+    placeholderData: keepPreviousData,
+  });
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
 
   const systemName = useMemo(() => new Map((systems.data ?? []).map((s) => [s.id, s.name])), [systems.data]);
@@ -133,14 +139,16 @@ export default function RunsPage() {
     return [{ value: "", label: "All systems" }, ...ids.map((id) => ({ value: id, label: systemName.get(id) ?? id }))];
   }, [allVersions, systemName]);
   const scoped = useMemo(() => (system ? allVersions.filter((v) => v.metadata?.system_id === system) : allVersions), [allVersions, system]);
-  const failedCount = scoped.filter((v) => statusTone(v.status) === "no-go").length;
+  const headVersions = useMemo(() => head.data?.versions ?? [], [head.data]);
+  const headScoped = useMemo(() => (system ? headVersions.filter((v) => v.metadata?.system_id === system) : headVersions), [headVersions, system]);
+  const failedCount = headScoped.filter((v) => statusTone(v.status) === "no-go").length;
   const rows = failedOnly ? scoped.filter((v) => statusTone(v.status) === "no-go") : scoped;
 
   const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 ? "empty" : undefined;
 
-  const latest = scoped[0];
+  const latest = headScoped[0];
   const latestDqs = latest ? overallDqs(latest) : null;
-  const prevRun = latest ? allVersions.find((v) => v.id === previousRunId(latest, allVersions)) : undefined;
+  const prevRun = latest ? headVersions.find((v) => v.id === previousRunId(latest, headVersions)) : undefined;
   const prevDqs = prevRun ? overallDqs(prevRun) : null;
   const delta = latestDqs !== null && prevDqs !== null ? Math.round((latestDqs - prevDqs) * 10) / 10 : null;
 
@@ -148,11 +156,11 @@ export default function RunsPage() {
   const chartScope = system || (latest ? scopeOf(latest) : "");
   const points = useMemo(
     () =>
-      scoped
+      headScoped
         .filter((v) => v.status === "complete" && scopeOf(v) === chartScope)
         .flatMap((v) => { const y = overallDqs(v); return y === null ? [] : [{ x: formatDate(v.run_at, "date"), y: Math.round(y * 10) / 10, runId: v.id }]; })
         .reverse(),
-    [scoped, chartScope],
+    [headScoped, chartScope],
   );
 
   const exportOptions = [{ format: "xlsx" as const, run: () => exportRuns("xlsx", { system_id: system || undefined, limit: 100 }) }];
@@ -174,7 +182,7 @@ export default function RunsPage() {
     />
   );
 
-  const summary = all.isLoading ? (
+  const summary = all.isLoading || head.isLoading ? (
     <div className="flex flex-col gap-4" aria-busy="true">
       <div className="m-stat-grid"><StatSkeleton /><StatSkeleton /></div>
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
@@ -184,9 +192,9 @@ export default function RunsPage() {
     </div>
   ) : (
     <div className="flex flex-col gap-4">
-      {rows.length > 0 || scoped.length > 0 ? (
+      {rows.length > 0 || headScoped.length > 0 ? (
         <div className="m-stat-grid m-motion-stagger">
-          <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > allVersions.length ? `showing ${allVersions.length} of ${all.data.total.toLocaleString()}` : undefined} />
+          <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > headVersions.length ? `latest ${headVersions.length} used for the figures below` : undefined} />
           <Stat
             label="Latest DQS"
             value={latest && latestDqs !== null ? latestDqs.toFixed(1) : "—"}
@@ -194,7 +202,7 @@ export default function RunsPage() {
             hint={delta === null ? "No earlier run" : "vs previous"}
             href={latest ? `/runs/${latest.id}` : undefined}
           />
-          {failedCount > 0 ? <Stat label="Failed runs" value={failedCount.toLocaleString()} tone="no-go" href="/runs?status=failed" /> : null}
+          {failedCount > 0 ? <Stat label="Failed runs" hint={`in the latest ${PAGE_SIZE}`} value={failedCount.toLocaleString()} tone="no-go" href="/runs?status=failed" /> : null}
         </div>
       ) : null}
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">

@@ -47,8 +47,12 @@ export const queryKeys = {
   migrationValueMap: (module: string) => ["migration", "value-map", module] as const,
   s4Readiness: (versionId: string) => ["s4-readiness", versionId] as const,
   shellCounts: () => ["shell-counts"] as const,
-  insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec" | "proven-cost", run?: string) =>
-    run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
+  insights: (
+    kind: "readiness" | "impact" | "owners" | "duplicates" | "exec" | "proven-cost" | "overview" | "rules" | "root-causes" | "heatmap" | "trends" | "cleansing" | "s4-readiness",
+    run?: string,
+    ...rest: (string | boolean | undefined)[]
+  ) => (run === undefined ? (["insights", kind] as const) : (["insights", kind, run, ...rest] as const)),
+  reportCatalogue: (run?: string, module?: string, compare?: string) => ["reports", "catalogue", run, module, compare] as const,
   mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
   triageMetrics: (weeks: number) => ["inbox", "triage-metrics", weeks] as const,
   stewardshipMetrics: () => ["inbox", "stewardship-metrics"] as const,
@@ -120,6 +124,7 @@ export const queryKeys = {
   ruleApplicability: (module: string, checkId: string) => ["rule-applicability", module, checkId] as const,
   authRoles: () => ["auth-roles"] as const,
   auditEntries: (limit: number) => ["audit-entries", limit] as const,
+  reportExports: (limit: number) => ["report-exports", limit] as const,
   usersAssignable: () => ["users-assignable"] as const,
   fieldMappings: () => ["field-mappings"] as const,
   llmProviders: () => ["llm-providers"] as const,
@@ -189,6 +194,7 @@ export type TouchedEntity =
   | "rule-detail"
   | "auth-roles"
   | "audit-entries"
+  | "report-exports"
   | "users-assignable"
   | "field-mappings"
   | "llm-providers"

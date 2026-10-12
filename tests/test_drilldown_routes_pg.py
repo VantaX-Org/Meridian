@@ -2,7 +2,7 @@
 
 Runs with MERIDIAN_TEST_DB_URL (see tests/test_record_issues_pg.py); skipped otherwise.
 Two runs of one system (v1 older, v2 newer), one run of another system (vx), one upload (vu):
-  CHK-A  fails in both (v1: LIFNR=1,2 · v2: LIFNR=2)
+  CHK-A  fails in both (v1: LIFNR=1,2, v2: LIFNR=2)
   CHK-B  passes in v1, fails in v2           → newly failing
   CHK-C  fails in v1, passes in v2           → fixed
   CHK-E  errored in v1                       → no conclusion

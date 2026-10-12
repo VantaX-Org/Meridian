@@ -233,8 +233,8 @@ class ConnectivityManager:
         nothing is silently skipped. ``progress`` receives, after every page of
         every table, ``{table, tables_done, tables_total, rows_read, table_rows,
         percent, tables}`` — ``tables`` being one ``{table, status, rows,
-        expected}`` snapshot per planned table (status queued · running · live ·
-        failed · …) so a caller can draw one bar per table and one overall.
+        expected}`` snapshot per planned table (status queued, running, live,
+        failed, …) so a caller can draw one bar per table and one overall.
 
         ``sink(table, frame, coverage_entry)`` receives every live ABAP data table
         as soon as it is read, and that table is then dropped instead of being
@@ -1077,7 +1077,7 @@ class ConnectivityManager:
         previous live snapshot; the SAP-standard baseline is only stored when
         no snapshot exists yet, and it is labelled ``baseline``. The system's
         ``config_sync_status`` reports what actually happened:
-        ``synced`` (all live) · ``partial`` (some baseline) · ``failed``.
+        ``synced`` (all live), ``partial`` (some baseline), ``failed``.
         """
         system_row = self._load_system(system_id)
         params = self._build_connection_params(system_row)

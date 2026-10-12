@@ -191,11 +191,14 @@ export async function createMergeProposals(
 
 /* ─── Executive summary (spec 8.5) ─── */
 
+/** One priced feature, tagged with its L1 so the page can tab by process. */
+export type ExecWaterfallPoint = ChartPoint & { l1?: string | null };
+
 export interface ExecResponse {
   version_id: string | null;
   narrative: string;
   readiness_cells: ReadinessCell[];
-  waterfall: ChartPoint[];
+  waterfall: ExecWaterfallPoint[];
   impact_rows: ImpactRow[];
   owner_rows: OwnerCardResponse[];
   proven_cost_by_l1?: CostL1[];
@@ -210,4 +213,164 @@ export async function getExec(params?: { version_id?: string }): Promise<ExecRes
 
 export async function submitInsightFeedback(body: { surface: string; run_id?: string | null; vote: "up" | "down" }): Promise<void> {
   await apiClient.post("/api/v1/insights/feedback", body);
+}
+
+/* ─── Aggregate endpoints (overview, rules, root causes, heatmap, trends, cleansing) ─── */
+
+export interface NarrativeLine {
+  text: string;
+  href?: string;
+}
+
+export interface OverviewResponse {
+  version_id: string;
+  run_label: string | null;
+  run_at: string | null;
+  previous_version_id: string | null;
+  dqs: { composite: number | null; previous: number | null; delta: number | null; tier: string | null; capped: boolean; cap_reason: string | null };
+  blockers: { count: number; previous: number | null; waves: number };
+  auto_fixable: { records: number; failing_records: number; pct: number | null; high_confidence: number };
+  /** Worst single L1. There is no total across L1s. */
+  value_at_risk: { worst_l1: string | null; worst_l1_amount: number; currency: string; features_blocked: number };
+  narrative: NarrativeLine[];
+}
+
+export interface RuleRow {
+  check_id: string;
+  name: string;
+  module: string;
+  severity: string | null;
+  dimension: string | null;
+  field: string | null;
+  affected: number;
+  total: number;
+  /** 0..1 */
+  pass_rate: number | null;
+  impact: number;
+  /** 0..100 */
+  auto_fix_pct: number;
+  s4: string;
+  delta_affected: number | null;
+  cost_at_risk: number | null;
+}
+
+export interface RuleRankingResponse {
+  version_id: string;
+  rows: RuleRow[];
+}
+
+export interface RuleRankingParams {
+  version_id?: string;
+  module?: string;
+  severity?: string;
+  dimension?: string;
+  auto_fixable?: boolean;
+  s4_only?: boolean;
+  limit?: number;
+}
+
+export interface RootCauseCluster {
+  key: string;
+  kind: "field" | "unattributed";
+  module: string;
+  table: string | null;
+  field: string | null;
+  rules: string[];
+  dimension: string | null;
+  severity: string | null;
+  records: number;
+  records_estimated: boolean;
+  impact: number;
+  auto_fix_pct: number | null;
+  origin: { status: "computed" | "not_computed"; top: string | null; share: number | null };
+}
+
+export interface RootCausesResponse {
+  version_id: string;
+  clusters: RootCauseCluster[];
+}
+
+export interface HeatmapRow {
+  module: string;
+  group: string;
+  scores: Record<string, number>;
+  tier: Record<string, string>;
+  coverage: Record<string, number | null>;
+  critical: number;
+  cap_reason: string | null;
+}
+
+export interface HeatmapResponse {
+  version_id: string;
+  dimensions: string[];
+  rows: HeatmapRow[];
+}
+
+export interface TrendRun {
+  version_id: string;
+  label: string | null;
+  run_at: string | null;
+  baseline: boolean;
+  composite: number | null;
+  dimensions: Record<string, number>;
+  modules: Record<string, unknown>;
+  critical: number;
+  blockers: number;
+  auto_fixable_pct: number | null;
+}
+
+export interface TrendAnnotation {
+  version_id: string;
+  kind: "event" | "change";
+  label: string;
+}
+
+export interface TrendsResponse {
+  lineage: string;
+  runs: TrendRun[];
+  annotations: TrendAnnotation[];
+}
+
+export interface CleansingStep {
+  key: "failing" | "proposed" | "high" | "approved" | "applied";
+  label: string;
+  records: number;
+}
+
+export interface CleansingResponse {
+  version_id: string;
+  currency: string;
+  steps: CleansingStep[];
+  by_module: { module: string; failing: number; proposed: number; high: number }[];
+  by_rule: { check_id: string; proposed: number; high: number; auto: boolean }[];
+}
+
+export async function getOverview(params?: { version_id?: string; module?: string }): Promise<OverviewResponse> {
+  const { data } = await apiClient.get<OverviewResponse>("/api/v1/insights/overview", { params });
+  return data;
+}
+
+export async function getRuleRanking(params?: RuleRankingParams): Promise<RuleRankingResponse> {
+  const { data } = await apiClient.get<RuleRankingResponse>("/api/v1/insights/rules", { params });
+  return data;
+}
+
+export async function getRootCauses(params?: { version_id?: string; module?: string }): Promise<RootCausesResponse> {
+  const { data } = await apiClient.get<RootCausesResponse>("/api/v1/insights/root-causes", { params });
+  return data;
+}
+
+export async function getHeatmap(params?: { version_id?: string; module?: string }): Promise<HeatmapResponse> {
+  const { data } = await apiClient.get<HeatmapResponse>("/api/v1/insights/heatmap", { params });
+  return data;
+}
+
+export async function getTrends(params?: { version_id?: string; system_id?: string; limit?: number }): Promise<TrendsResponse> {
+  const { data } = await apiClient.get<TrendsResponse>("/api/v1/insights/trends", { params });
+  return data;
+}
+
+export async function getCleansing(params?: { version_id?: string; module?: string }): Promise<CleansingResponse> {
+  const { data } = await apiClient.get<CleansingResponse>("/api/v1/insights/cleansing", { params });
+  return data;
 }

@@ -26,7 +26,7 @@ describe("one h1 per page", () => {
 
 // Source scan: the Breadcrumb owns the only h1. Add a path to ALLOWED only for a page that legitimately owns it (login, error).
 const H1 = /<h1\b|as="h1"|level=\{1\}/;
-const ALLOWED = new Set(["design/shell/Breadcrumb.tsx"]);
+const ALLOWED = new Set(["design/shell/Breadcrumb.tsx", "components/auth/auth-frame.tsx"]);
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {
@@ -40,7 +40,7 @@ function sources(dir: string): string[] {
 describe("h1 source scan", () => {
   it("no component outside the Breadcrumb renders an h1", () => {
     const root = process.cwd();
-    const files = [...sources(join(root, "app")), ...sources(join(root, "design"))];
+    const files = [...sources(join(root, "app")), ...sources(join(root, "design")), ...sources(join(root, "components")), ...sources(join(root, "hooks"))];
     expect(files.length).toBeGreaterThan(50);
     const hits = files.map((f) => f.slice(root.length + 1)).filter((rel) => !ALLOWED.has(rel) && H1.test(readFileSync(join(root, rel), "utf8")));
     expect(hits).toEqual([]);

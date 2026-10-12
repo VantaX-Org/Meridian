@@ -166,11 +166,11 @@ def simulate(tenant_id: str, simulation_id: str, version_id: str, request: dict)
             rule = {**{k: v for k, v in rule.items() if k != "auto_fix"}, "fix_value": f["fix_value"]}
         fixes = rule_record_fixes(rule, res, frames)
         if fixes:
-            groups[f"rule:{cid}"] = {"label": f"{cid} · {rule.get('field', '')}",
+            groups[f"rule:{cid}"] = {"label": f"{cid}, {rule.get('field', '')}",
                                      "record_fixes": [{**x, "check_id": cid, "module": rule.get("module", "")}
                                                        for x in fixes]}
     for field, mapping in value_maps.items():
-        groups[f"map:{field}"] = {"label": f"Value map · {field}", "value_maps": {field: mapping}}
+        groups[f"map:{field}"] = {"label": f"Value map, {field}", "value_maps": {field: mapping}}
     for i in batch:
         g = groups.setdefault(f"batch:{i['batch_id']}", {"label": f"Batch {i['batch_id'][:8]}", "record_fixes": []})
         g["record_fixes"].append({"field": i["field"], "record_key": i["record_key"], "new_value": i["proposed_value"]})

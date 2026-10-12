@@ -638,7 +638,7 @@ async def accept_mined_rule(
     return {**_row_to_dict(row), "id": str(row.id)}
 
 
-# ── POST /api/v1/rules/custom · /rules/dry-run ───────────────────────────────
+# ── POST /api/v1/rules/custom, /rules/dry-run ───────────────────────────────
 
 _CHECK_CLASSES = Literal["null_check", "domain_value_check", "regex_check",
                          "cross_field_check", "dependency_check", "uniqueness_check"]

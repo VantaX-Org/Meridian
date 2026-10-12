@@ -44,7 +44,7 @@ class Attribution:
 @dataclass
 class RootCause:
     check_id: str
-    status: str  # computed · not_applicable · unavailable
+    status: str  # computed, not_applicable, unavailable
     field: Optional[str] = None
     analysed: int = 0
     total: int = 0

@@ -126,7 +126,7 @@
       "targets": [
         {
           "expr": "sum by (task, status) (rate(meridian_celery_tasks_total[5m]))",
-          "legendFormat": "{{task}} · {{status}}",
+          "legendFormat": "{{task}}, {{status}}",
           "refId": "A"
         }
       ],
@@ -140,7 +140,7 @@
       "targets": [
         {
           "expr": "sum by (service, result) (rate(meridian_llm_calls_total[5m]))",
-          "legendFormat": "{{service}} · {{result}}",
+          "legendFormat": "{{service}}, {{result}}",
           "refId": "A"
         }
       ],
@@ -154,7 +154,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "",
-  "title": "Meridian · Overview",
+  "title": "Meridian, Overview",
   "uid": "meridian-overview",
   "version": 1,
   "weekStart": ""

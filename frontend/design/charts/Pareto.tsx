@@ -2,18 +2,21 @@
 
 // frontend/design/charts/Pareto.tsx
 import { Bar as RBar, Cell, CartesianGrid, ComposedChart, Line as RLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { chartTheme, type ChartPoint } from "./theme";
+import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { hoverBar } from "./HoverBar";
 import { mMotion, reducedMotion } from "../tokens";
 
 /** Sorts descending and adds a cumulative-share line, so the few causes behind most defects stand out. */
 export function Pareto({
   data,
+  label,
   onPointClick,
   height = 240,
   draw = true,
 }: {
   data: ChartPoint[];
+  /** Accessible name; the chart reads out its largest bars. */
+  label?: string;
   onPointClick?: (point: ChartPoint) => void;
   height?: number;
   draw?: boolean;
@@ -26,6 +29,7 @@ export function Pareto({
     cum: Math.round((sorted.slice(0, i + 1).reduce((n, q) => n + q.y, 0) / total) * 100),
   }));
   return (
+    <div role="img" aria-label={chartSummary(sorted, label ?? "Pareto chart")}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows}>
         <CartesianGrid stroke={chartTheme.grid} vertical={false} />
@@ -50,5 +54,6 @@ export function Pareto({
         <RLine yAxisId="c" dataKey="cum" stroke={chartTheme.ink} strokeWidth={1.5} dot={false} isAnimationActive={animate} animationDuration={mMotion.draw} />
       </ComposedChart>
     </ResponsiveContainer>
+    </div>
   );
 }
