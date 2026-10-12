@@ -36,7 +36,7 @@ describe("admin users page", () => {
     vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });
     vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [], total: 0, limit: 50, offset: 0 });
     renderWithQuery(<AdminUsersPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Could not reach the server/)).toBeInTheDocument());
     const retry = screen.getAllByRole("button", { name: /retry/i })[0];
     spy.mockResolvedValue({ users: [USER] });
     retry.click();

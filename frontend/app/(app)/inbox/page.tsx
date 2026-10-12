@@ -10,10 +10,10 @@ import { toast } from "sonner";
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, Pill, Select, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type PillTone, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -31,7 +31,6 @@ import {
   resolveException,
   updateExceptionRule,
 } from "@/lib/api/exceptions";
-import { getUnreadCount } from "@/lib/api/notifications";
 import { apiErrorMessage, isNotFound } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
@@ -94,9 +93,14 @@ async function each(ids: string[], fn: (id: string) => Promise<unknown>): Promis
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
+type QueueCache = { items: StewardshipQueueItem[] };
+type QueueSnapshot = [readonly unknown[], QueueCache][];
+
 export default function InboxPage() {
   const qc = useQueryClient();
   const router = useRouter();
+  const pathname = usePathname();
+  const urlParams = useSearchParams();
   const { user } = useAuth();
   const { can } = useRole();
   const dayOne = useDayOne();
@@ -112,7 +116,18 @@ export default function InboxPage() {
   const kind = oneOf(kindRaw, KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => k.value), "task");
   const isExceptions = kind === "exception";
   const [search, setSearch] = useState("");
+  // One replace: separate useUrlState setters would each rebuild the query from the same stale string.
+  const showAll = (alsoSearch: boolean) => {
+    const params = new URLSearchParams(urlParams.toString());
+    params.delete("view");
+    params.delete("type");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    if (alsoSearch) setSearch("");
+  };
   const [rawFocusedIndex, setFocusedIndex] = useState(0);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [rollbackNote, setRollbackNote] = useState<string | null>(null);
   const [rejectIds, setRejectIds] = useState<string[] | null>(null);
   const [reason, setReason] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -130,8 +145,6 @@ export default function InboxPage() {
   const metricsQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, refetchInterval: 60_000, enabled: !isExceptions });
   // The user list needs `manage_users`; without it assignees show as "You" or an id prefix.
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users") });
-  // Unread notifications: shown as a header stat regardless of which kind is active (spec 6.2 fallback).
-  const unreadQ = useQuery({ queryKey: queryKeys.unreadNotifications(), queryFn: getUnreadCount, refetchInterval: 30_000 });
 
   const excQ = useQuery({
     queryKey: queryKeys.inbox({ kind: "exception", per_page: 100 }),
@@ -215,7 +228,24 @@ export default function InboxPage() {
     refresh();
   }, [refresh]);
 
+  /** Optimistic edit of every cached queue page; returns the snapshot so a failure can restore it. */
+  const patchQueue = useCallback(async (ids: string[], fn: (t: StewardshipQueueItem) => StewardshipQueueItem | null): Promise<QueueSnapshot> => {
+    await qc.cancelQueries({ queryKey: ["inbox"] });
+    const snap: QueueSnapshot = [];
+    for (const [key, data] of qc.getQueriesData<QueueCache>({ queryKey: ["inbox"] })) {
+      if (!data || !Array.isArray(data.items)) continue;
+      snap.push([key, data]);
+      qc.setQueryData<QueueCache>(key, { ...data, items: data.items.flatMap((t) => (ids.includes(t.id) ? [fn(t)].filter((x): x is StewardshipQueueItem => x !== null) : [t])) });
+    }
+    return snap;
+  }, [qc]);
+  const rollback = useCallback((snap: QueueSnapshot | undefined, msg: string) => {
+    snap?.forEach(([key, data]) => qc.setQueryData(key, data));
+    setRollbackNote(msg);
+  }, [qc]);
+
   const approve = useMutation({
+    onMutate: async (ids: string[]) => { setRollbackNote(null); return { snap: await patchQueue(ids, () => null) }; },
     mutationFn: (ids: string[]) =>
       ids.length === 1 ? resolveItem(ids[0], "approve").then(() => ({ approved: 1, asked: 1 })) : bulkApprove(ids, BULK_CONFIDENCE).then((d) => ({ approved: d.approved, asked: ids.length })),
     onSuccess: ({ approved, asked }) => {
@@ -223,11 +253,12 @@ export default function InboxPage() {
       if (asked > approved) toast(`${asked - approved} below ${BULK_CONFIDENCE * 100}% model confidence or already closed — left for manual review`);
       refresh();
     },
-    onError: (e) => toast.error((e as Error).message || "Not approved"),
+    onError: (e, _ids, ctx) => rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`),
   });
   // Rejecting overrides the model's recommendation: the correction reason is recorded on the task
   // and fed to the AI-feedback loop that proposes new match rules (/ai/rules).
   const reject = useMutation({
+    onMutate: async ({ ids }: { ids: string[]; reason: string }) => { setRollbackNote(null); return { snap: await patchQueue(ids, () => null) }; },
     mutationFn: ({ ids, reason: why }: { ids: string[]; reason: string }) =>
       each(ids, async (id) => {
         await resolveItem(id, "reject", why);
@@ -235,15 +266,17 @@ export default function InboxPage() {
         if (t) await submitAiFeedback({ queue_item_id: id, steward_decision: "reject", correction_reason: why, domain: t.domain });
       }),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Rejected", r); },
-    onError: () => toast.error("Not rejected"),
+    onError: (e, _v, ctx) => rollback(ctx?.snap, `Not rejected: ${apiErrorMessage(e)}`),
   });
   const escalate = useMutation({
     mutationFn: (ids: string[]) => each(ids, escalateItem),
     onSuccess: (r) => done("Escalated", r),
   });
   const assign = useMutation({
+    onMutate: async ({ ids, userId }: { ids: string[]; userId: string }) => { setRollbackNote(null); return { snap: await patchQueue(ids, (t) => ({ ...t, assigned_to: userId })) }; },
     mutationFn: ({ ids, userId }: { ids: string[]; userId: string }) => each(ids, (id) => assignItem(id, userId)),
     onSuccess: (r) => done("Assigned", r),
+    onError: (e, _v, ctx) => rollback(ctx?.snap, `Not assigned: ${apiErrorMessage(e)}`),
   });
 
   // Exception mutations: same intent (assign/escalate/resolve) as the stewardship ones above, but
@@ -277,11 +310,21 @@ export default function InboxPage() {
     const onKey = (ev: KeyboardEvent) => {
       const el = ev.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
-      inboxKeyHandler(ev, { focusedIndex, rowCount, setFocus: setFocusedIndex, onOpen: openRecord });
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      const t = isExceptions ? null : items[focusedIndex];
+      const e = isExceptions ? excItems[focusedIndex] : null;
+      switch (ev.key) {
+        case "?": ev.preventDefault(); setHelpOpen((o) => !o); return;
+        case "Escape": setHelpOpen(false); setRejectIds(null); setRulesOpen(false); return;
+        case "a": if (t && canApprove && !busy && user) { ev.preventDefault(); assign.mutate({ ids: [t.id], userId: user.id }); } else if (e && canSeeTeam && !busy && user) { ev.preventDefault(); excAssign.mutate({ ids: [e.id], userId: user.id }); } return;
+        case "r": if (t && canApprove && !busy) { ev.preventDefault(); approve.mutate([t.id]); } else if (e && canApprove && !busy) { ev.preventDefault(); setRejectIds([e.id]); } return;
+        case "x": if (t && canApprove) { ev.preventDefault(); setRejectIds([t.id]); } return;
+        default: inboxKeyHandler(ev, { focusedIndex, rowCount, setFocus: setFocusedIndex, onOpen: openRecord });
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focusedIndex, rowCount, openRecord]);
+  }, [focusedIndex, rowCount, openRecord, isExceptions, items, excItems, canApprove, canSeeTeam, busy, user, assign, approve, excAssign]);
 
   const createRule = useMutation({
     mutationFn: () => createExceptionRule({ ...ruleDraft, auto_assign_to: undefined }),
@@ -290,7 +333,7 @@ export default function InboxPage() {
       setRuleDraft({ name: "", description: "", rule_type: "", object_type: "", condition: "", severity: "medium" });
       void qc.invalidateQueries({ queryKey: queryKeys.exceptionRules() });
     },
-    onError: (e) => toast.error((e as Error).message || "Rule not created"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const toggleRule = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => updateExceptionRule(id, { is_active }),
@@ -370,61 +413,47 @@ export default function InboxPage() {
     : isLoading ? "loading" : isError ? "error" : items.length === 0 ? (dayOne.status === "loading" ? "loading" : "empty") : undefined;
 
   const kindToggle = (
-    <div className="flex flex-wrap gap-2">
-      {KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => (
-        <Button key={k.value} variant={kind === k.value ? "primary" : "secondary"} onClick={() => setKind(k.value)}>
-          {k.label}
-        </Button>
-      ))}
-    </div>
+    <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ ...k, content: null }))} value={kind} onValueChange={setKind} />
+  );
+  const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.breached;
+  const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
+  const header = (
+    <PageHeader title="Inbox" meta={`${openCount} open, ${overdue} overdue`} />
   );
 
   if (kind === "issues" || kind === "sap" || kind === "approvals") {
     // These views own their data; the hooks above already ran, so returning early is safe.
     const Panel = kind === "issues" ? IssuesPanel : kind === "sap" ? SapMonitorPanel : ApprovalsPanel;
-    return <ExplorerPage filterBar={kindToggle} table={<Panel />} />;
+    return <ExplorerPage header={header} filterBar={kindToggle} table={<Panel />} />;
   }
 
   return (
     <ExplorerPage
+      header={header}
       state={state}
       emptyProps={
         isExceptions
           ? (excQ.data?.exceptions.length ?? 0) === 0
             ? {
-                title: "No exceptions.",
+                title: "No exceptions",
                 detail: "Exceptions are raised by exception rules on new findings.",
                 action: <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button>,
               }
-            : { title: "No exceptions in this view." }
+            : { title: "No exceptions in this view", detail: "Clear the search to see all exceptions", action: <Button variant="secondary" onClick={() => setSearch("")}>Clear search</Button> }
           : all.length === 0
           ? {
-              title: "Inbox zero.",
+              title: "Inbox is clear",
               detail: dayOne.step?.detail ?? "Tasks arrive when findings are assigned or proposals need review.",
               action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
             }
-          : { title: "No tasks in this view." }
+          : { title: "No tasks in this view", detail: "Show all tasks to see the rest of the queue", action: <Button variant="secondary" onClick={() => showAll(true)}>Show all</Button> }
       }
       errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
       summary={
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-6">
-            <Stat label="Unread notifications" value={unreadQ.isLoading ? "…" : unreadQ.isError ? "—" : unreadQ.data ?? 0} />
-            {isExceptions ? (
-              <>
-                <Stat label="Open" value={excMetricsQ.isLoading ? "…" : excMetricsQ.data?.open_count ?? 0} />
-                <Stat label="Overdue" value={excMetricsQ.isLoading ? "…" : excMetricsQ.data?.overdue_count ?? 0} />
-                <Stat label="SLA compliance" value={excMetricsQ.isLoading ? "…" : `${Math.round(excMetricsQ.data?.sla_compliance_pct ?? 0)}%`} />
-              </>
-            ) : (
-              <>
-                <Stat label="Open" value={isLoading ? "…" : all.length} />
-                <Stat label="Overdue" value={isLoading ? "…" : counts.breached} href="/inbox?view=breached" />
-                <Stat label="Due today" value={isLoading ? "…" : counts.today} href="/inbox?view=today" />
-                <Stat label="Unassigned" value={isLoading ? "…" : counts.unassigned} href="/inbox?view=unassigned" />
-                <Stat label="Resolved this week" value={weekQ.isLoading ? "…" : weekQ.data?.weekly.at(-1)?.resolved ?? "—"} />
-              </>
-            )}
+            <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} href={isExceptions ? undefined : "/inbox?view=breached"} />
+            {!isExceptions && <Stat label="Due today" value={counts.today} loading={isLoading} href="/inbox?view=today" />}
           </div>
           {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
           {!isExceptions && (
@@ -459,19 +488,18 @@ export default function InboxPage() {
             </Field>
           )}
           <Field label="Search">
-            <input
+            <Input
               aria-label={isExceptions ? "Search exceptions" : "Search tasks"}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="rounded border px-3 py-1.5 text-[13px]"
-              style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
             />
           </Field>
           {!isExceptions && (view !== "all" || type !== "all") && (
-            <Notice action={<Button variant="ghost" onClick={() => { setView("all"); setType("all"); }}>Show all</Button>}>
+            <Notice action={<Button variant="ghost" onClick={() => showAll(false)}>Show all</Button>}>
               Showing {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null].filter(Boolean).join(", ")} only.
             </Notice>
           )}
+          {rollbackNote && <Notice tone="danger">{rollbackNote}</Notice>}
           {isExceptions && canManageRules && (
             <Button variant="secondary" onClick={() => setRulesOpen(true)}>Manage exception rules</Button>
           )}
@@ -517,11 +545,9 @@ export default function InboxPage() {
           >
             <div className="flex flex-col gap-3">
               <Field label="Reason">
-                <textarea
+                <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full rounded border px-3 py-2 text-[13px]"
-                  style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   rows={4}
                 />
               </Field>
@@ -540,14 +566,21 @@ export default function InboxPage() {
               </div>
             </div>
           </Drawer>
+          <Drawer open={helpOpen} onOpenChange={setHelpOpen} title="Keyboard shortcuts">
+            <dl className="m-text-body grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+              {[["j / k", "Next or previous row"], ["Enter", "Open record"], ["a", "Assign to me"], ["r", "Resolve (approve)"], ["x", "Reject with reason"], ["Esc", "Close panel"], ["?", "Show this list"]].map(([k, d]) => (
+                <div key={k} className="contents"><dt style={{ fontFamily: "var(--m-font-mono)" }}>{k}</dt><dd>{d}</dd></div>
+              ))}
+            </dl>
+          </Drawer>
           <Drawer open={rulesOpen} onOpenChange={setRulesOpen} title="Exception rules">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 {(excRulesQ.data?.rules ?? []).map((r: ExceptionRule) => (
-                  <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+                  <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2">
                     <div className="flex flex-col">
-                      <span className="text-[13px] font-medium">{r.name}</span>
-                      <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{r.object_type}, {r.rule_type}</span>
+                      <span className="m-text-body font-medium">{r.name}</span>
+                      <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{r.object_type}, {r.rule_type}</span>
                     </div>
                     <Button variant="secondary" onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
                       {r.is_active ? "Disable" : "Enable"}
@@ -555,41 +588,33 @@ export default function InboxPage() {
                   </div>
                 ))}
                 {excRulesQ.data && excRulesQ.data.rules.length === 0 && (
-                  <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No exception rules yet.</span>
+                  <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No exception rules yet.</span>
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-[13px] font-medium">New rule</span>
+                <span className="m-text-body font-medium">New rule</span>
                 <Field label="Name">
-                  <input
+                  <Input
                     value={ruleDraft.name}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, name: e.target.value })}
-                    className="w-full rounded border px-3 py-1.5 text-[13px]"
-                    style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   />
                 </Field>
                 <Field label="Rule type">
-                  <input
+                  <Input
                     value={ruleDraft.rule_type}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, rule_type: e.target.value })}
-                    className="w-full rounded border px-3 py-1.5 text-[13px]"
-                    style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   />
                 </Field>
                 <Field label="Object type">
-                  <input
+                  <Input
                     value={ruleDraft.object_type}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, object_type: e.target.value })}
-                    className="w-full rounded border px-3 py-1.5 text-[13px]"
-                    style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   />
                 </Field>
                 <Field label="Condition">
-                  <input
+                  <Input
                     value={ruleDraft.condition}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, condition: e.target.value })}
-                    className="w-full rounded border px-3 py-1.5 text-[13px]"
-                    style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   />
                 </Field>
                 <div className="flex justify-end">
@@ -614,9 +639,9 @@ export default function InboxPage() {
 function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRungs>; aiAcceptance: number | null }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[13px] font-medium">Who holds the work</span>
+      <span className="m-text-body font-medium">Who holds the work</span>
       {rungs.length ? (
-        <table className="w-full text-[13px]">
+        <table className="w-full m-text-body">
           <tbody>
             {rungs.map((r) => (
               <tr key={r.label}><td>{r.label}</td><td>{r.open} open</td><td>{r.breached} breached</td></tr>
@@ -624,10 +649,10 @@ function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRung
           </tbody>
         </table>
       ) : (
-        <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Nobody holds open work.</span>
+        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Nobody holds open work.</span>
       )}
       {aiAcceptance != null && (
-        <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
+        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
       )}
     </div>
   );

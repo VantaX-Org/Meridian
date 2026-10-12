@@ -108,16 +108,16 @@ describe("admin roles page", () => {
     tab = "history";
     vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [], total: 0, limit: 50, offset: 0 });
     const h = renderWithQuery(<AdminRolesPage />);
-    expect(await screen.findByText("No role changes yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No role changes yet")).toBeInTheDocument();
     h.unmount();
     tab = "requests";
     vi.spyOn(meApi, "listAccessRequests").mockResolvedValue([]);
     const r = renderWithQuery(<AdminRolesPage />);
-    expect(await screen.findByText("No open requests.")).toBeInTheDocument();
+    expect(await screen.findByText("No open requests")).toBeInTheDocument();
     r.unmount();
     tab = "users";
     renderWithQuery(<AdminRolesPage />);
-    expect(await screen.findByText("No users yet. Invite the first one.")).toBeInTheDocument();
+    expect(await screen.findByText("No users yet")).toBeInTheDocument();
   });
 
   it("invite needs at least one grant", async () => {

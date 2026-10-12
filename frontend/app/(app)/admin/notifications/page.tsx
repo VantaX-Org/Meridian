@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, Dialog, ExplorerPage, Field, Pill, Select } from "@/design";
+import { Button, DataTable, Dialog, ExplorerPage, Field, PageHeader, Pill, Select, Input } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest,
@@ -38,8 +38,8 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
     <Dialog open={open} onOpenChange={onOpenChange} title="Add a channel">
       <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
         <Field label="Type"><Select value={kind} onValueChange={(v) => setKind(v as AlertChannelKind)} options={KINDS} /></Field>
-        <Field label={kind === "email" ? "Address" : "Address or URL"}><input className="m-input" value={target} onChange={(e) => setTarget(e.target.value)} required /></Field>
-        {kind === "webhook" && <Field label="Signing secret (16 to 256 characters)"><input className="m-input" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} /></Field>}
+        <Field label={kind === "email" ? "Address" : "Address or URL"}><Input value={target} onChange={(e) => setTarget(e.target.value)} required /></Field>
+        {kind === "webhook" && <Field label="Signing secret (16 to 256 characters)"><Input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} /></Field>}
         <Field label="Digest"><Select value={digest} onValueChange={(v) => setDigest(v as AlertDigest)} options={DIGESTS} /></Field>
         <div className="flex gap-2">
           <Button type="submit" pending={m.isPending}>Add channel</Button>
@@ -87,16 +87,16 @@ export default function NotificationsAdminPage() {
   return (
     <>
       <ExplorerPage
-        toolbarEnd={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined}
-        summary={<p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>.</p>}
+        header={<PageHeader title="Notifications" meta="Outbound alert channels" actions={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined} />}
+        summary={<p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>.</p>}
         state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-        emptyProps={{ title: "No alert channels.", detail: "Add email, Slack, Teams or a webhook to send critical alerts and digests." }}
+        emptyProps={{ title: "No alert channels", detail: "Add email, Slack, Teams or a webhook to send critical alerts and digests.", action: canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined }}
         errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
         table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
       />
       <AddChannel open={adding} onOpenChange={setAdding} />
       <Dialog open={!!removing} onOpenChange={(o) => { if (!o) setRemoving(null); }} title={`Remove ${removing?.kind ?? ""} channel?`} destructive>
-        <p className="text-[13px]">{removing?.target} stops receiving alerts and digests.</p>
+        <p className="m-text-body">{removing?.target} stops receiving alerts and digests.</p>
         <div className="mt-4 flex gap-2">
           <Button pending={del.isPending} onClick={() => removing && del.mutate(removing.id, { onSettled: () => setRemoving(null) })}>Remove channel</Button>
           <Button variant="secondary" onClick={() => setRemoving(null)}>Keep channel</Button>

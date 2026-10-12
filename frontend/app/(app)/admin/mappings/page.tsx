@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, EmptyState, ErrorState, Mono, Pill, Select, Skeleton } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -12,40 +13,45 @@ import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 type Draft = Pick<FieldMapping, "customer_field" | "customer_label" | "notes">;
+interface DraftCtx { drafts: Record<string, Draft>; set: (m: FieldMapping, patch: Partial<Draft>) => void; write: boolean; onSaved: (id: string) => void }
+const DraftsContext = createContext<DraftCtx>({ drafts: {}, set: () => {}, write: false, onSaved: () => {} });
+const draftOf = (drafts: Record<string, Draft>, m: FieldMapping): Draft => drafts[m.id] ?? { customer_field: m.customer_field, customer_label: m.customer_label, notes: m.notes };
+const isDirty = (d: Draft, m: FieldMapping) => d.customer_field !== m.customer_field || d.customer_label !== m.customer_label || d.notes !== m.notes;
 
-function Row({ m, write, onSaved }: { m: FieldMapping; write: boolean; onSaved: () => void }) {
-  const [d, setD] = useState<Draft>({ customer_field: m.customer_field, customer_label: m.customer_label, notes: m.notes });
-  const dirty = d.customer_field !== m.customer_field || d.customer_label !== m.customer_label || d.notes !== m.notes;
+function DraftInput({ m, field, label, mono }: { m: FieldMapping; field: keyof Draft; label: string; mono?: boolean }) {
+  const { drafts, set, write } = useContext(DraftsContext);
+  const d = draftOf(drafts, m);
+  return (
+    <Input value={d[field] ?? ""} aria-label={`${m.standard_field} ${label}`} disabled={!write} className={mono ? "font-mono" : undefined}
+      placeholder={field === "customer_field" ? "Column header in the file" : undefined}
+      onChange={(e) => set(m, { [field]: (field === "customer_field" ? e.target.value.trim() : e.target.value) || null })} />
+  );
+}
+
+function SaveCell({ m }: { m: FieldMapping }) {
+  const { drafts, write, onSaved } = useContext(DraftsContext);
+  const d = draftOf(drafts, m);
   const save = useMutation({
     mutationFn: () => updateFieldMapping(m.id, {
       customer_field: d.customer_field ?? undefined, customer_label: d.customer_label ?? undefined,
       notes: d.notes ?? undefined, is_mapped: !!(d.customer_field && d.customer_field.trim()),
     }),
-    onSuccess: () => { onSaved(); toast.success(`${m.standard_field} saved`); },
+    onSuccess: () => { onSaved(m.id); toast.success(`${m.standard_field} saved`); },
     onError: (e) => toast.error(`${m.standard_field} not saved. ${apiErrorMessage(e)}`),
   });
-  return (
-    <tr>
-      <td className="py-1"><Mono>{m.standard_field}</Mono><div className="text-[11px]" style={{ color: "var(--m-ink-3)" }}>{m.standard_label}</div></td>
-      <td className="font-mono text-[12px]">{m.data_type}</td>
-      <td style={{ width: 180 }}>
-        <input value={d.customer_field ?? ""} aria-label={`${m.standard_field} customer column`} disabled={!write}
-          className="font-mono" placeholder="Column header in the file"
-          onChange={(e) => setD({ ...d, customer_field: e.target.value.trim() || null })} />
-      </td>
-      <td style={{ width: 180 }}>
-        <input value={d.customer_label ?? ""} aria-label={`${m.standard_field} customer label`} disabled={!write}
-          onChange={(e) => setD({ ...d, customer_label: e.target.value || null })} />
-      </td>
-      <td>
-        <input value={d.notes ?? ""} aria-label={`${m.standard_field} notes`} disabled={!write}
-          onChange={(e) => setD({ ...d, notes: e.target.value || null })} />
-      </td>
-      <td><Pill tone={m.is_mapped ? "go" : "neutral"}>{m.is_mapped ? "Mapped" : "Not mapped"}</Pill></td>
-      <td>{write && dirty ? <Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button> : null}</td>
-    </tr>
-  );
+  return write && isDirty(d, m) ? <Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button> : null;
 }
+
+const baseColumns: ColumnDef<FieldMapping, unknown>[] = [
+  { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
+  { id: "field", header: "Standard field", cell: ({ row }) => <span><Mono>{row.original.standard_field}</Mono><div className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{row.original.standard_label}</div></span> },
+  { id: "type", header: "Type", cell: ({ row }) => <span className="font-mono m-text-meta">{row.original.data_type}</span> },
+  { id: "col", header: "Customer column", cell: ({ row }) => <DraftInput m={row.original} field="customer_field" label="customer column" mono /> },
+  { id: "label", header: "Customer label", cell: ({ row }) => <DraftInput m={row.original} field="customer_label" label="customer label" /> },
+  { id: "notes", header: "Notes", cell: ({ row }) => <DraftInput m={row.original} field="notes" label="notes" /> },
+  { id: "state", header: "State", cell: ({ row }) => <Pill tone={row.original.is_mapped ? "go" : "neutral"}>{row.original.is_mapped ? "Mapped" : "Not mapped"}</Pill> },
+  { id: "save", header: "", cell: ({ row }) => <SaveCell m={row.original} /> },
+];
 
 export default function AdminMappingsPage() {
   const qc = useQueryClient();
@@ -60,7 +66,12 @@ export default function AdminMappingsPage() {
   const shown = mappings.filter((m) => (!object || m.module === object)
     && (!term || [m.standard_field, m.standard_label, m.customer_field, m.customer_label].some((v) => v?.toLowerCase().includes(term))));
   const mapped = shown.filter((m) => m.is_mapped).length;
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.fieldMappings() });
+  const set = useCallback((m: FieldMapping, patch: Partial<Draft>) => setDrafts((p) => ({ ...p, [m.id]: { ...draftOf(p, m), ...patch } })), []);
+  const onSaved = useCallback((id: string) => { setDrafts((p) => { const n = { ...p }; delete n[id]; return n; }); void qc.invalidateQueries({ queryKey: queryKeys.fieldMappings() }); }, [qc]);
+  const ctx = useMemo(() => ({ drafts, set, write, onSaved }), [drafts, set, write, onSaved]);
+  const columns = useMemo(() => (object ? baseColumns.filter((c) => c.id !== "object") : baseColumns), [object]);
   const reset = useMutation({
     mutationFn: () => resetFieldMappings(object || undefined),
     onSuccess: (r) => { refresh(); setConfirmReset(false); toast.success(`${r.reset_count} mappings reset to defaults`); },
@@ -68,31 +79,16 @@ export default function AdminMappingsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <header>
-        <strong className="text-[17px]">Field mapping</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
-          Imported files are matched on these customer columns. A standard field with no customer column is skipped by every check that needs it.
-        </p>
-      </header>
+    <div className="flex flex-col gap-4 p-6">
+      <PageHeader title="Field mapping" meta="Imported files are matched on these customer columns" />
+      <Notice tone="info">A standard field with no customer column is skipped by every check that needs it.</Notice>
 
       <div className="flex gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Mapped</span>
-          <span className="text-[22px] font-semibold">{all.isLoading ? "–" : mapped}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Of {shown.length} standard fields.</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Unmapped</span>
-          <span className="text-[22px] font-semibold">{all.isLoading ? "–" : shown.length - mapped}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
-            {shown.length - mapped ? "Skipped by checks that need them." : "Every field has a customer column."}
-          </span>
-        </div>
+        <Stat label="Unmapped" value={all.isLoading ? undefined : shown.length - mapped} tone={shown.length - mapped ? "at-risk" : "go"} delta={all.isLoading ? undefined : `of ${shown.length} standard fields`} />
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search fields" aria-label="Search fields" />
+      <div className="flex items-end gap-2 flex-wrap">
+        <Field label="Search"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search fields" /></Field>
         <Select
           label="Object"
           value={object}
@@ -102,7 +98,7 @@ export default function AdminMappingsPage() {
         {object || search ? <Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear</Button> : null}
         {write ? (confirmReset ? (
           <>
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Reset {object ? formatModuleName(object) : "every object"} to the shipped mappings?</span>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Reset {object ? formatModuleName(object) : "every object"} to the shipped mappings?</span>
             <Button variant="secondary" disabled={reset.isPending} onClick={() => reset.mutate()}>Reset</Button>
             <Button variant="ghost" onClick={() => setConfirmReset(false)}>Keep mappings</Button>
           </>
@@ -113,40 +109,19 @@ export default function AdminMappingsPage() {
 
       {all.isLoading ? <Skeleton height={320} />
         : isListFailure(all) ? (
-          <ErrorState message={apiErrorMessage(all.error) || "Field mappings could not be read."} onRetry={() => all.refetch()} />
+          <ErrorState message={apiErrorMessage(all.error)} onRetry={() => all.refetch()} />
         ) : !shown.length ? (
-          <EmptyState
-            title={object || search ? "No standard field matches this filter." : "No field mappings."}
-            action={!(object || search) ? <Button render={<Link href="/import">Import file</Link>} /> : undefined}
-          />
-        )
-        : (
-          <section>
-            <h2 className="text-[13px] font-semibold mb-2">{object ? formatModuleName(object) : "All objects"} &mdash; {mapped} of {shown.length} mapped</h2>
-            <div className="overflow-x-auto">
-              <table className="text-[13px] w-full">
-                <thead>
-                  <tr>
-                    <th className="text-left">Standard field</th><th className="text-left">Type</th><th className="text-left">Customer column</th>
-                    <th className="text-left">Customer label</th><th className="text-left">Notes</th><th className="text-left">State</th>
-                    <th><span className="sr-only">Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(object ? [object] : objects).map((o) => {
-                    const rows = shown.filter((m) => m.module === o);
-                    if (!rows.length) return null;
-                    return (
-                      <Fragment key={o}>
-                        {!object ? <tr><th colSpan={7} className="text-left pt-3">{formatModuleName(o)}</th></tr> : null}
-                        {rows.map((m) => <Row key={m.id} m={m} write={write} onSaved={refresh} />)}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          object || search ? (
+            <EmptyState title="No standard field matches" detail="Clear the filter to see every field." action={<Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear filter</Button>} />
+          ) : (
+            <EmptyState title="No field mappings" detail="Import a file to map its columns." action={<Button render={<Link href="/import">Import file</Link>} />} />
+          )
+        ) : (
+          <Card title={`${object ? formatModuleName(object) : "All objects"}`} meta={`${mapped} of ${shown.length} mapped`} padding="sm">
+            <DraftsContext.Provider value={ctx}>
+              <DataTable columns={columns} data={shown} getRowId={(m) => m.id} />
+            </DraftsContext.Provider>
+          </Card>
         )}
     </div>
   );
