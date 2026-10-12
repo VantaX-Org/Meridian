@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
-  Button, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, Pill, Skeleton, Stat,
+  Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, SeverityDot, Skeleton, Stat,
   buildDrillHref,
 } from "@/design";
 import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
@@ -18,6 +18,7 @@ import { getRuleLineage } from "@/lib/api/lineage";
 import { apiErrorMessage } from "@/lib/error";
 import { checkClassLabel, formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { ConditionList, ThresholdTable } from "../rule-ui";
 
 const APPLIES_TONE: Record<string, "go" | "no-go" | "neutral"> = {
   applies: "go",
@@ -65,7 +66,7 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
         row.original.configured_in.length ? (
           <div className="flex flex-col gap-0.5">
             {row.original.configured_in.map((c, i) => (
-              <div key={i} className="text-[12px]">
+              <div key={i} className="m-text-meta">
                 {c.kind === "img" ? "IMG: " : ""}
                 {c.path}
                 {c.tcode ? <> (<Mono>{c.tcode}</Mono>)</> : null}
@@ -79,14 +80,17 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
   ];
 
   return (
-    <section>
-      <h2 className="text-[13px] font-semibold">Where it applies</h2>
+    <Card title="Where it applies">
       {q.isLoading ? (
         <Skeleton height={120} />
       ) : q.isError ? (
         <ErrorState message="Where this rule applies could not be read." onRetry={() => q.refetch()} />
       ) : systems.length === 0 ? (
-        <EmptyState title="No system is connected. Add a system and load its configuration to see where this rule applies." />
+        <EmptyState
+          title="No system connected"
+          detail="Add a system and load its configuration to see where this rule applies"
+          action={<Button render={<Link href="/systems">Add a system</Link>} />}
+        />
       ) : (
         <DataTable
           columns={columns}
@@ -95,7 +99,7 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
           onRowClick={(s) => router.push(`/systems/${s.system_id}?tab=health`)}
         />
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -130,7 +134,7 @@ function LineageAndOwnership({ checkId, builtIn }: { checkId: string; builtIn: b
 
   let body: ReactNode;
   if (!builtIn) {
-    body = <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Lineage is shown for built-in rules only.</p>;
+    body = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Lineage is shown for built-in rules only.</p>;
   } else if (q.isLoading) {
     body = <Skeleton height={96} />;
   } else if (q.isError || !q.data) {
@@ -138,7 +142,7 @@ function LineageAndOwnership({ checkId, builtIn }: { checkId: string; builtIn: b
   } else {
     const l = q.data;
     body = (
-      <dl className="flex flex-col gap-1 text-[13px]">
+      <dl className="m-text-body flex flex-col gap-1">
         <LineageRow label="Fields">{columnList(l.fields)}</LineageRow>
         <LineageRow label="Targets">{columnList(l.targets)}</LineageRow>
         <LineageRow label="Tables">{columnList(l.tables)}</LineageRow>
@@ -165,11 +169,12 @@ function LineageAndOwnership({ checkId, builtIn }: { checkId: string; builtIn: b
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-[13px] font-semibold">Lineage and ownership</h2>
-      {body}
-      <OwnerPicker kind="rule" refId={checkId} />
-    </section>
+    <Card title="Lineage and ownership">
+      <div className="flex flex-col gap-2">
+        {body}
+        <OwnerPicker kind="rule" refId={checkId} />
+      </div>
+    </Card>
   );
 }
 
@@ -197,7 +202,7 @@ export default function RulePage() {
   if (isError && isAxiosError(error) && error.response?.status === 404) {
     return (
       <EmptyState
-        title="Rule not found."
+        title="Rule not found"
         action={<Button render={<Link href="/rules">All rules</Link>} />}
       />
     );
@@ -209,14 +214,16 @@ export default function RulePage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Mono>{ruleId}</Mono>
-          <strong>{data.name}</strong>
-          <Pill tone={SEV_TONE[data.severity] ?? "neutral"}>{labelOf(data.severity)}</Pill>
-          <Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill>
-        </div>
-        </header>
+      <PageHeader
+        title={data.name}
+        meta={<Mono>{ruleId}</Mono>}
+        status={<span className="inline-flex items-center gap-2"><SeverityDot severity={data.severity === "info" ? "low" : data.severity} />{labelOf(data.severity)}<Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill></span>}
+        actions={
+          <Button variant={data.enabled ? "secondary" : "primary"} onClick={() => toggle.mutate(!data.enabled)} disabled={toggle.isPending}>
+            {data.enabled ? "Disable rule" : "Enable rule"}
+          </Button>
+        }
+      />
       <EntityTabs entityType="rules" entityId={data.id}
         exportOptions={[{ format: "xlsx", label: "Rule run history (.xlsx)", run: () => exportRuleHistory(ruleId, "xlsx") }]}
         history={history.data && history.data.runs.length > 0 ? (
@@ -233,9 +240,9 @@ export default function RulePage() {
           />
         ) : undefined}
         overview={<>
-      {data.description ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{data.description}</p> : null}
+      {data.description ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{data.description}</p> : null}
 
-      <dl className="flex flex-col gap-1 text-[13px]">
+      <dl className="m-text-body flex flex-col gap-1">
         <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Object</dt><dd>{formatModuleName(data.module)}</dd></div>
         <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>System</dt><dd>{labelOf(data.category)}</dd></div>
         <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? `, ${data.source_yaml}` : ""}</dd></div>
@@ -248,8 +255,7 @@ export default function RulePage() {
 
       <LineageAndOwnership checkId={checkId} builtIn={data.source === "yaml"} />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-[13px] font-semibold">Pass rate over runs</h2>
+      <Card title="Pass rate over runs"><div className="flex flex-col gap-2">
         <div className="flex gap-6">
           <Stat
             label="Last pass rate"
@@ -261,7 +267,7 @@ export default function RulePage() {
         {history.isLoading ? (
           <Skeleton height={120} />
         ) : !history.data || history.data.runs.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>This rule has not run yet.</p>
+          <EmptyState title="Not run yet" detail="Pass rates appear after the first analysis" action={<Button variant="secondary" render={<Link href="/runs">View runs</Link>} />} />
         ) : (
           <Line
             data={[...history.data.runs].reverse().map((r) => ({
@@ -274,31 +280,12 @@ export default function RulePage() {
             onPointClick={(p) => router.push(buildDrillHref({ object: p.object ?? data.module, ruleId: data.id, run: p.runId ?? "" }))}
           />
         )}
-      </section>
+      </div></Card>
 
-      {conditionList(data.conditions).length ? (
-        <section>
-          <h2 className="text-[13px] font-semibold">Conditions</h2>
-          {conditionList(data.conditions).some((c) => typeof c.check_class === "string") ? (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
-              {conditionList(data.conditions).map((c) => (typeof c.check_class === "string" ? checkClassLabel(c.check_class) : null)).filter(Boolean).join(", ")}
-            </p>
-          ) : null}
-          <pre className="text-[12px] overflow-auto">{JSON.stringify(data.conditions, null, 2)}</pre>
-        </section>
-      ) : null}
-      {data.thresholds ? (
-        <section>
-          <h2 className="text-[13px] font-semibold">Thresholds</h2>
-          <pre className="text-[12px] overflow-auto">{JSON.stringify(data.thresholds, null, 2)}</pre>
-        </section>
-      ) : null}
+      {conditionList(data.conditions).length ? <Card title="Conditions"><ConditionList conditions={conditionList(data.conditions)} /></Card> : null}
+      {data.thresholds ? <Card title="Thresholds"><ThresholdTable thresholds={data.thresholds} /></Card> : null}
 
-      <Button variant={data.enabled ? "secondary" : "primary"} onClick={() => toggle.mutate(!data.enabled)} disabled={toggle.isPending}>
-        {data.enabled ? "Disable rule" : "Enable rule"}
-      </Button>
-
-      <p className="text-[13px]">
+      <p className="m-text-body">
         <DrillLink object={data.module} ruleId={checkId}>See failing records</DrillLink>
       </p>
       </>} />
