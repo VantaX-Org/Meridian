@@ -547,3 +547,34 @@ def cleansing(s: Session, tid: str, vid: Optional[str], module: Optional[str]) -
                        "high": high_by_module.get(m, 0)} for m, n in sorted(fail_by_module.items())],
         "by_rule": by_rule,
     }
+
+
+# ── shared gather for the board PDF and the analyst workbook ─────────────────
+
+def gather(s: Session, tid: str, vid: Optional[str], compare: Optional[str] = None,
+           module: Optional[str] = None, trend_limit: int = 12) -> Optional[dict]:
+    """Everything the board report and the workbook need, loaded once. ``compare`` is an explicit
+    earlier run: without it nothing is compared and deltas read "no earlier run"."""
+    from api.services.pdf_reports import load_system
+
+    v = resolve_version(s, tid, vid)
+    if not v:
+        return None
+    vid = str(v["id"])
+    prev = resolve_version(s, tid, compare) if compare else None
+    findings = load_run_findings(s, tid, vid, module)
+    fixes = load_fixes_by_check(s, tid, vid, module)
+    cost_model = load_cost_model(s, tid)
+    clusters = load_clusters(s, tid, vid, module, findings, fixes)
+    scoring = load_scoring(s, tid)
+    data = {
+        "version": v, "previous": prev, "module": module, "findings": findings, "fixes_by_check": fixes,
+        "previous_findings": load_run_findings(s, tid, str(prev["id"]), module) if prev else [],
+        "scoring": scoring, "waves": load_waves(s, tid), "fix_records": load_fix_records(s, tid, vid, module),
+        "high_confidence": load_high_confidence(s, tid, vid, module),
+        "impact_rows": load_impact_rows(s, tid, vid, cost_model), "currency": tenant_currency(cost_model),
+        "clusters": clusters, "system": load_system(s, tid, v),
+        "trend": trends(s, tid, vid, None, trend_limit), "cleansing": cleansing(s, tid, vid, module),
+    }
+    data["overview"] = overview_from(data)
+    return data

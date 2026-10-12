@@ -32,6 +32,7 @@ from api.routes.findings import composite_dqs
 from api.services.deterministic_report import compute_readiness_status
 from api.services.scoring import critical_over_tolerance, impact
 from api.services.report_pdf import TEMPLATE_DIR
+from api.services.insights_impact import tenant_currency
 from api.services.report_theme import PRINT_TOKENS, band_colour
 
 DIMENSIONS = ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity")
@@ -213,6 +214,60 @@ def delta_bars(rows: Iterable[tuple[str, Optional[float]]], unit: str = " pts") 
     return Markup("".join(out))
 
 
+def trend_line(points: Iterable[tuple[str, Optional[float]]], threshold: Optional[float] = None) -> Markup:
+    """Score over runs, oldest first, on a 0..100 scale with a dashed target line. A run with no
+    score leaves a gap. The last point takes the score band colour."""
+    pts = list(points)
+    w, h, pl, pr, pt, pb = 640, 150, 28, 12, 10, 22
+    iw, ih = w - pl - pr, h - pt - pb
+    x = lambda i: pl + (iw * i / (len(pts) - 1) if len(pts) > 1 else iw / 2)  # noqa: E731
+    y = lambda v: pt + ih * (1 - max(0.0, min(100.0, float(v))) / 100.0)  # noqa: E731
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" font-family="Instrument Sans" font-size="9">']
+    for g in (0, 50, 100):
+        out.append(f'<line x1="{pl}" y1="{y(g):.1f}" x2="{w - pr}" y2="{y(g):.1f}" stroke="{_TRACK}" stroke-width="0.75"/>'
+                   f'<text x="{pl - 4}" y="{y(g) + 3:.1f}" text-anchor="end" fill="{_MUTED}">{g}</text>')
+    if threshold is not None:
+        out.append(f'<line x1="{pl}" y1="{y(threshold):.1f}" x2="{w - pr}" y2="{y(threshold):.1f}" stroke="{_MUTED}" '
+                   f'stroke-width="0.75" stroke-dasharray="4 3"/>'
+                   f'<text x="{w - pr}" y="{y(threshold) - 3:.1f}" text-anchor="end" fill="{_MUTED}">Target {fmt_n(threshold)}</text>')
+    seg: list[str] = []
+    done = [(i, v) for i, (_, v) in enumerate(pts) if v is not None]
+    for i, v in done:
+        seg.append(f"{x(i):.1f},{y(v):.1f}")
+    if len(seg) > 1:
+        out.append(f'<polyline points="{" ".join(seg)}" fill="none" stroke="{_ACCENT}" stroke-width="1.5"/>')
+    for i, v in done:
+        last = i == done[-1][0]
+        out.append(f'<circle cx="{x(i):.1f}" cy="{y(v):.1f}" r="{3.2 if last else 2.2}" '
+                   f'fill="{band_colour(v) if last else _ACCENT}"/>')
+    if done:
+        i, v = done[-1]
+        out.append(f'<text x="{x(i):.1f}" y="{y(v) - 6:.1f}" text-anchor="end" fill="{_INK}" font-weight="600">{fmt_n(v, 1)}</text>')
+    for i in sorted({0, len(pts) - 1}) if pts else []:
+        out.append(f'<text x="{x(i):.1f}" y="{h - 6}" text-anchor="{"start" if i == 0 and len(pts) > 1 else "end"}" '
+                   f'fill="{_MUTED}">{escape(str(pts[i][0] or "")[:18])}</text>')
+    out.append("</svg>")
+    return Markup("".join(out))
+
+
+def funnel_bars(steps: Iterable[tuple[str, int]]) -> Markup:
+    """Counts that can only shrink down a pipeline, each bar scaled to the first step."""
+    rows = list(steps)
+    w, lw, vw, rh = 640, 150, 80, 22
+    bw = w - lw - vw
+    top = max([n for _, n in rows] + [1])
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {rh * len(rows) + 4}" '
+           f'font-family="Instrument Sans" font-size="11">']
+    for i, (label, n) in enumerate(rows):
+        y = i * rh + 4
+        out.append(f'<text x="0" y="{y + 12}" fill="{_INK}">{escape(label)}</text>'
+                   f'<rect x="{lw}" y="{y + 2}" width="{bw}" height="13" fill="{_TRACK}"/>'
+                   f'<rect x="{lw}" y="{y + 2}" width="{bw * n / top:.1f}" height="13" fill="{_ACCENT}"/>'
+                   f'<text x="{w}" y="{y + 12}" text-anchor="end" fill="{_INK}" font-weight="600">{fmt_n(n)}</text>')
+    out.append("</svg>")
+    return Markup("".join(out))
+
+
 # ── shared pure helpers ──────────────────────────────────────────────────────
 
 
@@ -329,6 +384,16 @@ def _now(generated_at: Optional[datetime]) -> datetime:
 # ── analysis run ─────────────────────────────────────────────────────────────
 
 
+def methodology_block(scoring: dict) -> dict:
+    """The scoring parameters the methodology page prints, from the tenant's current config."""
+    from api.services.scoring import SEV_WEIGHT, scoring_config
+
+    c = scoring_config(scoring)
+    return {"weights": c["dimension_weights"], "thresholds": c["thresholds"],
+            "severity_weights": c["severity_weights"], "impact_weights": SEV_WEIGHT,
+            "tolerance": c["critical_tolerance"]}
+
+
 def analysis_context(version: dict, findings: list[dict], *, tenant_name: str, scoring: dict,
                      system: Optional[dict] = None, generated_at: Optional[datetime] = None,
                      previous_dqs: Optional[float] = None) -> dict:
@@ -393,6 +458,7 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str, s
         "top_findings": fails[:15],
         "critical": [f for f in fails if f.get("severity") == "critical"],
         "fix_first": fix_first, "errored": errs, "headline": headline,
+        "methodology": methodology_block(scoring),
     }
 
 
@@ -643,7 +709,8 @@ _CANNED = "Data quality assessment complete. Review the detailed findings below 
 
 def executive_context(report_json: dict, supplementary: dict, version: dict, findings: list[dict], *,
                       tenant_name: str, scoring: dict, system: Optional[dict] = None,
-                      generated_at: Optional[datetime] = None, previous_dqs: Optional[float] = None) -> dict:
+                      generated_at: Optional[datetime] = None, previous_dqs: Optional[float] = None,
+                      currency: str = "ZAR") -> dict:
     ctx = analysis_context(version, findings, tenant_name=tenant_name, scoring=scoring, system=system,
                            generated_at=generated_at, previous_dqs=previous_dqs)
     ai = report_json.get("ai_executive_summary")
@@ -651,7 +718,123 @@ def executive_context(report_json: dict, supplementary: dict, version: dict, fin
         ai = report_json.get("executive_summary")
     ai = None if not ai or str(ai).strip() == _CANNED else str(ai).strip()
     return {**ctx, "title": "Executive data quality report", "eyebrow": "Executive summary",
-            "ai_summary": ai, "report": report_json, **supplementary}
+            "ai_summary": ai, "report": report_json, "currency": currency, **supplementary}
+
+
+# ── board report (one run, optional comparison run) ───────────────────────────
+
+_GROUP_LABEL = {"ecc": "ECC", "successfactors": "SuccessFactors", "warehouse": "Warehouse"}
+BOARD_MODULE_MAX = 29
+BOARD_RULE_APPENDIX = 40
+
+
+def board_context(data: dict, *, tenant_name: str, scoring: dict, ai_summary: Optional[str] = None,
+                  generated_at: Optional[datetime] = None, app_version: str = "") -> dict:
+    """Pure builder over ``insights_aggregate.gather`` output. Impact is shown per L1 and never
+    summed across L1s."""
+    from api.services import insights_aggregate as agg
+    from api.services import s4_readiness
+    from api.services.insights_impact import by_l1
+    from api.services.scoring import scoring_config
+
+    v, prev = data["version"], data["previous"]
+    summary, findings = v.get("dqs_summary") or {}, data["findings"]
+    cfg = scoring_config(scoring)
+    ov = data["overview"]
+    overall = composite_dqs([summary], scoring=scoring)
+    now = _now(generated_at)
+    dims = dimension_scores(summary)
+    prev_summary = (prev or {}).get("dqs_summary") or {}
+    prev_dims = dimension_scores(prev_summary) if prev else {}
+    deltas = module_deltas(prev_summary, summary) if prev else {}
+    rules = agg.rule_rows(findings, data["previous_findings"] if prev else None, data["fixes_by_check"])
+    blockers = sorted((r for r in rules if r["severity"] == "critical" or r["s4"] == "blocking"),
+                      key=lambda r: (-r["impact"], r["check_id"]))
+    roll = s4_readiness.rollup(findings)
+    areas = [a for a in roll["areas"] if a["evaluated"]]
+    top_impact = max([c["impact"] for c in data["clusters"][:5]] + [1])
+
+    dim_rows = [{"name": d, "score": dims[d], "previous": prev_dims.get(d),
+                 "delta": None if not prev or dims[d] is None or prev_dims.get(d) is None
+                 else round(dims[d] - prev_dims[d], 1)} for d in DIMENSIONS]
+    hbars_delta = None
+    if prev and deltas:
+        moved = sorted(((fmt_module(m), d["dqs_change"]) for m, d in deltas.items()),
+                       key=lambda kv: (-abs(kv[1] or 0), kv[0]))[:12]
+        hbars_delta = delta_bars(moved)
+    runs = (data["trend"] or {}).get("runs") or []
+    heat = agg.heatmap_rows(summary, cfg["thresholds"])[:BOARD_MODULE_MAX]
+    by_module_rules: dict[str, list[dict]] = {}
+    for r in rules:
+        by_module_rules.setdefault(r["module"], []).append(r)
+    blocking_by_module: dict[str, int] = {}
+    for r in blockers:
+        blocking_by_module[r["module"]] = blocking_by_module.get(r["module"], 0) + 1
+
+    def module_block(h: dict) -> dict:
+        m = h["module"]
+        r = summary.get(m) or {}
+        mdims = {d: h["scores"].get(d) for d in DIMENSIONS}
+        return {"name": m, "score": h["scores"]["composite"], "tier": h["tier"]["composite"],
+                "delta": (deltas.get(m) or {}).get("dqs_change") if prev else None,
+                "chart": hbars([(fmt_module(d), mdims[d]) for d in DIMENSIONS]),
+                "rules": by_module_rules.get(m, [])[:5], "blockers": blocking_by_module.get(m, 0),
+                "critical": h["critical"], "cap_reason": h["cap_reason"],
+                "checks": int(r.get("total_checks") or 0)}
+
+    groups = [{"label": _GROUP_LABEL[g], "modules": [module_block(h) for h in heat if h["group"] == g]}
+              for g in agg.GROUPS]
+    wave_rows = []
+    for w in data["waves"]:
+        mods = [h for h in heat if h["module"] in set(w.get("modules") or [])]
+        wave_rows.append({"name": w["name"], "modules": [
+            {"name": h["module"], "score": h["scores"]["composite"], "tier": h["tier"]["composite"],
+             "blockers": blocking_by_module.get(h["module"], 0)} for h in mods]})
+    l1 = sorted(by_l1(data["impact_rows"]).items(), key=lambda kv: (-kv[1], kv[0]))
+    steps = (data["cleansing"] or {}).get("steps") or []
+
+    return {
+        "title": "Board data quality report", "eyebrow": "Board report", "cover": True,
+        "scope_label": _scope_label(tenant_name, data["system"]), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("System", _system_line(data["system"])),
+                 ("Run", v.get("label") or str(v["id"])), ("Run ID", str(v["id"])),
+                 ("Run at", fmt_dt(v.get("run_at"))),
+                 ("Compared with", (prev.get("label") or str(prev["id"])) if prev else "No earlier run"),
+                 ("Generated", fmt_dt(now))],
+        "overall": overall, "headline": (ov["narrative"] or [{"text": ""}])[0]["text"],
+        "currency": data["currency"], "compared": bool(prev),
+        "narrative": [n["text"] for n in ov["narrative"]], "overview": ov,
+        "cluster_chart": hbars([((f"{fmt_module(c['module'])} {c['field']}" if c["field"] else
+                                  f"{fmt_module(c['module'])} unattributed"), c["impact"]) for c in data["clusters"][:5]],
+                               maximum=float(top_impact)) if data["clusters"] else None,
+        "ai_summary": ai_summary,
+        "dim_rows": dim_rows, "trend_chart": trend_line([(r["label"] or r["run_at"], r["composite"]) for r in runs],
+                                                       cfg["thresholds"]["target"]) if runs else None,
+        "trend_count": len(runs), "delta_chart": hbars_delta,
+        "waves": wave_rows, "blockers": blockers[:10], "blocker_total": len(blockers),
+        "area_blocking_chart": hbars([(a["label"], a["blocking_failing"]) for a in areas],
+                                     maximum=float(max([a["blocking_failing"] for a in areas] + [1]))) if areas else None,
+        "area_warning_chart": hbars([(a["label"], a["warning_failing"]) for a in areas],
+                                    maximum=float(max([a["warning_failing"] for a in areas] + [1]))) if areas else None,
+        "l1_rows": [{"l1": k, "amount": amt} for k, amt in l1],
+        "groups": [g for g in groups if g["modules"]],
+        "funnel_chart": funnel_bars([(x["label"], x["records"]) for x in steps]) if steps else None,
+        "rule_appendix": rules[:BOARD_RULE_APPENDIX], "rule_total": len(rules),
+        "app_version": app_version, "methodology": methodology_block(scoring),
+    }
+
+
+def load_board(s: Session, tid: str, vid: str, compare: Optional[str] = None) -> Optional[dict]:
+    from api.services import insights_aggregate as agg
+    from api.services.report_pdf import _load_report_json
+
+    d = agg.gather(s, tid, vid, compare)
+    if not d:
+        return None
+    rj = _load_report_json(s, str(d["version"]["id"]), tid) or {}
+    ai = rj.get("ai_executive_summary") or rj.get("executive_summary")
+    d["ai_summary"] = None if not ai or str(ai).strip() == _CANNED else str(ai).strip()
+    return d
 
 
 # ── object report (one module, one run) ───────────────────────────────────────
@@ -943,6 +1126,18 @@ def load_record(s: Session, tid: str, vid: str, matnr: str) -> Optional[dict]:
     return {"version": v, "matnr": m, "by_view": out["by_view"], "system": load_system(s, tid, v)}
 
 
+def _cost_model(s: Session, tid: str) -> dict:
+    from api.services.insights_aggregate import load_cost_model
+
+    return load_cost_model(s, tid)
+
+
+def _app_version() -> str:
+    from api.services.version import APP_VERSION
+
+    return str(APP_VERSION)
+
+
 def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Optional[str] = None,
          module: Optional[str] = None, matnr: Optional[str] = None) -> Optional[bytes]:
     """Load one report's data for a tenant and render it. ``None`` when the run is not found
@@ -973,7 +1168,12 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
         d = gather_executive_data(s, tid, vid)
         return d and render("executive_report.html", executive_context(
             d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"],
-            scoring=scoring, previous_dqs=load_previous_dqs(s, tid, d["version"], scoring), **kw))
+            scoring=scoring, previous_dqs=load_previous_dqs(s, tid, d["version"], scoring),
+            currency=tenant_currency(_cost_model(s, tid)), **kw))
+    if kind == "board":
+        d = load_board(s, tid, vid, vid1)
+        return d and render("board_report.html", board_context(
+            d, tenant_name=tenant_name, scoring=scoring, ai_summary=d["ai_summary"], app_version=_app_version()))
     if kind == "object":
         d = load_object(s, tid, vid, module)
         return d and render("object_report.html", object_context(
