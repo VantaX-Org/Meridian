@@ -4,19 +4,21 @@
 import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { ChartTooltip } from "./Tooltip";
+import { hoverBar } from "./HoverBar";
 import { mMotion, reducedMotion } from "../tokens";
 
 export function Bar({
   data,
   onPointClick,
   height = 240,
-  draw = false,
+  draw = true,
   dqsThreshold,
   label,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
   height?: number;
+  /** Bars grow from the baseline on mount. On by default, off under reduced motion. */
   draw?: boolean;
   dqsThreshold?: number;
   /** Names the chart for assistive tech; the data points are appended. */
@@ -35,7 +37,7 @@ export function Bar({
           dataKey="y"
           name={label ?? "Value"}
           radius={[0, 3, 3, 0]}
-          activeBar={{ fill: chartTheme.accentHover }}
+          activeBar={hoverBar}
           onClick={(_, index) => onPointClick?.(data[index])}
           isAnimationActive={animate}
           animationDuration={mMotion.draw}
@@ -45,7 +47,7 @@ export function Bar({
           {data.map((point) => (
             <Cell
               key={point.x}
-              fill={dqsThreshold !== undefined && point.y < dqsThreshold ? chartTheme.high : chartTheme.series[0]}
+              fill={dqsThreshold !== undefined && point.y < dqsThreshold ? chartTheme.high : point.domain ? chartTheme.domain(point.domain) : chartTheme.series[0]}
               cursor={onPointClick ? "pointer" : "default"}
             />
           ))}

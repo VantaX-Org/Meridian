@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { mColor } from "../tokens";
 
 /** Muted placeholder shape behind the sentence, hinting at what fills in once there's data. */
 export type EmptyStateGhost = "table" | "chart" | "grid" | "list" | "ring" | "stepper";
@@ -8,7 +9,7 @@ function TableGhost() {
     <div className="flex flex-col gap-2" style={{ width: 200 }}>
       {[70, 50, 60].map((w, i) => (
         <div key={w} className="flex items-center gap-2" style={{ height: 24 }}>
-          {i === 0 && <span style={{ width: 24, height: 24, background: "var(--m-dom-material)", borderRadius: 4 }} />}
+          {i === 0 && <span style={{ width: 24, height: 24, background: mColor.dom.material, borderRadius: 4 }} />}
           <span style={{ width: `${w}%`, height: 8, background: "var(--m-accent-soft-2)", borderRadius: 4 }} />
         </div>
       ))}

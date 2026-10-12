@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { Heatmap } from "./Heatmap";
 import { Bar } from "./Bar";
-import { Graph } from "./Graph";
+import { Graph, GraphLegend } from "./Graph";
+import { ChartLegend, isolatedOpacity } from "./Legend";
 import { Line } from "./Line";
 import { Radar } from "./Radar";
 import { Sparkline } from "./Sparkline";
@@ -95,11 +96,96 @@ describe("chart tooltip and theme", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("Heatmap cells use the soft tone with a centred dot", () => {
+  it("Heatmap tone cells use the soft tone with a 3px left bar and no dot", () => {
     render(<Heatmap rows={["a"]} cols={["b"]} cells={[{ row: "a", col: "b", value: "at-risk" }]} />);
     const btn = screen.getByLabelText("a b: at-risk");
     expect(btn.style.background).toContain("--m-at-risk-soft");
-    expect(btn.querySelector("span")?.getAttribute("style")).toContain("--m-at-risk");
+    expect(btn.style.boxShadow).toContain("inset 3px 0 0");
+    expect(btn.style.boxShadow).toContain("--m-at-risk");
+    expect(btn.querySelector("span")).toBeNull();
+  });
+
+  it("Heatmap seq mode fills by quintile and writes the value in seqInk", () => {
+    render(
+      <Heatmap
+        mode="seq"
+        rows={["a"]}
+        cols={["lo", "hi"]}
+        cells={[{ row: "a", col: "lo", value: 5 }, { row: "a", col: "hi", value: 95 }]}
+      />,
+    );
+    const lo = screen.getByLabelText("a lo: 5");
+    const hi = screen.getByLabelText("a hi: 95");
+    expect(lo.style.background).toContain("--m-seq-1");
+    expect(lo.style.color).toBe("var(--m-ink)");
+    expect(hi.style.background).toContain("--m-seq-5");
+    expect(hi.style.color).toBe("var(--m-ink-on-accent)");
+    expect(hi).toHaveTextContent("95");
+  });
+
+  it("Heatmap div mode maps the ends of the range to the diverging ends", () => {
+    render(<Heatmap mode="div" rows={["a"]} cols={["n", "p"]} cells={[{ row: "a", col: "n", value: -1 }, { row: "a", col: "p", value: 1 }]} />);
+    expect(screen.getByLabelText("a n: -1").style.background).toContain("--m-div-neg-2");
+    expect(screen.getByLabelText("a p: 1").style.background).toContain("--m-div-pos-2");
+  });
+
+  it("chartTheme carries ten series hues, domain lookup and both ramps", () => {
+    expect(chartTheme.series).toHaveLength(10);
+    expect(chartTheme.seriesFill[9]).toBe("var(--m-viz-10-fill)");
+    expect(chartTheme.domain("vendor")).toBe("var(--m-dom-vendor)");
+    expect(chartTheme.seq).toHaveLength(5);
+    expect(chartTheme.div).toHaveLength(5);
+  });
+
+  it("ChartTooltip draws a square swatch for a series colour", () => {
+    const { container } = render(<ChartTooltip active payload={[{ name: "DQS", value: 91, color: "var(--m-viz-2)" }]} />);
+    const swatch = container.querySelector("span[aria-hidden]") as HTMLElement;
+    expect(swatch.style.width).toBe("8px");
+    expect(swatch.style.height).toBe("8px");
+    expect(swatch.style.background).toContain("--m-viz-2");
+  });
+
+  it("ChartLegend isolates a series on click and toggles back", () => {
+    const onIsolate = vi.fn();
+    render(<ChartLegend items={[{ key: "a", name: "Alpha", color: "var(--m-viz-1)" }, { key: "b", name: "Beta", color: "var(--m-viz-2)" }]} isolated="a" onIsolate={onIsolate} />);
+    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
+    expect(onIsolate).toHaveBeenLastCalledWith(null);
+    fireEvent.click(screen.getByRole("button", { name: "Beta" }));
+    expect(onIsolate).toHaveBeenLastCalledWith("b");
+    expect(isolatedOpacity("a", "a")).toBe(1);
+    expect(isolatedOpacity("b", "a")).toBe(0.25);
+    expect(isolatedOpacity("b", null)).toBe(1);
+  });
+
+  it("Graph fills nodes from the domain palette and marks the bottleneck target", () => {
+    const { container } = render(
+      <Graph
+        weighted
+        nodes={[{ id: "a", size: 4, label: "A", domain: "material" }, { id: "b", size: 2, label: "B", domain: "vendor" }]}
+        edges={[{ source: "a", target: "b", weight: 1, bottleneck: true }]}
+      />,
+    );
+    const dots = Array.from(container.querySelectorAll(".m-graph-node-dot")).map((c) => c.getAttribute("fill"));
+    expect(dots).toEqual(["var(--m-dom-material)", "var(--m-dom-vendor)"]);
+    expect(container.querySelectorAll(".m-pulse-once")).toHaveLength(1);
+    expect(container.querySelector("[data-bottleneck]")).toHaveAttribute("aria-label", "Node B");
+    expect(container.querySelector("line")?.getAttribute("data-edge-width")).toBe("5");
+  });
+
+  it("Graph does not replay the pulse when pulse is false", () => {
+    const { container } = render(
+      <Graph weighted pulse={false} nodes={[{ id: "a", size: 1 }, { id: "b", size: 1 }]} edges={[{ source: "a", target: "b", bottleneck: true }]} />,
+    );
+    expect(container.querySelectorAll(".m-pulse-once")).toHaveLength(0);
+  });
+
+  it("GraphLegend labels bottleneck and rework only when asked", () => {
+    const { rerender } = render(<GraphLegend domains={["material"]} />);
+    expect(screen.queryByText("Bottleneck")).toBeNull();
+    expect(screen.getByText("Material")).toBeInTheDocument();
+    rerender(<GraphLegend bottleneck rework />);
+    expect(screen.getByText("Bottleneck")).toBeInTheDocument();
+    expect(screen.getByText("Rework")).toBeInTheDocument();
   });
 
   it("ChartTooltip is a polite live status region", () => {

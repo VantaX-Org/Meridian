@@ -1,8 +1,9 @@
 "use client";
 
 // frontend/design/charts/Pareto.tsx
-import { Bar as RBar, CartesianGrid, ComposedChart, Line as RLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar as RBar, Cell, CartesianGrid, ComposedChart, Line as RLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { chartTheme, type ChartPoint } from "./theme";
+import { hoverBar } from "./HoverBar";
 import { mMotion, reducedMotion } from "../tokens";
 
 /** Sorts descending and adds a cumulative-share line, so the few causes behind most defects stand out. */
@@ -10,7 +11,7 @@ export function Pareto({
   data,
   onPointClick,
   height = 240,
-  draw = false,
+  draw = true,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
@@ -36,12 +37,17 @@ export function Pareto({
           yAxisId="n"
           dataKey="y"
           fill={chartTheme.series[0]}
+          activeBar={hoverBar}
           cursor={onPointClick ? "pointer" : "default"}
           onClick={(_, index) => onPointClick?.(rows[index])}
           isAnimationActive={animate}
           animationDuration={mMotion.draw}
-        />
-        <RLine yAxisId="c" dataKey="cum" stroke={chartTheme.high} strokeWidth={2} dot={false} isAnimationActive={animate} animationDuration={mMotion.draw} />
+        >
+          {rows.map((p) => (
+            <Cell key={p.x} fill={p.domain ? chartTheme.domain(p.domain) : chartTheme.series[0]} />
+          ))}
+        </RBar>
+        <RLine yAxisId="c" dataKey="cum" stroke={chartTheme.ink} strokeWidth={1.5} dot={false} isAnimationActive={animate} animationDuration={mMotion.draw} />
       </ComposedChart>
     </ResponsiveContainer>
   );

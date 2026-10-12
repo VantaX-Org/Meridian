@@ -1,5 +1,5 @@
 // frontend/design/charts/theme.ts
-import { mColor } from "../tokens";
+import { mColor, type DomainKey } from "../tokens";
 
 /** Every chart's data point carries enough to build a DrillLink target. */
 export interface ChartPoint {
@@ -12,12 +12,25 @@ export interface ChartPoint {
   runId?: string;
   /** Waterfall only: an absolute total bar (drawn from 0 in `--m-ink-2`) instead of a delta. */
   total?: boolean;
+  /** Bar and Pareto: fill this point in its domain solid instead of the first series hue. */
+  domain?: DomainKey;
 }
 
 export const chartTheme = {
   grid: mColor.line,
   axis: mColor.ink3,
+  /** Ten-hue series palette, `--m-viz-1` to `--m-viz-10`. */
   series: mColor.viz,
+  /** Series hue at 15 percent opacity for fills, same order as `series`. */
+  seriesFill: mColor.viz.map((_, i) => `var(--m-viz-${i + 1}-fill)`),
+  /** Domain solid for a domain key. */
+  domain: (key: DomainKey): string => mColor.dom[key],
+  /** Five-step sequential ramp, lightest first. */
+  seq: mColor.seq,
+  /** Five-step diverging ramp, negative end first. */
+  div: mColor.div,
+  accent: mColor.accent,
+  ink: mColor.ink,
   area: mColor.vizArea,
   tooltipBg: mColor.vizTooltipBg,
   tooltipInk: mColor.vizTooltipInk,

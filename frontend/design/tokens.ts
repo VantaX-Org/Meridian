@@ -196,7 +196,7 @@ export function dqsBand(
 
 /** True when the user has asked the OS for reduced motion; JS animations jump to the end state. */
 export function reducedMotion(): boolean {
-  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 /** critical=square, high=triangle, medium=circle, low=ring, pass=check (spec 4.4). */
