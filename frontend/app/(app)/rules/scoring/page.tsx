@@ -10,7 +10,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, ErrorState, Field, Radar, ScoreRing, Select, Skeleton } from "@/design";
+import { Button, Card, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Radar, ScoreRing, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getCostModel, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
@@ -41,11 +41,9 @@ export default function ScoringPage() {
   if (!settings.data) {
     return (
       <div className="flex flex-col gap-4 p-6">
-        <header><strong className="text-[17px]">Scoring and alerts</strong></header>
+        <PageHeader title="Scoring and alerts" />
         {settings.isError ? (
-          <div role="alert" className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-critical)", color: "var(--m-critical)" }}>
-            Settings could not be loaded. Try again in a moment.
-          </div>
+          <Notice tone="danger">Settings could not be loaded. Try again in a moment.</Notice>
         ) : (
           <div className="flex flex-col gap-2"><Skeleton height={32} /><Skeleton height={32} /><Skeleton height={32} /></div>
         )}
@@ -114,65 +112,59 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <header>
-        <strong className="text-[17px]">Scoring and alerts</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
-          How the data quality score is weighted, when Meridian raises an alert, and who hears about it.
-        </p>
-      </header>
-      {!write ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Read only. Changing these settings needs the manage_settings permission.</p> : null}
+      <PageHeader title="Scoring and alerts" meta="Score weights, alert thresholds and who is told" />
+      {!write ? <Notice tone="info">These settings are read only for your role</Notice> : null}
 
       {!agg.isError && !agg.isLoading && current === null ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Save weights; the preview uses the latest findings once a run completes.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Save weights; the preview uses the latest findings once a run completes.</p>
       ) : null}
 
       {agg.isError ? (
         <ErrorState message={(agg.error as Error).message || "The latest findings could not be read."} onRetry={() => agg.refetch()} />
       ) : (
-      <section className="flex gap-6">
+      <div className="flex gap-6">
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Score now</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Score now</span>
           {current === null ? (
-            <span className="text-[18px] font-semibold">{agg.isLoading ? "–" : "—"}</span>
+            <span className="m-text-title font-semibold">{agg.isLoading ? "–" : "—"}</span>
           ) : (
             <ScoreRing score={current} size={96} />
           )}
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{capped ? "A severity cap is in force." : current === null ? "No analysis has run yet." : "From the latest run."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{capped ? "A severity cap is in force" : current === null ? "No analysis has run yet" : "From the latest run"}</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>With these weights</span>
-          <span className="text-[18px] font-semibold">{agg.isLoading ? "–" : preview === null ? "—" : preview.toFixed(1)}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>With these weights</span>
+          <span className="m-text-title font-semibold">{agg.isLoading ? "–" : preview === null ? "—" : preview.toFixed(1)}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
             {capValue !== null && rawPreview !== null && rawPreview > capValue
               ? `Capped at ${capValue} by ${criticals} critical ${criticals === 1 ? "finding" : "findings"}.`
-              : delta === null ? "Needs a scored run." : delta === 0 ? "Same as now." : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points.`}
+              : delta === null ? "Needs a scored run" : delta === 0 ? "Same as now" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points`}
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Weights sum</span>
-          <span className="text-[18px] font-semibold" style={{ color: sumOk ? undefined : "var(--m-critical)" }}>{sum.toFixed(2)}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{sumOk ? "Sums to one." : "Must sum to 1.00 before you can save."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Weights sum</span>
+          <span className="m-text-title font-semibold" style={{ color: sumOk ? undefined : "var(--m-critical)" }}>{sum.toFixed(2)}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{sumOk ? "Sums to one" : "Must sum to 1.00 before you can save"}</span>
         </div>
-      </section>
+      </div>
       )}
 
       {Object.keys(scores).length > 0 ? (
         <Radar label="Latest score per dimension" data={DIMS.filter((d) => scores[d] != null).map((d) => ({ x: d[0].toUpperCase() + d.slice(1), y: scores[d] }))} />
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-[13px] font-semibold">Dimension weights</h2>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+      <Card title="Dimension weights"><div className="flex flex-col gap-3">
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
           The score is each measured dimension times its weight. One critical finding caps it at 85, two or more at 70. The cap is fixed.
         </p>
-        <table className="text-[13px]">
+        <table className="m-text-body">
           <thead><tr><th className="text-left">Dimension</th><th className="text-left">Weight</th><th className="text-right">Normalised</th><th className="text-right">Latest score</th><th className="text-right">Contribution</th></tr></thead>
           <tbody>
             {DIMS.map((d: Dim) => (
               <tr key={d}>
                 <td>{d[0].toUpperCase() + d.slice(1)}</td>
                 <td style={{ width: 140 }}>
-                  <input type="number" step="0.05" min="0" max="1" value={weights[d]} aria-label={`${d} weight`} disabled={!write}
+                  <Input type="number" step="0.05" min="0" max="1" value={weights[d]} aria-label={`${d} weight`} disabled={!write}
                     onChange={(e) => setWeights({ ...weights, [d]: Number(e.target.value) })} />
                 </td>
                 <td className="text-right">{Math.round(normalised[d] * 100)}%</td>
@@ -186,49 +178,48 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           <div className="flex items-center gap-3">
             <Button onClick={() => saveWeights.mutate()} disabled={saveWeights.isPending || !sumOk}>Save weights</Button>
             <Button variant="ghost" onClick={() => setWeights(DEFAULT)}>Use DAMA defaults</Button>
-            {!sumOk ? <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Weights sum to {sum.toFixed(2)}. Adjust them to 1.00 to save.</span> : null}
+            {!sumOk ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Weights sum to {sum.toFixed(2)}. Adjust them to 1.00 to save.</span> : null}
           </div>
         ) : null}
-      </section>
+      </div></Card>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-[13px] font-semibold">When to alert</h2>
+      <Card title="When to alert"><div className="flex flex-col gap-3">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveThresholds.mutate(); }}>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Critical findings">
-              <input type="number" min="0" value={thresholds.critical_threshold} disabled={!write}
+              <Input type="number" min="0" value={thresholds.critical_threshold} disabled={!write}
                 onChange={(e) => setThresholds({ ...thresholds, critical_threshold: Number(e.target.value) })} />
             </Field>
             <Field label="High findings">
-              <input type="number" min="0" value={thresholds.high_threshold} disabled={!write}
+              <Input type="number" min="0" value={thresholds.high_threshold} disabled={!write}
                 onChange={(e) => setThresholds({ ...thresholds, high_threshold: Number(e.target.value) })} />
             </Field>
             <Field label="Score drop, points">
-              <input type="number" min="0" step="0.5" value={thresholds.dqs_drop_threshold} disabled={!write}
+              <Input type="number" min="0" step="0.5" value={thresholds.dqs_drop_threshold} disabled={!write}
                 onChange={(e) => setThresholds({ ...thresholds, dqs_drop_threshold: Number(e.target.value) })} />
             </Field>
           </div>
-          <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
             Alert when a run has at least this many critical or high findings, or an object&rsquo;s score falls by more than this against the previous run.
           </p>
 
           <div>
-            <h3 className="text-[13px] font-semibold mb-1">Score floors per object</h3>
-            <p className="text-[12px] mb-2" style={{ color: "var(--m-ink-3)" }}>An analysis that scores an object below its floor raises an in-app alert, and an email or Teams message when configured.</p>
-            <table className="text-[13px]" style={{ maxWidth: 480 }}>
+            <h3 className="m-text-body font-semibold mb-1">Score floors per object</h3>
+            <p className="m-text-meta mb-2" style={{ color: "var(--m-ink-3)" }}>An analysis that scores an object below its floor raises an in-app alert, and an email or Teams message when configured.</p>
+            <table className="m-text-body" style={{ maxWidth: 480 }}>
               <thead><tr><th className="text-left">Object</th><th className="text-left">Floor</th><th /></tr></thead>
               <tbody>
                 {Object.entries(floors).sort(([a], [b]) => a.localeCompare(b)).map(([m, v]) => (
                   <tr key={m}>
                     <td>{formatModuleName(m)}</td>
                     <td>
-                      <input type="number" min="0" max="100" step="1" value={v} disabled={!write} aria-label={`${formatModuleName(m)} floor`}
+                      <Input type="number" min="0" max="100" step="1" value={v} disabled={!write} aria-label={`${formatModuleName(m)} floor`}
                         onChange={(e) => setFloor(m, Math.min(100, Math.max(0, Number(e.target.value))))} />
                     </td>
                     <td>{write ? <Button type="button" variant="ghost" onClick={() => setFloor(m, null)}>Remove</Button> : null}</td>
                   </tr>
                 ))}
-                {!Object.keys(floors).length ? <tr><td colSpan={3} className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>No floors set.</td></tr> : null}
+                {!Object.keys(floors).length ? <tr><td colSpan={3} className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>No floors set</td></tr> : null}
               </tbody>
             </table>
             {write && unfloored.length ? (
@@ -243,62 +234,60 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           </div>
           {write ? <div><Button type="submit" disabled={saveThresholds.isPending}>Save thresholds</Button></div> : null}
         </form>
-      </section>
+      </div></Card>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-[13px] font-semibold">Planner assumptions</h2>
+      <Card title="Planner assumptions"><div className="flex flex-col gap-3">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); savePlanner.mutate(); }}>
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
             The next-sprint planner ranks open work by severity-weighted records per hour. Effort comes from these figures.
             Money appears only when you state what one failing record costs you.
           </p>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Minutes per record">
-              <input type="number" min="0" step="0.5" value={planner.minutes_per_record} disabled={!write}
+              <Input type="number" min="0" step="0.5" value={planner.minutes_per_record} disabled={!write}
                 onChange={(e) => setPlanner({ ...planner, minutes_per_record: Number(e.target.value) })} />
             </Field>
             <Field label="Hours per finding">
-              <input type="number" min="0" step="0.25" value={planner.investigation_hours} disabled={!write}
+              <Input type="number" min="0" step="0.25" value={planner.investigation_hours} disabled={!write}
                 onChange={(e) => setPlanner({ ...planner, investigation_hours: Number(e.target.value) })} />
             </Field>
             <Field label="Hours per exception">
-              <input type="number" min="0" step="0.5" value={planner.exception_hours} disabled={!write}
+              <Input type="number" min="0" step="0.5" value={planner.exception_hours} disabled={!write}
                 onChange={(e) => setPlanner({ ...planner, exception_hours: Number(e.target.value) })} />
             </Field>
             <Field label="Sprint capacity, hours">
-              <input type="number" min="1" step="1" value={planner.sprint_hours} disabled={!write}
+              <Input type="number" min="1" step="1" value={planner.sprint_hours} disabled={!write}
                 onChange={(e) => setPlanner({ ...planner, sprint_hours: Number(e.target.value) })} />
             </Field>
             <Field label="Cost per failing record">
-              <input type="number" min="0" step="1" value={planner.cost_per_record ?? ""} disabled={!write} placeholder="Not set"
+              <Input type="number" min="0" step="1" value={planner.cost_per_record ?? ""} disabled={!write} placeholder="Not set"
                 onChange={(e) => setPlanner({ ...planner, cost_per_record: e.target.value === "" ? null : Number(e.target.value) })} />
             </Field>
             <Field label="Currency">
-              <input value={planner.currency} maxLength={3} disabled={!write}
+              <Input value={planner.currency} maxLength={3} disabled={!write}
                 onChange={(e) => setPlanner({ ...planner, currency: e.target.value.toUpperCase() })} />
             </Field>
           </div>
           {write ? <div><Button type="submit" disabled={savePlanner.isPending}>Save assumptions</Button></div> : null}
         </form>
-      </section>
+      </div></Card>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-[13px] font-semibold">Reports by email and Teams</h2>
+      <Card title="Reports by email and Teams"><div className="flex flex-col gap-3">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveNotify.mutate(); }}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Email">
-              <input type="email" value={notify.email} disabled={!write} placeholder="dq-team@company.com"
+              <Input type="email" value={notify.email} disabled={!write} placeholder="dq-team@company.com"
                 onChange={(e) => setNotify({ ...notify, email: e.target.value })} />
             </Field>
             <Field label="Teams webhook">
-              <input type="url" value={notify.teams_webhook} disabled={!write}
+              <Input type="url" value={notify.teams_webhook} disabled={!write}
                 onChange={(e) => setNotify({ ...notify, teams_webhook: e.target.value })} />
             </Field>
           </div>
           <fieldset className="flex gap-4" style={{ border: 0, margin: 0, padding: 0 }}>
             <legend className="sr-only">Scheduled reports</legend>
             {([["daily_digest", "Daily digest"], ["weekly_summary", "Weekly summary"], ["monthly_report", "Monthly report"]] as const).map(([k, label]) => (
-              <label key={k} className="flex items-center gap-2 text-[13px]">
+              <label key={k} className="flex items-center gap-2 m-text-body">
                 <input type="checkbox" checked={notify[k]} disabled={!write} onChange={(e) => setNotify({ ...notify, [k]: e.target.checked })} />
                 {label}
               </label>
@@ -306,7 +295,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           </fieldset>
           {write ? <div><Button type="submit" disabled={saveNotify.isPending}>Save notifications</Button></div> : null}
         </form>
-      </section>
+      </div></Card>
       <CostModelCard write={write} />
     </div>
   );
@@ -327,18 +316,17 @@ function CostModelCard({ write }: { write: boolean }) {
   if (!q.data) return <Skeleton height={64} />;
   const sev = { ...q.data.severity, ...draft };
   return (
-    <section className="flex flex-col gap-3">
-      <strong className="text-[15px]">Cost model ({q.data.currency})</strong>
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>What one blocked record costs, by severity.</p>
-      {Object.keys(sev).length === 0 && <p className="text-[13px]">No severity costs set yet.</p>}
+    <Card title={`Cost model (${q.data.currency})`}><div className="flex flex-col gap-3">
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>What one blocked record costs, by severity.</p>
+      {Object.keys(sev).length === 0 && <EmptyState title="No severity costs set" detail="Enter a cost per blocked record to value findings" />}
       <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(q.data); }}>
         {Object.entries(sev).map(([k, v]) => (
           <Field key={k} label={COST_LABELS[k] ?? `${formatModuleName(k)} finding cost`}>
-            <input className="m-input" type="number" min={0} value={v} disabled={!write} onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })} />
+            <Input type="number" min={0} value={v} disabled={!write} onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })} />
           </Field>
         ))}
         {write && Object.keys(sev).length > 0 && <Button type="submit" disabled={m.isPending}>Save cost model</Button>}
       </form>
-    </section>
+    </div></Card>
   );
 }

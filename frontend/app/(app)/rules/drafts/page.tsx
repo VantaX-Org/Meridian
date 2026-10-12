@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Mono } from "@/design";
+import { Button, DataTable, ExplorerPage, Mono, PageHeader } from "@/design";
 import { getRuleDrafts, type RuleDraft } from "@/lib/api/rules";
 import { formatDate } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -22,9 +22,10 @@ export default function RuleDraftsPage() {
   const items = q.data ?? [];
   return (
     <ExplorerPage
+      header={<PageHeader title="Rule drafts" meta="Saved from the New rule drawer" />}
       toolbarEnd={<Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />}
       state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No drafts.", ghost: "table" }}
+      emptyProps={{ title: "No drafts", detail: "Drafts appear when a steward starts a rule and has not published it yet", ghost: "table", action: <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
     />

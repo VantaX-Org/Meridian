@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Button, DataTable, ExplorerPage, Mono, Pill } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { endRuleSuppression, getRuleFeedback, getRuleSuppressions, type RuleFeedbackRow, type RuleSuppression } from "@/lib/api/rules";
@@ -16,7 +17,7 @@ export function SuppressionsPanel() {
   const q = useQuery({ queryKey: ["rule-suppressions"], queryFn: () => getRuleSuppressions() });
   const end = useMutation({
     mutationFn: endRuleSuppression,
-    onSuccess: () => { toast.success("Suppression ended. It takes effect on the next run."); qc.invalidateQueries({ queryKey: ["rule-suppressions"] }); },
+    onSuccess: () => { toast.success("Suppression ended. It takes effect on the next run"); qc.invalidateQueries({ queryKey: ["rule-suppressions"] }); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const columns: ColumnDef<RuleSuppression>[] = [
@@ -34,7 +35,7 @@ export function SuppressionsPanel() {
   return (
     <ExplorerPage
       state={q.isLoading ? "loading" : isListFailure({ isError: q.isError, error: q.error }) ? "error" : rows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No active suppressions.", detail: "A suppression keeps a rule or one record out of the score until it expires." }}
+      emptyProps={{ title: "No active suppressions", detail: "A suppression keeps a rule or one record out of the score until it expires", action: <Button variant="secondary" render={<Link href="/rules">Browse rules</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />}
     />
@@ -59,7 +60,7 @@ export function FeedbackPanel() {
   return (
     <ExplorerPage
       state={q.isLoading ? "loading" : isListFailure({ isError: q.isError, error: q.error }) ? "error" : rows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No steward feedback yet.", detail: "Verdicts appear when stewards mark flagged records as real or false positive." }}
+      emptyProps={{ title: "No steward feedback yet", detail: "Verdicts appear when stewards mark flagged records as real or false positive", action: <Button variant="secondary" render={<Link href="/runs">View runs</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={feedbackColumns} data={rows} getRowId={(r) => r.check_id} />}
     />

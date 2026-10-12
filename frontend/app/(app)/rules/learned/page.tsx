@@ -5,10 +5,11 @@
  * proposal into an active rule with a new LR- id; `manage_rules` can reject. */
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, Pill, Select } from "@/design";
+import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, PageHeader, Pill, Select } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   approveLearnedRule,
@@ -78,6 +79,7 @@ export default function LearnedRulesPage() {
   const items = q.data?.items ?? [];
   return (
     <ExplorerPage
+      header={<PageHeader title="Learned rules" meta="Patterns your data follows for at least 95% of records" />}
       filterBar={
         <div className="flex items-end gap-3">
           <Field label="Status"><Select value={status} onValueChange={(v) => setStatus(v as LearnedStatus)} options={STATUS_OPTIONS} /></Field>
@@ -85,7 +87,7 @@ export default function LearnedRulesPage() {
         </div>
       }
       state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No learned rules yet. Mining runs after the second analysis." }}
+      emptyProps={{ title: "No learned rules yet", detail: "Mining runs after the second analysis", action: <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
       errorProps={{
         message: apiErrorMessage(q.error),
         onRetry: () => q.refetch(),

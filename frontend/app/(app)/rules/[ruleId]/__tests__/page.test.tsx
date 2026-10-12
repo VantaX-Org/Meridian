@@ -120,7 +120,7 @@ describe("rule detail page", () => {
     });
     renderWithQuery(<RulePage />);
     await waitFor(() => expect(screen.getByText("Pass rate over runs")).toBeInTheDocument());
-    expect(screen.queryByText(/has not run yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Not run yet")).not.toBeInTheDocument();
   });
 
   it("shows the not-run-yet empty state when there is no history", async () => {
@@ -128,7 +128,7 @@ describe("rule detail page", () => {
     vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
     vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [] });
     renderWithQuery(<RulePage />);
-    await waitFor(() => expect(screen.getByText("This rule has not run yet.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Not run yet")).toBeInTheDocument());
   });
 
   it("shows a loading skeleton while the rule loads", async () => {
