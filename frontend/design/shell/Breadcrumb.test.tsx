@@ -31,7 +31,7 @@ describe("Breadcrumb scope", () => {
     render(<><Breadcrumb /><Scope /></>);
     const parts = screen.getAllByTestId("crumb-scope");
     expect(parts.map((p) => p.textContent)).toEqual(["14 objects", "run 2026-10-11"]);
-    expect(document.body.textContent).not.toContain("·");
+    expect(document.body.textContent).not.toContain("\u00B7");
     act(() => {});
   });
 });

@@ -13,7 +13,7 @@ export interface JobStage {
 /** Extraction: one row per SAP table in the read plan. */
 export interface JobTable {
   table: string;
-  /** queued · running · live · failed · not_in_system · … (coverage statuses) */
+  /** queued, running, live, failed, not_in_system and others (coverage statuses) */
   status: string;
   rows: number;
   /** SAP's own row count when known, else null. */

@@ -183,7 +183,7 @@ const rule = {
 
 // DESIGN.md rule 15: no arrow glyphs, no middle-dot separators, no ampersand.
 // "&" in a label is a glyph too: write "and". Spaced only, so URLs and entities pass.
-const GLYPHS = /[→←↑↓]| · /;
+const GLYPHS = /[→←↑↓]| \u00B7 /;
 const AMP = / & /;
 const glyphRule = {
   meta: {

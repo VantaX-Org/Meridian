@@ -108,7 +108,7 @@ export function dimensionBarPoints(v: Version, weights: Readonly<Record<Dimensio
   const dims = runDimensions(v);
   if (!dims) return [];
   const total = DIMENSIONS.reduce((n, d) => n + weights[d], 0);
-  const label = (d: DimensionKey) => (total > 0 ? `${formatModuleName(d)} · ${Math.round((weights[d] / total) * 100)}%` : formatModuleName(d));
+  const label = (d: DimensionKey) => (total > 0 ? `${formatModuleName(d)} (${Math.round((weights[d] / total) * 100)}%)` : formatModuleName(d));
   return DIMENSIONS.flatMap((d) => {
     const y = dims[d];
     return y == null ? [] : [{ x: label(d), y, dimension: d }];
