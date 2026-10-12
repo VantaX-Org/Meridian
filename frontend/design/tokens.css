@@ -220,10 +220,10 @@
 .m-text-verdict { font-size: var(--m-text-verdict-num); line-height: var(--m-leading-verdict-num); }
 .m-ring { box-shadow: var(--m-ring); }
 .m-textarea { height: auto; min-height: calc(var(--m-control-h) * 2); padding: 6px 10px; resize: vertical; }
-.m-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; background: none; border: 0; padding: 0; color: var(--m-ink); }
+.m-switch { display: inline-flex; align-items: center; min-width: 24px; min-height: 24px; gap: 8px; cursor: pointer; background: none; border: 0; padding: 0; color: var(--m-ink); }
 .m-switch-track { position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--m-line-strong); transition: background var(--m-motion-duration) var(--m-motion-ease); }
 .m-switch-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--m-sheet); transition: transform var(--m-motion-duration) var(--m-motion-ease); }
-.m-switch[aria-checked="true"] .m-switch-track { background: var(--m-accent); }
+.m-switch[aria-checked="true"] .m-switch-track { background: var(--m-pass); }
 .m-switch[aria-checked="true"] .m-switch-thumb { transform: translateX(12px); }
 .m-switch:focus-visible { outline: none; }
 .m-switch:focus-visible .m-switch-track { box-shadow: var(--m-elev-focus); }
@@ -274,6 +274,8 @@
 .m-rail-link:hover { color: var(--m-ink); }
 
 /* Form primitives */
+.m-radio { accent-color: var(--m-accent); width: 16px; height: 16px; }
+.m-radio-row { display: inline-flex; align-items: center; gap: 8px; min-height: 24px; cursor: pointer; }
 .m-checkbox { accent-color: var(--m-accent); width: 16px; height: 16px; }
 
 /* DataTable keyboard cursor */
