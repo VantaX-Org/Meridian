@@ -13,8 +13,12 @@ export interface TabItem {
 }
 
 export function Tabs({
-  items, value, defaultValue, onValueChange,
-}: { items: TabItem[]; value?: string; defaultValue?: string; onValueChange?: (value: string) => void }) {
+  items, value, defaultValue, onValueChange, onTabHover,
+}: {
+  items: TabItem[]; value?: string; defaultValue?: string; onValueChange?: (value: string) => void;
+  /** Fired on pointer enter and focus of a tab trigger, e.g. to prefetch that tab's data. */
+  onTabHover?: (value: string) => void;
+}) {
   // `value` makes this controlled (so a client-side URL change can switch tabs after
   // mount); omit it and it falls back to the original uncontrolled `defaultValue` behaviour.
   return (
@@ -28,6 +32,8 @@ export function Tabs({
             key={item.value}
             value={item.value}
             className="m-tab m-motion-colors"
+            onPointerEnter={() => onTabHover?.(item.value)}
+            onFocus={() => onTabHover?.(item.value)}
           >
             {item.label}
             {item.count !== undefined && item.count > 0 && <span className="m-tab-count"><Badge count={item.count} tone="neutral" /></span>}
