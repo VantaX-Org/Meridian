@@ -89,4 +89,4 @@ Meridian is read top-down. Every level answers one question and opens the level 
 - Every number is a `DrillLink`; one `h1` per route (rendered by `Breadcrumb`); dates go through the shared formatter; no raw ids as copy.
 
 ## Known exception
-The process designer's BPMN canvas (`app/(app)/insights/process/designer/_components/`) still renders its React Flow nodes and tree rows through `aurora-*` classNames, defined in `app/styles/aurora-components.css` and imported once from `app/globals.css`. That stylesheet is no longer an Aurora/ui-core dependency: it was pruned to only the rule blocks the designer actually uses, and every value is a `var(--m-*)` token from `design/tokens.css`. Renaming the classNames themselves to drop the `aurora-` prefix is tracked as follow-up work; the token dependency is already resolved.
+The process designer's BPMN canvas (`app/(app)/insights/process/designer/_components/`) is styled by its own scoped `designer.css`, whose values are `var(--m-*)` tokens from `design/tokens.css`. The old `app/styles/aurora-components.css` stylesheet and its `globals.css` import are gone.
