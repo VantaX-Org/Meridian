@@ -48,8 +48,8 @@ export default function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <header>
-        <strong className="text-[17px]">Settings</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+        <strong className="m-text-h">Settings</strong>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
           The way into each setting, and whether this deployment is healthy.
         </p>
       </header>
@@ -61,8 +61,8 @@ export default function AdminSettingsPage() {
       ) : null}
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[13px] font-semibold">Deployment</h2>
-        <dl className="grid grid-cols-[160px_1fr] gap-y-1 text-[13px]">
+        <h2 className="m-text-body font-semibold">Deployment</h2>
+        <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
           <dt style={{ color: "var(--m-ink-3)" }}>Tenant</dt><dd>{l?.company_name ?? "Not set"}</dd>
           <dt style={{ color: "var(--m-ink-3)" }}>Licence tier</dt><dd>{l?.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
           <dt style={{ color: "var(--m-ink-3)" }}>Licence status</dt><dd>{l ? labelOf(l.status) : "Loading"}</dd>
@@ -78,8 +78,8 @@ export default function AdminSettingsPage() {
       {can("manage_system") && doctor.data ? (
         <section className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-[13px] font-semibold">Health checks</h2>
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Last checked {formatDate(doctor.data.last_checked, "datetime")}</span>
+            <h2 className="m-text-body font-semibold">Health checks</h2>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Last checked {formatDate(doctor.data.last_checked, "datetime")}</span>
           </div>
           {(() => {
             const items = doctor.data.items;
@@ -87,7 +87,7 @@ export default function AdminSettingsPage() {
             const fail = items.filter((i) => i.status === "fail").length;
             const ok = items.length - warn - fail;
             return (
-              <p className="text-[13px]" role="status">
+              <p className="m-text-body" role="status">
                 {ok} passing{warn ? `, ${warn} warning` : ""}{fail ? `, ${fail} failing` : ""}
               </p>
             );
@@ -96,9 +96,9 @@ export default function AdminSettingsPage() {
             {doctor.data.items.map((i) => (
               <li key={i.id} className="flex items-center gap-3">
                 <Pill tone={DOCTOR_TONE[i.status]}>{doctorLabel(i.label)}</Pill>
-                {i.detail ? <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{doctorDetail(i.detail)}</span> : null}
+                {i.detail ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{doctorDetail(i.detail)}</span> : null}
                 {i.status !== "ok" && FIX_HREF[i.id] ? (
-                  <Link href={FIX_HREF[i.id]} className="text-[12px] underline" style={{ color: "var(--m-accent)" }}>Fix</Link>
+                  <Link href={FIX_HREF[i.id]} className="m-text-meta underline" style={{ color: "var(--m-accent)" }}>Fix</Link>
                 ) : null}
               </li>
             ))}

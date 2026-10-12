@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, Pill, Select, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, Pill, Select, Stat, emptyExportOptions, type PillTone, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -459,12 +459,10 @@ export default function InboxPage() {
             </Field>
           )}
           <Field label="Search">
-            <input
+            <Input
               aria-label={isExceptions ? "Search exceptions" : "Search tasks"}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="rounded border px-3 py-1.5 text-[13px]"
-              style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
             />
           </Field>
           {!isExceptions && (view !== "all" || type !== "all") && (
@@ -517,11 +515,9 @@ export default function InboxPage() {
           >
             <div className="flex flex-col gap-3">
               <Field label="Reason">
-                <textarea
+                <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full rounded border px-3 py-2 text-[13px]"
-                  style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   rows={4}
                 />
               </Field>
@@ -544,10 +540,10 @@ export default function InboxPage() {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 {(excRulesQ.data?.rules ?? []).map((r: ExceptionRule) => (
-                  <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+                  <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2">
                     <div className="flex flex-col">
-                      <span className="text-[13px] font-medium">{r.name}</span>
-                      <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{r.object_type}, {r.rule_type}</span>
+                      <span className="m-text-body font-medium">{r.name}</span>
+                      <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{r.object_type}, {r.rule_type}</span>
                     </div>
                     <Button variant="secondary" onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
                       {r.is_active ? "Disable" : "Enable"}
@@ -555,41 +551,33 @@ export default function InboxPage() {
                   </div>
                 ))}
                 {excRulesQ.data && excRulesQ.data.rules.length === 0 && (
-                  <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No exception rules yet.</span>
+                  <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No exception rules yet.</span>
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-[13px] font-medium">New rule</span>
+                <span className="m-text-body font-medium">New rule</span>
                 <Field label="Name">
-                  <input
+                  <Input
                     value={ruleDraft.name}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, name: e.target.value })}
-                    className="w-full rounded border px-3 py-1.5 text-[13px]"
-                    style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   />
                 </Field>
                 <Field label="Rule type">
-                  <input
+                  <Input
                     value={ruleDraft.rule_type}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, rule_type: e.target.value })}
-                    className="w-full rounded border px-3 py-1.5 text-[13px]"
-                    style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   />
                 </Field>
                 <Field label="Object type">
-                  <input
+                  <Input
                     value={ruleDraft.object_type}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, object_type: e.target.value })}
-                    className="w-full rounded border px-3 py-1.5 text-[13px]"
-                    style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   />
                 </Field>
                 <Field label="Condition">
-                  <input
+                  <Input
                     value={ruleDraft.condition}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, condition: e.target.value })}
-                    className="w-full rounded border px-3 py-1.5 text-[13px]"
-                    style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                   />
                 </Field>
                 <div className="flex justify-end">
@@ -614,9 +602,9 @@ export default function InboxPage() {
 function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRungs>; aiAcceptance: number | null }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[13px] font-medium">Who holds the work</span>
+      <span className="m-text-body font-medium">Who holds the work</span>
       {rungs.length ? (
-        <table className="w-full text-[13px]">
+        <table className="w-full m-text-body">
           <tbody>
             {rungs.map((r) => (
               <tr key={r.label}><td>{r.label}</td><td>{r.open} open</td><td>{r.breached} breached</td></tr>
@@ -624,10 +612,10 @@ function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRung
           </tbody>
         </table>
       ) : (
-        <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Nobody holds open work.</span>
+        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Nobody holds open work.</span>
       )}
       {aiAcceptance != null && (
-        <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
+        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
       )}
     </div>
   );

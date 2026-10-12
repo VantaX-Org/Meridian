@@ -64,20 +64,20 @@ export default function GoldenRecordMergePage() {
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <h2 className="text-[16px] font-semibold" style={{ color: "var(--m-ink)" }}>
+      <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>
         Merge conflicts for <Mono>{record.sap_object_key}</Mono>
       </h2>
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
         Field-by-field comparison of the golden value against every contributing source.
         For a different record, go back to{" "}
-        <Link href="/insights/duplicates" className="text-[13px]" style={{ color: "var(--m-accent)" }}>
+        <Link href="/insights/duplicates" className="m-text-body" style={{ color: "var(--m-accent)" }}>
           merge candidates in duplicates
         </Link>.
       </p>
       {fields.length === 0 ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No golden fields to compare.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No golden fields to compare.</p>
       ) : (
-        <table className="text-[13px]">
+        <table className="m-text-body">
           <thead>
             <tr>
               <th className="text-left pr-4">Field</th>
@@ -106,7 +106,7 @@ export default function GoldenRecordMergePage() {
           </tbody>
         </table>
       )}
-      <Link href={`/mdm/golden/${record.id}`} className="text-[13px]" style={{ color: "var(--m-accent)" }}>
+      <Link href={`/mdm/golden/${record.id}`} className="m-text-body" style={{ color: "var(--m-accent)" }}>
         Back to record
       </Link>
     </div>

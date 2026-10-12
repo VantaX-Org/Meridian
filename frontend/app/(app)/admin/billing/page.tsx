@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, Field, ReportPage, Stat } from "@/design";
+import { DataTable, Field, ReportPage, Stat, Input } from "@/design";
 import { getExceptionBilling } from "@/lib/api/exceptions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -58,7 +58,7 @@ export default function ExceptionBillingPage() {
           </div>
           <div style={{ maxWidth: 200 }}>
             <Field label="Month">
-              <input type="month" value={period} max={thisMonth()} onChange={(e) => setPeriod(e.target.value)} />
+              <Input type="month" value={period} max={thisMonth()} onChange={(e) => setPeriod(e.target.value)} />
             </Field>
           </div>
         </div>
@@ -66,7 +66,7 @@ export default function ExceptionBillingPage() {
       tables={
         b ? (
           <div className="flex flex-col gap-2">
-            {b.stripe_invoice_id ? <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Invoice {b.stripe_invoice_id}</span> : null}
+            {b.stripe_invoice_id ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Invoice {b.stripe_invoice_id}</span> : null}
             <DataTable columns={columns} data={rows} getRowId={(r) => String(r.tier)} />
           </div>
         ) : null

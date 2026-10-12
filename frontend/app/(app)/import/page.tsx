@@ -106,11 +106,11 @@ export default function ImportPage() {
 
   return (
     <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
         Drop an extract, check how its columns map to standard SAP fields, then run the analysis. Every import becomes a version.
       </p>
       {systemsQ.data?.length ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
           {systemsQ.data.length} SAP {systemsQ.data.length === 1 ? "system is" : "systems are"} connected. Pulling objects straight
           from a system keeps versions comparable run to run. File imports suit one-off assessments.{" "}
           <Link href="/systems" className="underline">Download from the source</Link>
@@ -133,16 +133,16 @@ export default function ImportPage() {
       >
         <input ref={inputRef} type="file" accept={ACCEPT} disabled={!canUpload} onChange={(e) => pick(e.target.files?.[0] ?? null)} hidden />
         <strong>{file ? file.name : canUpload ? "Drop a file here, or click to choose one" : "Importing needs the upload permission"}</strong>
-        <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{file ? fileNote : "CSV, TSV, XLSX, XLS, JSON or Parquet, up to 2 GB"}</span>
+        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{file ? fileNote : "CSV, TSV, XLSX, XLS, JSON or Parquet, up to 2 GB"}</span>
       </label>
 
       {job && job.status !== "completed" && job.status !== "failed" ? (
-        <p className="text-[13px]">{job.step.replace(/_/g, " ")}</p>
+        <p className="m-text-body">{job.step.replace(/_/g, " ")}</p>
       ) : run.isPending && !job ? (
-        <p className="text-[13px]">Uploading {uploadPct}%</p>
+        <p className="m-text-body">Uploading {uploadPct}%</p>
       ) : null}
       {job?.error ? (
-        <div role="alert" className="rounded border px-3 py-2 text-[13px]" style={{ borderColor: "var(--m-critical)", color: "var(--m-critical)" }}>
+        <div role="alert" className="rounded border px-3 py-2 m-text-body" style={{ borderColor: "var(--m-critical)", color: "var(--m-critical)" }}>
           Analysis failed: {job.error}
         </div>
       ) : null}
@@ -164,7 +164,7 @@ export default function ImportPage() {
                 type="button"
                 onClick={() => setTargetModule(m.value)}
                 aria-pressed={targetModule === m.value}
-                className="px-2 py-0.5 text-[12px] rounded-full border"
+                className="px-2 py-0.5 m-text-meta rounded-full border"
                 style={{
                   borderColor: targetModule === m.value ? "var(--m-accent)" : "var(--m-line)",
                   color: targetModule === m.value ? "var(--m-accent)" : "var(--m-ink)",
@@ -175,18 +175,18 @@ export default function ImportPage() {
             ))}
           </div>
           {noHeaders ? (
-            <div role="alert" className="rounded border px-3 py-2 text-[13px]" style={{ borderColor: "var(--m-medium)", color: "var(--m-medium)" }}>
+            <div role="alert" className="rounded border px-3 py-2 m-text-body" style={{ borderColor: "var(--m-medium)", color: "var(--m-medium)" }}>
               Columns cannot be previewed for this format. Pick the object above; the columns are read from the file when it imports.
             </div>
           ) : null}
           {match.unmapped_required.length ? (
-            <div role="alert" className="rounded border px-3 py-2 text-[13px]" style={{ borderColor: "var(--m-medium)", color: "var(--m-medium)" }}>
+            <div role="alert" className="rounded border px-3 py-2 m-text-body" style={{ borderColor: "var(--m-medium)", color: "var(--m-medium)" }}>
               {match.unmapped_required.length} required fields have no column: {match.unmapped_required.join(", ")}. Checks that need them are skipped.
             </div>
           ) : null}
           {match.mappings.length ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-[13px]">
+              <table className="w-full m-text-body">
                 <thead>
                   <tr className="text-left" style={{ color: "var(--m-ink-3)" }}>
                     <th className="py-1">Your column</th><th className="py-1">Standard field</th><th className="py-1 text-right">Confidence</th><th className="py-1">Match</th>

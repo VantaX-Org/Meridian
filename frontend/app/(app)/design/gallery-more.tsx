@@ -3,8 +3,7 @@
 import { useState } from "react";
 import {
   Bar, Button, Card, Dialog, Drawer, EmptyState, ErrorState, Field, Heatmap, Line, Notice, Radar, Select, Sparkline, Tabs, Waterfall,
-  type ChartPoint,
-} from "@/design";
+  type ChartPoint, Input } from "@/design";
 
 const SERIES: ChartPoint[] = [
   { x: "W1", y: 72 }, { x: "W2", y: 76 }, { x: "W3", y: 74 }, { x: "W4", y: 81 }, { x: "W5", y: 85 },
@@ -35,7 +34,7 @@ export function GalleryMore() {
         { value: "two", label: "Two", count: 4, content: <p>Second panel.</p> },
       ]} />
       <div className="flex flex-wrap gap-4 items-end">
-        <Field label="Field"><input className="m-input" defaultValue="Value" /></Field>
+        <Field label="Field"><Input defaultValue="Value" /></Field>
         <Select label="Sample option" value={sel} onValueChange={setSel} options={[{ value: "a", label: "Option A" }, { value: "b", label: "Option B" }]} />
         <Button variant="secondary" onClick={() => setDialog(true)}>Open dialog</Button>
         <Button variant="secondary" onClick={() => setDrawer(true)}>Open drawer</Button>

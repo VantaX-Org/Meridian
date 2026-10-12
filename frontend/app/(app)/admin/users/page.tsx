@@ -46,7 +46,7 @@ export default function AdminUsersPage() {
     return (
       <div className="flex flex-col gap-2 p-6">
         <strong>Users and audit needs the <Mono>manage_users</Mono> permission</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
           Ask an administrator to change roles or review the audit log.
         </p>
       </div>
@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <header>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Who can sign in, with which role, and what they did.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Who can sign in, with which role, and what they did.</p>
       </header>
       <Tabs
         value={tab}
@@ -103,7 +103,7 @@ function UsersView() {
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     {
       id: "user", header: "User",
-      cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{row.original.email}</div></span>,
+      cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{row.original.email}</div></span>,
     },
     { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original.role]?.label ?? row.original.role}</span> },
     { id: "active", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
@@ -176,19 +176,19 @@ function RolesView() {
 
   return (
     <div className="flex flex-col gap-6 pt-4">
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Permissions come from the API&apos;s role matrix. The frontend never keeps its own copy.</p>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Permissions come from the API&apos;s role matrix. The frontend never keeps its own copy.</p>
       {matrixQ.isError ? (
         <ErrorState message={(matrixQ.error as Error)?.message || "Could not load the role matrix."} onRetry={() => matrixQ.refetch()} />
       ) : matrix ? (
         <section>
-          <h2 className="text-[13px] font-semibold mb-2">Role matrix</h2>
+          <h2 className="m-text-body font-semibold mb-2">Role matrix</h2>
           <div className="overflow-x-auto">
-            <table className="text-[12px]">
+            <table className="m-text-meta">
               <thead><tr><th className="text-left pr-3">Role</th>{actions.map((a) => <th key={a} className="text-left pr-3 font-mono">{a}</th>)}</tr></thead>
               <tbody>
                 {ROLES.map((r) => (
                   <tr key={r}>
-                    <td className="pr-3 py-1">{ROLE_META[r].label}<div className="text-[11px]" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[r].desc}</div></td>
+                    <td className="pr-3 py-1">{ROLE_META[r].label}<div className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[r].desc}</div></td>
                     {actions.map((a) => <td key={a} className="text-center">{matrix[r]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="sr-only">Not allowed</span>}</td>)}
                   </tr>
                 ))}
@@ -198,8 +198,8 @@ function RolesView() {
         </section>
       ) : <Skeleton height={240} />}
       <section>
-        <h2 className="text-[13px] font-semibold mb-2">Who holds each role</h2>
-        <table className="text-[12px]">
+        <h2 className="m-text-body font-semibold mb-2">Who holds each role</h2>
+        <table className="m-text-meta">
           <tbody>
             {ROLES.filter((r) => users.some((u) => u.role === r)).map((r) => (
               <tr key={r}>
@@ -232,7 +232,7 @@ function AuditView() {
         <ErrorState message={(auditQ.error as Error)?.message || "Could not load the audit log."} onRetry={() => auditQ.refetch()} />
       ) : auditQ.isLoading ? <Skeleton height={240} /> : entries.length ? (
         <div className="overflow-x-auto">
-          <table className="text-[12px]" aria-label="Audit log">
+          <table className="m-text-meta" aria-label="Audit log">
             <thead><tr><th className="text-left pr-3">When</th><th className="text-left pr-3">Actor</th><th className="text-left pr-3">Action</th><th className="text-left pr-3">Context</th></tr></thead>
             <tbody>
               {entries.map((e) => (
@@ -246,7 +246,7 @@ function AuditView() {
             </tbody>
           </table>
         </div>
-      ) : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No audit activity recorded yet.</p>}
+      ) : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No audit activity recorded yet.</p>}
     </div>
   );
 }
@@ -264,12 +264,12 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
 
   return (
     <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{user.email}</p>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{user.email}</p>
       <Field label="Role">
         <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
       </Field>
-      <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[role].desc}</p>
-      <label className="flex items-center gap-2 text-[13px]">
+      <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[role].desc}</p>
+      <label className="flex items-center gap-2 m-text-body">
         <input type="checkbox" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
         <span>Active. {isActive ? "This user can sign in." : "Sign-in is blocked."}</span>
       </label>
@@ -281,12 +281,12 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen} title={`Remove ${user.name}?`}>
         <div className="flex flex-col gap-3">
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
             Why remove {user.name}? Their stewardship history stays attributed to them.
           </p>
           {/* ponytail: this reason is a client-side confirmation gate only, same as the
               legacy ReasonButton it replaces — deleteUser() takes no reason parameter. */}
-          <textarea aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
+          <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
           <div className="flex gap-2">
             <Button
               variant="secondary"

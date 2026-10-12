@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Dialog, ErrorState, Field, Pill, Select } from "@/design";
+import { Button, Dialog, ErrorState, Field, Pill, Select, Input } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createRule, createTeam, deleteRule, deleteSlaPolicy, deleteTeam, getRules, getSlaPolicies, getTeams, getTriageSettings,
@@ -44,7 +44,7 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className="px-2 py-0.5 text-[12px] leading-4 rounded-full border"
+      className="px-2 py-0.5 m-text-meta leading-4 rounded-full border"
       style={{
         color: active ? "var(--m-pass)" : "var(--m-ink-3)",
         borderColor: active ? "var(--m-pass)" : "var(--m-line)",
@@ -60,7 +60,7 @@ function Section({ title, action, children }: { title: string; action?: React.Re
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-semibold">{title}</h2>
+        <h2 className="m-text-h font-semibold">{title}</h2>
         {action}
       </div>
       {children}
@@ -93,38 +93,38 @@ export default function AdminTriagePage() {
   return (
     <div className="flex flex-col gap-6 p-6" aria-busy={teams.isLoading || undefined}>
       <header>
-        <strong className="text-[17px]">Triage</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+        <strong className="m-text-h">Triage</strong>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
           Who gets new issues, how long they have, and the calendar the clocks run on.
         </p>
       </header>
 
       <div className="flex gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Teams</span>
-          <span className="text-[18px] font-semibold">{teams.isLoading ? "–" : teams.data?.length ?? 0}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Teams</span>
+          <span className="m-text-h font-semibold">{teams.isLoading ? "–" : teams.data?.length ?? 0}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
             {teams.data?.length ? "Rules can route to a team." : "No team to route to yet."}
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Assignment rules</span>
-          <span className="text-[18px] font-semibold" style={{ color: idle ? "var(--m-medium)" : undefined }}>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Assignment rules</span>
+          <span className="m-text-h font-semibold" style={{ color: idle ? "var(--m-medium)" : undefined }}>
             {ruleQ.isLoading ? "–" : ruleQ.data?.length ?? 0}
           </span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
             {idle ? `${idle} switched off.` : ruleQ.data?.length ? "Every rule is active." : "Items go to the fallback user."}
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>SLA policies</span>
-          <span className="text-[18px] font-semibold">{sla.isLoading ? "–" : custom}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{custom ? "Saved by you." : "Defaults apply."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>SLA policies</span>
+          <span className="m-text-h font-semibold">{sla.isLoading ? "–" : custom}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{custom ? "Saved by you." : "Defaults apply."}</span>
         </div>
       </div>
 
       {!rules && !settings ? (
-        <div className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)" }}>
+        <div className="m-text-body rounded border p-3" style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)" }}>
           Changing triage needs the manage rules or manage settings permission.
         </div>
       ) : null}
@@ -155,11 +155,11 @@ function TeamsSection({ write }: { write: boolean }) {
       {teams.isError ? (
         <ErrorState message={errText(teams.error, "Teams could not be read.")} onRetry={() => teams.refetch()} />
       ) : teams.isLoading ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading teams.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading teams.</p>
       ) : !teams.data?.length ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No teams yet.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No teams yet.</p>
       ) : (
-        <table className="text-[13px] w-full">
+        <table className="m-text-body w-full">
           <thead>
             <tr>
               <th className="text-left">Name</th><th className="text-left">Strategy</th><th className="text-left">Lead</th>
@@ -217,7 +217,7 @@ function TeamForm({ team, onClose }: { team: TriageTeam | null; onClose: () => v
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={team ? "Edit team" : "Add team"}>
       <div className="flex flex-col gap-3">
-        <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
         <Field label="Strategy"><Select value={strategy} onValueChange={(v) => setStrategy(v as TeamStrategy)} options={STRATEGIES} /></Field>
         <Field label="Lead">
           <Select value={lead} onValueChange={setLead} options={[{ value: "", label: "None" }, ...users.map((u) => ({ value: u.id, label: u.name }))]} />
@@ -225,7 +225,7 @@ function TeamForm({ team, onClose }: { team: TriageTeam | null; onClose: () => v
         <Field label="Members">
           <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
             {users.map((u) => (
-              <label key={u.id} className="flex items-center gap-2 text-[13px]">
+              <label key={u.id} className="flex items-center gap-2 m-text-body">
                 <input
                   type="checkbox"
                   checked={members.includes(u.id)}
@@ -290,11 +290,11 @@ function RulesSection({ write }: { write: boolean }) {
       {ruleQ.isError ? (
         <ErrorState message={errText(ruleQ.error, "Rules could not be read.")} onRetry={() => ruleQ.refetch()} />
       ) : ruleQ.isLoading ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading rules.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading rules.</p>
       ) : !sorted.length ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No rules yet. New items go to the fallback user.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No rules yet. New items go to the fallback user.</p>
       ) : (
-        <table className="text-[13px] w-full">
+        <table className="m-text-body w-full">
           <thead>
             <tr>
               <th className="text-left">#</th><th className="text-left">Name</th><th className="text-left">Matches</th>
@@ -304,7 +304,7 @@ function RulesSection({ write }: { write: boolean }) {
           <tbody>
             {sorted.map((r, i) => (
               <tr key={r.id}>
-                <td className="font-mono text-[12px]">{i + 1}</td>
+                <td className="font-mono m-text-meta">{i + 1}</td>
                 <td className="py-1">{r.name}</td>
                 <td style={{ color: "var(--m-ink-3)" }}>{matchText(r.match)}</td>
                 <td>{target(r)}</td>
@@ -363,7 +363,7 @@ function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={rule ? "Edit rule" : "Add rule"}>
       <div className="flex flex-col gap-3">
-        <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
         <Field label="Assign to">
           <Select
             value={assignee}
@@ -384,7 +384,7 @@ function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () 
         </Field>
         {MATCH_FIELDS.map(([k, label]) => (
           <Field key={k} label={`${label} (comma-separated)`}>
-            <input value={fields[k]} onChange={(e) => setFields({ ...fields, [k]: e.target.value })} />
+            <Input value={fields[k]} onChange={(e) => setFields({ ...fields, [k]: e.target.value })} />
           </Field>
         ))}
         <div className="flex gap-2 justify-end">
@@ -413,9 +413,9 @@ function PoliciesSection({ write }: { write: boolean }) {
       {sla.isError ? (
         <ErrorState message={errText(sla.error, "Policies could not be read.")} onRetry={() => sla.refetch()} />
       ) : sla.isLoading ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading policies.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading policies.</p>
       ) : (
-        <table className="text-[13px] w-full">
+        <table className="m-text-body w-full">
           <thead>
             <tr>
               <th className="text-left">Severity</th><th className="text-left">Module</th><th className="text-left">Acknowledge</th>
@@ -476,11 +476,11 @@ function PolicyForm({ policy, onClose }: { policy: SlaPolicy | null; onClose: ()
         <Field label="Severity">
           <Select value={severity} onValueChange={(v) => setSeverity(v as TriageSeverity)} options={SEVERITIES.map((s) => ({ value: s, label: s }))} />
         </Field>
-        <Field label="Module (blank = all modules)"><input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
-        <Field label="Acknowledge minutes (optional)"><input type="number" min="0" value={ack} onChange={(e) => setAck(e.target.value)} /></Field>
-        <Field label="Resolve minutes"><input type="number" min="1" value={resolve} onChange={(e) => setResolve(e.target.value)} /></Field>
-        <Field label="At-risk %"><input type="number" min="1" max="99" value={atRisk} onChange={(e) => setAtRisk(e.target.value)} /></Field>
-        <label className="flex items-center gap-2 text-[13px]">
+        <Field label="Module (blank = all modules)"><Input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
+        <Field label="Acknowledge minutes (optional)"><Input type="number" min="0" value={ack} onChange={(e) => setAck(e.target.value)} /></Field>
+        <Field label="Resolve minutes"><Input type="number" min="1" value={resolve} onChange={(e) => setResolve(e.target.value)} /></Field>
+        <Field label="At-risk %"><Input type="number" min="1" max="99" value={atRisk} onChange={(e) => setAtRisk(e.target.value)} /></Field>
+        <label className="flex items-center gap-2 m-text-body">
           <input type="checkbox" checked={businessHours} onChange={(e) => setBusinessHours(e.target.checked)} />
           Business hours only
         </label>
@@ -504,11 +504,11 @@ function CalendarSection({ write }: { write: boolean }) {
       </Section>
     );
   }
-  if (settings.isLoading) return <Section title="Working calendar"><p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading the calendar.</p></Section>;
+  if (settings.isLoading) return <Section title="Working calendar"><p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading the calendar.</p></Section>;
   return (
     <Section title="Working calendar">
       {!write ? (
-        <div className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)" }}>
+        <div className="m-text-body rounded border p-3" style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)" }}>
           Changing the calendar needs the manage settings permission.
         </div>
       ) : null}
@@ -539,7 +539,7 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
 
   return (
     <div className="flex flex-col gap-3 max-w-[480px]">
-      <Field label="Timezone"><input value={timezone} disabled={!write} onChange={(e) => setTimezone(e.target.value)} /></Field>
+      <Field label="Timezone"><Input value={timezone} disabled={!write} onChange={(e) => setTimezone(e.target.value)} /></Field>
       <Field label="Work days">
         <div className="flex gap-2">
           {DAYS.map((label, i) => {
@@ -553,14 +553,14 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
         </div>
       </Field>
       <div className="flex gap-3">
-        <Field label="Day starts"><input type="time" value={workStart} disabled={!write} onChange={(e) => setWorkStart(e.target.value)} /></Field>
-        <Field label="Day ends"><input type="time" value={workEnd} disabled={!write} onChange={(e) => setWorkEnd(e.target.value)} /></Field>
+        <Field label="Day starts"><Input type="time" value={workStart} disabled={!write} onChange={(e) => setWorkStart(e.target.value)} /></Field>
+        <Field label="Day ends"><Input type="time" value={workEnd} disabled={!write} onChange={(e) => setWorkEnd(e.target.value)} /></Field>
       </div>
       <Field label="Fallback user">
         <Select value={fallback} onValueChange={setFallback} options={[{ value: "", label: "None" }, ...users.map((u) => ({ value: u.id, label: u.name }))]} />
       </Field>
       <Field label="Holidays (YYYY-MM-DD, one per line)" error={badDates.length ? `Not a date: ${badDates.join(", ")}` : undefined}>
-        <textarea rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
+        <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
       </Field>
       {write ? (
         <div>

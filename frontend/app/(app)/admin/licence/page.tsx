@@ -22,36 +22,36 @@ export default function AdminLicencePage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <header>
-        <strong className="text-[17px]">Licence</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+        <strong className="m-text-h">Licence</strong>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
           Granted by Meridian HQ. Plan changes and invoices are managed there.
         </p>
       </header>
 
       <div className="flex gap-4 flex-wrap">
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Tier</span>
-          <span className="text-[18px] font-semibold">{q.isLoading ? "–" : l?.tier ? labelOf(l.tier) : "Not validated yet"}</span>
-          <span className="text-[12px]" style={{ color: l?.valid === false ? "var(--m-critical)" : "var(--m-ink-3)" }}>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Tier</span>
+          <span className="m-text-h font-semibold">{q.isLoading ? "–" : l?.tier ? labelOf(l.tier) : "Not validated yet"}</span>
+          <span className="m-text-meta" style={{ color: l?.valid === false ? "var(--m-critical)" : "var(--m-ink-3)" }}>
             {l?.valid ? "Licence is valid." : l?.valid === false ? "Licence is not valid." : "Not validated yet."}
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Seats</span>
-          <span className="text-[18px] font-semibold">{q.isLoading ? "–" : seats ? seats : "Unlimited"}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Users this licence allows.</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Seats</span>
+          <span className="m-text-h font-semibold">{q.isLoading ? "–" : seats ? seats : "Unlimited"}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Users this licence allows.</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Modules</span>
-          <span className="text-[18px] font-semibold">{q.isLoading ? "–" : all ? "All" : modules.length}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{all ? "Every SAP module." : "Enabled on this licence."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Modules</span>
+          <span className="m-text-h font-semibold">{q.isLoading ? "–" : all ? "All" : modules.length}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{all ? "Every SAP module." : "Enabled on this licence."}</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Days remaining</span>
-          <span className="text-[18px] font-semibold" style={{ color: days !== undefined && days < 30 ? "var(--m-medium)" : undefined }}>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Days remaining</span>
+          <span className="m-text-h font-semibold" style={{ color: days !== undefined && days < 30 ? "var(--m-medium)" : undefined }}>
             {q.isLoading ? "–" : l ? days ?? "—" : "—"}
           </span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
             {l?.expiry_date ? `Renews ${formatDate(l.expiry_date)}.` : days === undefined || days === null ? "Not validated yet." : "No renewal date set."}
           </span>
         </div>
@@ -75,8 +75,8 @@ export default function AdminLicencePage() {
 
       {l ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-[13px] font-semibold">Licence detail</h2>
-          <dl className="grid grid-cols-[160px_1fr] gap-y-1 text-[13px]">
+          <h2 className="m-text-body font-semibold">Licence detail</h2>
+          <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
             <dt style={{ color: "var(--m-ink-3)" }}>Tenant</dt><dd>{l.company_name ?? "Not set"}</dd>
             <dt style={{ color: "var(--m-ink-3)" }}>Tier</dt><dd>{l.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
             <dt style={{ color: "var(--m-ink-3)" }}>Status</dt><dd>{labelOf(l.status)}</dd>
@@ -90,11 +90,11 @@ export default function AdminLicencePage() {
 
       {l ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-[13px] font-semibold">Modules <span className="text-[12px] font-normal" style={{ color: "var(--m-ink-3)" }}>{all ? "every SAP module" : `${modules.length} enabled`}</span></h2>
+          <h2 className="m-text-body font-semibold">Modules <span className="m-text-meta font-normal" style={{ color: "var(--m-ink-3)" }}>{all ? "every SAP module" : `${modules.length} enabled`}</span></h2>
           <div className="flex gap-2 flex-wrap">
             {all ? <Pill tone="go">all modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
             {!all && !modules.length ? (
-              <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+              <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
                 {l.valid === null ? "Modules follow the licence once Meridian HQ has validated it." : "No modules enabled on this licence."}
               </p>
             ) : null}
@@ -104,7 +104,7 @@ export default function AdminLicencePage() {
 
       {features.length ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-[13px] font-semibold">Features</h2>
+          <h2 className="m-text-body font-semibold">Features</h2>
           <div className="flex gap-2 flex-wrap">
             {features.map(([k, v]) => (
               <Pill key={k} tone={v ? "go" : "neutral"}>{k.replace(/_/g, " ")}{v ? "" : ", off"}</Pill>
@@ -127,24 +127,24 @@ function PlatformVersion() {
   const s = q.data;
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-[13px] font-semibold flex items-center gap-2">
+      <h2 className="m-text-body font-semibold flex items-center gap-2">
         Platform version
         {s ? <Pill tone={s.update_available ? "at-risk" : "go"}>{s.update_available ? `${s.latest_version} available` : "up to date"}</Pill> : null}
       </h2>
       {q.isLoading ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading the running version.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading the running version.</p>
       ) : q.isError || !s ? (
         <ErrorState message="The update status could not be read. The update-status endpoint did not answer; the deployment itself is running." onRetry={() => q.refetch()} />
       ) : (
         <div className="flex flex-col gap-2">
-          <dl className="grid grid-cols-[160px_1fr] gap-y-1 text-[13px]">
+          <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
             <dt style={{ color: "var(--m-ink-3)" }}>Running</dt><dd className="font-mono">{s.current_version}</dd>
           </dl>
           {s.update_available && s.updater_configured ? (
             <div><Button onClick={open}>View update {s.latest_version}</Button></div>
           ) : null}
           {s.update_available && !s.updater_configured ? (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+            <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
               Version {s.latest_version} is available, but the auto-update sidecar is not configured on this deployment. Update with update.sh or contact support.
             </p>
           ) : null}

@@ -5,8 +5,11 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as glossaryApi from "@/lib/api/glossary";
 import GlossaryPage from "../page";
 
+const mockParams = vi.hoisted(() => ({ value: "" }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/x",
+  useSearchParams: () => new URLSearchParams(mockParams.value),
 }));
 
 describe("GlossaryPage", () => {

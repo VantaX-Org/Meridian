@@ -111,12 +111,12 @@ export default function GlossaryTermPage() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Definition of record</h2>
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Definition of record</h2>
         {draft ? (
-          <div className="flex flex-col gap-2 rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-            <p className="text-[13px]">{draft.business_definition}</p>
+          <div className="flex flex-col gap-2 rounded border p-3">
+            <p className="m-text-body">{draft.business_definition}</p>
             {draft.why_it_matters_business ? (
-              <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{draft.why_it_matters_business}</p>
+              <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{draft.why_it_matters_business}</p>
             ) : null}
             <div className="flex gap-2">
               <Button onClick={() => { setEditDef(draft.business_definition); setDraft(null); }}>
@@ -127,12 +127,10 @@ export default function GlossaryTermPage() {
           </div>
         ) : null}
         <Field label="Business definition">
-          <textarea
+          <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }}
             value={currentDef}
             onChange={(e) => setEditDef(e.target.value)}
             placeholder="No business definition yet. Use Auto-draft to propose one."
-            className="rounded border px-3 py-1.5 text-[13px]"
-            style={{ borderColor: "var(--m-line)", minHeight: 96 }}
           />
         </Field>
         <div className="flex gap-2">
@@ -151,13 +149,13 @@ export default function GlossaryTermPage() {
             </>
           ) : null}
         </div>
-        {term.why_it_matters ? <p className="text-[13px]">Why it matters: {term.why_it_matters}</p> : null}
-        {term.sap_impact ? <p className="text-[13px]">SAP impact: {term.sap_impact}</p> : null}
+        {term.why_it_matters ? <p className="m-text-body">Why it matters: {term.why_it_matters}</p> : null}
+        {term.sap_impact ? <p className="m-text-body">SAP impact: {term.sap_impact}</p> : null}
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Where it lives in SAP</h2>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-[13px]">
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Where it lives in SAP</h2>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 m-text-body">
           <dt style={{ color: "var(--m-ink-3)" }}>SAP table</dt>
           <dd><Mono>{term.sap_table}</Mono></dd>
           <dt style={{ color: "var(--m-ink-3)" }}>Field</dt>
@@ -170,13 +168,13 @@ export default function GlossaryTermPage() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>
           Approved values ({approved.length})
         </h2>
         {approved.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No approved values are defined for this field.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No approved values are defined for this field.</p>
         ) : (
-          <table className="text-[13px]">
+          <table className="m-text-body">
             <thead><tr><th className="text-left pr-4">Code</th><th className="text-left">Label</th></tr></thead>
             <tbody>
               {approved.map(([code, label]) => (
@@ -191,15 +189,15 @@ export default function GlossaryTermPage() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>
           Linked rules failing ({failing.length})
         </h2>
         {failing.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
             {term.linked_rules.length ? "Every linked rule passes in the latest analysis." : "No rules are linked to this term."}
           </p>
         ) : (
-          <table className="text-[13px]">
+          <table className="m-text-body">
             <thead>
               <tr>
                 <th className="text-left pr-4">Rule</th><th className="text-left pr-4">Severity</th>
@@ -221,13 +219,13 @@ export default function GlossaryTermPage() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>
           Change history ({term.change_history.length})
         </h2>
         {term.change_history.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No changes recorded.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No changes recorded.</p>
         ) : (
-          <table className="text-[13px]">
+          <table className="m-text-body">
             <thead><tr><th className="text-left pr-4">Field</th><th className="text-left pr-4">By</th><th className="text-left">Change</th></tr></thead>
             <tbody>
               {term.change_history.map((e) => (

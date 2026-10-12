@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, ErrorState, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { getSAPMonitor } from "@/lib/api/exceptions";
@@ -40,14 +40,14 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   return (
-    <div className="flex flex-col gap-3 text-[13px]">
+    <div className="flex flex-col gap-3 m-text-body">
       <p>{issue.message ?? "No message."}</p>
       <p style={note}><Mono>{issue.record_key}</Mono>{issue.field ? <>, field {issue.field}</> : null}</p>
       {q.isLoading ? <Skeleton height={80} /> : q.error ? <p style={note}>{apiErrorMessage(q.error)}</p> : (
         <ol className="flex flex-col gap-2">
           {(q.data?.events ?? []).length === 0 ? <li style={note}>No activity yet.</li> : null}
           {(q.data?.events ?? []).map((e, i) => (
-            <li key={`${e.created_at}-${i}`} className="border-l-2 pl-3" style={{ borderColor: "var(--m-line)" }}>
+            <li key={`${e.created_at}-${i}`} className="border-l-2 pl-3">
               <span className="font-medium">{labelOf(e.action)}</span>
               {e.to_value ? <> to {labelOf(e.to_value)}</> : null}
               <span style={note}> by {e.user_label ?? "System"}, {relativeTime(e.created_at)}</span>
@@ -58,8 +58,7 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
       )}
       {can("analyse") ? (
         <Field label="Add a comment">
-          <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} className="rounded border px-3 py-1.5 text-[13px]"
-            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }} />
+          <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} rows={3} value={text} onChange={(e) => setText(e.target.value)} />
         </Field>
       ) : null}
       {can("analyse") ? <Button variant="secondary" disabled={!text.trim() || post.isPending} onClick={() => post.mutate()}>Post comment</Button> : null}
@@ -99,8 +98,7 @@ export function IssuesPanel() {
             options={STATUSES.map((s) => ({ value: s, label: `${labelOf(s)}${q.data?.counts[s] ? ` (${q.data.counts[s]})` : ""}` }))} />
         </Field>
         <Field label="Search">
-          <input aria-label="Search issues" value={search} onChange={(e) => setSearch(e.target.value)} className="rounded border px-3 py-1.5 text-[13px]"
-            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }} />
+          <Input aria-label="Search issues" value={search} onChange={(e) => setSearch(e.target.value)} />
         </Field>
       </div>
       <Panel q={q}>
@@ -145,7 +143,7 @@ export function SapMonitorPanel() {
             {Object.entries(q.data?.by_category ?? {}).map(([k, v]) => <Stat key={k} label={labelOf(k)} value={v.length} />)}
           </div>
           <DataTable columns={cols} data={list} getRowId={(e) => e.id} height={440} exportName="sap-monitor"
-            renderDrawer={(e) => <p className="text-[13px]">{e.description}</p>} />
+            renderDrawer={(e) => <p className="m-text-body">{e.description}</p>} />
         </div>
       )}
     </Panel>
@@ -188,7 +186,7 @@ export function ApprovalsPanel() {
         {q.data && !q.data.live_enabled ? (
           <Notice>Live SAP write-back is off on this deployment. Export fixes as an LSMW or BAPI file and load them in SAP.</Notice>
         ) : null}
-        <p className="text-[13px]" style={note}>A different person than the requester must approve each request.</p>
+        <p className="m-text-body" style={note}>A different person than the requester must approve each request.</p>
         {list.length === 0 ? <EmptyState title="No write-backs waiting for approval." /> : (
           <DataTable columns={cols} data={list} getRowId={(a) => a.id} height={380} exportName="writeback-approvals" />
         )}

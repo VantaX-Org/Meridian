@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, ErrorState, Field, Notice, Select, Skeleton } from "@/design";
+import { Button, ErrorState, Field, Notice, Select, Skeleton, Input } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   getLLMConfig,
@@ -54,35 +54,35 @@ export default function AdminAIPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <header>
-        <strong className="text-[17px]">AI</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+        <strong className="m-text-h">AI</strong>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
           The language model that writes narrative and remediation proposals.
         </p>
       </header>
 
       <div className="flex gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Provider</span>
-          <span className="text-[18px] font-semibold">{loading ? "–" : provider ?? "Not set"}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{provider ? "Writes the narrative." : "Choose a provider below."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Provider</span>
+          <span className="m-text-h font-semibold">{loading ? "–" : provider ?? "Not set"}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{provider ? "Writes the narrative." : "Choose a provider below."}</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Model</span>
-          <span className="text-[18px] font-semibold">{loading ? "–" : c?.model || "Not set"}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{c?.model ? "Used for every request." : "Pick a model below."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Model</span>
+          <span className="m-text-h font-semibold">{loading ? "–" : c?.model || "Not set"}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{c?.model ? "Used for every request." : "Pick a model below."}</span>
         </div>
         {c && providers.data?.[c.provider]?.requires_api_key !== false ? (
           <div className="flex flex-col gap-1">
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>API key</span>
-            <span className="text-[18px] font-semibold">{loading ? "–" : c?.has_api_key ? "Stored" : "Not set"}</span>
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{c?.has_api_key ? "Kept on the server." : "Not stored. Add one below."}</span>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>API key</span>
+            <span className="m-text-h font-semibold">{loading ? "–" : c?.has_api_key ? "Stored" : "Not set"}</span>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{c?.has_api_key ? "Kept on the server." : "Not stored. Add one below."}</span>
           </div>
         ) : null}
       </div>
 
       {note("The model never sees SAP data. It receives aggregated finding summaries and writes narrative and remediation proposals. Every score, count and rate comes from deterministic checks.")}
 
-      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading the language-model settings.</p>}
+      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading the language-model settings.</p>}
     </div>
   );
 }
@@ -120,8 +120,8 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
   return (
     <section className="flex flex-col gap-4 rounded border p-4" style={{ borderColor: "var(--m-line)" }}>
       <div className="flex items-center justify-between">
-        <strong className="text-[14px]">Provider</strong>
-        <span className="text-[11px] rounded px-2 py-0.5" style={{ background: "var(--m-sheet-raised)", color: "var(--m-ink-3)" }}>
+        <strong className="m-text-h">Provider</strong>
+        <span className="m-text-label rounded px-2 py-0.5" style={{ background: "var(--m-sheet-raised)", color: "var(--m-ink-3)" }}>
           {config.source === "database" ? "set here" : "from environment"}
         </span>
       </div>
@@ -134,25 +134,25 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
             onValueChange={(v) => set({ provider: v, model: providers[v]?.default_model, base_url: providers[v]?.default_base_url })}
           />
         </Field>
-        {p?.description ? <p className="text-[12px] -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>{p.description}</p> : null}
+        {p?.description ? <p className="m-text-meta -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>{p.description}</p> : null}
 
         <Field label="Model">
-          <input value={form.model ?? ""} onChange={(e) => set({ model: e.target.value })} />
+          <Input value={form.model ?? ""} onChange={(e) => set({ model: e.target.value })} />
         </Field>
 
         {p?.requires_base_url ? (
           <Field label="Endpoint URL">
-            <input type="url" className="font-mono" value={form.base_url ?? ""} onChange={(e) => set({ base_url: e.target.value })} />
+            <Input type="url" className="font-mono" value={form.base_url ?? ""} onChange={(e) => set({ base_url: e.target.value })} />
           </Field>
         ) : null}
 
         {p?.requires_api_key ? (
           <Field label="API key">
-            <input type="password" autoComplete="off" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+            <Input type="password" autoComplete="off" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
           </Field>
         ) : null}
         {p?.requires_api_key ? (
-          <p className="text-[12px] -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-meta -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>
             {config.has_api_key ? `Stored (${config.api_key_preview}); leave blank to keep it` : "Not set"}
           </p>
         ) : null}
@@ -160,27 +160,27 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
         {form.provider === "azure_openai" ? (
           <>
             <Field label="Azure deployment">
-              <input value={form.azure_deployment ?? ""} onChange={(e) => set({ azure_deployment: e.target.value })} />
+              <Input value={form.azure_deployment ?? ""} onChange={(e) => set({ azure_deployment: e.target.value })} />
             </Field>
             <Field label="Azure API version">
-              <input value={form.azure_api_version ?? ""} onChange={(e) => set({ azure_api_version: e.target.value })} />
+              <Input value={form.azure_api_version ?? ""} onChange={(e) => set({ azure_api_version: e.target.value })} />
             </Field>
           </>
         ) : null}
 
         <Field label="Temperature">
-          <input type="number" step="0.1" min="0" max="2" value={String(form.temperature ?? "")} onChange={(e) => set({ temperature: num(e.target.value) })} />
+          <Input type="number" step="0.1" min="0" max="2" value={String(form.temperature ?? "")} onChange={(e) => set({ temperature: num(e.target.value) })} />
         </Field>
-        <p className="text-[12px] -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>0 is deterministic; narrative reads best at 0.2 to 0.4</p>
+        <p className="m-text-meta -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>0 is deterministic; narrative reads best at 0.2 to 0.4</p>
 
         <Field label="Max tokens">
-          <input type="number" min="1" value={String(form.max_tokens ?? "")} onChange={(e) => set({ max_tokens: num(e.target.value) })} />
+          <Input type="number" min="1" value={String(form.max_tokens ?? "")} onChange={(e) => set({ max_tokens: num(e.target.value) })} />
         </Field>
 
         <Field label="Request timeout">
-          <input type="number" min="1" value={String(form.request_timeout ?? "")} onChange={(e) => set({ request_timeout: num(e.target.value) })} />
+          <Input type="number" min="1" value={String(form.request_timeout ?? "")} onChange={(e) => set({ request_timeout: num(e.target.value) })} />
         </Field>
-        <p className="text-[12px] -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>seconds; bundled Ollama needs 120</p>
+        <p className="m-text-meta -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>seconds; bundled Ollama needs 120</p>
       </div>
 
       {test.data ? note(
@@ -199,7 +199,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
       </div>
 
       {config.updated_at ? (
-        <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
           Last changed {formatDate(config.updated_at, "datetime")} by {config.updated_by ?? "—"}
         </p>
       ) : null}

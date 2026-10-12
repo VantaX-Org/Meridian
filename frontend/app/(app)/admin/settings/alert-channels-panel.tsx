@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, EmptyState, ErrorState, Field, Pill, Select, Skeleton } from "@/design";
+import { Button, EmptyState, ErrorState, Field, Pill, Select, Skeleton, Input } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannelKind, type AlertDigest,
@@ -65,8 +65,8 @@ export function AlertChannelsPanel() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-[13px] font-semibold">Alert channels</h2>
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+      <h2 className="m-text-body font-semibold">Alert channels</h2>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
         Each system is compared with its own previous run. Alerts carry counts, rule ids and links, never record values.
       </p>
       {q.isLoading ? <Skeleton height={64} /> : isListFailure(q) ? (
@@ -74,7 +74,7 @@ export function AlertChannelsPanel() {
       ) : !q.data?.length ? (
         <EmptyState title="No alert channel yet." />
       ) : (
-        <table className="w-full text-[13px]">
+        <table className="w-full m-text-body">
           <thead>
             <tr>
               <th className={th} style={thStyle}>Kind</th><th className={th} style={thStyle}>Target</th>
@@ -116,26 +116,26 @@ export function AlertChannelsPanel() {
           <Select options={KIND_OPTIONS} value={kind} onValueChange={(v) => { if (isKind(v)) setKind(v); }} />
         </Field>
         <Field label="Target" error={undefined}>
-          <input className="rounded border px-3 py-1.5 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+          <Input
             placeholder={kind === "email" ? "team@example.com" : "https://"} value={target}
             onChange={(e) => setTarget(e.target.value)} />
         </Field>
         {kind === "webhook" ? (
           <Field label="Signing secret" error={secretTooShort ? "At least 16 characters" : undefined}>
-            <input type="password" className="rounded border px-3 py-1.5 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+            <Input type="password"
               value={secret} onChange={(e) => setSecret(e.target.value)} />
           </Field>
         ) : null}
         <Field label="Digest">
           <Select options={DIGEST_OPTIONS} value={digest} onValueChange={(v) => { if (isDigest(v)) setDigest(v); }} />
         </Field>
-        <label className="flex items-center gap-2 text-[13px]">
+        <label className="flex items-center gap-2 m-text-body">
           <input type="checkbox" checked={immediate} onChange={(e) => setImmediate(e.target.checked)} />
           Send new critical findings immediately
         </label>
         <Button disabled={!canAdd} onClick={() => create.mutate()}>Add channel</Button>
         {neverFires ? (
-          <span className="text-[12px]" style={{ color: "var(--m-critical)" }}>Choose a digest or immediate delivery.</span>
+          <span className="m-text-meta" style={{ color: "var(--m-critical)" }}>Choose a digest or immediate delivery.</span>
         ) : null}
       </div>
     </section>

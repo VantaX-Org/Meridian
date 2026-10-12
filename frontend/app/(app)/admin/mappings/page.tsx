@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, EmptyState, ErrorState, Mono, Pill, Select, Skeleton } from "@/design";
+import { Button, EmptyState, ErrorState, Mono, Pill, Select, Skeleton, Input } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -26,19 +26,19 @@ function Row({ m, write, onSaved }: { m: FieldMapping; write: boolean; onSaved: 
   });
   return (
     <tr>
-      <td className="py-1"><Mono>{m.standard_field}</Mono><div className="text-[11px]" style={{ color: "var(--m-ink-3)" }}>{m.standard_label}</div></td>
-      <td className="font-mono text-[12px]">{m.data_type}</td>
+      <td className="py-1"><Mono>{m.standard_field}</Mono><div className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{m.standard_label}</div></td>
+      <td className="font-mono m-text-meta">{m.data_type}</td>
       <td style={{ width: 180 }}>
-        <input value={d.customer_field ?? ""} aria-label={`${m.standard_field} customer column`} disabled={!write}
+        <Input value={d.customer_field ?? ""} aria-label={`${m.standard_field} customer column`} disabled={!write}
           className="font-mono" placeholder="Column header in the file"
           onChange={(e) => setD({ ...d, customer_field: e.target.value.trim() || null })} />
       </td>
       <td style={{ width: 180 }}>
-        <input value={d.customer_label ?? ""} aria-label={`${m.standard_field} customer label`} disabled={!write}
+        <Input value={d.customer_label ?? ""} aria-label={`${m.standard_field} customer label`} disabled={!write}
           onChange={(e) => setD({ ...d, customer_label: e.target.value || null })} />
       </td>
       <td>
-        <input value={d.notes ?? ""} aria-label={`${m.standard_field} notes`} disabled={!write}
+        <Input value={d.notes ?? ""} aria-label={`${m.standard_field} notes`} disabled={!write}
           onChange={(e) => setD({ ...d, notes: e.target.value || null })} />
       </td>
       <td><Pill tone={m.is_mapped ? "go" : "neutral"}>{m.is_mapped ? "Mapped" : "Not mapped"}</Pill></td>
@@ -70,29 +70,29 @@ export default function AdminMappingsPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <header>
-        <strong className="text-[17px]">Field mapping</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+        <strong className="m-text-h">Field mapping</strong>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
           Imported files are matched on these customer columns. A standard field with no customer column is skipped by every check that needs it.
         </p>
       </header>
 
       <div className="flex gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Mapped</span>
-          <span className="text-[22px] font-semibold">{all.isLoading ? "–" : mapped}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Of {shown.length} standard fields.</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Mapped</span>
+          <span className="m-text-title font-semibold">{all.isLoading ? "–" : mapped}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Of {shown.length} standard fields.</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Unmapped</span>
-          <span className="text-[22px] font-semibold">{all.isLoading ? "–" : shown.length - mapped}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Unmapped</span>
+          <span className="m-text-title font-semibold">{all.isLoading ? "–" : shown.length - mapped}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
             {shown.length - mapped ? "Skipped by checks that need them." : "Every field has a customer column."}
           </span>
         </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search fields" aria-label="Search fields" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search fields" aria-label="Search fields" />
         <Select
           label="Object"
           value={object}
@@ -102,7 +102,7 @@ export default function AdminMappingsPage() {
         {object || search ? <Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear</Button> : null}
         {write ? (confirmReset ? (
           <>
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Reset {object ? formatModuleName(object) : "every object"} to the shipped mappings?</span>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Reset {object ? formatModuleName(object) : "every object"} to the shipped mappings?</span>
             <Button variant="secondary" disabled={reset.isPending} onClick={() => reset.mutate()}>Reset</Button>
             <Button variant="ghost" onClick={() => setConfirmReset(false)}>Keep mappings</Button>
           </>
@@ -122,9 +122,9 @@ export default function AdminMappingsPage() {
         )
         : (
           <section>
-            <h2 className="text-[13px] font-semibold mb-2">{object ? formatModuleName(object) : "All objects"} &mdash; {mapped} of {shown.length} mapped</h2>
+            <h2 className="m-text-body font-semibold mb-2">{object ? formatModuleName(object) : "All objects"} &mdash; {mapped} of {shown.length} mapped</h2>
             <div className="overflow-x-auto">
-              <table className="text-[13px] w-full">
+              <table className="m-text-body w-full">
                 <thead>
                   <tr>
                     <th className="text-left">Standard field</th><th className="text-left">Type</th><th className="text-left">Customer column</th>

@@ -100,11 +100,11 @@ export default function MasterRecordPage() {
       <EntityTabs entityType="master-records" entityId={id}
         related={<>
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Related records ({relationships.length})</h2>
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Related records ({relationships.length})</h2>
         {relationships.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No related records found.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No related records found.</p>
         ) : (
-          <table className="text-[13px]">
+          <table className="m-text-body">
             <thead><tr><th className="text-left pr-4">Relationship</th><th className="text-left pr-4">To</th><th className="text-left">Domain</th></tr></thead>
             <tbody>
               {relationships.map((r) => (
@@ -121,11 +121,11 @@ export default function MasterRecordPage() {
         </>}
         history={<>
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>History ({history.length})</h2>
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>History ({history.length})</h2>
         {history.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No changes recorded.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No changes recorded.</p>
         ) : (
-          <table className="text-[13px]">
+          <table className="m-text-body">
             <thead><tr><th className="text-left pr-4">When</th><th className="text-left pr-4">Type</th><th className="text-left">By</th></tr></thead>
             <tbody>
               {history.map((e) => (
@@ -165,11 +165,11 @@ export default function MasterRecordPage() {
         </GatedPrimary>
       </section>
       {writeback.data ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{writeback.data.message}</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{writeback.data.message}</p>
       ) : null}
 
       <Dialog open={confirmPromote} onOpenChange={setConfirmPromote} title="Promote to golden record?">
-        <p className="text-[13px] mb-4" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body mb-4" style={{ color: "var(--m-ink-2)" }}>
           This replaces the current golden fields for {record.sap_object_key} with the merged values. This cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
@@ -181,11 +181,11 @@ export default function MasterRecordPage() {
       </Dialog>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Golden fields ({fields.length})</h2>
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Golden fields ({fields.length})</h2>
         {fields.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No golden fields recorded.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No golden fields recorded.</p>
         ) : (
-          <table className="text-[13px]">
+          <table className="m-text-body">
             <thead><tr><th className="text-left pr-4">Field</th><th className="text-left">Value</th></tr></thead>
             <tbody>
               {fields.map(([field, value]) => (
@@ -200,11 +200,11 @@ export default function MasterRecordPage() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Source contributions ({sources.length})</h2>
+        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Source contributions ({sources.length})</h2>
         {sources.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No sources recorded.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No sources recorded.</p>
         ) : (
-          <table className="text-[13px]">
+          <table className="m-text-body">
             <thead>
               <tr><th className="text-left pr-4">System</th><th className="text-left pr-4">Value</th><th className="text-left pr-4">Confidence</th><th className="text-left">AI recommendation</th></tr>
             </thead>
@@ -226,7 +226,7 @@ export default function MasterRecordPage() {
       />
 
       <section>
-        <Link href="/insights/duplicates" className="text-[13px]" style={{ color: "var(--m-accent)" }}>
+        <Link href="/insights/duplicates" className="m-text-body" style={{ color: "var(--m-accent)" }}>
           Review merge candidates in duplicates
         </Link>
       </section>

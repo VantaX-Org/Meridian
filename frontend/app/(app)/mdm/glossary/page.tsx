@@ -1,11 +1,13 @@
 // frontend/app/(app)/mdm/glossary/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Field, Select } from "@/design";
+import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Select } from "@/design";
+import { useUrlState } from "@/hooks/use-url-state";
 import { getGlossaryTerms } from "@/lib/api/glossary";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -29,9 +31,9 @@ const columns: ColumnDef<GlossaryTermSummary>[] = [
 
 export default function GlossaryPage() {
   const router = useRouter();
-  const [domain, setDomain] = useState("all");
-  const [status, setStatus] = useState("all");
-  const [search, setSearch] = useState("");
+  const [domain, setDomain] = useUrlState("domain", "all");
+  const [status, setStatus] = useUrlState("status", "all");
+  const [search, setSearch] = useUrlState("q");
 
   const query = useQuery({
     queryKey: queryKeys.glossary("list", { domain, status, search }),
@@ -56,15 +58,14 @@ export default function GlossaryPage() {
 
   return (
     <ExplorerPage
+      header={<PageHeader title="Glossary" meta={query.data ? `${query.data.total.toLocaleString()} terms` : undefined} />}
       filterBar={
         <div className="flex items-end gap-3">
           <Field label="Search">
-            <input
+            <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Term, SAP table or field"
-              className="rounded border px-3 py-1.5 text-[13px]"
-              style={{ borderColor: "var(--m-line)" }}
             />
           </Field>
           <Field label="Domain">
@@ -81,12 +82,16 @@ export default function GlossaryPage() {
           data={terms}
           getRowId={(r) => r.id}
           onRowClick={(r) => router.push(`/mdm/glossary/${r.id}`)}
+          rowHref={(r) => `/mdm/glossary/${r.id}`}
         />
       }
       state={state}
       emptyProps={{
-        title: filtered ? "No glossary terms match these filters." : "No terms yet.",
-        detail: filtered ? undefined : "Terms are drafted from analysed SAP fields. Run an analysis to populate the glossary.",
+        title: filtered ? "No terms match" : "No terms yet",
+        detail: filtered ? "Clear a filter to widen the list." : "Terms are drafted from analysed SAP fields. Run an analysis to populate the glossary.",
+        action: filtered
+          ? <Button variant="secondary" onClick={() => { setDomain("all"); setStatus("all"); setSearch(""); }}>Clear filters</Button>
+          : <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />,
       }}
       errorProps={{
         message: apiErrorMessage(query.error),
