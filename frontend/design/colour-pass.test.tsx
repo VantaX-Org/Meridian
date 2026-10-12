@@ -16,7 +16,7 @@ describe("domainOf", () => {
     ["material_master", "material"], ["sd_customer", "customer"], ["vendor_master", "vendor"],
     ["business_partner", "partner"], ["fi_gl_account", "finance"], ["successfactors.employee", "people"],
     ["plant_maintenance", "plant"], ["fixed_asset", "asset"], ["unknown_thing", "other"],
-    ["MM", "material"], ["SD", "customer"], ["FI", "finance"], ["CO", "finance"], ["HR", "people"], ["HCM", "people"], ["SF", "people"],
+    ["constructor", "other"], ["tostring", "other"], ["MM", "material"], ["SD", "customer"], ["FI", "finance"], ["CO", "finance"], ["HR", "people"], ["HCM", "people"], ["SF", "people"],
     ["PM", "asset"], ["EAM", "asset"], ["PP", "plant"], ["QM", "plant"], [null, "other"], [undefined, "other"],
   ])("%s -> %s", (id, key) => expect(domainOf(id)).toBe(key));
 });

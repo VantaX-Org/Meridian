@@ -146,7 +146,7 @@ const MODULE_CODES: Readonly<Record<string, DomainKey>> = {
 export function domainOf(moduleId: string | null | undefined): DomainKey {
   if (!moduleId) return "other";
   const id = moduleId.toLowerCase().split(/[./:]/).pop() ?? "";
-  if (id in MODULE_CODES) return MODULE_CODES[id];
+  if (Object.hasOwn(MODULE_CODES, id)) return MODULE_CODES[id];
   for (const [prefix, key] of DOMAIN_PREFIXES) if (id.startsWith(prefix)) return key;
   return "other";
 }
