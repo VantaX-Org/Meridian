@@ -34,7 +34,7 @@ const RULES = [
   { name: "motion outside aurora css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/, skip: new Set(["app/styles/aurora.css"]) },
   { name: "ember-outside-hero", re: /var\(--m-ember|var\(--m-grad-/, skip: HERO_ALLOW },
   { name: "hero-elev-outside-hero", re: /var\(--m-elev-hero/, skip: HERO_ALLOW },
-  { name: "glow-outside-graph", re: /var\(--m-elev-glow-|var\(--m-glow-/, skip: new Set(["design/charts/Graph.tsx", "design/tokens.ts"]) },
+  { name: "glow-outside-graph", re: /var\(--m-elev-glow-|var\(--m-glow-/, skip: new Set(["design/charts/Graph.tsx"]) },
   { name: "domain-literal", re: /var\(--m-dom-(?:material|customer|vendor|partner|finance|people|plant|asset|other)/, skip: DOMAIN_ALLOW },
   { name: "duration literal outside aurora.css", re: /\b\d*\.?\d+ms\b/, skip: new Set(["app/styles/aurora.css"]) },
 ];
