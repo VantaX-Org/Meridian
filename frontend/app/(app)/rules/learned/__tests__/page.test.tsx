@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as api from "@/lib/api/learnedRules";
+import * as versionsApi from "@/lib/api/versions";
+import type { Version } from "@/types/api";
 import type { LearnedRule } from "@/lib/api/learnedRules";
 import LearnedRulesPage from "../page";
 
@@ -17,6 +19,17 @@ const RULE: LearnedRule = {
 };
 
 describe("learned rules page", () => {
+  it("mines the latest run when Mine now is pressed", async () => {
+    vi.spyOn(api, "getLearnedRules").mockResolvedValue({ items: [RULE] });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v9", status: "complete" } as Version] });
+    const mine = vi.spyOn(api, "mineLearnedRules").mockResolvedValue({ queued: true });
+    renderWithQuery(<LearnedRulesPage />);
+    const button = await screen.findByRole("button", { name: "Mine now" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    await waitFor(() => expect(mine).toHaveBeenCalledWith("v9"));
+  });
+
   it("lists a proposal and approves it", async () => {
     vi.spyOn(api, "getLearnedRules").mockResolvedValue({ items: [RULE] });
     const approve = vi.spyOn(api, "approveLearnedRule").mockResolvedValue({ id: "p1", status: "approved", rule_id: "LR-000001" });
