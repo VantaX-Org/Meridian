@@ -14,9 +14,15 @@ ENV SAPNWRFC_HOME=/opt/nwrfcsdk \
     LD_LIBRARY_PATH=/opt/nwrfcsdk/lib
 
 # PyRFC 3.3.1 is the final upstream release (source only on Linux).
-RUN apt-get update \
+# BuildKit cache mounts persist the apt + pip caches across updates, so the gcc/g++
+# toolchain (~200-400 MB) is not re-downloaded on every deploy just because the base
+# image changed — this was the ~1 h update bottleneck on slow customer egress.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ \
-    && pip install --no-cache-dir "pyrfc==3.3.1" \
+    && pip install "pyrfc==3.3.1" \
     && apt-get purge -y gcc g++ && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
     && python -c "import pyrfc; print('pyrfc', pyrfc.__version__)"

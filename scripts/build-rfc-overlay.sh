@@ -37,7 +37,12 @@ for svc in api worker; do
     base="ghcr.io/vantax-org/meridian-${svc}:latest"
     docker image inspect "$base" >/dev/null 2>&1 || die "$base not present — pull it first (docker compose pull)."
     echo "[INFO] Building meridian-${svc}:rfc-local from $base ..."
-    docker build --build-arg BASE_IMAGE="$base" -t "meridian-${svc}:rfc-local" "$CTX"
+    # The build's apt-get/pip need the host's working network (the buildkit bridge has no
+    # reliable DNS/egress on this box, which hung apt-get with zero sockets for ~1 h). The
+    # network.host entitlement + --network host route the build through the host, and the
+    # Dockerfile's cache mounts keep the gcc/g++ + pip downloads from repeating every update.
+    docker buildx build --allow network.host --network host \
+        --build-arg BASE_IMAGE="$base" -t "meridian-${svc}:rfc-local" "$CTX"
 done
 
 cat > "$OVERLAY" <<'YML'
