@@ -74,7 +74,9 @@ def test_queues_the_worker_on_the_latest_version(path, queued):
 def test_only_completed_versions_are_considered(queued):
     client, db = _client(("v1", "/data/v1.parquet"))
     client.post("/api/v1/config/discover/latest", headers={"X-User-Role": "admin"})
-    assert "status = 'completed'" in str(db.stmts[-1])
+    sql = str(db.stmts[-1])
+    assert "status NOT IN ('pending', 'queued', 'running', 'failed')" in sql
+    assert "status = 'completed'" not in sql  # 'completed' is not a real analysis status (they are 'complete', 'agents_complete', ...)
 
 
 def test_no_analysed_data_is_404(queued):

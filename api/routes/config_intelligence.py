@@ -438,10 +438,12 @@ async def enqueue_latest_run(db: AsyncSession, tenant_id: str, system_id: Option
     """
     from sqlalchemy import text
 
+    from api.routes.rule_authoring import _DONE  # finished analyses only; a running or failed one must never be picked
+
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": tenant_id})
     row = (await db.execute(text(
         "SELECT id, metadata->>'dataset_path' FROM analysis_versions "
-        "WHERE tenant_id = :tid AND status = 'completed' AND metadata->>'dataset_path' IS NOT NULL "
+        f"WHERE tenant_id = :tid AND {_DONE} AND metadata->>'dataset_path' IS NOT NULL "
         "AND (CAST(:sid AS text) IS NULL OR metadata->>'system_id' = CAST(:sid AS text)) "
         "ORDER BY run_at DESC LIMIT 1"), {"tid": tenant_id, "sid": system_id})).fetchone()
     if not row:
