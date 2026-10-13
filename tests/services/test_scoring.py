@@ -160,14 +160,16 @@ def test_score_all_modules_maps_field_unmaintained_to_not_applicable():
 
     It must surface as not_applicable, not silently disappear from the DQS model (the
     runner reports it under "field_unmaintained", which score_all_modules had never read).
+    A field hidden by the system's field-status config ("field_suppressed") scores the
+    same way — blank by design, not a defect and not a coverage miss.
     """
     findings = [_make_result("T001", module="mod_a", dimension="completeness")]
-    skips = {"mod_a": {"not_evaluable": 2, "not_applicable": 3, "field_unmaintained": 7}}
+    skips = {"mod_a": {"not_evaluable": 2, "not_applicable": 3, "field_unmaintained": 7, "field_suppressed": 5}}
 
     results = score_all_modules(findings, skips=skips)
 
     r = results["mod_a"]
     assert r.skipped_checks == 2
-    assert r.not_applicable_checks == 10, "field_unmaintained must fold into not_applicable"
+    assert r.not_applicable_checks == 15, "field_unmaintained and field_suppressed must fold into not_applicable"
     assert r.coverage == round(1.0 / (1 + 2), 4), "coverage = findings / (findings + not_evaluable)"
     assert r.total_checks == 1, "the suppressed rule must not count as a finding"

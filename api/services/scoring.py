@@ -300,11 +300,13 @@ def score_all_modules(all_results: list[CheckResult], tenant_weights: dict | Non
         return sum(int(mod.get(k, 0)) for k in keys)
 
     return {module: score_module(findings, tenant_weights or {}, module=module,
-                                 # field_unmaintained is a presence check whose field is blank in
-                                 # ~every row: nothing to judge, so it is "not applicable" — not a
-                                 # coverage miss and not a defect.
+                                 # field_suppressed (blank because the system's field status hides
+                                 # it) and field_unmaintained (blank in ~every row with no config
+                                 # reason) are both "nothing to judge": not a coverage miss and not
+                                 # a defect — the two are reported separately but score alike.
                                  skipped=_count(module, "not_evaluable"),
-                                 not_applicable=_count(module, "not_applicable", "field_unmaintained"))
+                                 not_applicable=_count(module, "not_applicable", "field_unmaintained",
+                                                       "field_suppressed"))
             for module, findings in by_module.items()}
 
 
