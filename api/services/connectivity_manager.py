@@ -1084,8 +1084,17 @@ class ConnectivityManager:
                 {"tid": self.tenant_id, "sid": system_id, "mod": "*", "tbl": table_name,
                  "data": json.dumps(data, default=str), "cnt": len(data)},
             )
-        write_drift(self.session, str(self.tenant_id), system_id, load_id)
+        # Commit the load, its items and the reference snapshots before computing drift:
+        # the drift diff full-outer-joins two loads' config_items on (object, key), which is
+        # quadratic in the item count once a load covers the full ~394-table reference set
+        # (~714k items) — it must never delay or roll back the load itself.
         self.session.commit()
+        try:
+            write_drift(self.session, str(self.tenant_id), system_id, load_id)
+            self.session.commit()
+        except Exception as e:  # drift is a report; it never costs the load
+            logger.warning(f"config drift for load {load_id} failed: {e}")
+            self.session.rollback()
         return {"load_id": load_id, "system_type": system_type, "objects": snap.summary(), "items": len(rows),
                 "origin": origin, "flows_derived": derivation is not None,
                 "table_logging_off": bool(history.get("table_logging_off"))}
