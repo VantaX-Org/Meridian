@@ -2,7 +2,7 @@
 
 /** Admin › Notifications: outbound alert channels. Digest email and schedule live in Rules › Scoring. */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/notifications";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { usePermissions } from "@/lib/permissions";
+import { email, length, oneOf, pattern, required, url, useFormErrors, type Schema } from "@/lib/forms";
 
 const KINDS: { value: AlertChannelKind; label: string }[] = [
   { value: "email", label: "Email" }, { value: "slack", label: "Slack" },
@@ -29,6 +30,16 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
   const [target, setTarget] = useState("");
   const [secret, setSecret] = useState("");
   const [digest, setDigest] = useState<AlertDigest>("daily");
+  const values = { kind, target, secret, digest };
+  const schema = useMemo<Schema<typeof values>>(() => ({
+    kind: oneOf(KINDS.map((k) => k.value)),
+    target: kind === "email"
+      ? [required("Enter an email address"), email()]
+      : [required("Enter an https:// URL"), url(), pattern(/^https:\/\//i, "Enter an https:// URL")],
+    secret: kind === "webhook" ? length(16, 256, "Use 16 to 256 characters") : undefined,
+    digest: oneOf(DIGESTS.map((d) => d.value)),
+  }), [kind]);
+  const form = useFormErrors(schema, values);
   const m = useMutation({
     mutationFn: () => createAlertChannel({ kind, target, digest, immediate_critical: true, ...(kind === "webhook" && secret ? { secret } : {}) }),
     onSuccess: () => { toast.success("Channel added"); void qc.invalidateQueries({ queryKey: ["alert-channels"] }); setTarget(""); setSecret(""); onOpenChange(false); },
@@ -36,13 +47,13 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="Add a channel">
-      <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+      <form noValidate className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); form.touchAll(); if (form.valid) m.mutate(); }}>
         <Field label="Type"><Select value={kind} onValueChange={(v) => setKind(v as AlertChannelKind)} options={KINDS} /></Field>
-        <Field label={kind === "email" ? "Address" : "Address or URL"}><Input value={target} onChange={(e) => setTarget(e.target.value)} required /></Field>
-        {kind === "webhook" && <Field label="Signing secret (16 to 256 characters)"><Input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} /></Field>}
+        <Field label={kind === "email" ? "Address" : "URL"} error={form.error("target")}><Input type={kind === "email" ? "email" : "url"} value={target} onChange={(e) => setTarget(e.target.value)} onBlur={() => form.blur("target")} /></Field>
+        {kind === "webhook" && <Field label="Signing secret (16 to 256 characters)" error={form.error("secret")}><Input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} onBlur={() => form.blur("secret")} /></Field>}
         <Field label="Digest"><Select value={digest} onValueChange={(v) => setDigest(v as AlertDigest)} options={DIGESTS} /></Field>
         <div className="flex gap-2">
-          <Button type="submit" pending={m.isPending}>Add channel</Button>
+          <Button type="submit" pending={m.isPending} disabled={!form.valid}>Add channel</Button>
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Keep channels as they are</Button>
         </div>
       </form>

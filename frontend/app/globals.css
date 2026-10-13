@@ -220,7 +220,7 @@
   .m-input:hover { border-color: var(--m-ink-3); }
   .m-input:focus, .m-input:focus-visible { outline: none; border-color: var(--m-accent); box-shadow: var(--m-elev-focus); }
   .m-input[aria-invalid="true"], .m-input[data-invalid] { border-color: var(--m-critical); }
-  .m-popup { background: var(--m-sheet); border-radius: var(--m-radius-sheet); padding: 4px; box-shadow: var(--m-elev-2); }
+  .m-popup { background: var(--m-sheet); border-radius: var(--m-radius-sheet); padding: 4px; box-shadow: var(--m-elev-2); max-height: var(--available-height, 24rem); overflow-y: auto; }
   .m-popup-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: var(--m-control-h); padding: 0 10px; border-radius: var(--m-radius-control); font-size: var(--m-text-body); cursor: pointer; color: var(--m-ink); }
   .m-popup-item[data-highlighted] { background: var(--m-sheet-raised); }
   .m-popup-item:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
@@ -229,6 +229,10 @@
   .m-field-label { font-size: var(--m-text-meta); line-height: var(--m-leading-meta); font-weight: 500; color: var(--m-ink-2); }
   .m-field-error { display: flex; align-items: center; gap: 6px; font-size: var(--m-text-meta); line-height: var(--m-leading-meta); color: var(--m-critical); }
   .m-field-error::before { content: ""; width: 8px; height: 8px; background: var(--m-critical); flex-shrink: 0; }
+
+  /* First focusable element of the app shell; off-screen until focused. */
+  .m-skip-link { position: fixed; left: -9999px; top: var(--m-space-2); z-index: 100; display: inline-flex; align-items: center; height: var(--m-control-h); padding: 0 var(--m-space-3); border-radius: var(--m-radius-control); background: var(--m-accent); color: var(--m-accent-ink); font-size: var(--m-text-body); font-weight: 500; text-decoration: none; }
+  .m-skip-link:focus { left: var(--m-space-2); outline: none; box-shadow: var(--m-elev-focus); }
 
   .m-card { background: var(--m-sheet); border-radius: var(--m-radius-sheet); box-shadow: var(--m-elev-1); padding: 20px; }
   .m-card-sm { padding: 12px; }

@@ -169,6 +169,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
           columns={columns}
           data={rulesRanked}
           getRowId={(row) => row.check_id}
+          dataTour="object-rules"
           rowHref={(row) => recordsHref(row.check_id)}
           onRowClick={(row) => router.push(recordsHref(row.check_id))}
         />
@@ -196,7 +197,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="m-stat-grid">
-        <Stat label="DQS" value={data.composite_score != null ? String(data.composite_score) : "—"} />
+        <Stat label="DQS" help="dqs" value={data.composite_score != null ? String(data.composite_score) : "—"} />
         <Stat label="Failing checks" value={data.failing_checks.toLocaleString()} href={rulesHref} />
         <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         <Stat label="Affected records" value={data.affected_records.toLocaleString()} href={`/objects/${object}?run=${run}&tab=records`} />

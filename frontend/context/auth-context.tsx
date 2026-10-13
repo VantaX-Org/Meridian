@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import apiClient from "@/lib/api/client";
+import { clearLocalPreferences } from "@/lib/preferences";
 
 export interface AuthUser {
   id: string;
@@ -90,6 +91,7 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    clearLocalPreferences();
     setSessionCookie(false);
     setToken(null);
     setUser(null);

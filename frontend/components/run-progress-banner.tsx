@@ -44,7 +44,7 @@ export function RunProgressBanner({
         aria-valuenow={pct}
         style={{ height: 4, borderRadius: "var(--m-radius-pill)", background: "var(--m-sheet-sunken)", overflow: "hidden" }}
       >
-        <div style={{ width: `${pct}%`, height: "100%", background: "var(--m-accent)" }} />
+        <div className="m-motion-width" style={{ width: `${pct}%`, height: "100%", background: "var(--m-accent)" }} />
       </div>
       {detail ? (
         <div className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>

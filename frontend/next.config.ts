@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // The /docs page reads docs/user-guide/*.md at request time; the standalone trace cannot see a computed path.
+  outputFileTracingIncludes: { "/docs": ["./docs/user-guide/**/*"] },
   // Next would otherwise write AGENTS.md/CLAUDE.md into frontend/ on every dev start.
   agentRules: false,
 

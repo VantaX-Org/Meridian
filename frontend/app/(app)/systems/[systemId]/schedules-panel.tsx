@@ -81,7 +81,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
   const addable = (catalogue?.objects ?? []).filter((o) => !scheduled.has(o.object));
 
   return (
-    <Card title="Scheduled re-evaluation">
+    <Card title="Scheduled re-evaluation" dataTour="schedules">
       <div className="flex flex-col gap-3">
         <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
           Each schedule re-downloads the object and re-runs its checks, so the trends and alert thresholds pick up every run.

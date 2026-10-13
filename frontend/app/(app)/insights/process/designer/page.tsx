@@ -276,7 +276,7 @@ function Editor(p: EditorProps) {
             onSelect={(id) => go({ node: id, attr: null })} />
           {canDesign ? <Discovered variants={unmapped} onCreate={(g) => edit((d) => skeletonFrom(d, g))} /> : null}
         </aside>
-        <section className="flex-1 min-w-0 overflow-x-auto" aria-label="Process view">
+        <section className="flex-1 min-w-0 overflow-x-auto" aria-label="Process view" data-tour="designer-canvas">
           {l4 ? (
             <>
               <div className="flex items-center justify-between gap-2 mb-2">

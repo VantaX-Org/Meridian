@@ -164,7 +164,7 @@ export function BatchesTab() {
       <MonitoringSection onOpenBatch={setBatchId} />
 
       <div className="flex flex-col gap-2">
-        <div className="flex gap-6 m-motion-stagger">
+        <div className="flex gap-6 m-motion-stagger" data-tour="fix-batches">
           <Link href="?tab=batches&status=draft" className="text-left">
             <Stat label="Draft batches" value={counts.draft}
               delta={counts.draft ? "Waiting for proposals to be accepted and approved." : "No batches in draft."} />

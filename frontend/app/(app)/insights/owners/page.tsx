@@ -118,7 +118,7 @@ export default function OwnersPage() {
           <OwnerCard key={owner.owner} owner={owner} canSend={canSend} send={send} />
         ))}
       </div>
-      <Card title="Score by owner">
+      <Card title="Score by owner" dataTour="owners">
         <DataTable columns={scoreColumns} data={owners} getRowId={(o) => o.owner} hideToolbar dense height="auto" />
       </Card>
       <ConfirmDialog

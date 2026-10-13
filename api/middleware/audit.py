@@ -67,6 +67,8 @@ _EXCLUDED_PREFIXES = (
     "/api/v1/auth/",
     "/api/v1/licence",
     "/api/v1/events",
+    # The route writes its own client_error row.
+    "/api/v1/client-errors",
 )
 
 # UUID-like segment so we can pull entity id out of REST paths.

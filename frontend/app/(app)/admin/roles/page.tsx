@@ -30,11 +30,12 @@ const TABS = ["roles", "users", "invite", "requests", "history"] as const;
 const dim = { color: "var(--m-ink-3)" } as const;
 
 export default function AdminRolesPage() {
-  const { can } = useRole();
+  const { can, loading } = useRole();
   const [raw, setTab] = useUrlState("tab", "roles");
   const tab = (TABS as readonly string[]).includes(raw) ? raw : "roles";
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
 
+  if (loading) return <div className="p-6" aria-busy="true"><Skeleton height={320} /></div>;
   if (!can("manage_users")) {
     return (
       <div className="p-6">

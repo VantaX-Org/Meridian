@@ -7,6 +7,8 @@ import { toast } from "sonner";
  * bulk approve, AI feedback) onto @/design. Replaces the
  * legacy A/R/E/N/X/. keymap with j/k row focus + enter to open the fix sheet
  * (spec 6.2); the actions themselves move to buttons so nothing is dropped.
+ * The keys are listed once, in `INBOX_SHORTCUTS` (lib/shortcuts.ts); `?` opens
+ * the shell's shortcut sheet with the Inbox group first, so this page keeps no list of its own.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -126,7 +128,6 @@ export default function InboxPage() {
     if (alsoSearch) setSearch("");
   };
   const [rawFocusedIndex, setFocusedIndex] = useState(0);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [rollbackNote, setRollbackNote] = useState<string | null>(null);
   const [rejectIds, setRejectIds] = useState<string[] | null>(null);
   const [reason, setReason] = useState("");
@@ -315,8 +316,7 @@ export default function InboxPage() {
       const t = isExceptions ? null : items[focusedIndex];
       const e = isExceptions ? excItems[focusedIndex] : null;
       switch (ev.key) {
-        case "?": ev.preventDefault(); setHelpOpen((o) => !o); return;
-        case "Escape": setHelpOpen(false); setRejectIds(null); setRulesOpen(false); return;
+        case "Escape": setRejectIds(null); setRulesOpen(false); return;
         case "a": if (t && canApprove && !busy && user) { ev.preventDefault(); assign.mutate({ ids: [t.id], userId: user.id }); } else if (e && canSeeTeam && !busy && user) { ev.preventDefault(); excAssign.mutate({ ids: [e.id], userId: user.id }); } return;
         case "r": if (t && canApprove && !busy) { ev.preventDefault(); approve.mutate([t.id]); } else if (e && canApprove && !busy) { ev.preventDefault(); setRejectIds([e.id]); } return;
         case "x": if (t && canApprove) { ev.preventDefault(); setRejectIds([t.id]); } return;
@@ -513,6 +513,7 @@ export default function InboxPage() {
             columns={excColumns}
             data={excItems}
             getRowId={(e) => e.id}
+            dataTour="inbox-queue"
             bulkActions={(selected) => (
               <div className="flex gap-2">
                 {canSeeTeam && user && <Button variant="secondary" disabled={busy} onClick={() => excAssign.mutate({ ids: selected.map((e) => e.id), userId: user.id })}>Assign to me</Button>}
@@ -526,6 +527,7 @@ export default function InboxPage() {
             columns={columns}
             data={items}
             getRowId={(t) => t.id}
+            dataTour="inbox-queue"
             onRowClick={(t) => router.push(`/objects/${t.domain}/records/${t.source_id}`)}
             bulkActions={(selected) => (
               <div className="flex gap-2">
@@ -567,13 +569,6 @@ export default function InboxPage() {
                 </Button>
               </div>
             </div>
-          </Drawer>
-          <Drawer open={helpOpen} onOpenChange={setHelpOpen} title="Keyboard shortcuts">
-            <dl className="m-text-body grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
-              {[["j / k", "Next or previous row"], ["Enter", "Open record"], ["a", "Assign to me"], ["r", "Resolve (approve)"], ["x", "Reject with reason"], ["Esc", "Close panel"], ["?", "Show this list"]].map(([k, d]) => (
-                <div key={k} className="contents"><dt style={{ fontFamily: "var(--m-font-mono)" }}>{k}</dt><dd>{d}</dd></div>
-              ))}
-            </dl>
           </Drawer>
           <Drawer open={rulesOpen} onOpenChange={setRulesOpen} title="Exception rules">
             <div className="flex flex-col gap-4">

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createRule, createTeam, deleteRule, deleteSlaPolicy, deleteTeam, getRules, getSlaPolicies, getTeams, getTriageSettings,
@@ -109,9 +109,10 @@ function TeamsSection({ write }: { write: boolean }) {
   const { users } = useUsers();
   const teams = useQuery({ queryKey: queryKeys.triageTeams(), queryFn: getTeams });
   const [editing, setEditing] = useState<TriageTeam | "new" | null>(null);
+  const [deleting, setDeleting] = useState<TriageTeam | null>(null);
   const del = useMutation({
     mutationFn: (id: string) => deleteTeam(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageTeams() }); toast.success("Team deleted"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageTeams() }); toast.success("Team deleted"); setDeleting(null); },
     onError: (e) => toast.error(errText(e, "Team not deleted")),
   });
 
@@ -126,7 +127,7 @@ function TeamsSection({ write }: { write: boolean }) {
       cell: ({ row }) => write ? (
         <span className="flex gap-2">
           <Button variant="ghost" onClick={() => setEditing(row.original)}>Edit</Button>
-          <Button variant="ghost" onClick={() => { if (window.confirm(`Delete team "${row.original.name}"?`)) del.mutate(row.original.id); }}>Delete</Button>
+          <Button variant="ghost" onClick={() => setDeleting(row.original)}>Delete</Button>
         </span>
       ) : null,
     },
@@ -144,6 +145,17 @@ function TeamsSection({ write }: { write: boolean }) {
         <DataTable columns={teamCols} data={teams.data} getRowId={(t) => t.id} />
       )}
       {editing ? <TeamForm team={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => { if (!o) setDeleting(null); }}
+        title="Delete this team"
+        body="Assignment rules that route to this team stop matching. Open items stay where they are."
+        confirmLabel="Delete team"
+        tone="danger"
+        typeToConfirm={deleting?.name ?? ""}
+        pending={del.isPending}
+        onConfirm={() => deleting && del.mutate(deleting.id)}
+      />
     </Section>
   );
 }
@@ -214,6 +226,7 @@ function RulesSection({ write }: { write: boolean }) {
   const teams = useQuery({ queryKey: queryKeys.triageTeams(), queryFn: getTeams });
   const ruleQ = useQuery({ queryKey: queryKeys.triageRules(), queryFn: getRules });
   const [editing, setEditing] = useState<AssignmentRule | "new" | null>(null);
+  const [deleting, setDeleting] = useState<AssignmentRule | null>(null);
   const teamName = (id: string | null) => (!id ? null : teams.data?.find((t) => t.id === id)?.name ?? id.slice(0, 8));
   const target = (r: AssignmentRule) => (r.assign_team_id ? `Team: ${teamName(r.assign_team_id)}` : r.assign_user_id ? `User: ${name(r.assign_user_id)}` : "Fallback user");
 
@@ -230,7 +243,7 @@ function RulesSection({ write }: { write: boolean }) {
   });
   const del = useMutation({
     mutationFn: (id: string) => deleteRule(id),
-    onSuccess: () => { invalidate(); toast.success("Rule deleted"); },
+    onSuccess: () => { invalidate(); toast.success("Rule deleted"); setDeleting(null); },
     onError: (e) => toast.error(errText(e, "Rule not deleted")),
   });
 
@@ -254,7 +267,7 @@ function RulesSection({ write }: { write: boolean }) {
           <Button variant="ghost" disabled={row.index === 0} onClick={() => swap(row.index, row.index - 1)}>Up</Button>
           <Button variant="ghost" disabled={row.index === sorted.length - 1} onClick={() => swap(row.index, row.index + 1)}>Down</Button>
           <Button variant="ghost" onClick={() => setEditing(row.original)}>Edit</Button>
-          <Button variant="ghost" onClick={() => { if (window.confirm(`Delete rule "${row.original.name}"?`)) del.mutate(row.original.id); }}>Delete</Button>
+          <Button variant="ghost" onClick={() => setDeleting(row.original)}>Delete</Button>
         </span>
       ) : null,
     },
@@ -272,6 +285,17 @@ function RulesSection({ write }: { write: boolean }) {
         <DataTable columns={ruleCols} data={sorted} getRowId={(r) => r.id} />
       )}
       {editing ? <RuleForm rule={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => { if (!o) setDeleting(null); }}
+        title="Delete this assignment rule"
+        body="New items stop matching it and fall through to the next rule."
+        confirmLabel="Delete rule"
+        tone="danger"
+        typeToConfirm={deleting?.name ?? ""}
+        pending={del.isPending}
+        onConfirm={() => deleting && del.mutate(deleting.id)}
+      />
     </Section>
   );
 }
@@ -349,9 +373,10 @@ function PoliciesSection({ write }: { write: boolean }) {
   const qc = useQueryClient();
   const sla = useQuery({ queryKey: queryKeys.triageSla(), queryFn: getSlaPolicies });
   const [editing, setEditing] = useState<SlaPolicy | "new" | null>(null);
+  const [deleting, setDeleting] = useState<SlaPolicy | null>(null);
   const del = useMutation({
     mutationFn: (id: string) => deleteSlaPolicy(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSla() }); toast.success("Policy deleted"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSla() }); toast.success("Policy deleted"); setDeleting(null); },
     onError: (e) => toast.error(errText(e, "Policy not deleted")),
   });
 
@@ -368,7 +393,7 @@ function PoliciesSection({ write }: { write: boolean }) {
       cell: ({ row }) => write ? (
         <span className="flex gap-1">
           <Button variant="ghost" onClick={() => setEditing(row.original)}>{row.original.is_default ? "Override" : "Edit"}</Button>
-          {row.original.id ? <Button variant="ghost" onClick={() => { if (window.confirm("Delete this override?")) del.mutate(row.original.id!); }}>Delete</Button> : null}
+          {row.original.id ? <Button variant="ghost" onClick={() => setDeleting(row.original)}>Delete</Button> : null}
         </span>
       ) : null,
     },
@@ -384,6 +409,17 @@ function PoliciesSection({ write }: { write: boolean }) {
         <DataTable columns={slaCols} data={sla.data ?? []} getRowId={(p) => `${p.severity}-${p.module ?? ""}`} />
       )}
       {editing ? <PolicyForm policy={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => { if (!o) setDeleting(null); }}
+        title="Delete this SLA override"
+        body="Items of this severity go back to the default policy."
+        confirmLabel="Delete override"
+        tone="danger"
+        typeToConfirm={deleting?.severity ?? ""}
+        pending={del.isPending}
+        onConfirm={() => { if (deleting?.id) del.mutate(deleting.id); }}
+      />
     </Section>
   );
 }

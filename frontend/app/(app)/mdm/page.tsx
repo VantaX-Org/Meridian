@@ -85,7 +85,7 @@ export default function MdmOverviewPage() {
             </div>
             {m && (
               <div className="grid grid-cols-2 content-start gap-3 @5xl:col-span-4">
-                <Stat label="Golden records" value={m.golden_record_count.toLocaleString()} href="/mdm/golden" spark={trend.map((t) => t.golden_record_count)} />
+                <Stat label="Golden records" help="goldenRecord" value={m.golden_record_count.toLocaleString()} href="/mdm/golden" spark={trend.map((t) => t.golden_record_count)} />
                 <Stat label="Coverage" value={`${m.golden_record_coverage_pct}%`} href="/mdm/golden" spark={trend.map((t) => t.golden_record_coverage_pct)} />
                 <Stat label="Match confidence" value={`${Math.round(m.avg_match_confidence * 100)}%`} href="/mdm/match-rules" spark={trend.map((t) => t.avg_match_confidence * 100)} />
                 <Stat label="Steward SLA" value={`${m.steward_sla_compliance_pct}%`} href="/inbox" spark={trend.map((t) => t.steward_sla_compliance_pct)} />

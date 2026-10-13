@@ -5,13 +5,13 @@ import re
 import uuid
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission
+from api.services.rbac import current_user_id, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["notifications"])
 
@@ -24,11 +24,21 @@ async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
     await db.execute(text(f"SET app.tenant_id = '{str(tenant_id)}'"))
 
 
+def _own(request: Request, params: dict) -> str:
+    """Tenant-wide rows (user_id NULL) plus the caller's own; only tenant-wide when no user is known."""
+    uid = current_user_id(request)
+    if not uid:
+        return "user_id IS NULL"
+    params["uid"] = uid
+    return "(user_id IS NULL OR user_id = :uid)"
+
+
 # ── GET /api/v1/notifications ────────────────────────────────────────────────
 
 
 @router.get("/notifications")
 async def list_notifications(
+    request: Request,
     is_read: Optional[bool] = None,
     type: Optional[str] = None,
     limit: int = Query(default=20, ge=1, le=100),
@@ -38,8 +48,8 @@ async def list_notifications(
 ):
     await _set_rls(db, tenant.id)
 
-    conditions = ["tenant_id = :tid"]
     params: dict = {"tid": str(tenant.id)}
+    conditions = ["tenant_id = :tid", _own(request, params)]
 
     if is_read is not None:
         conditions.append("is_read = :is_read")
@@ -79,18 +89,21 @@ async def list_notifications(
 @router.put("/notifications/{notification_id}/read")
 async def mark_notification_read(
     notification_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     await _set_rls(db, tenant.id)
 
+    params = {"nid": notification_id, "tid": str(tenant.id)}
+    own = _own(request, params)
     result = await db.execute(
-        text("""
+        text(f"""
             UPDATE notifications SET is_read = true
-            WHERE id = :nid AND tenant_id = :tid
+            WHERE id = :nid AND tenant_id = :tid AND {own}
             RETURNING id
         """),
-        {"nid": notification_id, "tid": str(tenant.id)},
+        params,
     )
     if not result.fetchone():
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -104,17 +117,20 @@ async def mark_notification_read(
 
 @router.put("/notifications/read-all")
 async def mark_all_read(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     await _set_rls(db, tenant.id)
 
+    params = {"tid": str(tenant.id)}
+    own = _own(request, params)
     result = await db.execute(
-        text("""
+        text(f"""
             UPDATE notifications SET is_read = true
-            WHERE tenant_id = :tid AND is_read = false
+            WHERE tenant_id = :tid AND is_read = false AND {own}
         """),
-        {"tid": str(tenant.id)},
+        params,
     )
     await db.commit()
 
@@ -126,14 +142,17 @@ async def mark_all_read(
 
 @router.get("/notifications/unread-count")
 async def unread_count(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     await _set_rls(db, tenant.id)
 
+    params = {"tid": str(tenant.id)}
+    own = _own(request, params)
     result = await db.execute(
-        text("SELECT COUNT(*) FROM notifications WHERE tenant_id = :tid AND is_read = false"),
-        {"tid": str(tenant.id)},
+        text(f"SELECT COUNT(*) FROM notifications WHERE tenant_id = :tid AND is_read = false AND {own}"),
+        params,
     )
     count = result.scalar() or 0
 

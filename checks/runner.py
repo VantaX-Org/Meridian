@@ -379,6 +379,12 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         frame, excluded = exclude(frame, excl, frames, norm=norm)
         scoped = apply_context(frame, rule.get("applies_when"), as_of, norm=norm)
         if len(scoped) == 0:
+            # A field the system's field-status config hides for every record in its population
+            # is blank by design, not a data gap and not an empty table — keep it distinct from
+            # "no records" so the run can tell suppressed (by config) apart from unmaintained
+            # (blank without a config reason, _unmaintained below).
+            if excluded.get("hidden_by_field_status"):
+                return {**rule, "_skip": "field_suppressed"}, None
             return {**rule, "_skip": "not_applicable"}, None  # no records in the rule's population
         check = check_cls(rule)
         if norm is not None and isinstance(check, CrossFieldCheck):

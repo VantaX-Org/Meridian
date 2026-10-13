@@ -1,6 +1,7 @@
 import type { SortingState, VisibilityState } from "@tanstack/react-table";
+import { readPrefs, setPreferences } from "../../lib/preferences";
 
-/** A saved table view: which columns are shown, row density and sort. Per viewer, in localStorage. */
+/** A saved table view: which columns are shown, row density and sort. Kept in the user's preferences (`saved_views`, by table id). */
 export interface TableView {
   name: string;
   visibility: VisibilityState;
@@ -8,13 +9,19 @@ export interface TableView {
   sorting: SortingState;
 }
 
-const key = (tableId: string) => `m-table-views:${tableId}`;
+/** Where views lived before they moved into the preferences document; read once as a fallback, removed on the next write. */
+const legacyKey = (tableId: string) => `m-table-views:${tableId}`;
+
+function valid(parsed: unknown): TableView[] {
+  return Array.isArray(parsed) ? (parsed as TableView[]).filter((v) => typeof v?.name === "string") : [];
+}
 
 export function loadViews(tableId: string): TableView[] {
+  const stored = readPrefs().saved_views?.[tableId];
+  if (stored) return valid(stored);
   try {
-    const raw = window.localStorage.getItem(key(tableId));
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as TableView[]).filter((v) => typeof v?.name === "string") : [];
+    const raw = window.localStorage.getItem(legacyKey(tableId));
+    return valid(raw ? JSON.parse(raw) : []);
   } catch {
     return [];
   }
@@ -22,10 +29,26 @@ export function loadViews(tableId: string): TableView[] {
 
 function persist(tableId: string, views: TableView[]): void {
   try {
-    window.localStorage.setItem(key(tableId), JSON.stringify(views));
+    window.localStorage.removeItem(legacyKey(tableId));
   } catch {
-    // storage blocked or full: the view lives for this session only
+    // storage blocked: nothing to clean up
   }
+  setPreferences({ saved_views: { [tableId]: views.length > 0 ? views : null } });
+}
+
+/** Removes every saved view, in the preferences document and in any pre-sync localStorage key. */
+export function resetSavedViews(): void {
+  try {
+    const stale: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k?.startsWith("m-table-views:")) stale.push(k);
+    }
+    stale.forEach((k) => window.localStorage.removeItem(k));
+  } catch {
+    // storage blocked: nothing to clean up
+  }
+  setPreferences({ saved_views: null });
 }
 
 /** Saves (or replaces by name) a view and returns the new list. */

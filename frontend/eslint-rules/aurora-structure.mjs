@@ -181,7 +181,8 @@ const urlIsState = {
 // Rule 16: one h1 per route, and PageHeader (or AuthFrame) owns it.
 const oneH1 = mk({ h1: "Only PageHeader renders the h1. Use PageHeader, or a lower heading level." }, (context) => {
   const f = norm(context.filename);
-  if (f.endsWith("/components/ui-core/index.tsx") || f.endsWith("/components/auth/auth-frame.tsx")) return {};
+  if (f.endsWith("/components/ui-core/index.tsx") || f.endsWith("/components/auth/auth-frame.tsx")
+      || f.endsWith("/app/global-error.tsx") || f.endsWith("/app/not-found.tsx")) return {}; // outside the shell: no Breadcrumb to own the h1
   const lit = (a) => (a?.value?.type === "Literal" ? a.value.value : a?.value?.expression?.value);
   return {
     JSXOpeningElement(node) {

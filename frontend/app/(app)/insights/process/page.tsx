@@ -485,7 +485,7 @@ function MapView() {
             <Stat label="Steps mapped" value={activities.length} />
             <Stat label="Blocked" value={blockedSteps} onClick={bottlenecks[0] ? () => setNode(bottlenecks[0].id) : undefined} />
             <Stat label="Degraded" value={degradedSteps} />
-            <Stat label="Variants" value={variants.length} />
+            <Stat label="Variants" help="variant" value={variants.length} />
           </div>
 
           {activities.length ? (
