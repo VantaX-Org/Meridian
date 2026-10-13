@@ -246,11 +246,19 @@ class ConformanceStep(BaseModel):
     out_of_order: float
 
 
+class HappyPath(BaseModel):
+    activities: list[str]
+    case_count: int
+    share: float
+    fitness: Optional[float]
+
+
 class ConformanceResponse(BaseModel):
     case_type: str
     fitness: Optional[float]
     missing: dict[str, float]
     steps: list[ConformanceStep]
+    happy_path: HappyPath = HappyPath(activities=[], case_count=0, share=0.0, fitness=None)
 
 
 class CaseRow(BaseModel):
@@ -701,12 +709,15 @@ async def conformance(run_id: str, request: Request, tenant: Tenant = Depends(ge
                       db: AsyncSession = Depends(get_db)) -> ConformanceResponse:
     run = await _run(db, tenant, run_id)
     flt, ct = _filter(request, run)
-    c = (await _mine(db, tenant, run, flt, ct)).conformance
+    mined = await _mine(db, tenant, run, flt, ct)
+    c = mined.conformance
     steps = sorted(set(c.step_fitness) | set(c.out_of_order))
+    hp = mined.happy_path()
     return ConformanceResponse(
         case_type=ct, fitness=c.fitness, missing=c.missing,
         steps=[ConformanceStep(activity=a, step_fitness=c.step_fitness.get(a),
-                               out_of_order=c.out_of_order.get(a, 0.0)) for a in steps])
+                               out_of_order=c.out_of_order.get(a, 0.0)) for a in steps],
+        happy_path=HappyPath(**hp))
 
 
 CASES_SQL = """
