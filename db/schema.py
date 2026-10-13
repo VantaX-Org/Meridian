@@ -590,6 +590,8 @@ class User(Base):
     # returns 409 until rotation completes.
     must_change_password = Column(Boolean, nullable=False, server_default="false")
     last_login = Column(DateTime(timezone=True), nullable=True)
+    # Validated by api/routes/preferences.py (theme, density, locale, saved views, ...).
+    preferences = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
