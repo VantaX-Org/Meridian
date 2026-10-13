@@ -120,8 +120,14 @@ def analyze(
     target_keys: dict[str, set[str]] | None = None,
     target_connected: bool = False,
     config_basis: str = "live",
+    field_status: dict[str, tuple[str, dict, dict]] | None = None,
 ) -> tuple[list[Gap], ModuleResult]:
     """Gap-analyse one module's source tables against the target.
+
+    ``field_status`` (optional) is ``{record_table: (group_field, source_groups, target_groups)}`` —
+    the resolved field-status groups from ``api.services.migration.field_status``, used to flag the
+    cross-system field-status deltas a plain value map cannot see (a field required in the target
+    but optional/suppressed in the source will arrive blank).
 
     `config_basis` is `baseline` when the target config is the SAP standard baseline; a check-table miss is
     then flagged, not blocking.
@@ -207,6 +213,24 @@ def analyze(
             missing = pd.Series(True, index=df.index) if vals is None else vals.isna()
             _per_record(gaps, blocked[table], module, "target_mandatory", "critical", missing, rk, df, None,
                         None, None, table, mand, spec["reason"], "sap_hard_constraint")
+
+        # cross-system field-status delta: a field required in the target but optional/suppressed
+        # in the source will arrive blank (blank_in_target); one required in the source but
+        # suppressed in the target is maintained for nothing (obsolete_in_target).
+        fs = (field_status or {}).get(table)
+        if fs:
+            from api.services.migration.field_status import field_status_gaps
+            group_field, source_groups, target_groups = fs
+            for fg in field_status_gaps(df, table, group_field, source_groups, target_groups):
+                severity = "critical" if fg.kind == "blank_in_target" else "high"
+                detail = (f"{fg.field} is required in the target but optional/suppressed in the source "
+                          f"for group {fg.group}" if fg.kind == "blank_in_target"
+                          else f"{fg.field} is suppressed in the target but required in the source "
+                               f"for group {fg.group}")
+                for i in fg.record_keys[:MAX_FINDINGS_PER_GAP]:
+                    gaps.append(Gap(module, f"field_status_{fg.kind}", severity, detail,
+                                    record_key=str(rk.at[i]), source_table=table, source_field=fg.field,
+                                    provenance="field_status_delta"))
 
     # key checks per target table (records from every source table that feeds it)
     for (src_table, t_table), fields_ in target_values.items():

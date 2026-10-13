@@ -5,6 +5,7 @@ import pandas as pd
 from api.services.migration.engine import Mapping, analyze, seed_mappings
 from checks.frames import TableFrames
 from sap.ddic import get_dictionary
+from sap.field_status import FieldStatus
 
 ECC, S4 = get_dictionary("ecc6"), get_dictionary("s4hana")
 
@@ -144,3 +145,20 @@ def test_load_files_apply_config_maps_through_the_check_table():
     tables = build_load_tables(_frames(), {"accounts_payable": ["LFA1"]}, {"accounts_payable": maps},
                                {"accounts_payable": {"T077K.KTOKK": {"LIEF": "KRED"}}}, {}, target_dict=S4)
     assert list(tables["LFA1"]["KTOKK"]) == ["KRED"] * 3
+
+
+def test_field_status_delta_gaps_are_emitted():
+    # KRED: LFA1.STRAS suppressed in ECC but required in S/4 → blank_in_target for the KRED records.
+    frames = _frames()
+    maps = seed_mappings({t: list(df.columns) for t, df in frames.frames.items()}, ECC, S4)
+    field_status = {
+        "LFA1": ("LFA1.KTOKK",
+                 {"KRED": {"LFA1.STRAS": FieldStatus.SUPPRESSED}},
+                 {"KRED": {"LFA1.STRAS": FieldStatus.REQUIRED}}),
+    }
+    gaps, _ = analyze("accounts_payable", frames, ["LFA1", "LFB1"], maps, S4, {}, {}, None, False,
+                      field_status=field_status)
+    fs = [g for g in gaps if g.gap_type == "field_status_blank_in_target"]
+    assert fs and all(g.source_field == "LFA1.STRAS" for g in fs)
+    assert {g.record_key for g in fs} == {"LIFNR=0000100001", "LIFNR=0000100003"}  # the two KRED rows
+    assert all(g.severity == "critical" for g in fs)

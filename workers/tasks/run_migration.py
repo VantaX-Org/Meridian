@@ -200,6 +200,14 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                 target_dict = get_dictionary(target_release)
                 target_type = target_release
             target_config, config_basis = load_target_config(session, None if dry_run else dest_system_id)
+            # Cross-system field-status delta: resolve both sides' field status and pass it to
+            # analyze so a field required in the target but optional/suppressed in the source is
+            # flagged. Same-table, single-group segments only (vendors/customers); the material
+            # composite MTART|MBRSH key and the LFA1→BP target mapping are follow-ons.
+            from api.services.migration.field_status import resolve_source_groups
+            src_fs = resolve_source_groups(session, source_system_id or meta.get("system_id"))
+            dst_fs = resolve_source_groups(session, dest_system_id) if dest_system_id and not dry_run else {}
+            field_status = {t: (gf, src_grp, dst_fs[t][1]) for t, (gf, src_grp) in src_fs.items() if t in dst_fs}
 
             owners = sim_owners(modules, frames) if dry_run else {}
             summary, all_gaps, records, blocked = {}, 0, 0, 0
@@ -214,7 +222,8 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                     mappings = seed
                 value_maps = load_value_maps(session, module, source_system_id, dest_system_id)
                 gaps, res = analyze(module, frames, tables, mappings, target_dict, value_maps,
-                                    target_config, None, bool(dest_system_id) and not dry_run, config_basis=config_basis)
+                                    target_config, None, bool(dest_system_id) and not dry_run,
+                                    config_basis=config_basis, field_status=field_status)
                 sim: list["Gap"] = []
                 if dry_run:
                     from api.services.migration import load_sim

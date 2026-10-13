@@ -73,3 +73,34 @@ def field_status_gaps(
             if delta is not None and delta.kind != "none":
                 gaps.append(FieldStatusGap(table, field, g, delta.kind, tuple(idx)))
     return gaps
+
+
+def resolve_source_groups(
+    session, system_id: str | None,
+) -> dict[str, tuple[str, dict[str, dict[str, FieldStatus]]]]:
+    """Resolve the source system's field status per record table.
+
+    Returns ``{record_table: (group_field, {account_group: {TABLE.FIELD: FieldStatus}})}`` for the
+    single-group field-status segments (vendor/customer). ``group_field`` is the frame column that
+    carries each record's account group (e.g. ``"LFA1.KTOKK"``). The material master's composite
+    ``MTART|MBRSH`` group is not returned here — it needs a two-column key, which
+    :func:`field_status_gaps` does not yet take.
+    """
+    from checks.field_status_rules import load_config
+    from sap.field_status_config import resolve_all
+
+    config = load_config(session, system_id)
+    if not config:
+        return {}
+    out: dict[str, tuple[str, dict[str, dict[str, FieldStatus]]]] = {}
+    for res in resolve_all(config):
+        seg = res.segment
+        entry = out.get(seg.record_table)
+        if entry is None:
+            entry = (seg.group_source, {})
+            out[seg.record_table] = entry
+        for group, statuses in res.groups.items():
+            bucket = entry[1].setdefault(group, {})
+            for col, st in statuses.items():
+                bucket[col] = FieldStatus(st)
+    return out
