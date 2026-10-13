@@ -6,10 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { toast } from "sonner";
 import {
   Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, SeverityDot, Skeleton, Stat,
-  buildDrillHref,
+  buildDrillHref, toast,
 } from "@/design";
 import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
@@ -185,7 +184,11 @@ export default function RulePage() {
   const history = useQuery({ queryKey: queryKeys.ruleHistory(ruleId), queryFn: () => getRuleHistory(ruleId, { limit: 20 }) });
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => updateRule(ruleId, { enabled }),
-    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: queryKeys.ruleDetail(ruleId) }); qc.invalidateQueries({ queryKey: ["rules"] }); },
+    onSuccess: (_d, enabled) => {
+      const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: queryKeys.ruleDetail(ruleId) }), qc.invalidateQueries({ queryKey: ["rules"] })]);
+      toast.undoable(enabled ? "Rule enabled" : "Rule disabled", { undo: async () => { await updateRule(ruleId, { enabled: !enabled }); await refresh(); } });
+      void refresh();
+    },
     onError: (e) => toast.error((e as Error).message || "Not saved"),
   });
 

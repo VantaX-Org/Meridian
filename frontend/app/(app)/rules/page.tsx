@@ -21,8 +21,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Switch, Tabs, Textarea, emptyExportOptions, type CellMeta, PageFrame } from "@/design";
+import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Switch, Tabs, Textarea, emptyExportOptions, toast, type CellMeta, PageFrame } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
@@ -151,7 +150,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data));
       toast.error((e as Error).message || "Rule not updated");
     },
-    onSuccess: (_d, v) => toast.success(v.enabled ? "Rule enabled" : "Rule disabled"),
+    // The inverse is the same PATCH with the flag flipped back.
+    onSuccess: (_d, v) => toast.undoable(v.enabled ? "Rule enabled" : "Rule disabled", {
+      undo: async () => { await updateRule(v.id, { enabled: !v.enabled }); await qc.invalidateQueries({ queryKey: ["rules"] }); },
+    }),
     // Only the last in-flight toggle refetches, so an earlier settle cannot overwrite a later optimistic flip.
     onSettled: () => { if (qc.isMutating() === 1) qc.invalidateQueries({ queryKey: ["rules"] }); },
   });

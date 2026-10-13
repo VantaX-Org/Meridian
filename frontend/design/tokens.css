@@ -455,6 +455,8 @@
   .m-motion-rise, .m-motion-scale-in, .m-motion-slide-in-right, .m-motion-draw, .m-motion-stagger > *,
   .m-skeleton-sweep, .m-spin, .m-motion-spin { animation: none; }
   .m-motion-width, .m-motion-fade, .m-motion-colors { transition: none; }
+  /* Blanket guard in addition to the per-class rules above and the JS helper. */
+  *, *::before, *::after { animation: none !important; transition-duration: 0ms !important; }
 }
 
 /* ---------- Colour-pass utilities (hero, depth, tone, domain, heat) ---------- */
