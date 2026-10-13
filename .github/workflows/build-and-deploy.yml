@@ -299,6 +299,10 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       # gh CLI (preinstalled on the runner) rather than actions/create-release@v1:
       # that action is archived and runs on the removed node12 runtime, so the
       # release step fails on current runners. Creates a published release, which is
