@@ -51,3 +51,21 @@ def test_missing_group_field_or_empty_frame_gives_no_gaps():
     frame = pd.DataFrame({"MARA.MATNR": ["1"]})
     assert field_status_gaps(frame, "MARA", "MARA.MTART", {"FERT": {}}, {"FERT": {}}) == []
     assert field_status_gaps(pd.DataFrame(), "MARA", "MARA.MTART", {"FERT": {}}, {"FERT": {}}) == []
+
+
+def test_composite_group_key_material_type_and_industry_sector():
+    frame = pd.DataFrame({
+        "MARA.MATNR": ["1", "2", "3"],
+        "MARA.MTART": ["FERT", "FERT", "ROH"],
+        "MARA.MBRSH": ["A", "M", "M"],
+    })
+    source = {"FERT|A": {"MARA.EAN11": FieldStatus.OPTIONAL}, "FERT|M": {"MARA.EAN11": FieldStatus.OPTIONAL},
+              "ROH|M": {"MARA.EAN11": FieldStatus.OPTIONAL}}
+    target = {"FERT|A": {"MARA.EAN11": FieldStatus.REQUIRED}, "FERT|M": {"MARA.EAN11": FieldStatus.OPTIONAL},
+              "ROH|M": {"MARA.EAN11": FieldStatus.OPTIONAL}}
+
+    gaps = field_status_gaps(frame, "MARA", ["MARA.MTART", "MARA.MBRSH"], source, target)
+
+    assert len(gaps) == 1
+    assert gaps[0].group == "FERT|A" and gaps[0].kind == "blank_in_target"
+    assert set(gaps[0].record_keys) == {0}  # only material 1 (FERT|A)

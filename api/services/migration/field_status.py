@@ -39,7 +39,7 @@ def _res(table: str, field: str, status: FieldStatus) -> FieldStatusResolution:
 def field_status_gaps(
     frame: pd.DataFrame,
     table: str,
-    group_field: str,
+    group_fields: str | list[str],
     source_groups: dict[str, dict[str, FieldStatus]],
     target_groups: dict[str, dict[str, FieldStatus]],
 ) -> list[FieldStatusGap]:
@@ -47,13 +47,15 @@ def field_status_gaps(
 
     ``source_groups`` / ``target_groups`` are ``{account_group: {FIELD: FieldStatus}}`` — the
     already-resolved field status per group (``sap.field_status_config.resolve`` for the source;
-    ``sap.target_field_status.resolve_target_field_status`` for the target). ``group_field`` is
-    the frame column carrying the account group (e.g. ``"LFA1.KTOKK"``, ``"MARA.MTART"``).
+    ``sap.target_field_status.resolve_target_field_status`` for the target). ``group_fields`` is
+    the frame column(s) carrying each record's account group — a single column
+    (``"LFA1.KTOKK"``) or a composite key (``["MARA.MTART", "MARA.MBRSH"]`` → ``"MTART|MBRSH"``).
 
     Only fields with an opinion on *both* sides are judged — a missing status on either side
     is not a gap (the caller must not treat absence as optional).
     """
-    if frame is None or frame.empty or group_field not in frame.columns:
+    cols = [group_fields] if isinstance(group_fields, str) else list(group_fields)
+    if frame is None or frame.empty or any(c not in frame.columns for c in cols):
         return []
 
     fields: set[str] = set()
@@ -61,9 +63,16 @@ def field_status_gaps(
         for statuses in groups.values():
             fields.update(statuses)
 
+    if len(cols) == 1:
+        grouped = frame.groupby(cols[0], dropna=True).groups
+    else:
+        # composite group key (e.g. material type | industry sector)
+        key = frame[cols].astype("string").fillna("").agg("|".join, axis=1)
+        grouped = frame.groupby(key, dropna=False).groups
+
     gaps: list[FieldStatusGap] = []
     for field in sorted(fields):
-        for group, idx in frame.groupby(group_field, dropna=True).groups.items():
+        for group, idx in grouped.items():
             g = str(group).strip()
             s = (source_groups.get(g) or {}).get(field)
             t = (target_groups.get(g) or {}).get(field)
