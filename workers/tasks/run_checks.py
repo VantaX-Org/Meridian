@@ -706,7 +706,10 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 continue  # config table, already supplied from config_snapshots
             _key = f"{_ct}.{_cf}"
             _df = frames.frames.get(_ct)
-            if _df is not None and _key in _df.columns and _key not in live_refs:
+            # Always take a data-table reference from the frame, overriding any stale value a
+            # previous config load left in config_snapshots (the old loader read data tables like
+            # MARA truncated to MAX_ROWS, and those rows linger until the next load).
+            if _df is not None and _key in _df.columns:
                 live_refs[_key] = set(_df[_key].dropna().astype(str).str.strip())
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}
