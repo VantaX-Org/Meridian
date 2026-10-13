@@ -681,7 +681,11 @@ def run_checks(
         result_rules.append(rule)
 
     if skipped:
-        logger.info(f"Module '{module}': skipped {skipped} checks (tables/fields not in extract)")
+        # Break the skip reasons down rather than calling every skip "tables/fields not in
+        # extract": a rule with no records in its population (not_applicable) or on a field
+        # nobody populates (field_unmaintained) is not a missing-table gap.
+        reasons = ", ".join(f"{k}={v}" for k, v in sorted((stats or {}).items()) if v)
+        logger.info(f"Module '{module}': skipped {skipped} checks ({reasons})")
     logger.info(f"Module '{module}': ran {len(results)} checks, {sum(1 for r in results if r.passed)} passed")
 
     # Enrich failing results with deterministic fix recommendations
