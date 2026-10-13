@@ -6,7 +6,7 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Button, Card, ExplorerPage, PageHeader, Select, Switch, NotificationRow, NOTIFICATION_TYPE_LABEL, useNotificationMutations } from "@/design";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
-import { getNotifications } from "@/lib/api/notifications";
+import { getNotifications, getUnreadCount } from "@/lib/api/notifications";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { Notification, NotificationType } from "@/types/api";
@@ -23,6 +23,7 @@ export default function NotificationsPage() {
   const [limit, setLimit] = useState(PAGE);
   const filters = { type: type === "all" ? undefined : type, is_read: unreadOnly ? false : undefined, limit };
   const q = useQuery({ queryKey: queryKeys.notifications(filters), queryFn: () => getNotifications(filters), placeholderData: keepPreviousData });
+  const unread = useQuery({ queryKey: queryKeys.unreadNotifications(), queryFn: getUnreadCount, refetchInterval: 60_000, staleTime: 30_000 });
   const { markRead, markAllRead } = useNotificationMutations();
 
   const items = q.data?.items ?? [];
@@ -38,7 +39,7 @@ export default function NotificationsPage() {
         <PageHeader
           title="Notifications"
           meta={q.isLoading ? " " : `${total.toLocaleString()} ${total === 1 ? "notification" : "notifications"}`}
-          actions={<Button variant="secondary" pending={markAllRead.isPending} onClick={() => markAllRead.mutate()}>Mark all read</Button>}
+          actions={<Button variant="secondary" pending={markAllRead.isPending} disabled={(unread.data ?? 0) === 0} onClick={() => markAllRead.mutate()}>Mark all read</Button>}
         />
       }
       filterBar={

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { SEEN_VERSION_KEY } from "@/lib/help/storage";
+import { readPrefs, resetPreferencesCache, setPreferences } from "@/lib/preferences";
 import { HelpMenu } from "./HelpMenu";
 import { RELEASES, WhatsNew, useWhatsNew, type Release } from "./WhatsNew";
 
@@ -9,7 +9,10 @@ const releases: Release[] = [
   { version: "1.9.0", date: "2026-09-01", items: [{ title: "Older thing", body: "From before" }] },
 ];
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  resetPreferencesCache();
+});
 
 describe("whats-new.json", () => {
   it("is newest first, with dated versions and at least one item each", () => {
@@ -52,17 +55,17 @@ describe("useWhatsNew", () => {
     expect(result.current.hasNew).toBe(true);
     act(() => result.current.markSeen());
     expect(result.current.hasNew).toBe(false);
-    expect(localStorage.getItem(SEEN_VERSION_KEY)).toBe("2.0.0");
+    expect(readPrefs().seen_version).toBe("2.0.0");
   });
 
   it("is not new when the stored version matches", () => {
-    localStorage.setItem(SEEN_VERSION_KEY, "2.0.0");
+    setPreferences({ seen_version: "2.0.0" });
     const { result } = renderHook(() => useWhatsNew(releases));
     expect(result.current.hasNew).toBe(false);
   });
 
   it("is new again when a later release ships", () => {
-    localStorage.setItem(SEEN_VERSION_KEY, "1.9.0");
+    setPreferences({ seen_version: "1.9.0" });
     const { result } = renderHook(() => useWhatsNew(releases));
     expect(result.current.hasNew).toBe(true);
   });

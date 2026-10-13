@@ -53,6 +53,9 @@ describe("WhatIfPage", () => {
     mount();
     await userEvent.click(await screen.findByRole("button", { name: /run simulation/i }));
     expect(await screen.findByText("worker exploded")).toBeInTheDocument();
+    expect(screen.getByText("Simulation did not produce fixes")).toBeInTheDocument();
+    expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
   it("says the simulation expired when the lookup fails", async () => {

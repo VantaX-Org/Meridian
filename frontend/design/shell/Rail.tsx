@@ -415,7 +415,7 @@ export function Rail() {
         {!navLoading && groups.map((group) => (
           <div key={group.group} className="flex flex-col gap-0.5">
             {expanded ? (
-              <p className="m-text-label font-medium" style={{ color: "var(--m-ink-4)", padding: "var(--m-rail-group-pad)" }}>
+              <p className="m-text-label font-medium" style={{ color: "var(--m-ink-3)", padding: "var(--m-rail-group-pad)" }}>
                 {group.group}
               </p>
             ) : (

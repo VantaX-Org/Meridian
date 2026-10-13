@@ -67,6 +67,7 @@ describe("markdown renderer", () => {
     expect(screen.getByText("?").tagName).toBe("CODE");
     expect(screen.getByText("help").tagName).toBe("STRONG");
     expect(screen.getByRole("link", { name: "rules" })).toHaveAttribute("href", "/docs?page=rules");
+    expect(screen.getByRole("link", { name: "rules" })).toHaveStyle({ color: "var(--m-accent)", textDecoration: "underline" });
     expect(screen.queryByRole("link", { name: "outside" })).toBeNull();
     expect(screen.getByText(/outside/)).toBeInTheDocument();
   });

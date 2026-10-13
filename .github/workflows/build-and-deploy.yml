@@ -157,6 +157,8 @@ jobs:
           file: docker/Dockerfile.frontend.prod
           platforms: linux/amd64
           push: true
+          build-args: |
+            NEXT_PUBLIC_APP_VERSION=${{ needs.prepare.outputs.version_number }}
           tags: |
             ${{ env.IMAGE_PREFIX }}-frontend:${{ needs.prepare.outputs.version }}
             ${{ env.IMAGE_PREFIX }}-frontend:latest

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TourDef } from "@/lib/help/tours";
 import { isTourDone } from "@/lib/help/storage";
+import { readPrefs, resetPreferencesCache, setPreferences } from "@/lib/preferences";
 import { TourHost, TourOffer, startTour, stopTour } from "./Tour";
 
 const TOURS: TourDef[] = [
@@ -49,6 +50,7 @@ const rect = { top: 100, left: 100, width: 200, height: 40, right: 300, bottom: 
 
 beforeEach(() => {
   localStorage.clear();
+  resetPreferencesCache();
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(rect as DOMRect);
 });
 
@@ -103,7 +105,7 @@ describe("Tour", () => {
     expect(isTourDone("t")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(localStorage.getItem("m-tour:t")).toBe("done");
+    expect(readPrefs().tours_done).toEqual(["t"]);
   });
 
   it("Escape closes without marking a normal tour done", async () => {
@@ -190,7 +192,7 @@ describe("TourOffer", () => {
   });
 
   it("is not shown for a tour already done", () => {
-    localStorage.setItem("m-tour:t", "done");
+    setPreferences({ tours_done: ["t"] });
     render(<TourOffer id="t" tours={TOURS} />);
     expect(screen.queryByText("New here?")).toBeNull();
   });

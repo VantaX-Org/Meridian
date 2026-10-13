@@ -67,7 +67,7 @@ export default function WhatIfPage() {
             </Card>
           </>
         ) : failed ? (
-          <ErrorState message={failed.error} onRetry={() => run.mutate()} />
+          <ErrorState title="Simulation did not produce fixes" message={failed.error} onRetry={() => run.mutate()} />
         ) : sim.isError ? (
           <ErrorState message="This simulation has expired. Run it again." onRetry={() => run.mutate()} />
         ) : (
