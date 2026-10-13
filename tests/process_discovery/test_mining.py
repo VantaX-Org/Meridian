@@ -135,6 +135,30 @@ def test_stats_shape() -> None:
                        Conformance(0.5, {"A": 0.5}, {}, {}))
     s = MiningResult("R2R", "fi_doc", {"fi_doc": r}).stats({"BKPF": {"rows": 4, "partial": False}}, [], 0)
     assert set(s) == {"cases", "events", "variants", "case_types", "throughput", "automation_rate", "conformance",
-                      "rework", "tables", "truncated_tables", "shared_objects", "unmapped"}
+                      "happy_path", "rework", "tables", "truncated_tables", "shared_objects", "unmapped"}
     assert s["automation_rate"] == 0.25 and s["unmapped"] == {"POST_ZF01": 4} and s["rework"] == {"POST_ZF01": 0.5}
     assert s["throughput"] == {"median_seconds": 10.0, "p90_seconds": 20.0} and s["conformance"]["fitness"] == 0.5
+
+
+def test_happy_path_is_the_most_common_conformant_variant() -> None:
+    """The happy path is the highest-case-count variant that follows the process exactly."""
+    # HAPPY is perfectly conformant; the second variant skips GOODS_RECEIPT (missing); the
+    # third is HAPPY with a leading rework (extra, still fitness < 1 because of the extra).
+    vs = [v(HAPPY, 50, "happy"), v(("CREATE_PO_ITEM", "INVOICE_RECEIPT", "CLEAR_INVOICE"), 30, "skip"),
+          v(("CREATE_PO_ITEM", *HAPPY), 20, "rework")]
+    r = CaseTypeResult("po_item", 100, 400, None, None, [], {}, vs)
+    r.conformance = conformance(vs, PTP)  # sets each variant's fitness
+
+    hp = r.happy_path()
+
+    assert hp["activities"] == list(HAPPY)
+    assert hp["case_count"] == 50
+    assert hp["share"] == 0.5
+    assert hp["fitness"] == 1.0
+
+
+def test_happy_path_is_empty_when_no_variant_conforms() -> None:
+    vs = [v(("INVOICE_RECEIPT", "CREATE_PO_ITEM"), 100, "bad")]
+    r = CaseTypeResult("po_item", 100, 200, None, None, [], {}, vs)
+    r.conformance = conformance(vs, PTP)
+    assert r.happy_path() == {"activities": [], "case_count": 0, "share": 0.0, "fitness": None}

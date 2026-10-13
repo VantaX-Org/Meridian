@@ -154,6 +154,22 @@ class CaseTypeResult:
     def stored(self) -> list[Variant]:
         return truncate(self.variants, self.cases)
 
+    def happy_path(self) -> dict[str, object]:
+        """Celonis's "happy path": the most common variant that follows the expected process exactly.
+
+        A variant with ``fitness == 1.0`` has no missing expected step and no out-of-order
+        activity. The case count of the top such variant is how many cases went right first
+        time, and its share of all cases is the process's health measure — the higher it is,
+        the less rework, reordering and exception handling the process incurs.
+        """
+        perfect = [v for v in self.variants if v.fitness is not None and v.fitness >= 1.0]
+        if not perfect:
+            return {"activities": [], "case_count": 0, "share": 0.0, "fitness": None}
+        v = max(perfect, key=lambda x: x.case_count)
+        return {"activities": list(v.activities), "case_count": v.case_count,
+                "share": round(v.case_count / self.cases, 4) if self.cases else 0.0,
+                "fitness": v.fitness}
+
 
 @dataclass
 class MiningResult:
@@ -178,6 +194,7 @@ class MiningResult:
             "conformance": {"fitness": p.conformance.fitness if p else None,
                             "missing": p.conformance.missing if p else {},
                             "out_of_order": p.conformance.out_of_order if p else {}},
+            "happy_path": p.happy_path() if p else {"activities": [], "case_count": 0, "share": 0.0, "fitness": None},
             "rework": {a.activity: round(a.rework_rate, 4) for a in acts if a.rework_rate > 0},
             "tables": tables or {},
             "truncated_tables": list(truncated),
