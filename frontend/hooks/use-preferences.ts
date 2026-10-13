@@ -5,7 +5,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getPreferences, patchPreferences } from "@/lib/api/preferences";
 import { queryKeys } from "@/lib/query-keys";
 import {
+  abandonPreferencesLoad,
+  beginPreferencesLoad,
   hydratePreferences,
+  syncPreferencesUser,
   readPrefs,
   registerPreferencesSink,
   setPreferences,
@@ -31,10 +34,10 @@ export function usePreferences(): { prefs: Preferences; update: (patch: Preferen
  * (server wins; an empty server adopts this browser's choices) and forwards every later change to the server, in
  * order. A failed save leaves the local value in place and is silent: the next change retries with its own patch.
  */
-export function usePreferencesSync(): void {
+export function usePreferencesSync(userId?: string): void {
   const qc = useQueryClient();
   const q = useQuery({
-    queryKey: queryKeys.preferences(),
+    queryKey: queryKeys.preferences(userId),
     queryFn: getPreferences,
     staleTime: 0,
     refetchOnWindowFocus: false,
@@ -46,14 +49,25 @@ export function usePreferencesSync(): void {
     const send = (patch: PreferencesPatch) => {
       chain = chain
         .then(() => patchPreferences(patch))
-        .then((doc) => qc.setQueryData(queryKeys.preferences(), doc))
+        .then((doc) => qc.setQueryData(queryKeys.preferences(userId), doc))
         .catch(() => undefined);
     };
     registerPreferencesSink(send);
     return () => registerPreferencesSink(null);
-  }, [qc]);
+  }, [qc, userId]);
 
+  // A new user (or a first mount): drop another user's cached choices, then queue local changes until the
+  // server copy arrives.
   const hydrated = useRef(false);
+  useEffect(() => {
+    if (userId) syncPreferencesUser(userId);
+    hydrated.current = false;
+    beginPreferencesLoad();
+  }, [userId]);
+  useEffect(() => {
+    if (q.isError) abandonPreferencesLoad();
+  }, [q.isError]);
+
   useEffect(() => {
     // isFetchedAfterMount: never hydrate from a copy cached by a previous user of this browser tab.
     if (hydrated.current || !q.isFetchedAfterMount || !q.data) return;

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Button, NotificationBell, Pill, Rail, Skeleton, TopBar, CommandPalette, RootPageFrame, RunSelector, type RunOption } from "@/design";
 import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
+import { useAuth } from "@/context/auth-context";
 import { useJobs } from "@/hooks/use-jobs";
 import { usePreferencesSync } from "@/hooks/use-preferences";
 import { AuthGuard } from "@/components/auth/auth-guard";
@@ -129,7 +130,7 @@ function JobProgressBar() {
 
 /** Loads the user's server-side preferences once after sign-in and keeps them in step with local changes. */
 function PreferencesSync() {
-  usePreferencesSync();
+  usePreferencesSync(useAuth().user?.id);
   return null;
 }
 

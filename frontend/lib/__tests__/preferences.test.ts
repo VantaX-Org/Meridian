@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatDate, setFormatPrefs } from "../format";
 import {
-  PREFS_KEY, hydratePreferences, mergePrefs, readPrefs, registerPreferencesSink, resetPreferencesCache, setPreferences,
+  PREFS_KEY, abandonPreferencesLoad, beginPreferencesLoad, clearLocalPreferences, composePatch, hydratePreferences,
+  mergePrefs, readPrefs, registerPreferencesSink, resetPreferencesCache, setPreferences, syncPreferencesUser,
 } from "../preferences";
 
 beforeEach(() => {
   window.localStorage.clear();
   resetPreferencesCache();
   registerPreferencesSink(null);
+  abandonPreferencesLoad();
+  hydratePreferences({}); // resets the module's load and carry flags
+  window.localStorage.clear();
+  resetPreferencesCache();
   setFormatPrefs({});
 });
 
@@ -97,5 +102,84 @@ describe("hydratePreferences", () => {
 
   it("returns nothing to upload when both sides are empty", () => {
     expect(hydratePreferences({})).toBeNull();
+  });
+});
+
+describe("changes made while the server copy loads", () => {
+  it("are queued, not sent, then merged over the server copy and returned to upload", () => {
+    const sink = vi.fn();
+    registerPreferencesSink(sink);
+    beginPreferencesLoad();
+    setPreferences({ theme: "dark" });
+    setPreferences({ notifications: { digest: "weekly" } });
+    setPreferences({ locale: null });
+    expect(sink).not.toHaveBeenCalled();
+    expect(readPrefs().theme).toBe("dark"); // applied locally at once
+    const upload = hydratePreferences({ theme: "light", locale: "de-DE", density: "compact", notifications: { immediate_critical: true } });
+    expect(upload).toEqual({ theme: "dark", notifications: { digest: "weekly" }, locale: null });
+    expect(readPrefs()).toEqual({ theme: "dark", density: "compact", notifications: { immediate_critical: true, digest: "weekly" } });
+    // loaded: later changes go straight to the sink
+    setPreferences({ density: "default" });
+    expect(sink).toHaveBeenCalledWith({ density: "default" });
+  });
+
+  it("are uploaded as ordinary changes when the load fails", () => {
+    const sink = vi.fn();
+    registerPreferencesSink(sink);
+    beginPreferencesLoad();
+    setPreferences({ theme: "dark" });
+    abandonPreferencesLoad();
+    expect(sink).toHaveBeenCalledWith({ theme: "dark" });
+  });
+
+  it("composePatch keeps nulls", () => {
+    expect(composePatch({ theme: "dark", notifications: { digest: "daily" } }, { theme: null, notifications: { digest: null } }))
+      .toEqual({ theme: null, notifications: { digest: null } });
+  });
+});
+
+describe("clearing on sign-out and user change", () => {
+  it("clearLocalPreferences removes the document, legacy keys and saved views but keeps the theme applied", () => {
+    setPreferences({ theme: "dark", locale: "de-DE", saved_views: { t: [{ name: "v" }] } });
+    window.localStorage.setItem("aurora:density", "compact");
+    window.localStorage.setItem("m-table-views:old", "[]");
+    clearLocalPreferences();
+    expect(window.localStorage.getItem(PREFS_KEY)).toBeNull();
+    expect(window.localStorage.getItem("aurora:density")).toBeNull();
+    expect(window.localStorage.getItem("m-table-views:old")).toBeNull();
+    expect(readPrefs()).toEqual({ theme: "dark" });
+  });
+
+  it("a different user id clears the cache; the same id does not", () => {
+    syncPreferencesUser("u1");
+    setPreferences({ locale: "de-DE", density: "compact" });
+    syncPreferencesUser("u1");
+    expect(readPrefs().locale).toBe("de-DE");
+    syncPreferencesUser("u2");
+    expect(readPrefs().locale).toBeUndefined();
+    expect(window.localStorage.getItem("meridian:prefs-user")).toBe("u2");
+  });
+
+  it("the next user with no server copy does not inherit the carried appearance", () => {
+    syncPreferencesUser("u1");
+    setPreferences({ theme: "dark" });
+    syncPreferencesUser("u2");
+    expect(readPrefs().theme).toBe("dark"); // still applied until their copy loads
+    expect(hydratePreferences({})).toBeNull();
+    expect(readPrefs()).toEqual({});
+  });
+
+  it("the next user's server copy replaces the carried theme", () => {
+    syncPreferencesUser("u1");
+    setPreferences({ theme: "dark" });
+    syncPreferencesUser("u2");
+    hydratePreferences({ theme: "light" });
+    expect(readPrefs().theme).toBe("light");
+  });
+
+  it("the first sign-in after upgrade (no stored user) keeps existing local choices", () => {
+    setPreferences({ density: "compact" });
+    syncPreferencesUser("u1");
+    expect(readPrefs().density).toBe("compact");
   });
 });

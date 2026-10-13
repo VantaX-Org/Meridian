@@ -65,4 +65,25 @@ describe("usePreferencesSync", () => {
     await waitFor(() => expect(calls).toEqual([{ theme: "dark" }, { density: "compact" }]));
     expect(result.current.p.prefs).toEqual({ theme: "dark", density: "compact" });
   });
+
+  it("keeps a change made before the server copy arrived, over that copy, and uploads it", async () => {
+    let release: (v: Record<string, unknown>) => void = () => {};
+    vi.spyOn(api, "getPreferences").mockReturnValue(new Promise((r) => { release = r; }));
+    const patch = vi.spyOn(api, "patchPreferences").mockResolvedValue({});
+    const { result } = renderHook(() => ({ sync: usePreferencesSync("u1"), p: usePreferences() }), { wrapper: wrapper() });
+    act(() => result.current.p.update({ theme: "dark" }));
+    expect(patch).not.toHaveBeenCalled();
+    await act(async () => { release({ theme: "light", density: "compact" }); });
+    await waitFor(() => expect(patch).toHaveBeenCalledWith({ theme: "dark" }));
+    expect(result.current.p.prefs).toEqual({ theme: "dark", density: "compact" });
+  });
+
+  it("clears another user's cached choices when the signed-in user differs", async () => {
+    window.localStorage.setItem("meridian:prefs-user", "u1");
+    window.localStorage.setItem("meridian:prefs", JSON.stringify({ locale: "de-DE" }));
+    vi.spyOn(api, "getPreferences").mockResolvedValue({ density: "compact" });
+    vi.spyOn(api, "patchPreferences").mockResolvedValue({});
+    const { result } = renderHook(() => ({ sync: usePreferencesSync("u2"), p: usePreferences() }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.p.prefs).toEqual({ density: "compact" }));
+  });
 });

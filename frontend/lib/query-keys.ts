@@ -60,7 +60,7 @@ export const queryKeys = {
   exceptionRules: () => ["inbox", "exception-rules"] as const,
   unreadNotifications: () => ["inbox", "unread-notifications"] as const,
   notifications: (filters: Record<string, unknown>) => ["inbox", "notifications", normalizeFilters(filters)] as const,
-  preferences: () => ["preferences"] as const,
+  preferences: (userId?: string) => ["preferences", userId] as const,
   users: () => ["users"] as const,
   glossary: (scope: string, filters: Record<string, unknown>) =>
     ["glossary", scope, normalizeFilters(filters)] as const,
