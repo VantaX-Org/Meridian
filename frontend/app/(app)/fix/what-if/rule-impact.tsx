@@ -122,7 +122,7 @@ export function CreateBatchFromSimulation({ simulation }: { simulation: Simulati
   });
   return (
     <>
-      <Button onClick={() => setOpen(true)} disabled={simulation.records.resolved === 0}>Create fix batch from this simulation</Button>
+      <Button onClick={() => setOpen(true)} disabled={!simulation.record_fixes?.length}>Create fix batch from this simulation</Button>
       <Dialog
         open={open}
         onOpenChange={setOpen}

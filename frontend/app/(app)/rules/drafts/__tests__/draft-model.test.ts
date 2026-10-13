@@ -23,6 +23,12 @@ describe("draft model", () => {
     expect(rule.pattern).toBe("p");
   });
 
+  it("drops a reserved key from the conditions when the form field is cleared", () => {
+    const rule = formToRule({ ...EMPTY_FORM, id: "A", module: "m", message: "x", field: "", conditions: '{"field":"LFA1.STCD1","pattern":"p"}' });
+    expect(rule.field).toBeUndefined();
+    expect(rule.pattern).toBe("p");
+  });
+
   it("rejects conditions that are not a JSON object", () => {
     expect(parseConditions("[1]").ok).toBe(false);
     expect(parseConditions("{oops").ok).toBe(false);

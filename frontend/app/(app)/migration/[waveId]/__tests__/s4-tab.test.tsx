@@ -49,10 +49,11 @@ describe("S4Tab", () => {
     expect(within(summary).getByText("40")).toBeInTheDocument();
   });
 
-  it("links each area to its findings and disables actions with nothing failing", async () => {
+  it("links each area to its findings (unfiltered when the area spans modules) and disables actions with nothing failing", async () => {
     renderWithQuery(<S4Tab versionId="v1" />);
     const links = await screen.findAllByRole("link", { name: "Open findings" });
-    expect(links[0]).toHaveAttribute("href", "/runs/v1?tab=findings&module=accounts_payable");
+    // The first area fails in accounts_payable and business_partner; a module filter would hide one of them.
+    expect(links[0]).toHaveAttribute("href", "/runs/v1?tab=findings");
     const buttons = screen.getAllByRole("button", { name: "Create fix batch" });
     expect(buttons[1]).toBeDisabled();
   });

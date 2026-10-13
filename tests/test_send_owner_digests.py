@@ -111,3 +111,31 @@ def test_send_owner_digests_skips_failing_tenant_and_continues(monkeypatch, capl
     assert ("query", "t2") in calls
     assert ("commit", "t2") in calls
     assert any("t1" in r.message for r in caplog.records)
+
+
+def test_owner_with_only_resolved_items_gets_no_digest(monkeypatch):
+    """An owner whose every assigned item is resolved has nothing to digest; the
+    on-demand route reads a zero count as 'no open items' for that owner."""
+    from types import SimpleNamespace
+
+    import workers.tasks.send_owner_digests as digests_module
+
+    class _Session(_FakeSession):
+        def execute(self, stmt, params=None):
+            if "record_issues" in str(stmt):
+                self.calls.append(("query", self.tenant_id))
+                return _FakeResult([SimpleNamespace(_mapping=r) for r in (
+                    {"user_id": str(uuid.uuid4()), "owner": "Ana", "severity": "high",
+                     "open_count": 0, "baseline_open_count": 1, "fixed_since_baseline": 1,
+                     "oldest_open_first_seen": None},
+                    {"user_id": str(uuid.uuid4()), "owner": "Ben", "severity": "high",
+                     "open_count": 2, "baseline_open_count": 2, "fixed_since_baseline": 0,
+                     "oldest_open_first_seen": datetime.now(timezone.utc)},
+                )])
+            return super().execute(stmt, params)
+
+    calls: list[tuple] = []
+    monkeypatch.setattr(digests_module, "tenant_session", lambda engine, tid: _Session(calls, tenant_id=tid))
+    assert digests_module.send_digests_for_tenant(object(), "t1", owner="Ana") == 0
+    assert digests_module.send_digests_for_tenant(object(), "t1") == 1
+    assert calls.count(("insert", "t1")) == 1

@@ -213,7 +213,8 @@ async def publish_draft(
         INSERT INTO rules (tenant_id, name, description, module, category, severity, enabled, conditions, source)
         VALUES (:tid, :name, :desc, :m, 'custom', :sev, true, CAST(:cond AS jsonb), 'custom')
         ON CONFLICT (tenant_id, name, module) DO UPDATE SET enabled = true, severity = EXCLUDED.severity,
-                                                            updated_at = now()
+                                                            description = EXCLUDED.description,
+                                                            conditions = EXCLUDED.conditions, updated_at = now()
         RETURNING id, name, module, severity, enabled
     """), {"tid": str(tenant.id), "name": f"{rule['id']}: {rule['message']}", "desc": rule["message"],
            "m": module, "sev": rule["severity"], "cond": json.dumps(cond, default=str)})).fetchone()

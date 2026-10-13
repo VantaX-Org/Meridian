@@ -431,7 +431,7 @@ async def get_root_cause(
 # ------------------------------------------------------------------
 
 async def enqueue_latest_run(db: AsyncSession, tenant_id: str, system_id: Optional[str]) -> dict:
-    """Queue config + Z-object intelligence over the newest version that kept its dataset.
+    """Queue config + Z-object intelligence over the newest completed version that kept its dataset.
 
     ``POST /discover`` and ``POST /z-objects/detect`` take records inline, which a browser
     never holds; this reruns the same worker the analysis enqueues, on the stored data.
@@ -441,7 +441,7 @@ async def enqueue_latest_run(db: AsyncSession, tenant_id: str, system_id: Option
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": tenant_id})
     row = (await db.execute(text(
         "SELECT id, metadata->>'dataset_path' FROM analysis_versions "
-        "WHERE tenant_id = :tid AND metadata->>'dataset_path' IS NOT NULL "
+        "WHERE tenant_id = :tid AND status = 'completed' AND metadata->>'dataset_path' IS NOT NULL "
         "AND (CAST(:sid AS text) IS NULL OR metadata->>'system_id' = CAST(:sid AS text)) "
         "ORDER BY run_at DESC LIMIT 1"), {"tid": tenant_id, "sid": system_id})).fetchone()
     if not row:

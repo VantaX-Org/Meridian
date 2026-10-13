@@ -69,11 +69,11 @@ export function validateForm(f: DraftForm): Partial<Record<keyof DraftForm, stri
   return errors;
 }
 
-/** The rule object the API validates; form fields win over a same-named key in the conditions. */
+/** The rule object the API validates; form fields win over a same-named key in the conditions, even when cleared. */
 export function formToRule(f: DraftForm): Record<string, unknown> {
   const c = parseConditions(f.conditions);
   const rule: Record<string, unknown> = {
-    ...(c.ok ? c.value : {}),
+    ...Object.fromEntries(Object.entries(c.ok ? c.value : {}).filter(([k]) => !FORM_KEYS.has(k))),
     id: f.id.trim(),
     check_class: f.check_class,
     severity: f.severity,

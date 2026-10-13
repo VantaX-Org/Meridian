@@ -123,9 +123,11 @@ export function S4Tab({ versionId }: { versionId: string | null }) {
   const fixingCheck = fix.isPending ? fix.variables?.check.check_id ?? null : null;
 
   const columns = useMemo<ColumnDef<S4Area>[]>(() => {
+    // Filter by module only when every failing check in the area shares one, so the list matches the counts shown.
     const findingsHref = (a: S4Area) => {
-      const top = topFailing(a);
-      return `/runs/${versionId}?tab=findings${top?.module ? `&module=${top.module}` : ""}`;
+      const modules = new Set(a.checks.filter((c) => c.affected_count > 0).map((c) => c.module));
+      const only = modules.size === 1 ? [...modules][0] : undefined;
+      return `/runs/${versionId}?tab=findings${only ? `&module=${only}` : ""}`;
     };
     return [
       { accessorKey: "label", header: "Area" },

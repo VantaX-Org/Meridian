@@ -15,7 +15,7 @@ logger = logging.getLogger("meridian.workers.owner_digests")
 
 
 def send_digests_for_tenant(engine, tenant_id, owner: str | None = None) -> int:
-    """Write one digest notification per owner of one tenant (only ``owner`` when given).
+    """Write one digest notification per owner with open items in one tenant (only ``owner`` when given).
 
     Returns how many digests were written. Shared by the weekly beat task and the
     on-demand ``POST /api/v1/owners/digests/send`` route.
@@ -29,6 +29,8 @@ def send_digests_for_tenant(engine, tenant_id, owner: str | None = None) -> int:
         aggregates = load_owner_aggregates(issue_rows)
         for name, agg in aggregates.items():
             if owner is not None and name != owner:
+                continue
+            if not agg["open_by_severity"]:  # everything assigned is resolved: nothing to digest
                 continue
             card = build_owner_card(
                 name, agg["score"], agg["delta"], agg["open_by_severity"],
