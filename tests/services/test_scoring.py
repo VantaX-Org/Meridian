@@ -153,3 +153,21 @@ def test_score_all_modules():
     assert "mod_b" in results
     assert results["mod_a"].composite_score == 100.0
     assert results["mod_b"].critical_count == 1
+
+
+def test_score_all_modules_maps_field_unmaintained_to_not_applicable():
+    """A presence check on an unmaintained field is not a defect and not a coverage miss.
+
+    It must surface as not_applicable, not silently disappear from the DQS model (the
+    runner reports it under "field_unmaintained", which score_all_modules had never read).
+    """
+    findings = [_make_result("T001", module="mod_a", dimension="completeness")]
+    skips = {"mod_a": {"not_evaluable": 2, "not_applicable": 3, "field_unmaintained": 7}}
+
+    results = score_all_modules(findings, skips=skips)
+
+    r = results["mod_a"]
+    assert r.skipped_checks == 2
+    assert r.not_applicable_checks == 10, "field_unmaintained must fold into not_applicable"
+    assert r.coverage == round(1.0 / (1 + 2), 4), "coverage = findings / (findings + not_evaluable)"
+    assert r.total_checks == 1, "the suppressed rule must not count as a finding"

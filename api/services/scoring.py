@@ -290,13 +290,21 @@ def score_module(findings: list[CheckResult], tenant_config: dict, *, module: st
 def score_all_modules(all_results: list[CheckResult], tenant_weights: dict | None = None,
                       skips: dict[str, dict[str, int]] | None = None) -> dict[str, DQSResult]:
     """Group results by module and score each one with the tenant's DQS weights.
-    ``skips`` = {module: {"not_evaluable": n, "not_applicable": n}} from the runner."""
+    ``skips`` = {module: {"not_evaluable": n, "not_applicable": n, ...}} from the runner."""
     by_module: dict[str, list[CheckResult]] = {m: [] for m in (skips or {})}
     for r in all_results:
         by_module.setdefault(r.module, []).append(r)
+
+    def _count(module: str, *keys: str) -> int:
+        mod = (skips or {}).get(module) or {}
+        return sum(int(mod.get(k, 0)) for k in keys)
+
     return {module: score_module(findings, tenant_weights or {}, module=module,
-                                 skipped=(skips or {}).get(module, {}).get("not_evaluable", 0),
-                                 not_applicable=(skips or {}).get(module, {}).get("not_applicable", 0))
+                                 # field_unmaintained is a presence check whose field is blank in
+                                 # ~every row: nothing to judge, so it is "not applicable" — not a
+                                 # coverage miss and not a defect.
+                                 skipped=_count(module, "not_evaluable"),
+                                 not_applicable=_count(module, "not_applicable", "field_unmaintained"))
             for module, findings in by_module.items()}
 
 
