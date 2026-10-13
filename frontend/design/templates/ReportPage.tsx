@@ -6,6 +6,7 @@ import { PageHeader } from "../primitives/PageHeader";
 import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
 import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
+import { ReportPrintContext } from "../primitives/ExportMenu";
 
 export function ReportPage({
   title,
@@ -68,14 +69,16 @@ export function ReportPage({
   }
 
   return (
-    <PageFrame gap={4}>
-      {title ? <PageHeader title={title} meta={meta} actions={exportMenu} /> : header}
-      <div className="flex items-start justify-between gap-4">
-        <div className="m-text-body" style={{ color: "var(--m-ink)" }}>{narrative}</div>
-        {title ? null : exportMenu}
-      </div>
-      {body}
-      {!exportMenu && onExport && <Button variant="secondary" onClick={onExport}>Export</Button>}
-    </PageFrame>
+    <ReportPrintContext.Provider value>
+      <PageFrame gap={4} className="m-report">
+        {title ? <PageHeader title={title} meta={meta} actions={exportMenu} /> : header}
+        <div className="flex items-start justify-between gap-4">
+          <div className="m-text-body" style={{ color: "var(--m-ink)" }}>{narrative}</div>
+          {title ? null : exportMenu}
+        </div>
+        {body}
+        {!exportMenu && onExport && <Button variant="secondary" onClick={onExport}>Export</Button>}
+      </PageFrame>
+    </ReportPrintContext.Provider>
   );
 }

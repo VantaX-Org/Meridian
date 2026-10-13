@@ -13,6 +13,7 @@ _UNGUARDED_OK = {
     ("auth.py", "/forgot-password"), ("auth.py", "/reset-password"), ("auth.py", "/invite/preview"),
     ("notifications.py", "/notifications/{notification_id}/read"),
     ("notifications.py", "/notifications/read-all"),
+    ("preferences.py", "/me/preferences"),
 }
 
 

@@ -76,7 +76,9 @@ describe("CompareRunsPage", () => {
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument());
+    // a report page's export menu also offers Print, so the single PDF option sits in the menu
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "PDF" }));
     await waitFor(() => expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", "comparison.pdf"));
   });
 

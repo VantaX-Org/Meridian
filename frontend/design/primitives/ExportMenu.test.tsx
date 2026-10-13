@@ -11,7 +11,7 @@ vi.mock("@/context/auth-context", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-import { ExportMenu, emptyExportOptions } from "./ExportMenu";
+import { ExportMenu, ReportPrintContext, emptyExportOptions } from "./ExportMenu";
 
 describe("ExportMenu", () => {
   beforeEach(() => {
@@ -67,5 +67,33 @@ describe("ExportMenu", () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Nothing to export"));
     expect(run).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  describe("on a report page", () => {
+    const inReport = (ui: React.ReactElement) => render(<ReportPrintContext.Provider value>{ui}</ReportPrintContext.Provider>);
+
+    it("adds a Print item that calls window.print", async () => {
+      const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+      inReport(<ExportMenu options={[{ format: "xlsx", run: vi.fn() }]} />);
+      fireEvent.click(screen.getByRole("button", { name: /Export/ }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Print" }));
+      expect(print).toHaveBeenCalledOnce();
+      print.mockRestore();
+    });
+
+    it("keeps Print for a viewer who cannot export", () => {
+      permissions = [];
+      const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+      inReport(<ExportMenu options={[{ format: "xlsx", run: vi.fn() }]} />);
+      expect(screen.queryByRole("button", { name: /Export/ })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Print" }));
+      expect(print).toHaveBeenCalledOnce();
+      print.mockRestore();
+    });
+
+    it("outside a report page there is no Print", () => {
+      render(<ExportMenu options={[{ format: "xlsx", run: vi.fn() }, { format: "pdf", run: vi.fn() }]} />);
+      expect(screen.queryByText("Print")).not.toBeInTheDocument();
+    });
   });
 });

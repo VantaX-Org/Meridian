@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
@@ -48,18 +48,25 @@ export function exportOptionLabel(option: ExportOption): string {
   return option.label ?? DEFAULT_LABEL[option.format];
 }
 
+/** ReportPage provides true, so an ExportMenu inside a report page gains a "Print" item (window.print(); design/print.css shapes the paper). */
+export const ReportPrintContext = createContext(false);
+
 export interface ExportMenuProps {
   options: ExportOption[];
   size?: "sm" | "md";
   disabled?: boolean;
 }
 
-/** Export affordance: a single "Export" button, or a menu when there is more than one option. Hidden for viewers. */
+/** Export affordance: a single "Export" button, or a menu when there is more than one option. Hidden for viewers,
+ * except that on a report page everyone keeps "Print". */
 export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
   const { can } = useRole();
+  const printable = useContext(ReportPrintContext);
   const [busy, setBusy] = useState(false);
 
-  if (!can("export") || options.length === 0) return null;
+  const canExport = can("export");
+  const exportOptions = canExport ? options : [];
+  if (exportOptions.length === 0 && !printable) return null;
 
   const runOption = async (option: ExportOption) => {
     setBusy(true);
@@ -73,9 +80,18 @@ export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
   // self-start: in a column flex parent the button would otherwise stretch to full width.
   const triggerClassName = size === "sm" ? "self-start text-[12px] px-2 py-1" : "self-start";
   const label = busy ? "Preparing" : "Export";
+  const print = () => window.print();
 
-  if (options.length === 1) {
-    const option = options[0];
+  if (exportOptions.length === 0) {
+    return (
+      <Button variant="secondary" className={triggerClassName} disabled={disabled} onClick={print}>
+        Print
+      </Button>
+    );
+  }
+
+  if (exportOptions.length === 1 && !printable) {
+    const option = exportOptions[0];
     return (
       <Button
         variant="secondary"
@@ -97,10 +113,13 @@ export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
           {!busy && <ChevronDown size={14} />}
         </Button>
       }
-      items={options.map((option) => ({
-        label: exportOptionLabel(option),
-        onSelect: () => void runOption(option),
-      }))}
+      items={[
+        ...exportOptions.map((option) => ({
+          label: exportOptionLabel(option),
+          onSelect: () => void runOption(option),
+        })),
+        ...(printable ? [{ label: "Print", onSelect: print }] : []),
+      ]}
     />
   );
 }
