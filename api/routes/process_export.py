@@ -98,3 +98,43 @@ async def export_model(model_id: uuid.UUID, request: Request, version: Optional[
     vno = version or model["current_version"]
     doc = await _document(db, tenant, model_id, vno)  # 404 for an unknown version
     return await _respond(request, tenant, doc, model["name"], vno, model_id, await _overlay(db, tenant, doc, overlay))
+
+
+async def _respond_pptx(request: Request, tenant: Tenant, doc: ProcessModelDocument, name: str,
+                        version_no: int, model_id: Optional[uuid.UUID]) -> Response:
+    """Render the L1-L5 model to PowerPoint and return it, with its own audit row."""
+    from api.services.pptx_export import export_pptx
+
+    meta = {"model_id": str(model_id) if model_id else None, "name": name, "version_no": version_no,
+            "exported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "app_version": request.app.version}
+    data = export_pptx(doc, meta)
+    fname = f"{slug(name)}-v{version_no}.pptx"
+    await asyncio.to_thread(_insert_audit_row, {
+        "tenant_id": tenant.id,
+        "actor_user_id": getattr(request.state, "local_user_id", None),
+        "actor_email": getattr(request.state, "local_user_email", None),
+        "action": "export", "entity_type": "process_model", "entity_id": str(model_id) if model_id else None,
+        "method": "GET", "path": request.url.path, "status_code": 200,
+        "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+        "before_json": {"format": "pptx", "version": version_no},
+        "after_json": None})
+    return Response(content=data,
+                    media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+@router.get("/reference/export/pptx", dependencies=[Depends(require_permission("export"))])
+async def export_reference_pptx(request: Request, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    doc = reference_document()
+    return await _respond_pptx(request, tenant, doc, "reference", 0, None)
+
+
+@router.get("/models/{model_id}/export/pptx", dependencies=[Depends(require_permission("export"))])
+async def export_model_pptx(model_id: uuid.UUID, request: Request, version: Optional[int] = Query(None, ge=1),
+                            db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    model = await _model(db, tenant, model_id)
+    vno = version or model["current_version"]
+    doc = await _document(db, tenant, model_id, vno)
+    return await _respond_pptx(request, tenant, doc, model["name"], vno, model_id)
