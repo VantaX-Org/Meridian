@@ -51,8 +51,27 @@ def _dev_roles(monkeypatch):
     monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
 
 
+class _Redis:
+    def __init__(self, free: bool = True) -> None:
+        self.free = free
+        self.keys: list[str] = []
+
+    def set(self, key: str, _v, nx=False, ex=None) -> bool:
+        self.keys.append(key)
+        return self.free
+
+
 @pytest.fixture
-def queued(monkeypatch):
+def redis_free(monkeypatch):
+    from api.middleware import cache
+
+    fake = _Redis()
+    monkeypatch.setattr(cache, "get_redis", lambda: fake)
+    return fake
+
+
+@pytest.fixture
+def queued(monkeypatch, redis_free):
     calls: list[tuple] = []
     task = types.SimpleNamespace(delay=lambda *a: calls.append(a))
     module = types.ModuleType("workers.tasks.run_config_intelligence")
@@ -77,6 +96,24 @@ def test_only_completed_versions_are_considered(queued):
     sql = str(db.stmts[-1])
     assert "status NOT IN ('pending', 'queued', 'running', 'failed')" in sql
     assert "status = 'completed'" not in sql  # 'completed' is not a real analysis status (they are 'complete', 'agents_complete', ...)
+
+
+def test_second_rerun_on_the_same_version_is_409(queued, redis_free):
+    client, _ = _client(("v1", "/data/v1.parquet"))
+    assert client.post("/api/v1/config/discover/latest", headers={"X-User-Role": "admin"}).status_code == 202
+    redis_free.free = False  # the key is still held: the worker has not finished
+    r = client.post("/api/v1/z-objects/detect/latest", headers={"X-User-Role": "admin"})
+    assert r.status_code == 409 and len(queued) == 1
+    assert all(k.startswith("meridian:ci-rerun:") and k.endswith(":v1") for k in redis_free.keys)
+
+
+def test_without_redis_the_rerun_is_503(queued, monkeypatch):
+    from api.middleware import cache
+
+    monkeypatch.setattr(cache, "get_redis", lambda: None)
+    client, _ = _client(("v1", "/data/v1.parquet"))
+    assert client.post("/api/v1/config/discover/latest", headers={"X-User-Role": "admin"}).status_code == 503
+    assert queued == []
 
 
 def test_no_analysed_data_is_404(queued):
