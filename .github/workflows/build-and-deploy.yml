@@ -32,21 +32,25 @@ concurrency:
 
 # No test job here: unit-tests.yml already runs the full suite on every PR and
 # on every push to main, so a gate here ran the 38-minute suite twice per merge.
+#
+# The six images build in parallel after one `prepare` job resolves the version
+# and pushes the tag. A single `release` job runs once every image exists, and
+# `publish-release` points HQ at that release.
 jobs:
-  build-and-push:
+  prepare:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
     outputs:
       version: ${{ steps.version.outputs.VERSION }}
-    
+      version_number: ${{ steps.version.outputs.VERSION_NUMBER }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Determine next version
         id: version
         run: |
@@ -56,19 +60,19 @@ jobs:
             LATEST_TAG="v0.0.0"
           fi
           echo "Latest tag: $LATEST_TAG"
-          
+
           # Extract version numbers
           VERSION=${LATEST_TAG#v}
           MAJOR=$(echo $VERSION | cut -d. -f1)
           MINOR=$(echo $VERSION | cut -d. -f2)
           PATCH=$(echo $VERSION | cut -d. -f3)
-          
+
           # Determine bump type
           BUMP_TYPE="${{ github.event.inputs.version_bump }}"
           if [ -z "$BUMP_TYPE" ]; then
             BUMP_TYPE="patch"
           fi
-          
+
           # Increment version
           if [ "$BUMP_TYPE" = "major" ]; then
             MAJOR=$((MAJOR + 1))
@@ -80,32 +84,38 @@ jobs:
           else
             PATCH=$((PATCH + 1))
           fi
-          
+
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
           echo "New version: $NEW_VERSION"
           echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "VERSION_NUMBER=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
-      
+
       - name: Create and push tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag ${{ steps.version.outputs.VERSION }}
           git push origin ${{ steps.version.outputs.VERSION }}
-      
+
+  build-api:
+    name: Build and push API
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up QEMU for multi-platform builds
-        uses: docker/setup-qemu-action@v3
-      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
       - name: Build and push API
         uses: docker/build-push-action@v6
         with:
@@ -114,13 +124,32 @@ jobs:
           platforms: linux/amd64
           push: true
           build-args: |
-            MERIDIAN_VERSION=${{ steps.version.outputs.VERSION_NUMBER }}
+            MERIDIAN_VERSION=${{ needs.prepare.outputs.version_number }}
           tags: |
-            ${{ env.IMAGE_PREFIX }}-api:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_PREFIX }}-api:${{ needs.prepare.outputs.version }}
             ${{ env.IMAGE_PREFIX }}-api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  build-frontend:
+    name: Build and push Frontend
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Build and push Frontend
         uses: docker/build-push-action@v6
         with:
@@ -129,11 +158,30 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}-frontend:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_PREFIX }}-frontend:${{ needs.prepare.outputs.version }}
             ${{ env.IMAGE_PREFIX }}-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  build-worker:
+    name: Build and push Worker
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Build and push Worker
         uses: docker/build-push-action@v6
         with:
@@ -142,11 +190,30 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}-worker:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_PREFIX }}-worker:${{ needs.prepare.outputs.version }}
             ${{ env.IMAGE_PREFIX }}-worker:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  build-garage:
+    name: Build and push object storage (Garage)
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Build and push object storage (Garage)
         uses: docker/build-push-action@v6
         with:
@@ -155,25 +222,95 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}-garage:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_PREFIX }}-garage:${{ needs.prepare.outputs.version }}
             ${{ env.IMAGE_PREFIX }}-garage:latest
           cache-from: type=gha,scope=garage
           cache-to: type=gha,mode=max,scope=garage
-      
+
+  build-nginx:
+    name: Build and push nginx Image
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push nginx image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.nginx
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/vantax-org/meridian-nginx:${{ needs.prepare.outputs.version }}
+            ghcr.io/vantax-org/meridian-nginx:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-updater:
+    name: Build and push updater Image
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push updater image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.updater
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/vantax-org/meridian-updater:${{ needs.prepare.outputs.version }}
+            ghcr.io/vantax-org/meridian-updater:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [prepare, build-api, build-frontend, build-worker, build-garage, build-nginx, build-updater]
+    permissions:
+      contents: write
+
+    steps:
+      # gh CLI (preinstalled on the runner) rather than actions/create-release@v1:
+      # that action is archived and runs on the removed node12 runtime, so the
+      # release step fails on current runners. Creates a published release, which is
+      # what the action's draft:false / prerelease:false meant.
+      #
+      # Idempotent: images and tag are pushed before this step, so a re-run that
+      # already got this far exits cleanly instead of dying on "already exists".
       - name: Create GitHub Release
-        # gh CLI (preinstalled on the runner) rather than actions/create-release@v1:
-        # that action is archived and runs on the removed node12 runtime, so the
-        # release step fails on current runners. Creates a published release, which is
-        # what the action's draft:false / prerelease:false meant — as step keys under a
-        # `run:` step they are shell lines, and executing `draft:` exits 127 after the
-        # release has already been created, skipping nginx, updater and the HQ publish.
-        #
-        # Idempotent: images and tag are pushed before this step, so a re-run that
-        # already got this far exits cleanly instead of dying on "already exists".
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          V="${{ steps.version.outputs.VERSION }}"
+          V="${{ needs.prepare.outputs.version }}"
           if gh release view "$V" >/dev/null 2>&1; then
             echo "Release $V already exists; leaving it in place."
             exit 0
@@ -200,94 +337,6 @@ jobs:
           NOTES
           )"
 
-  build-nginx:
-    name: Build and Push nginx Image
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # build-and-push already resolved the version and pushed the tag; reuse that
-      # output rather than re-reading `git tag`, which races any other tag push and
-      # could name this image differently from the one it was built with.
-      - name: Get version from build job
-        id: version
-        run: echo "VERSION=${{ needs.build-and-push.outputs.version }}" >> $GITHUB_OUTPUT
-
-      - name: Build and push nginx image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.nginx
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ghcr.io/vantax-org/meridian-nginx:${{ steps.version.outputs.VERSION }}
-            ghcr.io/vantax-org/meridian-nginx:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-updater:
-    name: Build and Push updater Image
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # build-and-push already resolved the version and pushed the tag; reuse that
-      # output rather than re-reading `git tag`, which races any other tag push and
-      # could name this image differently from the one it was built with.
-      - name: Get version from build job
-        id: version
-        run: echo "VERSION=${{ needs.build-and-push.outputs.version }}" >> $GITHUB_OUTPUT
-
-      - name: Build and push updater image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.updater
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ghcr.io/vantax-org/meridian-updater:${{ steps.version.outputs.VERSION }}
-            ghcr.io/vantax-org/meridian-updater:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   # Tell Meridian HQ about the release once every image a customer's update pulls
   # exists. Installed systems read latest_version from HQ (licence manifest) and
   # offer "Update now" to their admin. RELEASE_PUBLISH_TOKEN works for this one
@@ -295,15 +344,15 @@ jobs:
   publish-release:
     name: Publish release to Meridian HQ
     runs-on: ubuntu-latest
-    needs: [build-and-push, build-nginx, build-updater]
+    needs: [prepare, release]
     permissions: {}
     steps:
       - name: Set latest_version in HQ
         env:
           TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
-          VERSION: ${{ needs.build-and-push.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
           HQ: ${{ vars.LICENCE_SERVER_URL || 'https://licence.meridian.vantax.co.za' }}
-          NOTES: "Release ${{ needs.build-and-push.outputs.version }} — https://github.com/${{ github.repository }}/releases/tag/${{ needs.build-and-push.outputs.version }}"
+          NOTES: "Release ${{ needs.prepare.outputs.version }} — https://github.com/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.version }}"
         run: |
           if [ -z "$TOKEN" ]; then
             echo "::warning::RELEASE_PUBLISH_TOKEN is not set — $VERSION was not published to HQ; installed systems won't offer it."
