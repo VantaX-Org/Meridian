@@ -140,7 +140,7 @@ export interface Conformance {
   fitness: number | null;
   missing: Record<string, number>;
   steps: { activity: string; step_fitness: number | null; out_of_order: number }[];
-  happy_path: { activities: string[]; case_count: number; share: number; fitness: number | null };
+  happy_path?: { activities: string[]; case_count: number; share: number; fitness: number | null };
 }
 
 export interface CaseRow {
