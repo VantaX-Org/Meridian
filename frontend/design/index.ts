@@ -14,6 +14,7 @@ export * from "./primitives/DomainChip";
 export * from "./primitives/Tabs";
 export * from "./primitives/Drawer";
 export * from "./primitives/Dialog";
+export * from "./primitives/ConfirmDialog";
 export * from "./primitives/Menu";
 export * from "./primitives/ExportMenu";
 export * from "./primitives/Tooltip";

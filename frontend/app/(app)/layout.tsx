@@ -25,6 +25,7 @@ import { useDayOne } from "@/hooks/use-day-one";
 import { PermissionsProvider, usePermissions } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
 import { RouteInsight } from "@/components/insight/route-insight";
+import { reportClientError } from "@/lib/client-errors";
 
 const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
@@ -128,6 +129,15 @@ function JobProgressBar() {
   );
 }
 
+/** Reports promise rejections nothing handled; render errors go through error.tsx. */
+function useUnhandledRejectionReporting() {
+  useEffect(() => {
+    const onRejection = (ev: PromiseRejectionEvent) => reportClientError(ev.reason);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  }, []);
+}
+
 /** Loads the user's server-side preferences once after sign-in and keeps them in step with local changes. */
 function PreferencesSync() {
   usePreferencesSync(useAuth().user?.id);
@@ -135,9 +145,11 @@ function PreferencesSync() {
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
+  useUnhandledRejectionReporting();
   return (
     <AuthGuard>
       <PermissionsProvider>
+      <a href="#main" className="m-skip-link">Skip to content</a>
       <PreferencesSync />
       <div className="flex h-screen m-print-flow">
         <Suspense fallback={<div style={{ width: 240 }} />}>
@@ -151,7 +163,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             notifications={<NotificationBell />}
             userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
-          <main className="flex-1 overflow-auto m-print-flow" style={{ background: "var(--m-canvas)" }}>
+          <main id="main" tabIndex={-1} className="flex-1 overflow-auto outline-none m-print-flow" style={{ background: "var(--m-canvas)" }}>
             <Suspense fallback={null}><RouteInsight /></Suspense>
             <RootPageFrame>{children}</RootPageFrame>
           </main>

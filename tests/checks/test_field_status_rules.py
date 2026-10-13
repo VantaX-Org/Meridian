@@ -120,6 +120,20 @@ def test_fields_hidden_by_field_status_are_not_demanded_by_shipped_rules():
     assert sup.total_count == 1  # the field-status rule itself still sees the KRED record
 
 
+def test_field_hidden_for_every_group_is_suppressed_not_just_not_applicable():
+    # Every record sits in a group the system's field status hides the field for, so a
+    # shipped presence rule has nothing to judge — report it as "suppressed by config",
+    # distinct from "not_applicable" (no records) and "field_unmaintained" (blank without
+    # a config reason).
+    from checks.field_status_rules import suppressed_fields
+    hidden = suppressed_fields(resolve_all(CONFIG), {})
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": ["1", "2"], "LFA1.KTOKK": ["KRED", "KRED"], "LFA1.TELF1": ["", ""]})
+    f = TableFrames({"LFA1": lfa1}, D, module="accounts_payable")
+    rule = {"id": "AP022", "field": "LFA1.TELF1", "check_class": "null_check", "module": "accounts_payable"}
+    evaluated, r = run_rule(rule, f, None, hidden)
+    assert r is None and evaluated["_skip"] == "field_suppressed"
+
+
 def test_equipment_flagged_for_deletion_by_status_is_out_of_the_population():
     equi = pd.DataFrame({"EQUI.EQUNR": ["E1", "E2", "E3"], "EQUI.OBJNR": ["IE1", "IE2", "IE3"], "EQUI.HERST": ["", "", ""]})
     jest = pd.DataFrame({"JEST.OBJNR": ["IE1", "IE2", "IE2", "IE3"], "JEST.STAT": ["I0099", "I0076", "I0099", "I0076"],

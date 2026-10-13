@@ -271,8 +271,8 @@ WITH prev AS (
     WHERE system_id = CAST(:sid AS uuid) AND status = 'completed' AND id <> CAST(:lid AS uuid)
       AND tenant_id = CAST(:tid AS uuid)
     ORDER BY finished_at DESC NULLS LAST, created_at DESC LIMIT 1),
-a AS (SELECT object, key, "values" FROM config_items WHERE load_id = (SELECT id FROM prev) AND tenant_id = CAST(:tid AS uuid)),
-b AS (SELECT object, key, "values" FROM config_items WHERE load_id = CAST(:lid AS uuid) AND tenant_id = CAST(:tid AS uuid))
+a AS (SELECT object, key, md5("values"::text) AS h, "values" FROM config_items WHERE load_id = (SELECT id FROM prev) AND tenant_id = CAST(:tid AS uuid)),
+b AS (SELECT object, key, md5("values"::text) AS h, "values" FROM config_items WHERE load_id = CAST(:lid AS uuid) AND tenant_id = CAST(:tid AS uuid))
 INSERT INTO config_drift_log (id, tenant_id, run_id, module, element_type, element_value, change_type,
                               previous_value, current_value)
 SELECT gen_random_uuid(), CAST(:tid AS uuid), CAST(:lid AS uuid), 'config',
@@ -280,7 +280,7 @@ SELECT gen_random_uuid(), CAST(:tid AS uuid), CAST(:lid AS uuid), 'config',
        CASE WHEN a.key IS NULL THEN 'added' WHEN b.key IS NULL THEN 'removed' ELSE 'changed' END,
        a."values"::text, b."values"::text
 FROM a FULL OUTER JOIN b ON a.object = b.object AND a.key = b.key
-WHERE EXISTS (SELECT 1 FROM prev) AND (a.key IS NULL OR b.key IS NULL OR a."values" <> b."values")
+WHERE EXISTS (SELECT 1 FROM prev) AND (a.key IS NULL OR b.key IS NULL OR a.h IS DISTINCT FROM b.h)
 """
 
 
@@ -289,6 +289,9 @@ def write_drift(s: Session, tid: str, sid: str, lid: str) -> int:
     # ponytail: duplicate keys inside one load multiply drift rows; config_items has no unique key.
     s.execute(text("DELETE FROM config_drift_log WHERE run_id = CAST(:lid AS uuid) AND tenant_id = CAST(:tid AS uuid)"),
               {"lid": lid, "tid": tid})
+    # Comparing md5 hashes instead of the jsonb values keeps the changed-check cheap; a hash join
+    # on (object, key) still needs room, so raise work_mem for this statement only.
+    s.execute(text("SET LOCAL work_mem = '128MB'"))
     return s.execute(text(_DRIFT_SQL), {"tid": tid, "sid": sid, "lid": lid}).rowcount
 
 
