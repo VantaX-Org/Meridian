@@ -5,6 +5,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as findingsApi from "@/lib/api/findings";
 import type { FindingDetailData } from "@/lib/api/findings";
 import * as analyticsApi from "@/lib/api/analytics";
+import * as configApi from "@/lib/api/config-intelligence";
 import { FindingDrawer } from "../FindingDrawer";
 
 const finding: FindingDetailData = {
@@ -72,5 +73,32 @@ describe("FindingDrawer", () => {
     vi.spyOn(analyticsApi, "getFindingImpact").mockResolvedValue(null);
     renderWithQuery(<FindingDrawer findingId="f1" onClose={() => {}} />);
     await waitFor(() => expect(screen.getByText(/no impact model for this check/i)).toBeInTheDocument());
+  });
+
+  it("shows the root cause when the finding has one", async () => {
+    vi.spyOn(findingsApi, "getFinding").mockResolvedValue(finding);
+    vi.spyOn(analyticsApi, "getFindingImpact").mockResolvedValue(null);
+    const rc = vi.spyOn(configApi, "getConfigRootCause").mockResolvedValue({
+      finding_id: "mm_missing_desc",
+      root_cause_type: "bad_data_and_config",
+      data_issue: "Value not found in configuration inventory",
+      config_issue: "Configuration issue, review SPRO settings",
+      process_issue: null,
+      recommendation: "Review both configuration and process completeness",
+    });
+    renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
+    expect(await screen.findByText("Bad data and bad configuration")).toBeInTheDocument();
+    expect(screen.getByText("Value not found in configuration inventory")).toBeInTheDocument();
+    expect(screen.getByText("Review both configuration and process completeness")).toBeInTheDocument();
+    expect(rc).toHaveBeenCalledWith("mm_missing_desc", "v1");
+  });
+
+  it("omits the root cause section when the finding has none", async () => {
+    vi.spyOn(findingsApi, "getFinding").mockResolvedValue(finding);
+    vi.spyOn(analyticsApi, "getFindingImpact").mockResolvedValue(null);
+    vi.spyOn(configApi, "getConfigRootCause").mockRejectedValue(new Error("404"));
+    renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText(/no impact model for this check/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByTestId("root-cause")).not.toBeInTheDocument());
   });
 });

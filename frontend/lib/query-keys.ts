@@ -146,6 +146,7 @@ export const queryKeys = {
   versionProfileByVersion: (versionId: string, object?: string) => ["version-profile-by-version", versionId, object ?? ""] as const,
   finding: (findingId: string, versionId?: string | null) => ["finding", findingId, versionId ?? ""] as const,
   findingImpact: (findingId: string) => ["finding-impact", findingId] as const,
+  findingRootCause: (findingId: string, versionId: string) => ["finding-root-cause", findingId, versionId] as const,
   exceptionBilling: (period: string) => ["exception-billing", period] as const,
   pilotScorecard: (systemId: string) => ["pilot-scorecard", systemId] as const,
   systemObjects: (systemId: string) => ["system-objects", systemId] as const,

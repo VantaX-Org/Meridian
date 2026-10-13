@@ -78,3 +78,32 @@ export const getConfigDrift = () =>
   get<{ current_run_id: string; previous_run_id: string; drift_entries: ConfigDriftEntry[] }>("drift");
 export const getConfigLicence = () => get<{ run_id: string; modules: LicenceUtilisation[] }>("licence-utilisation");
 export const getConfigHealth = () => get<{ run_id: string; scores: ConfigHealthScore[] }>("health-score");
+
+/** GET /api/v1/config/inventory/{module}: the elements of one module in the latest run. */
+export const getConfigInventoryByModule = (module: string) =>
+  get<{ run_id: string; elements: ConfigElement[] }>(`inventory/${encodeURIComponent(module)}`);
+/** GET /api/v1/config/alignment/{module}: the alignment findings of one module in the latest run. */
+export const getConfigAlignmentByModule = (module: string) =>
+  get<{ run_id: string; findings: AlignmentFinding[] }>(`alignment/${encodeURIComponent(module)}`);
+
+export type RootCauseType = "bad_data" | "bad_config" | "bad_data_and_config" | "process_gap";
+export interface RootCause {
+  finding_id: string;
+  root_cause_type: RootCauseType;
+  data_issue: string | null;
+  config_issue: string | null;
+  process_issue: string | null;
+  recommendation: string;
+}
+
+/** GET /api/v1/config/root-cause/{finding_id}: 404 when the finding is not an alignment finding of that run. */
+export async function getConfigRootCause(findingId: string, runId?: string): Promise<RootCause> {
+  const { data } = await apiClient.get<RootCause>(`/api/v1/config/root-cause/${encodeURIComponent(findingId)}`, { params: { run_id: runId } });
+  return data;
+}
+
+/** POST /api/v1/config/discover/latest: reruns config discovery and Z-object profiling on the latest stored data. */
+export async function discoverConfigNow(systemId?: string): Promise<{ queued: boolean; version_id: string }> {
+  const { data } = await apiClient.post<{ queued: boolean; version_id: string }>("/api/v1/config/discover/latest", null, { params: { system_id: systemId } });
+  return data;
+}

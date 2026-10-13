@@ -1,16 +1,20 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
 import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Tabs, type PillTone } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import {
-  getZAnomalies, getZDormant, getZDrift, getZGhost, getZProfile, getZRegistry,
-  type ZAnomaly, type ZDormant, type ZDrift, type ZGhost, type ZRegistryEntry,
+  detectZObjectsNow, getZAnomalies, getZDormant, getZDrift, getZGhost, getZProfile, getZRegistry, submitZAnomalyFeedback,
+  type ZAnomaly, type ZAnomalyVerdict, type ZDormant, type ZDrift, type ZGhost, type ZRegistryEntry,
 } from "@/lib/api/z-objects";
 import { apiErrorMessage, isNotFound } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
+import { MappingSection, RegistryEditor, ReportDialog, RulesSection } from "./z-object-panels";
+import { useRerun } from "./use-rerun";
 
 const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
 const n = (v: number) => v.toLocaleString();
@@ -30,16 +34,15 @@ function useZ<T>(key: string, fn: () => Promise<T>) {
 }
 
 function ProfileDetail({ entry }: { entry: ZRegistryEntry }) {
+  const { can } = useRole();
   const q = useQuery({ queryKey: ["z-objects", "profile", entry.id], queryFn: () => getZProfile(entry.id), retry: false });
   return (
     <div className="flex flex-col gap-3 m-text-body">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
         <dt style={note}>Category</dt><dd>{labelOf(entry.category)}</dd>
-        <dt style={note}>Standard equivalent</dt><dd>{dash(entry.standard_equivalent)}</dd>
-        <dt style={note}>Owner</dt><dd>{dash(entry.owner)}</dd>
-        <dt style={note}>Description</dt><dd>{dash(entry.description)}</dd>
         <dt style={note}>Rules applied</dt><dd>{entry.rules_applied.length ? entry.rules_applied.join(", ") : "None"}</dd>
       </dl>
+      <RegistryEditor key={entry.id} entry={entry} canEdit={can("manage_rules")} />
       <p className="font-medium" style={{ color: "var(--m-ink)" }}>Profile</p>
       {q.isLoading ? <Skeleton height={80} /> : q.error ? (
         <p style={note}>{isNotFound(q.error) ? "No profile recorded for this object." : apiErrorMessage(q.error)}</p>
@@ -80,6 +83,17 @@ function RegistrySection() {
 
 function AnomaliesSection() {
   const q = useZ("anomalies", getZAnomalies);
+  const qc = useQueryClient();
+  const { can } = useRole();
+  const feedback = useMutation({
+    mutationFn: (v: { id: string; verdict: ZAnomalyVerdict }) => submitZAnomalyFeedback(v.id, v.verdict),
+    onSuccess: (_, v) => {
+      toast.success(v.verdict === "dismissed" ? "Marked as expected" : "Marked to investigate");
+      void qc.invalidateQueries({ queryKey: ["z-objects"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  const pendingId = feedback.isPending ? feedback.variables?.id : undefined;
   const cols = useMemo<ColumnDef<ZAnomaly, unknown>[]>(() => [
     { id: "name", header: "Object", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
     { id: "type", header: "Anomaly", cell: ({ row }) => labelOf(row.original.anomaly_type) },
@@ -87,7 +101,22 @@ function AnomaliesSection() {
     { id: "desc", header: "Description", cell: ({ row }) => row.original.description },
     { id: "dev", header: "Deviation", cell: ({ row }) => `${row.original.deviation_pct.toFixed(1)}%` },
     { id: "status", header: "Status", cell: ({ row }) => labelOf(row.original.status) },
-  ], []);
+    {
+      id: "feedback",
+      header: "",
+      cell: ({ row }) => {
+        const a = row.original;
+        if (!a.id || !can("ai_feedback") || a.status !== "active") return null;
+        const id = a.id;
+        return (
+          <span className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => feedback.mutate({ id, verdict: "dismissed" })} pending={pendingId === id && feedback.variables?.verdict === "dismissed"} disabled={pendingId === id}>Expected</Button>
+            <Button variant="secondary" size="sm" onClick={() => feedback.mutate({ id, verdict: "confirmed" })} pending={pendingId === id && feedback.variables?.verdict === "confirmed"} disabled={pendingId === id}>Investigate</Button>
+          </span>
+        );
+      },
+    },
+  ], [can, feedback, pendingId]);
   return (
     <Feed q={q}>
       {(d) => d.anomalies.length === 0 ? <EmptyState title="No anomalies detected" detail="The latest analysis found no anomalous custom objects." action={analyseAction} /> : (
@@ -134,10 +163,24 @@ function DriftSection() {
 }
 
 /** Systems/[id] › Custom objects. Z-object intelligence is tenant-wide, like configuration analysis. */
-export function CustomObjectsTab() {
+export function CustomObjectsTab({ systemId }: { systemId?: string }) {
+  const { can } = useRole();
+  const [reportOpen, setReportOpen] = useState(false);
+  const detect = useRerun({
+    run: () => detectZObjectsNow(systemId),
+    queryKey: ["z-objects"],
+    queued: "Detection queued. Results refresh as it finishes",
+    done: "Custom object results refreshed",
+  });
   return (
     <div className="flex flex-col gap-3">
-      <p className="m-text-body" style={note}>Custom (Z) objects found across every connected system in this workspace.</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="m-text-body" style={note}>Custom (Z) objects found across every connected system in this workspace.</p>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="secondary" onClick={() => setReportOpen(true)}>Report</Button>
+          {can("analyse") ? <Button onClick={() => detect.mutate()} pending={detect.isPending}>Detect now</Button> : null}
+        </div>
+      </div>
       <Tabs
         items={[
           { value: "registry", label: "Registry", content: <RegistrySection /> },
@@ -145,8 +188,11 @@ export function CustomObjectsTab() {
           { value: "ghost", label: "Ghost", content: <GhostSection /> },
           { value: "dormant", label: "Dormant", content: <DormantSection /> },
           { value: "drift", label: "Drift", content: <DriftSection /> },
+          { value: "rules", label: "Rules", content: <RulesSection canCreate={can("manage_rules")} /> },
+          { value: "mapping", label: "Mapping", content: <MappingSection /> },
         ]}
       />
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen} />
     </div>
   );
 }
