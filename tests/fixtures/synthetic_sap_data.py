@@ -21,7 +21,9 @@ def generate_business_partner(n: int = 1000, seed: int = 42) -> pd.DataFrame:
         if is_dirty:
             # Distribute dirty rows across different failure types
             bucket = i % 10
-            bu_type = None if bucket < 2 else random.choice(["1", "2", "3"])  # 5% missing BU_TYPE
+            # bucket 0: an organisation (TYPE=2) whose NAME_ORG1 is missing -> BP043
+            # bucket 1: a BP with no category at all -> BP003
+            bu_type = "2" if bucket == 0 else (None if bucket == 1 else random.choice(["1", "2", "3"]))
             partner = f"BADPARTNER{i}" if bucket in (2, 3, 4, 5) else f"{1000000000 + i}"  # 4% bad format
             email = None if bucket in (6, 7, 8) else f"user{i}@example.com"  # 3% missing email
             name_org1 = None if bucket == 0 else f"Org {i}"
@@ -49,13 +51,13 @@ def generate_business_partner(n: int = 1000, seed: int = 42) -> pd.DataFrame:
             smtp_addr = f"user{i}@company.co.za"
 
         rows.append({
-            "BUT000.BU_TYPE": bu_type,
+            "BUT000.TYPE": bu_type,
             "BUT000.PARTNER": partner,
             "BUT000.NAME_ORG1": name_org1,
             "BUT000.TITLE": title,
             "BUT000.PARTNER_GUID": partner_guid,
             "BUT000.BU_SORT1": bu_sort1,
-            "BUT000.CREATED_AT": created_at,
+            "BUT000.CRDAT": created_at,
             "ADR6.SMTP_ADDR": smtp_addr,
             "ADRC.COUNTRY": country,
             "ADRC.CITY1": city,
