@@ -86,22 +86,24 @@ def field_status_gaps(
 
 def resolve_source_groups(
     session, system_id: str | None,
-) -> dict[str, tuple[str, dict[str, dict[str, FieldStatus]]]]:
+) -> dict[str, tuple[str | list[str], dict[str, dict[str, FieldStatus]]]]:
     """Resolve the source system's field status per record table.
 
-    Returns ``{record_table: (group_field, {account_group: {TABLE.FIELD: FieldStatus}})}`` for the
-    single-group field-status segments (vendor/customer). ``group_field`` is the frame column that
-    carries each record's account group (e.g. ``"LFA1.KTOKK"``). The material master's composite
-    ``MTART|MBRSH`` group is not returned here — it needs a two-column key, which
-    :func:`field_status_gaps` does not yet take.
+    Returns ``{record_table: (group_field, {account_group: {TABLE.FIELD: FieldStatus}})}`` where
+    ``group_field`` is a single frame column (``"LFA1.KTOKK"``) or a composite pair
+    (``["MARA.MTART", "MARA.MBRSH"]``) for the material master. ``resolve_all`` covers the
+    vendor/customer single-group segments; ``resolve_material`` covers the material composite.
     """
     from checks.field_status_rules import load_config
-    from sap.field_status_config import resolve_all
+    from sap.field_status_config import resolve_all, resolve_material
 
     config = load_config(session, system_id)
     if not config:
         return {}
-    out: dict[str, tuple[str, dict[str, dict[str, FieldStatus]]]] = {}
+    from sap.ddic import dictionary_for_system
+    dictionary = dictionary_for_system("ecc")
+
+    out: dict[str, tuple[str | list[str], dict[str, dict[str, FieldStatus]]]] = {}
     for res in resolve_all(config):
         seg = res.segment
         entry = out.get(seg.record_table)
@@ -112,4 +114,20 @@ def resolve_source_groups(
             bucket = entry[1].setdefault(group, {})
             for col, st in statuses.items():
                 bucket[col] = FieldStatus(st)
+
+    # Material master: resolve_material returns {TABLE.FIELD: {"MTART|MBRSH": status}} — invert to
+    # {group: {FIELD: status}} per material table, keyed by the MTART|MBRSH composite. Only MARA is
+    # returned: its frame carries MTART and MBRSH directly; MAKT needs a MATNR→MARA join for its group.
+    mat = resolve_material(config, dictionary)
+    if mat:
+        by_table: dict[str, dict[str, dict[str, FieldStatus]]] = {}
+        for col, groups in mat.items():
+            table = col.split(".", 1)[0]
+            if table != "MARA":
+                continue
+            bucket = by_table.setdefault(table, {})
+            for group, st in groups.items():
+                bucket.setdefault(group, {})[col] = FieldStatus(st)
+        for table, groups in by_table.items():
+            out[table] = (["MARA.MTART", "MARA.MBRSH"], groups)
     return out
