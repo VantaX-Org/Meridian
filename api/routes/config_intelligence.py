@@ -430,6 +430,13 @@ async def get_root_cause(
 # POST /discover/latest — rerun on the stored data of the latest analysed version
 # ------------------------------------------------------------------
 
+RERUN_LOCK_TTL = 15 * 60  # seconds; the worker's own time limit is 16 minutes
+
+
+def rerun_lock_key(tenant_id: str, version_id: str) -> str:
+    return f"meridian:ci-rerun:{tenant_id}:{version_id}"
+
+
 async def enqueue_latest_run(db: AsyncSession, tenant_id: str, system_id: Optional[str]) -> dict:
     """Queue config + Z-object intelligence over the newest completed version that kept its dataset.
 
@@ -448,6 +455,15 @@ async def enqueue_latest_run(db: AsyncSession, tenant_id: str, system_id: Option
         "ORDER BY run_at DESC LIMIT 1"), {"tid": tenant_id, "sid": system_id})).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="No analysed data to run against. Run an analysis first.")
+    # One rerun per version at a time: the worker replaces the version's rows (delete, then insert), so two
+    # overlapping runs double them. The worker releases the key when it finishes; the TTL covers a lost worker.
+    from api.middleware.cache import get_redis
+
+    client = get_redis()
+    if client is None:
+        raise HTTPException(status_code=503, detail="Job queue unavailable")
+    if not client.set(rerun_lock_key(tenant_id, str(row[0])), "1", nx=True, ex=RERUN_LOCK_TTL):
+        raise HTTPException(status_code=409, detail="A rerun is already queued for this version; wait for it to finish.")
     from workers.tasks.run_config_intelligence import run_config_intelligence
 
     run_config_intelligence.delay(str(row[0]), tenant_id, row[1])

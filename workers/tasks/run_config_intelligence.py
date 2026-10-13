@@ -155,6 +155,24 @@ async def _z_context(tenant_id: str):
 def run_config_intelligence(self, version_id: str, tenant_id: str, parquet_path: str) -> dict:
     """Discover live configuration, detect processes, validate alignment and
     profile Z objects from the version's data; stored under ``run_id = version_id``."""
+    try:
+        return _run(version_id, tenant_id, parquet_path)
+    finally:
+        _release_rerun_lock(tenant_id, version_id)
+
+
+def _release_rerun_lock(tenant_id: str, version_id: str) -> None:
+    """Drop the one-rerun-per-version key the API set (api/routes/config_intelligence.py); best effort."""
+    try:
+        from api.routes.config_intelligence import rerun_lock_key
+        from workers.scheduler import _get_redis
+
+        _get_redis().delete(rerun_lock_key(tenant_id, version_id))
+    except Exception as e:  # the key expires on its own; never fail the run over it
+        logger.warning(f"config intelligence {version_id}: could not release rerun lock: {type(e).__name__}")
+
+
+def _run(version_id: str, tenant_id: str, parquet_path: str) -> dict:
     from api.services.config_intelligence.engine import ConfigIntelligenceEngine
     from api.services.source_design import dictionary_for
     from api.services.z_object_intelligence.engine import ZObjectIntelligenceEngine
