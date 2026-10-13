@@ -400,7 +400,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
       }
       table={
         <div className="flex flex-col gap-2">
-          <DataTable columns={columns} data={rows} getRowId={(f) => f.id} onRowClick={(f) => openFinding(f.id)} />
+          <DataTable columns={columns} data={rows} getRowId={(f) => f.id} onRowClick={(f) => openFinding(f.id)} dataTour="finding-rows" />
           <div style={{ minHeight: "var(--m-control-h)" }}>
             {total > FINDINGS_PAGE ? (
               <Pager page={page} pageCount={Math.ceil(total / FINDINGS_PAGE)} onPageChange={setPage} pageSize={FINDINGS_PAGE} total={total} />

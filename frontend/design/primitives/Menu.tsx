@@ -8,6 +8,8 @@ export interface MenuItemDef {
   onSelect: () => void;
   /** When defined, the item is a checkbox item that stays open on select. */
   checked?: boolean;
+  /** A small accent dot after the label, for "something new here". */
+  dot?: boolean;
 }
 
 export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDef[] }) {
@@ -21,7 +23,13 @@ export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDe
             {items.map((item) =>
               item.checked === undefined ? (
                 <BaseMenu.Item key={item.label} onClick={item.onSelect} className="m-popup-item">
-                  {item.label}
+                  <span>{item.label}</span>
+                  {item.dot && (
+                    <>
+                      <span aria-hidden className="inline-block rounded-full" style={{ width: 6, height: 6, background: "var(--m-accent)" }} />
+                      <span className="sr-only">(new)</span>
+                    </>
+                  )}
                 </BaseMenu.Item>
               ) : (
                 <BaseMenu.CheckboxItem key={item.label} checked={item.checked} onCheckedChange={item.onSelect} closeOnClick={false} className="m-popup-item">

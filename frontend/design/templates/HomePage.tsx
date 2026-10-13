@@ -53,7 +53,7 @@ const row36 = Array.from({ length: 8 }, (_, i) => i);
  * component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions,
+  state, verdict, run, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding,
 }: {
   persona: string;
   state: "loading" | "no-data" | "data" | "error";
@@ -73,6 +73,8 @@ export function HomePage({
   work?: ReactNode;
   lists?: ReactNode;
   headerActions?: ReactNode;
+  /** First-run tour offer and setup checklist (components/help/home-onboarding.tsx); shown once the page has loaded. */
+  onboarding?: ReactNode;
 }) {
   const runLabel = state === "data" && run ? `${/^run\b/i.test(run.label) ? "" : "Run "}${run.label}, ${relativeTime(run.runAt)}` : undefined;
   const header = (
@@ -85,6 +87,7 @@ export function HomePage({
   return (
     <PageFrame gap={4}>
       {header}
+      {(state === "no-data" || state === "data") && onboarding}
 
       {state === "error" && (
         <ErrorState message={error?.message ?? "Could not reach the server."} onRetry={error?.onRetry} />
@@ -123,7 +126,7 @@ export function HomePage({
       )}
 
       {state === "data" && verdict && (
-        <section className="m-hero flex flex-wrap items-center justify-between gap-6" data-testid="home-verdict-row">
+        <section className="m-hero flex flex-wrap items-center justify-between gap-6" data-testid="home-verdict-row" data-tour="home-verdict">
           <div className="flex min-w-0 flex-1 flex-col gap-2" style={{ minWidth: "min(320px, 100%)" }}>
             <div className="flex flex-wrap items-center gap-2">
               {verdict.capLine && <Pill ember>Capped</Pill>}
@@ -137,10 +140,11 @@ export function HomePage({
               </div>
             )}
           </div>
-          <div data-testid="home-dqs" style={{ width: 220 }}>
+          <div data-testid="home-dqs" data-tour="home-score" style={{ width: 220 }}>
             <Stat
               hero
               label="Data quality score"
+              help="dqs"
               value={verdict.dqs ?? "—"}
               decimals={1}
               versionId={run?.label}
@@ -153,7 +157,7 @@ export function HomePage({
 
       {state === "data" && (trend || dimensions) && (
         <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
-          {trend && <div className={`min-w-0 ${dimensions ? "@5xl:col-span-7" : "@5xl:col-span-12"}`}>{trend}</div>}
+          {trend && <div data-tour="home-trend" className={`min-w-0 ${dimensions ? "@5xl:col-span-7" : "@5xl:col-span-12"}`}>{trend}</div>}
           {dimensions && <div className={`min-w-0 ${trend ? "@5xl:col-span-5" : "@5xl:col-span-12"}`}>{dimensions}</div>}
         </div>
       )}

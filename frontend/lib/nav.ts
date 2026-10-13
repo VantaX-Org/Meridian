@@ -265,6 +265,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/workbench/progress": "Progress",
   "/workbench/triage": "My queue",
   "/search": "Search",
+  "/docs": "Documentation",
   "/me/preferences": "Preferences",
   "/inbox/notifications": "Notifications",
 };

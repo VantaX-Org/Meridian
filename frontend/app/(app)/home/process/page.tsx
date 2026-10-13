@@ -7,6 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, DrillLink, ErrorState, PageHeader, Skeleton, StatSkeleton, Stat, type StatTone, PageFrame } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
+import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
@@ -67,9 +68,10 @@ export default function ProcessHomePage() {
   return (
     <PageFrame>
       <PageHeader title="Home" meta={`${system.name}, ${rows.length} processes`} actions={<SystemSelect value={system.id} onValueChange={setSystem} systems={list} />} />
+      <HomeOnboarding />
       <div className="grid grid-cols-2 gap-4">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />
-        <Stat label="Median fitness" value={fmtFitness(h.fitness)}
+        <Stat label="Median fitness" help="fitness" value={fmtFitness(h.fitness)}
           tone={h.fitness == null ? undefined : (fitnessTone(h.fitness) as StatTone)} />
       </div>
       <Card title="Processes" padding="sm">

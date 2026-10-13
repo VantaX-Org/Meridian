@@ -391,6 +391,7 @@ export function Rail() {
     <nav
       ref={navRef}
       aria-label="Main"
+      data-tour="rail"
       className="m-motion-width flex flex-col h-full overflow-y-auto shrink-0"
       style={{ width: expanded ? RAIL_WIDTH_EXPANDED : RAIL_WIDTH_COLLAPSED, background: "var(--m-rail)", borderRight: "1px solid var(--m-rail-edge)" }}
     >

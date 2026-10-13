@@ -3,3 +3,4 @@
 *.md
 node_modules
 !docker-entrypoint.sh
+!docs/user-guide/*.md

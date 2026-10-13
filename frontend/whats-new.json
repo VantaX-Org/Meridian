@@ -1,0 +1,48 @@
+[
+  {
+    "version": "0.1.0",
+    "date": "2026-10-13",
+    "items": [
+      {
+        "title": "Process models export to PowerPoint",
+        "body": "Export a discovered L1 to L5 process model as a deck, next to the Signavio package.",
+        "href": "/process"
+      },
+      {
+        "title": "The happy path in conformance",
+        "body": "Conformance now shows the most common route through a process and the share of cases that follow it.",
+        "href": "/process"
+      },
+      {
+        "title": "Live progress on runs and extractions",
+        "body": "The run and extraction pages show a progress bar while the job is running, so you no longer need to refresh.",
+        "href": "/runs"
+      },
+      {
+        "title": "Insights and reports",
+        "body": "New executive, forecast, impact and trend pages, with a board PDF and an analyst workbook behind them.",
+        "href": "/insights"
+      },
+      {
+        "title": "Rules know what is unmaintained",
+        "body": "A field that nobody fills in is now reported once as not applicable, instead of as one defect per record.",
+        "href": "/rules"
+      },
+      {
+        "title": "Skip reasons are specific",
+        "body": "When a rule is skipped, the run says why: missing table, missing field or not applicable to your configuration.",
+        "href": "/rules"
+      },
+      {
+        "title": "Rule coverage across the SAP landscape",
+        "body": "Rules now cover the data dictionary for ECC, S/4HANA and the cloud systems, with checks that read the loaded configuration.",
+        "href": "/rules"
+      },
+      {
+        "title": "Layout and density",
+        "body": "A tighter layout with a density choice, and a redesigned shell.",
+        "href": "/home/lead"
+      }
+    ]
+  }
+]

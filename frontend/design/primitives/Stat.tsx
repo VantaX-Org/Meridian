@@ -5,6 +5,8 @@ import Link from "next/link";
 import { clsx } from "clsx";
 import { Skeleton } from "./Skeleton";
 import { Counter } from "./Counter";
+import { HelpHint } from "./HelpHint";
+import type { GlossaryKey } from "@/lib/help/glossary";
 import { Sparkline } from "../charts/Sparkline";
 import { usePrefetch } from "../hooks/usePrefetch";
 import type { DomainKey } from "../tokens";
@@ -42,16 +44,19 @@ export interface StatProps {
   versionId?: string;
   /** Decimals for the count-up value. */
   decimals?: 0 | 1;
+  /** Glossary term for the label: renders a `HelpHint` beside it (see lib/help/glossary.ts). */
+  help?: GlossaryKey;
   /** Shows a skeleton in the value slot. The tile is a fixed 84px (112px hero) height. */
   loading?: boolean;
 }
 
 /** KPI tile. */
-export function Stat({ label, value, delta, hint, href, onClick, tone, domain, hero = false, spark, countUp, versionId, decimals = 0, loading }: StatProps) {
+export function Stat({ label, value, delta, hint, href, onClick, tone, domain, hero = false, spark, countUp, versionId, decimals = 0, loading, help }: StatProps) {
   const prefetch = usePrefetch(href);
   const edge = tone ? (hero ? HERO_TONE[tone] : `var(--m-${tone})`) : domain ? `var(--m-dom-${domain})` : undefined;
   const animate = (countUp ?? hero) && typeof value === "number";
   const sparkColor = hero ? "var(--m-hero-ink-2)" : tone ? `var(--m-${tone})` : "var(--m-accent)";
+  const interactive = Boolean(href || onClick);
   const body = (
     <>
       <span
@@ -61,7 +66,14 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
         data-domain={tone ? undefined : domain}
         style={edge ? { background: edge } : undefined}
       />
-      <span className="text-[12px] leading-4 truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+      {help && !interactive ? (
+        <span className="flex items-center gap-1" style={{ minWidth: 0 }}>
+          <span className="text-[12px] leading-4 truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+          <HelpHint term={help} onHero={hero} />
+        </span>
+      ) : (
+        <span className="text-[12px] leading-4 truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+      )}
       <span className="flex items-baseline gap-2">
         <span
           className="m-numeric font-semibold"
@@ -87,10 +99,21 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
       )}
     </>
   );
-  const interactive = Boolean(href || onClick);
   const cls = clsx("m-stat relative flex flex-col overflow-hidden", hero && "m-stat-hero", interactive && "m-stat-link m-lift m-motion-colors");
   const minHeight = undefined;
-  if (href) return <Link href={href} className={cls} style={{ minHeight }} {...prefetch}>{body}</Link>;
-  if (onClick) return <button type="button" className={cls} style={{ minHeight }} onClick={onClick}>{body}</button>;
-  return <div className={cls} style={{ minHeight }}>{body}</div>;
+  const tile = href
+    ? <Link href={href} className={cls} style={{ minHeight }} {...prefetch}>{body}</Link>
+    : onClick
+      ? <button type="button" className={cls} style={{ minHeight }} onClick={onClick}>{body}</button>
+      : <div className={cls} style={{ minHeight }}>{body}</div>;
+  // A link or button tile cannot hold the hint's button (nested interactive), so the hint sits over its top-right corner as a sibling.
+  if (help && interactive) {
+    return (
+      <div className="relative" style={{ minWidth: 0 }}>
+        {tile}
+        <span className="absolute" style={{ top: 8, right: spark && spark.length >= 3 ? 84 : 12 }}><HelpHint term={help} /></span>
+      </div>
+    );
+  }
+  return tile;
 }
