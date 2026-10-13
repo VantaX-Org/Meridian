@@ -729,6 +729,11 @@ class ConnectivityManager:
                             break
                         except Exception as e:
                             bad = _bad_property(e, ent)
+                            if bad in join:
+                                # a merge key the API user cannot view (e.g. PerPerson/userId) — merge on
+                                # the remaining key instead of failing the whole entity
+                                join.remove(bad)
+                                continue
                             drop = [p for p, path in sel.items() if path == bad]
                             if not drop or len(sel) == len(drop):
                                 raise
