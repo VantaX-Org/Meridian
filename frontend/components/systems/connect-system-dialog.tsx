@@ -17,7 +17,6 @@ const TYPES: { value: SystemType; label: string }[] = [
   { value: "s4hana_cloud", label: "S/4HANA Cloud" },
   { value: "successfactors", label: "SuccessFactors" },
   { value: "concur", label: "Concur" },
-  { value: "ariba", label: "Ariba" },
   { value: "btp", label: "BTP" },
 ];
 const ENVIRONMENTS = [{ value: "PRD", label: "Production" }, { value: "QAS", label: "Quality" }, { value: "DEV", label: "Development" }];

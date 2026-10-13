@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatDate, setFormatPrefs } from "../format";
 import {
   PREFS_KEY, abandonPreferencesLoad, beginPreferencesLoad, clearLocalPreferences, composePatch, hydratePreferences,
-  mergePrefs, readPrefs, registerPreferencesSink, resetPreferencesCache, setPreferences, syncPreferencesUser,
+  mergePrefs, readPrefs, removeMigratedLegacyViews, registerPreferencesSink, resetPreferencesCache, setPreferences, syncPreferencesUser,
 } from "../preferences";
 
 beforeEach(() => {
@@ -181,5 +181,33 @@ describe("clearing on sign-out and user change", () => {
     setPreferences({ density: "compact" });
     syncPreferencesUser("u1");
     expect(readPrefs().density).toBe("compact");
+  });
+});
+
+describe("legacy saved views", () => {
+  const view = { name: "Mine", visibility: {} };
+  it("folds well-formed m-table-views keys into the migration upload, then removes them on request", () => {
+    window.localStorage.setItem("m-table-views:findings", JSON.stringify([view, { nope: 1 }, "x"]));
+    window.localStorage.setItem("m-table-views:bad", JSON.stringify({ name: "not an array" }));
+    window.localStorage.setItem("m-table-views:junk", "{oops");
+    window.localStorage.setItem("m-table-views:empty", JSON.stringify([{ nope: 1 }]));
+    const upload = hydratePreferences({});
+    expect(upload).toEqual({ saved_views: { findings: [view] } });
+    expect(readPrefs().saved_views).toEqual({ findings: [view] });
+    expect(window.localStorage.getItem("m-table-views:findings")).not.toBeNull(); // kept until the upload succeeds
+    removeMigratedLegacyViews();
+    expect(window.localStorage.getItem("m-table-views:findings")).toBeNull();
+    expect(window.localStorage.getItem("m-table-views:bad")).not.toBeNull();
+  });
+
+  it("leaves legacy keys alone when the browser already has saved views or the server has data", () => {
+    window.localStorage.setItem("m-table-views:findings", JSON.stringify([view]));
+    window.localStorage.setItem(PREFS_KEY, JSON.stringify({ saved_views: { other: [view] } }));
+    expect(hydratePreferences({})).toEqual({ saved_views: { other: [view] } });
+    resetPreferencesCache();
+    window.localStorage.removeItem(PREFS_KEY);
+    expect(hydratePreferences({ theme: "dark" })).toBeNull();
+    removeMigratedLegacyViews();
+    expect(window.localStorage.getItem("m-table-views:findings")).not.toBeNull();
   });
 });

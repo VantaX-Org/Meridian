@@ -173,6 +173,47 @@ export function setPreferences(patch: PreferencesPatch): void {
   else sink?.(patch);
 }
 
+const LEGACY_VIEWS_PREFIX = "m-table-views:";
+/** Legacy keys folded into the last migration upload; removed once that upload succeeds. */
+let migratedLegacyKeys: string[] = [];
+
+/** Saved views kept by pre-sync builds under `m-table-views:<tableId>`; only well-formed lists are taken. */
+function readLegacySavedViews(): { views: Record<string, SavedViewRecord[]>; keys: string[] } {
+  const views: Record<string, SavedViewRecord[]> = {};
+  const keys: string[] = [];
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (!k || !k.startsWith(LEGACY_VIEWS_PREFIX) || k.length === LEGACY_VIEWS_PREFIX.length) continue;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(window.localStorage.getItem(k) ?? "null");
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(parsed)) continue;
+      const list = parsed.filter((v): v is SavedViewRecord => isRecord(v) && typeof v.name === "string" && v.name.length > 0);
+      if (list.length === 0) continue;
+      views[k.slice(LEGACY_VIEWS_PREFIX.length)] = list;
+      keys.push(k);
+    }
+  } catch {
+    /* storage blocked: nothing to migrate */
+  }
+  return { views, keys };
+}
+
+/** Call after the migration upload succeeded: drops the legacy saved-view keys it carried. */
+export function removeMigratedLegacyViews(): void {
+  const keys = migratedLegacyKeys;
+  migratedLegacyKeys = [];
+  try {
+    keys.forEach((k) => window.localStorage.removeItem(k));
+  } catch {
+    /* storage blocked */
+  }
+}
+
 /**
  * Reconciles with the server copy after sign-in. The server wins, so a user's choices follow them to another
  * browser, except that changes made while it was loading are merged over it and returned for the caller to upload.
@@ -187,7 +228,15 @@ export function hydratePreferences(server: Preferences): PreferencesPatch | null
   pending = null;
   carried = false;
   if (Object.keys(server).length === 0) {
-    const base: Preferences = wasCarried ? mergePrefs({}, queued ?? {}) : readPrefs();
+    let base: Preferences = wasCarried ? mergePrefs({}, queued ?? {}) : readPrefs();
+    migratedLegacyKeys = [];
+    if (!wasCarried && !base.saved_views) {
+      const legacy = readLegacySavedViews();
+      if (legacy.keys.length > 0) {
+        base = { ...base, saved_views: legacy.views };
+        migratedLegacyKeys = legacy.keys;
+      }
+    }
     persist(base);
     emit();
     return Object.keys(base).length > 0 ? (base as PreferencesPatch) : null;

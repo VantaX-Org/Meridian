@@ -7,7 +7,9 @@ import { queryKeys } from "@/lib/query-keys";
 import {
   abandonPreferencesLoad,
   beginPreferencesLoad,
+  composePatch,
   hydratePreferences,
+  removeMigratedLegacyViews,
   syncPreferencesUser,
   readPrefs,
   registerPreferencesSink,
@@ -32,7 +34,7 @@ export function usePreferences(): { prefs: Preferences; update: (patch: Preferen
 /**
  * Mount once in the signed-in shell. Loads the server copy once (React Query), reconciles it into the local copy
  * (server wins; an empty server adopts this browser's choices) and forwards every later change to the server, in
- * order. A failed save leaves the local value in place and is silent: the next change retries with its own patch.
+ * order. A failed save leaves the local value in place and is silent: the next change then resends the whole local document.
  */
 export function usePreferencesSync(userId?: string): void {
   const qc = useQueryClient();
@@ -44,16 +46,32 @@ export function usePreferencesSync(userId?: string): void {
     retry: 1,
   });
 
+  // The ordered send chain; the hydrate effect below queues its migration upload through the same one.
+  const sendRef = useRef<((patch: PreferencesPatch, onSaved?: () => void) => void) | null>(null);
   useEffect(() => {
     let chain: Promise<unknown> = Promise.resolve();
-    const send = (patch: PreferencesPatch) => {
+    // After a failed save the server may be behind in ways no single patch describes, so the next save carries
+    // the whole local document (with its own patch composed over it, so explicit removals still go through).
+    let resendAll = false;
+    const send = (patch: PreferencesPatch, onSaved?: () => void) => {
       chain = chain
-        .then(() => patchPreferences(patch))
-        .then((doc) => qc.setQueryData(queryKeys.preferences(userId), doc))
-        .catch(() => undefined);
+        .then(async () => {
+          const body = resendAll ? composePatch(readPrefs() as PreferencesPatch, patch) : patch;
+          const doc = await patchPreferences(body);
+          resendAll = false;
+          qc.setQueryData(queryKeys.preferences(userId), doc);
+          onSaved?.();
+        })
+        .catch(() => {
+          resendAll = true;
+        });
     };
+    sendRef.current = send;
     registerPreferencesSink(send);
-    return () => registerPreferencesSink(null);
+    return () => {
+      sendRef.current = null;
+      registerPreferencesSink(null);
+    };
   }, [qc, userId]);
 
   // A new user (or a first mount): drop another user's cached choices, then queue local changes until the
@@ -73,6 +91,6 @@ export function usePreferencesSync(userId?: string): void {
     if (hydrated.current || !q.isFetchedAfterMount || !q.data) return;
     hydrated.current = true;
     const upload = hydratePreferences(q.data);
-    if (upload) void patchPreferences(upload).catch(() => undefined);
+    if (upload) sendRef.current?.(upload, removeMigratedLegacyViews);
   }, [q.data, q.isFetchedAfterMount]);
 }

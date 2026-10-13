@@ -30,10 +30,12 @@ class _DB:
         self.exists = exists
         self.commits = 0
         self.update_params = None
+        self.selects = []
 
     async def execute(self, stmt, params=None):
         sql = str(stmt)
         if sql.startswith("SELECT preferences"):
+            self.selects.append(sql)
             return _Result((self.prefs,) if self.exists else None)
         if sql.startswith("UPDATE users"):
             self.update_params = params
@@ -143,3 +145,13 @@ def test_migration_081_follows_080_and_the_model_has_the_column():
     assert (mod.revision, mod.down_revision) == ("081", "080")
     col = User.__table__.c.preferences
     assert not col.nullable and "'{}'" in str(col.server_default.arg)
+
+
+def test_only_patch_locks_the_row(monkeypatch):
+    db = _DB({"theme": "dark"})
+    c = _client(db, monkeypatch)
+    c.get("/api/v1/me/preferences")
+    assert db.selects and all("FOR UPDATE" not in s for s in db.selects)
+    db.selects.clear()
+    assert c.patch("/api/v1/me/preferences", json={"density": "compact"}).status_code == 200
+    assert len(db.selects) == 1 and "FOR UPDATE" in db.selects[0]

@@ -34,6 +34,9 @@
   /* The shell is a fixed-height flex row with scrolling panes; on paper it is one flowing column. */
   .m-print-flow { display: block !important; height: auto !important; overflow: visible !important; flex: none !important; }
 
+  /* Tables print whole: no inner scroll box, no height cap (DataTable also stops virtualising). */
+  .m-table-card, .m-table-scroll { max-height: none !important; overflow: visible !important; }
+
   /* Sheets run the full width of the page, flat, with a hairline instead of a shadow. */
   .m-page { max-width: none !important; padding: 0 !important; }
   .m-card { box-shadow: none !important; border: 1px solid var(--m-line); break-inside: avoid; }

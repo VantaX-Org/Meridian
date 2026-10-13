@@ -132,6 +132,24 @@ describe("DataTable", () => {
     }
   });
 
+  it("renders every row of a 300-row table while printing", () => {
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q === "print", media: q, addEventListener: () => {}, removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const data: Row[] = Array.from({ length: 300 }, (_, i) => ({ id: String(i), name: `Row ${i}` }));
+      const { container } = render(<DataTable columns={columns} data={data} getRowId={(r) => r.id} />);
+      expect(container.querySelectorAll("tbody tr")).toHaveLength(300);
+      expect(container.querySelector(".m-table-card .m-table-scroll")).not.toBeNull();
+    } finally {
+      window.matchMedia = original;
+      if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
+    }
+  });
+
   it("moves the active row with ArrowDown and ArrowUp and clamps at the ends", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
     const grid = screen.getByRole("grid");

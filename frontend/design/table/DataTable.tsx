@@ -99,6 +99,20 @@ const ROW_H_FALLBACK = 36;
 const ROW_H_DENSE_FALLBACK = 30;
 const VIRTUALIZE_ABOVE = 200;
 
+/** True while the page is being printed: paper needs every row, not the virtualised window. */
+function subscribePrint(cb: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => undefined;
+  const mq = window.matchMedia("print");
+  mq.addEventListener?.("change", cb);
+  return () => mq.removeEventListener?.("change", cb);
+}
+function printSnapshot(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("print").matches;
+}
+function usePrintMedia(): boolean {
+  return useSyncExternalStore(subscribePrint, printSnapshot, () => false);
+}
+
 function readPx(name: string, fallback: number): number {
   if (typeof document === "undefined") return fallback;
   const n = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
@@ -210,7 +224,8 @@ export function DataTable<T>({
   });
 
   const rowModel = table.getRowModel().rows;
-  const shouldVirtualize = rowModel.length > VIRTUALIZE_ABOVE;
+  const printing = usePrintMedia();
+  const shouldVirtualize = !printing && rowModel.length > VIRTUALIZE_ABOVE;
   const virtualizer = useVirtualizer({
     count: shouldVirtualize ? rowModel.length : 0,
     getScrollElement: () => parentRef.current,
@@ -368,8 +383,8 @@ export function DataTable<T>({
           )}
         </div>
       )}
-      <div className="m-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown}>
-      <div ref={parentRef} style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
+      <div className="m-card m-table-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown}>
+      <div ref={parentRef} className="m-table-scroll" style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
         <table
           className="m-text-body w-full"
           style={{ color: "var(--m-ink)" }}

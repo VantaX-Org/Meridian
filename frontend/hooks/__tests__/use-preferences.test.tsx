@@ -62,7 +62,7 @@ describe("usePreferencesSync", () => {
     await act(async () => { await new Promise((r) => setTimeout(r, 30)); }); // let the load reconcile first
     act(() => result.current.p.update({ theme: "dark" }));
     act(() => result.current.p.update({ density: "compact" }));
-    await waitFor(() => expect(calls).toEqual([{ theme: "dark" }, { density: "compact" }]));
+    await waitFor(() => expect(calls).toEqual([{ theme: "dark" }, { density: "compact", theme: "dark" }]));
     expect(result.current.p.prefs).toEqual({ theme: "dark", density: "compact" });
   });
 
@@ -76,6 +76,58 @@ describe("usePreferencesSync", () => {
     await act(async () => { release({ theme: "light", density: "compact" }); });
     await waitFor(() => expect(patch).toHaveBeenCalledWith({ theme: "dark" }));
     expect(result.current.p.prefs).toEqual({ theme: "dark", density: "compact" });
+  });
+
+  it("after a failed save, the next save sends the whole local document", async () => {
+    vi.spyOn(api, "getPreferences").mockResolvedValue({});
+    const bodies: unknown[] = [];
+    vi.spyOn(api, "patchPreferences").mockImplementation(async (p) => {
+      bodies.push(p);
+      if (bodies.length === 1) throw new Error("offline");
+      return {};
+    });
+    const { result } = renderHook(() => ({ sync: usePreferencesSync(), p: usePreferences() }), { wrapper: wrapper() });
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+    act(() => result.current.p.update({ theme: "dark" }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    act(() => result.current.p.update({ density: "compact" }));
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).toEqual({ theme: "dark", density: "compact" });
+    act(() => result.current.p.update({ locale: "de-DE" }));
+    await waitFor(() => expect(bodies).toHaveLength(3));
+    expect(bodies[2]).toEqual({ locale: "de-DE" }); // recovered: back to patches
+  });
+
+  it("sends a user edit made right after hydration after the migration upload", async () => {
+    window.localStorage.setItem("meridian:prefs", JSON.stringify({ theme: "light" }));
+    vi.spyOn(api, "getPreferences").mockResolvedValue({});
+    const bodies: unknown[] = [];
+    const server: Record<string, unknown> = {};
+    let releaseFirst: () => void = () => {};
+    vi.spyOn(api, "patchPreferences").mockImplementation(async (p) => {
+      bodies.push(p);
+      if (bodies.length === 1) await new Promise<void>((r) => { releaseFirst = r; });
+      Object.assign(server, p);
+      return { ...server };
+    });
+    const { result } = renderHook(() => ({ sync: usePreferencesSync(), p: usePreferences() }), { wrapper: wrapper() });
+    await waitFor(() => expect(bodies).toHaveLength(1)); // migration upload is in flight
+    act(() => result.current.p.update({ theme: "dark" }));
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+    expect(bodies).toHaveLength(1); // the edit waits its turn
+    await act(async () => { releaseFirst(); });
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies).toEqual([{ theme: "light" }, { theme: "dark" }]);
+    expect(server.theme).toBe("dark");
+  });
+
+  it("removes legacy saved-view keys only after the migration upload succeeds", async () => {
+    window.localStorage.setItem("m-table-views:findings", JSON.stringify([{ name: "Mine" }]));
+    vi.spyOn(api, "getPreferences").mockResolvedValue({});
+    const patch = vi.spyOn(api, "patchPreferences").mockResolvedValue({});
+    renderHook(() => usePreferencesSync(), { wrapper: wrapper() });
+    await waitFor(() => expect(patch).toHaveBeenCalledWith({ saved_views: { findings: [{ name: "Mine" }] } }));
+    await waitFor(() => expect(window.localStorage.getItem("m-table-views:findings")).toBeNull());
   });
 
   it("clears another user's cached choices when the signed-in user differs", async () => {

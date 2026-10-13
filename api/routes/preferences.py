@@ -73,10 +73,10 @@ def _user(request: Request) -> uuid.UUID:
         raise HTTPException(status_code=401, detail="Authentication required")
 
 
-async def _load(db: AsyncSession, tenant: Tenant, uid: uuid.UUID) -> dict[str, Any]:
+async def _load(db: AsyncSession, tenant: Tenant, uid: uuid.UUID, *, for_update: bool = False) -> dict[str, Any]:
     await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
     row = (await db.execute(
-        text("SELECT preferences FROM users WHERE id = :uid AND tenant_id = :tid"),
+        text("SELECT preferences FROM users WHERE id = :uid AND tenant_id = :tid" + (" FOR UPDATE" if for_update else "")),
         {"uid": str(uid), "tid": str(tenant.id)},
     )).first()
     if row is None:
@@ -104,7 +104,7 @@ async def patch_preferences(
     tenant: Tenant = Depends(get_tenant),
 ) -> dict[str, Any]:
     uid = _user(request)
-    current = await _load(db, tenant, uid)
+    current = await _load(db, tenant, uid, for_update=True)  # lock the row: concurrent PATCHes merge in turn
     merged = _merge(current, body.model_dump(exclude_unset=True, mode="json"))
     try:  # the stored document must stay valid after the merge (no nulls are ever kept)
         Preferences.model_validate(merged)

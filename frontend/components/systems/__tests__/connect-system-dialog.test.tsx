@@ -33,6 +33,13 @@ describe("ConnectSystemDialog", () => {
     expect(submit).toBeDisabled();
   });
 
+  it("does not offer Ariba: the form cannot collect its API key and token URL", () => {
+    renderWithQuery(<ConnectSystemDialog open onOpenChange={() => {}} />);
+    fireEvent.click(screen.getByRole("combobox", { name: "Type" }));
+    expect(screen.queryByRole("option", { name: "Ariba" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("option").length).toBeGreaterThan(1);
+  });
+
   it("registers the system with its credentials once valid", async () => {
     const register = vi.spyOn(systemsApi, "registerSystem").mockResolvedValue({ id: "s1", name: "ECC Prod" } as Awaited<ReturnType<typeof systemsApi.registerSystem>>);
     const onOpenChange = vi.fn();
