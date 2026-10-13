@@ -17,10 +17,13 @@ ENV SAPNWRFC_HOME=/opt/nwrfcsdk \
 # BuildKit cache mounts persist the apt + pip caches across updates, so the gcc/g++
 # toolchain (~200-400 MB) is not re-downloaded on every deploy just because the base
 # image changed — this was the ~1 h update bottleneck on slow customer egress.
+# deb.debian.org resolves to IPv6 on this host's DNS but the build container has no
+# IPv6 route, which hung apt-get with zero sockets — force IPv4.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/root/.cache/pip,sharing=locked \
-    apt-get update \
+    echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99ipv4 \
+    && apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ \
     && pip install "pyrfc==3.3.1" \
     && apt-get purge -y gcc g++ && apt-get autoremove -y \
