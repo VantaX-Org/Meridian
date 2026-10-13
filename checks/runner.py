@@ -152,6 +152,9 @@ _WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check", "hierarchy
 # A presence check failing at least this fraction of its population is describing an
 # unmaintained field rather than per-record defects (see _unmaintained).
 UNMAINTAINED_FAIL_RATIO = 0.999
+# Below this population an all-blank field proves nothing: a small table can be genuinely
+# missing every value, which is a defect. See _unmaintained.
+UNMAINTAINED_MIN_ROWS = 50
 
 RULES_DIR = Path(__file__).parent / "rules"
 CATEGORIES = ["ecc", "successfactors", "warehouse", "concur", "ariba"]
@@ -419,10 +422,15 @@ def _unmaintained(rule: dict, result: "CheckResult | None") -> bool:
     rule failing 100% means something is genuinely broken; and a *critical* field blank in
     every record is a catastrophic systemic gap that must keep capping the score and stay
     loud, not be filed away as an unmaintained column.
+
+    Also requires a population of at least ``UNMAINTAINED_MIN_ROWS``. Over a handful of rows
+    "every value is blank" carries no information — one missing telephone number in a
+    one-record population is a defect, not an unmaintained column — so a small population is
+    always judged on its merits.
     """
     if rule.get("check_class") != "null_check" or rule.get("severity") == "critical":
         return False
-    if result is None or result.error or not result.total_count:
+    if result is None or result.error or result.total_count < UNMAINTAINED_MIN_ROWS:
         return False
     return result.affected_count / result.total_count >= UNMAINTAINED_FAIL_RATIO
 

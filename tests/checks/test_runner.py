@@ -130,3 +130,26 @@ def test_a_mostly_populated_field_is_still_judged_normally():
     assert found, "a 15%-blank field must still be judged"
     assert found[0].affected_count == 300
     assert stats.get("field_unmaintained", 0) == 0
+
+
+def test_a_small_population_is_judged_on_its_merits():
+    """Over a handful of rows "every value is blank" carries no information.
+
+    Regression: without a floor, a one-record population where the field is blank hit the
+    100% bar and was filed as an unmaintained column, silencing a real defect —
+    test_field_status_rules' AP022 case (one supplier with no telephone number).
+    """
+    from checks.runner import _unmaintained
+
+    class _R:
+        error = None
+
+        def __init__(self, affected, total):
+            self.affected_count, self.total_count = affected, total
+
+    rule = {"check_class": "null_check", "severity": "low"}
+    assert _unmaintained(rule, _R(1, 1)) is False, "one blank record is a defect"
+    assert _unmaintained(rule, _R(2, 2)) is False
+    assert _unmaintained(rule, _R(49, 49)) is False, "below the floor"
+    assert _unmaintained(rule, _R(50, 50)) is True, "at the floor"
+    assert _unmaintained(rule, _R(5728652, 5728702)) is True, "the real material_master case"
