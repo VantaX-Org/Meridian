@@ -201,7 +201,7 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
   ];
   const router = useRouter();
   return <DataTable columns={columns} data={rows} getRowId={(r) => r.l1} height="auto" hideToolbar
-    onRowClick={(r) => router.push(href(r))} rowHref={href} tableId="process-catalogue" exportName="process-catalogue" />;
+    onRowClick={(r) => router.push(href(r))} rowHref={href} tableId="process-catalogue" dataTour="process-catalogue" exportName="process-catalogue" />;
 }
 
 export function RunsTable({ runs, jobs, systemName, hideToolbar }: {

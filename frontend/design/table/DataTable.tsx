@@ -85,6 +85,8 @@ export interface DataTableProps<T> {
   rowPrefetch?: (row: T) => RowPrefetch | undefined;
   /** Hide the views / columns / density / export toolbar. */
   hideToolbar?: boolean;
+  /** `data-tour` value on the table card, so a guided tour can spotlight it (lib/help/tours.ts). */
+  dataTour?: string;
 }
 
 export interface RowPrefetch {
@@ -114,7 +116,7 @@ function PrefetchRow({ prefetchInfo, children, ...rest }: { prefetchInfo?: RowPr
 export function DataTable<T>({
   columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, maxHeight: maxHeightProp, height: heightProp, hideSearch = false, renderExpanded, emptyMessage, emptyAction,
   sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = true,
-  tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch,
+  tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch, dataTour,
 }: DataTableProps<T>) {
   "use no memo";
   const maxHeight = maxHeightProp ?? heightProp ?? "calc(100vh - 240px)";
@@ -365,7 +367,7 @@ export function DataTable<T>({
           )}
         </div>
       )}
-      <div className="m-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown}>
+      <div className="m-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown} data-tour={dataTour}>
       <div ref={parentRef} style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
         <table
           className="m-text-body w-full"

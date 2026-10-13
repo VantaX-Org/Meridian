@@ -177,7 +177,7 @@ export default function SystemPage() {
         <>
           {can("manage_systems") ? <Button variant="secondary" onClick={() => setEditOpen(true)}>Edit</Button> : null}
           {can("trigger_sync") ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
-          <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name}
+          <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
             onClick={() => setExtractOpen(true)}>
             Extract
           </GatedPrimary>
@@ -214,6 +214,7 @@ export default function SystemPage() {
         <Stat label="Objects loaded" loading={modulesQ.isLoading} value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
         <Stat
           label="DQS"
+          help="dqs"
           loading={versionsQ.isLoading}
           delta={dqsTrend(versions) != null && Math.abs(dqsTrend(versions) ?? 0) >= 0.05 ? <Delta value={dqsTrend(versions) ?? 0} run="the previous run" /> : undefined}
           value={dqs === null ? "—" : <span className="inline-flex items-center gap-2">{aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <ScoreRing score={dqs} size={48} />}{dqs.toFixed(1)}</span>}
@@ -498,6 +499,7 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
     <div className="flex flex-col gap-4">
       <Card
         title="Connection"
+        dataTour="system-connection"
         actions={
           <>
             {canSync ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}

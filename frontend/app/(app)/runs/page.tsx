@@ -197,6 +197,7 @@ export default function RunsPage() {
           <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > headVersions.length ? `latest ${headVersions.length} used for the figures below` : undefined} />
           <Stat
             label="Latest DQS"
+            help="dqs"
             value={latest && latestDqs !== null ? latestDqs.toFixed(1) : "—"}
             delta={delta !== null ? <Delta value={delta} /> : undefined}
             hint={delta === null ? "No earlier run" : "vs previous"}

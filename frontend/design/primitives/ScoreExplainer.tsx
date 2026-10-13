@@ -6,6 +6,7 @@ import { Popover } from "@base-ui/react/popover";
 import { Pill, type PillTone } from "./Pill";
 import { ScoreRing } from "./ScoreRing";
 import { Mono } from "./Mono";
+import { HelpHint } from "./HelpHint";
 import { buildDrillHref } from "../shell/DrillLink";
 
 export interface ScoreDimension {
@@ -51,7 +52,7 @@ export function ScoreExplainer({ score, band, dimensions, cap, rules, historyHre
             </div>
             <table className="mt-3 w-full text-left tabular-nums">
               <thead style={{ color: "var(--m-ink-3)" }}>
-                <tr><th>Dimension</th><th>Weight</th><th>Score</th><th>Contribution</th></tr>
+                <tr><th><span className="inline-flex items-center gap-1">Dimension<HelpHint term="dimension" /></span></th><th>Weight</th><th>Score</th><th>Contribution</th></tr>
               </thead>
               <tbody>
                 {dimensions.map((d) => (
@@ -64,7 +65,7 @@ export function ScoreExplainer({ score, band, dimensions, cap, rules, historyHre
                 ))}
               </tbody>
             </table>
-            {cap && <p className="mt-2" style={{ color: "var(--m-ink-2)" }}>Capped at {cap.value}: {cap.reason}</p>}
+            {cap && <p className="mt-2 flex items-center gap-1" style={{ color: "var(--m-ink-2)" }}>Capped at {cap.value}: {cap.reason}<HelpHint term="cap" /></p>}
             {top.length > 0 && (
               <>
                 <p className="mt-3" style={{ color: "var(--m-ink-3)" }}>Rules costing the most</p>

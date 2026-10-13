@@ -120,6 +120,7 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
       <div className="flex gap-6">
         <Stat
           label="Largest L1 proven cost"
+          help="provenCost"
           value={topCost ? formatMoney(topCost.amount, currency) : "—"}
           hint={topCost ? `${l1Label(topCost.l1)}, across ${topCost.processes} ${topCost.processes === 1 ? "process" : "processes"}` : undefined}
         />

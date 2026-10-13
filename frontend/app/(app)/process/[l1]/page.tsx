@@ -127,7 +127,7 @@ export default function ProcessL1Page() {
         </ol>
       </nav>
       {discovered && r && <Filters run={r} filters={filters} set={drill.set} />}
-      <Tabs items={items} value={tab} onValueChange={(v) => drill.set({ tab: v, case: null })} />
+      <div data-tour="process-tabs"><Tabs items={items} value={tab} onValueChange={(v) => drill.set({ tab: v, case: null })} /></div>
       {discovered && (
         <ExportDialog open={exporting} onOpenChange={setExporting} runId={runId} l1={l1} node={node}
           nodeName={here?.name ?? l1} filters={filters} />
@@ -162,7 +162,7 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
         meta={`${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants, fitness ${fmtFitness(fitness)}`}
         status={<Pill tone={fitnessTone(fitness)}>{fmtFitness(fitness)}</Pill>}
         actions={<>
-          {canExport && <Button variant="secondary" onClick={onExport}>Export to Signavio</Button>}
+          {canExport && <Button variant="secondary" onClick={onExport} data-tour="process-export">Export to Signavio</Button>}
           {runLink}
         </>} />
       <InsightHeader

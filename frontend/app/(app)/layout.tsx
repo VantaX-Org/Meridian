@@ -22,6 +22,7 @@ import { useDayOne } from "@/hooks/use-day-one";
 import { PermissionsProvider, usePermissions } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
 import { RouteInsight } from "@/components/insight/route-insight";
+import { HelpSlot } from "@/components/help/help-slot";
 
 const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
@@ -138,6 +139,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <TopBar
             runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
             commandPalette={<CommandPaletteSlot />}
+            helpMenu={<HelpSlot />}
             userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>

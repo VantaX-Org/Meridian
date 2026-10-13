@@ -39,7 +39,7 @@ export default function DesignGalleryPage() {
           <div className="flex gap-4 items-center">
             <Delta value={5} />
             <Delta value={-5} />
-            <Stat label="DQS" value={92} delta={<Delta value={2} />} />
+            <Stat label="DQS" help="dqs" value={92} delta={<Delta value={2} />} />
             <ScoreRing score={78} />
           </div>
           <div className="flex gap-4 items-center">

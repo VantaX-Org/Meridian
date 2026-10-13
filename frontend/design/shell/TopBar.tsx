@@ -4,7 +4,7 @@ import { Breadcrumb } from "./Breadcrumb";
 import { JobTray } from "./JobTray";
 import { Suspense, type ReactNode } from "react";
 
-export function TopBar({ runSelector, commandPalette, userMenu }: { runSelector?: ReactNode; commandPalette?: ReactNode; userMenu?: ReactNode }) {
+export function TopBar({ runSelector, commandPalette, helpMenu, userMenu }: { runSelector?: ReactNode; commandPalette?: ReactNode; helpMenu?: ReactNode; userMenu?: ReactNode }) {
   return (
     <header
       className="z-20 flex shrink-0 items-center justify-between gap-2"
@@ -14,9 +14,10 @@ export function TopBar({ runSelector, commandPalette, userMenu }: { runSelector?
         <Breadcrumb />
       </Suspense>
       <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-        <Suspense fallback={null}>{runSelector}</Suspense>
-        {commandPalette}
+        <div data-tour="run-selector" className="flex items-center"><Suspense fallback={null}>{runSelector}</Suspense></div>
+        <div data-tour="command-palette" className="flex items-center">{commandPalette}</div>
         <JobTray />
+        <Suspense fallback={null}>{helpMenu}</Suspense>
         {userMenu}
       </div>
     </header>

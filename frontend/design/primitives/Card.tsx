@@ -5,7 +5,7 @@ import type { DomainKey } from "../tokens";
 export type CardTone = "default" | "critical";
 
 export function Card({
-  title, meta, actions, children, padding = "md", tone, domain, lift = false,
+  title, meta, actions, children, padding = "md", tone, domain, lift = false, dataTour,
 }: {
   title?: ReactNode;
   meta?: ReactNode;
@@ -17,12 +17,15 @@ export function Card({
   domain?: DomainKey;
   /** Hover lift for cards that are links or open something. */
   lift?: boolean;
+  /** `data-tour` value, so a guided tour can spotlight this card (lib/help/tours.ts). */
+  dataTour?: string;
 }) {
   const hasHeader = title || meta || actions;
   return (
     <section
       className={clsx("m-card", lift && "m-lift", padding === "sm" && "m-card-sm", padding === "lg" && "m-card-lg")}
       data-domain={domain}
+      data-tour={dataTour}
       style={{
         ...(tone === "critical" ? { borderTop: "3px solid var(--m-critical)" } : null),
         ...(domain ? { boxShadow: `inset 4px 0 0 var(--m-dom-${domain}), var(--m-elev-1)` } : null),

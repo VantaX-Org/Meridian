@@ -22,6 +22,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { useDayOne } from "@/hooks/use-day-one";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
+import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
   runCap, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, delta as runDelta, trend, readinessOf,
@@ -128,6 +129,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           step: dayOne.step,
         }}
         lists={lists}
+        onboarding={<HomeOnboarding />}
       />
     );
   }
@@ -339,15 +341,16 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       heatmap={heatmapCard}
       work={work}
       lists={lists}
+      onboarding={<HomeOnboarding />}
       headerActions={
         can("export") ? (
-          <ExportMenu
+          <span data-tour="home-export" className="inline-flex"><ExportMenu
             options={[{
               format: "pdf",
               label: "Executive report (PDF)",
               run: () => downloadAuthenticated(getExecutiveReportUrl(latest.id), `meridian-executive-${latest.label ?? latest.id}.pdf`),
             }]}
-          />
+          /></span>
         ) : null
       }
     />

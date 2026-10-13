@@ -255,6 +255,7 @@ export default function SystemsPage() {
           columns={columns}
           data={shown}
           getRowId={(r) => r.id}
+          dataTour="systems-list"
           onRowClick={(r) => router.push(`/systems/${r.id}`)}
           rowHref={(r) => `/systems/${r.id}`}
         />

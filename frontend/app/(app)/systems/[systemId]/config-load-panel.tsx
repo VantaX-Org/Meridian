@@ -267,7 +267,7 @@ export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: s
   }
 
   return (
-    <Card title="Configuration" actions={action}>
+    <Card title="Configuration" actions={action} dataTour="config-load">
       {body}
     </Card>
   );
