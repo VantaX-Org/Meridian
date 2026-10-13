@@ -27,11 +27,18 @@ export function ConfirmDialog({
   onConfirm: () => void;
 }) {
   const [typed, setTyped] = useState("");
+  // Clear on every close, including a controlled close after success, and whenever the value to type changes
+  // (state adjusted during render, the React-documented pattern, so no effect is needed).
+  const resetKey = `${open}:${typeToConfirm ?? ""}`;
+  const [prevKey, setPrevKey] = useState(resetKey);
+  if (resetKey !== prevKey) {
+    setPrevKey(resetKey);
+    if (!open) setTyped("");
+  }
   const matched = typeToConfirm === undefined || typed === typeToConfirm;
 
   const change = (next: boolean) => {
     if (pending && !next) return;
-    if (!next) setTyped("");
     onOpenChange(next);
   };
 

@@ -99,3 +99,39 @@ def test_rate_limited_callers_get_429(monkeypatch) -> None:
     codes = [_post(client).status_code for _ in range(21)]
     assert codes[:20] == [202] * 20
     assert codes[20] == 429
+
+
+def test_rate_limit_is_keyed_per_user(monkeypatch) -> None:
+    class _Redis:
+        def __init__(self) -> None:
+            self.counts: dict[str, int] = {}
+
+        def incr(self, key: str) -> int:
+            self.counts[key] = self.counts.get(key, 0) + 1
+            return self.counts[key]
+
+        def expire(self, _key: str, _ttl: int) -> None:
+            return None
+
+    fake = _Redis()
+    monkeypatch.setattr(rate_limiter, "get_redis", lambda: fake)
+    api = FastAPI()
+
+    @api.middleware("http")
+    async def _user(request, call_next):
+        request.state.local_user_id = request.headers.get("X-User-Id")
+        return await call_next(request)
+
+    api.include_router(router)
+
+    async def _db():
+        yield _DB()
+
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.uuid4(), "D", [])
+    client = TestClient(api)
+    for _ in range(20):
+        client.post("/api/v1/client-errors", json=BODY, headers={"X-User-Role": "viewer", "X-User-Id": "a"})
+    assert client.post("/api/v1/client-errors", json=BODY, headers={"X-User-Role": "viewer", "X-User-Id": "a"}).status_code == 429
+    assert client.post("/api/v1/client-errors", json=BODY, headers={"X-User-Role": "viewer", "X-User-Id": "b"}).status_code == 202
+    assert any(":user:a:" in k for k in fake.counts) and any(":user:b:" in k for k in fake.counts)

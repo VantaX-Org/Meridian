@@ -56,7 +56,8 @@ export function reportClientError(err: unknown, ctx: ClientErrorContext = {}): v
       user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "",
       time: new Date().toISOString(),
     };
-    void apiClient.post("/api/v1/client-errors", payload).catch(() => undefined);
+    // Forget the digest on failure so a later occurrence can reach the log once the API is back.
+    void apiClient.post("/api/v1/client-errors", payload).catch(() => { reported.delete(id); });
   } catch {
     /* reporting must never throw */
   }

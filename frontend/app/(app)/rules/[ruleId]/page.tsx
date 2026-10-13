@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -182,11 +182,17 @@ export default function RulePage() {
   const qc = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.ruleDetail(ruleId), queryFn: () => getRule(ruleId) });
   const history = useQuery({ queryKey: queryKeys.ruleHistory(ruleId), queryFn: () => getRuleHistory(ruleId, { limit: 20 }) });
+  const toggleGen = useRef(0);
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => updateRule(ruleId, { enabled }),
-    onSuccess: (_d, enabled) => {
+    onMutate: () => ({ gen: ++toggleGen.current }),
+    onSuccess: (_d, enabled, ctx) => {
       const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: queryKeys.ruleDetail(ruleId) }), qc.invalidateQueries({ queryKey: ["rules"] })]);
-      toast.undoable(enabled ? "Rule enabled" : "Rule disabled", { undo: async () => { await updateRule(ruleId, { enabled: !enabled }); await refresh(); } });
+      // A stale undo must not overwrite a newer change to this rule.
+      toast.undoable(enabled ? "Rule enabled" : "Rule disabled", { undo: async () => {
+        if (toggleGen.current !== ctx?.gen) { toast.info("Rule changed again since, nothing undone"); return; }
+        await updateRule(ruleId, { enabled: !enabled }); await refresh();
+      } });
       void refresh();
     },
     onError: (e) => toast.error((e as Error).message || "Not saved"),

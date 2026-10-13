@@ -46,4 +46,13 @@ describe("reportClientError", () => {
     expect(() => reportClientError(new Error("x"), { digest: "d9" })).not.toThrow();
     await Promise.resolve();
   });
+
+  it("reports the same digest again after a failed post", async () => {
+    post.mockRejectedValueOnce(new Error("offline"));
+    reportClientError(new Error("x"), { digest: "d10" });
+    await Promise.resolve();
+    await Promise.resolve();
+    reportClientError(new Error("x"), { digest: "d10" });
+    expect(post).toHaveBeenCalledTimes(2);
+  });
 });

@@ -47,6 +47,17 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it("clears the typed value when closed through the open prop", async () => {
+    const onConfirm = vi.fn();
+    const props = { onOpenChange: vi.fn(), title: "Delete team", body: "Gone.", confirmLabel: "Delete team", tone: "danger" as const, typeToConfirm: "Finance", onConfirm };
+    const { rerender } = render(<ConfirmDialog open {...props} />);
+    await userEvent.type(screen.getByLabelText("Type to confirm"), "Finance");
+    expect(screen.getByRole("button", { name: "Delete team" })).toBeEnabled();
+    rerender(<ConfirmDialog open={false} {...props} />);
+    rerender(<ConfirmDialog open {...props} />);
+    expect(screen.getByRole("button", { name: "Delete team" })).toBeDisabled();
+  });
+
   it("disables both buttons while pending and cannot be dismissed", async () => {
     const { onOpenChange } = setup({ pending: true });
     expect(screen.getByRole("button", { name: "Keep" })).toBeDisabled();

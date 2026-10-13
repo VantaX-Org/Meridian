@@ -17,8 +17,8 @@ from api.services.rbac import require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1", tags=["client-errors"])
 
-# A crash loop in one browser must not fill the audit log.
-_client_error_rate_limit = rate_limit("client_errors", limit=20, window_s=60)
+# A crash loop in one browser must not fill the audit log, nor block other users' reports.
+_client_error_rate_limit = rate_limit("client_errors", limit=20, window_s=60, key_by="user")
 
 
 class ClientErrorBody(BaseModel):
