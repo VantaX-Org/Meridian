@@ -13,8 +13,8 @@ from sap.ddic import get_dictionary, dictionary_for_system
 from sap.extraction_plan import MODULES_BY_SYSTEM
 
 D = get_dictionary("s4hana")
-MODULES = {"s4hc_master_data": 41, "concur_expense": 40, "concur_users": 41, "concur_travel": 6,
-           "ariba_supplier": 40, "ariba_contracts": 42, "ariba_procurement": 40, "ariba_spend": 6}
+MODULES = {"s4hc_master_data": 41, "concur_expense": 40, "concur_users": 41, "concur_travel": 11,
+           "ariba_supplier": 40, "ariba_contracts": 42, "ariba_procurement": 40, "ariba_spend": 9}
 ENRICHMENT = ("fix_map", "rule_authority", "why_it_matters", "sap_impact", "record_fix_template")
 
 

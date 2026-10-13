@@ -101,3 +101,46 @@ rules:
     __other__: Re-extract the spend data; duplicate keys point to a paging defect or overlapping periods
       loaded into one frame.
   record_fix_template: 'Spend ID {ARIBA_SPEND.SPEND_ID} appears more than once.'
+- id: ASP008
+  field: ARIBA_SPEND.CURRENCY_CODE
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: Currency is not a three-letter ISO 4217 code
+  why_it_matters: Spend is reported in the currency the invoice was raised in. Anything that is not an ISO
+    4217 alphabetic code cannot be converted, so the amount is stranded in the source currency.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is excluded from every consolidated category, region and supplier total.
+  fix_map:
+    __other__: 'Set CURRENCY_CODE to the ISO 4217 alphabetic code (e.g. ZAR, USD, EUR).'
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: currency is {actual_value}.'
+- id: ASP009
+  field: ARIBA_SPEND.AMOUNT
+  check_class: cross_field_check
+  severity: medium
+  dimension: accuracy
+  message: Spend record carries a zero amount
+  why_it_matters: A spend record exists because money was committed. An amount of exactly zero is a
+    placeholder that survived into reporting — it says a purchase happened and contributes nothing to it.
+  rule_authority: sap_hard_constraint
+  fail_when: '`ARIBA_SPEND.AMOUNT`.notna() & (`ARIBA_SPEND.AMOUNT` == 0)'
+  sap_impact: Category and supplier spend are understated; the record inflates transaction counts without
+    inflating value.
+  fix_map:
+    __other__: Correct the amount, or drop the record if no spend was committed.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: amount is {ARIBA_SPEND.AMOUNT}.'
+- id: ASP010
+  field: ARIBA_SPEND.PERIOD
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Spend record has no period
+  why_it_matters: The period places spend in time. Without it the record cannot be attributed to a month or
+    a quarter, so it lands in no trend and no period-over-period comparison.
+  rule_authority: sap_hard_constraint
+  sap_impact: The spend falls outside every period total and period-over-period comparison, so
+    category and supplier reporting understates the period it belongs to.
+  fix_map:
+    __blank__: Re-extract the spend data for the affected periods.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: period is {actual_value}.'

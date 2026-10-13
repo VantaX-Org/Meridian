@@ -105,3 +105,75 @@ rules:
     __other__: Re-extract the travel request list; duplicate IDs point to a paging defect or two sources
       merged into one frame.
   record_fix_template: 'Travel request ID {CONCUR_TRAVEL_REQUEST.REQUEST_ID} appears more than once.'
+- id: CTR007
+  field: CONCUR_TRAVEL_REQUEST.END_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: timeliness
+  message: Trip ends more than two years in the future
+  why_it_matters: A travel request is raised before the trip it authorises. An end date years out is not a
+    forward booking — it is a mistyped year, and it silently disables every ageing and expiry rule that
+    measures the request against today.
+  rule_authority: sap_hard_constraint
+  fail_when: '`CONCUR_TRAVEL_REQUEST.END_DATE`.notna() & ((`CONCUR_TRAVEL_REQUEST.END_DATE` - @today).dt.days > 730)'
+  sap_impact: Per-diem, policy and duty-of-care checks all evaluate against a date the trip never happens on.
+  fix_map:
+    __other__: Correct CONCUR_TRAVEL_REQUEST.END_DATE to the real trip end.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: trip ends {CONCUR_TRAVEL_REQUEST.END_DATE}.'
+- id: CTR008
+  field: CONCUR_TRAVEL_REQUEST.START_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: accuracy
+  message: Trip is longer than a year
+  why_it_matters: A single travel request spans one trip. A duration beyond a year is not a long trip, it is
+    an inverted or mistyped pair of dates — the record says something about the traveller that is not true.
+  rule_authority: sap_hard_constraint
+  fail_when: '`CONCUR_TRAVEL_REQUEST.START_DATE`.notna() & `CONCUR_TRAVEL_REQUEST.END_DATE`.notna() & ((`CONCUR_TRAVEL_REQUEST.END_DATE` - `CONCUR_TRAVEL_REQUEST.START_DATE`).dt.days > 365)'
+  sap_impact: Per-diem and cost estimates are computed over a period the traveller was not away.
+  fix_map:
+    __other__: Correct the START_DATE/END_DATE pair to the real trip.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: trip runs {CONCUR_TRAVEL_REQUEST.START_DATE} to {CONCUR_TRAVEL_REQUEST.END_DATE}.'
+- id: CTR009
+  field: CONCUR_TRAVEL_REQUEST.CURRENCY_CODE
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: Currency is not a three-letter ISO 4217 code
+  why_it_matters: Concur returns the currency as an ISO 4217 alphabetic code. Anything else — a symbol, a
+    lowercase code, a numeric code — cannot be converted, so the amount is unusable outside Concur.
+  rule_authority: sap_hard_constraint
+  sap_impact: The request amount cannot be translated to a reporting currency; it drops out of every
+    consolidated total.
+  fix_map:
+    __other__: 'Set CURRENCY_CODE to the ISO 4217 alphabetic code (e.g. ZAR, USD, EUR).'
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: currency is {actual_value}.'
+- id: CTR010
+  field: CONCUR_TRAVEL_REQUEST.NAME
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Travel request has no name
+  why_it_matters: The request name is how a traveller and an approver identify the trip in the Concur inbox.
+    A blank one forces every reviewer to open the record to know what they are approving.
+  rule_authority: sap_hard_constraint
+  sap_impact: An unnamed request cannot be identified in an approval queue; reviewers open every
+    request to find the trip they are being asked to authorise.
+  fix_map:
+    __blank__: Re-extract the request list, or have the traveller name the request in Concur.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: name is {actual_value}.'
+- id: CTR011
+  field: CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT
+  check_class: cross_field_check
+  severity: medium
+  dimension: accuracy
+  message: Dated trip carries a zero posted amount
+  why_it_matters: A request with real trip dates has costs behind it. A posted amount of exactly zero says
+    the spend never posted — the record understates the trip it describes.
+  rule_authority: sap_hard_constraint
+  fail_when: '`CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT`.notna() & (`CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT` == 0) & `CONCUR_TRAVEL_REQUEST.START_DATE`.notna()'
+  sap_impact: Trip cost is reported as zero; cost-centre recovery and budget consumption miss the trip.
+  fix_map:
+    __other__: Re-post the expense against the request, or correct the trip dates if no spend exists.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: posted amount is {CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT}.'
