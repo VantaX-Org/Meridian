@@ -26,6 +26,8 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
 import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
+import { getAnalysisStatus } from "@/lib/api/upload";
+import { RunProgressBanner } from "@/components/run-progress-banner";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
@@ -430,6 +432,12 @@ export default function RunDetailPage() {
 
   // Everything keyed by the URL id starts on mount, in parallel.
   const version = useQuery({ queryKey: queryKeys.run(versionId), queryFn: () => getVersion(versionId) });
+  const analysisStatus = useQuery({
+    queryKey: [...queryKeys.run(versionId), "status"],
+    queryFn: () => getAnalysisStatus(versionId),
+    retry: false,
+    refetchInterval: (q) => (q.state.data?.status === "queued" || q.state.data?.status === "processing" ? 2500 : false),
+  });
   const steps = useQuery({ queryKey: [...queryKeys.run(versionId), "steps"], queryFn: () => getRunSteps(versionId) });
   const aggregate = useQuery({ queryKey: queryKeys.findingsAggregate(versionId), queryFn: () => getFindingsAggregate(versionId) });
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -551,6 +559,18 @@ export default function RunDetailPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>{header}</div>
+      {analysisStatus.data?.status === "queued" || analysisStatus.data?.status === "processing" ? (
+        <RunProgressBanner
+          percent={analysisStatus.data.progress.percent_complete}
+          label={analysisStatus.data.status === "queued" ? "Analysis queued" : "Analysis running"}
+          step={analysisStatus.data.progress.current_step}
+          detail={
+            analysisStatus.data.progress.total_rows > 0
+              ? `${analysisStatus.data.progress.rows_processed.toLocaleString()} / ${analysisStatus.data.progress.total_rows.toLocaleString()} rows`
+              : undefined
+          }
+        />
+      ) : null}
       <div onPointerOver={onTabsHover} onFocus={onTabsHover}>
       <Tabs
         value={tab}
