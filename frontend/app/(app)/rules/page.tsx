@@ -17,12 +17,11 @@
 
 import { bySeverity } from "../_severity-sort";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Switch, Tabs, Textarea, emptyExportOptions, type CellMeta, PageFrame } from "@/design";
+import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Switch, Tabs, Textarea, emptyExportOptions, toast, type CellMeta, PageFrame } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
@@ -138,20 +137,30 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
   const selected = selectedId ? rules.find((r) => r.id === selectedId) ?? null : null;
   const disabledCount = rules.filter((r) => !r.enabled).length;
   const notRunCount = rules.filter((r) => r.last_run_at == null).length;
+  const toggleGen = useRef(new Map<string, number>());
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => updateRule(id, { enabled }),
     // Optimistic: flip the row in every cached rules list, roll back on error.
     onMutate: async ({ id, enabled }) => {
+      const gen = (toggleGen.current.get(id) ?? 0) + 1;
+      toggleGen.current.set(id, gen);
       await qc.cancelQueries({ queryKey: ["rules"] });
       const prev = qc.getQueriesData<Rule[]>({ queryKey: ["rules"] });
       qc.setQueriesData<Rule[]>({ queryKey: ["rules"] }, (old) => (Array.isArray(old) ? old.map((r) => (r.id === id ? { ...r, enabled } : r)) : old));
-      return { prev };
+      return { prev, gen };
     },
     onError: (e, _v, ctx) => {
       ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data));
       toast.error((e as Error).message || "Rule not updated");
     },
-    onSuccess: (_d, v) => toast.success(v.enabled ? "Rule enabled" : "Rule disabled"),
+    // The inverse is the same PATCH with the flag flipped back.
+    // An undo is only valid while it is the latest change to that rule; a stale one must not overwrite a newer choice.
+    onSuccess: (_d, v, ctx) => toast.undoable(v.enabled ? "Rule enabled" : "Rule disabled", {
+      undo: async () => {
+        if (toggleGen.current.get(v.id) !== ctx?.gen) { toast.info("Rule changed again since, nothing undone"); return; }
+        await updateRule(v.id, { enabled: !v.enabled }); await qc.invalidateQueries({ queryKey: ["rules"] });
+      },
+    }),
     // Only the last in-flight toggle refetches, so an earlier settle cannot overwrite a later optimistic flip.
     onSettled: () => { if (qc.isMutating() === 1) qc.invalidateQueries({ queryKey: ["rules"] }); },
   });

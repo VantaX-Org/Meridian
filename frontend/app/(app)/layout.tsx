@@ -22,6 +22,7 @@ import { useDayOne } from "@/hooks/use-day-one";
 import { PermissionsProvider, usePermissions } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
 import { RouteInsight } from "@/components/insight/route-insight";
+import { reportClientError } from "@/lib/client-errors";
 
 const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
@@ -125,10 +126,21 @@ function JobProgressBar() {
   );
 }
 
+/** Reports promise rejections nothing handled; render errors go through error.tsx. */
+function useUnhandledRejectionReporting() {
+  useEffect(() => {
+    const onRejection = (ev: PromiseRejectionEvent) => reportClientError(ev.reason);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  }, []);
+}
+
 export default function AppLayout({ children }: { children: ReactNode }) {
+  useUnhandledRejectionReporting();
   return (
     <AuthGuard>
       <PermissionsProvider>
+      <a href="#main" className="m-skip-link">Skip to content</a>
       <div className="flex h-screen">
         <Suspense fallback={<div style={{ width: 240 }} />}>
           <Rail />
@@ -140,7 +152,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             commandPalette={<CommandPaletteSlot />}
             userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
-          <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
+          <main id="main" tabIndex={-1} className="flex-1 overflow-auto outline-none" style={{ background: "var(--m-canvas)" }}>
             <Suspense fallback={null}><RouteInsight /></Suspense>
             <RootPageFrame>{children}</RootPageFrame>
           </main>
