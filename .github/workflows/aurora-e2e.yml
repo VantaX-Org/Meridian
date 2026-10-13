@@ -1,6 +1,6 @@
 name: Aurora E2E
 
-# Typecheck + lint, then Playwright smoke + a11y + perf on every Aurora
+# Typecheck + lint, Vitest with a coverage floor, token and contrast gates, then Playwright smoke + a11y + perf on every Aurora
 # workspace route, plus the steward/basis/lead/insights journey specs, signed
 # in against the recorded API (frontend/e2e/fixtures.ts) and served from the
 # production build. There is no visual-regression job: the Aurora shell was
@@ -46,6 +46,15 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Unit tests with coverage
+        run: npm run test -- --run --coverage
+
+      - name: Token lint
+        run: npm run lint:tokens
+
+      - name: Contrast check
+        run: npm run check:contrast
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
