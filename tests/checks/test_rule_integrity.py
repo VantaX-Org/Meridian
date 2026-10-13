@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from checks.frames import TableFrames, tables_of  # noqa: E402
 from checks.runner import REGISTRY, rule_columns  # noqa: E402
 from sap.ddic import get_dictionary  # noqa: E402
+from sap.extraction_plan import ABAP_SYSTEM_TYPES, MODULES_BY_SYSTEM  # noqa: E402
 from validate_rules import unresolved  # noqa: E402
 
 
@@ -137,3 +138,45 @@ def test_ecc_dictionary_misses_are_only_s4_moved_fields():
             if ref not in _MOVED or ecc.resolve(_MOVED[ref]) is None:
                 missing.add(ref)
     assert missing == set()
+
+
+# A rule that reads a field its module's extraction plan never requests is silently skipped at
+# run time ("tables/fields not in extract"), which is invisible in the score: the rule simply
+# contributes nothing. Nothing else asserts that the plan and the active rule set agree, so this
+# compares them directly. One case per ABAP system: plan_modules() plans ABAP tables, while
+# SuccessFactors, Ariba and Concur entities are planned by their connectors from the
+# OData/REST entity definitions, so it is not their authority.
+def _active_columns(modules) -> set[str]:
+    """Columns the modules' active rules read, on ABAP tables only.
+
+    A module can mix both: fleet_management reads FLEET/EQUI/ILOA *and* the canonical
+    FLEET_MASTER entity, which its connector plans from the entity definition. Only the
+    ABAP half is plan_modules()' responsibility.
+    """
+    from checks.runner import module_rules, rule_columns, target_columns
+    d = get_dictionary("s4hana")
+    out: set[str] = set()
+    for module in modules:
+        for r in module_rules(module):
+            if r.get("enabled") is False:  # not run, so its fields need not be extracted
+                continue
+            for c in set(rule_columns(r)) | set(target_columns(r)):
+                t = d.table(c.split(".", 1)[0])
+                if t is not None and str(t.provenance).startswith("canonical:"):
+                    continue
+                out.add(c)
+    return out
+
+
+@pytest.mark.parametrize("system_type", sorted(ABAP_SYSTEM_TYPES))
+def test_extraction_plan_covers_every_field_the_active_rules_read(system_type):
+    from sap.extraction_plan import plan_modules
+
+    modules = MODULES_BY_SYSTEM.get(system_type, [])
+    plan = plan_modules(modules, get_dictionary("s4hana"), system_type=system_type)
+    covered = {f"{t}.{f}" for t, p in plan.items() for f in p.fields}
+    missing = sorted(_active_columns(modules) - covered)
+    assert not missing, (
+        f"{system_type}: the extraction plan never requests {len(missing)} field(s) its active "
+        f"rules read, so those rules would skip at run time: {missing[:8]}"
+    )
