@@ -424,3 +424,39 @@ async def get_root_cause(
     }
     rca = engine.root_cause_analysis(finding_dict, inventory, processes)
     return root_cause_to_response(rca)
+
+
+# ------------------------------------------------------------------
+# POST /discover/latest — rerun on the stored data of the latest analysed version
+# ------------------------------------------------------------------
+
+async def enqueue_latest_run(db: AsyncSession, tenant_id: str, system_id: Optional[str]) -> dict:
+    """Queue config + Z-object intelligence over the newest completed version that kept its dataset.
+
+    ``POST /discover`` and ``POST /z-objects/detect`` take records inline, which a browser
+    never holds; this reruns the same worker the analysis enqueues, on the stored data.
+    """
+    from sqlalchemy import text
+
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": tenant_id})
+    row = (await db.execute(text(
+        "SELECT id, metadata->>'dataset_path' FROM analysis_versions "
+        "WHERE tenant_id = :tid AND status = 'completed' AND metadata->>'dataset_path' IS NOT NULL "
+        "AND (CAST(:sid AS text) IS NULL OR metadata->>'system_id' = CAST(:sid AS text)) "
+        "ORDER BY run_at DESC LIMIT 1"), {"tid": tenant_id, "sid": system_id})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="No analysed data to run against. Run an analysis first.")
+    from workers.tasks.run_config_intelligence import run_config_intelligence
+
+    run_config_intelligence.delay(str(row[0]), tenant_id, row[1])
+    return {"queued": True, "version_id": str(row[0])}
+
+
+@router.post("/discover/latest", status_code=202, dependencies=[Depends(require_permission("analyse"))])
+async def discover_latest(
+    system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Rerun config discovery (and Z-object profiling) on the latest stored data."""
+    return await enqueue_latest_run(db, str(tenant.id), system_id)

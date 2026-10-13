@@ -260,7 +260,7 @@ export default function SystemPage() {
             ),
           },
           { value: "config", label: "Configuration", content: <ConfigurationTab systemId={systemId} canPropose={can("trigger_sync")} /> },
-          { value: "custom", label: "Custom objects", content: <CustomObjectsTab /> },
+          { value: "custom", label: "Custom objects", content: <CustomObjectsTab systemId={systemId} /> },
           { value: "pilot", label: "Pilot", content: <PilotTab id={systemId} /> },
           ...entityTabs({ entityType: "systems", entityId: systemId, canExport: can("export") }),
         ]}

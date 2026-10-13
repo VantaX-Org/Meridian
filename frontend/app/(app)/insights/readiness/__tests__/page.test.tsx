@@ -93,8 +93,8 @@ describe("ReadinessPage", () => {
   it("shows blockers and warnings from the S/4 areas", async () => {
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 70, cells: [{ module: "material_master", wave: "Wave 1", verdict: "go", blocker_count: 0, dqs: 92, score: 100, records_blocked: 0 }], configured: true });
     vi.spyOn(migrationApi, "getS4Readiness").mockResolvedValue({
-      status: "ok",
-      areas: [{ area: "a", label: "A", simplification_item: null, rules: 5, failing: 5, failing_records: 9, blocking_failing: 2, status: "x" }],
+      version_id: "v1", status: "ok", ready: false, rules: 5, evaluated: 5, failing: 5, failing_records: 9, blocking_failing: 2, warning_failing: 3,
+      areas: [{ area: "a", label: "A", simplification_item: null, rules: 5, evaluated: 5, failing: 5, failing_records: 9, blocking_failing: 2, warning_failing: 3, status: "x", checks: [] }],
     });
     renderWithQuery(<ReadinessPage />);
     const strip = await screen.findByTestId("s4-strip");

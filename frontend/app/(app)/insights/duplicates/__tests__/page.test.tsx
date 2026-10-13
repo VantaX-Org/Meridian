@@ -1,18 +1,21 @@
 // frontend/app/(app)/insights/duplicates/__tests__/page.test.tsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as objectsApi from "@/lib/api/v1/objects";
+import * as miningApi from "@/lib/api/mining";
 import { Toaster } from "@/design";
 import DuplicatesPage from "../page";
 
 const push = vi.fn();
+const replace = vi.fn();
+let query = "run=v1";
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams("run=v1"),
-  useRouter: () => ({ push }),
+  useSearchParams: () => new URLSearchParams(query),
+  useRouter: () => ({ push, replace }),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -47,6 +50,55 @@ async function pickObjectAndRecord() {
   await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("Material master"));
   fireEvent.change(screen.getByLabelText("Record ID"), { target: { value: "000101" } });
 }
+
+describe("DuplicatesPage mined tabs", () => {
+  beforeEach(() => {
+    replace.mockReset();
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [] });
+  });
+  afterEach(() => { query = "run=v1"; });
+
+  it("switches tab through the query string", async () => {
+    renderWithQuery(<DuplicatesPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Anomalies" }));
+    expect(replace).toHaveBeenCalledWith("?run=v1&tab=anomalies");
+  });
+
+  it("lists mined duplicate pairs with a drill to each record", async () => {
+    query = "run=v1&tab=pairs";
+    const get = vi.spyOn(miningApi, "getMiningDuplicates").mockResolvedValue([
+      { id: "d1", version_id: "v1", module_id: "material_master", record_a: "000101", record_b: "000102", match_score: 0.97, id_field: "MATNR", matched_fields: ["MAKTX"], detected_at: "2026-10-01T00:00:00Z" },
+    ]);
+    renderWithQuery(<DuplicatesPage />);
+    const link = await screen.findByRole("link", { name: "000101" });
+    expect(link).toHaveAttribute("href", "/objects/material_master/records/000101?run=v1");
+    expect(get).toHaveBeenCalledWith({ version_id: "v1", limit: 500 });
+    expect(screen.getByText("97%")).toBeInTheDocument();
+  });
+
+  it("lists mined anomalies", async () => {
+    query = "run=v1&tab=anomalies";
+    vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([
+      { id: "a1", version_id: "v1", module_id: "material_master", field_name: "NTGEW", field_value: 9999, record_index: 4, detection_method: "z_score", z_score: 6.2, severity: "high", detected_at: "2026-10-01T00:00:00Z" },
+    ]);
+    renderWithQuery(<DuplicatesPage />);
+    expect(await screen.findByText("NTGEW")).toBeInTheDocument();
+    expect(screen.getByText("6.2")).toBeInTheDocument();
+  });
+
+  it("lists mined relationships and shows an empty state when there are none", async () => {
+    query = "run=v1&tab=relationships";
+    const get = vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([
+      { id: "r1", version_id: "v1", module_id: "material_master", field_a: "MTART", field_b: "BKLAS", relationship_type: "dependency", strength_score: 0.9, detected_at: "2026-10-01T00:00:00Z" },
+    ]);
+    const view = renderWithQuery(<DuplicatesPage />);
+    expect(await screen.findByText("BKLAS")).toBeInTheDocument();
+    view.unmount();
+    get.mockResolvedValue([]);
+    renderWithQuery(<DuplicatesPage />);
+    expect(await screen.findByText("No relationships mined")).toBeInTheDocument();
+  });
+});
 
 describe("DuplicatesPage", () => {
   it("shows an empty state before an object and record are chosen", async () => {

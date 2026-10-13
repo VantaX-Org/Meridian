@@ -1,13 +1,15 @@
 "use client";
 
 /**
- * Signavio export (process-discovery spec §5.4, §7.3): whole L1 package or the current node,
+ * Export dialog: Signavio (process-discovery spec §5.4, §7.3): whole L1 package or the current node,
  * with or without the view's filters, and the three Signavio import steps.
  */
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Dialog, Mono, Notice } from "@/design";
+import { downloadAuthenticated } from "@/lib/api/download";
+import { pptxExportUrl } from "@/lib/api/process-designer";
 import { exportRun, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { fmtShare } from "./shared";
@@ -24,24 +26,44 @@ export function ExportDialog({ open, onOpenChange, runId, l1, node, nodeName, fi
   nodeName: string;
   filters: ProcessFilterParams;
 }) {
+  const [format, setFormat] = useState<"signavio" | "pptx">("signavio");
   const [scope, setScope] = useState<"package" | "node">("package");
   const [useFilters, setUseFilters] = useState(true);
   const filtered = Object.keys(filters).length > 0;
   const run = useMutation({
-    mutationFn: () => exportRun(runId, l1, useFilters ? filters : {}, scope === "node" && node ? node : undefined),
+    mutationFn: () => (format === "pptx"
+      ? downloadAuthenticated(pptxExportUrl("reference"), `meridian-${l1}-reference.pptx`)
+      : exportRun(runId, l1, useFilters ? filters : {}, scope === "node" && node ? node : undefined)),
     onSuccess: () => {
-      toast(scope === "node" && node ? `Exported ${nodeName} as BPMN` : `Exported the ${l1} package for Signavio`);
+      toast(format === "pptx" ? "Exported the reference model as PowerPoint"
+        : scope === "node" && node ? `Exported ${nodeName} as BPMN` : `Exported the ${l1} package for Signavio`);
       onOpenChange(false);
     },
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="Export to Signavio"
+    <Dialog open={open} onOpenChange={onOpenChange} title="Export"
       footer={<>
         <Button variant="secondary" onClick={() => onOpenChange(false)}>Close without exporting</Button>
         <Button onClick={() => run.mutate()} pending={run.isPending}>Export</Button>
       </>}>
       <div className="grid gap-4">
+        <fieldset className="grid gap-1">
+          <legend className="m-field-label mb-1">Format</legend>
+          <label className="flex items-center gap-2">
+            <input type="radio" name="format" checked={format === "signavio"} onChange={() => setFormat("signavio")} />
+            Signavio (BPMN 2.0)
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="radio" name="format" checked={format === "pptx"} onChange={() => setFormat("pptx")} />
+            PowerPoint (.pptx)
+          </label>
+        </fieldset>
+        {format === "pptx" ? (
+          <p style={{ color: "var(--m-ink-3)" }}>
+            A deck of the reference L1 to L5 process model: a summary, one slide per L1 and one per L4. Discovered cases and filters are not part of the deck.
+          </p>
+        ) : (<>
         <fieldset className="grid gap-1">
           <legend className="m-field-label mb-1">Scope</legend>
           <label className="flex items-center gap-2">
@@ -79,6 +101,7 @@ export function ExportDialog({ open, onOpenChange, runId, l1, node, nodeName, fi
             <li>Each callActivity&apos;s calledElement is the process id of the exported file it refers to. Signavio may not link them on import: confirm the links after import and set any missing ones by hand.</li>
           </ol>
         </section>
+        </>)}
         {run.isError && <Notice tone="danger" title="Could not export">{apiErrorMessage(run.error)}</Notice>}
       </div>
     </Dialog>

@@ -42,6 +42,12 @@ export async function approveLearnedRule(id: string, severity: Severity): Promis
   return data;
 }
 
+/** POST /api/v1/learned-rules/mine: queues the house-rule miner on one run; progress shows in the job tray. */
+export async function mineLearnedRules(versionId: string): Promise<{ queued: boolean }> {
+  const { data } = await apiClient.post<{ queued: boolean }>("/api/v1/learned-rules/mine", { version_id: versionId });
+  return data;
+}
+
 export async function rejectLearnedRule(id: string): Promise<{ id: string; status: "rejected" }> {
   const { data } = await apiClient.post<{ id: string; status: "rejected" }>(`/api/v1/learned-rules/${id}/reject`, {});
   return data;

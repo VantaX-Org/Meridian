@@ -313,5 +313,35 @@
     "name": "systems-s1",
     "path": "/systems/s1",
     "heading": "Systems"
+  },
+  {
+    "name": "systems-s1-config",
+    "path": "/systems/s1?tab=config",
+    "heading": "Systems"
+  },
+  {
+    "name": "systems-s1-custom-objects",
+    "path": "/systems/s1?tab=custom",
+    "heading": "Systems"
+  },
+  {
+    "name": "insights-duplicates-pairs",
+    "path": "/insights/duplicates?tab=pairs",
+    "heading": "Duplicate clusters"
+  },
+  {
+    "name": "insights-duplicates-anomalies",
+    "path": "/insights/duplicates?tab=anomalies",
+    "heading": "Duplicate clusters"
+  },
+  {
+    "name": "insights-duplicates-relationships",
+    "path": "/insights/duplicates?tab=relationships",
+    "heading": "Duplicate clusters"
+  },
+  {
+    "name": "migration-wave-s4",
+    "path": "/migration/w1?tab=s4",
+    "heading": "Migration"
   }
 ]

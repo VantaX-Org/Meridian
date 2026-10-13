@@ -18,6 +18,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { ConditionList, ThresholdTable } from "../rule-ui";
+import { RuleVersions } from "./rule-versions";
 
 const APPLIES_TONE: Record<string, "go" | "no-go" | "neutral"> = {
   applies: "go",
@@ -262,6 +263,8 @@ export default function RulePage() {
       <WhereItApplies checkId={checkId} module={data.module} />
 
       <LineageAndOwnership checkId={checkId} builtIn={data.source === "yaml"} />
+
+      <RuleVersions ruleId={checkId} />
 
       <Card title="Pass rate over runs"><div className="flex flex-col gap-2">
         <div className="flex gap-6">

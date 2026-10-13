@@ -1,33 +1,50 @@
 "use client";
 
-/** Rules › Drafts: AI-assisted rule drafts saved from the New rule drawer. */
+/** Rules › Drafts: rule drafts from the New rule drawer, editable here: dry run, publish, delete. */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ExplorerPage, Mono, PageHeader } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { getRuleDrafts, type RuleDraft } from "@/lib/api/rules";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatModuleName } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { DraftDrawer } from "./draft-drawer";
 
 export default function RuleDraftsPage() {
+  const { can } = useRole();
+  const canManage = can("manage_rules");
   const q = useQuery({ queryKey: ["rule-drafts"], queryFn: getRuleDrafts });
+  const [selected, setSelected] = useState<RuleDraft | "new" | null>(null);
   const columns = useMemo<ColumnDef<RuleDraft>[]>(() => [
-    { id: "module", header: "Object", cell: ({ row }) => { const m = row.original.domain.replace("dq_rule:", ""); return <Link href={`/objects/${m}`} className="underline">{m}</Link>; } },
+    { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.domain.replace("dq_rule:", "")) },
     { id: "rule", header: "Rule", cell: ({ row }) => <Mono>{String(row.original.proposed_rule.id ?? row.original.proposed_rule.rule_id ?? "—")}</Mono> },
+    { id: "field", header: "Field", cell: ({ row }) => <Mono>{String(row.original.proposed_rule.field ?? "—")}</Mono> },
     { id: "why", header: "Why", cell: ({ row }) => row.original.rationale ?? "—" },
     { id: "at", header: "Saved", cell: ({ row }) => formatDate(row.original.created_at, "date") },
   ], []);
   const items = q.data ?? [];
+  const newDraft = canManage ? <Button onClick={() => setSelected("new")}>New draft</Button> : undefined;
   return (
-    <ExplorerPage
-      header={<PageHeader title="Rule drafts" meta="Saved from the New rule drawer" />}
-      toolbarEnd={<Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />}
-      state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No drafts", detail: "Drafts appear when a steward starts a rule and has not published it yet", ghost: "table", action: <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
-      table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
-    />
+    <>
+      <ExplorerPage
+        header={<PageHeader title="Rule drafts" meta="Edit, dry run and publish rules before they run" actions={newDraft} />}
+        toolbarEnd={<Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />}
+        state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
+        emptyProps={{ title: "No drafts", detail: "Start a draft, or let AI write the first version", ghost: "table", action: newDraft ?? <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
+        errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+        table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} onRowClick={(r) => setSelected(r)} tableId="rule-drafts" />}
+      />
+      {selected ? (
+        <DraftDrawer
+          key={selected === "new" ? "new" : selected.id}
+          draft={selected === "new" ? null : selected}
+          open
+          onOpenChange={(o) => { if (!o) setSelected(null); }}
+        />
+      ) : null}
+    </>
   );
 }

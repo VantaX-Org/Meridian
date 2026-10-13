@@ -15,6 +15,7 @@ import {
   approveLearnedRule,
   getLearnedRules,
   KIND_LABEL,
+  mineLearnedRules,
   rejectLearnedRule,
   type LearnedKind,
   type LearnedRule,
@@ -22,6 +23,7 @@ import {
   type Severity,
 } from "@/lib/api/learnedRules";
 import { errorText } from "@/lib/api/remediation";
+import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -55,6 +57,14 @@ export default function LearnedRulesPage() {
     onError: (e) => toast.error(errorText(e)),
   });
 
+  const versions = useQuery({ queryKey: ["versions-list", { for: "mine" }], queryFn: () => getVersions({ limit: 20 }), staleTime: 60_000 });
+  const latestRun = versions.data?.versions.find((v) => v.status !== "pending" && v.status !== "running" && v.status !== "failed");
+  const mine = useMutation({
+    mutationFn: () => mineLearnedRules((latestRun as { id: string }).id),
+    onSuccess: () => { toast.success("Mining queued. New proposals appear here when it finishes"); refresh(); },
+    onError: (e) => toast.error(errorText(e)),
+  });
+
   const columns = useMemo<ColumnDef<LearnedRule>[]>(() => [
     { id: "kind", header: "Kind", cell: ({ row }) => <Pill tone="neutral">{KIND_LABEL[row.original.kind]}</Pill> },
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
@@ -79,7 +89,13 @@ export default function LearnedRulesPage() {
   const items = q.data?.items ?? [];
   return (
     <ExplorerPage
-      header={<PageHeader title="Learned rules" meta="Patterns your data follows for at least 95% of records" />}
+      header={
+        <PageHeader
+          title="Learned rules"
+          meta="Patterns your data follows for at least 95% of records"
+          actions={can("manage_rules") ? <Button onClick={() => mine.mutate()} pending={mine.isPending} disabled={!latestRun}>Mine now</Button> : undefined}
+        />
+      }
       filterBar={
         <div className="flex items-end gap-3">
           <Field label="Status"><Select value={status} onValueChange={(v) => setStatus(v as LearnedStatus)} options={STATUS_OPTIONS} /></Field>

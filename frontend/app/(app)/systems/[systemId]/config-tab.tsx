@@ -1,18 +1,21 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import {
-  getConfigAlignment, getConfigDrift, getConfigGhost, getConfigHealth, getConfigInventory, getConfigLicence,
+  discoverConfigNow, getConfigAlignment, getConfigDrift, getConfigGhost, getConfigHealth, getConfigInventory, getConfigLicence,
   getConfigProcesses, getConfigShadow,
   type AlignmentFinding, type ConfigDriftEntry, type ConfigElement, type ConfigHealthScore, type LicenceUtilisation, type ProcessHealth,
 } from "@/lib/api/config-intelligence";
 import { apiErrorMessage, isNotFound } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { ConfigComparePanel } from "./config-compare-panel";
+import { AlignmentModuleDrawer, InventoryModuleDrawer } from "./config-module-drawers";
+import { useRerun } from "./use-rerun";
 
 const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
 const STATUS_TONE: Record<string, PillTone> = { active: "go", partial: "at-risk", dormant: "at-risk", inactive: "no-go", ghost: "no-go" };
@@ -54,8 +57,18 @@ function HealthSection() {
   );
 }
 
+interface ModuleCounts { module: string; total: number; active: number; dormant: number; ghost: number }
+
 function InventorySection() {
   const q = useCfg("inventory", getConfigInventory);
+  const [moduleOpen, setModuleOpen] = useState<string | null>(null);
+  const moduleCols = useMemo<ColumnDef<ModuleCounts, unknown>[]>(() => [
+    { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "total", header: "Elements", cell: ({ row }) => n(row.original.total) },
+    { id: "active", header: "Active", cell: ({ row }) => n(row.original.active) },
+    { id: "dormant", header: "Dormant", cell: ({ row }) => n(row.original.dormant) },
+    { id: "ghost", header: "Ghost", cell: ({ row }) => n(row.original.ghost) },
+  ], []);
   const cols = useMemo<ColumnDef<ConfigElement, unknown>[]>(() => [
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "type", header: "Element", cell: ({ row }) => labelOf(row.original.element_type) },
@@ -67,9 +80,25 @@ function InventorySection() {
   ], []);
   return (
     <Feed q={q} empty="The inventory lists the configuration values seen in transactions.">
-      {(d) => d.elements.length === 0
-        ? <EmptyState title="No configuration elements discovered" detail="The inventory fills from analysed transactions." action={analyseAction} />
-        : <DataTable columns={cols} data={d.elements} getRowId={(e) => `${e.module}/${e.element_type}/${e.element_value}`} height={420} exportName="config-inventory" />}
+      {(d) => {
+        if (d.elements.length === 0) return <EmptyState title="No configuration elements discovered" detail="The inventory fills from analysed transactions." action={analyseAction} />;
+        const byModule = new Map<string, ModuleCounts>();
+        for (const e of d.elements) {
+          const c = byModule.get(e.module) ?? { module: e.module, total: 0, active: 0, dormant: 0, ghost: 0 };
+          c.total += 1;
+          c[e.status] += 1;
+          byModule.set(e.module, c);
+        }
+        return (
+          <div className="flex flex-col gap-4">
+            <Card title="By module" meta="Select a module for its elements">
+              <DataTable columns={moduleCols} data={[...byModule.values()]} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar dense height="auto" tableId="config-inventory-modules" />
+            </Card>
+            <DataTable columns={cols} data={d.elements} getRowId={(e) => `${e.module}/${e.element_type}/${e.element_value}`} height={420} exportName="config-inventory" />
+            <InventoryModuleDrawer module={moduleOpen} onClose={() => setModuleOpen(null)} />
+          </div>
+        );
+      }}
     </Feed>
   );
 }
@@ -130,9 +159,41 @@ function FindingsTable({ rows, name }: { rows: AlignmentFinding[]; name: string 
   );
 }
 
+interface ModuleFindings { module: string; total: number; worst: string }
+const SEVERITY_ORDER = ["critical", "high", "medium", "low"];
+
 function AlignmentSection() {
   const q = useCfg("alignment", getConfigAlignment);
-  return <Feed q={q} empty="Alignment compares configuration with how it is used.">{(d) => <FindingsTable rows={d.findings} name="config-alignment" />}</Feed>;
+  const [moduleOpen, setModuleOpen] = useState<string | null>(null);
+  const moduleCols = useMemo<ColumnDef<ModuleFindings, unknown>[]>(() => [
+    { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "total", header: "Findings", cell: ({ row }) => n(row.original.total) },
+    { id: "worst", header: "Worst severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.worst] ?? "neutral"}>{labelOf(row.original.worst)}</Pill> },
+  ], []);
+  return (
+    <Feed q={q} empty="Alignment compares configuration with how it is used.">
+      {(d) => {
+        const byModule = new Map<string, ModuleFindings>();
+        for (const f of d.findings) {
+          const c = byModule.get(f.module) ?? { module: f.module, total: 0, worst: "low" };
+          c.total += 1;
+          if (SEVERITY_ORDER.indexOf(f.severity) < SEVERITY_ORDER.indexOf(c.worst)) c.worst = f.severity;
+          byModule.set(f.module, c);
+        }
+        return (
+          <div className="flex flex-col gap-4">
+            {byModule.size > 0 ? (
+              <Card title="By module" meta="Select a module for its findings">
+                <DataTable columns={moduleCols} data={[...byModule.values()]} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar dense height="auto" tableId="config-alignment-modules" />
+              </Card>
+            ) : null}
+            <FindingsTable rows={d.findings} name="config-alignment" />
+            <AlignmentModuleDrawer module={moduleOpen} onClose={() => setModuleOpen(null)} />
+          </div>
+        );
+      }}
+    </Feed>
+  );
 }
 
 function GhostShadowSection() {
@@ -201,9 +262,19 @@ function LicenceSection() {
 
 /** Systems/[id] › Configuration. The analysis behind it is tenant-wide, so the header says so. */
 export function ConfigurationTab({ systemId, canPropose }: { systemId: string; canPropose: boolean }) {
+  const { can } = useRole();
+  const discover = useRerun({
+    run: () => discoverConfigNow(systemId),
+    queryKey: ["config-intelligence"],
+    queued: "Discovery queued. Results refresh as it finishes",
+    done: "Configuration results refreshed",
+  });
   return (
     <div className="flex flex-col gap-3">
-      <p className="m-text-body" style={note}>Configuration analysis covers every connected system in this workspace, from the latest run.</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="m-text-body" style={note}>Configuration analysis covers every connected system in this workspace, from the latest run.</p>
+        {can("analyse") ? <Button variant="secondary" onClick={() => discover.mutate()} pending={discover.isPending}>Discover now</Button> : null}
+      </div>
       <Tabs
         items={[
           { value: "health", label: "Health", content: <HealthSection /> },

@@ -162,7 +162,7 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
         meta={`${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants, fitness ${fmtFitness(fitness)}`}
         status={<Pill tone={fitnessTone(fitness)}>{fmtFitness(fitness)}</Pill>}
         actions={<>
-          {canExport && <Button variant="secondary" onClick={onExport} data-tour="process-export">Export to Signavio</Button>}
+          {canExport && <Button variant="secondary" onClick={onExport} data-tour="process-export">Export</Button>}
           {runLink}
         </>} />
       <InsightHeader

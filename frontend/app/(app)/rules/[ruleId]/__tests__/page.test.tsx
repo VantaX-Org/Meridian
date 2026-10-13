@@ -55,6 +55,7 @@ const LINEAGE: RuleLineage = {
 describe("rule detail page", () => {
   beforeEach(() => {
     vi.spyOn(lineageApi, "getRuleLineage").mockResolvedValue(LINEAGE);
+    vi.spyOn(rulesApi, "getRuleVersions").mockResolvedValue({ rule_id: "AP001", shipped: null, versions: [] });
     vi.spyOn(ownersApi, "getOwners").mockResolvedValue([]);
     vi.spyOn(usersApi, "getAssignableUsers").mockRejectedValue(new Error("forbidden"));
   });

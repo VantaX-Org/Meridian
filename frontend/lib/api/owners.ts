@@ -17,6 +17,12 @@ export async function getOwners(kind: OwnerKind): Promise<DataOwner[]> {
   return data.owners;
 }
 
+/** POST /api/v1/owners/digests/send: writes the weekly digest notification now, for one owner (by name) or for every owner. */
+export async function sendOwnerDigests(body: { owner?: string }): Promise<{ sent: number; owner: string | null }> {
+  const { data } = await apiClient.post<{ sent: number; owner: string | null }>("/api/v1/owners/digests/send", body);
+  return data;
+}
+
 export async function putOwner(body: {
   kind: OwnerKind;
   ref: string;

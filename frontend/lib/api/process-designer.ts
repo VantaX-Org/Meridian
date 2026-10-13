@@ -53,6 +53,15 @@ export function signavioExportUrl(modelId: string, versionNo?: number, overlay?:
     : `${BASE}/models/${modelId}/export/signavio?${q.toString()}`;
 }
 
+/** PowerPoint export of the L1-L5 model: `/reference/export/pptx` for the reference model, `/models/{id}/export/pptx` otherwise. */
+export function pptxExportUrl(modelId: string, versionNo?: number): string {
+  if (modelId === "reference") return `${BASE}/reference/export/pptx`;
+  const q = new URLSearchParams();
+  if (versionNo) q.set("version", String(versionNo));
+  const qs = q.toString();
+  return `${BASE}/models/${modelId}/export/pptx${qs ? `?${qs}` : ""}`;
+}
+
 /** What a failed save says: a stale base (409), a rejected document (422), or anything else. */
 export type SaveFailure =
   | { kind: "stale"; message: string; current: number | null }

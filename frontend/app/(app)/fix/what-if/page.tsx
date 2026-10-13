@@ -10,6 +10,7 @@ import { createSimulation, getSimulation, isSimulationResult } from "@/lib/api/s
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { usePermissions } from "@/lib/permissions";
+import { CreateBatchFromSimulation, RuleImpact } from "./rule-impact";
 
 export default function WhatIfPage() {
   const { can } = usePermissions();
@@ -38,6 +39,7 @@ export default function WhatIfPage() {
     <div className="flex gap-2">
       {runs.length > 0 && <Select label="Analysis run" value={versionId} onValueChange={(v) => { setPicked(v); setSimId(null); }} options={runs.map((r) => ({ value: r.id, label: r.label ?? r.id }))} placeholder="Run" />}
       {can("analyse") && <Button pending={run.isPending || running} disabled={!versionId} onClick={() => run.mutate()}>Run simulation</Button>}
+      {can("apply") && result ? <CreateBatchFromSimulation simulation={result} /> : null}
     </div>
   );
 
@@ -74,11 +76,14 @@ export default function WhatIfPage() {
       }
       tables={
         result ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="Findings resolved" value={result.findings.resolved} />
-            <Stat label="Findings introduced" value={result.findings.introduced} />
-            <Stat label="Cells changed" value={result.fixes.cells_changed} />
-            <Stat label="Records fixed" value={result.records.resolved} />
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Stat label="Findings resolved" value={result.findings.resolved} />
+              <Stat label="Findings introduced" value={result.findings.introduced} />
+              <Stat label="Cells changed" value={result.fixes.cells_changed} />
+              <Stat label="Records fixed" value={result.records.resolved} />
+            </div>
+            <RuleImpact result={result} />
           </div>
         ) : undefined
       }

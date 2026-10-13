@@ -15,6 +15,7 @@ import { isSeverity, type Severity } from "../tokens";
 import { buildDrillHref } from "../shell/DrillLink";
 import { getFinding } from "@/lib/api/findings";
 import { getFindingImpact } from "@/lib/api/analytics";
+import { getConfigRootCause, type RootCauseType } from "@/lib/api/config-intelligence";
 import { queryKeys } from "@/lib/query-keys";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf, checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/format";
@@ -27,6 +28,37 @@ const dim = { color: "var(--m-ink-3)" } as const;
 /** getFinding (lib/api/findings.ts) throws a plain Error rather than a 404 when the id doesn't match any finding in scope. */
 function isFindingNotFound(error: unknown): boolean {
   return error instanceof Error && error.message === "Finding not found";
+}
+
+const ROOT_CAUSE_LABEL: Record<RootCauseType, string> = {
+  bad_data: "Bad data",
+  bad_config: "Bad configuration",
+  bad_data_and_config: "Bad data and bad configuration",
+  process_gap: "Process gap",
+};
+
+/** Where the problem sits, from the config-intelligence run of this finding's version. Renders nothing when the finding has no root-cause analysis. */
+function RootCauseSection({ checkId, versionId }: { checkId: string; versionId: string }) {
+  const q = useQuery({
+    queryKey: queryKeys.findingRootCause(checkId, versionId),
+    queryFn: () => getConfigRootCause(checkId, versionId),
+    retry: false,
+  });
+  if (q.isLoading) return <section className="flex flex-col gap-2"><Skeleton height={48} /></section>;
+  if (!q.data) return null;
+  const issues: [string, string | null][] = [["Data", q.data.data_issue], ["Configuration", q.data.config_issue], ["Process", q.data.process_issue]];
+  return (
+    <section className="flex flex-col gap-2" data-testid="root-cause">
+      <h3 className={heading} style={{ color: "var(--m-ink)" }}>Root cause</h3>
+      <div className="flex items-center gap-2 text-[13px]">
+        <Pill tone={q.data.root_cause_type === "bad_data" ? "neutral" : "at-risk"}>{ROOT_CAUSE_LABEL[q.data.root_cause_type]}</Pill>
+      </div>
+      <ul className="flex flex-col gap-1 text-[13px]">
+        {issues.filter(([, text]) => text).map(([label, text]) => <li key={label}><span style={dim}>{label}: </span>{text}</li>)}
+      </ul>
+      {q.data.recommendation ? <p className="text-[13px]">{q.data.recommendation}</p> : null}
+    </section>
+  );
 }
 
 export interface FindingDrawerProps {
@@ -180,6 +212,8 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                   <p className="text-[13px]" style={dim}>No fix guidance for this check yet.</p>
                 ) : null}
               </section>
+
+              <RootCauseSection checkId={finding.check_id} versionId={finding.version_id} />
 
               <div className="flex gap-2 pt-2 border-t" style={{ borderColor: "var(--m-line)" }}>
                 <Button
