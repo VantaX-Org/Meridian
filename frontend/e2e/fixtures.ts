@@ -264,6 +264,19 @@ const WAVE_W1 = {
   signed_off_by: null, signed_off_at: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
 };
 async function mockUnrecorded(page: Page) {
+  // Lane 4: the notification bell and the server-side preferences are not in the recording.
+  await page.route(/\/api\/v1\/notifications\/unread-count(\?.*)?$/, (r) => r.fulfill(json({ count: 2 })));
+  await page.route(/\/api\/v1\/notifications(\?.*)?$/, (r) => r.fulfill(json({
+    total: 2,
+    items: [
+      { id: "n1", tenant_id: "e2e", user_id: null, type: "finding", title: "New critical finding in Business partner", body: "Two rules failed on the latest run", link: "/inbox", is_read: false, created_at: "2026-10-02T13:00:00Z" },
+      { id: "n2", tenant_id: "e2e", user_id: null, type: "warning", title: "Extraction finished with warnings", body: "One table was read partially", link: null, is_read: true, created_at: "2026-10-01T09:00:00Z" },
+    ],
+  })));
+  await page.route("**/api/v1/me/preferences", (r) => {
+    if (r.request().method() === "PATCH") return r.fulfill(json(r.request().postDataJSON() ?? {}));
+    return r.fulfill(json({}));
+  });
   await page.route(/\/api\/v1\/insights\/impact(\?.*)?$/, (r) => r.fulfill(json({ version_id: VERSION_ID, rows: [] })));
   await page.route(/\/api\/v1\/insights\/owners(\?.*)?$/, (r) => r.fulfill(json({ owners: [] })));
   await page.route(/\/api\/v1\/insights\/exec(\?.*)?$/, (r) => r.fulfill(json({

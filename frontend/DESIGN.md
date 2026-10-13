@@ -54,6 +54,9 @@ All in `@/design`; there is no second library. Pages compose these and draw noth
 - **ScoreRing / DqsScore**: the logo geometry (270 degree arc open at the top). `DqsScore` explains itself: formula, six inputs, cap reason with links.
 - **DataTable**: fixed 36px (44 comfortable) rows, virtualised above 200, arrow-key row navigation, Enter opens, Space selects, Escape clears. Filters are removable chips. One empty row when a filter removes everything.
 - **EmptyState** (title under 8 words, one detail sentence, one required action), **ErrorState** (message plus Retry), **Skeleton** in final geometry. No raw `<p>` for loading, empty or error.
+- **ConfirmDialog**: every confirmation. `tone="danger"` for deletes, `typeToConfirm` makes the user type the name first, buttons name the action and its inverse ("Delete team" / "Keep"). `window.confirm` is not used anywhere in `app/`.
+- **Toasts** (`toast` from `@/design`, wraps sonner): `toast.undoable(message, { undo, timeoutMs })` adds an Undo action and only exists for actions whose API has a real inverse. No inverse endpoint, no undo.
+- **Error surfaces**: `app/(app)/error.tsx` (inside the shell, reference id, Try again, Go home, Copy details), `app/global-error.tsx` (no shell, inline token styles), `app/(app)/not-found.tsx` and `app/not-found.tsx`. Every error is reported once per session to `POST /api/v1/client-errors` through `lib/client-errors.ts`; nothing goes to a third party.
 - **Charts** (`design/charts`): horizontal grid only, no axis lines, series `--m-viz-1..8`, custom tooltip, each chart has a sentence under its title saying what it answers.
 
 Copy: no full stops in table cells, pills, tile labels or hints; no "Showing X." sentences; numbers through `toLocaleString`; currency with the tenant currency code.

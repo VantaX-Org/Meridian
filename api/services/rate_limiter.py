@@ -33,7 +33,7 @@ from api.middleware.cache import get_redis
 
 logger = logging.getLogger("meridian.rate_limit")
 
-KeyBy = Literal["tenant", "ip"]
+KeyBy = Literal["tenant", "ip", "user"]
 
 
 def _current_window(window_s: int) -> int:
@@ -58,6 +58,12 @@ def _resolve_key(request: Request, name: str, key_by: KeyBy, window_s: int) -> s
     if key_by == "ip":
         identifier = _client_ip(request) or "anon"
         return f"ratelimit:{name}:ip:{identifier}:{window}"
+
+    if key_by == "user":
+        uid = getattr(request.state, "local_user_id", None)
+        if uid:
+            return f"ratelimit:{name}:user:{uid}:{window}"
+        return _resolve_key(request, name, "tenant", window_s)
 
     return None
 
@@ -99,7 +105,8 @@ def rate_limit(
     - `limit` is a hard ceiling; the (limit+1)th call in the same window
       raises 429 with a Retry-After header pointing at the next window edge.
     - `key_by="tenant"` is per-tenant (falls back to IP for unauth calls);
-      `key_by="ip"` is strict per-IP for login-style endpoints.
+      `key_by="ip"` is strict per-IP for login-style endpoints;
+      `key_by="user"` is per authenticated user (falls back to the tenant key).
     """
 
     async def _dependency(request: Request) -> None:

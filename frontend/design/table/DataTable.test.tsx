@@ -132,6 +132,24 @@ describe("DataTable", () => {
     }
   });
 
+  it("renders every row of a 300-row table while printing", () => {
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q === "print", media: q, addEventListener: () => {}, removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const data: Row[] = Array.from({ length: 300 }, (_, i) => ({ id: String(i), name: `Row ${i}` }));
+      const { container } = render(<DataTable columns={columns} data={data} getRowId={(r) => r.id} />);
+      expect(container.querySelectorAll("tbody tr")).toHaveLength(300);
+      expect(container.querySelector(".m-table-card .m-table-scroll")).not.toBeNull();
+    } finally {
+      window.matchMedia = original;
+      if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
+    }
+  });
+
   it("moves the active row with ArrowDown and ArrowUp and clamps at the ends", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
     const grid = screen.getByRole("grid");
@@ -264,7 +282,8 @@ describe("DataTable toolbar", () => {
     fireEvent.click(screen.getByText("Views"));
     fireEvent.change(screen.getByLabelText("View name"), { target: { value: "Ids only" } });
     fireEvent.click(screen.getByRole("button", { name: "Save view" }));
-    expect(JSON.parse(window.localStorage.getItem("m-table-views:t-views") ?? "[]")[0].visibility).toEqual({ name: false });
+    // Views live in the preferences document (saved_views by table id), written through to localStorage.
+    expect(JSON.parse(window.localStorage.getItem("meridian:prefs") ?? "{}").saved_views["t-views"][0].visibility).toEqual({ name: false });
     // The Columns menu stays open after a toggle (checkbox items do not close it).
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" })); // show again
     expect(screen.getByText("Alpha")).toBeInTheDocument();

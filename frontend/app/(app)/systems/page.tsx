@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
@@ -7,7 +8,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Skeleton, Sparkline, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { HEALTH_LABEL, dqsSeries, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
-import { useSystemScope } from "@/lib/permissions";
+import { usePermissions, useSystemScope } from "@/lib/permissions";
+import { ConnectSystemDialog } from "@/components/systems/connect-system-dialog";
 import { getSystems } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSyncProfiles } from "@/lib/api/systems";
@@ -196,12 +198,16 @@ export default function SystemsPage() {
   const attention = systems.filter((s) => s.health_status !== "healthy").length;
   const lastExtraction = systems.flatMap((s) => (s.last_sync_at ? [s.last_sync_at] : [])).sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
   const filtering = Boolean(configFilter || healthFilter);
+  const canConnect = usePermissions().has("systems", "create");
+  const [connecting, setConnecting] = useState(false);
 
   return (
+    <>
     <ExplorerPage
       header={
         <PageHeader
           title="Systems"
+          actions={canConnect ? <Button onClick={() => setConnecting(true)}>Connect system</Button> : undefined}
           meta={isLoading ? "\u00a0" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}`}
         />
       }
@@ -269,5 +275,7 @@ export default function SystemsPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}
     />
+    <ConnectSystemDialog open={connecting} onOpenChange={setConnecting} />
+    </>
   );
 }

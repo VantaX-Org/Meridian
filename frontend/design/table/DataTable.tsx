@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import {
   type ColumnDef,
   type RowSelectionState,
@@ -29,6 +29,7 @@ import { exportOptionLabel, runExportOption, type ExportOption } from "../primit
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
 import { barFill, type CellMeta } from "./columns";
 import { rampStep } from "../tokens";
+import { readPrefs, subscribePreferences } from "../../lib/preferences";
 
 const SEVERITIES = ["critical", "high", "medium", "low", "pass"] as const;
 const DIV_STEPS = ["neg-2", "neg-1", "mid", "pos-1", "pos-2"] as const;
@@ -100,6 +101,20 @@ const ROW_H_FALLBACK = 36;
 const ROW_H_DENSE_FALLBACK = 30;
 const VIRTUALIZE_ABOVE = 200;
 
+/** True while the page is being printed: paper needs every row, not the virtualised window. */
+function subscribePrint(cb: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => undefined;
+  const mq = window.matchMedia("print");
+  mq.addEventListener?.("change", cb);
+  return () => mq.removeEventListener?.("change", cb);
+}
+function printSnapshot(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("print").matches;
+}
+function usePrintMedia(): boolean {
+  return useSyncExternalStore(subscribePrint, printSnapshot, () => false);
+}
+
 function readPx(name: string, fallback: number): number {
   if (typeof document === "undefined") return fallback;
   const n = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
@@ -135,8 +150,10 @@ export function DataTable<T>({
   const viewsKey = tableId ?? columns.map((c, i) => c.id ?? ("accessorKey" in c ? String(c.accessorKey) : String(i))).join("|");
   const [views, setViews] = useState<TableView[]>([]);
   const [viewName, setViewName] = useState("");
-  // localStorage is client-only, so views load after mount rather than during render.
-  useEffect(() => setViews(loadViews(viewsKey)), [viewsKey]);
+  // Views live in the user's preferences (client-only storage, synced from the server after sign-in), so they load
+  // after mount and again whenever this table's saved views change.
+  const savedViews = useSyncExternalStore(subscribePreferences, () => readPrefs().saved_views?.[viewsKey], () => undefined);
+  useEffect(() => setViews(loadViews(viewsKey)), [viewsKey, savedViews]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [openRow, setOpenRow] = useState<T | null>(null);
@@ -209,7 +226,8 @@ export function DataTable<T>({
   });
 
   const rowModel = table.getRowModel().rows;
-  const shouldVirtualize = rowModel.length > VIRTUALIZE_ABOVE;
+  const printing = usePrintMedia();
+  const shouldVirtualize = !printing && rowModel.length > VIRTUALIZE_ABOVE;
   const virtualizer = useVirtualizer({
     count: shouldVirtualize ? rowModel.length : 0,
     getScrollElement: () => parentRef.current,
@@ -367,8 +385,8 @@ export function DataTable<T>({
           )}
         </div>
       )}
-      <div className="m-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown} data-tour={dataTour}>
-      <div ref={parentRef} style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
+      <div className="m-card m-table-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown} data-tour={dataTour}>
+      <div ref={parentRef} className="m-table-scroll" style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
         <table
           className="m-text-body w-full"
           style={{ color: "var(--m-ink)" }}

@@ -39,9 +39,11 @@ const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }))
 export default function AdminUsersPage() {
   const [tabRaw, setTab] = useUrlState("tab", "users");
   const tab = (["users", "roles", "audit"] as string[]).includes(tabRaw) ? tabRaw : "users";
-  const { can } = useRole();
+  const { can, loading } = useRole();
   const canManage = can("manage_users");
 
+  // Grants fail closed while loading; a refusal must not flash before they arrive.
+  if (loading) return <div className="p-6" aria-busy="true"><Skeleton height={320} /></div>;
   if (!canManage) {
     return (
       <div className="p-6">

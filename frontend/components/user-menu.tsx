@@ -1,7 +1,8 @@
 "use client";
 
 import { Menu } from "@base-ui/react/menu";
-import { Check, LogOut } from "lucide-react";
+import Link from "next/link";
+import { Check, LogOut, Settings } from "lucide-react";
 import { Mono, Pill } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { Monitor, Moon, Sun } from "lucide-react";
@@ -59,6 +60,14 @@ export function UserMenu() {
               ))}
             </Menu.RadioGroup>
             <div role="separator" style={{ height: 1, margin: "4px 0", background: "var(--m-line)" }} />
+            <Menu.Item
+              render={<Link href="/me/preferences" />}
+              className="m-motion-colors flex cursor-pointer items-center gap-2 px-3 text-[13px] leading-[18px] data-[highlighted]:bg-[var(--m-sheet-raised)]"
+              style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-control)" }}
+            >
+              <Settings size={14} aria-hidden style={{ color: "var(--m-ink-3)" }} />
+              Preferences
+            </Menu.Item>
             <Menu.Item
               onClick={logout}
               className="m-motion-colors flex cursor-pointer items-center gap-2 px-3 text-[13px] leading-[18px] data-[highlighted]:bg-[var(--m-sheet-raised)]"

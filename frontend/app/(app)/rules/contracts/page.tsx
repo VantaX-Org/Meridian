@@ -12,6 +12,7 @@ import { activateContract, createContract, getContractCompliance, getContracts }
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { relativeTime, formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { length, required, useFormErrors, type Schema } from "@/lib/forms";
 import type { Contract, ContractStatus } from "@/types/api";
 
 type StatusFilter = "all" | "breached" | ContractStatus;
@@ -204,6 +205,13 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
   );
 }
 
+const CONTRACT_SCHEMA: Schema<{ name: string; producer: string; consumer: string; description: string }> = {
+  name: [required("Enter a contract name"), length(1, 200, "Use up to 200 characters")],
+  producer: [required("Enter the producer system"), length(1, 200, "Use up to 200 characters")],
+  consumer: [required("Enter the consumer system"), length(1, 200, "Use up to 200 characters")],
+  description: length(1, 2000, "Use up to 2,000 characters"),
+};
+
 function NewContractForm({ onDone }: { onDone: () => void }) {
   const [d, setD] = useState({ name: "", producer: "", consumer: "", description: "" });
   const create = useMutation({
@@ -211,14 +219,15 @@ function NewContractForm({ onDone }: { onDone: () => void }) {
     onSuccess: () => { toast.success("Contract created as a draft"); onDone(); },
     onError: (e) => toast.error((e as Error).message || "Not created"),
   });
-  const valid = d.name.trim() && d.producer.trim() && d.consumer.trim();
+  const form = useFormErrors(CONTRACT_SCHEMA, d);
+  const valid = form.valid;
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (valid) create.mutate(); }} className="flex flex-col gap-3">
-      <Field label="Contract name"><Input value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Vendor master to S/4HANA" /></Field>
-      <Field label="Producer system"><Input value={d.producer} onChange={(e) => setD({ ...d, producer: e.target.value })} placeholder="ECC PRD" /></Field>
-      <Field label="Consumer system"><Input value={d.consumer} onChange={(e) => setD({ ...d, consumer: e.target.value })} placeholder="S/4HANA Cloud" /></Field>
-      <Field label="What the contract governs">
-        <Textarea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} />
+    <form noValidate onSubmit={(e) => { e.preventDefault(); form.touchAll(); if (valid) create.mutate(); }} className="flex flex-col gap-3">
+      <Field label="Contract name" error={form.error("name")}><Input value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} onBlur={() => form.blur("name")} placeholder="Vendor master to S/4HANA" /></Field>
+      <Field label="Producer system" error={form.error("producer")}><Input value={d.producer} onChange={(e) => setD({ ...d, producer: e.target.value })} onBlur={() => form.blur("producer")} placeholder="ECC PRD" /></Field>
+      <Field label="Consumer system" error={form.error("consumer")}><Input value={d.consumer} onChange={(e) => setD({ ...d, consumer: e.target.value })} onBlur={() => form.blur("consumer")} placeholder="S/4HANA Cloud" /></Field>
+      <Field label="What the contract governs" error={form.error("description")}>
+        <Textarea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} onBlur={() => form.blur("description")} />
       </Field>
       <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>It starts as a draft. Add schema, quality, freshness and volume terms, then activate it.</p>
       <div><Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Creating…" : "Create draft"}</Button></div>

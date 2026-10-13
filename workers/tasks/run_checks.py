@@ -705,11 +705,16 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         governance = {**rule_overrides, "_suppressed": sorted(sup_rules)
                       + sorted(f"{c}:{k}" for c, ks in sup_records.items() for k in ks)}
         rule_set = rule_set_fingerprint(modules, governance, fs_rules)
-        # a checkpoint resumes only under the same rules, measuring date and cost model
-        # (uploads measure as of now: the day, so a same-day rerun still resumes)
+        # a checkpoint resumes only under the same rules, measuring date, cost model and live
+        # reference values (uploads measure as of now: the day, so a same-day rerun still resumes).
+        # The reference fingerprint matters: a referential rule's result depends on the source
+        # system's live config, so re-loading config (e.g. the check tables the value rules read)
+        # must invalidate the checkpoint and re-run those rules, not resurrect their old skips.
         import hashlib
+        ref_fingerprint = hashlib.sha256(json.dumps(
+            {k: sorted(v) for k, v in live_refs.items()}, sort_keys=True).encode()).hexdigest()[:16]
         resume_key = hashlib.sha256(json.dumps(
-            [rule_set, as_of or datetime.now(timezone.utc).date().isoformat(), cost_model],
+            [rule_set, as_of or datetime.now(timezone.utc).date().isoformat(), cost_model, ref_fingerprint],
             sort_keys=True, default=str).encode()).hexdigest()[:16]
         resumed: dict[str, dict] = _open_checkpoint(engine, tenant_id, version_id, resume_key, parquet_path)["modules"]
         # cells a specific rule already reports on that record: the DDIC pass does not report them twice

@@ -7,9 +7,15 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { CommandPalette } from "./CommandPalette";
+import { allowConsoleError } from "@/vitest.console";
+
+// cmdk 1.1.1 renders a Radix Dialog.Content without a Dialog.Title and logs Radix's a11y warning on open.
+// Fixing that needs a direct @radix-ui/react-dialog import (a new dependency), so the warning is allowed here.
+const allowPaletteTitleWarning = allowConsoleError;
 
 describe("CommandPalette", () => {
   it("renders a visible Search trigger and opens the palette on click", () => {
+    allowPaletteTitleWarning();
     class StubResizeObserver {
       observe() {}
       unobserve() {}
@@ -37,6 +43,7 @@ describe("CommandPalette", () => {
 
 describe("CommandPalette grammar", () => {
   it("shows chips and routes the parsed href on select", () => {
+    allowPaletteTitleWarning();
     class RO { observe() {} unobserve() {} disconnect() {} }
     (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = RO;
     HTMLElement.prototype.scrollIntoView = vi.fn();

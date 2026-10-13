@@ -9,13 +9,21 @@ import { queryKeys } from "@/lib/query-keys";
 import { listRoles, type GrantInput } from "@/lib/api/roles";
 import { inviteUser } from "@/lib/api/users";
 import { apiErrorMessage } from "@/lib/error";
+import { email as emailRule, length, required, useFormErrors, type Schema } from "@/lib/forms";
 import { GrantsPicker, type GrantRowView } from "./grants-picker";
+
+const SCHEMA: Schema<{ email: string; name: string }> = {
+  email: [required("Enter an email address"), emailRule()],
+  name: length(1, 120, "Use up to 120 characters"),
+};
 
 /** Invite a user with at least one role grant. */
 export function InviteForm({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [grants, setGrants] = useState<(GrantRowView & GrantInput)[]>([]);
+  const values = { email, name };
+  const form = useFormErrors(SCHEMA, values);
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const m = useMutation({
@@ -27,9 +35,9 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
     onError: (e) => toast.error(`Invitation not sent. ${apiErrorMessage(e)}`),
   });
   return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (email && grants.length) m.mutate(); }}>
-      <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
-      <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+    <form noValidate className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); form.touchAll(); if (form.valid && grants.length) m.mutate(); }}>
+      <Field label="Email" error={form.error("email")}><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => form.blur("email")} /></Field>
+      <Field label="Name" error={form.error("name")}><input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => form.blur("name")} /></Field>
       <GrantsPicker
         grants={grants} roles={rolesQ.data ?? []} systems={systemsQ.data ?? []}
         onAdd={(g) => setGrants((cur) => {
@@ -41,7 +49,7 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
       />
       {grants.length === 0 ? <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Add at least one grant to invite.</p> : null}
       <div className="flex gap-2">
-        <Button type="submit" disabled={!email || grants.length === 0 || m.isPending}>Send invitation</Button>
+        <Button type="submit" disabled={!form.valid || grants.length === 0 || m.isPending}>Send invitation</Button>
         <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
       </div>
     </form>
