@@ -56,6 +56,28 @@ def abap_objects(system_type: str) -> dict[str, set[str]]:
     for t, fields in required_objects().items():
         if t in out:
             out[t].update(fields)
+    # The rules' own check/reference tables. A referential rule's allowed values come from its
+    # field's DDIC check table (e.g. T134.MTART for MARA.MTART, resolved as field.check_ref by
+    # checks.runner._with_reference). The registry and plan cover the tables the connectors were
+    # written to read, but not every check table a rule names — material_master alone references
+    # ~100 check tables (T023, T141, T001W, T024D, T005, T460A …) and, with only the registry set
+    # loaded, skips ~63 referential rules as not_evaluable, which inflates the DQS.
+    try:
+        from checks.runner import module_rules
+        from sap.ddic import dictionary_for_system
+        from sap.extraction_plan import MODULES_BY_SYSTEM
+        dictionary = dictionary_for_system(system_type)
+        for module in MODULES_BY_SYSTEM.get(system_type, []):
+            for rule in module_rules(module):
+                if rule.get("enabled") is False:  # derived rules ship disabled; they do not run yet
+                    continue
+                field = dictionary.resolve(rule.get("field") or "")
+                check_table = getattr(field, "check_table", None) if field else None
+                check_field = getattr(field, "check_field", None) if field else None
+                if check_table:
+                    out.setdefault(check_table, set()).update([check_field] if check_field else [])
+    except Exception as e:  # config load must never fail because the rule plan could not be read
+        logger.warning(f"rule-referenced config tables not added for {system_type}: {e}")
     return out
 
 

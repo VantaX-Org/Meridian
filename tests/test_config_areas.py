@@ -19,12 +19,21 @@ TID = uuid.uuid4()
 
 
 def test_every_planned_object_is_in_an_area_and_every_listed_object_is_read():
-    for st in ("ecc", "s4hana_onprem", "ewm", "ewms", "successfactors", "concur"):
+    # Cloud loaders read exactly what their areas list (no DDIC check tables there).
+    for st in ("successfactors", "concur"):
         listed = {o for d in ca.area_defs(st) for o in d["objects"]}
         planned = set(planned_objects(st))
         assert planned <= listed, (st, planned - listed)
+    # ABAP: every area object is read by an ABAP loader of the same family (ecc/s4hana share
+    # the CVI_* tables, ewm/ewms share the warehouse tables). The loader additionally reads
+    # each rule's DDIC check/reference table (T141, T001W, T005 …) — reference data the
+    # process areas don't enumerate, which lands in config_areas.OTHER.
     abap = {o for st in ("ecc", "s4hana_onprem") for o in planned_objects(st)}
-    assert {o for d in ca.area_defs("ecc") for o in d["objects"]} <= abap
+    for st in ("ecc", "s4hana_onprem"):
+        assert {o for d in ca.area_defs(st) for o in d["objects"]} <= abap, st
+    wm = {o for st in ("ewm", "ewms") for o in planned_objects(st)}
+    for st in ("ewm", "ewms"):
+        assert {o for d in ca.area_defs(st) for o in d["objects"]} <= wm, st
 
 
 class _FakeSF:
