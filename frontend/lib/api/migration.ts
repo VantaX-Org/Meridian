@@ -217,19 +217,47 @@ export function downloadWaveReport(id: string, fmt: "xlsx" | "pdf"): Promise<voi
   return downloadBlob(`/api/v1/migration/waves/${id}/report.${fmt}`, {}, `migration_readiness_${id}.${fmt}`);
 }
 
+export interface S4Check {
+  check_id: string;
+  module: string | null;
+  /** "blocking" checks make the area red whenever they fail; "warning" checks only degrade it. */
+  impact: "blocking" | "warning";
+  status: string;
+  affected_count: number;
+  pass_rate: number | null;
+}
+
 export interface S4Area {
   area: string;
   label: string;
   simplification_item: string | null;
   rules: number;
+  evaluated: number;
   failing: number;
   failing_records: number;
   blocking_failing: number;
+  warning_failing: number;
   status: string;
+  /** Blocking checks first, then by affected records. */
+  checks: S4Check[];
 }
 
-export async function getS4Readiness(versionId: string): Promise<{ status: string; areas: S4Area[] }> {
-  const { data } = await apiClient.get<{ status: string; areas: S4Area[] }>("/api/v1/findings/s4-readiness", {
+export interface S4Readiness {
+  version_id: string | null;
+  status: string;
+  ready: boolean;
+  rules: number;
+  evaluated: number;
+  failing: number;
+  failing_records: number;
+  blocking_failing: number;
+  warning_failing: number;
+  areas: S4Area[];
+}
+
+/** GET /api/v1/findings/s4-readiness: the S/4HANA conversion readiness of one analysis, per simplification area. */
+export async function getS4Readiness(versionId: string): Promise<S4Readiness> {
+  const { data } = await apiClient.get<S4Readiness>("/api/v1/findings/s4-readiness", {
     params: { version_id: versionId },
   });
   return data;
