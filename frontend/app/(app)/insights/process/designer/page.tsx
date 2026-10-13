@@ -7,8 +7,9 @@ import { Button, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, 
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import {
   adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
-  signavioExportUrl, type SaveFailure,
+  pptxExportUrl, signavioExportUrl, type SaveFailure,
 } from "@/lib/api/process-designer";
+import { toast } from "sonner";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -195,6 +196,11 @@ function Editor(p: EditorProps) {
 
   const exportZip = () => downloadAuthenticated(
     signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip");
+  const exportPptx = useMutation({
+    mutationFn: () => downloadAuthenticated(pptxExportUrl(model, viewingOld ? versionNo : undefined), "process-model.pptx"),
+    onSuccess: () => toast.success("PowerPoint exported"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -209,6 +215,7 @@ function Editor(p: EditorProps) {
           {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
           {canDesign ? <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button> : null}
+          {canExport ? <Button variant="secondary" disabled={dirty} pending={exportPptx.isPending} onClick={() => exportPptx.mutate()}>Export to PowerPoint</Button> : null}
         </>} />
 
       {naming !== null ? (
