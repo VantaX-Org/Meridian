@@ -144,6 +144,8 @@ describe("DataTable", () => {
       const { container } = render(<DataTable columns={columns} data={data} getRowId={(r) => r.id} />);
       expect(container.querySelectorAll("tbody tr")).toHaveLength(300);
       expect(container.querySelector(".m-table-card .m-table-scroll")).not.toBeNull();
+      // print.css keeps `.m-table-scroll th button` visible: sortable header labels live inside that button.
+      expect(container.querySelector(".m-table-scroll th button")).not.toBeNull();
     } finally {
       window.matchMedia = original;
       if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);

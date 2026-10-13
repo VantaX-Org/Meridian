@@ -35,11 +35,6 @@ export default function PreferencesPage() {
   }, [prefs.timezone]);
 
   const replayTours = () => {
-    try {
-      Object.keys(window.localStorage).filter((k) => k.startsWith("m-tour:")).forEach((k) => window.localStorage.removeItem(k));
-    } catch {
-      /* storage blocked: the stored list below is the source of truth */
-    }
     update({ tours_done: null });
     toast.success("Tours will show again");
   };

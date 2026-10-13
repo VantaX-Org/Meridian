@@ -1,8 +1,11 @@
+import { readPrefs, setPreferences, subscribePreferences } from "@/lib/preferences";
+
 /**
- * Where tour completion and the last-seen release live. localStorage for now;
- * lane 4 moves both to server-side user preferences (`tours_done`,
- * `seen_version`), so everything that reads or writes them goes through here.
- * Every access is wrapped: storage can be blocked or throw in private windows.
+ * Where tour completion and the last-seen release live. Both are user
+ * preferences (`tours_done`, `seen_version`), so they follow the account to
+ * any browser; only the checklist-dismissed flag stays in localStorage.
+ * Every localStorage access is wrapped: storage can be blocked or throw in
+ * private windows.
  */
 export const TOUR_KEY_PREFIX = "m-tour:";
 export const SEEN_VERSION_KEY = "m-seen-version";
@@ -11,13 +14,13 @@ export const CHECKLIST_DISMISSED_KEY = "m-first-run-checklist";
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-/** For `useSyncExternalStore`: fires on a write here or in another tab. */
+/** For `useSyncExternalStore`: fires on a preference change or a checklist write, here or in another tab. */
 export function subscribeStorage(onChange: () => void): () => void {
   listeners.add(onChange);
-  if (typeof window !== "undefined") window.addEventListener("storage", onChange);
+  const off = typeof window !== "undefined" ? subscribePreferences(onChange) : () => {};
   return () => {
     listeners.delete(onChange);
-    if (typeof window !== "undefined") window.removeEventListener("storage", onChange);
+    off();
   };
 }
 
@@ -38,21 +41,20 @@ function write(key: string, value: string): void {
   emit();
 }
 
-function remove(key: string): void {
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    /* ignore */
-  }
-  emit();
-}
+const toursDone = (): string[] => readPrefs().tours_done ?? [];
 
-export const isTourDone = (id: string): boolean => read(`${TOUR_KEY_PREFIX}${id}`) === "done";
-export const markTourDone = (id: string): void => write(`${TOUR_KEY_PREFIX}${id}`, "done");
-export const resetTour = (id: string): void => remove(`${TOUR_KEY_PREFIX}${id}`);
+export const isTourDone = (id: string): boolean => toursDone().includes(id);
+export const markTourDone = (id: string): void => {
+  const done = toursDone();
+  if (!done.includes(id)) setPreferences({ tours_done: [...done, id] });
+};
+export const resetTour = (id: string): void => {
+  const rest = toursDone().filter((t) => t !== id);
+  setPreferences({ tours_done: rest.length > 0 ? rest : null });
+};
 
-export const readSeenVersion = (): string | null => read(SEEN_VERSION_KEY);
-export const writeSeenVersion = (version: string): void => write(SEEN_VERSION_KEY, version);
+export const readSeenVersion = (): string | null => readPrefs().seen_version ?? null;
+export const writeSeenVersion = (version: string): void => setPreferences({ seen_version: version });
 
 export const isChecklistDismissed = (): boolean => read(CHECKLIST_DISMISSED_KEY) === "dismissed";
 export const dismissChecklist = (): void => write(CHECKLIST_DISMISSED_KEY, "dismissed");

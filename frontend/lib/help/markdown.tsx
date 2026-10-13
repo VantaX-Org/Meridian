@@ -73,7 +73,7 @@ export function renderInline(text: string): ReactNode[] {
       const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token);
       const label = link?.[1] ?? token;
       const href = link?.[2] ?? "";
-      out.push(href.startsWith("/") ? <Link key={key} href={href} style={{ color: "var(--m-accent)" }}>{label}</Link> : label);
+      out.push(href.startsWith("/") ? <Link key={key} href={href} style={{ color: "var(--m-accent)", textDecoration: "underline" }}>{label}</Link> : label);
     }
     last = at + token.length;
   }

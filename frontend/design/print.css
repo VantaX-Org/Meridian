@@ -31,6 +31,10 @@
   .m-btn,
   .m-iconbtn { display: none !important; }
 
+  /* Sortable column headers keep their label inside a <button> (DataTable); without this most <th> print empty.
+     The toolbar and every other control stay hidden. */
+  .m-table-scroll th button { display: inline !important; border: 0 !important; background: none !important; padding: 0 !important; box-shadow: none !important; color: inherit; font: inherit; }
+
   /* The shell is a fixed-height flex row with scrolling panes; on paper it is one flowing column. */
   .m-print-flow { display: block !important; height: auto !important; overflow: visible !important; flex: none !important; }
 

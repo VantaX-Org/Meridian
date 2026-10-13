@@ -343,5 +343,20 @@
     "name": "migration-wave-s4",
     "path": "/migration/w1?tab=s4",
     "heading": "Migration"
+  },
+  {
+    "name": "docs",
+    "path": "/docs",
+    "heading": "Documentation"
+  },
+  {
+    "name": "me-preferences",
+    "path": "/me/preferences",
+    "heading": "Preferences"
+  },
+  {
+    "name": "inbox-notifications",
+    "path": "/inbox/notifications",
+    "heading": "Notifications"
   }
 ]
