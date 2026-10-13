@@ -43,6 +43,8 @@ export function useRole() {
   return {
     role,
     can,
+    /** True while the grants are still loading inside the provider; gates should show a skeleton, not a refusal. */
+    loading: fromGrants?.loading ?? false,
     isAdmin: role === "admin",
     // "manager tier" = may change data (approve/apply) — used for coarse nav gating
     isManager: can("approve") || can("apply"),

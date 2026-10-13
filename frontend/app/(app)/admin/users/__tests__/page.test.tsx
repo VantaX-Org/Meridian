@@ -7,7 +7,8 @@ import * as auditApi from "@/lib/api/audit";
 import type { User } from "@/types/api";
 import AdminUsersPage from "../page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const role = { can: () => true, loading: false };
+vi.mock("@/hooks/use-role", () => ({ useRole: () => role }));
 
 const USER: User = {
   id: "u1", tenant_id: "t1", clerk_user_id: null, email: "ana@example.com", name: "Ana Steward",
@@ -21,6 +22,17 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("admin users page", () => {
+  it("shows a skeleton, not a refusal, while the grants are still loading", () => {
+    role.loading = true;
+    try {
+      renderWithQuery(<AdminUsersPage />);
+      expect(screen.queryByText(/Needs the manage_users permission/)).toBeNull();
+      expect(document.querySelector("[aria-busy='true']")).not.toBeNull();
+    } finally {
+      role.loading = false;
+    }
+  });
+
   it("renders users, roles and audit log once loaded", async () => {
     vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });
     vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
