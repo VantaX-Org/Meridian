@@ -1062,6 +1062,28 @@ class ConnectivityManager:
             self.session.execute(
                 text("INSERT INTO config_items (tenant_id, load_id, object, key, \"values\") "
                      "VALUES (:tid, :lid, :obj, :key, CAST(:vals AS jsonb))"), rows[n:n + 2000])
+        # The value-list rules read their live reference values from config_snapshots
+        # (source='live'), not from config_items. Write the loaded frames there too, so a
+        # config load feeds the referential/exists checks (T141 material types, T005
+        # countries, T024D MRP controllers …) instead of those rules skipping as
+        # not_evaluable and silently inflating the DQS.
+        for table_name, frame in snap.frames().items():
+            data = frame.to_dict(orient="records")
+            self.session.execute(
+                text("""
+                    INSERT INTO config_snapshots
+                        (id, tenant_id, system_id, module, config_table,
+                         config_data, record_count, source, synced_at)
+                    VALUES
+                        (gen_random_uuid(), :tid, :sid, :mod, :tbl,
+                         CAST(:data AS jsonb), :cnt, 'live', now())
+                    ON CONFLICT (tenant_id, system_id, module, config_table)
+                    DO UPDATE SET config_data = CAST(:data AS jsonb),
+                                  record_count = :cnt, source = 'live', synced_at = now()
+                """),
+                {"tid": self.tenant_id, "sid": system_id, "mod": "*", "tbl": table_name,
+                 "data": json.dumps(data, default=str), "cnt": len(data)},
+            )
         write_drift(self.session, str(self.tenant_id), system_id, load_id)
         self.session.commit()
         return {"load_id": load_id, "system_type": system_type, "objects": snap.summary(), "items": len(rows),
