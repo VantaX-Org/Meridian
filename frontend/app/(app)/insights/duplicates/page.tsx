@@ -15,6 +15,7 @@ import {
   Graph,
   Input,
   Select,
+  Tabs,
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
@@ -23,11 +24,19 @@ import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { MinedAnomalies, MinedDuplicates, MinedRelationships } from "./mined-tabs";
 
 export default function DuplicatesPage() {
   const search = useSearchParams();
   const router = useRouter();
   const run = search.get("run") ?? "";
+  const tab = search.get("tab") ?? "clusters";
+  const setTab = (next: string) => {
+    const params = new URLSearchParams(search.toString());
+    if (next === "clusters") params.delete("tab"); else params.set("tab", next);
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : "?");
+  };
 
   const objects = useQuery({
     queryKey: queryKeys.objects(run),
@@ -115,6 +124,12 @@ export default function DuplicatesPage() {
         loading: picked && cluster.isLoading,
       }}
     >
+      <Tabs
+        value={tab}
+        onValueChange={setTab}
+        items={[
+          { value: "clusters", label: "Clusters", content: (
+            <div className="flex flex-col gap-4">
       <Card title="Find a cluster">
         <div className="flex gap-3 items-end">
           <Field label="Object">
@@ -163,6 +178,13 @@ export default function DuplicatesPage() {
           </div>
         </Card>
       )}
+            </div>
+          ) },
+          { value: "pairs", label: "Mined duplicates", content: <MinedDuplicates run={run} /> },
+          { value: "anomalies", label: "Anomalies", content: <MinedAnomalies run={run} /> },
+          { value: "relationships", label: "Relationships", content: <MinedRelationships run={run} /> },
+        ]}
+      />
     </InsightFrame>
   );
 }

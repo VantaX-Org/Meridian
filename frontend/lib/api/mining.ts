@@ -105,6 +105,62 @@ export async function getMiningRuns(limit = 20): Promise<MiningRunsResponse> {
   }
 }
 
+export interface MinedDuplicate {
+  id: string;
+  version_id: string;
+  module_id: string;
+  record_a: string;
+  record_b: string;
+  match_score: number;
+  id_field: string | null;
+  matched_fields: string[] | null;
+  detected_at: string;
+}
+
+export interface MinedAnomaly {
+  id: string;
+  version_id: string;
+  module_id: string;
+  field_name: string;
+  field_value: number | null;
+  record_index: number | null;
+  detection_method: string;
+  z_score: number | null;
+  severity: "critical" | "high" | "medium" | "low";
+  detected_at: string;
+}
+
+export interface MinedRelationship {
+  id: string;
+  version_id: string;
+  module_id: string;
+  field_a: string;
+  field_b: string;
+  relationship_type: string;
+  strength_score: number;
+  detected_at: string;
+}
+
+interface MinedParams { version_id?: string; module_id?: string; limit?: number }
+
+/** GET /api/v1/mining/duplicates: record pairs the miner scored as likely duplicates, best match first. */
+export async function getMiningDuplicates(params?: MinedParams & { min_score?: number }): Promise<MinedDuplicate[]> {
+  const { data } = await apiClient.get<MinedDuplicate[]>("/api/v1/mining/duplicates", { params });
+  return data;
+}
+
+/** GET /api/v1/mining/anomalies: statistical outliers per field, worst severity first. */
+export async function getMiningAnomalies(params?: MinedParams & { severity?: MinedAnomaly["severity"] }): Promise<MinedAnomaly[]> {
+  const { data } = await apiClient.get<MinedAnomaly[]>("/api/v1/mining/anomalies", { params });
+  return data;
+}
+
+/** GET /api/v1/mining/relationships: field pairs that move together. */
+export async function getMiningRelationships(params?: MinedParams & { min_strength?: number }): Promise<MinedRelationship[]> {
+  const { data } = await apiClient.get<MinedRelationship[]>("/api/v1/mining/relationships", { params });
+  return data;
+}
+
 export function isMiningAvailable(summary: MiningSummary): boolean {
   return summary.runs_total > 0 || summary.total_patterns > 0;
 }

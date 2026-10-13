@@ -1,11 +1,15 @@
 // frontend/app/(app)/insights/owners/page.tsx
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, Delta, Pill, Stat, type PillTone } from "@/design";
+import { toast } from "sonner";
+import { Button, Card, ConfirmDialog, DataTable, Delta, Pill, Stat, type PillTone } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { getOwners, getReadiness, type OwnerCardResponse } from "@/lib/api/insights";
+import { sendOwnerDigests } from "@/lib/api/owners";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
@@ -26,7 +30,20 @@ const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "fixed_since_baseline", header: "Fixed since baseline", meta: { numeric: true } },
 ];
 
-function OwnerCard({ owner }: { owner: OwnerCardResponse }) {
+/** Writes the digest notification now. `owner` undefined sends to everyone. */
+function useSendDigests() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (owner?: string) => sendOwnerDigests(owner ? { owner } : {}),
+    onSuccess: (r) => {
+      toast.success(r.owner ? `Digest sent to ${r.owner}` : `Digest sent to ${r.sent} owner${r.sent === 1 ? "" : "s"}`);
+      void qc.invalidateQueries({ queryKey: queryKeys.insights("owners") });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+}
+
+function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend: boolean; send: ReturnType<typeof useSendDigests> }) {
   return (
     <Card title={owner.owner} padding="md">
     <div data-testid="owner-card" className="flex flex-col gap-3">
@@ -45,12 +62,21 @@ function OwnerCard({ owner }: { owner: OwnerCardResponse }) {
       <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
         {owner.schedule} digest, last sent {owner.last_sent ?? "never"}
       </div>
+      {canSend ? (
+        <div>
+          <Button variant="secondary" size="sm" onClick={() => send.mutate(owner.owner)} pending={send.isPending && send.variables === owner.owner}>Send digest now</Button>
+        </div>
+      ) : null}
     </div>
     </Card>
   );
 }
 
 export default function OwnersPage() {
+  const { can } = useRole();
+  const canSend = can("manage_rules");
+  const send = useSendDigests();
+  const [confirmAll, setConfirmAll] = useState(false);
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("owners"),
     queryFn: () => getOwners(),
@@ -83,14 +109,27 @@ export default function OwnersPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {canSend ? <Button variant="secondary" onClick={() => setConfirmAll(true)}>Send digests to everyone</Button> : null}
+        <Button variant="secondary" render={<Link href="/rules/scoring">Schedule digests</Link>} />
+      </div>
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         {owners.map((owner) => (
-          <OwnerCard key={owner.owner} owner={owner} />
+          <OwnerCard key={owner.owner} owner={owner} canSend={canSend} send={send} />
         ))}
       </div>
       <Card title="Score by owner">
         <DataTable columns={scoreColumns} data={owners} getRowId={(o) => o.owner} hideToolbar dense height="auto" />
       </Card>
+      <ConfirmDialog
+        open={confirmAll}
+        onOpenChange={setConfirmAll}
+        title="Send digests to everyone"
+        body={`Every owner with open items gets the weekly digest as a notification now. The weekly schedule is not changed.`}
+        confirmLabel="Send digests"
+        pending={send.isPending && send.variables === undefined}
+        onConfirm={() => send.mutate(undefined, { onSettled: () => setConfirmAll(false) })}
+      />
     </InsightFrame>
   );
 }

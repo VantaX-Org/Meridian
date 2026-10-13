@@ -2,7 +2,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
+import * as ownersApi from "@/lib/api/owners";
+import userEvent from "@testing-library/user-event";
 import OwnersPage from "../page";
+
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+const JANE = {
+  owner: "jane.doe", score: 82.5, delta: 3.2, open_by_severity: { critical: 1 }, fixed_since_baseline: 1,
+  oldest_item_age_days: 4, digest: "one critical item", schedule: "weekly", last_sent: null,
+};
 
 function renderWithQuery(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -64,5 +74,30 @@ describe("OwnersPage", () => {
 
     await waitFor(() => expect(screen.getByText(/no owners scored yet/i)).toBeInTheDocument());
     expect(getOwners).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends one owner's digest now", async () => {
+    vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [JANE] });
+    const send = vi.spyOn(ownersApi, "sendOwnerDigests").mockResolvedValue({ sent: 1, owner: "jane.doe" });
+    renderWithQuery(<OwnersPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Send digest now" }));
+    await waitFor(() => expect(send).toHaveBeenCalledWith({ owner: "jane.doe" }));
+  });
+
+  it("sends to everyone only after the confirm dialog", async () => {
+    vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [JANE] });
+    const send = vi.spyOn(ownersApi, "sendOwnerDigests").mockResolvedValue({ sent: 1, owner: null });
+    renderWithQuery(<OwnersPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Send digests to everyone" }));
+    expect(send).not.toHaveBeenCalled();
+    const confirm = (await screen.findAllByRole("button", { name: "Send digests" })).pop() as HTMLElement;
+    await userEvent.click(confirm);
+    await waitFor(() => expect(send).toHaveBeenCalledWith({}));
+  });
+
+  it("links to where digests are scheduled", async () => {
+    vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [JANE] });
+    renderWithQuery(<OwnersPage />);
+    expect(await screen.findByRole("link", { name: "Schedule digests" })).toHaveAttribute("href", "/rules/scoring");
   });
 });
