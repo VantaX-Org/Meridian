@@ -100,7 +100,7 @@ export function RulesSection({ canCreate }: { canCreate: boolean }) {
   const [creating, setCreating] = useState(false);
   const q = useQuery({ queryKey: ["z-objects", "rules"], queryFn: getZRules, retry: false });
   const registry = useQuery({ queryKey: ["z-objects", "registry"], queryFn: getZRegistry, retry: false });
-  const entries = registry.data?.entries ?? [];
+  const entries = useMemo(() => registry.data?.entries ?? [], [registry.data]);
   const nameOf = useMemo(() => new Map(entries.map((e) => [e.id, e.object_name])), [entries]);
   const ruleCols = useMemo<ColumnDef<ZCustomRule>[]>(() => [
     { id: "name", header: "Rule", cell: ({ row }) => row.original.rule_name },

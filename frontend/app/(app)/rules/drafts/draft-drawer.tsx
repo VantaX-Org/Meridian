@@ -155,7 +155,7 @@ export function DraftDrawer({ draft, open, onOpenChange }: { draft: RuleDraft | 
             <Field label="Object" error={shown("module")}>
               <Select value={form.module} onValueChange={(v) => set("module", v)} options={moduleOptions} placeholder="Choose an object" />
             </Field>
-            <Field label="Field"><Input value={form.field} onChange={(e) => set("field", e.target.value)} placeholder="TABLE.FIELD" /></Field>
+            <Field label="Field"><Input value={form.field} onChange={(e) => set("field", e.target.value)} placeholder="Table and field" /></Field>
             <Field label="Check class"><Select value={form.check_class} onValueChange={(v) => set("check_class", v)} options={toOptions(CHECK_CLASSES)} /></Field>
             <Field label="Severity"><Select value={form.severity} onValueChange={(v) => set("severity", v)} options={toOptions(SEVERITIES)} /></Field>
             <Field label="Dimension"><Select value={form.dimension} onValueChange={(v) => set("dimension", v)} options={toOptions(DIMENSIONS)} /></Field>

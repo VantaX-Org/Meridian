@@ -23,7 +23,7 @@ export function InventoryModuleDrawer({ module, onClose }: { module: string | nu
     enabled: module !== null,
     retry: false,
   });
-  const elements = q.data?.elements ?? [];
+  const elements = useMemo(() => q.data?.elements ?? [], [q.data]);
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const e of elements) c[e.status] = (c[e.status] ?? 0) + 1;

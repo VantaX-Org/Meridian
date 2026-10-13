@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
 import { Field } from "./Field";
@@ -27,7 +27,12 @@ export function ConfirmDialog({
   open, onOpenChange, title, body, confirmLabel, onConfirm, tone = "default", typeToConfirm, pending = false, cancelLabel = "Keep",
 }: ConfirmDialogProps) {
   const [typed, setTyped] = useState("");
-  useEffect(() => { if (!open) setTyped(""); }, [open]);
+  // Clear the typed value whenever the dialog closes (adjusting state during render, not in an effect).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) setTyped("");
+  }
   const blocked = typeToConfirm !== undefined && typed !== typeToConfirm;
   return (
     <Dialog
