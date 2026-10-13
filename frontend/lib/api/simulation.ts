@@ -93,6 +93,17 @@ export interface SimulationCompleted {
   findings: { before: number; after: number; resolved: number; introduced: number };
   records: { resolved: number; introduced: number };
   best_next_fixes?: NextFix[];
+  /** Every record the rule fixes changed (at most 50,000), with the rule that proposed it. */
+  record_fixes?: SimulatedRecordFix[];
+}
+
+export interface SimulatedRecordFix {
+  check_id: string;
+  module: string;
+  field: string;
+  record_key: string;
+  new_value: string;
+  current_value?: string | null;
 }
 
 /** The worker writes only these three fields when a run fails. */

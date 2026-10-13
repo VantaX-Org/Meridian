@@ -292,6 +292,20 @@ export interface BatchCreated {
   item_count: number;
 }
 
+export interface BatchFromSimulation {
+  id: string;
+  status: "draft";
+  items: number;
+  with_proposal: number;
+  auto_approvable: number;
+}
+
+/** POST /api/v1/remediation/batches/from-simulation: a draft batch from a finished simulation's record fixes. 404 once the simulation has expired (24 h). */
+export async function createBatchFromSimulation(name: string, simulationId: string): Promise<BatchFromSimulation> {
+  const { data } = await apiClient.post<BatchFromSimulation>("/api/v1/remediation/batches/from-simulation", { name, simulation_id: simulationId });
+  return data;
+}
+
 /** Drafts a batch from the open issues matching `filter`. The API answers 400 when nothing matches or the cap is exceeded. */
 export async function createBatch(name: string, filter: BatchFilter): Promise<BatchCreated> {
   const { data } = await apiClient.post<BatchCreated>("/api/v1/remediation/batches", { name, filter });
