@@ -68,3 +68,65 @@ def test_runner_exception_in_check_returns_error():
         assert isinstance(r, CheckResult)
         if r.error:
             assert r.passed is False
+
+
+def test_wholly_blank_field_is_reported_as_unmaintained_not_as_defects():
+    """A presence check on a field no row populates is one systemic gap, not N defects.
+
+    Counting it per row put 12.2M of material_master's 38.2M flagged rows on optional
+    fields the system never fills (MVKE.DWERK: blank 200000/200000) and drove those rules'
+    scores to 0.00.
+    """
+    df = _make_bp_dataframe(100)
+    df["BUT000.BU_SORT1"] = None  # BP011 (medium, null_check) now has nothing to judge
+    stats: dict[str, int] = {}
+
+    results = run_checks("business_partner", df, "test-tenant", stats=stats)
+
+    assert not any(r.check_id == "BP011" for r in results), \
+        "a wholly blank field must not be scored as 100 failing records"
+    assert stats.get("field_unmaintained", 0) >= 1, "the gap must still be reported"
+
+
+def test_a_wholly_blank_critical_field_still_counts_as_a_defect():
+    """A critical field blank in every record is a catastrophic systemic gap, not an
+    unmaintained column: it must keep failing loudly rather than be filed away."""
+    df = _make_bp_dataframe(100)
+    df["BUT000.TYPE"] = None  # BP003 (critical, null_check); not the frame's key
+    stats: dict[str, int] = {}
+
+    results = run_checks("business_partner", df, "test-tenant", stats=stats)
+
+    missing = [r for r in results if r.check_id == "BP003"]
+    assert missing, "a critical presence check must not be suppressed"
+    assert not missing[0].passed
+
+
+def test_a_few_populated_rows_do_not_make_an_empty_field_a_defect():
+    """The bar is a ratio, not exact equality: a field blank in all but a handful of rows
+    is still unmaintained. On material_master MVKE.DWERK is blank in 200000 of a 200000-row
+    profile, yet MM038's check still passed 50 of its 5,728,702 rows."""
+    df = _make_bp_dataframe(2000)
+    df["BUT000.BU_SORT1"] = None
+    df.loc[df.index[:1], "BUT000.BU_SORT1"] = "SEARCH"  # one populated row in 2000
+    stats: dict[str, int] = {}
+
+    results = run_checks("business_partner", df, "test-tenant", stats=stats)
+
+    assert not any(r.check_id == "BP011" for r in results)
+    assert stats.get("field_unmaintained", 0) >= 1
+
+
+def test_a_mostly_populated_field_is_still_judged_normally():
+    """The converse: a field that is genuinely in use keeps producing real defects."""
+    df = _make_bp_dataframe(2000)
+    df["BUT000.BU_SORT1"] = "SEARCH"          # populate it for everyone
+    df.loc[df.index[:300], "BUT000.BU_SORT1"] = None  # 15% missing: a real gap
+    stats: dict[str, int] = {}
+
+    results = run_checks("business_partner", df, "test-tenant", stats=stats)
+
+    found = [r for r in results if r.check_id == "BP011"]
+    assert found, "a 15%-blank field must still be judged"
+    assert found[0].affected_count == 300
+    assert stats.get("field_unmaintained", 0) == 0

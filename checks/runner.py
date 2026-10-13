@@ -149,6 +149,10 @@ REGISTRY: dict[str, type[BaseCheck]] = {
 # check types judging a group of rows together: only sound on a complete extract
 _WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check", "hierarchy_check", "group_sum_check"}
 
+# A presence check failing at least this fraction of its population is describing an
+# unmaintained field rather than per-record defects (see _unmaintained).
+UNMAINTAINED_FAIL_RATIO = 0.999
+
 RULES_DIR = Path(__file__).parent / "rules"
 CATEGORIES = ["ecc", "successfactors", "warehouse", "concur", "ariba"]
 
@@ -384,12 +388,43 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             result.details.update({"target": target_of(rule), **{k: rule[k] for k in S4_KEYS if rule.get(k)}})
         if result is not None and result.affected_count and not result.error and auto_fix.enabled(rule):
             result.record_fixes = _auto_fixes(rule, check, scoped, result, frames)
+        if _unmaintained(rule, result):
+            # Every row blank is one systemic observation, not affected_count record
+            # defects: the field is unpopulated, so a presence check cannot discriminate.
+            # Counting it as defects put 12.2M of material_master's 38.2M flagged rows on
+            # optional fields the system never populates (MVKE.DWERK: blank 200000/200000)
+            # and drove those rules' scores to 0.00. Returned as a skip so it stays
+            # visible in the run's stats and counts as unevaluated rather than as quality.
+            return {**rule, "_skip": "field_unmaintained"}, None
         return rule, result
     except SoftTimeLimitExceeded:  # the task's time limit ends the run, never one rule
         raise
     except Exception as e:
         logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
         return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))
+
+
+def _unmaintained(rule: dict, result: "CheckResult | None") -> bool:
+    """A presence check whose field is effectively blank in every row of its population.
+
+    For a ``null_check`` the failing fraction *is* the field's blank rate over the rows the
+    rule judged, so a rule failing all but a handful of rows is describing an unmaintained
+    field — one systemic gap, not one defect per row.
+
+    The bar is ``UNMAINTAINED_FAIL_RATIO`` rather than exact equality because the last few
+    populated rows are noise, not signal: on material_master MVKE.DWERK is blank in 200000
+    of a 200000-row profile but the check still passed 50 of 5,728,702 rows.
+
+    Scoped to non-critical presence checks on purpose. A uniqueness, validity or cross-field
+    rule failing 100% means something is genuinely broken; and a *critical* field blank in
+    every record is a catastrophic systemic gap that must keep capping the score and stay
+    loud, not be filed away as an unmaintained column.
+    """
+    if rule.get("check_class") != "null_check" or rule.get("severity") == "critical":
+        return False
+    if result is None or result.error or not result.total_count:
+        return False
+    return result.affected_count / result.total_count >= UNMAINTAINED_FAIL_RATIO
 
 
 def _frame_inputs(rule: dict, check_cls: type[BaseCheck], frames: TableFrames,
