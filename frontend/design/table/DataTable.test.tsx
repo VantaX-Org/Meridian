@@ -264,7 +264,8 @@ describe("DataTable toolbar", () => {
     fireEvent.click(screen.getByText("Views"));
     fireEvent.change(screen.getByLabelText("View name"), { target: { value: "Ids only" } });
     fireEvent.click(screen.getByRole("button", { name: "Save view" }));
-    expect(JSON.parse(window.localStorage.getItem("m-table-views:t-views") ?? "[]")[0].visibility).toEqual({ name: false });
+    // Views live in the preferences document (saved_views by table id), written through to localStorage.
+    expect(JSON.parse(window.localStorage.getItem("meridian:prefs") ?? "{}").saved_views["t-views"][0].visibility).toEqual({ name: false });
     // The Columns menu stays open after a toggle (checkbox items do not close it).
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" })); // show again
     expect(screen.getByText("Alpha")).toBeInTheDocument();

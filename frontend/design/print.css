@@ -1,0 +1,47 @@
+/*
+ * Print: a report page prints as the document it is, without the application around it.
+ * Imported once by app/(app)/layout.tsx. Values are tokens or system colours; no literals.
+ * The ExportMenu on report pages offers "Print", which calls window.print().
+ */
+@media print {
+  @page { margin: 14mm; }
+
+  /* Paper is light whatever the screen theme: dark tokens would print pale ink on white. */
+  html:root {
+    --m-canvas: Canvas !important;
+    --m-sheet: Canvas !important;
+    --m-sheet-raised: Canvas !important;
+    --m-sheet-sunken: Canvas !important;
+    --m-rail: Canvas !important;
+    --m-ink: CanvasText !important;
+    --m-ink-2: CanvasText !important;
+    --m-ink-3: GrayText !important;
+    --m-line: GrayText !important;
+    --m-line-strong: GrayText !important;
+  }
+
+  html, body { height: auto !important; overflow: visible !important; background: Canvas; color: CanvasText; }
+
+  /* Chrome: rail, top bar, job progress, toasts, drawers, and every control. */
+  .m-print-hide,
+  nav[aria-label="Main"],
+  [data-sonner-toaster],
+  [role="dialog"],
+  button,
+  .m-btn,
+  .m-iconbtn { display: none !important; }
+
+  /* The shell is a fixed-height flex row with scrolling panes; on paper it is one flowing column. */
+  .m-print-flow { display: block !important; height: auto !important; overflow: visible !important; flex: none !important; }
+
+  /* Sheets run the full width of the page, flat, with a hairline instead of a shadow. */
+  .m-page { max-width: none !important; padding: 0 !important; }
+  .m-card { box-shadow: none !important; border: 1px solid var(--m-line); break-inside: avoid; }
+
+  /* A report section starts on a new page; the page title itself does not. */
+  .m-report h2:not(header h2) { break-before: page; }
+
+  h1, h2, h3 { break-after: avoid; }
+  tr, figure, svg { break-inside: avoid; }
+  thead { display: table-header-group; }
+}

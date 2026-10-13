@@ -5,9 +5,11 @@ import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RootPageFrame, RunSelector, type RunOption } from "@/design";
+import { Button, NotificationBell, Pill, Rail, Skeleton, TopBar, CommandPalette, RootPageFrame, RunSelector, type RunOption } from "@/design";
+import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useJobs } from "@/hooks/use-jobs";
+import { usePreferencesSync } from "@/hooks/use-preferences";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
@@ -119,28 +121,36 @@ function JobProgressBar() {
     ? 0
     : Math.min(100, Math.max(0, Math.round(active.reduce((n, j) => n + (j.percent ?? 0), 0) / active.length)));
   return (
-    <div aria-hidden="true" className="shrink-0" style={{ height: 2 }}>
+    <div aria-hidden="true" className="shrink-0 m-print-hide" style={{ height: 2 }}>
       {active.length > 0 && <div className="m-motion-width" style={{ height: "100%", width: `${percent}%`, background: "var(--m-accent)" }} />}
     </div>
   );
+}
+
+/** Loads the user's server-side preferences once after sign-in and keeps them in step with local changes. */
+function PreferencesSync() {
+  usePreferencesSync();
+  return null;
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
       <PermissionsProvider>
-      <div className="flex h-screen">
+      <PreferencesSync />
+      <div className="flex h-screen m-print-flow">
         <Suspense fallback={<div style={{ width: 240 }} />}>
           <Rail />
         </Suspense>
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden m-print-flow">
           <JobProgressBar />
           <TopBar
             runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
             commandPalette={<CommandPaletteSlot />}
+            notifications={<NotificationBell />}
             userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
-          <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
+          <main className="flex-1 overflow-auto m-print-flow" style={{ background: "var(--m-canvas)" }}>
             <Suspense fallback={null}><RouteInsight /></Suspense>
             <RootPageFrame>{children}</RootPageFrame>
           </main>

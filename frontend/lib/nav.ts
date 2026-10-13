@@ -265,6 +265,8 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/workbench/progress": "Progress",
   "/workbench/triage": "My queue",
   "/search": "Search",
+  "/me/preferences": "Preferences",
+  "/inbox/notifications": "Notifications",
 };
 
 /** Items and their sub-pages (Settings tabs, Insights sections, Inbox exceptions) as one flat list. */

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import {
   type ColumnDef,
   type RowSelectionState,
@@ -29,6 +29,7 @@ import { exportOptionLabel, runExportOption, type ExportOption } from "../primit
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
 import { barFill, type CellMeta } from "./columns";
 import { rampStep } from "../tokens";
+import { readPrefs, subscribePreferences } from "../../lib/preferences";
 
 const SEVERITIES = ["critical", "high", "medium", "low", "pass"] as const;
 const DIV_STEPS = ["neg-2", "neg-1", "mid", "pos-1", "pos-2"] as const;
@@ -133,8 +134,10 @@ export function DataTable<T>({
   const viewsKey = tableId ?? columns.map((c, i) => c.id ?? ("accessorKey" in c ? String(c.accessorKey) : String(i))).join("|");
   const [views, setViews] = useState<TableView[]>([]);
   const [viewName, setViewName] = useState("");
-  // localStorage is client-only, so views load after mount rather than during render.
-  useEffect(() => setViews(loadViews(viewsKey)), [viewsKey]);
+  // Views live in the user's preferences (client-only storage, synced from the server after sign-in), so they load
+  // after mount and again whenever this table's saved views change.
+  const savedViews = useSyncExternalStore(subscribePreferences, () => readPrefs().saved_views?.[viewsKey], () => undefined);
+  useEffect(() => setViews(loadViews(viewsKey)), [viewsKey, savedViews]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [openRow, setOpenRow] = useState<T | null>(null);

@@ -57,21 +57,44 @@ export function checkClassLabel(id: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-const DATE_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-const DATETIME_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
-/** SAST (UTC+2) — the zone the scheduler's cron runs in (workers/scheduler.py). Used only for
- * schedule / next-run times (systems page), never as the default: every other caller of
- * formatDate keeps rendering in UTC. */
-const DATETIME_SAST_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Africa/Johannesburg" });
+/** Locale and time zone from the user's preferences (lib/preferences.ts pushes them here). Unset means the
+ * shared defaults: en-GB, UTC. This module imports nothing so `node lib/format.test.mjs` can load it directly. */
+let formatPrefs: { locale?: string; timezone?: string } = {};
 
-/** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09" (UTC), or with `tz: "SAST"`,
+export function setFormatPrefs(prefs: { locale?: string; timezone?: string }): void {
+  formatPrefs = { locale: prefs.locale || undefined, timezone: prefs.timezone || undefined };
+}
+
+/** An Intl formatter that tolerates a bad locale or zone by falling back to the shared defaults. */
+function intl(options: Intl.DateTimeFormatOptions, zone: string): Intl.DateTimeFormat {
+  try {
+    return new Intl.DateTimeFormat(formatPrefs.locale ?? "en-GB", { ...options, timeZone: zone });
+  } catch {
+    return new Intl.DateTimeFormat("en-GB", { ...options, timeZone: "UTC" });
+  }
+}
+
+/** Number formatting in the user's locale (the browser's when none is set). */
+export function formatNumber(n: number, options?: Intl.NumberFormatOptions): string {
+  try {
+    return n.toLocaleString(formatPrefs.locale, options);
+  } catch {
+    return n.toLocaleString(undefined, options);
+  }
+}
+
+const DATE_OPTS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+const DATETIME_OPTS: Intl.DateTimeFormatOptions = { ...DATE_OPTS, hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+
+/** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09" (UTC unless the user chose a time zone), or with
+ * `tz: "SAST"` (UTC+2, the zone the scheduler's cron runs in, used only for schedule and next-run times),
  * "2 Oct 2026, 07:09 SAST". An unparseable value is an em dash. */
 export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" = "date", tz: "UTC" | "SAST" = "UTC"): string {
   if (iso === null || iso === undefined || iso === "") return "—";
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
-  if (kind === "date") return DATE_FMT.format(d);
-  return tz === "SAST" ? `${DATETIME_SAST_FMT.format(d)} SAST` : DATETIME_FMT.format(d);
+  if (tz === "SAST" && kind === "datetime") return `${intl(DATETIME_OPTS, "Africa/Johannesburg").format(d)} SAST`;
+  return intl(kind === "date" ? DATE_OPTS : DATETIME_OPTS, formatPrefs.timezone ?? "UTC").format(d);
 }
 
 const LABEL_OVERRIDES: Record<string, string> = {
