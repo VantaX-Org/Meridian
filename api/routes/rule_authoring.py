@@ -142,3 +142,83 @@ async def list_drafts(
         "WHERE tenant_id = :tid AND domain LIKE 'dq_rule:%' AND (CAST(:d AS text) IS NULL OR domain = CAST(:d AS text)) "
         "ORDER BY created_at DESC"), {"tid": str(tenant.id), "d": f"dq_rule:{module}" if module else None})
     return {"items": [_row(r) for r in rows.fetchall()]}
+
+
+async def _draft_row(db: AsyncSession, tenant: Tenant, draft_id: uuid.UUID):
+    await _rls(db, tenant)
+    row = (await db.execute(text(
+        "SELECT id, domain, proposed_rule FROM ai_proposed_rules "
+        "WHERE id = :id AND tenant_id = :tid AND status = 'draft' AND domain LIKE 'dq_rule:%'"),
+        {"id": str(draft_id), "tid": str(tenant.id)})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return row
+
+
+@router.put("/drafts/{draft_id}")
+async def update_draft(
+    draft_id: uuid.UUID,
+    body: RuleIn,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("manage_rules")),
+):
+    """Replace a draft's rule (and optionally its module and rationale). Still never published."""
+    await _draft_row(db, tenant, draft_id)
+    rule, _, _ = await _validated(db, tenant, body)
+    await db.execute(text(
+        "UPDATE ai_proposed_rules SET domain = :domain, proposed_rule = CAST(:rule AS jsonb), "
+        "rationale = COALESCE(:why, rationale) WHERE id = :id AND tenant_id = :tid"),
+        {"domain": f"dq_rule:{body.module}", "rule": json.dumps(rule, default=str), "why": body.rationale,
+         "id": str(draft_id), "tid": str(tenant.id)})
+    await db.commit()
+    return {"id": str(draft_id), "status": "draft", "rule": rule}
+
+
+@router.delete("/drafts/{draft_id}", status_code=204)
+async def delete_draft(
+    draft_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("manage_rules")),
+):
+    await _draft_row(db, tenant, draft_id)
+    await db.execute(text("DELETE FROM ai_proposed_rules WHERE id = :id AND tenant_id = :tid"),
+                     {"id": str(draft_id), "tid": str(tenant.id)})
+    await db.commit()
+
+
+@router.post("/drafts/{draft_id}/publish")
+async def publish_draft(
+    draft_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("manage_rules")),
+):
+    """Validate the draft again, create the tenant rule and remove the draft. Runs on every later analysis."""
+    import yaml
+    from api.routes.rules import _EXPR_ERROR, _safe_expression
+
+    row = await _draft_row(db, tenant, draft_id)
+    module = row[1].split(":", 1)[1]
+    proposed = row[2] if isinstance(row[2], dict) else {}
+    body = RuleIn(module=module, rule_yaml=yaml.safe_dump(proposed, sort_keys=False))
+    rule, _, _ = await _validated(db, tenant, body)
+    for key in ("fail_when", "condition"):
+        expr = rule.get(key)
+        if expr is not None and not (isinstance(expr, str) and _safe_expression(expr)):
+            raise HTTPException(status_code=422, detail=_EXPR_ERROR)
+    cond = {k: v for k, v in rule.items() if k not in ("id", "module", "severity", "message")}
+    created = (await db.execute(text("""
+        INSERT INTO rules (tenant_id, name, description, module, category, severity, enabled, conditions, source)
+        VALUES (:tid, :name, :desc, :m, 'custom', :sev, true, CAST(:cond AS jsonb), 'custom')
+        ON CONFLICT (tenant_id, name, module) DO UPDATE SET enabled = true, severity = EXCLUDED.severity,
+                                                            updated_at = now()
+        RETURNING id, name, module, severity, enabled
+    """), {"tid": str(tenant.id), "name": f"{rule['id']}: {rule['message']}", "desc": rule["message"],
+           "m": module, "sev": rule["severity"], "cond": json.dumps(cond, default=str)})).fetchone()
+    await db.execute(text("DELETE FROM ai_proposed_rules WHERE id = :id AND tenant_id = :tid"),
+                     {"id": str(draft_id), "tid": str(tenant.id)})
+    await db.commit()
+    return {"id": str(created[0]), "name": created[1], "module": created[2], "severity": created[3],
+            "enabled": created[4], "draft_id": str(draft_id)}

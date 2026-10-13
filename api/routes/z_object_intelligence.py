@@ -98,6 +98,18 @@ async def detect_z_objects(
     )
 
 
+@router.post("/detect/latest", status_code=202, dependencies=[Depends(require_permission("analyse"))])
+async def detect_latest(
+    system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Rerun Z-object detection on the latest stored data (records are read server side)."""
+    from api.routes.config_intelligence import enqueue_latest_run
+
+    return await enqueue_latest_run(db, str(tenant.id), system_id)
+
+
 # ------------------------------------------------------------------
 # 2. GET /registry — Z-Object Registry list
 # ------------------------------------------------------------------
