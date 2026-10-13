@@ -62,7 +62,13 @@ def abap_objects(system_type: str) -> dict[str, set[str]]:
     # written to read, but not every check table a rule names — material_master alone references
     # ~100 check tables (T023, T141, T001W, T024D, T005, T460A …) and, with only the registry set
     # loaded, skips ~63 referential rules as not_evaluable, which inflates the DQS.
+    #
+    # Only *config* tables belong here (SAP customising tables start with T). A check table that
+    # is itself an extracted data table (MARA.MATNR, LFA1.LIFNR) must be judged against the
+    # extract's own frame by the runner — reading it here would truncate it to MAX_ROWS and turn
+    # almost every value into a false "invalid reference" (MLAN.MATNR → MARA failed 94.7% this way).
     try:
+        import re
         from checks.runner import module_rules
         from sap.ddic import dictionary_for_system
         from sap.extraction_plan import MODULES_BY_SYSTEM
@@ -74,7 +80,7 @@ def abap_objects(system_type: str) -> dict[str, set[str]]:
                 field = dictionary.resolve(rule.get("field") or "")
                 check_table = getattr(field, "check_table", None) if field else None
                 check_field = getattr(field, "check_field", None) if field else None
-                if check_table:
+                if check_table and re.match(r"^T[0-9A-Z]", check_table):
                     out.setdefault(check_table, set()).update([check_field] if check_field else [])
     except Exception as e:  # config load must never fail because the rule plan could not be read
         logger.warning(f"rule-referenced config tables not added for {system_type}: {e}")

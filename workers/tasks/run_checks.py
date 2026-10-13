@@ -690,6 +690,24 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             vp_rules += country_rules.generate(m, static, fs_config, dictionary)  # T005 / BNKA
             vp_rules += config_rules.generate(m, fs_config, dictionary)  # T685A / T582A
         fs_rules = fs_rules + vp_rules + authored + mined_rules
+        # A referential rule whose check table is itself an extracted data table (MARA.MATNR,
+        # LFA1.LIFNR, MLAN.MATNR) must judge against the extract's full frame. The config load
+        # reads only T* customising tables, so _live_reference_values cannot supply these — fill
+        # them from the frames, otherwise the reference would be absent (not_evaluable) or, worse,
+        # a truncated read that turns almost every value into a false "invalid reference".
+        import re as _re
+        for _r in fs_rules:
+            if _r.get("check_class") not in ("referential_check", "domain_value_check"):
+                continue  # exists_check resolves its target from the frames already
+            _f = dictionary.resolve(_r.get("field") or "")
+            _ct = getattr(_f, "check_table", None) if _f else None
+            _cf = getattr(_f, "check_field", None) if _f else None
+            if not (_ct and _cf) or _re.match(r"^T[0-9A-Z]", _ct):
+                continue  # config table, already supplied from config_snapshots
+            _key = f"{_ct}.{_cf}"
+            _df = frames.frames.get(_ct)
+            if _df is not None and _key in _df.columns and _key not in live_refs:
+                live_refs[_key] = set(_df[_key].dropna().astype(str).str.strip())
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}
         # coverage (rules that produced no result) and clean records per driving object,
