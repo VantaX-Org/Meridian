@@ -38,7 +38,7 @@ export function ScoreExplainer({ score, band, dimensions, cap, rules, historyHre
   return (
     <Popover.Root>
       <Popover.Trigger className="inline-flex items-center gap-2 rounded" aria-label={`Explain score ${Math.round(score)}`}>
-        <ScoreRing score={score} size={48} />
+        <ScoreRing score={score} size={48} cap={cap?.value} />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={8}>
@@ -47,7 +47,7 @@ export function ScoreExplainer({ score, band, dimensions, cap, rules, historyHre
             style={{ background: "var(--m-sheet)", color: "var(--m-ink)", boxShadow: "var(--m-elev-2)", width: 360 }}
           >
             <div className="flex items-center gap-3">
-              <ScoreRing score={score} size={48} />
+              <ScoreRing score={score} size={48} cap={cap?.value} />
               <Pill tone={band.tone}>{band.label}</Pill>
             </div>
             <table className="mt-3 w-full text-left tabular-nums">

@@ -36,6 +36,7 @@ CLEAN_KEY_CHUNK = 1_000_000  # failing keys projected per slice in CleanRecords.
 class DQSResult(BaseModel):
     module: str
     composite_score: Optional[float]  # 0.0 to 100.0; None when no rule executed (not measured)
+    raw_score: Optional[float] = None  # the weighted dimension average before the critical cap
     dimension_scores: dict  # {dimension: score} for all 6 dimensions
     dimension_coverage: dict = {}  # {dimension: n_checks backing the score}
     critical_count: int
@@ -146,6 +147,16 @@ def _cap(composite: float, breaches: list[str]) -> tuple[float, bool, str | None
     return composite, False, None
 
 
+def _raw_composite(dimension_scores: dict, dimension_coverage: dict, weights: dict) -> float | None:
+    """The weighted dimension average *before* the critical cap — the "data health" score
+    (what the composite would be if no critical rule breached). None when not measured."""
+    measured = {d: w for d, w in weights.items() if dimension_coverage.get(d)}
+    total_w = sum(measured.values())
+    if not total_w:
+        return None
+    return sum(dimension_scores[d] * w for d, w in measured.items()) / total_w
+
+
 def _composite(dimension_scores: dict, dimension_coverage: dict, breaches: list[str],
                weights: dict) -> tuple[float | None, bool, str | None, dict]:
     """(composite, capped, cap_reason, measured weights) — weighted over measured
@@ -155,7 +166,7 @@ def _composite(dimension_scores: dict, dimension_coverage: dict, breaches: list[
     total_w = sum(measured.values())
     if not total_w:
         return None, False, None, {}
-    composite = sum(dimension_scores[d] * w for d, w in measured.items()) / total_w
+    composite = _raw_composite(dimension_scores, dimension_coverage, weights)
     composite, capped, cap_reason = _cap(composite, breaches)
     return composite, capped, cap_reason, {d: round(w / total_w, 4) for d, w in measured.items()}
 
@@ -168,7 +179,10 @@ def rescore(summary: dict, raw_config: dict | None) -> dict:
     composite, capped, cap_reason, w = _composite(
         summary.get("dimension_scores") or {}, summary.get("dimension_coverage") or {},
         breaches, effective_weights(raw_config))
-    return {**summary, "composite_score": _round(composite), "capped": capped, "cap_reason": cap_reason,
+    raw = _raw_composite(summary.get("dimension_scores") or {}, summary.get("dimension_coverage") or {},
+                         effective_weights(raw_config))
+    return {**summary, "raw_score": _round(raw), "composite_score": _round(composite),
+            "capped": capped, "cap_reason": cap_reason,
             "weights": w, "tier": tier(composite, scoring_config(raw_config)["thresholds"])}
 
 
@@ -260,10 +274,12 @@ def score_module(findings: list[CheckResult], tenant_config: dict, *, module: st
 
     composite, capped, cap_reason, measured_weights = _composite(
         dimension_scores, dimension_coverage, breaches, weights)
+    raw = _raw_composite(dimension_scores, dimension_coverage, weights)
 
     return DQSResult(
         module=module,
         composite_score=_round(composite),
+        raw_score=_round(raw),
         dimension_scores={k: round(v, 2) for k, v in dimension_scores.items()},
         dimension_coverage=dimension_coverage,
         critical_count=severity_counts["critical"],

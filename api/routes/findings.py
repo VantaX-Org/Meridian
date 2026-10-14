@@ -80,11 +80,13 @@ def composite_dqs(summaries: list[dict], *, scoring: dict | None) -> dict:
         if w:
             dims[d] = round(sum(v * weight[m] for m, v in have) / w, 2)
     composite = round(sum(r["composite_score"] * weight[m] for m, r in mods.items()) / total, 2)
+    raw = round(sum((r["raw_score"] if r.get("raw_score") is not None else r["composite_score"]) * weight[m]
+                    for m, r in mods.items()) / total, 2)
     executed = sum(int(r.get("total_checks") or 0) for r in mods.values())
     attempted = executed + sum(int(r.get("skipped_checks") or 0) + int(r.get("errored_checks") or 0)
                                for r in mods.values())
     coverage = round(executed / attempted, 4) if attempted else None
-    return {"composite": composite, "tier": tier(composite, cfg["thresholds"]),
+    return {"composite": composite, "raw": raw, "tier": tier(composite, cfg["thresholds"]),
             "dimension_scores": dims,
             "modules": {m: round(float(r["composite_score"]), 2) for m, r in mods.items()},
             "capped": any(r.get("capped") for r in mods.values()),

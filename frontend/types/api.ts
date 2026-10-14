@@ -12,6 +12,8 @@ export interface DimensionScores {
 export interface DQSSummary {
   /** Null when no rule executed for the module: not measured. */
   composite_score: number | null;
+  /** Weighted dimension average before the critical cap (the "data health" score). */
+  raw_score?: number | null;
   dimension_scores: DimensionScores;
   /** Executed share per dimension; 0 means the dimension was not measured. Absent on older runs. */
   dimension_coverage?: Partial<Record<keyof DimensionScores, number>>;

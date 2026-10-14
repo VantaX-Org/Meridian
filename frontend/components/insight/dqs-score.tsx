@@ -20,18 +20,19 @@ export function DqsScore({ agg, versionId, size = 48 }: { agg: FindingsAggregate
     queryFn: () => getFindings({ version_id: versionId, sort: "impact", limit: 5 }),
   });
   const composite = agg.dqs.composite;
+  const raw = agg.dqs.raw ?? composite;
   const weights = settings.data?.dqs_weights as Record<string, number> | undefined;
   if (composite == null) return null;
   const measured = Object.entries(agg.dqs.dimension_scores).filter(([d]) => weights?.[d] != null);
-  if (!weights || measured.length === 0) return <ScoreRing score={composite} size={size} />;
+  if (!weights || measured.length === 0) return <ScoreRing score={raw} cap={agg.dqs.capped ? composite : undefined} size={size} />;
   const total = measured.reduce((n, [d]) => n + weights[d], 0) || 1;
   const tier = agg.dqs.tier;
   return (
     <ScoreExplainer
-      score={composite}
+      score={raw}
       band={{ label: tier === "pass" ? "On target" : tier === "warn" ? "Needs attention" : tier === "fail" ? "Below floor" : "Scored", tone: tier === "pass" ? "go" : tier === "warn" ? "at-risk" : tier === "fail" ? "no-go" : "neutral" }}
       dimensions={measured.map(([d, score]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score }))}
-      cap={agg.dqs.capped ? { value: Math.round(composite * 10) / 10, reason: "a critical finding is open" } : undefined}
+      cap={agg.dqs.capped ? { value: composite, reason: "a critical finding is open" } : undefined}
       // weight descends with rank so the explainer's recordsFailed * weight sort keeps the impact order
       rules={(top.data?.findings ?? []).map((f, i, all) => ({ ruleId: f.check_id, object: f.module, recordsFailed: f.affected_count, weight: (all.length - i) / all.length }))}
       historyHref="/insights/exec"
