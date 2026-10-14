@@ -13,6 +13,8 @@ import { useRole } from "@/hooks/use-role";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { compareRecords, compareVersions, pinBaseline, type RecordDiffCheck } from "@/lib/api/versions";
 import { getScoreHistory } from "@/lib/api/findings";
+import { downloadAuthenticated } from "@/lib/api/download";
+import { getComparisonReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -110,7 +112,14 @@ export default function ProgressPage() {
             options={[{ value: "", label: "Pinned baseline or previous run" }, ...runs.filter((r) => r.id !== run).map((r) => ({ value: r.id, label: `${r.label || formatDate(r.run_at, "datetime")}${r.metadata?.baseline ? " (baseline)" : ""}` }))]}
           />
           {can("analyse") && run ? <Button variant="secondary" onClick={() => pin.mutate()} pending={pin.isPending}>Pin as baseline</Button> : null}
-          <InsightActions run={run} module={module} />
+          <InsightActions
+            run={run}
+            module={module}
+            options={run ? [
+              { format: "pdf", label: "Proof of progress (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(run, baseline), `progress_${run}.pdf`) },
+              { format: "xlsx", label: "Comparison workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module, compare: baseline }), `comparison_${run}.xlsx`) },
+            ] : []}
+          />
         </div>
       }
       insight={{

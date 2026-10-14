@@ -2,7 +2,7 @@
 
 /** Insights > Explore: one failing-rule set, pivoted by rule, object, field, dimension, severity or S/4 status. */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +18,7 @@ import { useFindingOpener } from "../_components/FindingOpener";
 import { ruleColumns } from "../_components/RuleColumns";
 import { InsightActions } from "../_components/InsightActions";
 import { InsightTabs } from "../_components/InsightViews";
+import { SavedViews } from "../_components/SavedViews";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 const ANY = "any";
@@ -44,6 +45,7 @@ function groupBy(rows: RuleRow[], axis: Axis): Group[] {
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
 
 export default function RulesPage() {
+  const router = useRouter();
   const path = usePathname();
   const search = useSearchParams();
   const field = search.get("field") ?? undefined;
@@ -51,10 +53,21 @@ export default function RulesPage() {
   const axis: Axis = axisParam && AXES.some((a) => a.value === axisParam) ? axisParam : "rule";
   const { run, module, versions, resolving } = useInsightScope();
   const finding = useFindingOpener(run);
-  const [severity, setSeverity] = useState(ANY);
-  const [dimension, setDimension] = useState(ANY);
-  const [auto, setAuto] = useState(ANY);
-  const [s4, setS4] = useState(ANY);
+  // Every filter lives in the URL (design rule 9), so a view can be saved, shared and restored.
+  const severity = search.get("severity") ?? ANY;
+  const dimension = search.get("dimension") ?? ANY;
+  const auto = search.get("auto") ?? ANY;
+  const s4 = search.get("s4") ?? ANY;
+  const filters: Record<string, string | undefined> = {
+    module, field, axis: axis === "rule" ? undefined : axis,
+    severity: severity === ANY ? undefined : severity, dimension: dimension === ANY ? undefined : dimension,
+    auto: auto === "yes" ? "yes" : undefined, s4: s4 === "yes" ? "yes" : undefined,
+  };
+  const go = (next: Record<string, string | undefined>) => router.replace(withScope(path, { run, ...filters, ...next }));
+  const setSeverity = (v: string) => go({ severity: v === ANY ? undefined : v });
+  const setDimension = (v: string) => go({ dimension: v === ANY ? undefined : v });
+  const setAuto = (v: string) => go({ auto: v === ANY ? undefined : v });
+  const setS4 = (v: string) => go({ s4: v === ANY ? undefined : v });
 
   const q = useQuery({
     queryKey: queryKeys.insights("rules", run, module, severity, dimension, auto, s4),
@@ -73,16 +86,14 @@ export default function RulesPage() {
   const groupLabel = (key: string) => (axis === "module" ? formatModuleName(key) : axis === "field" ? key : labelOf(key));
   const pareto = axis === "rule" ? rows.slice(0, 20).map((r) => ({ x: r.check_id, y: r.impact })) : groups.slice(0, 20).map((g) => ({ x: groupLabel(g.key), y: g.impact }));
   const n80 = rulesFor80((axis === "rule" ? rows : groups).map((r) => r.impact));
-  const setAxis = (next: Axis | null) => router.replace(withScope(path, { run, module, field, axis: next && next !== "rule" ? next : undefined }));
+  const setAxis = (next: Axis | null) => go({ axis: next && next !== "rule" ? next : undefined });
   const drill = (g: Group) => {
-    if (axis === "module") router.replace(withScope(path, { run, module: g.key, field }));
-    else if (axis === "field") router.replace(withScope(path, { run, module, field: g.key === "No field" ? undefined : g.key }));
-    else {
-      if (axis === "dimension") setDimension(g.key);
-      if (axis === "severity") setSeverity(g.key);
-      if (axis === "s4") setS4(g.key === "blocking" ? "yes" : ANY);
-      router.replace(withScope(path, { run, module, field }));
-    }
+    const back = { axis: undefined };
+    if (axis === "module") go({ ...back, module: g.key });
+    else if (axis === "field") go({ ...back, field: g.key === "No field" ? undefined : g.key });
+    else if (axis === "dimension") go({ ...back, dimension: g.key });
+    else if (axis === "severity") go({ ...back, severity: g.key });
+    else go({ ...back, s4: g.key === "blocking" ? "yes" : undefined });
   };
   const groupColumns = useMemo<ColumnDef<Group>[]>(() => [
     { accessorKey: "key", header: AXES.find((a) => a.value === axis)?.label ?? "Group", cell: ({ row }) => (axis === "field" ? <Mono>{row.original.key}</Mono> : groupLabel(row.original.key)) },
@@ -93,7 +104,6 @@ export default function RulesPage() {
     { accessorKey: "worst", header: "Worst severity", cell: ({ row }) => (row.original.worst ? <Pill tone={SEVERITY_TONE[row.original.worst] ?? "neutral"} variant="solid">{labelOf(row.original.worst)}</Pill> : "—") },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [axis]);
-  const router = useRouter();
   const columns = useMemo<ColumnDef<RuleRow>[]>(() => [
     ...ruleColumns(run),
     {
@@ -116,8 +126,9 @@ export default function RulesPage() {
           <Select label="Dimension" value={dimension} onValueChange={setDimension} options={opts(DIMENSIONS, "Any dimension")} />
           <Select label="Auto-fixable" value={auto} onValueChange={setAuto} options={yesNo("Any fix type")} />
           <Select label="S/4 blocking" value={s4} onValueChange={setS4} options={yesNo("Any S/4 status")} />
-          {field && <Button variant="secondary" render={<Link href={withScope(path, { run, module })}>Clear field filter</Link>} />}
-          {module && <Button variant="secondary" render={<Link href={withScope(path, { run, field })}>All objects</Link>} />}
+          {field && <Button variant="secondary" onClick={() => go({ field: undefined })}>Clear field filter</Button>}
+          {module && <Button variant="secondary" onClick={() => go({ module: undefined })}>All objects</Button>}
+          <SavedViews route="/insights/rules" current={filters} onApply={(f) => router.replace(withScope(path, { run, ...f }))} />
         </div>
         </div>
       }
