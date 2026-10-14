@@ -10,6 +10,8 @@ import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
 import { useJobs } from "@/hooks/use-jobs";
+import { VIEWS } from "@/app/(app)/insights/_components/InsightViews";
+import { BarChart3 } from "lucide-react";
 import { usePreferencesSync } from "@/hooks/use-preferences";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
@@ -33,7 +35,7 @@ const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
   const { role } = useRole();
-  const items = groups.flatMap((g) =>
+  const navItems = groups.flatMap((g) =>
     flattenNav(g.items).map((item) => ({
       label: item.label,
       href: resolveNavHref(item.href, role),
@@ -42,6 +44,15 @@ function CommandPaletteSlot() {
       shortcut: item.shortcut,
     })),
   );
+  // The insight views' tabs are not nav entries; they stay reachable by name from the palette.
+  const seen = new Set(navItems.map((i) => i.href));
+  const insightsGroup = groups.find((g) => g.items.some((i) => i.href === "/insights"))?.group;
+  const viewTabs = insightsGroup
+    ? VIEWS.flatMap((v) => v.tabs.filter(([href]) => href.startsWith("/insights") && !seen.has(href)).map(([href, label]) => ({
+        label: `${v.label}: ${label}`, href, group: insightsGroup, icon: <BarChart3 size={16} aria-hidden />, shortcut: undefined,
+      })))
+    : [];
+  const items = [...navItems, ...viewTabs];
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const grammar = {
@@ -145,13 +156,38 @@ function PreferencesSync() {
   return null;
 }
 
-export default function AppLayout({ children }: { children: ReactNode }) {
-  useUnhandledRejectionReporting();
+/** `?present=1` shows the page alone, full width, for a boardroom screen; Escape or the button returns to the shell. */
+function Presentation({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const exit = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("present");
+    router.replace(params.size ? `${pathname}?${params}` : pathname);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") exit(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, searchParams]);
   return (
-    <AuthGuard>
-      <PermissionsProvider>
-      <a href="#main" className="m-skip-link">Skip to content</a>
-      <PreferencesSync />
+    <div className="flex h-screen flex-col" data-present="1">
+      <main id="main" tabIndex={-1} className="flex-1 overflow-auto outline-none" style={{ background: "var(--m-canvas)" }}>
+        <RootPageFrame>{children}</RootPageFrame>
+      </main>
+      <div className="fixed bottom-4 right-4 m-print-hide">
+        <Button variant="secondary" onClick={exit}>Exit presentation</Button>
+      </div>
+    </div>
+  );
+}
+
+function Chrome({ children }: { children: ReactNode }) {
+  const present = useSearchParams().get("present") === "1";
+  if (present) return <Presentation>{children}</Presentation>;
+  return (
       <div className="flex h-screen m-print-flow">
         <Suspense fallback={<div style={{ width: 240 }} />}>
           <Rail />
@@ -171,6 +207,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
+  );
+}
+
+export default function AppLayout({ children }: { children: ReactNode }) {
+  useUnhandledRejectionReporting();
+  return (
+    <AuthGuard>
+      <PermissionsProvider>
+      <a href="#main" className="m-skip-link">Skip to content</a>
+      <PreferencesSync />
+      <Suspense fallback={null}><Chrome>{children}</Chrome></Suspense>
       </PermissionsProvider>
     </AuthGuard>
   );

@@ -4,12 +4,11 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, Delta, ExportMenu, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
-import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -17,6 +16,7 @@ import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { Section } from "../_components/Section";
+import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame, formatMoney, useRunLabel } from "../_components/InsightFrame";
 
@@ -40,8 +40,15 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
   },
   {
     accessorKey: "blocker_count",
-    header: "Blockers",
-    cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }}>{row.original.blocker_count}</DrillLink>,
+    header: "Blocking rules",
+    meta: { numeric: true },
+    cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }}>{row.original.blocker_count.toLocaleString()}</DrillLink>,
+  },
+  {
+    accessorKey: "records_blocked",
+    header: "Records blocked",
+    meta: { numeric: true },
+    cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }}>{row.original.records_blocked.toLocaleString()}</DrillLink>,
   },
 ];
 
@@ -54,7 +61,6 @@ const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
 export default function ExecPage() {
   const { run } = useInsightScope();
   const dayOne = useDayOne();
-  const { can } = useRole();
   const finding = useFindingOpener(run);
   const rules = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "top10"), queryFn: () => getRuleRanking({ version_id: run, limit: 10 }), enabled: !!run });
 
@@ -87,6 +93,7 @@ export default function ExecPage() {
   const up = owners.filter((o) => o.delta > 0).length;
   const down = owners.filter((o) => o.delta < 0).length;
   const cells = data?.readiness_cells ?? [];
+  const blocked = cells.filter((c) => c.blocker_count > 0 || c.records_blocked > 0).sort((a, b) => b.records_blocked - a.records_blocked);
   const heatRows = [...new Set(cells.map((c) => formatModuleName(c.module)))];
   const heatCols = [...new Set(cells.map((c) => c.wave))];
   const byL1 = new Map<string, ExecWaterfallPoint[]>();
@@ -98,7 +105,7 @@ export default function ExecPage() {
     <InsightFrame
       title="Executive summary"
       meta={runLabel}
-      actions={can("export") ? <ExportMenu options={exportOptions} /> : <Pill tone="info">Export needs auditor or analyst role</Pill>}
+      actions={<InsightActions run={vid} options={exportOptions} />}
       insight={{
         hero: true,
         stats: data ? [
@@ -110,7 +117,9 @@ export default function ExecPage() {
         situation: { sentence: data?.narrative || `${noGo} no-go cells across the waves` , tone: noGo ? "no-go" : "go" },
         changed: { sentence: up + down === 0 ? "—" : `${up} owners improved, ${down} slipped since the last run` },
         why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "No value at risk", href: "/insights/impact" },
-        next: { sentence: noGo ? "Clear the no-go cells first" : "Share the report", action: { label: "Open readiness", href: "/insights/readiness" } },
+        next: noGo
+          ? { sentence: "Clear the no-go cells first", action: { label: "Open readiness", href: withScope("/insights/readiness", { run }) } }
+          : { sentence: "Share the board pack", action: { label: "Open reports", href: withScope("/insights/reports", { run }) } },
       }}
       state={state}
       skeleton={
@@ -129,18 +138,22 @@ export default function ExecPage() {
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
-          <Card title="Readiness by wave">
+          <Card title="Readiness by wave" meta={`${noGo} no-go, ${cells.length - noGo} ready`} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open readiness</Link>}>
             {cells.length > 0 && (
               <div role="region" aria-label="Readiness by object and wave" tabIndex={0} className="mb-3 overflow-x-auto">
                 <Heatmap
                   rows={heatRows}
                   cols={heatCols}
                   cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: VERDICT_TONE[c.verdict] as "go" | "at-risk" | "no-go" }))}
-                  rowHref={(row) => `/objects/${cells.find((c) => formatModuleName(c.module) === row)?.module ?? ""}`}
+                  rowHref={(row) => withScope(`/objects/${cells.find((c) => formatModuleName(c.module) === row)?.module ?? ""}`, { run })}
                 />
               </div>
             )}
-            <DataTable columns={readinessColumns} data={cells} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
+            {blocked.length === 0 ? (
+              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Every object and wave can load.</p>
+            ) : (
+              <DataTable columns={readinessColumns} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
+            )}
           </Card>
         </div>
         {l1Tabs.length > 0 && (
@@ -162,19 +175,17 @@ export default function ExecPage() {
           </div>
         )}
         <div className={l1Tabs.length > 0 ? "@5xl:col-span-5" : "@5xl:col-span-12"}>
-          <Section title="Fix first" height={240} query={rules} actions={<Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}>
+          <Section title="Fix first" height={240} query={rules} meta="Select a rule to see the records, the fix and the root cause" actions={<Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}>
             <DataTable columns={ruleColumns(run, true)} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
           </Section>
         </div>
         <div className="@5xl:col-span-12">
-          <Card title="Owners">
+          <Card title="Owners" actions={<Link href={withScope("/insights/owners", { run })} className="m-text-body underline-offset-2 hover:underline">Open owners</Link>}>
             <DataTable columns={ownerColumns} data={data?.owner_rows ?? []} getRowId={(row) => row.owner} hideToolbar dense height="auto" />
           </Card>
         </div>
         <div className="@5xl:col-span-12">
-          <details open={roi.isError || undefined}>
-            <summary className="cursor-pointer m-text-body font-medium">Return on investment</summary>
-            <Card>
+          <Card title="Return on investment">
               {roi.isError ? (
                 <div className="flex items-center gap-3 m-text-body" role="alert">
                   <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
@@ -188,8 +199,7 @@ export default function ExecPage() {
                   <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.subscription_annual) : "—"} />
                 </div>
               )}
-            </Card>
-          </details>
+          </Card>
         </div>
       </div>
       {finding.drawer}

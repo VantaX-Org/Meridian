@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Card, DataTable, Heatmap, Line, ReportPage, Select, type ChartPoint, type HeatmapCell } from "@/design";
+import { Card, DataTable, Heatmap, Line, PageHeader, ReportPage, Select, type ChartPoint, type HeatmapCell } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { useSystemScope } from "@/lib/permissions";
 import { getRuleRanking, getTrends, type RuleRow, type TrendRun } from "@/lib/api/insights";
@@ -15,6 +15,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { useInsightScope } from "../_components/useInsightScope";
+import { InsightTabs } from "../_components/InsightViews";
 
 const WINDOWS = [{ value: "6", label: "Last 6 runs" }, { value: "12", label: "Last 12 runs" }, { value: "24", label: "Last 24 runs" }];
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
@@ -59,17 +60,22 @@ export default function TrendsPage() {
 
   return (
     <ReportPage
-      title="Trends"
-      meta={`${runs.length} completed runs`}
-      narrative={narrative}
-      exportMenu={
-        <div className="flex flex-wrap items-center gap-2">
-          {(systems.data?.length ?? 0) > 1 ? (
-            <Select label="System" value={systemChoice} onValueChange={setSystem} options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]} />
-          ) : null}
-          <Select label="Window" value={win} onValueChange={setWin} options={WINDOWS} />
-        </div>
+      header={
+        <PageHeader
+          title="Trends"
+          meta={`${runs.length} completed runs`}
+          tabs={<InsightTabs />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {(systems.data?.length ?? 0) > 1 ? (
+                <Select label="System" value={systemChoice} onValueChange={setSystem} options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]} />
+              ) : null}
+              <Select label="Window" value={win} onValueChange={setWin} options={WINDOWS} />
+            </div>
+          }
+        />
       }
+      narrative={narrative}
       state={resolving || q.isLoading || versions.isLoading ? "loading" : isListFailure(q) ? "error" : !run || trend.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No runs to compare yet", detail: "Trends appear after the second finished run." }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}

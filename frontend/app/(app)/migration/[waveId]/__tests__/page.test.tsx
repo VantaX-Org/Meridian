@@ -67,23 +67,26 @@ describe("WaveCockpitPage", () => {
   });
 
   it("downloads the readiness report", async () => {
-    search = new URLSearchParams("tab=downloads");
+    search = new URLSearchParams("tab=overview");
     vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
     const dl = vi.spyOn(migrationApi, "downloadWaveReport").mockResolvedValue();
     renderWithQuery(<WaveCockpitPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Readiness report (PDF)" }));
-    expect(dl).toHaveBeenCalledWith("w1", "pdf");
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Readiness report (PDF)" }));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith("w1", "pdf"));
   });
 
   it("downloads the realignment report", async () => {
-    search = new URLSearchParams("tab=downloads");
+    search = new URLSearchParams("tab=overview");
     vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
     const dl = vi.spyOn(pairingApi, "downloadRealignment").mockResolvedValue();
     renderWithQuery(<WaveCockpitPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Realignment (Excel)" }));
-    fireEvent.click(screen.getByRole("button", { name: "Realignment (PDF)" }));
-    expect(dl).toHaveBeenCalledWith("r2", "xlsx");
-    expect(dl).toHaveBeenCalledWith("r2", "pdf");
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Realignment (Excel)" }));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith("r2", "xlsx"));
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Realignment (PDF)" }));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith("r2", "pdf"));
   });
 
   it("selects the tab named by ?tab=", async () => {

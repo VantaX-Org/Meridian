@@ -8,6 +8,8 @@ import * as downloadApi from "@/lib/api/download";
 import ExecPage from "../page";
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/insights",
+  useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
 vi.mock("@/lib/api/versions", () => ({ getVersions: async () => ({ versions: [] }) }));

@@ -7,6 +7,7 @@ import type { FindingDetailData } from "@/lib/api/findings";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as configApi from "@/lib/api/config-intelligence";
 import { FindingDrawer } from "../FindingDrawer";
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const finding: FindingDetailData = {
   id: "f1",

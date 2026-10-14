@@ -6,7 +6,9 @@ import * as insightsApi from "@/lib/api/insights";
 import * as versionsApi from "@/lib/api/versions";
 import TrendsPage from "../page";
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("run=v2") }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/insights",
+  useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }), useSearchParams: () => new URLSearchParams("run=v2") }));
 
 const run = (id: string, composite: number) => ({
   version_id: id, label: id, run_at: null, baseline: false, composite, dimensions: { completeness: composite, validity: composite - 5 },

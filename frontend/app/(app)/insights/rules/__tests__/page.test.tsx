@@ -6,6 +6,7 @@ import * as versionsApi from "@/lib/api/versions";
 import { rulesFor80 } from "../../_components/rulesFor80";
 import RulesPage from "../page";
 
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/insights/rules",
@@ -40,7 +41,7 @@ describe("RulesPage", () => {
     expect(screen.getByRole("grid")).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /impact/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: "Rule ranking" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Explore" })).toBeInTheDocument();
   });
 
   it("shows the empty state", async () => {

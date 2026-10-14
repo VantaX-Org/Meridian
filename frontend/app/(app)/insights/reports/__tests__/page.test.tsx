@@ -15,7 +15,9 @@ vi.mock("@/lib/permissions", async (orig) => ({
   usePermissions: () => ({ can: () => perm.allowed, has: (r: string, a: string) => (perm.only ? perm.only === `${r}.${a}` : perm.allowed) }),
   usePermissionsContext: () => null,
 }));
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("") }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/insights",
+  useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }), useSearchParams: () => new URLSearchParams("") }));
 
 const entry = (id: string, name: string, url: string | null) => ({
   id, name, format: "PDF" as const, about: `${name} about`, sections: ["Cover", "Scores"], page_estimate: 4, requires: [], url, last_built_at: null,

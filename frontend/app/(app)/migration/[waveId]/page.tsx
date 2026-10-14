@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, Line, Pill, Skeleton, Stat, Tabs, entityTabs, type ExportOption } from "@/design";
+import { Bar, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Pill, Skeleton, Stat, Tabs, entityTabs, type ExportOption } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
@@ -91,36 +91,21 @@ export default function WaveCockpitPage() {
   const rawTab = searchParams.get("tab") ?? "overview";
   const tab = rawTab === "objects" ? "overview" : rawTab;
 
-  const downloads = (
-    <div className="flex flex-wrap gap-2">
-      <Button variant="secondary" onClick={() => void downloadWaveReport(waveId, "pdf")}>Readiness report (PDF)</Button>
-      <Button variant="secondary" onClick={() => void downloadWaveReport(waveId, "xlsx")}>Readiness report (Excel)</Button>
-      {c.run_id ? (
-        <>
-          <Button variant="secondary" onClick={() => void downloadMigrationGaps(c.run_id ?? "", "xlsx")}>Gap list (Excel)</Button>
-          <Button variant="secondary" onClick={() => void downloadRealignment(c.run_id ?? "", "xlsx")}>Realignment (Excel)</Button>
-          <Button variant="secondary" onClick={() => void downloadRealignment(c.run_id ?? "", "pdf")}>Realignment (PDF)</Button>
-          <Button variant="secondary" onClick={() => void downloadMigrationExport(c.run_id ?? "", "xlsx")}>Load files (Excel)</Button>
-          <Button variant="secondary" onClick={() => void downloadMigrationExport(c.run_id ?? "", "csv")}>Load files (CSV)</Button>
-        </>
-      ) : null}
-    </div>
-  );
-
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>{w.name}</p>
-          <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
-            {STAGE_LABEL[w.stage]}, target {w.target_date ? formatDate(w.target_date, "date") : "not set"},{" "}
-            {w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", "SAST")}` : "not signed off"}
-          </p>
-        </div>
-        {c.verdict === "go" && !w.signed_off_at ? (
-          <GatedPrimary kind="signoff" allowed={can("approve")} disabled={signoff.isPending} onClick={() => signoff.mutate()}>Sign off</GatedPrimary>
-        ) : null}
-      </div>
+      <PageHeader
+        title={w.name}
+        status={<Pill tone={VERDICT_TONE[c.verdict]}>{VERDICT_LABEL[c.verdict]}</Pill>}
+        meta={`${STAGE_LABEL[w.stage]}, target ${w.target_date ? formatDate(w.target_date, "date") : "not set"}, ${w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", "SAST")}` : "not signed off"}`}
+        actions={
+          <>
+            {c.verdict === "go" && !w.signed_off_at ? (
+              <GatedPrimary kind="signoff" allowed={can("approve")} disabled={signoff.isPending} onClick={() => signoff.mutate()}>Sign off</GatedPrimary>
+            ) : null}
+            {can("export") ? <ExportMenu options={exportOptions} /> : null}
+          </>
+        }
+      />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Verdict" value={<Pill tone={VERDICT_TONE[c.verdict]}>{VERDICT_LABEL[c.verdict]}</Pill>} href={`/migration/${waveId}?tab=overview`} />
         <Stat label="Readiness" href={`/migration/${waveId}?tab=overview`} value={pct(c.score)} delta={`minimum ${w.min_readiness}%`} />
@@ -140,8 +125,7 @@ export default function WaveCockpitPage() {
           { value: "mapping", label: "Mapping", content: (
               <MappingTab modules={w.modules} destType={c.dest_system_type} />) },
           { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} /> },
-          { value: "downloads", label: "Downloads", content: downloads },
-          ...entityTabs({ entityType: "migration", entityId: waveId, auditPath: `/migration/waves/${waveId}`, exportOptions, canExport: can("export") }),
+          ...entityTabs({ entityType: "migration", entityId: waveId, auditPath: `/migration/waves/${waveId}` }),
         ]}
       />
     </div>

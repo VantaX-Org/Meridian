@@ -1,5 +1,41 @@
 [
   {
+    "version": "0.1.1",
+    "date": "2026-10-14",
+    "items": [
+      {
+        "title": "Five insight views on one spine",
+        "body": "Summary, Progress, Explore, Readiness and Operate replace fifteen pages. Each view keeps its detail screens in a tab strip, and every page offers Run analysis, Auto clean, Report library, Present and Export.",
+        "href": "/insights/exec"
+      },
+      {
+        "title": "Progress since baseline",
+        "body": "Compare any run with the pinned baseline: records fixed, new and still failing, every object's score before and after, the rules that moved most, and a proof-of-progress PDF.",
+        "href": "/insights/progress"
+      },
+      {
+        "title": "Explore by any axis",
+        "body": "Pivot the failing rules by object, field, dimension, severity or S/4 status, then save the view and share its link.",
+        "href": "/insights/rules"
+      },
+      {
+        "title": "Presentation mode",
+        "body": "Present drops the navigation so any page fills a boardroom screen. Escape brings it back.",
+        "href": "/insights/exec?present=1"
+      },
+      {
+        "title": "Object history",
+        "body": "Every object page shows its score across all runs, with the change between runs.",
+        "href": "/objects"
+      },
+      {
+        "title": "Homes by role",
+        "body": "Each role lands on its own home. Data managers start runs from any insight page.",
+        "href": "/home"
+      }
+    ]
+  },
+  {
     "version": "0.1.0",
     "date": "2026-10-13",
     "items": [

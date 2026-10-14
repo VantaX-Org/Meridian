@@ -8,6 +8,7 @@ import { Card, EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type
 import { getVersions } from "@/lib/api/versions";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { InsightTabs } from "./InsightViews";
 
 /** Human label for a run id from the run list the shell already loads, never the raw id. */
 export function useRunLabel(versionId?: string | null): string | undefined {
@@ -75,7 +76,7 @@ export function InsightFrame({ title, meta, actions, insight, state, emptyProps,
   }
   return (
     <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
-      <PageHeader title={title} meta={meta} actions={actions} />
+      <PageHeader title={title} meta={meta} actions={actions} tabs={<InsightTabs />} />
       {insight && state !== "empty" && state !== "error" && (
         <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />
       )}

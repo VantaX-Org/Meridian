@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
 import ImpactPage from "../page";
 
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/insights",
+  useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
 

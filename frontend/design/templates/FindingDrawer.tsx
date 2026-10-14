@@ -11,9 +11,10 @@ import { Skeleton } from "../primitives/Skeleton";
 import { Mono } from "../primitives/Mono";
 import { SeverityDot } from "../primitives/SeverityDot";
 import { Pill, type PillTone } from "../primitives/Pill";
+import { ExportMenu } from "../primitives/ExportMenu";
 import { isSeverity, type Severity } from "../tokens";
 import { buildDrillHref } from "../shell/DrillLink";
-import { getFinding } from "@/lib/api/findings";
+import { exportFindingRecords, getFinding } from "@/lib/api/findings";
 import { getFindingImpact } from "@/lib/api/analytics";
 import { getConfigRootCause, type RootCauseType } from "@/lib/api/config-intelligence";
 import { queryKeys } from "@/lib/query-keys";
@@ -224,6 +225,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                   variant="secondary"
                   render={<Link href={`/rules/${encodeURIComponent(finding.check_id)}`}>Open rule</Link>}
                 />
+                <ExportMenu options={[{ format: "xlsx", label: "Records list (Excel)", run: () => exportFindingRecords(finding.version_id, finding.check_id, "xlsx") }]} />
               </div>
             </div>
           );
