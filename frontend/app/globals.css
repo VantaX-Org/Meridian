@@ -245,7 +245,7 @@
   .m-reading { max-width: var(--m-page-max-reading); }
 
   .m-stat { position: relative; background: transparent; border-left: 1px solid var(--m-line-strong); padding: var(--m-stat-pad); height: var(--m-stat-h); min-width: 0; }
-  .m-stat-hero { height: var(--m-stat-hero-h); }
+  .m-stat-hero { height: auto; min-height: var(--m-stat-hero-h); }
   .m-stat-grid { display: grid; gap: var(--m-space-4) var(--m-space-5); grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 
   .m-chip { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border-radius: var(--m-radius-pill); border: 1px solid var(--m-line); background: var(--m-sheet); color: var(--m-ink-2); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); cursor: pointer; }

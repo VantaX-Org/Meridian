@@ -23,14 +23,14 @@ export function Funnel({ stages, onStageClick }: { stages: FunnelStage[]; onStag
               type="button"
               disabled={!onStageClick}
               onClick={() => onStageClick?.(s)}
-              aria-label={`${s.label}: ${s.value}${kept !== null ? `, ${kept}% of previous stage` : ""}`}
+              aria-label={`${s.label}: ${s.value.toLocaleString()}${kept !== null ? `, ${kept}% of previous stage` : ""}`}
               style={{ all: "unset", display: "grid", gridTemplateColumns: "10rem 1fr 4rem", alignItems: "center", gap: "var(--m-space-3)", width: "100%", cursor: onStageClick ? "pointer" : "default" }}
             >
               <span style={{ color: "var(--m-ink-2)", fontSize: "var(--m-text-meta)" }}>{s.label}</span>
               <span style={{ background: "var(--m-line)", height: "1.25rem", display: "block" }}>
                 <span style={{ display: "block", height: "100%", width: `${(s.value / top) * 100}%`, background: chartTheme.seq[Math.max(2, rampStep(i, 0, Math.max(1, stages.length - 1))) - 1] }} />
               </span>
-              <span style={{ fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{kept !== null ? `${kept}%` : s.value}</span>
+              <span style={{ fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{kept !== null ? `${kept}%` : s.value.toLocaleString()}</span>
             </button>
           </li>
         );

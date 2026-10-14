@@ -74,7 +74,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
         <div className={lead ? "mb-6 grid gap-8 @5xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @5xl:items-end" : "mb-6"}>
           {lead && <div data-testid="insight-hero-lead">{lead}</div>}
           {stats && stats.length > 0 && (
-            <div className={`m-motion-stagger grid grid-cols-2 gap-x-6 gap-y-4 ${lead ? "" : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
+            <div className={`m-motion-stagger grid grid-cols-2 gap-x-6 gap-y-4 ${lead ? (stats.length >= 3 ? "@5xl:grid-cols-3" : "") : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
               {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
             </div>
           )}

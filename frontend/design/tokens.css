@@ -177,7 +177,7 @@
   --m-hero-pad: 24px 0;
   --m-stat-pad: 8px 0 8px 14px;
   --m-stat-h: 84px;
-  --m-stat-hero-h: 112px;
+  --m-stat-hero-h: 132px;
   --m-section-gap: var(--m-space-4);
 
   /* ---------- Elevation (three levels + focus) ---------- */
@@ -450,7 +450,7 @@
   --m-hero-pad: 16px 0;
   --m-stat-pad: 6px 0 6px 12px;
   --m-stat-h: 72px;
-  --m-stat-hero-h: 96px;
+  --m-stat-hero-h: 112px;
   --m-section-gap: var(--m-space-3);
   --m-page-pad: var(--m-space-4);
   --m-text-stat: 22px;
@@ -466,7 +466,7 @@
   --m-hero-pad: 32px 0;
   --m-stat-pad: 10px 0 10px 16px;
   --m-stat-h: 96px;
-  --m-stat-hero-h: 128px;
+  --m-stat-hero-h: 148px;
   --m-section-gap: var(--m-space-5);
   --m-page-pad: var(--m-space-8);
 }
@@ -482,7 +482,7 @@
   --m-text-meta: 13px;        --m-leading-meta: 18px;
   --m-hero-pad: 40px 0;
   --m-stat-h: 100px;
-  --m-stat-hero-h: 136px;
+  --m-stat-hero-h: 164px;
   --m-section-gap: var(--m-space-6);
   --m-page-pad: var(--m-space-10);
   --m-page-max: 1800px;
@@ -516,7 +516,7 @@
 .m-brand-panel :focus-visible { outline: none; box-shadow: var(--m-elev-focus-hero); }
 .m-report-cover { position: relative; overflow: hidden; color: var(--m-hero-ink); background-color: var(--m-hero-bg); }
 .m-report-cover::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--m-ember); }
-.m-ghost-bg { background-color: var(--m-sheet-sunken); border-top: 1px solid var(--m-line); }
+.m-ghost-bg { background-color: transparent; border-top: 1px solid var(--m-line); border-bottom: 1px solid var(--m-line); }
 .m-meridian-line { position: relative; height: 1px; background: var(--m-hero-line); }
 .m-meridian-line::before { content: ""; position: absolute; left: 0; top: -1px; width: 24px; height: 3px; background: var(--m-ember); }
 .m-fade-bottom { background-image: var(--m-grad-fade-bottom); }
