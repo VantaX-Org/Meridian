@@ -142,6 +142,9 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
         "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
     session.execute(text("TRUNCATE tmp_present"))
     _copy(session, "tmp_present", ("grain", "record_key"), present_keys(results, frames))
+    # the resolved/reopened semi-joins probe tmp_present per record_issues row; without an index
+    # that is a 2.6M × ~60M sequential scan (the run hung ~1.5 h here)
+    session.execute(text("CREATE INDEX ON tmp_present (grain, record_key)"))
 
     reopened = session.execute(text("""
         WITH hit AS (
