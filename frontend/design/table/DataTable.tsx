@@ -413,7 +413,7 @@ export function DataTable<T>({
                       aria-sort={sortable ? (sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none") : undefined}
                       className={`m-text-label px-2 font-medium border-b ${(h.column.columnDef.meta as CellMeta | undefined)?.numeric ? "text-right" : "text-left"}`}
                       style={{
-                        height: 28, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
+                        height: 28, background: "var(--m-sheet)", borderColor: "var(--m-line-strong)",
                         color: sorted ? "var(--m-ink)" : "var(--m-ink-3)",
                         width: h.column.columnDef.size !== undefined ? h.getSize() : undefined,
                       }}

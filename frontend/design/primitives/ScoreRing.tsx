@@ -81,8 +81,8 @@ export function ScoreRing({
   return (
     <div className="inline-flex flex-col items-center gap-1">
       {svg}
-      <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-2)" }}>
-        {`Capped at ${capV}${criticals ? ` — ${criticals} critical` : ""}`}
+      <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+        {`Capped at ${capV}${criticals ? `, ${criticals} critical` : ""}`}
       </span>
     </div>
   );

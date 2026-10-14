@@ -89,7 +89,7 @@ describe("wave 6 readings", () => {
     const { container } = render(<ScoreRing score={96} cap={85} criticals={1} size={160} />);
     expect(container.querySelector("[data-cap]")).toBeTruthy();
     expect(container.querySelector("[data-ghost]")).toBeTruthy();
-    expect(screen.getByText("Capped at 85 — 1 critical")).toBeInTheDocument();
+    expect(screen.getByText("Capped at 85, 1 critical")).toBeInTheDocument();
     expect(screen.getByLabelText("Score 85, capped from 96, 1 critical")).toBeInTheDocument();
   });
 

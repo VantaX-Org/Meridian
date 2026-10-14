@@ -291,11 +291,11 @@ export function Rail() {
     const showChevronButton = hasChildren && expanded;
 
     const rowWrapperClassName = "m-motion-colors group relative flex items-center hover:bg-[var(--m-rail-hover)]";
+    // Ledger: the active row is a ruled entry, a 2px amber rule down its left edge on a flat row. No tinted pill.
     const rowWrapperStyle = {
       height: depth === 0 && active ? 32 : 28,
       margin: "0 8px",
-      borderRadius: "var(--m-radius-control)",
-      background: active ? "var(--m-accent-soft)" : undefined,
+      borderLeft: `2px solid ${active ? "var(--m-accent)" : "transparent"}`,
     };
 
     const link = (
@@ -322,7 +322,6 @@ export function Rail() {
           ["--m-rail-fg" as string]: active ? "var(--m-ink)" : "var(--m-ink-2)",
           fontWeight: active ? 600 : 500,
           paddingLeft: expanded && depth === 1 ? 28 : undefined,
-          borderRadius: "var(--m-radius-control)",
           justifyContent: expanded ? "flex-start" : "center",
         }}
       >
@@ -350,13 +349,6 @@ export function Rail() {
 
     const row = (
       <div className={rowWrapperClassName} style={rowWrapperStyle}>
-        {active && (
-          <span
-            aria-hidden="true"
-            className="absolute"
-            style={{ left: -8, top: "50%", width: 2, height: 16, marginTop: -8, borderRadius: 1, background: "var(--m-accent)" }}
-          />
-        )}
         {link}
         {chevronButton}
       </div>
