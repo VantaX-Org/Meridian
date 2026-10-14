@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill,
+  Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill,
   SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
   entityTabs,
 } from "@/design";
@@ -18,13 +18,13 @@ import { RootCauseSection } from "./rules/[ruleId]/root-cause";
 import { exportObject, getObject, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
-import { exportFindingRecords } from "@/lib/api/findings";
+import { exportFindingRecords, getScoreHistory } from "@/lib/api/findings";
 import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
 import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
 import { apiErrorMessage } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
-import { formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName } from "@/lib/format";
 
 const PAGE_SIZE = 50;
 /** Page-level and tab-level hooks share these keys; a fresh window stops the tab remount refetching. */
@@ -174,6 +174,36 @@ function RulesTab({ object, run }: { object: string; run: string }) {
           onRowClick={(row) => router.push(recordsHref(row.check_id))}
         />
       )}
+    </div>
+  );
+}
+
+/** This object's composite score across every scored run, oldest first: improvement over time, per object. */
+function HistoryTab({ object, run }: { object: string; run: string }) {
+  const q = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: 24 }) });
+  const series = q.data?.modules[object] ?? [];
+  const runs = new Map((q.data?.history ?? []).map((h) => [h.version_id, h]));
+  const points = series.map((p, i) => {
+    const h = runs.get(p.version_id);
+    return { version_id: p.version_id, x: h?.run_at ? formatDate(h.run_at) : `Run ${i + 1}`, y: Math.round(p.composite * 10) / 10, change: i === 0 ? null : Math.round((p.composite - series[i - 1].composite) * 10) / 10 };
+  });
+  type Point = (typeof points)[number];
+  const columns: ColumnDef<Point>[] = [
+    { accessorKey: "x", header: "Run", cell: ({ row }) => <Link href={`/objects/${object}?run=${row.original.version_id}`} className="underline-offset-2 hover:underline">{row.original.x}{row.original.version_id === run ? " (this run)" : ""}</Link> },
+    { accessorKey: "y", header: "Score", meta: { numeric: true } },
+    { accessorKey: "change", header: "Change", meta: { numeric: true }, cell: ({ row }) => (row.original.change === null ? "—" : <Delta value={row.original.change} />) },
+  ];
+  if (q.isLoading) return <Skeleton height={240} />;
+  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />;
+  if (points.length < 2) return <EmptyState title="Not enough runs to show a history" detail="The score history appears after the second scored run of this object." action={<Button render={<Link href="/runs">Open runs</Link>} />} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <Card title="Score over time" meta={`${points.length} runs, ${points[0].y} to ${points[points.length - 1].y}`}>
+        <Line data={points.map((p) => ({ x: p.x, y: p.y }))} label={`${formatModuleName(object)} composite score per run`} />
+      </Card>
+      <Card title="Runs">
+        <DataTable columns={columns} data={[...points].reverse()} getRowId={(p) => p.version_id} hideToolbar dense height="auto" />
+      </Card>
     </div>
   );
 }
@@ -509,7 +539,7 @@ export default function ObjectDetailPage() {
               />
             ),
           },
-          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}` }),
+          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, history: <HistoryTab object={object} run={run} /> }),
         ]}
       />
     </div>

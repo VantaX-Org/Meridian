@@ -261,6 +261,22 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/docs": "Documentation",
   "/me/preferences": "Preferences",
   "/inbox/notifications": "Notifications",
+  // Insight views carry short rail labels; the pages keep their full titles.
+  "/insights/exec": "Executive summary",
+  "/insights/progress": "Progress",
+  "/insights/trends": "Trends",
+  "/insights/forecast": "Forecast",
+  "/insights/rules": "Explore",
+  "/insights/impact": "Value at risk",
+  "/insights/lineage": "Lineage and impact",
+  "/insights/mining": "Pattern mining",
+  "/insights/duplicates": "Duplicate clusters",
+  "/insights/readiness": "Readiness",
+  "/insights/process": "Process readiness",
+  "/insights/process/designer": "Process designer",
+  "/insights/owners": "Owner scorecards",
+  "/insights/operations": "Operations",
+  "/insights/reports": "Report library",
 };
 
 /** Items and their sub-pages (Settings tabs, Insights sections, Inbox exceptions) as one flat list. */

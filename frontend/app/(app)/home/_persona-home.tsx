@@ -22,6 +22,8 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { useDayOne } from "@/hooks/use-day-one";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
+import { exportFindings } from "@/lib/api/findings";
+import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
@@ -343,6 +345,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       lists={lists}
       onboarding={<HomeOnboarding />}
       headerActions={<>
+        <RunAnalysis />
+        {role === "steward" && can("export") ? (
+          <ExportMenu options={[{ format: "xlsx", label: "My failing records (Excel)", run: () => exportFindings("xlsx", { version_id: latest.id, sort: "severity" }) }]} />
+        ) : null}
         <Select
           label="View as"
           value={role}
