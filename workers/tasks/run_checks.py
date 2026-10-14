@@ -696,7 +696,18 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         # them from the frames, otherwise the reference would be absent (not_evaluable) or, worse,
         # a truncated read that turns almost every value into a false "invalid reference".
         import re as _re
-        for _r in fs_rules:
+        from checks.runner import module_rules
+        # The referential/domain rules live in the module YAML (material_master.yaml, …), not in
+        # fs_rules (the generated field-status rules) — iterate both, deduplicated by id.
+        _data_rules = list(fs_rules)
+        _seen_ids = {r.get("id") for r in _data_rules}
+        for _m in modules:
+            for _r in module_rules(_m):
+                if _r.get("enabled") is False or _r.get("id") in _seen_ids:
+                    continue
+                _seen_ids.add(_r.get("id"))
+                _data_rules.append(_r)
+        for _r in _data_rules:
             if _r.get("check_class") not in ("referential_check", "domain_value_check"):
                 continue  # exists_check resolves its target from the frames already
             _f = dictionary.resolve(_r.get("field") or "")
@@ -711,6 +722,9 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             # MARA truncated to MAX_ROWS, and those rows linger until the next load).
             if _df is not None and _key in _df.columns:
                 live_refs[_key] = set(_df[_key].dropna().astype(str).str.strip())
+        logger.warning("FIX_DEBUG data_rules=%d MM315_present=%s live_refs_MARA_MATNR_size=%d",
+                       len(_data_rules), any(r.get("id") == "MM315" for r in _data_rules),
+                       len(live_refs.get("MARA.MATNR", ())))
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}
         # coverage (rules that produced no result) and clean records per driving object,
