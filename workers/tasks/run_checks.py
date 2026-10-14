@@ -722,9 +722,6 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             # MARA truncated to MAX_ROWS, and those rows linger until the next load).
             if _df is not None and _key in _df.columns:
                 live_refs[_key] = set(_df[_key].dropna().astype(str).str.strip())
-        logger.warning("FIX_DEBUG data_rules=%d MM315_present=%s live_refs_MARA_MATNR_size=%d",
-                       len(_data_rules), any(r.get("id") == "MM315" for r in _data_rules),
-                       len(live_refs.get("MARA.MATNR", ())))
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}
         # coverage (rules that produced no result) and clean records per driving object,
