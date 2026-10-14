@@ -26,6 +26,8 @@ export interface InsightHeaderProps {
   hero?: boolean;
   /** `to` is the route the stat opens. */
   stats?: (Pick<StatProps, "label" | "value" | "hint" | "tone" | "decimals" | "versionId"> & { to?: string })[];
+  /** Hero only: the verdict (score ring and sentence) that leads the band; the stats sit beside it. */
+  lead?: ReactNode;
 }
 
 const HERO_TONE: Record<PillTone, string> = {
@@ -60,7 +62,7 @@ function Cell({ label, cell, loading, hero, children }: { label: string; cell: I
   );
 }
 
-export function InsightHeader({ situation, changed, why, next, aiSummary, loading, hero, stats }: InsightHeaderProps) {
+export function InsightHeader({ situation, changed, why, next, aiSummary, loading, hero, stats, lead }: InsightHeaderProps) {
   const a = next.action;
   return (
     <section
@@ -68,9 +70,14 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
       className={hero ? "m-hero m-motion-rise" : "m-motion-rise rounded"}
       style={hero ? undefined : { background: "var(--m-sheet)", boxShadow: "var(--m-elev-1)", borderRadius: "var(--m-radius-sheet)" }}
     >
-      {hero && stats && stats.length > 0 && (
-        <div className="m-motion-stagger mb-4 grid grid-cols-2 gap-4 md:grid-cols-4" data-testid="insight-hero-stats">
-          {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
+      {hero && (lead || (stats && stats.length > 0)) && (
+        <div className={lead ? "mb-4 grid gap-6 @5xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @5xl:items-center" : "mb-4"}>
+          {lead && <div data-testid="insight-hero-lead">{lead}</div>}
+          {stats && stats.length > 0 && (
+            <div className={`m-motion-stagger grid grid-cols-2 gap-4 ${lead ? "" : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
+              {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
+            </div>
+          )}
         </div>
       )}
       <div className="grid gap-px md:grid-cols-4 @5xl:grid-cols-4">

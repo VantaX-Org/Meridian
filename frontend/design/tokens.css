@@ -135,13 +135,14 @@
   --m-text-hero: 56px;      --m-leading-hero: 60px;      /* count-up DQS */
   --m-text-verdict: 28px;   --m-leading-verdict: 34px;   /* verdict sentence */
   --m-text-verdict-num: 44px; --m-leading-verdict-num: 48px; /* verdict number */
-  --m-text-title: 20px;     --m-leading-title: 26px;     /* auth h1, record key */
+  --m-text-title: 22px;     --m-leading-title: 28px;     /* page title, auth h1, record key */
   --m-text-stat: 26px;      --m-leading-stat: 30px;      /* KPI tile value */
   --m-text-section: 15px;   --m-leading-section: 20px;   /* h2, drawer title */
   --m-text-body: 13px;      --m-leading-body: 18px;
   --m-text-meta: 12px;      --m-leading-meta: 16px;
   --m-text-micro: 11px;     --m-leading-micro: 14px;     /* badges, kbd */
   --m-tracking-tight: -0.02em;   /* hero and stat numerals */
+  --m-tracking-title: -0.01em;   /* page and section titles */
   --m-tracking-normal: 0;
 
   /* ---------- Space (4px grid) ---------- */

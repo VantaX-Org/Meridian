@@ -21,6 +21,11 @@ import type { CSSProperties, JSX } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
+  Compass,
+  Flag,
+  LayoutDashboard,
+  TrendingUp,
+  Users,
   BarChart3,
   Boxes,
   ChevronRight,
@@ -188,11 +193,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: BarChart3,
         keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
         children: [
-          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: BarChart3, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
-          { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: BarChart3, keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
-          { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: BarChart3, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
-          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: BarChart3, keywords: "waves go no-go blockers process l1 l5 ptp otc migration", aliases: ["/insights/process"] },
-          { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: BarChart3, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
+          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: LayoutDashboard, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
+          { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: TrendingUp, keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
+          { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: Compass, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
+          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: Flag, keywords: "waves go no-go blockers process l1 l5 ptp otc migration", aliases: ["/insights/process"] },
+          { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: Users, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
         ],
       },
     ],

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getPageTitle } from "@/lib/nav";
+import { usePageTitleIsShown } from "./page-title-store";
 import { Menu } from "../primitives/Menu";
 import { useDrill, type Crumb } from "./useDrill";
 
@@ -49,6 +50,7 @@ export function Breadcrumb() {
   const { crumbs } = useDrill();
   const scopeParts = useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; }, () => scope, () => scope);
   const pathname = usePathname();
+  const pageDrawsTitle = usePageTitleIsShown();
   const title = crumbs.length > 0 ? crumbs[crumbs.length - 1]!.label : getPageTitle(pathname);
   const leadingCrumbs = crumbs.slice(0, -1);
   const hidden = leadingCrumbs.slice(0, Math.max(0, leadingCrumbs.length - MAX_LEADING));
@@ -67,7 +69,7 @@ export function Breadcrumb() {
           <Dot />
         </span>
       ))}
-      <h1 className="m-text-h truncate font-semibold" style={{ color: "var(--m-ink)" }}>
+      <h1 className={pageDrawsTitle ? "sr-only" : "m-text-h truncate font-semibold"} style={{ color: "var(--m-ink)" }}>
         {title}
       </h1>
       {scopeParts.map((part) => (
