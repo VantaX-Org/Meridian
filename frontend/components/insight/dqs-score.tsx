@@ -20,9 +20,9 @@ export function DqsScore({ agg, versionId, size = 48 }: { agg: FindingsAggregate
     queryFn: () => getFindings({ version_id: versionId, sort: "impact", limit: 5 }),
   });
   const composite = agg.dqs.composite;
-  const raw = agg.dqs.raw ?? composite;
   const weights = settings.data?.dqs_weights as Record<string, number> | undefined;
   if (composite == null) return null;
+  const raw = agg.dqs.raw ?? composite;
   const measured = Object.entries(agg.dqs.dimension_scores).filter(([d]) => weights?.[d] != null);
   if (!weights || measured.length === 0) return <ScoreRing score={raw} cap={agg.dqs.capped ? composite : undefined} size={size} />;
   const total = measured.reduce((n, [d]) => n + weights[d], 0) || 1;
