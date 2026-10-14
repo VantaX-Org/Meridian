@@ -147,11 +147,11 @@ describe("Rail", () => {
     trigger.focus();
     fireEvent.keyDown(trigger, { key: "ArrowRight" });
 
-    const firstChild = await screen.findByRole("link", { name: "Executive summary" });
+    const firstChild = await screen.findByRole("link", { name: "Summary" });
     expect(firstChild).toHaveFocus();
 
     fireEvent.keyDown(firstChild, { key: "Escape" });
-    expect(screen.queryByRole("link", { name: "Executive summary" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Summary" })).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
   });
 });

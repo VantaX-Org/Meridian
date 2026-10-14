@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button, ExportMenu, type ExportOption } from "@/design";
 import { exportFindings } from "@/lib/api/findings";
 import { withScope } from "./useInsightScope";
+import { RunAnalysis } from "./RunAnalysis";
 
 export function InsightActions({ run, module, options = [] }: { run?: string; module?: string; options?: ExportOption[] }) {
   const list: ExportOption[] = run
@@ -13,6 +14,7 @@ export function InsightActions({ run, module, options = [] }: { run?: string; mo
     : options;
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <RunAnalysis />
       <Button variant="secondary" render={<Link href={withScope("/fix", { run })}>Auto clean</Link>} />
       <Button variant="ghost" render={<Link href={withScope("/insights/reports", { run })}>Report library</Link>} />
       <ExportMenu options={list} />

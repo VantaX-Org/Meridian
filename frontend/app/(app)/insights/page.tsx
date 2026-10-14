@@ -27,19 +27,6 @@ import { useFindingOpener } from "./_components/FindingOpener";
 import { ruleColumns } from "./_components/RuleColumns";
 import { useInsightScope, withScope } from "./_components/useInsightScope";
 
-const MORE_VIEWS = [
-  ["exec", "Executive summary", "Readiness, risk and owners on one page"],
-  ["readiness", "Readiness", "Go and no-go per object and wave"],
-  ["impact", "Impact", "Value at risk per blocked feature"],
-  ["owners", "Owners", "Score and open items per owner"],
-  ["duplicates", "Duplicates", "Clusters of likely duplicates"],
-  ["forecast", "Forecast", "Where each score is heading"],
-  ["lineage", "Lineage", "Which fields feed which guards"],
-  ["mining", "Mining", "Relationships, patterns, anomalies"],
-  ["process", "Process", "Readiness per business process"],
-  ["operations", "Operations", "Job health and queue depth"],
-  ["reports", "Reports", "Board pack, workbook and run reports"],
-] as const;
 
 const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));
 
@@ -271,20 +258,6 @@ export default function InsightsOverviewPage() {
           </Section>
         </div>
 
-        <div className="@5xl:col-span-12">
-          <Card title="More views">
-            <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 @5xl:grid-cols-4">
-              {MORE_VIEWS.map(([id, name, about]) => (
-                <li key={id}>
-                  <Link href={withScope(`/insights/${id}`, { run })} className="m-lift flex flex-col gap-1 rounded p-3" style={{ color: "var(--m-ink)", background: "var(--m-surface)" }}>
-                    <span className="font-medium">{name}</span>
-                    <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{about}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
       </div>
       {finding.drawer}
     </InsightFrame>

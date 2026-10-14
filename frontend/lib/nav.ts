@@ -74,6 +74,8 @@ export interface NavItem {
   badgeKey?: "fix" | "inbox";
   /** Sub-pages collapsed under this item. */
   children?: readonly NavItem[];
+  /** Other paths this item stays highlighted for (tabs of a view that are not nav entries of their own). */
+  aliases?: readonly string[];
 }
 
 export interface NavGroup {
@@ -186,20 +188,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: BarChart3,
         keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
         children: [
-          { href: "/insights/exec", requires: req("reports", "view"), label: "Executive summary", icon: BarChart3, keywords: "exec report narrative pdf" },
-          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: BarChart3, keywords: "waves go no-go blockers" },
-          { href: "/insights/rules", requires: req("reports", "view"), label: "Rule ranking", icon: BarChart3, keywords: "rules failing impact pareto auto fix root cause" },
-          { href: "/insights/trends", requires: req("reports", "view"), label: "Trends", icon: BarChart3, keywords: "score history runs blockers dimension line" },
-          { href: "/insights/impact", requires: req("reports", "view"), label: "Value at risk", icon: BarChart3, keywords: "impact features cost" },
-          { href: "/insights/owners", requires: req("reports", "view"), label: "Owner scorecards", icon: BarChart3, keywords: "digest score steward" },
-          { href: "/insights/duplicates", requires: req("reports", "view"), label: "Duplicate clusters", icon: BarChart3, keywords: "dedup merge graph cluster" },
-          { href: "/insights/operations", requires: req("reports", "view"), label: "Operations", icon: BarChart3, keywords: "operational team sprints bottlenecks capacity" },
-          { href: "/insights/reports", requires: req("reports", "view"), label: "Report library", icon: BarChart3, keywords: "reports pdf download export" },
-          { href: "/insights/forecast", requires: req("reports", "view"), label: "Forecast", icon: BarChart3, keywords: "predictive dqs forecast" },
-          { href: "/insights/process", requires: req("reports", "view"), label: "Process readiness", icon: BarChart3, keywords: "l1 l5 business process ptp otc process map" },
-          { href: "/insights/process/designer", requires: req("reports", "view"), label: "Process designer", icon: BarChart3, keywords: "designer bpmn model edit l1 l5" },
-          { href: "/insights/lineage", requires: req("reports", "view"), label: "Lineage and impact", icon: BarChart3, keywords: "lineage downstream kpi blast radius guards" },
-          { href: "/insights/mining", requires: req("reports", "view"), label: "Pattern mining", icon: BarChart3, keywords: "patterns clustering relationships graph" },
+          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: BarChart3, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
+          { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: BarChart3, keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
+          { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: BarChart3, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
+          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: BarChart3, keywords: "waves go no-go blockers process l1 l5 ptp otc migration", aliases: ["/insights/process"] },
+          { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: BarChart3, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
         ],
       },
     ],
@@ -354,7 +347,7 @@ export function activeHref(pathname: string, search: URLSearchParams, items: rea
   for (const item of items) {
     const [path, query] = item.href.split("?");
     if (!path) continue;
-    const pathMatches = pathname === path || pathname.startsWith(path + "/");
+    const pathMatches = [path, ...(item.aliases ?? [])].some((p) => pathname === p || pathname.startsWith(p + "/"));
     if (!pathMatches) continue;
 
     if (query) {

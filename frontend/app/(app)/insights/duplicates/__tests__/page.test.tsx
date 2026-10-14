@@ -14,6 +14,7 @@ const replace = vi.fn();
 let query = "run=v1";
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/insights",
   useSearchParams: () => new URLSearchParams(query),
   useRouter: () => ({ push, replace }),
 }));

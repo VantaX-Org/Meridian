@@ -91,7 +91,7 @@ describe("activeHref", () => {
 
 describe("wave 18b gap routes", () => {
   const items = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
-  const hrefs = ["/insights/operations", "/insights/reports", "/mdm", "/mdm/survivorship", "/admin/audit", "/admin/notifications", "/admin/jobs", "/admin/reference", "/fix/what-if", "/rules/drafts", "/rules/dictionary"];
+  const hrefs = ["/insights/owners", "/insights/exec", "/mdm", "/mdm/survivorship", "/admin/audit", "/admin/notifications", "/admin/jobs", "/admin/reference", "/fix/what-if", "/rules/drafts", "/rules/dictionary"];
 
   it("lists every new route once, with a requires", () => {
     for (const h of hrefs) {
@@ -117,6 +117,6 @@ describe("Process group", () => {
   it("highlights the runs entry on a run detail and the catalogue on an L1 drill", () => {
     expect(activeHref("/process/runs/abc", new URLSearchParams(), flat)).toBe("/process/runs");
     expect(activeHref("/process/PTP", new URLSearchParams(), flat)).toBe("/process");
-    expect(activeHref("/insights/process", new URLSearchParams(), flat)).toBe("/insights/process");
+    expect(activeHref("/insights/process", new URLSearchParams(), flat)).toBe("/insights/readiness");
   });
 });

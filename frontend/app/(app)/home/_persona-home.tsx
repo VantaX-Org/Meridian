@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
+  buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Select, Skeleton, Sparkline, Stat,
   type HeatmapCell, type PillTone,
 } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
@@ -342,8 +342,14 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       work={work}
       lists={lists}
       onboarding={<HomeOnboarding />}
-      headerActions={
-        can("export") ? (
+      headerActions={<>
+        <Select
+          label="View as"
+          value={role}
+          onValueChange={(r) => router.push(`/home/${r}`)}
+          options={[{ value: "lead", label: "Data lead" }, { value: "steward", label: "Steward" }, { value: "basis", label: "Basis" }, { value: "process", label: "Process owner" }]}
+        />
+        {can("export") ? (
           <span data-tour="home-export" className="inline-flex"><ExportMenu
             options={[{
               format: "pdf",
@@ -351,8 +357,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
               run: () => downloadAuthenticated(getExecutiveReportUrl(latest.id), `meridian-executive-${latest.label ?? latest.id}.pdf`),
             }]}
           /></span>
-        ) : null
-      }
+        ) : null}
+      </>}
     />
   );
 }

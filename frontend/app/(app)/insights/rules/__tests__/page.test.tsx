@@ -41,7 +41,7 @@ describe("RulesPage", () => {
     expect(screen.getByRole("grid")).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /impact/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: "Rule ranking" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Explore" })).toBeInTheDocument();
   });
 
   it("shows the empty state", async () => {

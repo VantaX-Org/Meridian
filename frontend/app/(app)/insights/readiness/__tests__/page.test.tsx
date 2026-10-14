@@ -7,6 +7,7 @@ import ReadinessPage from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/insights",
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
