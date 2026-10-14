@@ -24,12 +24,11 @@ const EXT: Record<CatalogueEntry["format"], string> = { PDF: "pdf", XLSX: "xlsx"
 export default function ReportsPage() {
   const { can, has } = usePermissions();
   const { run: scopedRun, runs, versions } = useInsightScope();
-  const [picked, setPicked] = useState("");
   const [compare, setCompare] = useState(NONE);
   const [module, setModule] = useState(NONE);
   const [recordKey, setRecordKey] = useState("");
   const [selected, setSelected] = useState("board");
-  const versionId = picked || scopedRun || "";
+  const versionId = scopedRun || "";
   const cmp = compare === NONE ? undefined : compare;
   const mod = module === NONE ? undefined : module;
 
@@ -88,7 +87,6 @@ export default function ReportsPage() {
       }}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Select label="Analysis run" value={versionId} onValueChange={setPicked} placeholder="Choose a run" options={runs.map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))} />
           <Select label="Compare with" value={compare} onValueChange={setCompare} options={[{ value: NONE, label: "No comparison" }, ...runs.filter((v) => v.id !== versionId).map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))]} />
           <Select label="Object" value={module} onValueChange={setModule} options={[{ value: NONE, label: "All objects" }, ...(heat.data?.rows ?? []).map((r) => ({ value: r.module, label: formatModuleName(r.module) }))]} />
         </div>

@@ -1,11 +1,11 @@
 // frontend/app/(app)/insights/readiness/page.tsx
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Pill, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Pill, Stat, type PillTone } from "@/design";
 import { getS4Readiness } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -13,6 +13,8 @@ import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { Section } from "../_components/Section";
+import { InsightActions } from "../_components/InsightActions";
+import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame, useRunLabel } from "../_components/InsightFrame";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
@@ -57,8 +59,7 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
 
 export default function ReadinessPage() {
   const router = useRouter();
-  const search = useSearchParams();
-  const run = search.get("run") ?? undefined;
+  const { run } = useInsightScope();
   const dayOne = useDayOne();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -111,12 +112,13 @@ export default function ReadinessPage() {
     <InsightFrame
       title="Readiness"
       meta={runLabel}
+      actions={<InsightActions run={run} />}
       insight={{
         situation: { sentence: `${noGo} of ${data?.cells.length ?? 0} readiness ${data?.cells.length === 1 ? "cell is" : "cells are"} no-go`, tone: noGo ? "no-go" : "go" },
-        changed: { sentence: "—" },
+        changed: { sentence: s4.data ? `${blockingGaps.toLocaleString()} blocking and ${warningGaps.toLocaleString()} warning rules fail` : "Blocking rules are being counted", href: withScope("/insights/rules", { run, s4: "yes" }) },
         why: { sentence: `${blocked.toLocaleString()} records are blocked from loading${typeof data?.threshold === "number" ? `, against a threshold of ${data.threshold}%` : ""}` },
         next: worst
-          ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: `/objects/${worst.module}` } }
+          ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: withScope(`/objects/${worst.module}`, { run, tab: "rules", blocking: "true" }) } }
           : { sentence: "Nothing blocks loading", action: { label: "Open objects", href: "/objects" } },
       }}
       state={state}
@@ -142,18 +144,10 @@ export default function ReadinessPage() {
         <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>Each cell is a wave and object pair. Select one to open its records.</p>
       </Card>
       <Section title="Blockers and warnings" height={96} query={s4}>
-        <ul className="grid grid-cols-2 gap-3" data-testid="s4-strip">
-          <li className="flex flex-col gap-1">
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Blockers</span>
-            <span className="m-numeric font-semibold">{blockingGaps.toLocaleString()}</span>
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Failing rules that stop an S/4 load</span>
-          </li>
-          <li className="flex flex-col gap-1">
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Warnings</span>
-            <span className="m-numeric font-semibold">{warningGaps.toLocaleString()}</span>
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Failing rules that do not stop a load</span>
-          </li>
-        </ul>
+        <div className="grid grid-cols-2 gap-3" data-testid="s4-strip">
+          <Stat label="Blockers" value={blockingGaps} tone={blockingGaps ? "no-go" : "go"} hint="Failing rules that stop an S/4 load" href={withScope("/insights/rules", { run, s4: "yes" })} />
+          <Stat label="Warnings" value={warningGaps} tone={warningGaps ? "at-risk" : undefined} hint="Failing rules that do not stop a load" href={withScope("/insights/rules", { run })} />
+        </div>
       </Section>
       <Card title="Blockers">
         {blockers.length === 0 ? (

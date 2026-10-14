@@ -6,6 +6,7 @@ import * as versionsApi from "@/lib/api/versions";
 import { rulesFor80 } from "../../_components/rulesFor80";
 import RulesPage from "../page";
 
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/insights/rules",

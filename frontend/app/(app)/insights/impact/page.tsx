@@ -2,7 +2,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat } from "@/design";
@@ -24,6 +23,8 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame, formatMoney, statusTone, useRunLabel } from "../_components/InsightFrame";
+import { InsightActions } from "../_components/InsightActions";
+import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 /** Real route for a single check/rule, independent of any module context —
  * unlike `/objects/[object]`, this resolves from the check id alone. */
@@ -117,7 +118,7 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-6">
+      <div className="grid grid-cols-2 gap-3">
         <Stat
           label="Largest L1 proven cost"
           help="provenCost"
@@ -177,8 +178,7 @@ function ImpactPanel({
 }
 
 export default function ImpactPage() {
-  const search = useSearchParams();
-  const run = search.get("run") ?? undefined;
+  const { run } = useInsightScope();
   const dayOne = useDayOne();
 
   const impactQuery = useQuery({
@@ -203,6 +203,7 @@ export default function ImpactPage() {
     <InsightFrame
       title="Value at risk"
       meta={runLabel}
+      actions={<InsightActions run={run} />}
       state={state}
       skeleton={
         <>
@@ -219,7 +220,7 @@ export default function ImpactPage() {
         changed: { sentence: provenCostQuery.data ? `${provenCostQuery.data.rows.length} proven cost metrics found` : "—" },
         why: { sentence: "Value at risk is the blocked record count times the value per record" },
         next: top
-          ? { sentence: `Fix the rules behind ${labelOf(top.feature)}`, action: { label: "Open rules", href: "/rules" } }
+          ? { sentence: `Fix the rules behind ${labelOf(top.feature)}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run, s4: "yes" }) } }
           : { sentence: "Run an analysis", action: { label: "Open runs", href: "/runs" } },
       }}
     >

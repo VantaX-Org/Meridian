@@ -1,0 +1,21 @@
+"use client";
+
+// The same three ways out of every insight page: auto clean (the fix queue), export the
+// failing-records list for manual cleaning, and the report library.
+import Link from "next/link";
+import { Button, ExportMenu, type ExportOption } from "@/design";
+import { exportFindings } from "@/lib/api/findings";
+import { withScope } from "./useInsightScope";
+
+export function InsightActions({ run, module, options = [] }: { run?: string; module?: string; options?: ExportOption[] }) {
+  const list: ExportOption[] = run
+    ? [...options, { format: "xlsx", label: "Failing records list (Excel)", run: () => exportFindings("xlsx", { version_id: run, module, sort: "impact" }) }]
+    : options;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button variant="secondary" render={<Link href={withScope("/fix", { run })}>Auto clean</Link>} />
+      <Button variant="ghost" render={<Link href={withScope("/insights/reports", { run })}>Report library</Link>} />
+      <ExportMenu options={list} />
+    </div>
+  );
+}

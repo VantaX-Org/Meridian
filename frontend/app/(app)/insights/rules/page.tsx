@@ -4,17 +4,18 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, ExplorerPage, PageHeader, Pareto, Select } from "@/design";
 import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { rulesFor80 } from "../_components/rulesFor80";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { ruleColumns } from "../_components/RuleColumns";
+import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 const ANY = "any";
@@ -22,11 +23,10 @@ const SEVERITIES = ["critical", "high", "medium", "low"];
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
 
 export default function RulesPage() {
-  const router = useRouter();
   const path = usePathname();
   const search = useSearchParams();
   const field = search.get("field") ?? undefined;
-  const { run, module, runs, versions, resolving } = useInsightScope();
+  const { run, module, versions, resolving } = useInsightScope();
   const finding = useFindingOpener(run);
   const [severity, setSeverity] = useState(ANY);
   const [dimension, setDimension] = useState(ANY);
@@ -56,16 +56,14 @@ export default function RulesPage() {
     },
   ], [run]);
 
-  const setScope = (id: string) => router.replace(withScope(path, { run: id, module, field }));
   const opts = (xs: string[], any: string) => [{ value: ANY, label: any }, ...xs.map((x) => ({ value: x, label: labelOf(x) }))];
   const yesNo = (any: string) => [{ value: ANY, label: any }, { value: "yes", label: "Only these" }];
 
   return (
     <ExplorerPage
-      header={<PageHeader title="Rule ranking" meta={`${module ? formatModuleName(module) : "All objects"}${field ? `, field ${field}` : ""}`} />}
+      header={<PageHeader title="Rule ranking" meta={`${module ? formatModuleName(module) : "All objects"}${field ? `, field ${field}` : ""}`} actions={<InsightActions run={run} module={module} />} />}
       filterBar={
         <div className="flex flex-wrap items-center gap-2">
-          <Select label="Run" value={run ?? ""} onValueChange={setScope} placeholder="Choose a run" options={runs.map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))} />
           <Select label="Severity" value={severity} onValueChange={setSeverity} options={opts(SEVERITIES, "Any severity")} />
           <Select label="Dimension" value={dimension} onValueChange={setDimension} options={opts(DIMENSIONS, "Any dimension")} />
           <Select label="Auto-fixable" value={auto} onValueChange={setAuto} options={yesNo("Any fix type")} />

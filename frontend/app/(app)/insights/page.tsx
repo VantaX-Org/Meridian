@@ -2,12 +2,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, Card, DataTable, Delta, ExportMenu, Funnel, Heatmap, Line, Pill, Radar, Select, toneOfTier, type ChartPoint,
+  Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, toneOfTier, type ChartPoint,
   type ExportOption, type HeatmapCell,
 } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -19,15 +19,16 @@ import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { useRole } from "@/hooks/use-role";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
 import { Section } from "./_components/Section";
+import { InsightActions } from "./_components/InsightActions";
 import { useFindingOpener } from "./_components/FindingOpener";
 import { ruleColumns } from "./_components/RuleColumns";
 import { useInsightScope, withScope } from "./_components/useInsightScope";
 
 const MORE_VIEWS = [
+  ["exec", "Executive summary", "Readiness, risk and owners on one page"],
   ["readiness", "Readiness", "Go and no-go per object and wave"],
   ["impact", "Impact", "Value at risk per blocked feature"],
   ["owners", "Owners", "Score and open items per owner"],
@@ -37,7 +38,6 @@ const MORE_VIEWS = [
   ["mining", "Mining", "Relationships, patterns, anomalies"],
   ["process", "Process", "Readiness per business process"],
   ["operations", "Operations", "Job health and queue depth"],
-  ["exec", "Executive summary", "Readiness, risk and owners on one page"],
   ["reports", "Reports", "Board pack, workbook and run reports"],
 ] as const;
 
@@ -45,10 +45,8 @@ const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));
 
 export default function InsightsOverviewPage() {
   const router = useRouter();
-  const path = usePathname();
   const dayOne = useDayOne();
-  const { run, module, runs, versions, resolving } = useInsightScope();
-  const { can } = useRole();
+  const { run, module, versions, resolving } = useInsightScope();
   const finding = useFindingOpener(run);
   const on = !!run;
   const scope = { version_id: run, module };
@@ -88,7 +86,6 @@ export default function InsightsOverviewPage() {
     { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), `workbook_${run}.xlsx`) },
   ] : [];
 
-  const setRun = (id: string) => router.replace(withScope(path, { run: id, module }));
   const fixHref = (extra: Record<string, string>) => withScope("/fix", { run, ...extra });
 
   const fixColumns: ColumnDef<RuleRow>[] = ruleColumns(run, true);
@@ -110,18 +107,7 @@ export default function InsightsOverviewPage() {
           {module ? <Pill tone="info">{formatModuleName(module)}</Pill> : <span>Scope: all objects</span>}
         </span>
       }
-      actions={
-        <div className="flex items-center gap-2">
-          <Select
-            label="Run"
-            value={run ?? ""}
-            onValueChange={setRun}
-            placeholder="Choose a run"
-            options={runs.map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))}
-          />
-          {can("export") ? <ExportMenu options={exportOptions} /> : <Pill tone="info">Export needs auditor or analyst role</Pill>}
-        </div>
-      }
+      actions={<InsightActions run={run} module={module} options={exportOptions} />}
       insight={{
         hero: true,
         loading,

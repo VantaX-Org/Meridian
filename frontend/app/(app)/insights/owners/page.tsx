@@ -56,7 +56,7 @@ function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend
         ))}
       </div>
       <div className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
-        Fixed since baseline: {owner.fixed_since_baseline}, oldest open item: {owner.oldest_item_age_days}d
+        {`Fixed since baseline ${owner.fixed_since_baseline.toLocaleString()}, oldest open item ${owner.oldest_item_age_days} ${owner.oldest_item_age_days === 1 ? "day" : "days"}`}
       </div>
       <p className="m-text-body">{owner.digest}</p>
       <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
@@ -93,6 +93,12 @@ export default function OwnersPage() {
   return (
     <InsightFrame
       title="Owners"
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          {canSend ? <Button variant="secondary" onClick={() => setConfirmAll(true)}>Send digests to everyone</Button> : null}
+          <Button variant="secondary" render={<Link href="/rules/scoring">Schedule digests</Link>} />
+        </div>
+      }
       insight={{
         situation: { sentence: below === undefined ? "—" : `${below} of ${owners.length} owners are below the ${threshold}% threshold`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
         changed: { sentence: `${owners.filter((o) => o.delta < 0).length} owners lost ground this run` },
@@ -109,10 +115,6 @@ export default function OwnersPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {canSend ? <Button variant="secondary" onClick={() => setConfirmAll(true)}>Send digests to everyone</Button> : null}
-        <Button variant="secondary" render={<Link href="/rules/scoring">Schedule digests</Link>} />
-      </div>
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         {owners.map((owner) => (
           <OwnerCard key={owner.owner} owner={owner} canSend={canSend} send={send} />
