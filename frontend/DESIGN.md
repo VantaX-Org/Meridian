@@ -1,17 +1,17 @@
-# Meridian design system: "The Instrument"
+# Meridian design system: "The Ledger"
 
 Source of truth for the visual layer. Values live in `frontend/design/tokens.css`, the only file that may hold colour, shadow, blur or motion literals. Spec: `docs/superpowers/specs/2026-10-12-ui-polish-design.md`. When this file and the code disagree, the code is right and this file needs updating.
 
 ## 1. Direction
 
-Meridian is a measuring instrument for SAP data: it takes a reading, shows it, and says what it means. Cool slate canvas, white sheets, near-black ink, one indigo accent. Light is the default; dark is a full alternative under `[data-theme="dark"]`. The bar is Linear, Vercel, Stripe and Datadog for craft; Ataccama, Collibra and Informatica for data quality; Celonis and Signavio for process.
+Meridian is a ledger of SAP data quality: a dense, ruled record that a steward reads down and an executive reads across. The canvas is deep navy and dark is the default; light is a full equal under `[data-theme="light"]`. Surfaces are not cards but ruled sheets: a hairline on top, a hairline below, a stronger rule on the left of every stat column. There are no gradients, no shadows outside popovers and dialogs, and no tinted pills for state. One amber accent marks interaction only (selection, focus, links, the primary button); severity hue carries meaning, never decoration. The score is set in type, not drawn in a ring: an 84px condensed numeral with the verdict sentence beside it. Heatmaps are integer counts in 30px cells; waterfalls sit on a drawn baseline. The bar is Linear, Vercel and Bloomberg for density and craft; Ataccama, Collibra and Informatica for data quality.
 
 Rules, all enforced by lint or review:
 
 1. **Restrained decoration.** No glass, backdrop blur, gradients outside hero zones, illustrations, mascots, or icons that do not stand for a state. No tile without a drill-down.
-2. **Two accents.** `--m-accent` (cobalt) is selection, focus, links and the primary button. Ember and the `--m-grad-*` gradients exist only inside hero zones (`.m-hero`, `.m-brand-panel`, `.m-report-cover`, `.m-ghost-bg`, `.m-count-settle`); `lint:tokens` enforces it.
+2. **One accent.** `--m-accent` (amber) is selection, focus, links and the primary button, nothing else. The `--m-grad-*` tokens resolve to `none`; hero zones (`.m-hero`, `.m-brand-panel`, `.m-report-cover`) are flat navy on `--m-hero-bg` with `--m-hero-line` rules. `lint:tokens` enforces it.
 3. **Hue means defect state.** `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` and the verdicts `--m-go`, `--m-at-risk`, `--m-no-go` carry severity only, never selection or decoration. Severity is colour plus shape (critical square, high triangle, medium circle, low ring, pass check), never colour alone. Object domain (`--m-dom-*`, via `domainOf(moduleId)`) and chart series (`--m-viz-*`, ramps `--m-seq-*`, `--m-div-*`) are separate families and never stand for severity.
-4. **Type.** Public Sans for UI (400, 500, 600), JetBrains Mono for SAP identifiers only (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both load through `next/font`. Numbers are tabular (`font-variant-numeric: tabular-nums` on `body`). Sentence case everywhere, no all-caps eyebrows. No serif face exists.
+4. **Type.** IBM Plex Sans Condensed for UI and numerals (400, 500, 600), JetBrains Mono for SAP identifiers only (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both load through `next/font`. Numbers are tabular (`font-variant-numeric: tabular-nums` on `body`). Sentence case everywhere, no all-caps eyebrows. No serif face exists.
 5. **Three elevations.** Flat (hairline), raised (menus, popovers), floating (drawer, dialog, palette).
 6. **Motion is 120, 240 or 480 ms**, ease-out, and zero under `prefers-reduced-motion`. Entrance motion is for the first mount of a page frame, not for content that arrives after data.
 7. **Show the cap.** When a critical finding caps the DQS at 85 or 70, the score shows the measured value, the cap and the rules that caused it.
@@ -26,17 +26,18 @@ Light values on `:root`, dark under `[data-theme="dark"]` and under `prefers-col
 
 | Token | Light | Dark |
 |---|---|---|
-| `--m-canvas` | `#F5F6F8` | `#0F1115` |
-| `--m-sheet` | `#FFFFFF` | `#171A20` |
-| `--m-sheet-raised` | `#F9FAFB` | `#1D2129` |
-| `--m-ink`, `-2`, `-3` | `#15171C`, `#4B5160`, `#7A8191` | `#ECEEF2`, `#A6ADBB`, `#737B8A` |
-| `--m-line`, `--m-line-strong` | `#E3E6EB`, `#C9CED6` | `#262B35`, lifted one step |
-| `--m-accent`, `-soft`, `-ink` | `#4F46E5`, `#EEF0FD`, `#FFFFFF` | `#818CF8`, `#23264A` |
-| `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` | `#C2410C`, `#D97706`, `#CA8A04`, `#64748B`, `#15803D` | `#F97316`, `#F59E0B`, `#EAB308`, `#94A3B8`, `#22C55E` |
+| `--m-canvas` | `#F4F5F8` | `#0A0F1A` |
+| `--m-sheet` | `#FFFFFF` | `#0F1626` |
+| `--m-sheet-raised` | `#EDEFF4` | `#162038` |
+| `--m-ink`, `-2`, `-3` | `#0D1526`, `#4A5771`, `#5B6882` | `#E6ECF7`, `#AAB6CD`, `#8E9BB6` |
+| `--m-line`, `--m-line-strong` | `#C9D0DD`, `#A6B0C3` | `#1F2A40`, `#30405F` |
+| `--m-accent`, `-soft`, `-ink` | `#945500`, `#FBF0DC`, `#7A4700` | `#FFB020`, `#2A2210`, `#FFC65A` |
+| `--m-hero-bg`, `--m-hero-line` | `#0A0F1A`, `rgb(230 236 247 / 0.14)` | same |
+| `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` | `#B4232C`, `#B2440E`, `#7F6100`, `#58647E`, `#0F7A45` | `#FF6B79`, `#FF9466`, `#F2C94C`, `#9EABC5`, `#4FD38A` |
 
-Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is high, `--m-no-go` is critical, `--m-info` is ink-2. Other groups: DQS bands and caps, chart series `--m-viz-*`, space (4px grid), radii (`--m-radius-control`, `-sheet`), elevation (`m-elev-1..3`, `--m-elev-focus`), motion (`--m-motion-*`), layout (`--m-page-pad`, `--m-page-max`, `--m-rail-w`, `--m-topbar-h`, `--m-row-h`, `--m-control-h`).
+Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is high, `--m-no-go` is critical, `--m-info` is ink-2. Other groups: DQS bands and caps, chart series `--m-viz-*`, space (4px grid), radii (`--m-radius-control` 2px, `-sheet` and `-tile` 0, `-pill`), tracking (`--m-tracking-tight` on hero and stat numerals, `--m-tracking-title`), elevation (`m-elev-1..3`, `--m-elev-focus`), motion (`--m-motion-*`), layout (`--m-page-pad`, `--m-page-max`, `--m-rail-w`, `--m-topbar-h`, `--m-row-h`, `--m-control-h`).
 
-Type scale (px, size/line): label 11/14, meta 12/16, body 13/18, heading 15/20, page title 20/26, hero number 28/32, verdict number 44/48. Use the `m-text-*` utility classes, never `text-[Npx]` literals in pages.
+Type scale (px, size/line): label 11/14, meta 12/16, body 13/18, heading 15/20, page title 22/28, hero score 84/76 (112/100 in presentation mode). Use the `m-text-*` utility classes, never `text-[Npx]` literals in pages.
 
 Density: the user's preference (`/me/preferences`) lands on `<html data-density>` as `compact`, `default` or `comfortable`, and `tokens.css` retunes `--m-row-h`, `--m-row-h-dense`, `--m-control-h`, `--m-card-pad*`, `--m-hero-pad`, `--m-stat-pad`, `--m-stat-h`, `--m-stat-hero-h`, `--m-section-gap` and `--m-page-pad` per tier. Cards, stat tiles, the hero and the insight page gap read those tokens, so no component carries a density branch. Presentation mode (`[data-present="1"]`) steps the type scale, the hero and the page padding up one size the same way.
 
@@ -66,7 +67,7 @@ Copy: no full stops in table cells, pills, tile labels or hints; no "Showing X."
 ## 4. Brand
 
 - **Mark**: a 270 degree arc, open at the top, crossed by a vertical meridian line, on a 32 grid, stroke 3, round caps. The arc is ink, the line is the accent. In the app it is the inline SVG `MeridianMark` (`components/meridian/icons.tsx`).
-- **Wordmark**: the word "Meridian" type-set in Public Sans 600, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
+- **Wordmark**: the word "Meridian" type-set in IBM Plex Sans Condensed 600, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
 - **Assets** in `public/brand/` (see its README): marks, outlined lockups, `apple-icon.svg` (cover gradient, hero-ink mark, ember meridian line; the live icon is `app/apple-icon.tsx`), PWA icons from `npm run brand:rasterise`. Colours are in `brand.json`.
 - **Favicon**: `app/icon.svg` (stroke 3.5, follows the OS colour scheme) with `app/icon.png` fallback. **Open Graph image**: `app/opengraph-image.tsx`, lockup plus "SAP data quality, measured".
 - **Signed-out pages** (`components/auth/auth-frame.tsx`): one 400px card on the canvas with the lockup, an `<h1>`, the form and the version string beneath. No brand panel, no tagline, no marketing facts.

@@ -264,7 +264,7 @@ disagree, follow DESIGN.md.
   zones. Hue means defect state, object domain (`--m-dom-*`, only where an
   element stands for one SAP object) or chart series (`--m-viz-*`); each
   family never borrows another's tokens. No glass or backdrop blur.
-- **Type**: Instrument Sans for UI (Instrument Serif for cover titles), JetBrains Mono for SAP identifiers only
+- **Type**: IBM Plex Sans Condensed for UI and numerals (no serif anywhere), JetBrains Mono for SAP identifiers only
   (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both
   loaded with `next/font`. Numbers use tabular figures. Sentence case.
 - **Tokens**: `frontend/design/tokens.css` defines every `--m-*` token.
