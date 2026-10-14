@@ -1,729 +1,828 @@
 module: wm_interface
 target_state: ECC_AND_S4HANA
 rules:
-- id: WMI001
-  field: MLGN.LGNUM
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Warehouse number is mandatory on the material-warehouse assignment
-  why_it_matters: LGNUM in table MLGN links a material to a specific warehouse for WM processing. Without it, the IM-WM
-    interface cannot route goods movements to the correct warehouse and transfer orders are not created. In S/4HANA with
-    embedded EWM, MLGN is deprecated; the equivalent assignment is maintained via /SCWM/ product master data.
-  rule_authority: sap_hard_constraint
-  sap_impact: Material not linked to any warehouse. IM-WM interface fails for this material. Goods movements do not trigger
-    WM transfer orders.
-  fix_map:
-    __blank__: 'In ECC: assign warehouse via T-code MM02 > Warehouse Management views. In S/4HANA with embedded EWM: MLGN
-      is deprecated — maintain the product master warehouse assignment via /SCWM/MAT1 or Fiori app F0842.'
-  record_fix_template: 'Material WM assignment: LGNUM is {actual_value}. Assign the warehouse via MM02 > WM views (ECC)
-    or /SCWM/MAT1 (S/4HANA embedded EWM).'
-- id: WMI005
-  field: MLGT.LGTYP
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Storage type on material-warehouse-type assignment is mandatory
-  why_it_matters: LGTYP in MLGT links the material to a specific storage type within the warehouse. This is critical for
-    determining which bins are eligible for putaway and picking. Without it, the material has no fixed bin or preferred
-    storage area. In S/4HANA with embedded EWM, MLGT is deprecated and replaced by /SCWM/ product master storage configuration.
-  rule_authority: sap_hard_constraint
-  sap_impact: Material has no storage type assignment. Putaway cannot determine preferred area. Fixed bin assignment not
-    possible.
-  fix_map:
-    __blank__: 'In ECC: assign storage type via MM02 > Warehouse Management 2 view. In S/4HANA: MLGT is deprecated — configure
-      via /SCWM/MAT1 or Fiori app F0842.'
-  record_fix_template: 'Material WM type assignment: LGTYP is {actual_value}. Assign via MM02 > WM2 view (ECC) or /SCWM/MAT1
-    (S/4HANA).'
-- id: WMI007
-  field: MARD.LGORT
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Storage location is the IM-side link to WM — mandatory for WM interface
-  why_it_matters: LGORT (storage location) on MARD is the inventory management counterpart to the WM warehouse. The IM-WM
-    interface uses the storage location to warehouse assignment to route goods movements into WM. Without LGORT, no WM processing
-    can be triggered for stock at this plant/material combination.
-  rule_authority: sap_hard_constraint
-  sap_impact: IM-WM interface cannot route this stock to WM. Transfer orders not created. WM and IM stock levels diverge.
-  fix_map:
-    __blank__: 'In ECC: assign storage location via MM02 > MRP view or MMSC (mass storage location assignment). In S/4HANA:
-      use Fiori app F0842 or MM02.'
-  record_fix_template: 'Material stock record: LGORT is {actual_value}. Assign the correct storage location via MM02 (ECC)
-    or Fiori app F0842 (S/4HANA).'
-- id: WMI008
-  field: MLGN.LGNUM
-  check_class: regex_check
-  pattern: ^[A-Z0-9]{3,4}$
-  severity: high
-  dimension: validity
-  message: Warehouse number must be 3-4 alphanumeric characters
-  why_it_matters: SAP warehouse numbers follow a 3-4 character alphanumeric convention. Non-conforming values indicate data
-    entry errors or migration issues and will cause lookups against the warehouse configuration to fail.
-  rule_authority: best_practice
-  sap_impact: Warehouse number lookup fails in customising. IM-WM interface cannot find the warehouse configuration. Transfer
-    order creation fails.
-  fix_map:
-    __other__: 'Warehouse number ''{invalid_value}'' does not match the expected 3-4 character format. In ECC: correct via
-      MM02 > WM views. In S/4HANA: maintain via /SCWM/MAT1.'
-  record_fix_template: 'Material WM assignment: LGNUM ''{actual_value}'' has non-standard format. Correct via MM02 > WM
-    views (ECC) or /SCWM/MAT1 (S/4HANA).'
-- id: WMI009
-  field: MARD.LGORT
-  check_class: regex_check
-  pattern: ^[A-Z0-9]{1,4}$
-  severity: high
-  dimension: validity
-  message: Storage location must be exactly 4 alphanumeric characters
-  why_it_matters: SAP storage locations are exactly 4 characters. Non-conforming values will not match any configured storage
-    location, causing goods movements to fail and IM-WM interface lookups to return no warehouse assignment.
-  rule_authority: sap_hard_constraint
-  sap_impact: Storage location lookup fails. Goods movements rejected. IM-WM interface cannot determine the target warehouse.
-  fix_map:
-    __other__: 'Storage location ''{invalid_value}'' does not match the required 4-character format. In ECC: correct via
-      MM02 > MRP views. In S/4HANA: use Fiori app F0842.'
-  record_fix_template: 'Material stock record: LGORT ''{actual_value}'' has invalid format. Correct via MM02 (ECC) or Fiori
-    app F0842 (S/4HANA).'
-- id: WMI010
-  field: MLGN.LGBKZ
-  check_class: regex_check
-  pattern: ^[A-Z0-9]{1,3}$
-  severity: medium
-  dimension: validity
-  message: Storage bin indicator must be a valid alphanumeric code
-  why_it_matters: The storage bin indicator is a 1-3 character code that maps to a putaway strategy in WM customising. An
-    invalid format will not match any configured strategy, causing the system to fall back to a default that may not be
-    appropriate.
-  rule_authority: best_practice
-  sap_impact: Putaway strategy lookup fails. System falls back to default strategy. Material may be stored in wrong bin
-    type.
-  fix_map:
-    __other__: 'Storage bin indicator ''{invalid_value}'' is not valid. In ECC: check configured strategies in SPRO > LE-WM
-      and correct via MM02 > WM1 view.'
-  record_fix_template: 'Material WM assignment for warehouse {MLGN.LGNUM}: LGBKZ ''{actual_value}'' is not valid. Correct
-    via MM02 > WM1 view (ECC).'
-- id: WMI011
-  field: MLGN.LTKZE
-  check_class: regex_check
-  pattern: ^[A-Z0-9]{1,3}$
-  severity: medium
-  dimension: validity
-  message: Stock removal indicator must be a valid alphanumeric code
-  why_it_matters: The stock removal indicator maps to a picking strategy in WM customising. An invalid format prevents the
-    system from applying the correct picking sequence (FIFO, FEFO, etc.), defaulting to less optimal picking logic.
-  rule_authority: best_practice
-  sap_impact: Picking strategy lookup fails. FEFO/FIFO not enforced for this material. Compliance risk for shelf-life-managed
-    materials.
-  fix_map:
-    __other__: 'Stock removal indicator ''{invalid_value}'' is not valid. In ECC: check configured strategies in SPRO >
-      LE-WM and correct via MM02 > WM1 view.'
-  record_fix_template: 'Material WM assignment for warehouse {MLGN.LGNUM}: LTKZE ''{actual_value}'' is not valid. Correct
-    via MM02 > WM1 view (ECC).'
-- id: WMI012
-  field: MLGT.LPMIN
-  check_class: cross_field_check
-  fail_when: '`MLGT.LPMIN` > `MLGT.LPMAX`'
-  applies_when:
-    MLGT.LPMAX:
-      gt: 0
-  severity: high
-  dimension: consistency
-  message: Minimum fixed-bin quantity is greater than the maximum bin quantity
-  why_it_matters: Fixed-bin replenishment (LP21 / LP22) creates a transfer requirement when the bin stock falls below the
-    minimum (MLGT.LPMIN) and fills it up to the maximum (MLGT.LPMAX). A minimum above the maximum triggers replenishment
-    immediately after every refill, or a replenishment that cannot fit into the bin.
-  rule_authority: sap_hard_constraint
-  sap_impact: Endless or oversized replenishment transfer orders for the picking bin.
-  fix_map:
-    __other__: Correct minimum and maximum bin quantity in the material master (MM02 > Warehouse Management 2 > storage
-      type data).
-  record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: minimum {MLGT.LPMIN} >
-    maximum {MLGT.LPMAX}.'
-- id: WMI013
-  field: MLGN.LHME1
-  check_class: cross_field_check
-  fail_when: (`MLGN.LHMG1` > 0) & `MLGN.LHME1`.isna()
-  severity: high
-  dimension: consistency
-  message: Palletization quantity is maintained without its unit of measure
-  why_it_matters: The loading equipment quantity (MLGN.LHMG1) says how much of the material fits on one storage unit; it
-    is a quantity whose unit is MLGN.LHME1. Putaway splits goods receipts into storage units with it — without the unit
-    the split cannot be computed.
-  rule_authority: sap_hard_constraint
-  sap_impact: Goods receipts are not split into pallets; one oversized storage unit is proposed for putaway.
-  fix_map:
-    __other__: Maintain the unit for the loading equipment quantity (MM02 > Warehouse Management 2 > Palletization data).
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: palletization quantity {MLGN.LHMG1} without unit.'
-- id: WMI014
-  field: MLGN.BEZME
-  check_class: cross_field_check
-  fail_when: (`MLGN.MKAPV` > 0) & `MLGN.BEZME`.isna()
-  severity: medium
-  dimension: consistency
-  message: Capacity usage is maintained without its unit of measure
-  why_it_matters: Capacity usage (MLGN.MKAPV) is the capacity one unit of the material consumes in a bin, per unit MLGN.BEZME.
-    Storage types with a material-dependent capacity check cannot compute bin capacity without that unit.
-  rule_authority: sap_hard_constraint
-  sap_impact: Capacity check rejects or ignores the material at putaway.
-  fix_map:
-    __other__: Maintain the unit for the capacity usage (MM02 > Warehouse Management 1).
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: capacity usage {MLGN.MKAPV} without unit.'
-- id: WMI015
-  field: MLGN.LTKZE
-  check_class: referential_check
-  reference_values: []
-  reference_table: T305
-  reference_field: LGTKZ
-  severity: high
-  dimension: consistency
-  message: Storage type indicator for putaway does not exist in the warehouse configuration (T305)
-  why_it_matters: The putaway storage type indicator selects the storage type search sequence (T334T). An indicator that
-    is not configured finds no search sequence, so the goods receipt cannot be put away automatically.
-  rule_authority: sap_hard_constraint
-  sap_impact: Putaway transfer orders fail with 'no storage type found'; goods stay in the GR interim area.
-  fix_map:
-    __other__: Indicator '{invalid_value}' is not in T305. Correct the material (MM02 > Warehouse Management 1) or configure
-      the indicator and its search sequence.
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: putaway indicator ''{actual_value}'' is not in T305.'
-- id: WMI016
-  field: MLGN.LTKZA
-  check_class: referential_check
-  reference_values: []
-  reference_table: T305
-  reference_field: LGTKZ
-  severity: high
-  dimension: consistency
-  message: Storage type indicator for stock removal does not exist in the warehouse configuration (T305)
-  why_it_matters: The stock removal storage type indicator selects where picking looks for stock (T334T). An indicator that
-    is not configured finds no search sequence, so deliveries and production supply cannot be picked.
-  rule_authority: sap_hard_constraint
-  sap_impact: Picking transfer orders fail with 'no stock found'; deliveries cannot be picked.
-  fix_map:
-    __other__: Indicator '{invalid_value}' is not in T305. Correct the material (MM02 > Warehouse Management 1) or configure
-      the indicator and its search sequence.
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: removal indicator ''{actual_value}'' is not in T305.'
-- id: WMI017
-  field: MLGN.LGBKZ
-  check_class: referential_check
-  reference_values: []
-  reference_table: T304
-  reference_field: LGBKZ
-  severity: medium
-  dimension: consistency
-  message: Storage section indicator does not exist in the warehouse configuration (T304)
-  why_it_matters: The storage section indicator selects the storage section search (T30A). An unconfigured indicator finds
-    no section, so putaway into section-controlled storage types fails.
-  rule_authority: sap_hard_constraint
-  sap_impact: Putaway into storage types with section check fails for this material.
-  fix_map:
-    __other__: Indicator '{invalid_value}' is not in T304. Correct the material (MM02 > Warehouse Management 1).
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: section indicator ''{actual_value}'' is not in T304.'
-- id: WMI018
-  field: MLGN.LETY1
-  check_class: referential_check
-  reference_values: []
-  reference_table: T307
-  reference_field: LETYP
-  severity: medium
-  dimension: consistency
-  message: Storage unit type in the palletization data does not exist in the configuration (T307)
-  why_it_matters: The first storage unit type of the palletization data is proposed for every goods-receipt storage unit.
-    An unconfigured type cannot be matched to bin types, so putaway into SU-managed storage types fails.
-  rule_authority: sap_hard_constraint
-  sap_impact: Putaway into SU-managed storage types fails the bin-type check.
-  fix_map:
-    __other__: Storage unit type '{invalid_value}' is not in T307. Correct the palletization data (MM02 > Warehouse Management
-      2).
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: storage unit type ''{actual_value}'' is not in T307.'
-- id: WMI019
-  field: MLGT.LGTYP
-  check_class: referential_check
-  reference_values: []
-  reference_table: T301
-  reference_field: LGTYP
-  severity: high
-  dimension: consistency
-  message: Storage type of the material's storage type data does not exist in the configuration (T301)
-  why_it_matters: Storage-type data of a material (fixed bin, minimum/maximum, replenishment) is only read for configured
-    storage types. Data for an unconfigured storage type is dead — the fixed bin is never replenished.
-  rule_authority: sap_hard_constraint
-  sap_impact: Fixed-bin picking and replenishment do not work for this material.
-  fix_map:
-    __other__: Storage type '{invalid_value}' is not in T301. Delete the storage type data or correct the storage type (MM02
-      > Warehouse Management 2).
-  record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}: storage type ''{actual_value}'' is not in T301.'
-- id: WMI020
-  field: MLGN.LGNUM
-  check_class: referential_check
-  reference_values: []
-  reference_table: T300
-  reference_field: LGNUM
-  severity: critical
-  dimension: consistency
-  message: Warehouse number of the material's warehouse data does not exist in the configuration (T300)
-  why_it_matters: Warehouse management data (MLGN) is read for the warehouse number assigned to the plant/storage location
-    (T320). Data under a warehouse number that is not configured is never used — the material has no usable WM data and
-    every putaway falls back to defaults or fails.
-  rule_authority: sap_hard_constraint
-  sap_impact: Putaway and picking ignore the material's WM data; storage type search fails.
-  fix_map:
-    __other__: Warehouse '{invalid_value}' is not in T300. Extend the material to the correct warehouse (MM01 > Warehouse
-      Management views) and delete the stray data.
-  record_fix_template: 'Material {MLGN.MATNR}: warehouse number ''{actual_value}'' is not in T300.'
-- id: WMI021
-  field: MARD.LGORT
-  check_class: referential_check
-  reference_values: []
-  reference_table: T001L
-  reference_field: LGORT
-  severity: high
-  dimension: consistency
-  message: Storage location of the material does not exist in the configuration (T001L)
-  why_it_matters: Storage locations link IM stock to a warehouse number (T320). Stock in a storage location that is not
-    configured cannot be moved in IM and is not linked to WM.
-  rule_authority: sap_hard_constraint
-  sap_impact: Goods movements to and from the storage location fail; the WM interface cannot be determined.
-  fix_map:
-    __other__: Storage location '{invalid_value}' is not in T001L. Configure it (OX09) or move the stock and delete the
-      storage location data.
-  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}: storage location ''{actual_value}'' is not in T001L.'
-- id: WMI022
-  field: MLGT.LGPLA
-  check_class: exists_check
-  fields:
-  - MLGT.LGNUM
-  - MLGT.LGTYP
-  - MLGT.LGPLA
-  target_table: LAGP
-  target_fields:
-  - LGNUM
-  - LGTYP
-  - LGPLA
-  severity: high
-  dimension: consistency
-  message: Fixed bin does not exist in the storage type
-  why_it_matters: Fixed-bin storage types put away and pick from the material's fixed bin; a bin that does not exist stops
-    putaway and replenishment.
-  rule_authority: sap_hard_constraint
-  sap_impact: Transfer orders for the material fail with 'storage bin does not exist'.
-  fix_map:
-    __other__: Create the bin (LS01N) or correct the material's fixed bin (MM02 > Warehouse management 2).
-  record_fix_template: 'Material {MLGT.MATNR} warehouse {MLGT.LGNUM} storage type {MLGT.LGTYP}: fixed bin {MLGT.LGPLA} does
-    not exist.'
-- id: WMI023
-  field: MLGT.NSMNG
-  check_class: cross_field_check
-  fail_when: '`MLGT.NSMNG` > `MLGT.LPMAX`'
-  applies_when:
-    MLGT.LPMAX:
-      gt: 0
-  severity: medium
-  dimension: consistency
-  message: Fixed-bin replenishment quantity is larger than the bin maximum
-  why_it_matters: Fixed-bin replenishment (LP21) brings stock in multiples of the replenishment quantity (MLGT.NSMNG) up
-    to the maximum bin quantity (MLGT.LPMAX). A replenishment quantity above the maximum never fits, so the bin is either
-    never refilled or overfilled.
-  rule_authority: best_practice
-  sap_impact: Picking bins run empty or overflow; replenishment transfer orders are not created as expected.
-  fix_map:
-    __other__: Correct the replenishment or maximum quantity in the material's storage type view (MM02).
-  record_fix_template: 'Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: replenishment {MLGT.NSMNG}, bin maximum {MLGT.LPMAX}.'
-- id: WMI024
-  field: MLGN.MATNR
-  check_class: exists_check
-  fields:
-  - MLGN.MATNR
-  target_table: MARA
-  target_fields:
-  - MATNR
-  severity: high
-  dimension: consistency
-  message: Warehouse management data exists for a material that is not in the material master
-  why_it_matters: An MLGN row with no general material record is orphaned warehouse data.
-  rule_authority: sap_hard_constraint
-  sap_impact: Warehouse reports show a material that no transaction can use.
-  fix_map:
-    __other__: Delete the orphaned warehouse view through archiving or restore the material.
-  record_fix_template: Warehouse data for {MLGN.MATNR} in {MLGN.LGNUM} has no material master.
-- id: WMI025
-  field: MLGT.MATNR
-  check_class: exists_check
-  fields:
-  - MLGT.MATNR
-  - MLGT.LGNUM
-  target_table: MLGN
-  target_fields:
-  - MATNR
-  - LGNUM
-  severity: high
-  dimension: consistency
-  message: Storage type data exists without the warehouse management view
-  why_it_matters: Storage type data (MLGT) hangs off the warehouse view (MLGN). Without it the strategy settings are ignored.
-  rule_authority: sap_hard_constraint
-  sap_impact: Putaway for the material in the storage type uses defaults.
-  fix_map:
-    __other__: Extend the material to the warehouse number (MM50) or delete the storage type data.
-  record_fix_template: Storage type data for {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP} has no warehouse view.
-- id: WMI026
-  field: MLGT.LPMAX
-  check_class: cross_field_check
-  fail_when: (`MLGT.LGPLA`.notna()) & ((`MLGT.LPMAX`.isna()) | (`MLGT.LPMAX` <= 0))
-  severity: low
-  dimension: completeness
-  message: Fixed bin has no maximum quantity
-  why_it_matters: A fixed bin without a maximum cannot drive replenishment.
-  rule_authority: best_practice
-  sap_impact: Replenishment never triggers for the fixed bin.
-  fix_map:
-    __other__: Maintain the maximum bin quantity in the storage type data.
-  record_fix_template: 'Material {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP}: fixed bin {MLGT.LGPLA} has no maximum.'
-- id: WMI027
-  field: MLGT.LGPLA
-  check_class: cross_field_check
-  fail_when: (`MLGT.NSMNG` > 0) & `MLGT.LGPLA`.isna()
-  severity: low
-  dimension: completeness
-  message: Replenishment quantity set with no fixed bin
-  why_it_matters: A replenishment quantity only means something against a fixed bin.
-  rule_authority: best_practice
-  sap_impact: Setting is ignored and misleads planners.
-  fix_map:
-    __other__: Enter the fixed bin or clear the quantity.
-  record_fix_template: 'Material {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP}: replenishment {MLGT.NSMNG} with no bin.'
-- id: WMI028
-  field: MLGN.LHME2
-  check_class: cross_field_check
-  fail_when: (`MLGN.LHMG2` > 0) & `MLGN.LHME2`.isna()
-  severity: medium
-  dimension: completeness
-  message: Loading equipment quantity 2 has no unit
-  why_it_matters: A quantity without a unit of measure cannot be converted or put away.
-  rule_authority: sap_hard_constraint
-  sap_impact: Putaway quantity calculations fail for the material.
-  fix_map:
-    __other__: Enter the unit of measure.
-  record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: quantity 2 has no unit.'
-- id: WMI029
-  field: MLGN.LHME3
-  check_class: cross_field_check
-  fail_when: (`MLGN.LHMG3` > 0) & `MLGN.LHME3`.isna()
-  severity: medium
-  dimension: completeness
-  message: Loading equipment quantity 3 has no unit
-  why_it_matters: A quantity without a unit of measure cannot be converted or put away.
-  rule_authority: sap_hard_constraint
-  sap_impact: Putaway quantity calculations fail for the material.
-  fix_map:
-    __other__: Enter the unit of measure.
-  record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: quantity 3 has no unit.'
-- id: WMI030
-  field: MLGN.LHMG1
-  check_class: cross_field_check
-  fail_when: '`MLGN.LETY1`.notna() & ((`MLGN.LHMG1`.isna()) | (`MLGN.LHMG1` <= 0))'
-  severity: medium
-  dimension: completeness
-  message: Storage unit type has no loading equipment quantity
-  why_it_matters: A storage unit type without a quantity per unit cannot size pallets.
-  rule_authority: best_practice
-  sap_impact: Storage unit putaway creates units with no capacity logic.
-  fix_map:
-    __other__: Maintain the loading equipment quantity for the storage unit type.
-  record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: type {MLGN.LETY1} has no quantity.'
-- id: WMI031
-  field: MLGN.LVSME
-  check_class: exists_check
-  fields:
-  - MLGN.LVSME
-  target_table: T006
-  target_fields:
-  - MSEHI
-  applies_when:
-    MLGN.LVSME:
-      populated: true
-  severity: high
-  dimension: consistency
-  message: Warehouse unit of measure is not a valid unit
-  why_it_matters: A warehouse unit that is not in the unit table cannot be converted.
-  rule_authority: sap_hard_constraint
-  sap_impact: Transfer orders in the warehouse unit fail at conversion.
-  fix_map:
-    __other__: Correct the warehouse unit of measure.
-  record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: unit {MLGN.LVSME} is not valid.'
-- id: WMI032
-  field: T302.LGNUM
-  check_class: exists_check
-  fields:
-  - T302.LGNUM
-  - T302.LGTYP
-  target_table: T301
-  target_fields:
-  - LGNUM
-  - LGTYP
-  severity: high
-  dimension: consistency
-  message: Storage section belongs to a storage type that is not configured
-  why_it_matters: A section config for an unknown storage type is dead config.
-  rule_authority: sap_hard_constraint
-  sap_impact: Bins assigned to the section cannot be created.
-  fix_map:
-    __other__: Configure the storage type or delete the section.
-  record_fix_template: Section {T302.LGBER} in {T302.LGNUM}/{T302.LGTYP} has no storage type.
-- id: WMI033
-  field: T333.LGNUM
-  check_class: exists_check
-  fields:
-  - T333.LGNUM
-  - T333.VLTYP
-  target_table: T301
-  target_fields:
-  - LGNUM
-  - LGTYP
-  applies_when:
-    T333.VLTYP:
-      populated: true
-  severity: medium
-  dimension: consistency
-  message: Movement type default source type is not configured
-  why_it_matters: A default source storage type that does not exist breaks every transfer order of the movement type.
-  rule_authority: sap_hard_constraint
-  sap_impact: Transfer orders default to an unknown type and fail.
-  fix_map:
-    __other__: Correct the default source type in the movement type config.
-  record_fix_template: 'Movement type {T333.BWLVS} in {T333.LGNUM}: source type {T333.VLTYP} not in T301.'
-- id: WMI034
-  field: T333.LGNUM
-  check_class: exists_check
-  fields:
-  - T333.LGNUM
-  - T333.NLTYP
-  target_table: T301
-  target_fields:
-  - LGNUM
-  - LGTYP
-  applies_when:
-    T333.NLTYP:
-      populated: true
-  severity: medium
-  dimension: consistency
-  message: Movement type default destination type is not configured
-  why_it_matters: A default destination storage type that does not exist breaks every transfer order of the movement type.
-  rule_authority: sap_hard_constraint
-  sap_impact: Transfer orders default to an unknown type and fail.
-  fix_map:
-    __other__: Correct the default destination type in the movement type config.
-  record_fix_template: 'Movement type {T333.BWLVS} in {T333.LGNUM}: destination type {T333.NLTYP} not in T301.'
-- id: WMI035
-  field: T333.LGNUM
-  check_class: exists_check
-  fields:
-  - T333.LGNUM
-  target_table: T300
-  target_fields:
-  - LGNUM
-  severity: high
-  dimension: consistency
-  message: Movement type config belongs to an undefined warehouse
-  why_it_matters: Movement type config for a warehouse number that is not defined is orphaned.
-  rule_authority: sap_hard_constraint
-  sap_impact: The config has no effect and misleads administrators.
-  fix_map:
-    __other__: Delete the config or define the warehouse.
-  record_fix_template: 'Movement type {T333.BWLVS}: warehouse {T333.LGNUM} not in T300.'
-- id: WMI036
-  field: T301.LGNUM
-  check_class: exists_check
-  fields:
-  - T301.LGNUM
-  target_table: T300
-  target_fields:
-  - LGNUM
-  severity: high
-  dimension: consistency
-  message: Storage type belongs to an undefined warehouse
-  why_it_matters: A storage type for a warehouse number that is not defined is orphaned config.
-  rule_authority: sap_hard_constraint
-  sap_impact: Bins in the type cannot be used.
-  fix_map:
-    __other__: Delete the storage type or define the warehouse.
-  record_fix_template: 'Storage type {T301.LGTYP}: warehouse {T301.LGNUM} not in T300.'
-- id: WMI037
-  field: MLGN.BLOCK
-  check_class: domain_value_check
-  allowed_values:
-  - ''
-  - '01'
-  - '02'
-  valid_values_with_labels:
-    ? ''
-    : No placement or removal block
-    '01': Stock placement blocked for this material in the warehouse
-    '02': Stock removal blocked for this material in the warehouse
-  severity: medium
-  dimension: validity
-  message: Stock placement/removal block indicator is not a valid SAP value
-  why_it_matters: MLGN.BLOCK blocks putaway or picking for the material in this warehouse outside of the normal storage
-    type or bin locks. An undefined value is not recognised by the WM transaction logic, so the block may be silently ignored
-    or the material treated as unexpectedly restricted.
-  rule_authority: sap_hard_constraint
-  sap_impact: Transfer order creation cannot reliably evaluate whether the material is blocked; putaway or picking may proceed
-    for material that should be locked, or be refused for material that should be available.
-  fix_map:
-    __other__: Block indicator '{invalid_value}' is not a valid value. Correct via MM02 > Warehouse Management 1 view.
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: block indicator ''{actual_value}'' is not a valid
-    value.'
-- id: WMI038
-  field: MLGN.KZMBF
-  check_class: domain_value_check
-  allowed_values:
-  - ''
-  - X
-  valid_values_with_labels:
-    ? ''
-    : Not relevant for mobile data entry (RF)
-    X: Relevant for mobile data entry (RF)
-  severity: low
-  dimension: validity
-  message: Mobile data entry relevance flag is not a valid SAP value
-  why_it_matters: MLGN.KZMBF tells RF/mobile transactions whether this material's warehouse movements must be confirmed
-    through mobile data entry. A value outside the blank/X domain is not a recognised flag state and RF presentation logic
-    cannot evaluate it.
-  rule_authority: sap_hard_constraint
-  sap_impact: RF transactions cannot determine whether mobile confirmation is required for the material; movements may bypass
-    mandatory RF confirmation or be unexpectedly blocked from it.
-  fix_map:
-    __other__: Mobile data entry flag '{invalid_value}' is not valid. Correct via MM02 > Warehouse Management 1 view.
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: mobile data entry flag ''{actual_value}'' is not
-    valid.'
-- id: WMI039
-  field: MLGT.MAMNG
-  check_class: cross_field_check
-  fail_when: (`MLGT.MAMNG` > 0) & (`MLGT.LPMAX` > 0) & (`MLGT.MAMNG` > `MLGT.LPMAX`)
-  severity: medium
-  dimension: consistency
-  message: Maximum storage unit quantity exceeds the bin's maximum quantity
-  why_it_matters: MLGT.MAMNG caps how much of the material one storage unit (pallet/container) may hold in this storage
-    type; MLGT.LPMAX caps how much the fixed bin itself may hold. A storage unit quantity above the bin maximum means a
-    single putaway unit can never fit into the fixed bin it is supposed to be stored in.
-  rule_authority: sap_hard_constraint
-  sap_impact: Putaway of a full storage unit into the fixed bin is rejected or split unexpectedly; the storage unit strategy
-    and the fixed-bin strategy contradict each other.
-  fix_map:
-    __other__: Correct the maximum storage unit quantity or the bin maximum in the material's storage type view (MM02 >
-      Warehouse Management 2).
-  record_fix_template: 'Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: storage unit maximum {MLGT.MAMNG} exceeds bin
-    maximum {MLGT.LPMAX}.'
-- id: WMI040
-  field: T333.BETYP
-  check_class: domain_value_check
-  allowed_values:
-  - ''
-  - '1'
-  - '2'
-  valid_values_with_labels:
-    ? ''
-    : No fixed confirmation requirement for the movement type
-    '1': Single-step confirmation required
-    '2': Two-step confirmation required
-  severity: medium
-  dimension: validity
-  message: Movement type confirmation type is not a valid SAP value
-  why_it_matters: T333.BETYP tells the transfer order which confirmation steps the movement type requires. A value outside
-    the defined domain cannot be interpreted by the confirmation logic, so the system falls back to an undefined confirmation
-    behaviour.
-  rule_authority: sap_hard_constraint
-  sap_impact: Transfer orders of this movement type cannot be confirmed through the normal LT12 / RF confirmation step;
-    open transfer orders accumulate.
-  fix_map:
-    __other__: Confirmation type '{invalid_value}' is not valid. Correct the movement type configuration (SPRO > LE-WM >
-      Activities > Transfers > Define Movement Types).
-  record_fix_template: 'Movement type {T333.BWLVS} in {T333.LGNUM}: confirmation type ''{actual_value}'' is not valid.'
-- id: WMI041
-  field: T333.SQUIT
-  check_class: cross_field_check
-  fail_when: (`T333.SQUIT` == 'X') & (`T333.TBMAN` == 'X')
-  severity: medium
-  dimension: consistency
-  message: Movement type requires immediate system confirmation and manual transfer order creation at once
-  why_it_matters: T333.SQUIT forces the system to confirm the transfer order immediately on creation, while T333.TBMAN requires
-    the transfer order to be created manually by a user. The two settings contradict each other — a transfer order that
-    must be manually created cannot also be immediately, automatically confirmed before anyone has created it.
-  rule_authority: best_practice
-  sap_impact: Movement type configuration is internally inconsistent; manual transfer order creation for the movement type
-    behaves unpredictably with respect to confirmation.
-  fix_map:
-    __other__: Review the movement type configuration and disable either immediate confirmation or manual creation (SPRO
-      > LE-WM > Activities > Transfers > Define Movement Types).
-  record_fix_template: 'Movement type {T333.BWLVS} in {T333.LGNUM}: immediate confirmation and manual creation are both
-    set.'
-- id: WMI042
-  field: T333.BWLVS
-  check_class: regex_check
-  pattern: ^[0-9]{3}$
-  severity: high
-  dimension: validity
-  message: Movement type code must be exactly 3 digits
-  why_it_matters: SAP WM movement types (BWLVS) are always a 3-digit numeric code (e.g. 101, 601). A non-conforming code
-    cannot be assigned consistently to IM movement types and will not be found by the transfer order creation logic that
-    looks up T333 by this key.
-  rule_authority: sap_hard_constraint
-  sap_impact: Movement type lookup in T333 fails. Transfer orders for IM movements mapped to this code are not created.
-  fix_map:
-    __other__: Movement type code '{invalid_value}' is not a valid 3-digit code. Correct via SPRO > LE-WM > Activities >
-      Transfers > Define Movement Types.
-  record_fix_template: Movement type '{actual_value}' in {T333.LGNUM} is not a valid 3-digit code.
-- id: WMI043
-  field: MLGT.KOBER
-  check_class: domain_value_check
-  allowed_values:
-  - ''
-  - X
-  valid_values_with_labels:
-    ? ''
-    : Capacity check at bin level is not active for the storage type data
-    X: Capacity check at bin level is active for the storage type data
-  severity: low
-  dimension: validity
-  message: Bin capacity check indicator is not a valid SAP value
-  why_it_matters: MLGT.KOBER switches on capacity checking against the fixed bin for this material in the storage type.
-    A value outside the blank/X domain cannot be evaluated by the capacity check, so putaway silently skips or always triggers
-    the check.
-  rule_authority: best_practice
-  sap_impact: Capacity-based putaway decisions for the material's fixed bin cannot be relied on.
-  fix_map:
-    __other__: Capacity check indicator '{invalid_value}' is not valid. Correct via MM02 > Warehouse Management 2 > storage
-      type data.
-  record_fix_template: 'Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: capacity check indicator ''{actual_value}'' is
-    not valid.'
-- id: WMI044
-  field: MARA.LVORM
-  check_class: cross_field_check
-  grain: MLGN
-  fail_when: (`MARA.LVORM` == 'X') & (`MLGN.LGNUM`.notna())
-  severity: medium
-  dimension: consistency
-  message: Warehouse management view still exists for a material flagged for central deletion
-  why_it_matters: MARA.LVORM marks the material for deletion across the whole client, but the warehouse management view
-    (MLGN) for this material and warehouse has not been removed. The IM-WM interface keeps evaluating putaway and picking
-    strategy data for a material that is supposed to be retired.
-  rule_authority: best_practice
-  sap_impact: The material cannot be archived while WM data remains; WM continues to apply putaway/picking strategies to
-    a material that should no longer move.
-  fix_map:
-    __other__: Delete the warehouse management view (MM06/MM02) before or as part of archiving the material, or reset the
-      central deletion flag if the material is still in use.
-  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: warehouse view still exists while flagged for deletion
-    in MARA.'
-- field: MLGT.LPMAX
-  check_class: cross_field_check
-  fail_when: '`MLGT.LPMAX` < `MLGT.LPMIN`'
-  require_populated: true
-  severity: medium
-  dimension: consistency
-  message: Bin maximum quantity below its minimum
-  why_it_matters: A storage-bin capacity where the maximum is below the minimum is impossible and breaks bin-optimisation
-    and putaway rules.
-  rule_authority: best_practice
-  sap_impact: Putaway and bin-optimisation decisions wrong.
-  fix_map:
-    __blank__: Correct the bin min/max capacity.
-  id: WMI045
+
+  - id: WMI001
+    field: MLGN.LGNUM
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Warehouse number is mandatory on the material-warehouse assignment"
+    why_it_matters: >-
+      LGNUM in table MLGN links a material to a specific warehouse for WM processing.
+      Without it, the IM-WM interface cannot route goods movements to the correct warehouse
+      and transfer orders are not created. In S/4HANA with embedded EWM, MLGN is deprecated;
+      the equivalent assignment is maintained via /SCWM/ product master data.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Material not linked to any warehouse. IM-WM interface fails for this material.
+      Goods movements do not trigger WM transfer orders.
+    fix_map:
+      __blank__: >-
+        In ECC: assign warehouse via T-code MM02 > Warehouse Management views. In
+        S/4HANA with embedded EWM: MLGN is deprecated — maintain the product master
+        warehouse assignment via /SCWM/MAT1 or Fiori app F0842.
+    record_fix_template: >-
+      Material WM assignment: LGNUM is {actual_value}. Assign the warehouse via MM02 >
+      WM views (ECC) or /SCWM/MAT1 (S/4HANA embedded EWM).
+
+
+
+
+  - id: WMI005
+    field: MLGT.LGTYP
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Storage type on material-warehouse-type assignment is mandatory"
+    why_it_matters: >-
+      LGTYP in MLGT links the material to a specific storage type within the warehouse.
+      This is critical for determining which bins are eligible for putaway and picking.
+      Without it, the material has no fixed bin or preferred storage area. In S/4HANA
+      with embedded EWM, MLGT is deprecated and replaced by /SCWM/ product master
+      storage configuration.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Material has no storage type assignment. Putaway cannot determine preferred area.
+      Fixed bin assignment not possible.
+    fix_map:
+      __blank__: >-
+        In ECC: assign storage type via MM02 > Warehouse Management 2 view. In S/4HANA:
+        MLGT is deprecated — configure via /SCWM/MAT1 or Fiori app F0842.
+    record_fix_template: >-
+      Material WM type assignment: LGTYP is {actual_value}. Assign via MM02 > WM2 view
+      (ECC) or /SCWM/MAT1 (S/4HANA).
+
+
+  - id: WMI007
+    field: MARD.LGORT
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Storage location is the IM-side link to WM — mandatory for WM interface"
+    why_it_matters: >-
+      LGORT (storage location) on MARD is the inventory management counterpart to the
+      WM warehouse. The IM-WM interface uses the storage location to warehouse assignment
+      to route goods movements into WM. Without LGORT, no WM processing can be triggered
+      for stock at this plant/material combination.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      IM-WM interface cannot route this stock to WM. Transfer orders not created.
+      WM and IM stock levels diverge.
+    fix_map:
+      __blank__: >-
+        In ECC: assign storage location via MM02 > MRP view or MMSC (mass storage
+        location assignment). In S/4HANA: use Fiori app F0842 or MM02.
+    record_fix_template: >-
+      Material stock record: LGORT is {actual_value}. Assign the correct storage
+      location via MM02 (ECC) or Fiori app F0842 (S/4HANA).
+
+  - id: WMI008
+    field: MLGN.LGNUM
+    check_class: regex_check
+    pattern: "^[A-Z0-9]{3,4}$"
+    severity: high
+    dimension: validity
+    message: "Warehouse number must be 3-4 alphanumeric characters"
+    why_it_matters: >-
+      SAP warehouse numbers follow a 3-4 character alphanumeric convention. Non-conforming
+      values indicate data entry errors or migration issues and will cause lookups against
+      the warehouse configuration to fail.
+    rule_authority: best_practice
+    sap_impact: >-
+      Warehouse number lookup fails in customising. IM-WM interface cannot find the
+      warehouse configuration. Transfer order creation fails.
+    fix_map:
+      __other__: >-
+        Warehouse number '{invalid_value}' does not match the expected 3-4 character
+        format. In ECC: correct via MM02 > WM views. In S/4HANA: maintain via /SCWM/MAT1.
+    record_fix_template: >-
+      Material WM assignment: LGNUM '{actual_value}' has non-standard format. Correct
+      via MM02 > WM views (ECC) or /SCWM/MAT1 (S/4HANA).
+
+  - id: WMI009
+    field: MARD.LGORT
+    check_class: regex_check
+    pattern: ^[A-Z0-9]{1,4}$
+    severity: high
+    dimension: validity
+    message: Storage location must be exactly 4 alphanumeric characters
+    why_it_matters: SAP storage locations are exactly 4 characters. Non-conforming values will not match any configured storage
+      location, causing goods movements to fail and IM-WM interface lookups to return no warehouse assignment.
+    rule_authority: sap_hard_constraint
+    sap_impact: Storage location lookup fails. Goods movements rejected. IM-WM interface cannot determine the target warehouse.
+    fix_map:
+      __other__: 'Storage location ''{invalid_value}'' does not match the required 4-character format. In ECC: correct via MM02
+        > MRP views. In S/4HANA: use Fiori app F0842.'
+    record_fix_template: 'Material stock record: LGORT ''{actual_value}'' has invalid format. Correct via MM02 (ECC) or Fiori
+      app F0842 (S/4HANA).'
+
+  - id: WMI010
+    field: MLGN.LGBKZ
+    check_class: regex_check
+    pattern: "^[A-Z0-9]{1,3}$"
+    severity: medium
+    dimension: validity
+    message: "Storage bin indicator must be a valid alphanumeric code"
+    why_it_matters: >-
+      The storage bin indicator is a 1-3 character code that maps to a putaway strategy
+      in WM customising. An invalid format will not match any configured strategy, causing
+      the system to fall back to a default that may not be appropriate.
+    rule_authority: best_practice
+    sap_impact: >-
+      Putaway strategy lookup fails. System falls back to default strategy. Material
+      may be stored in wrong bin type.
+    fix_map:
+      __other__: >-
+        Storage bin indicator '{invalid_value}' is not valid. In ECC: check configured
+        strategies in SPRO > LE-WM and correct via MM02 > WM1 view.
+    record_fix_template: >-
+      Material WM assignment for warehouse {MLGN.LGNUM}: LGBKZ '{actual_value}' is
+      not valid. Correct via MM02 > WM1 view (ECC).
+
+  - id: WMI011
+    field: MLGN.LTKZE
+    check_class: regex_check
+    pattern: "^[A-Z0-9]{1,3}$"
+    severity: medium
+    dimension: validity
+    message: "Stock removal indicator must be a valid alphanumeric code"
+    why_it_matters: >-
+      The stock removal indicator maps to a picking strategy in WM customising. An invalid
+      format prevents the system from applying the correct picking sequence (FIFO, FEFO,
+      etc.), defaulting to less optimal picking logic.
+    rule_authority: best_practice
+    sap_impact: >-
+      Picking strategy lookup fails. FEFO/FIFO not enforced for this material.
+      Compliance risk for shelf-life-managed materials.
+    fix_map:
+      __other__: >-
+        Stock removal indicator '{invalid_value}' is not valid. In ECC: check configured
+        strategies in SPRO > LE-WM and correct via MM02 > WM1 view.
+    record_fix_template: >-
+      Material WM assignment for warehouse {MLGN.LGNUM}: LTKZE '{actual_value}' is
+      not valid. Correct via MM02 > WM1 view (ECC).
+
+  # ── Breadth: fixed-bin quantities, units, WM configuration references ──
+
+  - id: WMI012
+    field: MLGT.LPMIN
+    check_class: cross_field_check
+    fail_when: '`MLGT.LPMIN` > `MLGT.LPMAX`'
+    applies_when:
+      MLGT.LPMAX: {gt: 0}
+    severity: high
+    dimension: consistency
+    message: Minimum fixed-bin quantity is greater than the maximum bin quantity
+    why_it_matters: Fixed-bin replenishment (LP21 / LP22) creates a transfer requirement when the bin stock falls below
+      the minimum (MLGT.LPMIN) and fills it up to the maximum (MLGT.LPMAX). A minimum above the maximum triggers
+      replenishment immediately after every refill, or a replenishment that cannot fit into the bin.
+    rule_authority: sap_hard_constraint
+    sap_impact: Endless or oversized replenishment transfer orders for the picking bin.
+    fix_map:
+      __other__: Correct minimum and maximum bin quantity in the material master (MM02 > Warehouse Management 2 >
+        storage type data).
+    record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: minimum
+      {MLGT.LPMIN} > maximum {MLGT.LPMAX}.'
+
+  - id: WMI013
+    field: MLGN.LHME1
+    check_class: cross_field_check
+    fail_when: '(`MLGN.LHMG1` > 0) & `MLGN.LHME1`.isna()'
+    severity: high
+    dimension: consistency
+    message: Palletization quantity is maintained without its unit of measure
+    why_it_matters: The loading equipment quantity (MLGN.LHMG1) says how much of the material fits on one storage
+      unit; it is a quantity whose unit is MLGN.LHME1. Putaway splits goods receipts into storage units with it —
+      without the unit the split cannot be computed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Goods receipts are not split into pallets; one oversized storage unit is proposed for putaway.
+    fix_map:
+      __other__: Maintain the unit for the loading equipment quantity (MM02 > Warehouse Management 2 > Palletization
+        data).
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: palletization quantity {MLGN.LHMG1} without
+      unit.'
+
+  - id: WMI014
+    field: MLGN.BEZME
+    check_class: cross_field_check
+    fail_when: '(`MLGN.MKAPV` > 0) & `MLGN.BEZME`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Capacity usage is maintained without its unit of measure
+    why_it_matters: Capacity usage (MLGN.MKAPV) is the capacity one unit of the material consumes in a bin, per unit
+      MLGN.BEZME. Storage types with a material-dependent capacity check cannot compute bin capacity without that
+      unit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Capacity check rejects or ignores the material at putaway.
+    fix_map:
+      __other__: Maintain the unit for the capacity usage (MM02 > Warehouse Management 1).
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: capacity usage {MLGN.MKAPV} without unit.'
+
+  - id: WMI015
+    field: MLGN.LTKZE
+    check_class: referential_check
+    reference_values: []
+    reference_table: T305
+    reference_field: LGTKZ
+    severity: high
+    dimension: consistency
+    message: Storage type indicator for putaway does not exist in the warehouse configuration (T305)
+    why_it_matters: The putaway storage type indicator selects the storage type search sequence (T334T). An indicator
+      that is not configured finds no search sequence, so the goods receipt cannot be put away automatically.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway transfer orders fail with 'no storage type found'; goods stay in the GR interim area.
+    fix_map:
+      __other__: Indicator '{invalid_value}' is not in T305. Correct the material (MM02 > Warehouse Management 1) or
+        configure the indicator and its search sequence.
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: putaway indicator ''{actual_value}'' is not
+      in T305.'
+
+  - id: WMI016
+    field: MLGN.LTKZA
+    check_class: referential_check
+    reference_values: []
+    reference_table: T305
+    reference_field: LGTKZ
+    severity: high
+    dimension: consistency
+    message: Storage type indicator for stock removal does not exist in the warehouse configuration (T305)
+    why_it_matters: The stock removal storage type indicator selects where picking looks for stock (T334T). An
+      indicator that is not configured finds no search sequence, so deliveries and production supply cannot be picked.
+    rule_authority: sap_hard_constraint
+    sap_impact: Picking transfer orders fail with 'no stock found'; deliveries cannot be picked.
+    fix_map:
+      __other__: Indicator '{invalid_value}' is not in T305. Correct the material (MM02 > Warehouse Management 1) or
+        configure the indicator and its search sequence.
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: removal indicator ''{actual_value}'' is not in
+      T305.'
+
+  - id: WMI017
+    field: MLGN.LGBKZ
+    check_class: referential_check
+    reference_values: []
+    reference_table: T304
+    reference_field: LGBKZ
+    severity: medium
+    dimension: consistency
+    message: Storage section indicator does not exist in the warehouse configuration (T304)
+    why_it_matters: The storage section indicator selects the storage section search (T30A). An unconfigured indicator
+      finds no section, so putaway into section-controlled storage types fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway into storage types with section check fails for this material.
+    fix_map:
+      __other__: Indicator '{invalid_value}' is not in T304. Correct the material (MM02 > Warehouse Management 1).
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: section indicator ''{actual_value}'' is not in
+      T304.'
+
+  - id: WMI018
+    field: MLGN.LETY1
+    check_class: referential_check
+    reference_values: []
+    reference_table: T307
+    reference_field: LETYP
+    severity: medium
+    dimension: consistency
+    message: Storage unit type in the palletization data does not exist in the configuration (T307)
+    why_it_matters: The first storage unit type of the palletization data is proposed for every goods-receipt storage
+      unit. An unconfigured type cannot be matched to bin types, so putaway into SU-managed storage types fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway into SU-managed storage types fails the bin-type check.
+    fix_map:
+      __other__: Storage unit type '{invalid_value}' is not in T307. Correct the palletization data (MM02 >
+        Warehouse Management 2).
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: storage unit type ''{actual_value}'' is not in
+      T307.'
+
+  - id: WMI019
+    field: MLGT.LGTYP
+    check_class: referential_check
+    reference_values: []
+    reference_table: T301
+    reference_field: LGTYP
+    severity: high
+    dimension: consistency
+    message: Storage type of the material's storage type data does not exist in the configuration (T301)
+    why_it_matters: Storage-type data of a material (fixed bin, minimum/maximum, replenishment) is only read for
+      configured storage types. Data for an unconfigured storage type is dead — the fixed bin is never replenished.
+    rule_authority: sap_hard_constraint
+    sap_impact: Fixed-bin picking and replenishment do not work for this material.
+    fix_map:
+      __other__: Storage type '{invalid_value}' is not in T301. Delete the storage type data or correct the storage type
+        (MM02 > Warehouse Management 2).
+    record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}: storage type ''{actual_value}'' is not in T301.'
+
+  - id: WMI020
+    field: MLGN.LGNUM
+    check_class: referential_check
+    reference_values: []
+    reference_table: T300
+    reference_field: LGNUM
+    severity: critical
+    dimension: consistency
+    message: Warehouse number of the material's warehouse data does not exist in the configuration (T300)
+    why_it_matters: Warehouse management data (MLGN) is read for the warehouse number assigned to the plant/storage
+      location (T320). Data under a warehouse number that is not configured is never used — the material has no
+      usable WM data and every putaway falls back to defaults or fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway and picking ignore the material's WM data; storage type search fails.
+    fix_map:
+      __other__: Warehouse '{invalid_value}' is not in T300. Extend the material to the correct warehouse (MM01 >
+        Warehouse Management views) and delete the stray data.
+    record_fix_template: 'Material {MLGN.MATNR}: warehouse number ''{actual_value}'' is not in T300.'
+
+  - id: WMI021
+    field: MARD.LGORT
+    check_class: referential_check
+    reference_values: []
+    reference_table: T001L
+    reference_field: LGORT
+    severity: high
+    dimension: consistency
+    message: Storage location of the material does not exist in the configuration (T001L)
+    why_it_matters: Storage locations link IM stock to a warehouse number (T320). Stock in a storage location that is
+      not configured cannot be moved in IM and is not linked to WM.
+    rule_authority: sap_hard_constraint
+    sap_impact: Goods movements to and from the storage location fail; the WM interface cannot be determined.
+    fix_map:
+      __other__: Storage location '{invalid_value}' is not in T001L. Configure it (OX09) or move the stock and delete the
+        storage location data.
+    record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}: storage location ''{actual_value}'' is not in T001L.'
+  - id: WMI022
+    field: MLGT.LGPLA
+    check_class: exists_check
+    fields:
+    - MLGT.LGNUM
+    - MLGT.LGTYP
+    - MLGT.LGPLA
+    target_table: LAGP
+    target_fields:
+    - LGNUM
+    - LGTYP
+    - LGPLA
+    severity: high
+    dimension: consistency
+    message: Fixed bin does not exist in the storage type
+    why_it_matters: Fixed-bin storage types put away and pick from the material's fixed bin; a bin that does not exist stops
+      putaway and replenishment.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders for the material fail with 'storage bin does not exist'.
+    fix_map:
+      __other__: Create the bin (LS01N) or correct the material's fixed bin (MM02 > Warehouse management 2).
+    record_fix_template: 'Material {MLGT.MATNR} warehouse {MLGT.LGNUM} storage type {MLGT.LGTYP}: fixed bin {MLGT.LGPLA} does
+      not exist.'
+
+  - id: WMI023
+    field: MLGT.NSMNG
+    check_class: cross_field_check
+    fail_when: '`MLGT.NSMNG` > `MLGT.LPMAX`'
+    applies_when:
+      MLGT.LPMAX: {gt: 0}
+    severity: medium
+    dimension: consistency
+    message: Fixed-bin replenishment quantity is larger than the bin maximum
+    why_it_matters: Fixed-bin replenishment (LP21) brings stock in multiples of the replenishment quantity
+      (MLGT.NSMNG) up to the maximum bin quantity (MLGT.LPMAX). A replenishment quantity above the maximum never fits,
+      so the bin is either never refilled or overfilled.
+    rule_authority: best_practice
+    sap_impact: Picking bins run empty or overflow; replenishment transfer orders are not created as expected.
+    fix_map:
+      __other__: Correct the replenishment or maximum quantity in the material's storage type view (MM02).
+    record_fix_template: 'Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: replenishment {MLGT.NSMNG}, bin maximum
+      {MLGT.LPMAX}.'
+
+  - id: WMI024
+    field: MLGN.MATNR
+    check_class: exists_check
+    fields:
+    - MLGN.MATNR
+    target_table: MARA
+    target_fields:
+    - MATNR
+    severity: high
+    dimension: consistency
+    message: Warehouse management data exists for a material that is not in the material master
+    why_it_matters: An MLGN row with no general material record is orphaned warehouse data.
+    rule_authority: sap_hard_constraint
+    sap_impact: Warehouse reports show a material that no transaction can use.
+    fix_map:
+      __other__: Delete the orphaned warehouse view through archiving or restore the material.
+    record_fix_template: Warehouse data for {MLGN.MATNR} in {MLGN.LGNUM} has no material master.
+
+  - id: WMI025
+    field: MLGT.MATNR
+    check_class: exists_check
+    fields:
+    - MLGT.MATNR
+    - MLGT.LGNUM
+    target_table: MLGN
+    target_fields:
+    - MATNR
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: Storage type data exists without the warehouse management view
+    why_it_matters: Storage type data (MLGT) hangs off the warehouse view (MLGN). Without it the strategy settings are ignored.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway for the material in the storage type uses defaults.
+    fix_map:
+      __other__: Extend the material to the warehouse number (MM50) or delete the storage type data.
+    record_fix_template: Storage type data for {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP} has no warehouse view.
+
+  - id: WMI026
+    field: MLGT.LPMAX
+    check_class: cross_field_check
+    fail_when: (`MLGT.LGPLA`.notna()) & ((`MLGT.LPMAX`.isna()) | (`MLGT.LPMAX` <= 0))
+    severity: low
+    dimension: completeness
+    message: Fixed bin has no maximum quantity
+    why_it_matters: A fixed bin without a maximum cannot drive replenishment.
+    rule_authority: best_practice
+    sap_impact: Replenishment never triggers for the fixed bin.
+    fix_map:
+      __other__: Maintain the maximum bin quantity in the storage type data.
+    record_fix_template: 'Material {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP}: fixed bin {MLGT.LGPLA} has no maximum.'
+
+  - id: WMI027
+    field: MLGT.LGPLA
+    check_class: cross_field_check
+    fail_when: (`MLGT.NSMNG` > 0) & `MLGT.LGPLA`.isna()
+    severity: low
+    dimension: completeness
+    message: Replenishment quantity set with no fixed bin
+    why_it_matters: A replenishment quantity only means something against a fixed bin.
+    rule_authority: best_practice
+    sap_impact: Setting is ignored and misleads planners.
+    fix_map:
+      __other__: Enter the fixed bin or clear the quantity.
+    record_fix_template: 'Material {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP}: replenishment {MLGT.NSMNG} with no bin.'
+
+  - id: WMI028
+    field: MLGN.LHME2
+    check_class: cross_field_check
+    fail_when: (`MLGN.LHMG2` > 0) & `MLGN.LHME2`.isna()
+    severity: medium
+    dimension: completeness
+    message: Loading equipment quantity 2 has no unit
+    why_it_matters: A quantity without a unit of measure cannot be converted or put away.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway quantity calculations fail for the material.
+    fix_map:
+      __other__: Enter the unit of measure.
+    record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: quantity 2 has no unit.'
+
+  - id: WMI029
+    field: MLGN.LHME3
+    check_class: cross_field_check
+    fail_when: (`MLGN.LHMG3` > 0) & `MLGN.LHME3`.isna()
+    severity: medium
+    dimension: completeness
+    message: Loading equipment quantity 3 has no unit
+    why_it_matters: A quantity without a unit of measure cannot be converted or put away.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway quantity calculations fail for the material.
+    fix_map:
+      __other__: Enter the unit of measure.
+    record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: quantity 3 has no unit.'
+
+  - id: WMI030
+    field: MLGN.LHMG1
+    check_class: cross_field_check
+    fail_when: '`MLGN.LETY1`.notna() & ((`MLGN.LHMG1`.isna()) | (`MLGN.LHMG1` <= 0))'
+    severity: medium
+    dimension: completeness
+    message: Storage unit type has no loading equipment quantity
+    why_it_matters: A storage unit type without a quantity per unit cannot size pallets.
+    rule_authority: best_practice
+    sap_impact: Storage unit putaway creates units with no capacity logic.
+    fix_map:
+      __other__: Maintain the loading equipment quantity for the storage unit type.
+    record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: type {MLGN.LETY1} has no quantity.'
+
+  - id: WMI031
+    field: MLGN.LVSME
+    check_class: exists_check
+    fields:
+    - MLGN.LVSME
+    target_table: T006
+    target_fields:
+    - MSEHI
+    applies_when:
+      MLGN.LVSME:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Warehouse unit of measure is not a valid unit
+    why_it_matters: A warehouse unit that is not in the unit table cannot be converted.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders in the warehouse unit fail at conversion.
+    fix_map:
+      __other__: Correct the warehouse unit of measure.
+    record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: unit {MLGN.LVSME} is not valid.'
+
+  - id: WMI032
+    field: T302.LGNUM
+    check_class: exists_check
+    fields:
+    - T302.LGNUM
+    - T302.LGTYP
+    target_table: T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    severity: high
+    dimension: consistency
+    message: Storage section belongs to a storage type that is not configured
+    why_it_matters: A section config for an unknown storage type is dead config.
+    rule_authority: sap_hard_constraint
+    sap_impact: Bins assigned to the section cannot be created.
+    fix_map:
+      __other__: Configure the storage type or delete the section.
+    record_fix_template: Section {T302.LGBER} in {T302.LGNUM}/{T302.LGTYP} has no storage type.
+
+  - id: WMI033
+    field: T333.LGNUM
+    check_class: exists_check
+    fields:
+    - T333.LGNUM
+    - T333.VLTYP
+    target_table: T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    applies_when:
+      T333.VLTYP:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Movement type default source type is not configured
+    why_it_matters: A default source storage type that does not exist breaks every transfer order of the movement type.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders default to an unknown type and fail.
+    fix_map:
+      __other__: Correct the default source type in the movement type config.
+    record_fix_template: 'Movement type {T333.BWLVS} in {T333.LGNUM}: source type {T333.VLTYP} not in T301.'
+
+  - id: WMI034
+    field: T333.LGNUM
+    check_class: exists_check
+    fields:
+    - T333.LGNUM
+    - T333.NLTYP
+    target_table: T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    applies_when:
+      T333.NLTYP:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Movement type default destination type is not configured
+    why_it_matters: A default destination storage type that does not exist breaks every transfer order of the movement type.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders default to an unknown type and fail.
+    fix_map:
+      __other__: Correct the default destination type in the movement type config.
+    record_fix_template: 'Movement type {T333.BWLVS} in {T333.LGNUM}: destination type {T333.NLTYP} not in T301.'
+
+  - id: WMI035
+    field: T333.LGNUM
+    check_class: exists_check
+    fields:
+    - T333.LGNUM
+    target_table: T300
+    target_fields:
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: Movement type config belongs to an undefined warehouse
+    why_it_matters: Movement type config for a warehouse number that is not defined is orphaned.
+    rule_authority: sap_hard_constraint
+    sap_impact: The config has no effect and misleads administrators.
+    fix_map:
+      __other__: Delete the config or define the warehouse.
+    record_fix_template: 'Movement type {T333.BWLVS}: warehouse {T333.LGNUM} not in T300.'
+
+  - id: WMI036
+    field: T301.LGNUM
+    check_class: exists_check
+    fields:
+    - T301.LGNUM
+    target_table: T300
+    target_fields:
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: Storage type belongs to an undefined warehouse
+    why_it_matters: A storage type for a warehouse number that is not defined is orphaned config.
+    rule_authority: sap_hard_constraint
+    sap_impact: Bins in the type cannot be used.
+    fix_map:
+      __other__: Delete the storage type or define the warehouse.
+    record_fix_template: 'Storage type {T301.LGTYP}: warehouse {T301.LGNUM} not in T300.'
+
+  # ── Second depth pass: block/RF flags, storage-unit vs bin capacity, movement type config ──
+
+  - id: WMI037
+    field: MLGN.BLOCK
+    check_class: domain_value_check
+    allowed_values: ['', '01', '02']
+    valid_values_with_labels:
+      '': No placement or removal block
+      '01': Stock placement blocked for this material in the warehouse
+      '02': Stock removal blocked for this material in the warehouse
+    severity: medium
+    dimension: validity
+    message: Stock placement/removal block indicator is not a valid SAP value
+    why_it_matters: >-
+      MLGN.BLOCK blocks putaway or picking for the material in this warehouse outside of the
+      normal storage type or bin locks. An undefined value is not recognised by the WM
+      transaction logic, so the block may be silently ignored or the material treated as
+      unexpectedly restricted.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Transfer order creation cannot reliably evaluate whether the material is blocked;
+      putaway or picking may proceed for material that should be locked, or be refused
+      for material that should be available.
+    fix_map:
+      __other__: >-
+        Block indicator '{invalid_value}' is not a valid value. Correct via MM02 >
+        Warehouse Management 1 view.
+    record_fix_template: >-
+      Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: block indicator '{actual_value}' is
+      not a valid value.
+
+  - id: WMI038
+    field: MLGN.KZMBF
+    check_class: domain_value_check
+    allowed_values: ['', 'X']
+    valid_values_with_labels:
+      '': Not relevant for mobile data entry (RF)
+      'X': Relevant for mobile data entry (RF)
+    severity: low
+    dimension: validity
+    message: Mobile data entry relevance flag is not a valid SAP value
+    why_it_matters: >-
+      MLGN.KZMBF tells RF/mobile transactions whether this material's warehouse movements
+      must be confirmed through mobile data entry. A value outside the blank/X domain is
+      not a recognised flag state and RF presentation logic cannot evaluate it.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      RF transactions cannot determine whether mobile confirmation is required for the
+      material; movements may bypass mandatory RF confirmation or be unexpectedly blocked
+      from it.
+    fix_map:
+      __other__: >-
+        Mobile data entry flag '{invalid_value}' is not valid. Correct via MM02 >
+        Warehouse Management 1 view.
+    record_fix_template: >-
+      Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: mobile data entry flag
+      '{actual_value}' is not valid.
+
+  - id: WMI039
+    field: MLGT.MAMNG
+    check_class: cross_field_check
+    fail_when: '(`MLGT.MAMNG` > 0) & (`MLGT.LPMAX` > 0) & (`MLGT.MAMNG` > `MLGT.LPMAX`)'
+    severity: medium
+    dimension: consistency
+    message: Maximum storage unit quantity exceeds the bin's maximum quantity
+    why_it_matters: >-
+      MLGT.MAMNG caps how much of the material one storage unit (pallet/container) may
+      hold in this storage type; MLGT.LPMAX caps how much the fixed bin itself may hold.
+      A storage unit quantity above the bin maximum means a single putaway unit can never
+      fit into the fixed bin it is supposed to be stored in.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Putaway of a full storage unit into the fixed bin is rejected or split unexpectedly;
+      the storage unit strategy and the fixed-bin strategy contradict each other.
+    fix_map:
+      __other__: >-
+        Correct the maximum storage unit quantity or the bin maximum in the material's
+        storage type view (MM02 > Warehouse Management 2).
+    record_fix_template: >-
+      Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: storage unit maximum {MLGT.MAMNG}
+      exceeds bin maximum {MLGT.LPMAX}.
+
+  - id: WMI040
+    field: T333.BETYP
+    check_class: domain_value_check
+    allowed_values: ['', '1', '2']
+    valid_values_with_labels:
+      '': No fixed confirmation requirement for the movement type
+      '1': Single-step confirmation required
+      '2': Two-step confirmation required
+    severity: medium
+    dimension: validity
+    message: Movement type confirmation type is not a valid SAP value
+    why_it_matters: >-
+      T333.BETYP tells the transfer order which confirmation steps the movement type
+      requires. A value outside the defined domain cannot be interpreted by the
+      confirmation logic, so the system falls back to an undefined confirmation behaviour.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Transfer orders of this movement type cannot be confirmed through the normal LT12 /
+      RF confirmation step; open transfer orders accumulate.
+    fix_map:
+      __other__: >-
+        Confirmation type '{invalid_value}' is not valid. Correct the movement type
+        configuration (SPRO > LE-WM > Activities > Transfers > Define Movement Types).
+    record_fix_template: >-
+      Movement type {T333.BWLVS} in {T333.LGNUM}: confirmation type '{actual_value}' is
+      not valid.
+
+  - id: WMI041
+    field: T333.SQUIT
+    check_class: cross_field_check
+    fail_when: "(`T333.SQUIT` == 'X') & (`T333.TBMAN` == 'X')"
+    severity: medium
+    dimension: consistency
+    message: Movement type requires immediate system confirmation and manual transfer order creation at once
+    why_it_matters: >-
+      T333.SQUIT forces the system to confirm the transfer order immediately on creation,
+      while T333.TBMAN requires the transfer order to be created manually by a user. The
+      two settings contradict each other — a transfer order that must be manually created
+      cannot also be immediately, automatically confirmed before anyone has created it.
+    rule_authority: best_practice
+    sap_impact: >-
+      Movement type configuration is internally inconsistent; manual transfer order
+      creation for the movement type behaves unpredictably with respect to confirmation.
+    fix_map:
+      __other__: >-
+        Review the movement type configuration and disable either immediate confirmation
+        or manual creation (SPRO > LE-WM > Activities > Transfers > Define Movement Types).
+    record_fix_template: >-
+      Movement type {T333.BWLVS} in {T333.LGNUM}: immediate confirmation and manual
+      creation are both set.
+
+  - id: WMI042
+    field: T333.BWLVS
+    check_class: regex_check
+    pattern: "^[0-9]{3}$"
+    severity: high
+    dimension: validity
+    message: Movement type code must be exactly 3 digits
+    why_it_matters: >-
+      SAP WM movement types (BWLVS) are always a 3-digit numeric code (e.g. 101, 601).
+      A non-conforming code cannot be assigned consistently to IM movement types and
+      will not be found by the transfer order creation logic that looks up T333 by this key.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Movement type lookup in T333 fails. Transfer orders for IM movements mapped to this
+      code are not created.
+    fix_map:
+      __other__: >-
+        Movement type code '{invalid_value}' is not a valid 3-digit code. Correct via
+        SPRO > LE-WM > Activities > Transfers > Define Movement Types.
+    record_fix_template: >-
+      Movement type '{actual_value}' in {T333.LGNUM} is not a valid 3-digit code.
+
+  - id: WMI043
+    field: MLGT.KOBER
+    check_class: domain_value_check
+    allowed_values: ['', 'X']
+    valid_values_with_labels:
+      '': Capacity check at bin level is not active for the storage type data
+      'X': Capacity check at bin level is active for the storage type data
+    severity: low
+    dimension: validity
+    message: Bin capacity check indicator is not a valid SAP value
+    why_it_matters: >-
+      MLGT.KOBER switches on capacity checking against the fixed bin for this material in
+      the storage type. A value outside the blank/X domain cannot be evaluated by the
+      capacity check, so putaway silently skips or always triggers the check.
+    rule_authority: best_practice
+    sap_impact: >-
+      Capacity-based putaway decisions for the material's fixed bin cannot be relied on.
+    fix_map:
+      __other__: >-
+        Capacity check indicator '{invalid_value}' is not valid. Correct via MM02 >
+        Warehouse Management 2 > storage type data.
+    record_fix_template: >-
+      Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: capacity check indicator
+      '{actual_value}' is not valid.
+
+  - id: WMI044
+    field: MARA.LVORM
+    check_class: cross_field_check
+    grain: MLGN
+    fail_when: "(`MARA.LVORM` == 'X') & (`MLGN.LGNUM`.notna())"
+    severity: medium
+    dimension: consistency
+    message: Warehouse management view still exists for a material flagged for central deletion
+    why_it_matters: >-
+      MARA.LVORM marks the material for deletion across the whole client, but the
+      warehouse management view (MLGN) for this material and warehouse has not been
+      removed. The IM-WM interface keeps evaluating putaway and picking strategy data for
+      a material that is supposed to be retired.
+    rule_authority: best_practice
+    sap_impact: >-
+      The material cannot be archived while WM data remains; WM continues to apply
+      putaway/picking strategies to a material that should no longer move.
+    fix_map:
+      __other__: >-
+        Delete the warehouse management view (MM06/MM02) before or as part of archiving
+        the material, or reset the central deletion flag if the material is still in use.
+    record_fix_template: >-
+      Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: warehouse view still exists while
+      flagged for deletion in MARA.

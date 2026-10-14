@@ -6,7 +6,7 @@ rules:
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: Candidate ID is mandatory — primary key linking application to candidate profile
+  message: "Candidate ID is mandatory \u2014 primary key linking application to candidate profile"
   why_it_matters: CANDIDATE_ID is the primary key that associates a job application with a candidate record across the Recruiting
     module. Without it, the application is orphaned and cannot be linked to interview schedules, offer letters, or onboarding
     workflows.
@@ -23,7 +23,7 @@ rules:
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: Job Requisition ID is mandatory — links application to approved headcount
+  message: "Job Requisition ID is mandatory \u2014 links application to approved headcount"
   why_it_matters: JOB_REQ_ID links the application to an approved headcount requisition. Without this link, the application
     cannot proceed to the offer stage because SuccessFactors enforces requisition-based hiring. The offer approval workflow
     requires a valid requisition to validate budget and headcount availability.
@@ -41,11 +41,10 @@ rules:
   severity: high
   dimension: completeness
   message: Application date is required for time-to-hire metrics and SLA tracking
-  why_it_matters: APPLICATION_DATE is the starting point for time-to-hire and time-to-fill KPI calculations. Without it,
-    recruiting analytics cannot measure pipeline velocity and SLA compliance for this application.
+  why_it_matters: APPLICATION_DATE is the starting point for time-to-hire and time-to-fill KPI calculations. Without it, recruiting
+    analytics cannot measure pipeline velocity and SLA compliance for this application.
   rule_authority: best_practice
-  sap_impact: Time-to-hire KPI cannot be calculated. Recruiting funnel analytics show gaps. SLA compliance monitoring is
-    incomplete.
+  sap_impact: Time-to-hire KPI cannot be calculated. Recruiting funnel analytics show gaps. SLA compliance monitoring is incomplete.
   fix_map:
     __blank__: 'Set the application date to when the candidate originally applied. Update via Recruiting > Application Management.
       Format: YYYY-MM-DD.'
@@ -65,8 +64,8 @@ rules:
   fix_map:
     __blank__: 'Assign the recruiting source based on how the candidate found the role. Common values include: career_site,
       linkedin, referral, agency, job_board. Update via Recruiting > Application Management.'
-  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: SOURCE is missing. Assign the recruiting channel via
-    Recruiting > Application Management.'
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: SOURCE is missing. Assign the recruiting channel via Recruiting
+    > Application Management.'
 - id: REC006
   field: JOBREQUISITION.TITLE
   check_class: null_check
@@ -88,14 +87,14 @@ rules:
   severity: high
   dimension: completeness
   message: Hiring manager is required for interview scheduling and offer approval workflow
-  why_it_matters: HIRING_MANAGER is the person who owns the hiring decision. Without this assignment, interview requests
-    cannot be routed, offer approval workflows have no approver, and the requisition has no accountable owner.
+  why_it_matters: HIRING_MANAGER is the person who owns the hiring decision. Without this assignment, interview requests cannot
+    be routed, offer approval workflows have no approver, and the requisition has no accountable owner.
   rule_authority: best_practice
-  sap_impact: Interview scheduling cannot route to hiring manager. Offer approval workflow has no approver. Requisition
-    ownership is undefined.
+  sap_impact: Interview scheduling cannot route to hiring manager. Offer approval workflow has no approver. Requisition ownership
+    is undefined.
   fix_map:
-    __blank__: Assign the hiring manager via Recruiting > Requisition Management > Edit Requisition. The manager must be
-      an active employee in Employee Central.
+    __blank__: Assign the hiring manager via Recruiting > Requisition Management > Edit Requisition. The manager must be an
+      active employee in Employee Central.
   record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: HIRING_MANAGER is missing. Assign via Recruiting > Requisition
     Management.'
 - id: REC009
@@ -104,8 +103,8 @@ rules:
   severity: medium
   dimension: completeness
   message: Requisition open date is required for time-to-fill calculations
-  why_it_matters: OPEN_DATE is the start point for time-to-fill KPI calculations. Without it, recruiting cannot measure
-    how long positions take to fill, which is a key metric for workforce planning and recruiting efficiency assessment.
+  why_it_matters: OPEN_DATE is the start point for time-to-fill KPI calculations. Without it, recruiting cannot measure how
+    long positions take to fill, which is a key metric for workforce planning and recruiting efficiency assessment.
   rule_authority: best_practice
   sap_impact: Time-to-fill KPI cannot be calculated. Recruiting efficiency reports are incomplete for this requisition.
   fix_map:
@@ -119,14 +118,13 @@ rules:
   severity: high
   dimension: consistency
   message: Requisition open date must not be after close date
-  why_it_matters: When a CLOSE_DATE is present, OPEN_DATE must precede it. A requisition that closes before it opens indicates
-    a data entry error that will produce negative time-to-fill values and corrupt recruiting analytics.
+  why_it_matters: When a CLOSE_DATE is present, OPEN_DATE must precede it. A requisition that closes before it opens
+    indicates a data entry error that will produce negative time-to-fill values and corrupt recruiting analytics.
   rule_authority: best_practice
-  sap_impact: Time-to-fill calculation returns negative value. Recruiting analytics dashboards show corrupted data for this
-    requisition.
-  fix_map:
-    __blank__: Review and correct the OPEN_DATE and CLOSE_DATE via Recruiting > Requisition Management. Ensure OPEN_DATE
-      precedes CLOSE_DATE.
+  sap_impact: Time-to-fill calculation returns negative value. Recruiting analytics dashboards show corrupted data
+    for this requisition.
+  fix_map: {__blank__: Review and correct the OPEN_DATE and CLOSE_DATE via Recruiting > Requisition Management.
+      Ensure OPEN_DATE precedes CLOSE_DATE.}
   record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: OPEN_DATE is after CLOSE_DATE. Correct dates via Recruiting
     > Requisition Management.'
   fail_when: '`JOBREQUISITION.OPEN_DATE` > `JOBREQUISITION.CLOSE_DATE`'
@@ -138,16 +136,16 @@ rules:
   dimension: completeness
   message: User ID is mandatory for onboarding — used to create Employee Central record on hire
   why_it_matters: USERID in onboarding is the identifier that will be used to create the Employee Central record when the
-    hire is finalised. Without it, the onboarding-to-EC handoff fails completely — no employee record is created, which
-    means no payroll enrolment, no benefit assignment, and no position allocation for the new hire.
+    hire is finalised. Without it, the onboarding-to-EC handoff fails completely — no employee record is created, which means
+    no payroll enrolment, no benefit assignment, and no position allocation for the new hire.
   rule_authority: best_practice
   sap_impact: Employee Central record not created on hire. Payroll enrolment blocked. Benefits, time management, and position
     assignment all fail for the new hire.
   fix_map:
     __blank__: Assign a unique USERID following your naming convention (firstname.lastname or employee number) via Onboarding
       > Candidate Management > Edit Candidate Info.
-  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: USERID is missing. Assign via Onboarding
-    > Candidate Management before hire date.'
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: USERID is missing. Assign via Onboarding >
+    Candidate Management before hire date.'
   grain: ONBOARDINGCANDIDATEINFO
 - id: REC012
   field: ONBOARDINGCANDIDATEINFO.HIRE_DATE
@@ -163,8 +161,8 @@ rules:
     creation date unknown.
   fix_map:
     __blank__: Set the confirmed hire date via Onboarding > Candidate Management > Edit Candidate Info. Use ISO format YYYY-MM-DD.
-  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: HIRE_DATE is missing. Set via Onboarding
-    > Candidate Management. Format: YYYY-MM-DD.'
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: HIRE_DATE is missing. Set via Onboarding >
+    Candidate Management. Format: YYYY-MM-DD.'
   grain: ONBOARDINGCANDIDATEINFO
 - id: REC013
   field: ONBOARDINGCANDIDATEINFO.DEPARTMENT
@@ -173,8 +171,8 @@ rules:
   dimension: completeness
   message: Department is required to pre-populate the Employee Central record
   why_it_matters: DEPARTMENT is used to pre-populate the Employee Central job information record when the hire is finalised.
-    Missing department means the new hire's EC record will lack organisational assignment, causing them to appear as an
-    orphan in the org chart.
+    Missing department means the new hire's EC record will lack organisational assignment, causing them to appear as an orphan
+    in the org chart.
   rule_authority: best_practice
   sap_impact: EC record created without department assignment. New hire appears as org chart orphan. Department-based approval
     workflows exclude this employee.
@@ -193,8 +191,8 @@ rules:
   why_it_matters: MANAGER_ID determines which manager receives the day-1 onboarding task list — including equipment handover,
     team introduction scheduling, and probation review setup. Without it, all manager-routed onboarding tasks are unassigned.
   rule_authority: best_practice
-  sap_impact: Day-1 onboarding tasks not routed to hiring manager. Equipment handover, team introductions, and probation
-    setup not assigned.
+  sap_impact: Day-1 onboarding tasks not routed to hiring manager. Equipment handover, team introductions, and probation setup
+    not assigned.
   fix_map:
     __blank__: Assign the hiring manager's USERID via Onboarding > Candidate Management > Edit Candidate Info. The manager
       must already exist as an active employee in Employee Central.
@@ -207,9 +205,8 @@ rules:
   severity: high
   dimension: completeness
   message: Onboarding status is required to track new hire progress through the onboarding process
-  why_it_matters: STATUS tracks the new hire's progress through the onboarding workflow. Without it, HR cannot determine
-    whether onboarding tasks have been completed, IT provisioning has been initiated, or the new hire is ready for their
-    start date.
+  why_it_matters: STATUS tracks the new hire's progress through the onboarding workflow. Without it, HR cannot determine whether
+    onboarding tasks have been completed, IT provisioning has been initiated, or the new hire is ready for their start date.
   rule_authority: best_practice
   sap_impact: Onboarding progress dashboard shows incomplete data. HR cannot determine new hire readiness. Escalation workflows
     for overdue onboarding tasks cannot trigger.
@@ -231,27 +228,24 @@ rules:
   sap_impact: Missing Assigned recruiter may cause incomplete data in related transactions and reports.
   fix_map:
     __blank__: Maintain via SuccessFactors Admin Center > Recruiting or Onboarding module.
-  record_fix_template: Record is missing JOBREQUISITION.RECRUITER. Maintain via SuccessFactors Admin Center > Recruiting
-    or Onboarding module.
+  record_fix_template: Record is missing JOBREQUISITION.RECRUITER. Maintain via SuccessFactors Admin Center > Recruiting or
+    Onboarding module.
 - id: REC019
   field: JOBAPPLICATION.CANDIDATE_ID
   check_class: uniqueness_check
-  fields:
-  - JOBAPPLICATION.CANDIDATE_ID
-  - JOBAPPLICATION.JOB_REQ_ID
+  fields: [JOBAPPLICATION.CANDIDATE_ID, JOBAPPLICATION.JOB_REQ_ID]
   severity: high
   dimension: uniqueness
   message: Duplicate candidate records detected — same candidate appears multiple times
   why_it_matters: Duplicate candidates cause fragmented application history, incorrect offer management, and compliance
     reporting errors for EEO/diversity tracking.
   rule_authority: best_practice
-  sap_impact: Application history is split. Offer letters may be sent to wrong record. EEO reporting undercounts unique
-    applicants.
-  fix_map:
-    __blank__: Merge duplicate candidates in Recruiting > Candidate Management > Merge Candidates. Preserve the record with
-      the most complete application history.
-  record_fix_template: 'Candidate {JOBAPPLICATION.CANDIDATE_ID}: duplicate application for requisition {JOBAPPLICATION.JOB_REQ_ID}.
-    Merge or remove the duplicate.'
+  sap_impact: Application history is split. Offer letters may be sent to wrong record. EEO reporting undercounts
+    unique applicants.
+  fix_map: {__blank__: Merge duplicate candidates in Recruiting > Candidate Management > Merge Candidates. Preserve
+      the record with the most complete application history.}
+  record_fix_template: "Candidate {JOBAPPLICATION.CANDIDATE_ID}: duplicate application for requisition {JOBAPPLICATION.JOB_REQ_ID}. Merge or remove the duplicate."
+
 - id: REC020
   field: ONBOARDINGCANDIDATEINFO.HIRE_DATE
   check_class: cross_field_check
@@ -280,8 +274,8 @@ rules:
   severity: medium
   dimension: consistency
   message: Application is dated before the job requisition was created
-  why_it_matters: A candidate can only apply to a requisition that exists. An earlier date usually comes from a migration
-    that kept the original application date but moved the application to a new requisition.
+  why_it_matters: A candidate can only apply to a requisition that exists. An earlier date usually comes from a
+    migration that kept the original application date but moved the application to a new requisition.
   rule_authority: best_practice
   sap_impact: Time-to-fill and time-to-hire are overstated; source and pipeline reports put the application in the wrong
     period.
@@ -298,13 +292,13 @@ rules:
   severity: low
   dimension: consistency
   message: Application is dated after the job requisition was closed
-  why_it_matters: A closed requisition should not receive applications. Late applications mean the posting stayed live after
-    closing, or a recruiter forwarded candidates to a closed requisition.
+  why_it_matters: A closed requisition should not receive applications. Late applications mean the posting stayed live
+    after closing, or a recruiter forwarded candidates to a closed requisition.
   rule_authority: best_practice
   sap_impact: Candidates wait on a job that is no longer open; pipeline reports count applications on closed jobs.
   fix_map:
-    __other__: Remove the job postings of closed requisitions, and move the candidates to an open requisition or close their
-      applications with a reason.
+    __other__: Remove the job postings of closed requisitions, and move the candidates to an open requisition or close
+      their applications with a reason.
   record_fix_template: 'Application by candidate {JOBAPPLICATION.CANDIDATE_ID} on requisition {JOBAPPLICATION.JOB_REQ_ID}:
     applied {JOBAPPLICATION.APPLICATION_DATE}, requisition closed {JOBREQUISITION.CLOSE_DATE}.'
 - id: REC023
@@ -316,8 +310,7 @@ rules:
   severity: medium
   dimension: consistency
   message: Hiring manager of the requisition is not an employee
-  why_it_matters: The hiring manager of a requisition must be an employee so approvals and the later hire can use the manager
-    hierarchy.
+  why_it_matters: The hiring manager of a requisition must be an employee so approvals and the later hire can use the manager hierarchy.
   rule_authority: best_practice
   sap_impact: Approvals route to nobody and the hire cannot inherit the manager.
   fix_map:
@@ -340,8 +333,7 @@ rules:
   sap_impact: The new hire is created without a manager and workflow items go unassigned.
   fix_map:
     __other__: Assign an existing employee as manager.
-  record_fix_template: 'Onboarding record {ONBOARDINGCANDIDATEINFO.USERID}: manager is not an employee. Correct the onboarding
-    record.'
+  record_fix_template: 'Onboarding record {ONBOARDINGCANDIDATEINFO.USERID}: manager is not an employee. Correct the onboarding record.'
 - id: REC025
   field: ONBOARDINGCANDIDATEINFO.DEPARTMENT
   check_class: exists_check
@@ -354,14 +346,12 @@ rules:
   severity: medium
   dimension: consistency
   message: Onboarding department does not exist in the foundation data
-  why_it_matters: The department of a new hire must be a valid foundation department, because it is copied to the employment
-    and to the SAP organisation assignment.
+  why_it_matters: The department of a new hire must be a valid foundation department, because it is copied to the employment and to the SAP organisation assignment.
   rule_authority: best_practice
   sap_impact: The hire is created with an invalid organisation assignment and the replication rejects it.
   fix_map:
     __other__: Select a valid department.
-  record_fix_template: 'Onboarding record {ONBOARDINGCANDIDATEINFO.USERID}: department is not a foundation department. Correct
-    the onboarding record.'
+  record_fix_template: 'Onboarding record {ONBOARDINGCANDIDATEINFO.USERID}: department is not a foundation department. Correct the onboarding record.'
 - id: REC026
   field: JOBREQUISITION.STATUS
   check_class: null_check
@@ -402,8 +392,8 @@ rules:
     Filled: Filled — hire completed, pending close
   fix_map:
     __blank__: Correct the requisition status to one of the recognised lifecycle values via Recruiting > Requisition Management.
-  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: STATUS value is not recognised. Correct via Recruiting
-    > Requisition Management.'
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: STATUS value is not recognised. Correct via Recruiting >
+    Requisition Management.'
   auto_fix:
     steps:
     - op: strip
@@ -456,8 +446,7 @@ rules:
   why_it_matters: The department on a requisition must be a valid foundation department because it is copied to the Employee
     Central job information record of the hire made against it.
   rule_authority: best_practice
-  sap_impact: The eventual hire inherits an invalid organisation assignment and the Employee Central replication rejects
-    it.
+  sap_impact: The eventual hire inherits an invalid organisation assignment and the Employee Central replication rejects it.
   fix_map:
     __other__: Select a valid department.
   record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: department is not a foundation department. Correct the
@@ -469,7 +458,8 @@ rules:
   dimension: completeness
   message: Application status is required to track pipeline stage
   why_it_matters: STATUS is the single field that places an application in the recruiting pipeline (applied, screening,
-    interview, offer, hired, rejected, withdrawn). Without it, the application cannot appear on any pipeline or funnel report.
+    interview, offer, hired, rejected, withdrawn). Without it, the application cannot appear on any pipeline or funnel
+    report.
   rule_authority: best_practice
   sap_impact: Application does not appear on recruiter pipeline views. Funnel conversion reporting undercounts applications
     at every stage.
@@ -611,8 +601,8 @@ rules:
     COMPLETED: Checklist completed
   fix_map:
     __blank__: Correct the task completion state to NOT_STARTED, IN_PROGRESS, or COMPLETED via Onboarding > Candidate Management.
-  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: TASK_COMPLETION value is not recognised.
-    Correct via Onboarding > Candidate Management.'
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: TASK_COMPLETION value is not recognised. Correct
+    via Onboarding > Candidate Management.'
   grain: ONBOARDINGCANDIDATEINFO
   auto_fix:
     steps:
@@ -673,9 +663,9 @@ rules:
   severity: high
   dimension: completeness
   message: Offer status is required to track the offer through extension, acceptance, or decline
-  why_it_matters: OFFER_STATUS is the field that tells recruiting whether an offer is still open, has been accepted, or
-    has been declined or rescinded. Without it, the offer cannot be excluded from open-offer ageing reports once it has
-    been resolved.
+  why_it_matters: OFFER_STATUS is the field that tells recruiting whether an offer is still open, has been accepted, or has
+    been declined or rescinded. Without it, the offer cannot be excluded from open-offer ageing reports once it has been
+    resolved.
   rule_authority: best_practice
   sap_impact: Open-offer ageing reports cannot determine whether this offer is still pending a candidate decision.
   fix_map:
@@ -695,8 +685,8 @@ rules:
   why_it_matters: Offer acceptance-rate reporting groups offers by a fixed set of outcomes. A value outside this set cannot
     be classified as accepted, declined, or rescinded, and is dropped from the acceptance-rate calculation.
   rule_authority: best_practice
-  sap_impact: Offer acceptance-rate reporting excludes this offer, understating or overstating the true acceptance rate
-    for the requisition.
+  sap_impact: Offer acceptance-rate reporting excludes this offer, understating or overstating the true acceptance rate for
+    the requisition.
   valid_values_with_labels:
     Extended: Extended — awaiting candidate decision
     Accepted: Accepted — candidate accepted the offer
@@ -755,8 +745,8 @@ rules:
   dimension: consistency
   message: Offer does not reference a candidate who has an application on file
   why_it_matters: An offer should only be issued to a candidate who went through the application and interview pipeline.
-    An offer with no matching application record is a sign of a bypassed process or a broken candidate ID link between the
-    Recruiting application and offer objects.
+    An offer with no matching application record is a sign of a bypassed process or a broken candidate ID link between
+    the Recruiting application and offer objects.
   rule_authority: best_practice
   sap_impact: The offer cannot be traced back to its application, interview history, or EEO/diversity pipeline reporting
     for this hire.
@@ -863,8 +853,8 @@ rules:
   severity: medium
   dimension: consistency
   message: Offer currency differs from the requisition currency
-  why_it_matters: Salary comparisons and the hire's compensation record assume one currency. A different offer currency
-    makes range checks meaningless and may pay in the wrong currency.
+  why_it_matters: Salary comparisons and the hire's compensation record assume one currency. A different offer currency makes
+    range checks meaningless and may pay in the wrong currency.
   rule_authority: best_practice
   sap_impact: Compensation created in wrong currency.
   fix_map:
@@ -1186,8 +1176,8 @@ rules:
   severity: medium
   dimension: consistency
   message: Offer references an application that does not exist
-  why_it_matters: Offers are generated from an application; an unknown application ID breaks the link to the candidate's
-    pipeline and to the hire.
+  why_it_matters: Offers are generated from an application; an unknown application ID breaks the link to the candidate's pipeline
+    and to the hire.
   rule_authority: best_practice
   sap_impact: Hire cannot be traced to its application.
   fix_map:
@@ -1205,8 +1195,7 @@ rules:
   severity: medium
   dimension: timeliness
   message: Extended offer's start date has already passed
-  why_it_matters: An offer still only Extended after the start date was never accepted or declined; the hire date is now
-    wrong.
+  why_it_matters: An offer still only Extended after the start date was never accepted or declined; the hire date is now wrong.
   rule_authority: best_practice
   sap_impact: Hire may be created with a past start date; retro pay.
   fix_map:
@@ -1224,14 +1213,14 @@ rules:
   severity: medium
   dimension: consistency
   message: Onboarding hire date differs from the employment start date
-  why_it_matters: The onboarding hire date is passed to Employee Central at the hire step. A different employment start
-    date means the hire was re-dated after onboarding or the wrong employment was linked; tasks and day-one provisioning
-    run on one date and payroll on the other.
+  why_it_matters: The onboarding hire date is passed to Employee Central at the hire step. A different employment start date
+    means the hire was re-dated after onboarding or the wrong employment was linked; tasks and day-one provisioning run on
+    one date and payroll on the other.
   rule_authority: best_practice
   sap_impact: Payroll start, benefits eligibility and onboarding tasks run on different dates.
   fix_map:
-    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Align the onboarding hire date with
-      the Employee Central start date (or correct the hire).
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Align the onboarding hire date with the
+      Employee Central start date (or correct the hire).
   record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: onboarding hire date {ONBOARDINGCANDIDATEINFO.HIRE_DATE},
     employment start {EMPEMPLOYMENT.START_DATE}.'
 - id: REC072
@@ -1253,8 +1242,8 @@ rules:
   sap_impact: Statutory onboarding deadlines missed.
   fix_map:
     __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Complete or close the outstanding tasks.
-  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: tasks {ONBOARDINGCANDIDATEINFO.TASK_COMPLETION},
-    hired {ONBOARDINGCANDIDATEINFO.HIRE_DATE}.'
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: tasks {ONBOARDINGCANDIDATEINFO.TASK_COMPLETION}, hired
+    {ONBOARDINGCANDIDATEINFO.HIRE_DATE}.'
 - id: REC073
   field: ONBOARDINGCANDIDATEINFO.CANCEL_REASON
   check_class: null_check
@@ -1358,14 +1347,14 @@ rules:
   severity: high
   dimension: timeliness
   message: New hire started while the background check is still pending
-  why_it_matters: Policy normally requires a cleared check before day one. A pending check after the hire date means the
-    person started unvetted.
+  why_it_matters: Policy normally requires a cleared check before day one. A pending check after the hire date means the person
+    started unvetted.
   rule_authority: best_practice
   sap_impact: Unvetted employee on site.
   fix_map:
     __blank__: Escalate the check or document the exception.
-  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: started {ONBOARDINGCANDIDATEINFO.HIRE_DATE} with
-    check pending.'
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: started {ONBOARDINGCANDIDATEINFO.HIRE_DATE} with check
+    pending.'
 - id: REC080
   field: ONBOARDINGCANDIDATEINFO.PROCESS_ID
   check_class: uniqueness_check
@@ -1378,8 +1367,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Tasks and documents mixed between new hires.
   fix_map:
-    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Re-extract; each hire must have its
-      own process.
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Re-extract; each hire must have its own
+      process.
   record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: process {ONBOARDINGCANDIDATEINFO.PROCESS_ID} shared.'
 - id: REC081
   field: ONBOARDINGCANDIDATEINFO.PROCESS_ID
@@ -1443,33 +1432,3 @@ rules:
   record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): currency ''{actual_value}'' is not
     ISO 4217.'
   auto_fix: *id003
-- field: JOBREQUISITION.CLOSE_DATE
-  check_class: cross_field_check
-  fail_when: '`JOBREQUISITION.CLOSE_DATE`.dt.normalize() < `JOBREQUISITION.OPEN_DATE`.dt.normalize()'
-  require_populated: true
-  severity: medium
-  dimension: consistency
-  message: Requisition closes before it opens
-  why_it_matters: A close date before the open date is a data error that breaks time-to-fill reporting and requisition lifecycle
-    analytics.
-  rule_authority: best_practice
-  sap_impact: Time-to-fill and requisition lifecycle reporting wrong.
-  fix_map:
-    __blank__: Correct the requisition open/close dates.
-  record_fix_template: 'Requisition {JOBREQUISITION.POSITION_NUMBER}: closes {JOBREQUISITION.CLOSE_DATE} before it opens
-    ({JOBREQUISITION.OPEN_DATE}).'
-  id: REC085
-- field: JOBREQUISITION.SALARY_MAX
-  check_class: cross_field_check
-  fail_when: '`JOBREQUISITION.SALARY_MAX` < `JOBREQUISITION.SALARY_MIN`'
-  require_populated: true
-  severity: medium
-  dimension: consistency
-  message: Salary maximum below salary minimum
-  why_it_matters: A range where the maximum is below the minimum is impossible and misleads compensation approval.
-  rule_authority: best_practice
-  sap_impact: Compensation range and approval guidance wrong.
-  fix_map:
-    __blank__: Correct the salary min/max range.
-  record_fix_template: 'Requisition {JOBREQUISITION.POSITION_NUMBER}: salary max {JOBREQUISITION.SALARY_MAX} below min {JOBREQUISITION.SALARY_MIN}.'
-  id: REC086
