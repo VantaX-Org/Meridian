@@ -4,12 +4,12 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, Delta, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, Heatmap, Pill, ScoreRing, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { getExec, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
+import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, labelOf } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -72,6 +72,9 @@ export default function ExecPage() {
   const runLabel = useRunLabel(data?.version_id);
 
   const cost = useQuery({ queryKey: queryKeys.insights("proven-cost", run), queryFn: () => getProvenCost({ version_id: run }), enabled: !!run });
+  const overview = useQuery({ queryKey: queryKeys.insights("overview", run), queryFn: () => getOverview({ version_id: run }), enabled: !!run });
+  const dqs = overview.data?.dqs;
+  const VERDICT_SENTENCE: Record<string, string> = { go: "Ready to load", at_risk: "At risk", no_go: "Not ready" };
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
@@ -108,6 +111,20 @@ export default function ExecPage() {
       actions={<InsightActions run={vid} options={exportOptions} />}
       insight={{
         hero: true,
+        lead: dqs && typeof dqs.composite === "number" ? (
+          <div className="flex items-center gap-5">
+            <ScoreRing score={dqs.composite} size={112} cap={dqs.capped ? (dqs.composite <= 70 ? 70 : 85) : undefined} />
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="m-text-meta" style={{ color: "var(--m-hero-ink-2)" }}>Data quality score</span>
+              <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
+                {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
+              </span>
+              <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
+                {dqs.capped && dqs.cap_reason ? `Capped: ${dqs.cap_reason}` : dqs.delta != null ? `${dqs.delta > 0 ? "Up" : dqs.delta < 0 ? "Down" : "Level"} ${Math.abs(Math.round(dqs.delta * 10) / 10)} since the last run` : "First scored run"}
+              </span>
+            </div>
+          </div>
+        ) : undefined,
         stats: data ? [
           { label: "No-go cells", value: noGo, tone: noGo ? "no-go" : "go", to: "/insights/readiness" },
           { label: "Largest L1 at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", to: "/insights/impact" },
@@ -191,6 +208,11 @@ export default function ExecPage() {
                   <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
                   <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
                 </div>
+              ) : roi.data && !roi.data.roi.subscription_annual ? (
+                <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                  Return on investment appears once the subscription and cost per record are set.{" "}
+                  <Link href="/admin/settings" className="underline-offset-2 hover:underline">Open settings</Link>
+                </p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.roi_multiple}x` : "—"} />
