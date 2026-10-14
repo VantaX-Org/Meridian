@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, Delta, Heatmap, Pill, ScoreRing, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
@@ -112,10 +112,20 @@ export default function ExecPage() {
       insight={{
         hero: true,
         lead: dqs && typeof dqs.composite === "number" ? (
-          <div className="flex items-center gap-5">
-            <ScoreRing score={dqs.composite} size={112} cap={dqs.capped ? (dqs.composite <= 70 ? 70 : 85) : undefined} />
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="m-text-meta" style={{ color: "var(--m-hero-ink-2)" }}>Data quality score</span>
+          <div className="grid items-end gap-x-8 gap-y-4 sm:grid-cols-[auto_1fr]">
+            <div style={{ width: 200 }}>
+              <Stat
+                hero
+                label="Data quality score"
+                help="dqs"
+                value={dqs.composite}
+                decimals={1}
+                versionId={vid}
+                hint={dqs.capped ? `Capped at ${dqs.composite <= 70 ? 70 : 85}` : undefined}
+                delta={dqs.delta != null ? <Delta hero value={dqs.delta} /> : undefined}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-1" style={{ maxWidth: "48ch" }}>
               <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
                 {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
               </span>

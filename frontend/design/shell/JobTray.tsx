@@ -29,15 +29,15 @@ export function JobTray() {
         )}
       </div>
       <Drawer open={open} onOpenChange={setOpen} title="Jobs">
-        {jobs.length === 0 && <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>No jobs yet.</p>}
+        {jobs.length === 0 && <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No jobs yet.</p>}
         <ul className="flex flex-col gap-4">
           {jobs.map((job) => (
             <li key={job.id} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[13px] leading-[18px] font-medium" style={{ color: "var(--m-ink)" }}>{job.label}</span>
-                <span className="m-numeric text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>{job.percent}%</span>
+                <span className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>{job.label}</span>
+                <span className="m-numeric m-text-meta" style={{ color: "var(--m-ink-3)" }}>{job.percent}%</span>
               </div>
-              {job.status !== "running" && <span className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>{job.status}</span>}
+              {job.status !== "running" && <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{job.status}</span>}
               <div
                 role="progressbar"
                 aria-label={`${job.label} progress`}

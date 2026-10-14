@@ -23,7 +23,7 @@ export function JobProgress({ job }: { job: Job }) {
   const eta = etaSeconds(job.percent, job.started_at, now);
   const stalled = isStalled(job.status, job.updated_at, now);
   return (
-    <div className="mt-1 flex flex-col gap-1 text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+    <div className="mt-1 flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-3)" }}>
       {job.message && (
         <span className="flex flex-wrap gap-x-2">
           {shown.map((part, i) => (

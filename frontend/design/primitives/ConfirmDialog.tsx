@@ -70,7 +70,7 @@ export function ConfirmDialog({
           </Field>
         )}
         {typeToConfirm !== undefined && (
-          <p className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
             Matches exactly: <Mono inline>{typeToConfirm}</Mono>
           </p>
         )}

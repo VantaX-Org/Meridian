@@ -24,7 +24,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div
-        className="flex h-screen items-center justify-center text-[13px]"
+        className="flex h-screen items-center justify-center m-text-body"
         style={{ background: "var(--m-canvas)", color: "var(--m-ink-3)" }}
         role="status"
         aria-label="Loading Meridian"

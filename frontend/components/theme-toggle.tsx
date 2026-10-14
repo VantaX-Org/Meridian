@@ -44,7 +44,7 @@ export function ThemeToggle() {
             data-value={value}
             tabIndex={selected ? 0 : -1}
             onClick={() => setTheme(value)}
-            className={`m-motion-colors inline-flex h-full items-center gap-1 px-2 text-[12px] leading-[16px] font-medium ${selected ? "m-elev-1" : ""}`}
+            className={`m-motion-colors inline-flex h-full items-center gap-1 px-2 m-text-meta font-medium ${selected ? "m-elev-1" : ""}`}
             style={{
               borderRadius: "var(--m-radius-control)",
               background: selected ? "var(--m-sheet)" : "transparent",

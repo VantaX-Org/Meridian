@@ -243,7 +243,7 @@ function TourRunner({ def, navigate, resolveHref }: { def: TourDef } & Pick<Tour
           style={{ position: "fixed", top: pos.top, left: pos.left, transform: pos.transform, width: CARD_W, maxWidth: "calc(100vw - 32px)", boxShadow: "var(--m-elev-3)", borderRadius: "var(--m-radius-sheet)" }}
         >
           <Card title={step.title} meta={`Step ${index + 1} of ${def.steps.length}`}>
-            <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{step.body}</p>
+            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{step.body}</p>
             {missing && (
               <div className="mt-3">
                 <Notice tone="warning">This part of the page is not available to you or has not loaded</Notice>

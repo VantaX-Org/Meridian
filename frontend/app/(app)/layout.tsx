@@ -106,13 +106,13 @@ function RunSelectorSlot() {
 
   if (versions.length === 0) {
     if (dayOne.status !== "ready" || !dayOne.step) {
-      return <span className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>No runs yet</span>;
+      return <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No runs yet</span>;
     }
     if (!dayOne.step.actionable || !dayOne.step.href) {
-      return <span className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>{dayOne.step.label}</span>;
+      return <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{dayOne.step.label}</span>;
     }
     return (
-      <Link href={dayOne.step.href} className="text-[13px] leading-[18px]" style={{ color: "var(--m-accent)" }}>
+      <Link href={dayOne.step.href} className="m-text-body" style={{ color: "var(--m-accent)" }}>
         {dayOne.step.label}
       </Link>
     );

@@ -27,7 +27,7 @@ export interface AiSummaryProps {
 export function AiSummary({ text, llmOk, fallback, findingsCount, runId, loading, adminHref, onFeedback }: AiSummaryProps) {
   const on = llmOk === true && !!text;
   return (
-    <details open className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>
+    <details open className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
       <summary className="inline-flex cursor-pointer items-center gap-2" style={{ color: on ? "var(--m-ink)" : "var(--m-ink-3)" }}>
         <Sparkles size={14} aria-hidden />
         <span>{on || loading ? "AI summary from deterministic findings" : "AI summary off — showing the deterministic summary"}</span>
@@ -42,7 +42,7 @@ export function AiSummary({ text, llmOk, fallback, findingsCount, runId, loading
           <p style={{ color: "var(--m-ink)" }}>{on ? text : fallback}</p>
         )}
         {on && !loading && (
-          <p className="mt-1 text-[11px] leading-[14px]" style={{ color: "var(--m-ink-3)" }}>
+          <p className="mt-1 m-text-label" style={{ color: "var(--m-ink-3)" }}>
             Generated from {findingsCount ?? 0} findings{runId ? <> in run <Mono>{runId}</Mono></> : null}. The model saw aggregates only.
             {onFeedback && (
               <span className="ml-2 inline-flex gap-1">
@@ -53,7 +53,7 @@ export function AiSummary({ text, llmOk, fallback, findingsCount, runId, loading
           </p>
         )}
         {!on && !loading && adminHref && (
-          <Link href={adminHref} className="mt-1 inline-block text-[11px] leading-[14px] underline-offset-2 hover:underline" style={{ color: "var(--m-ink-3)" }}>
+          <Link href={adminHref} className="mt-1 inline-block m-text-label underline-offset-2 hover:underline" style={{ color: "var(--m-ink-3)" }}>
             Enable in Admin &gt; AI
           </Link>
         )}

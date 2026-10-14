@@ -35,7 +35,7 @@ export function Dialog({
           >
             {title}
           </BaseDialog.Title>
-          <div className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{children}</div>
+          <div className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{children}</div>
           {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
         </BaseDialog.Popup>
       </BaseDialog.Portal>

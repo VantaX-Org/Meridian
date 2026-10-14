@@ -26,12 +26,12 @@ export function ErrorState({
     <div
       data-state="error"
       role="alert"
-      className="m-elev-1 flex flex-col gap-2 text-left"
-      style={{ maxWidth: 560, background: "var(--m-sheet)", borderRadius: "var(--m-radius-sheet)", borderTop: "3px solid var(--m-critical)", padding: "var(--m-space-6)" }}
+      className="flex flex-col gap-2 text-left"
+      style={{ maxWidth: 560, background: "var(--m-sheet)", borderTop: "2px solid var(--m-critical)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-6)" }}
     >
-      <p className="text-[15px] leading-5 font-semibold" style={{ color: "var(--m-ink)" }}>{title}</p>
-      {detail && <div className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{detail}</div>}
-      {message && norm(message) !== norm(title) && <p className="m-mono text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>{message}</p>}
+      <p className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{title}</p>
+      {detail && <div className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{detail}</div>}
+      {message && norm(message) !== norm(title) && <p className="m-mono m-text-meta" style={{ color: "var(--m-ink-3)" }}>{message}</p>}
       {actions ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">{actions}</div>
       ) : onRetry ? (

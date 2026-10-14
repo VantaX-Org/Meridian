@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, toneOfTier, type ChartPoint,
+  Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, Stat, toneOfTier, type ChartPoint,
   type ExportOption, type HeatmapCell,
 } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -26,6 +26,8 @@ import { InsightActions } from "./_components/InsightActions";
 import { useFindingOpener } from "./_components/FindingOpener";
 import { ruleColumns } from "./_components/RuleColumns";
 import { useInsightScope, withScope } from "./_components/useInsightScope";
+
+const VERDICT_SENTENCE: Record<string, string> = { go: "Ready to load", at_risk: "At risk", no_go: "Not ready" };
 
 
 const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));
@@ -98,13 +100,34 @@ export default function InsightsOverviewPage() {
       insight={{
         hero: true,
         loading,
+        lead: (
+          <div className="grid items-end gap-x-8 gap-y-4 sm:grid-cols-[auto_1fr]">
+            <div style={{ width: 200 }}>
+              <Stat
+                hero
+                label="Data quality score"
+                help="dqs"
+                loading={loading}
+                value={o?.dqs.composite ?? "—"}
+                decimals={1}
+                versionId={run}
+                href={withScope("/insights/trends", { run })}
+                tone={o?.dqs.tier === "go" ? "go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "no_go" ? "no-go" : undefined}
+                hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ?? "critical failures"}` : undefined}
+                delta={o?.dqs.delta != null ? <Delta hero value={o.dqs.delta} /> : undefined}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-1" style={{ maxWidth: "48ch" }}>
+              <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
+                {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : loading ? "Scoring" : "Not scored yet"}
+              </span>
+              <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
+                {o ? `${o.blockers.count} blocking ${o.blockers.count === 1 ? "gap" : "gaps"} across ${o.blockers.waves} ${o.blockers.waves === 1 ? "wave" : "waves"}` : " "}
+              </span>
+            </div>
+          </div>
+        ),
         stats: [
-          {
-            label: "DQS", value: o?.dqs.composite ?? "—", decimals: 1, to: withScope("/insights/trends", { run }), versionId: run,
-            hint: o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ?? "critical failures"}` : o?.dqs.tier ? labelOf(o.dqs.tier) : undefined,
-            tone: o?.dqs.tier === "go" ? "go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "no_go" ? "no-go" : undefined,
-            ...(o?.dqs.delta != null ? { delta: <Delta hero value={o.dqs.delta} /> } : {}),
-          },
           { label: "Blockers", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? `${o.blockers.waves} ${o.blockers.waves === 1 ? "wave" : "waves"}` : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
           { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ source: "rule", confidence: "high" }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {

@@ -43,7 +43,7 @@ export function ScoreExplainer({ score, band, dimensions, cap, rules, historyHre
       <Popover.Portal>
         <Popover.Positioner sideOffset={8}>
           <Popover.Popup
-            className="m-motion-scale-in rounded p-4 text-[13px] leading-[18px]"
+            className="m-motion-scale-in rounded p-4 m-text-body"
             style={{ background: "var(--m-sheet)", color: "var(--m-ink)", boxShadow: "var(--m-elev-2)", width: 360 }}
           >
             <div className="flex items-center gap-3">

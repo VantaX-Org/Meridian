@@ -48,7 +48,7 @@ export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, pr
             </button>
           </li>
         ))}
-        {grants.length === 0 ? <li className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>No grants yet.</li> : null}
+        {grants.length === 0 ? <li className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>No grants yet.</li> : null}
       </ul>
       <div className="flex flex-wrap items-end gap-2">
         <Field label="Role"><Select options={roleOptions} value={role} onValueChange={setRole} placeholder="Choose a role" /></Field>

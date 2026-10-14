@@ -47,7 +47,7 @@ export function OwnerPicker({ kind, refId }: { kind: OwnerKind; refId: string })
   if (isListFailure(owners)) return <ErrorState message="Owners could not be read." onRetry={() => owners.refetch()} />;
   if (users.isError || !users.data) {
     return (
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
         {row && (row.owner_name || row.steward_name)
           ? `Owner: ${row.owner_name ?? "not set"}. Steward: ${row.steward_name ?? "not set"}.`
           : "No owner set."}

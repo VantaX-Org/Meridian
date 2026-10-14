@@ -60,7 +60,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Search"
-        className="m-motion-colors inline-flex w-8 xl:w-[220px] items-center justify-center xl:justify-between gap-2 border px-2 text-[13px] leading-[18px] hover:!border-[var(--m-ink-3)]"
+        className="m-motion-colors inline-flex w-8 xl:w-[220px] items-center justify-center xl:justify-between gap-2 border px-2 m-text-body hover:!border-[var(--m-ink-3)]"
         style={{ height: "var(--m-control-h)", borderColor: "var(--m-line-strong)", background: "var(--m-sheet)", color: "var(--m-ink-3)", borderRadius: "var(--m-radius-control)" }}
       >
         <span className="flex items-center gap-2">
@@ -80,7 +80,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
         {parsed && parsed.chips.length > 0 && (
           <div className="flex flex-wrap gap-1 px-3 py-2" aria-label="Parsed filters">
             {parsed.chips.map((c) => (
-              <span key={`${c.kind}:${c.value}`} className="rounded-full px-2 text-[12px]" style={{ background: "var(--m-accent-soft)", color: "var(--m-accent-ink)" }}>{c.label}</span>
+              <span key={`${c.kind}:${c.value}`} className="rounded-full px-2 m-text-meta" style={{ background: "var(--m-accent-soft)", color: "var(--m-accent-ink)" }}>{c.label}</span>
             ))}
           </div>
         )}
@@ -119,7 +119,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
           ))}
         </Command.List>
         <div
-          className="flex items-center gap-4 px-4 text-[11px] leading-[14px]"
+          className="flex items-center gap-4 px-4 m-text-label"
           style={{ height: 36, background: "var(--m-sheet-raised)", color: "var(--m-ink-3)", borderTop: "1px solid var(--m-line)" }}
         >
           <span className="flex items-center gap-1"><kbd className="m-kbd">↑↓</kbd> navigate</span>

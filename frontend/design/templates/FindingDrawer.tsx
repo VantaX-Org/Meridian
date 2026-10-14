@@ -25,7 +25,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf, checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/format";
 
-const heading = "text-[13px] font-semibold";
+const heading = "m-text-body font-semibold";
 // Pill has no high tone: high shares the at-risk fill with medium.
 const SEVERITY_PILL: Record<Severity, PillTone> = { critical: "no-go", high: "at-risk", medium: "at-risk", low: "neutral", pass: "go" };
 const dim = { color: "var(--m-ink-3)" } as const;
@@ -55,13 +55,13 @@ function RootCauseSection({ checkId, versionId }: { checkId: string; versionId: 
   return (
     <section className="flex flex-col gap-2" data-testid="root-cause">
       <h3 className={heading} style={{ color: "var(--m-ink)" }}>Root cause</h3>
-      <div className="flex items-center gap-2 text-[13px]">
+      <div className="flex items-center gap-2 m-text-body">
         <Pill tone={q.data.root_cause_type === "bad_data" ? "neutral" : "at-risk"}>{ROOT_CAUSE_LABEL[q.data.root_cause_type]}</Pill>
       </div>
-      <ul className="flex flex-col gap-1 text-[13px]">
+      <ul className="flex flex-col gap-1 m-text-body">
         {issues.filter(([, text]) => text).map(([label, text]) => <li key={label}><span style={dim}>{label}: </span>{text}</li>)}
       </ul>
-      {q.data.recommendation ? <p className="text-[13px]">{q.data.recommendation}</p> : null}
+      {q.data.recommendation ? <p className="m-text-body">{q.data.recommendation}</p> : null}
     </section>
   );
 }
@@ -128,23 +128,23 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
             <div className="flex flex-col gap-6">
               <section className="flex flex-col gap-2">
                 <h3 className={heading} style={{ color: "var(--m-ink)" }}>What failed</h3>
-                <div className="flex items-center gap-2 text-[13px]">
+                <div className="flex items-center gap-2 m-text-body">
                   {isSeverity(finding.severity) && <SeverityDot severity={finding.severity} />}
                   {isSeverity(finding.severity) && <Pill tone={SEVERITY_PILL[finding.severity]} variant="solid">{labelOf(finding.severity)}</Pill>}
                   <Mono>{finding.check_id}</Mono>
                   <span style={dim}>{formatModuleName(finding.module)}</span>
                 </div>
-                <p className="text-[13px]">
+                <p className="m-text-body">
                   {finding.details.message ?? (isAnomaly ? "An unexpected change was detected in this data." : "No message recorded for this check.")}
                 </p>
                 {finding.check_class && (
-                  <p className="text-[13px]" style={dim}>{checkClassLabel(finding.check_class)}</p>
+                  <p className="m-text-body" style={dim}>{checkClassLabel(finding.check_class)}</p>
                 )}
               </section>
 
               <section className="flex flex-col gap-2">
                 <h3 className={heading} style={{ color: "var(--m-ink)" }}>How many</h3>
-                <p className="text-[13px]">
+                <p className="m-text-body">
                   {finding.affected_count.toLocaleString()} of {finding.total_count.toLocaleString()} record
                   {finding.total_count === 1 ? "" : "s"} affected
                   {finding.pass_rate != null ? ` (${(finding.pass_rate * (finding.pass_rate <= 1 ? 100 : 1)).toFixed(1)} % passing).` : "."}
@@ -154,13 +154,13 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
               <section className="flex flex-col gap-2">
                 <h3 className={heading} style={{ color: "var(--m-ink)" }}>Why</h3>
                 {finding.rule_context ? (
-                  <div className="flex flex-col gap-1 text-[13px]">
+                  <div className="flex flex-col gap-1 m-text-body">
                     <p>{finding.rule_context.why_it_matters}</p>
                     <p style={dim}>{AUTHORITY_SENTENCE[finding.rule_context.rule_authority] ?? ""}</p>
                     <p>{finding.rule_context.sap_impact}</p>
                   </div>
                 ) : (
-                  <p className="text-[13px]" style={dim}>No rule context recorded for this check.</p>
+                  <p className="m-text-body" style={dim}>No rule context recorded for this check.</p>
                 )}
               </section>
 
@@ -169,7 +169,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                 {impactQuery.isLoading ? (
                   <Skeleton height={48} />
                 ) : impactQuery.data && impactQuery.data.impacts.length > 0 ? (
-                  <ul className="flex flex-col gap-1 text-[13px]">
+                  <ul className="flex flex-col gap-1 m-text-body">
                     {impactQuery.data.impacts.map((bucket) => (
                       <li key={bucket.category}>
                         {bucket.category}: {bucket.finding_count.toLocaleString()} finding{bucket.finding_count === 1 ? "" : "s"},{" "}
@@ -178,40 +178,40 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-[13px]" style={dim}>No impact model for this check.</p>
+                  <p className="m-text-body" style={dim}>No impact model for this check.</p>
                 )}
               </section>
 
               <section className="flex flex-col gap-2">
                 <h3 className={heading} style={{ color: "var(--m-ink)" }}>Samples</h3>
                 {isAnomaly && anomalySamples.length > 0 ? (
-                  <ul className="flex flex-col gap-1 text-[13px]">
+                  <ul className="flex flex-col gap-1 m-text-body">
                     {anomalySamples.slice(0, 10).map((s) => (
                       <li key={s.record_key}><Mono>{s.record_key}</Mono>{s.value != null ? ` — ${s.value}` : ""}</li>
                     ))}
                   </ul>
                 ) : invalidValues.length > 0 ? (
-                  <ul className="flex flex-col gap-1 text-[13px]">
+                  <ul className="flex flex-col gap-1 m-text-body">
                     {invalidValues.slice(0, 10).map(([value, count]) => (
                       <li key={value}><Mono>{value || "(blank)"}</Mono> — {count.toLocaleString()} record{count === 1 ? "" : "s"}</li>
                     ))}
                   </ul>
                 ) : failingSamples.length > 0 ? (
-                  <ul className="flex flex-col gap-1 text-[13px]">
+                  <ul className="flex flex-col gap-1 m-text-body">
                     {failingSamples.slice(0, 10).map((row, i) => (
                       <li key={i}><Mono>{JSON.stringify(row)}</Mono></li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-[13px]" style={dim}>No sample records stored for this finding.</p>
+                  <p className="m-text-body" style={dim}>No sample records stored for this finding.</p>
                 )}
               </section>
 
               <section className="flex flex-col gap-2">
                 <h3 className={heading} style={{ color: "var(--m-ink)" }}>Fix</h3>
-                {finding.remediation_text && <p className="text-[13px]">{finding.remediation_text}</p>}
+                {finding.remediation_text && <p className="m-text-body">{finding.remediation_text}</p>}
                 {valueFixes.length > 0 ? (
-                  <ul className="flex flex-col gap-1 text-[13px]">
+                  <ul className="flex flex-col gap-1 m-text-body">
                     {valueFixes.slice(0, 10).map((fix) => (
                       <li key={fix.invalid_value}>
                         <Mono>{fix.invalid_value}</Mono> — {fix.fix_instruction}
@@ -220,7 +220,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                     ))}
                   </ul>
                 ) : recordFixes.length > 0 ? (
-                  <ul className="flex flex-col gap-1 text-[13px]">
+                  <ul className="flex flex-col gap-1 m-text-body">
                     {recordFixes.slice(0, 10).map((fix) => (
                       <li key={fix.record_id}>
                         <Mono>{fix.record_id}</Mono> — {fix.fix_instruction}
@@ -228,7 +228,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                     ))}
                   </ul>
                 ) : !finding.remediation_text ? (
-                  <p className="text-[13px]" style={dim}>No fix guidance for this check yet.</p>
+                  <p className="m-text-body" style={dim}>No fix guidance for this check yet.</p>
                 ) : null}
               </section>
 

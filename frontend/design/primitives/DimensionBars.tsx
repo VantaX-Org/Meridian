@@ -18,11 +18,11 @@ export function DimensionBars({ items, label = "Dimension scores" }: { items: Di
         const fill = d.score === null ? null : barFill(d.score, { max: 100, tone: "rate" });
         const row = (
           <>
-            <span className="w-28 shrink-0 truncate text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{d.label}</span>
+            <span className="w-28 shrink-0 truncate m-text-body" style={{ color: "var(--m-ink-2)" }}>{d.label}</span>
             <span className="m-bar-track" aria-hidden="true" style={{ flex: 1, width: "auto" }}>
               {fill && <span className="m-bar-fill" {...fill.attr} style={{ width: `${fill.pct}%` }} />}
             </span>
-            <span className="m-numeric w-10 shrink-0 text-right text-[13px] leading-[18px]" style={{ color: d.score === null ? "var(--m-ink-4)" : "var(--m-ink)" }}>
+            <span className="m-numeric w-10 shrink-0 text-right m-text-body" style={{ color: d.score === null ? "var(--m-ink-4)" : "var(--m-ink)" }}>
               {d.score === null ? "–" : formatScore(d.score)}
             </span>
           </>

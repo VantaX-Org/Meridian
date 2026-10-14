@@ -33,7 +33,7 @@ export function FirstRunChecklist({ items, onDismiss }: { items: ChecklistItem[]
     >
       <ul className="flex flex-col" data-testid="first-run-checklist">
         {items.map((item) => (
-          <li key={item.id} data-done={item.done} className="flex items-center gap-3 py-1.5 text-[13px] leading-[18px]">
+          <li key={item.id} data-done={item.done} className="flex items-center gap-3 py-1.5 m-text-body">
             <span
               aria-hidden
               className="inline-flex shrink-0 items-center justify-center rounded-full"

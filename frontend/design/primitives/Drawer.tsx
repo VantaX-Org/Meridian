@@ -29,10 +29,10 @@ export function Drawer({
         >
           <div className="flex h-14 shrink-0 items-center justify-between gap-3 px-5 border-b" style={{ borderColor: "var(--m-line)" }}>
             <div className="min-w-0">
-              <BaseDrawer.Title className="text-[15px] leading-5 font-semibold truncate" style={{ color: "var(--m-ink)" }}>
+              <BaseDrawer.Title className="m-text-h font-semibold truncate" style={{ color: "var(--m-ink)" }}>
                 {title}
               </BaseDrawer.Title>
-              {subtitle && <div className="text-[12px] leading-4 truncate" style={{ color: "var(--m-ink-3)" }}>{subtitle}</div>}
+              {subtitle && <div className="m-text-meta truncate" style={{ color: "var(--m-ink-3)" }}>{subtitle}</div>}
             </div>
             <BaseDrawer.Close render={<IconButton aria-label="Close" size="sm" />}>
               <X size={16} />

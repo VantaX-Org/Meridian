@@ -73,7 +73,7 @@ export function JourneyStepper({
               >
                 {isDone ? <Check size={14} /> : i + 1}
               </span>
-              <span className="text-[12px] leading-[16px]" style={{ color: isCurrent ? "var(--m-ink)" : "var(--m-ink-3)" }}>
+              <span className="m-text-meta" style={{ color: isCurrent ? "var(--m-ink)" : "var(--m-ink-3)" }}>
                 {s.label}
               </span>
             </li>
@@ -83,10 +83,10 @@ export function JourneyStepper({
 
       {step && (
         <div data-testid="day-one-step" className="flex flex-col gap-2 border-t pt-4" style={{ borderColor: "var(--m-line)" }}>
-          <p className="text-[13px] leading-[18px] font-medium" style={{ color: "var(--m-ink)" }}>{step.label}</p>
-          <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>{step.detail}</p>
+          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>{step.label}</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{step.detail}</p>
           {step.key === "running" && runningJob ? (
-            <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>
+            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
               {runningJob.label} — {runningJob.status} ({runningJob.percent}%)
             </p>
           ) : !step.actionable || !step.href ? null : (
