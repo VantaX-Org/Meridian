@@ -1,1519 +1,1515 @@
 module: learning_management
 target_state: SUCCESSFACTORS
 rules:
-
-  - id: LMS001
-    field: LEARNINGASSIGNMENT.USERID
-    check_class: null_check
-    severity: critical
-    dimension: completeness
-    message: "User ID is mandatory — orphaned assignments cannot be tracked for compliance"
-    why_it_matters: >-
-      USERID links a learning assignment to a specific employee. Without it, the
-      assignment is orphaned and cannot appear on the employee's learning transcript.
-      For compliance-critical training (health and safety, anti-bribery, data
-      protection), an orphaned assignment means the organisation has no auditable
-      evidence that the employee was assigned the required training.
-    rule_authority: best_practice
-    sap_impact: >-
-      Assignment not visible on employee transcript. Compliance reports show training as
-      unassigned. Audit trail for mandatory training is broken.
-    fix_map:
-      __blank__: >-
-        Identify the correct employee and assign their USERID via Learning > Admin >
-        Assignment Management. Cross-reference with EC employee records to find the
-        correct USERID.
-    record_fix_template: >-
-      Assignment {LEARNINGASSIGNMENT.USERID}: USERID is missing. Link to correct
-      employee via Learning > Admin > Assignment Management.
-
-  - id: LMS002
-    field: LEARNINGASSIGNMENT.COURSE_ID
-    check_class: null_check
-    severity: critical
-    dimension: completeness
-    message: "Course ID is mandatory — links assignment to course catalogue content"
-    why_it_matters: >-
-      COURSE_ID links the assignment to a specific course in the Learning catalogue.
-      Without it, the learner sees an assignment with no content — they cannot launch the
-      course, complete it, or receive credit. For compliance training, this means
-      mandatory courses appear assigned but are impossible to complete.
-    rule_authority: best_practice
-    sap_impact: >-
-      Learner cannot launch or complete the assigned course. Assignment appears in
-      transcript but content is unavailable. Compliance training completion is blocked.
-    fix_map:
-      __blank__: >-
-        Link to the correct course via Learning > Admin > Assignment Management. The
-        course must exist and be active in the Learning catalogue.
-    record_fix_template: >-
-      Assignment for {LEARNINGASSIGNMENT.USERID}: COURSE_ID is missing. Link to a valid
-      course via Learning > Admin > Assignment Management.
-
-  - id: LMS003
-    field: LEARNINGASSIGNMENT.DUE_DATE
-    check_class: null_check
-    severity: high
-    dimension: completeness
-    message: Due date is required for overdue alerts and compliance escalation
-    why_it_matters: DUE_DATE drives the overdue alert engine and compliance escalation workflows. Without a due date, the system
-      cannot generate overdue notifications to learners or escalate non-completion to managers. For compliance training with
-      regulatory deadlines, missing due dates mean the organisation has no automated mechanism to enforce timely completion.
-    rule_authority: best_practice
-    sap_impact: No overdue alerts generated for this assignment. Manager escalation workflow cannot trigger. Compliance dashboard
-      shows no deadline.
-    fix_map:
-      __blank__: Set an appropriate due date via Learning > Admin > Assignment Management. For compliance training, align with
-        regulatory deadline. Use ISO format YYYY-MM-DD.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: DUE_DATE is missing. Set deadline via Learning > Admin
-      > Assignment Management. Format: YYYY-MM-DD.'
-    applies_when:
-      LEARNINGASSIGNMENT.REQUIRED:
-      - 'True'
-      - 'true'
-      - 'TRUE'
-      - Y
-      - '1'
-
-
-  - id: LMS005
-    field: LEARNINGASSIGNMENT.COURSE_TITLE
-    check_class: null_check
-    severity: medium
-    dimension: completeness
-    message: "Course title is required for learner-facing display and reporting"
-    why_it_matters: >-
-      COURSE_TITLE is the human-readable name displayed on the learner's transcript and
-      in compliance reports. A blank title makes it impossible for the learner to identify
-      the training and produces unreadable compliance reports.
-    rule_authority: best_practice
-    sap_impact: >-
-      Learner transcript shows blank course entry. Compliance reports list unnamed
-      training assignments. Manager reports are unreadable.
-    fix_map:
-      __blank__: >-
-        Populate the course title from the Learning catalogue. Should match the title
-        configured in Learning > Admin > Course Management. Update via Assignment
-        Management.
-    record_fix_template: >-
-      Assignment for {LEARNINGASSIGNMENT.USERID}: COURSE_TITLE is blank. Populate from
-      the course catalogue via Learning > Admin > Assignment Management.
-
-  - id: LMS006
-    field: LEARNINGASSIGNMENT.REQUIRED
-    check_class: domain_value_check
-    allowed_values:
-    - 'true'
-    - 'false'
+- id: LMS001
+  field: LEARNINGASSIGNMENT.USERID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: User ID is mandatory — orphaned assignments cannot be tracked for compliance
+  why_it_matters: USERID links a learning assignment to a specific employee. Without it, the assignment is orphaned and
+    cannot appear on the employee's learning transcript. For compliance-critical training (health and safety, anti-bribery,
+    data protection), an orphaned assignment means the organisation has no auditable evidence that the employee was assigned
+    the required training.
+  rule_authority: best_practice
+  sap_impact: Assignment not visible on employee transcript. Compliance reports show training as unassigned. Audit trail
+    for mandatory training is broken.
+  fix_map:
+    __blank__: Identify the correct employee and assign their USERID via Learning > Admin > Assignment Management. Cross-reference
+      with EC employee records to find the correct USERID.
+  record_fix_template: 'Assignment {LEARNINGASSIGNMENT.USERID}: USERID is missing. Link to correct employee via Learning
+    > Admin > Assignment Management.'
+- id: LMS002
+  field: LEARNINGASSIGNMENT.COURSE_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Course ID is mandatory — links assignment to course catalogue content
+  why_it_matters: COURSE_ID links the assignment to a specific course in the Learning catalogue. Without it, the learner
+    sees an assignment with no content — they cannot launch the course, complete it, or receive credit. For compliance training,
+    this means mandatory courses appear assigned but are impossible to complete.
+  rule_authority: best_practice
+  sap_impact: Learner cannot launch or complete the assigned course. Assignment appears in transcript but content is unavailable.
+    Compliance training completion is blocked.
+  fix_map:
+    __blank__: Link to the correct course via Learning > Admin > Assignment Management. The course must exist and be active
+      in the Learning catalogue.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: COURSE_ID is missing. Link to a valid course via Learning
+    > Admin > Assignment Management.'
+- id: LMS003
+  field: LEARNINGASSIGNMENT.DUE_DATE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Due date is required for overdue alerts and compliance escalation
+  why_it_matters: DUE_DATE drives the overdue alert engine and compliance escalation workflows. Without a due date, the
+    system cannot generate overdue notifications to learners or escalate non-completion to managers. For compliance training
+    with regulatory deadlines, missing due dates mean the organisation has no automated mechanism to enforce timely completion.
+  rule_authority: best_practice
+  sap_impact: No overdue alerts generated for this assignment. Manager escalation workflow cannot trigger. Compliance dashboard
+    shows no deadline.
+  fix_map:
+    __blank__: Set an appropriate due date via Learning > Admin > Assignment Management. For compliance training, align
+      with regulatory deadline. Use ISO format YYYY-MM-DD.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: DUE_DATE is missing. Set deadline via Learning > Admin
+    > Assignment Management. Format: YYYY-MM-DD.'
+  applies_when:
+    LEARNINGASSIGNMENT.REQUIRED:
     - 'True'
-    - 'False'
+    - 'true'
+    - 'TRUE'
     - Y
-    - N
-    severity: medium
-    dimension: accuracy
-    message: Required flag must be Y (mandatory) or N (optional)
-    why_it_matters: The REQUIRED flag determines whether the assignment is treated as mandatory compliance training or optional
-      development. Incorrect values cause compliance reports to either miss mandatory training or incorrectly flag optional
-      courses as compliance gaps.
-    rule_authority: best_practice
-    sap_impact: Compliance reporting incorrectly classifies this assignment. Mandatory training may be treated as optional or
-      vice versa.
-    valid_values_with_labels:
-      'true': Required
-      'false': Optional
-      'True': Required
-      'False': Optional
-      Y: Required (legacy export)
-      N: Optional (legacy export)
-    fix_map:
-      __blank__: Set the required flag to Y for mandatory training or N for optional. Update via Learning > Admin > Assignment
-        Management.
-      __other__: Required flag '{invalid_value}' is not valid. Use Y (mandatory) or N (optional). Update via Learning > Admin
-        > Assignment Management.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: REQUIRED flag ''{actual_value}'' is invalid. Set to Y
-      or N via Learning > Admin > Assignment Management.'
-    auto_fix:
-      steps:
-      - op: strip
-      - op: map
-        values:
-          'yes': Y
-          'Yes': Y
-          'YES': Y
-          'no': N
-          'No': N
-          'NO': N
-          'TRUE': 'true'
-          'FALSE': 'false'
-          '1': Y
-          '0': N
-      confidence: high
-
-  - id: LMS007
-    field: LEARNINGASSIGNMENT.ASSIGNED_DATE
-    check_class: null_check
-    severity: medium
-    dimension: completeness
-    message: "Assigned date is required for tracking assignment lifecycle and SLA compliance"
-    why_it_matters: >-
-      ASSIGNED_DATE records when the training was assigned to the learner. It is used to
-      calculate the time between assignment and completion, which is a key SLA metric for
-      compliance training programmes.
-    rule_authority: best_practice
-    sap_impact: >-
-      Assignment-to-completion time cannot be calculated. SLA compliance for training
-      programmes cannot be measured.
-    fix_map:
-      __blank__: >-
-        Set the assigned date to when the training was originally assigned. Update via
-        Learning > Admin > Assignment Management. Format: YYYY-MM-DD.
-    record_fix_template: >-
-      Assignment for {LEARNINGASSIGNMENT.USERID}: ASSIGNED_DATE is missing. Set via
-      Learning > Admin > Assignment Management. Format: YYYY-MM-DD.
-
-
-  - id: LMS009
-    field: LEARNINGCOMPLETION.COMPLETION_DATE
-    check_class: null_check
-    severity: high
-    dimension: completeness
-    message: "Completion date is required as evidence for compliance audits"
-    why_it_matters: >-
-      COMPLETION_DATE is the timestamp that proves when an employee satisfied a training
-      requirement. Without it, compliance auditors cannot verify that training was
-      completed within the required timeframe. Recertification workflows also rely on
-      this date to calculate when the next cycle of training is due.
-    rule_authority: best_practice
-    sap_impact: >-
-      Compliance audit evidence incomplete — no proof of when training was completed.
-      Recertification due date cannot be calculated. Training history has gaps.
-    fix_map:
-      __blank__: >-
-        Set the actual completion date via Learning > Admin > Completion Management. Use
-        ISO format YYYY-MM-DD. For historical records, use the date the learner finished
-        the course.
-    record_fix_template: >-
-      Completion for {LEARNINGASSIGNMENT.USERID}: COMPLETION_DATE is missing. Set via
-      Learning > Admin > Completion Management. Format: YYYY-MM-DD.
-
-
-
-
-  - id: LMS013
-    field: LEARNINGASSIGNMENT.USERID
-    check_class: uniqueness_check
-    fields: [LEARNINGASSIGNMENT.USERID, LEARNINGASSIGNMENT.COURSE_ID]
-    severity: high
-    dimension: uniqueness
-    message: Duplicate learning assignment records per employee — same course assigned multiple times
-    why_it_matters: Duplicate assignments inflate compliance completion metrics and may cause learners to be re-enrolled
-      in completed courses.
-    rule_authority: best_practice
-    sap_impact: Compliance dashboards show incorrect completion rates. Learners receive duplicate notifications. Training
-      cost reports are overstated.
-    fix_map: {__blank__: Review duplicate assignments in Learning > Admin > Assignment Rules. Remove the duplicate
-        assignment. Verify completion status on the surviving record.}
-    record_fix_template: "Employee {LEARNINGASSIGNMENT.USERID}, course {LEARNINGASSIGNMENT.COURSE_ID}: assigned more than once. Remove the duplicate assignment in the LMS admin."
-
-  - id: LMS014
-    field: LEARNINGASSIGNMENT.DUE_DATE
-    check_class: freshness_check
-    max_age_hours: 24
-    severity: high
-    dimension: timeliness
-    message: Learning assignment past due date — overdue mandatory training creates compliance risk
-    rule_authority: best_practice
-    why_it_matters: Learning assignments past their due date represent overdue mandatory training — a direct compliance and
-      audit exposure, especially for regulated curricula.
-    sap_impact: Compliance dashboards report false completion; audits flag overdue mandatory training; certifications lapse
-      and access entitlements based on training become invalid.
-    fix_map:
-      __blank__: 'In SuccessFactors Learning: notify the assignee and manager, extend or reassign the item if appropriate, and
-        escalate persistently overdue mandatory training to the compliance owner.'
-    record_fix_template: Learning assignment {field} is overdue by {age_days} days. Notify assignee/manager, reassign or extend,
-      and escalate if mandatory.
-    applies_when:
-      LEARNINGASSIGNMENT.REQUIRED:
-      - 'True'
-      - 'true'
-      - 'TRUE'
-      - Y
-      - '1'
-
-  - id: LMS015
-    field: LEARNINGASSIGNMENT.STATUS
-    check_class: null_check
-    severity: high
-    dimension: completeness
-    message: "Learning assignment status (LEARNINGASSIGNMENT.STATUS) is mandatory"
-    why_it_matters: >-
-      STATUS records whether a learning assignment is assigned, in progress,
-      completed, or overdue. Without it, the assignment cannot be tracked on
-      the employee transcript and compliance completion reporting is impossible
-      — for mandatory training this breaks the auditable evidence trail.
-    rule_authority: best_practice
-    sap_impact: >-
-      Assignment progress cannot be determined. Compliance dashboards report
-      incorrect completion rates and the audit trail for mandatory training is
-      incomplete.
-    fix_map:
-      __blank__: >-
-        Set the correct assignment status via Learning > Admin > Assignment
-        Management. Reconcile with the learner's actual completion record.
-    record_fix_template: >-
-      Assignment {LEARNINGASSIGNMENT.USERID}: status is missing. Set via
-      Learning > Admin > Assignment Management.
-
-  - id: LMS016
-    field: LEARNINGASSIGNMENT.DUE_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.DUE_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.ASSIGNED_DATE`.dt.normalize()'
-    require_populated: true
-    severity: medium
-    dimension: consistency
-    message: Assignment is due before the day it was assigned
-    why_it_matters: 'A required date before the assignment date makes the item overdue the moment it is assigned: the learner
-      never had a compliant window, overdue notifications fire immediately and compliance reporting counts a breach that is
-      a data error.'
-    rule_authority: best_practice
-    sap_impact: Item overdue on assignment; compliance KPIs and overdue escalations wrong for this learner.
-    fix_map:
-      __blank__: Correct the required date (or the assignment date) in Learning Administration > Users > Learning Plan.
-    record_fix_template: 'Learner {LEARNINGASSIGNMENT.USERID}: {LEARNINGASSIGNMENT.COURSE_ID} due {LEARNINGASSIGNMENT.DUE_DATE},
-      before it was assigned ({LEARNINGASSIGNMENT.ASSIGNED_DATE}).'
-  - id: LMS017
-    field: LEARNINGCOMPLETION.USERID
-    check_class: null_check
-    severity: critical
-    dimension: completeness
-    message: Learning history record must identify the learner
-    why_it_matters: 'A completion without a learner ID cannot be credited to anyone: the learner''s compliance status stays
-      incomplete and the record is invisible to every report.'
-    rule_authority: sap_hard_constraint
-    sap_impact: Completion not credited; learner appears non-compliant; certification evidence lost.
-    fix_map:
-      __blank__: Re-record the learning event for the correct learner via Learning Administration > Record Learning.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID}: learner ID is missing.'
-  - id: LMS018
-    field: LEARNINGCOMPLETION.COURSE_ID
-    check_class: null_check
-    severity: critical
-    dimension: completeness
-    message: Learning history record must identify the learning item
-    why_it_matters: 'A completion without an item ID cannot satisfy any requirement: assignments and curricula stay open and
-      the record cannot be audited.'
-    rule_authority: sap_hard_constraint
-    sap_impact: Required assignment not closed; curriculum status wrong; audit evidence missing.
-    fix_map:
-      __blank__: Re-record the learning event against the correct item via Learning Administration > Record Learning.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}: item ID is missing.'
-  - id: LMS019
-    field: LEARNINGCOMPLETION.STATUS
-    check_class: null_check
-    severity: high
-    dimension: completeness
-    message: Learning history record must carry a completion status
-    why_it_matters: The completion status decides whether a learning event satisfies the requirement (completed/passed) or
-      not (failed, incomplete). Without it, SAP SuccessFactors Learning cannot decide whether the item is fulfilled.
-    rule_authority: sap_hard_constraint
-    sap_impact: Requirement not fulfilled; curriculum and compliance status cannot be computed for this record.
-    fix_map:
-      __blank__: Set the completion status on the learning event via Learning Administration > Learning History.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: completion status missing.'
-  - id: LMS020
-    field: LEARNINGCOMPLETION.SCORE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.SCORE` < 0'
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Learning score must not be negative
-    why_it_matters: Scores are compared with the item's passing threshold. A negative score is a load or interface error and
-      turns a pass into a fail (or hides a real result) in assessment reporting.
-    rule_authority: best_practice
-    sap_impact: Pass/fail determination and assessment analytics wrong for this record.
-    fix_map:
-      __blank__: Correct the score on the learning history record via Learning Administration.
-    record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: Learning score must not be negative. Correct the record.'
-  - id: LMS021
-    field: LEARNINGCOMPLETION.CREDIT_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` < 0'
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Credit hours must not be negative
-    why_it_matters: Credit hours accumulate towards continuing-education and certification requirements. A negative value
-      subtracts hours the learner earned elsewhere.
-    rule_authority: best_practice
-    sap_impact: Continuing-education and certification hour totals understated.
-    fix_map:
-      __blank__: Correct the credit hours on the learning history record via Learning Administration.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: credit hours {LEARNINGCOMPLETION.CREDIT_HOURS}
-      are negative.'
-  - id: LMS022
-    field: LEARNINGCOMPLETION.COMPLETION_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.COMPLETION_DATE`.dt.normalize() > @today'
-    severity: medium
-    dimension: validity
-    message: Learning completion is dated in the future
-    why_it_matters: A course can only be completed on or before today. A future completion date is a typing error or a
-      record entered in advance.
-    rule_authority: best_practice
-    sap_impact: Compliance reports count training that has not happened; certification expiry dates are calculated from
-      the wrong date.
-    fix_map:
-      __other__: Correct the completion date in the learning history (Record Learning).
-    record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: course {LEARNINGCOMPLETION.COURSE_ID} completed
-      {LEARNINGCOMPLETION.COMPLETION_DATE}, which is in the future.'
-  - id: LMS023
-    field: LEARNINGCOMPLETION.USERID
-    check_class: exists_check
-    target_table: EMPEMPLOYMENT
-    target_fields:
-    - USERID
-    severity: medium
-    dimension: consistency
-    message: Learning completion belongs to a user without employment
-    why_it_matters: A completion must belong to an employee. A user that has no employment record cannot be linked to a person in a migration.
-    rule_authority: best_practice
-    sap_impact: The training history is orphaned and is dropped or cannot be loaded.
-    fix_map:
-      __other__: Link the completion to an existing employee or archive it.
-    record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} has no employment record. Review.
-  - id: LMS024
-    field: LEARNINGASSIGNMENT.USERID
-    check_class: exists_check
-    target_table: EMPEMPLOYMENT
-    target_fields:
-    - USERID
-    severity: medium
-    dimension: consistency
-    message: Learning assignment belongs to a user without employment
-    why_it_matters: An assignment must belong to an employee. Assignments to users without employment are orphans.
-    rule_authority: best_practice
-    sap_impact: Open assignments are never completed and count against compliance reports.
-    fix_map:
-      __other__: Remove the assignment or link it to an employee.
-    record_fix_template: Learning assignment for user {LEARNINGASSIGNMENT.USERID} has no employment record. Review.
-  - id: LMS025
-    field: LEARNINGCOMPLETION.COMPLETION_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.COMPLETION_DATE` < `EMPEMPLOYMENT.START_DATE`'
-    severity: medium
-    dimension: consistency
-    message: Learning completed before the employment started
-    why_it_matters: A completion before the start of employment points to a wrong date or a mix-up of persons, unless it is prior learning that was loaded on purpose.
-    rule_authority: best_practice
-    sap_impact: Training history and compliance status are wrong for the employee.
-    fix_map:
-      __other__: Correct the completion date or the employment start.
-    record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} is dated before the employment started. Review.
-  - id: LMS026
-    field: LEARNINGASSIGNMENT.ASSIGNED_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.ASSIGNED_DATE` > `EMPEMPLOYMENT.END_DATE`'
-    severity: medium
-    dimension: timeliness
-    message: Learning assigned after the employment ended
-    why_it_matters: Assigning training to a person who has left creates open items nobody can complete.
-    rule_authority: best_practice
-    sap_impact: Compliance reports show overdue learning for leavers.
-    fix_map:
-      __other__: Cancel the assignment.
-    record_fix_template: Learning assignment for user {LEARNINGASSIGNMENT.USERID} is dated after the employment ended. Cancel it.
-  - id: LMS027
-    field: LEARNINGCOMPLETION.COMPLETION_DATE
-    check_class: uniqueness_check
-    fields:
-    - LEARNINGCOMPLETION.USERID
-    - LEARNINGCOMPLETION.COURSE_ID
-    - LEARNINGCOMPLETION.COMPLETION_DATE
-    severity: low
-    dimension: uniqueness
-    message: Learning completion is recorded more than once
-    why_it_matters: The same course completed by the same user on the same date twice is a duplicate load.
-    rule_authority: best_practice
-    sap_impact: Credit hours are counted twice.
-    fix_map:
-      __other__: Delete the duplicate completion.
-    record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} is recorded more than once. Remove the duplicate.
-  - id: LMS028
-    field: LEARNINGASSIGNMENT.STATUS
-    check_class: domain_value_check
-    allowed_values:
+    - '1'
+- id: LMS005
+  field: LEARNINGASSIGNMENT.COURSE_TITLE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Course title is required for learner-facing display and reporting
+  why_it_matters: COURSE_TITLE is the human-readable name displayed on the learner's transcript and in compliance reports.
+    A blank title makes it impossible for the learner to identify the training and produces unreadable compliance reports.
+  rule_authority: best_practice
+  sap_impact: Learner transcript shows blank course entry. Compliance reports list unnamed training assignments. Manager
+    reports are unreadable.
+  fix_map:
+    __blank__: Populate the course title from the Learning catalogue. Should match the title configured in Learning > Admin
+      > Course Management. Update via Assignment Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: COURSE_TITLE is blank. Populate from the course catalogue
+    via Learning > Admin > Assignment Management.'
+- id: LMS006
+  field: LEARNINGASSIGNMENT.REQUIRED
+  check_class: domain_value_check
+  allowed_values:
+  - 'true'
+  - 'false'
+  - 'True'
+  - 'False'
+  - Y
+  - N
+  severity: medium
+  dimension: accuracy
+  message: Required flag must be Y (mandatory) or N (optional)
+  why_it_matters: The REQUIRED flag determines whether the assignment is treated as mandatory compliance training or optional
+    development. Incorrect values cause compliance reports to either miss mandatory training or incorrectly flag optional
+    courses as compliance gaps.
+  rule_authority: best_practice
+  sap_impact: Compliance reporting incorrectly classifies this assignment. Mandatory training may be treated as optional
+    or vice versa.
+  valid_values_with_labels:
+    'true': Required
+    'false': Optional
+    'True': Required
+    'False': Optional
+    Y: Required (legacy export)
+    N: Optional (legacy export)
+  fix_map:
+    __blank__: Set the required flag to Y for mandatory training or N for optional. Update via Learning > Admin > Assignment
+      Management.
+    __other__: Required flag '{invalid_value}' is not valid. Use Y (mandatory) or N (optional). Update via Learning > Admin
+      > Assignment Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: REQUIRED flag ''{actual_value}'' is invalid. Set to
+    Y or N via Learning > Admin > Assignment Management.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        'yes': Y
+        'Yes': Y
+        'YES': Y
+        'no': N
+        'No': N
+        'NO': N
+        'TRUE': 'true'
+        'FALSE': 'false'
+        '1': Y
+        '0': N
+    confidence: high
+- id: LMS007
+  field: LEARNINGASSIGNMENT.ASSIGNED_DATE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Assigned date is required for tracking assignment lifecycle and SLA compliance
+  why_it_matters: ASSIGNED_DATE records when the training was assigned to the learner. It is used to calculate the time
+    between assignment and completion, which is a key SLA metric for compliance training programmes.
+  rule_authority: best_practice
+  sap_impact: Assignment-to-completion time cannot be calculated. SLA compliance for training programmes cannot be measured.
+  fix_map:
+    __blank__: 'Set the assigned date to when the training was originally assigned. Update via Learning > Admin > Assignment
+      Management. Format: YYYY-MM-DD.'
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: ASSIGNED_DATE is missing. Set via Learning > Admin >
+    Assignment Management. Format: YYYY-MM-DD.'
+- id: LMS009
+  field: LEARNINGCOMPLETION.COMPLETION_DATE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Completion date is required as evidence for compliance audits
+  why_it_matters: COMPLETION_DATE is the timestamp that proves when an employee satisfied a training requirement. Without
+    it, compliance auditors cannot verify that training was completed within the required timeframe. Recertification workflows
+    also rely on this date to calculate when the next cycle of training is due.
+  rule_authority: best_practice
+  sap_impact: Compliance audit evidence incomplete — no proof of when training was completed. Recertification due date cannot
+    be calculated. Training history has gaps.
+  fix_map:
+    __blank__: Set the actual completion date via Learning > Admin > Completion Management. Use ISO format YYYY-MM-DD. For
+      historical records, use the date the learner finished the course.
+  record_fix_template: 'Completion for {LEARNINGASSIGNMENT.USERID}: COMPLETION_DATE is missing. Set via Learning > Admin
+    > Completion Management. Format: YYYY-MM-DD.'
+- id: LMS013
+  field: LEARNINGASSIGNMENT.USERID
+  check_class: uniqueness_check
+  fields:
+  - LEARNINGASSIGNMENT.USERID
+  - LEARNINGASSIGNMENT.COURSE_ID
+  severity: high
+  dimension: uniqueness
+  message: Duplicate learning assignment records per employee — same course assigned multiple times
+  why_it_matters: Duplicate assignments inflate compliance completion metrics and may cause learners to be re-enrolled in
+    completed courses.
+  rule_authority: best_practice
+  sap_impact: Compliance dashboards show incorrect completion rates. Learners receive duplicate notifications. Training
+    cost reports are overstated.
+  fix_map:
+    __blank__: Review duplicate assignments in Learning > Admin > Assignment Rules. Remove the duplicate assignment. Verify
+      completion status on the surviving record.
+  record_fix_template: 'Employee {LEARNINGASSIGNMENT.USERID}, course {LEARNINGASSIGNMENT.COURSE_ID}: assigned more than
+    once. Remove the duplicate assignment in the LMS admin.'
+- id: LMS014
+  field: LEARNINGASSIGNMENT.DUE_DATE
+  check_class: freshness_check
+  max_age_hours: 24
+  severity: high
+  dimension: timeliness
+  message: Learning assignment past due date — overdue mandatory training creates compliance risk
+  rule_authority: best_practice
+  why_it_matters: Learning assignments past their due date represent overdue mandatory training — a direct compliance and
+    audit exposure, especially for regulated curricula.
+  sap_impact: Compliance dashboards report false completion; audits flag overdue mandatory training; certifications lapse
+    and access entitlements based on training become invalid.
+  fix_map:
+    __blank__: 'In SuccessFactors Learning: notify the assignee and manager, extend or reassign the item if appropriate,
+      and escalate persistently overdue mandatory training to the compliance owner.'
+  record_fix_template: Learning assignment {field} is overdue by {age_days} days. Notify assignee/manager, reassign or extend,
+    and escalate if mandatory.
+  applies_when:
+    LEARNINGASSIGNMENT.REQUIRED:
+    - 'True'
+    - 'true'
+    - 'TRUE'
+    - Y
+    - '1'
+- id: LMS015
+  field: LEARNINGASSIGNMENT.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Learning assignment status (LEARNINGASSIGNMENT.STATUS) is mandatory
+  why_it_matters: STATUS records whether a learning assignment is assigned, in progress, completed, or overdue. Without
+    it, the assignment cannot be tracked on the employee transcript and compliance completion reporting is impossible —
+    for mandatory training this breaks the auditable evidence trail.
+  rule_authority: best_practice
+  sap_impact: Assignment progress cannot be determined. Compliance dashboards report incorrect completion rates and the
+    audit trail for mandatory training is incomplete.
+  fix_map:
+    __blank__: Set the correct assignment status via Learning > Admin > Assignment Management. Reconcile with the learner's
+      actual completion record.
+  record_fix_template: 'Assignment {LEARNINGASSIGNMENT.USERID}: status is missing. Set via Learning > Admin > Assignment
+    Management.'
+- id: LMS016
+  field: LEARNINGASSIGNMENT.DUE_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.DUE_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.ASSIGNED_DATE`.dt.normalize()'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Assignment is due before the day it was assigned
+  why_it_matters: 'A required date before the assignment date makes the item overdue the moment it is assigned: the learner
+    never had a compliant window, overdue notifications fire immediately and compliance reporting counts a breach that is
+    a data error.'
+  rule_authority: best_practice
+  sap_impact: Item overdue on assignment; compliance KPIs and overdue escalations wrong for this learner.
+  fix_map:
+    __blank__: Correct the required date (or the assignment date) in Learning Administration > Users > Learning Plan.
+  record_fix_template: 'Learner {LEARNINGASSIGNMENT.USERID}: {LEARNINGASSIGNMENT.COURSE_ID} due {LEARNINGASSIGNMENT.DUE_DATE},
+    before it was assigned ({LEARNINGASSIGNMENT.ASSIGNED_DATE}).'
+- id: LMS017
+  field: LEARNINGCOMPLETION.USERID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Learning history record must identify the learner
+  why_it_matters: 'A completion without a learner ID cannot be credited to anyone: the learner''s compliance status stays
+    incomplete and the record is invisible to every report.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Completion not credited; learner appears non-compliant; certification evidence lost.
+  fix_map:
+    __blank__: Re-record the learning event for the correct learner via Learning Administration > Record Learning.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID}: learner ID is missing.'
+- id: LMS018
+  field: LEARNINGCOMPLETION.COURSE_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Learning history record must identify the learning item
+  why_it_matters: 'A completion without an item ID cannot satisfy any requirement: assignments and curricula stay open and
+    the record cannot be audited.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Required assignment not closed; curriculum status wrong; audit evidence missing.
+  fix_map:
+    __blank__: Re-record the learning event against the correct item via Learning Administration > Record Learning.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}: item ID is missing.'
+- id: LMS019
+  field: LEARNINGCOMPLETION.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Learning history record must carry a completion status
+  why_it_matters: The completion status decides whether a learning event satisfies the requirement (completed/passed) or
+    not (failed, incomplete). Without it, SAP SuccessFactors Learning cannot decide whether the item is fulfilled.
+  rule_authority: sap_hard_constraint
+  sap_impact: Requirement not fulfilled; curriculum and compliance status cannot be computed for this record.
+  fix_map:
+    __blank__: Set the completion status on the learning event via Learning Administration > Learning History.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: completion status missing.'
+- id: LMS020
+  field: LEARNINGCOMPLETION.SCORE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.SCORE` < 0'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Learning score must not be negative
+  why_it_matters: Scores are compared with the item's passing threshold. A negative score is a load or interface error and
+    turns a pass into a fail (or hides a real result) in assessment reporting.
+  rule_authority: best_practice
+  sap_impact: Pass/fail determination and assessment analytics wrong for this record.
+  fix_map:
+    __blank__: Correct the score on the learning history record via Learning Administration.
+  record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: Learning score must not be negative. Correct the record.'
+- id: LMS021
+  field: LEARNINGCOMPLETION.CREDIT_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` < 0'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Credit hours must not be negative
+  why_it_matters: Credit hours accumulate towards continuing-education and certification requirements. A negative value
+    subtracts hours the learner earned elsewhere.
+  rule_authority: best_practice
+  sap_impact: Continuing-education and certification hour totals understated.
+  fix_map:
+    __blank__: Correct the credit hours on the learning history record via Learning Administration.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: credit hours {LEARNINGCOMPLETION.CREDIT_HOURS}
+    are negative.'
+- id: LMS022
+  field: LEARNINGCOMPLETION.COMPLETION_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.COMPLETION_DATE`.dt.normalize() > @today'
+  severity: medium
+  dimension: validity
+  message: Learning completion is dated in the future
+  why_it_matters: A course can only be completed on or before today. A future completion date is a typing error or a record
+    entered in advance.
+  rule_authority: best_practice
+  sap_impact: Compliance reports count training that has not happened; certification expiry dates are calculated from the
+    wrong date.
+  fix_map:
+    __other__: Correct the completion date in the learning history (Record Learning).
+  record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: course {LEARNINGCOMPLETION.COURSE_ID} completed {LEARNINGCOMPLETION.COMPLETION_DATE},
+    which is in the future.'
+- id: LMS023
+  field: LEARNINGCOMPLETION.USERID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: medium
+  dimension: consistency
+  message: Learning completion belongs to a user without employment
+  why_it_matters: A completion must belong to an employee. A user that has no employment record cannot be linked to a person
+    in a migration.
+  rule_authority: best_practice
+  sap_impact: The training history is orphaned and is dropped or cannot be loaded.
+  fix_map:
+    __other__: Link the completion to an existing employee or archive it.
+  record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} has no employment record. Review.
+- id: LMS024
+  field: LEARNINGASSIGNMENT.USERID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: medium
+  dimension: consistency
+  message: Learning assignment belongs to a user without employment
+  why_it_matters: An assignment must belong to an employee. Assignments to users without employment are orphans.
+  rule_authority: best_practice
+  sap_impact: Open assignments are never completed and count against compliance reports.
+  fix_map:
+    __other__: Remove the assignment or link it to an employee.
+  record_fix_template: Learning assignment for user {LEARNINGASSIGNMENT.USERID} has no employment record. Review.
+- id: LMS025
+  field: LEARNINGCOMPLETION.COMPLETION_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.COMPLETION_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  severity: medium
+  dimension: consistency
+  message: Learning completed before the employment started
+  why_it_matters: A completion before the start of employment points to a wrong date or a mix-up of persons, unless it is
+    prior learning that was loaded on purpose.
+  rule_authority: best_practice
+  sap_impact: Training history and compliance status are wrong for the employee.
+  fix_map:
+    __other__: Correct the completion date or the employment start.
+  record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} is dated before the employment started.
+    Review.
+- id: LMS026
+  field: LEARNINGASSIGNMENT.ASSIGNED_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.ASSIGNED_DATE` > `EMPEMPLOYMENT.END_DATE`'
+  severity: medium
+  dimension: timeliness
+  message: Learning assigned after the employment ended
+  why_it_matters: Assigning training to a person who has left creates open items nobody can complete.
+  rule_authority: best_practice
+  sap_impact: Compliance reports show overdue learning for leavers.
+  fix_map:
+    __other__: Cancel the assignment.
+  record_fix_template: Learning assignment for user {LEARNINGASSIGNMENT.USERID} is dated after the employment ended. Cancel
+    it.
+- id: LMS027
+  field: LEARNINGCOMPLETION.COMPLETION_DATE
+  check_class: uniqueness_check
+  fields:
+  - LEARNINGCOMPLETION.USERID
+  - LEARNINGCOMPLETION.COURSE_ID
+  - LEARNINGCOMPLETION.COMPLETION_DATE
+  severity: low
+  dimension: uniqueness
+  message: Learning completion is recorded more than once
+  why_it_matters: The same course completed by the same user on the same date twice is a duplicate load.
+  rule_authority: best_practice
+  sap_impact: Credit hours are counted twice.
+  fix_map:
+    __other__: Delete the duplicate completion.
+  record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} is recorded more than once. Remove the duplicate.
+- id: LMS028
+  field: LEARNINGASSIGNMENT.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Assigned
+  - Not Started
+  - In Progress
+  - Completed
+  - Overdue
+  - Withdrawn
+  - Registered
+  severity: medium
+  dimension: validity
+  message: Learning assignment status is not one of the recognised lifecycle values
+  why_it_matters: The assignment STATUS drives the learner transcript and the overdue/escalation workflow. A value outside
+    the known lifecycle (e.g. a free-text status from an interface error) is not recognised by any downstream report and
+    the assignment effectively disappears from compliance dashboards.
+  rule_authority: best_practice
+  sap_impact: Compliance dashboard and transcript cannot classify this assignment; it is silently excluded from completion
+    and overdue metrics.
+  valid_values_with_labels:
+    Assigned: Assigned, not yet started
+    Not Started: Assigned, not yet started
+    In Progress: Learner has started the item
+    Completed: Learner has finished the item
+    Overdue: Past due date, not completed
+    Withdrawn: Assignment cancelled/withdrawn
+    Registered: Registered for a scheduled offering
+  fix_map:
+    __other__: Assignment status '{invalid_value}' is not recognised. Set to one of Assigned, Not Started, In Progress,
+      Completed, Overdue, Withdrawn or Registered via Learning > Admin > Assignment Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: STATUS ''{actual_value}'' is not a recognised value.
+    Correct via Learning > Admin > Assignment Management.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: title
+    confidence: medium
+- id: LMS029
+  field: LEARNINGCOMPLETION.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - COMPLETE
+  - FAILED
+  - INCOMPLETE
+  - WITHDRAWN
+  - IN_PROGRESS
+  severity: medium
+  dimension: validity
+  message: Learning history completion status is not one of the recognised values
+  why_it_matters: The completion STATUS determines whether a learning history record satisfies a requirement. A value outside
+    the recognised set cannot be interpreted by the compliance or curriculum engine, so the record is treated as neither
+    passed nor failed.
+  rule_authority: best_practice
+  sap_impact: Curriculum and compliance status cannot be computed for this completion; the learner may appear incomplete
+    despite having finished the course.
+  valid_values_with_labels:
+    COMPLETE: Satisfied the requirement
+    FAILED: Attempted but did not pass
+    INCOMPLETE: Started but not finished
+    WITHDRAWN: Learner withdrew from the item
+    IN_PROGRESS: Still in progress at time of export
+  fix_map:
+    __other__: Learning history status '{invalid_value}' is not recognised. Correct via Learning Administration > Learning
+      History to one of COMPLETE, FAILED, INCOMPLETE, WITHDRAWN or IN_PROGRESS.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: completion status ''{actual_value}''
+    is not recognised.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: LMS030
+  field: LEARNINGCOMPLETION.SCORE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.SCORE` > 100'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Learning score exceeds the maximum possible value of 100
+  why_it_matters: Scores are expressed on a 0-100 scale. A value above 100 is a load or interface error and distorts assessment
+    analytics and pass/fail comparisons against the passing threshold.
+  rule_authority: best_practice
+  sap_impact: Assessment analytics and pass/fail determination are wrong for this record.
+  fix_map:
+    __other__: Correct the score on the learning history record via Learning Administration.
+  record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: learning score {LEARNINGCOMPLETION.SCORE} exceeds 100. Correct
+    the record.'
+- id: LMS031
+  field: LEARNINGASSIGNMENT.ASSIGNED_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.ASSIGNED_DATE`.dt.normalize() > @today'
+  severity: medium
+  dimension: validity
+  message: Learning assignment is dated in the future
+  why_it_matters: An assignment can only be created on or before today. A future assigned date is a typing error or a record
+    loaded in advance, and skews assignment-to-completion SLA metrics.
+  rule_authority: best_practice
+  sap_impact: Assignment-to-completion SLA metrics and overdue calculations are wrong for this record.
+  fix_map:
+    __other__: Correct the assigned date in Learning Administration > Users > Learning Plan.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: ASSIGNED_DATE {LEARNINGASSIGNMENT.ASSIGNED_DATE} is
+    in the future.'
+- id: LMS032
+  field: LEARNINGASSIGNMENT.USERID
+  check_class: regex_check
+  pattern: ^[a-zA-Z0-9._@-]{1,90}$
+  severity: high
+  dimension: validity
+  message: Learning assignment User ID must contain only valid characters
+  why_it_matters: USERID on a learning assignment must match the format used in Employee Central. Invalid characters prevent
+    the join between the assignment and the employee master, orphaning the assignment during migration.
+  rule_authority: best_practice
+  sap_impact: Assignment cannot be matched to the employee record. Transcript and compliance reporting drop the record.
+  fix_map:
+    __other__: User ID '{invalid_value}' contains invalid characters. Correct to match the Employee Central USERID format
+      via Learning > Admin > Assignment Management.
+  record_fix_template: Assignment USERID '{actual_value}' has an invalid format. Correct via Learning > Admin > Assignment
+    Management.
+  auto_fix:
+    steps:
+    - op: strip
+    confidence: high
+- id: LMS033
+  field: LEARNINGCOMPLETION.CREDIT_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` > 80'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Credit hours for a single learning item are implausibly high
+  why_it_matters: A single course or event rarely awards more than a couple of weeks' worth of continuing-education hours.
+    A value above 80 is almost always a unit error (e.g. minutes entered as hours) rather than a real credit award.
+  rule_authority: best_practice
+  sap_impact: Continuing-education and certification hour totals are overstated for this employee.
+  fix_map:
+    __other__: Verify the unit and correct the credit hours on the learning history record via Learning Administration.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: credit hours {LEARNINGCOMPLETION.CREDIT_HOURS}
+    are implausibly high. Verify the unit.'
+- id: LMS034
+  field: LEARNINGASSIGNMENT.CURRICULUM_ID
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9._-]{1,90}$
+  severity: low
+  dimension: validity
+  message: Curriculum ID contains characters outside the expected identifier format
+  why_it_matters: Curriculum IDs flow into completion and certification records downstream. An ID with stray whitespace
+    or punctuation breaks exact-match lookups against the curriculum catalog and can silently drop a learner from curriculum-level
+    compliance reporting.
+  rule_authority: best_practice
+  sap_impact: Curriculum-level compliance roll-ups and certification tracking cannot match this assignment to its catalog
+    entry.
+  fix_map:
+    __other__: Correct the curriculum ID to use only letters, numbers, periods, underscores and hyphens, matching the Learning
+      curriculum catalog entry.
+  record_fix_template: Assignment for {LEARNINGASSIGNMENT.USERID} references curriculum ID '{invalid_value}' which does
+    not match the expected format. Correct it to match the catalog entry.
+  auto_fix:
+    steps:
+    - op: strip
+    confidence: high
+- id: LMS035
+  field: LEARNINGASSIGNMENT.STATUS
+  check_class: exists_check
+  fields:
+  - LEARNINGASSIGNMENT.USERID
+  - LEARNINGASSIGNMENT.COURSE_ID
+  target_table: LEARNINGCOMPLETION
+  target_fields:
+  - USERID
+  - COURSE_ID
+  severity: high
+  dimension: consistency
+  message: Assignment marked completed has no completion evidence in learning history
+  why_it_matters: An assignment STATUS of Completed with no corresponding learning history record means there is no auditable
+    evidence that the training actually happened. For compliance training this is exactly the gap an auditor will flag.
+  rule_authority: best_practice
+  sap_impact: Compliance audit evidence is missing for a learner marked as compliant. Certification cannot be substantiated.
+  fix_map:
+    __other__: Record the completion event via Learning Administration > Record Learning, or correct the assignment status
+      if it was marked complete in error.
+  record_fix_template: Assignment for {LEARNINGASSIGNMENT.USERID}, course {LEARNINGASSIGNMENT.COURSE_ID} is marked Completed
+    but has no completion record in learning history.
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS:
+    - Completed
+- id: LMS036
+  field: LEARNINGASSIGNMENT.ITEM_TYPE
+  check_class: domain_value_check
+  allowed_values:
+  - ONLINE
+  - CLASSROOM
+  - CURRICULUM
+  - OJT
+  - EXTERNAL
+  severity: medium
+  dimension: accuracy
+  message: Learning item type is not one of the recognised delivery methods
+  why_it_matters: ITEM_TYPE determines which rules and workflows apply to the assignment (e.g. classroom scheduling, curriculum
+    roll-up, external evidence capture). An unrecognised type means the wrong workflow — or none — applies.
+  rule_authority: best_practice
+  sap_impact: The assignment is not picked up by the delivery-method-specific workflow (session reminders, curriculum roll-up,
+    external approval) it should follow.
+  valid_values_with_labels:
+    ONLINE: Self-paced online course
+    CLASSROOM: Instructor-led classroom session
+    CURRICULUM: Grouped curriculum/program item
+    OJT: On-the-job training
+    EXTERNAL: External training recorded for credit
+  fix_map:
+    __other__: Item type '{invalid_value}' is not recognised. Set to ONLINE, CLASSROOM, CURRICULUM, OJT or EXTERNAL via
+      Learning > Admin > Course Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: ITEM_TYPE ''{actual_value}'' is not recognised.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: LMS037
+  field: LEARNINGASSIGNMENT.APPROVAL_STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Approved
+  - Pending
+  - Rejected
+  severity: medium
+  dimension: accuracy
+  message: Learning assignment approval status is not one of the recognised values
+  why_it_matters: APPROVAL_STATUS gates whether a self-requested or external item is treated as authorised training. An
+    unrecognised value cannot be evaluated by the approval workflow, leaving the request stuck.
+  rule_authority: best_practice
+  sap_impact: The approval workflow cannot process this assignment; it remains indefinitely unresolved in the manager queue.
+  valid_values_with_labels:
+    Approved: Authorised by the approver
+    Pending: Awaiting approver action
+    Rejected: Declined by the approver
+  fix_map:
+    __other__: Approval status '{invalid_value}' is not recognised. Set to Approved, Pending or Rejected via Learning >
+      Admin > Assignment Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: APPROVAL_STATUS ''{actual_value}'' is not recognised.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: title
+    confidence: high
+- id: LMS038
+  field: LEARNINGCOMPLETION.SCORE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.STATUS` == "COMPLETE" and `LEARNINGCOMPLETION.SCORE` < `LEARNINGCOMPLETION.PASSING_SCORE`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Learning history marked complete but the recorded score is below the passing threshold
+  why_it_matters: A record marked COMPLETE should mean the learner satisfied the requirement, including any minimum score.
+    A COMPLETE status alongside a score below the item's own passing threshold means someone is being credited with training
+    they did not actually pass — a direct compliance and audit risk.
+  rule_authority: best_practice
+  sap_impact: Compliance reporting certifies a learner who did not meet the passing score; the audit trail is false.
+  fix_map:
+    __other__: Reconcile the score and status in Learning Administration > Learning History. Either correct the status to
+      FAILED or correct the recorded score.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: marked COMPLETE with
+    score {LEARNINGCOMPLETION.SCORE} below the passing score {LEARNINGCOMPLETION.PASSING_SCORE}.'
+- id: LMS039
+  field: LEARNINGASSIGNMENT.CURRICULUM_ID
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Curriculum item is missing its curriculum ID
+  why_it_matters: A CURRICULUM item is, by definition, part of a curriculum/program. Without CURRICULUM_ID it cannot be
+    rolled up into the curriculum's overall completion status, so the programme appears incomplete even when its items are
+    being completed.
+  rule_authority: best_practice
+  sap_impact: Curriculum roll-up completion status cannot include this item. Programme-level compliance reporting is understated.
+  fix_map:
+    __blank__: Set the curriculum ID via Learning > Admin > Course Management, linking the item to its parent curriculum.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: item is type CURRICULUM but CURRICULUM_ID is missing.'
+  applies_when:
+    LEARNINGASSIGNMENT.ITEM_TYPE:
+    - CURRICULUM
+- id: LMS040
+  field: LEARNINGASSIGNMENT.CLASS_START_DATE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Classroom item is missing its scheduled start date
+  why_it_matters: A CLASSROOM item is delivered in a scheduled session. Without CLASS_START_DATE the learner has no session
+    to attend and the system cannot send scheduling reminders.
+  rule_authority: best_practice
+  sap_impact: No session reminder is generated. Learner has no visible session to attend for mandatory classroom training.
+  fix_map:
+    __blank__: Set the scheduled session start date via Learning > Admin > Offering Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: item is type CLASSROOM but CLASS_START_DATE is missing.'
+  applies_when:
+    LEARNINGASSIGNMENT.ITEM_TYPE:
+    - CLASSROOM
+- id: LMS041
+  field: LEARNINGASSIGNMENT.CLASS_END_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.CLASS_END_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.CLASS_START_DATE`.dt.normalize()'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Classroom session end date is before its start date
+  why_it_matters: A session that ends before it starts is a scheduling data error. Downstream calendar invites and attendance
+    capture cannot be generated from an inverted date range.
+  rule_authority: best_practice
+  sap_impact: Session invite and attendance capture for this offering cannot be generated correctly.
+  fix_map:
+    __other__: Correct the session start or end date via Learning > Admin > Offering Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: CLASS_END_DATE {LEARNINGASSIGNMENT.CLASS_END_DATE} is
+    before CLASS_START_DATE {LEARNINGASSIGNMENT.CLASS_START_DATE}.'
+- id: LMS042
+  field: LEARNINGASSIGNMENT.APPROVAL_STATUS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: External training item is missing its approval status
+  why_it_matters: EXTERNAL training is only valid for credit once it has been through the approval workflow. Without APPROVAL_STATUS
+    there is no record of whether the external training was ever authorised.
+  rule_authority: best_practice
+  sap_impact: External training is credited without evidence it was ever approved — an audit exposure for external certification
+    claims.
+  fix_map:
+    __blank__: Route the item through the approval workflow and set APPROVAL_STATUS via Learning > Admin > Assignment Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: item is type EXTERNAL but APPROVAL_STATUS is missing.'
+  applies_when:
+    LEARNINGASSIGNMENT.ITEM_TYPE:
+    - EXTERNAL
+- id: LMS043
+  field: LEARNINGASSIGNMENT.COURSE_ID
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9._-]{1,90}$
+  severity: medium
+  dimension: validity
+  message: Learning assignment course ID must contain only valid characters
+  why_it_matters: COURSE_ID must match the format of the component ID in the Learning catalogue. Invalid characters (e.g.
+    embedded delimiters from a bad export) break the join to the catalogue and to learning history.
+  rule_authority: best_practice
+  sap_impact: Assignment cannot be matched to its catalogue item or to completion records with the same course ID.
+  fix_map:
+    __other__: Course ID '{invalid_value}' contains invalid characters. Correct via Learning > Admin > Assignment Management.
+  record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: COURSE_ID ''{actual_value}'' has an invalid format.'
+  auto_fix:
+    steps:
+    - op: strip
+    confidence: high
+- id: LMS044
+  field: LEARNINGCOMPLETION.SCORE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.STATUS` == "FAILED" and `LEARNINGCOMPLETION.SCORE` >= `LEARNINGCOMPLETION.PASSING_SCORE`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Learning history marked failed despite a score at or above the passing threshold
+  why_it_matters: A record marked FAILED alongside a score that actually meets the passing threshold understates the learner's
+    real completion status and may force an unnecessary retake of compliance training.
+  rule_authority: best_practice
+  sap_impact: Learner is incorrectly shown as non-compliant and may be required to repeat training they already passed.
+  fix_map:
+    __other__: Reconcile the score and status in Learning Administration > Learning History.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: marked FAILED with
+    score {LEARNINGCOMPLETION.SCORE} at or above the passing score {LEARNINGCOMPLETION.PASSING_SCORE}.'
+- id: LMS045
+  field: LEARNINGCOMPLETION.PASSING_SCORE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Failed learning history record is missing the passing score it was measured against
+  why_it_matters: When a record is marked FAILED, auditors and managers need to see the bar the learner missed. Without
+    PASSING_SCORE there is no way to verify the fail determination was correct.
+  rule_authority: best_practice
+  sap_impact: Fail determination cannot be independently verified during a compliance audit or a learner appeal.
+  fix_map:
+    __blank__: Populate the passing score from the course configuration via Learning Administration > Learning History.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: marked FAILED but PASSING_SCORE
+    is missing.'
+  applies_when:
+    LEARNINGCOMPLETION.STATUS:
+    - FAILED
+- id: LMS046
+  field: LEARNINGASSIGNMENT.SCHEDULE_ID
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.SCHEDULE_ID`.notna()'
+  applies_when:
+    LEARNINGASSIGNMENT.ITEM_TYPE:
+    - CURRICULUM
+  severity: low
+  dimension: consistency
+  message: Curriculum assignment carries a scheduled-offering ID
+  why_it_matters: Scheduled offerings (classes) belong to items, not curricula. A schedule on a curriculum assignment was
+    copied from an item and points at a class the curriculum cannot register for.
+  rule_authority: best_practice
+  sap_impact: Registration and seat counts on the class are wrong.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Remove the
+      schedule from the curriculum.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: curriculum with schedule
+    {LEARNINGASSIGNMENT.SCHEDULE_ID}.'
+- id: LMS047
+  field: LEARNINGASSIGNMENT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.EXPIRATION_DATE`.dt.normalize() < @today'
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS:
+    - Completed
+    LEARNINGASSIGNMENT.REQUIRED: &id001
+    - 'true'
+    - 'True'
+    - 'TRUE'
+    - Y
+    - '1'
+    - X
+  severity: high
+  dimension: timeliness
+  message: Required certification has expired
+  why_it_matters: Required items with a retraining period expire. An expired completion means the employee is no longer
+    certified — a compliance gap for regulated training (safety, licences).
+  rule_authority: best_practice
+  sap_impact: Compliance reports show the employee as certified when they are not.
+  fix_map:
+    __blank__: Assign the retraining item and notify the employee and manager.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: expired {LEARNINGASSIGNMENT.EXPIRATION_DATE}.'
+- id: LMS048
+  field: LEARNINGASSIGNMENT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.EXPIRATION_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.ASSIGNED_DATE`'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Assignment expires before it was assigned
+  why_it_matters: An expiry before the assignment date is impossible; the retraining period or date was imported wrongly.
+  rule_authority: best_practice
+  sap_impact: Item shows as expired from day one.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Correct the
+      expiration date.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: assigned {LEARNINGASSIGNMENT.ASSIGNED_DATE},
+    expires {LEARNINGASSIGNMENT.EXPIRATION_DATE}.'
+- id: LMS049
+  field: LEARNINGASSIGNMENT.STATUS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.DUE_DATE` < @today'
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS:
     - Assigned
     - Not Started
     - In Progress
-    - Completed
-    - Overdue
-    - Withdrawn
     - Registered
-    severity: medium
-    dimension: validity
-    message: Learning assignment status is not one of the recognised lifecycle values
-    why_it_matters: The assignment STATUS drives the learner transcript and the overdue/escalation workflow. A value outside
-      the known lifecycle (e.g. a free-text status from an interface error) is not recognised by any downstream report and
-      the assignment effectively disappears from compliance dashboards.
-    rule_authority: best_practice
-    sap_impact: Compliance dashboard and transcript cannot classify this assignment; it is silently excluded from completion
-      and overdue metrics.
-    valid_values_with_labels:
-      Assigned: Assigned, not yet started
-      Not Started: Assigned, not yet started
-      In Progress: Learner has started the item
-      Completed: Learner has finished the item
-      Overdue: Past due date, not completed
-      Withdrawn: Assignment cancelled/withdrawn
-      Registered: Registered for a scheduled offering
-    fix_map:
-      __other__: "Assignment status '{invalid_value}' is not recognised. Set to one of Assigned, Not Started, In Progress,\
-        \ Completed, Overdue, Withdrawn or Registered via Learning > Admin > Assignment Management."
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: STATUS ''{actual_value}'' is not a recognised value.
-      Correct via Learning > Admin > Assignment Management.'
-    auto_fix:
-      steps:
-      - op: strip
-      - op: title
-      confidence: medium
-  - id: LMS029
-    field: LEARNINGCOMPLETION.STATUS
-    check_class: domain_value_check
-    allowed_values:
-    - COMPLETE
-    - FAILED
-    - INCOMPLETE
-    - WITHDRAWN
-    - IN_PROGRESS
-    severity: medium
-    dimension: validity
-    message: Learning history completion status is not one of the recognised values
-    why_it_matters: The completion STATUS determines whether a learning history record satisfies a requirement. A value
-      outside the recognised set cannot be interpreted by the compliance or curriculum engine, so the record is treated
-      as neither passed nor failed.
-    rule_authority: best_practice
-    sap_impact: Curriculum and compliance status cannot be computed for this completion; the learner may appear incomplete
-      despite having finished the course.
-    valid_values_with_labels:
-      COMPLETE: Satisfied the requirement
-      FAILED: Attempted but did not pass
-      INCOMPLETE: Started but not finished
-      WITHDRAWN: Learner withdrew from the item
-      IN_PROGRESS: Still in progress at time of export
-    fix_map:
-      __other__: Learning history status '{invalid_value}' is not recognised. Correct via Learning Administration > Learning
-        History to one of COMPLETE, FAILED, INCOMPLETE, WITHDRAWN or IN_PROGRESS.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: completion status
-      ''{actual_value}'' is not recognised.'
-    auto_fix:
-      steps:
-      - op: strip
-      - op: upper
-      confidence: high
-  - id: LMS030
-    field: LEARNINGCOMPLETION.SCORE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.SCORE` > 100'
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Learning score exceeds the maximum possible value of 100
-    why_it_matters: Scores are expressed on a 0-100 scale. A value above 100 is a load or interface error and distorts
-      assessment analytics and pass/fail comparisons against the passing threshold.
-    rule_authority: best_practice
-    sap_impact: Assessment analytics and pass/fail determination are wrong for this record.
-    fix_map:
-      __other__: Correct the score on the learning history record via Learning Administration.
-    record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: learning score {LEARNINGCOMPLETION.SCORE} exceeds 100.
-      Correct the record.'
-  - id: LMS031
-    field: LEARNINGASSIGNMENT.ASSIGNED_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.ASSIGNED_DATE`.dt.normalize() > @today'
-    severity: medium
-    dimension: validity
-    message: Learning assignment is dated in the future
-    why_it_matters: An assignment can only be created on or before today. A future assigned date is a typing error or a
-      record loaded in advance, and skews assignment-to-completion SLA metrics.
-    rule_authority: best_practice
-    sap_impact: Assignment-to-completion SLA metrics and overdue calculations are wrong for this record.
-    fix_map:
-      __other__: Correct the assigned date in Learning Administration > Users > Learning Plan.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: ASSIGNED_DATE {LEARNINGASSIGNMENT.ASSIGNED_DATE}
-      is in the future.'
-  - id: LMS032
-    field: LEARNINGASSIGNMENT.USERID
-    check_class: regex_check
-    pattern: ^[a-zA-Z0-9._@-]{1,90}$
-    severity: high
-    dimension: validity
-    message: Learning assignment User ID must contain only valid characters
-    why_it_matters: USERID on a learning assignment must match the format used in Employee Central. Invalid characters
-      prevent the join between the assignment and the employee master, orphaning the assignment during migration.
-    rule_authority: best_practice
-    sap_impact: Assignment cannot be matched to the employee record. Transcript and compliance reporting drop the record.
-    fix_map:
-      __other__: User ID '{invalid_value}' contains invalid characters. Correct to match the Employee Central USERID format
-        via Learning > Admin > Assignment Management.
-    record_fix_template: 'Assignment USERID ''{actual_value}'' has an invalid format. Correct via Learning > Admin >
-      Assignment Management.'
-    auto_fix:
-      steps:
-      - op: strip
-      confidence: high
-  - id: LMS033
-    field: LEARNINGCOMPLETION.CREDIT_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` > 80'
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Credit hours for a single learning item are implausibly high
-    why_it_matters: A single course or event rarely awards more than a couple of weeks' worth of continuing-education
-      hours. A value above 80 is almost always a unit error (e.g. minutes entered as hours) rather than a real credit award.
-    rule_authority: best_practice
-    sap_impact: Continuing-education and certification hour totals are overstated for this employee.
-    fix_map:
-      __other__: Verify the unit and correct the credit hours on the learning history record via Learning Administration.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: credit hours
-      {LEARNINGCOMPLETION.CREDIT_HOURS} are implausibly high. Verify the unit.'
-  - id: LMS034
-    field: LEARNINGASSIGNMENT.CURRICULUM_ID
-    check_class: regex_check
-    pattern: ^[A-Za-z0-9._-]{1,90}$
-    severity: low
-    dimension: validity
-    message: Curriculum ID contains characters outside the expected identifier format
-    why_it_matters: Curriculum IDs flow into completion and certification records downstream. An ID with stray whitespace
-      or punctuation breaks exact-match lookups against the curriculum catalog and can silently drop a learner from
-      curriculum-level compliance reporting.
-    rule_authority: best_practice
-    sap_impact: Curriculum-level compliance roll-ups and certification tracking cannot match this assignment to its catalog entry.
-    fix_map:
-      __other__: Correct the curriculum ID to use only letters, numbers, periods, underscores and hyphens, matching the
-        Learning curriculum catalog entry.
-    record_fix_template: Assignment for {LEARNINGASSIGNMENT.USERID} references curriculum ID '{invalid_value}' which does
-      not match the expected format. Correct it to match the catalog entry.
-    auto_fix:
-      steps:
-      - op: strip
-      confidence: high
-  - id: LMS035
-    field: LEARNINGASSIGNMENT.STATUS
-    check_class: exists_check
-    fields:
-    - LEARNINGASSIGNMENT.USERID
-    - LEARNINGASSIGNMENT.COURSE_ID
-    target_table: LEARNINGCOMPLETION
-    target_fields:
-    - USERID
-    - COURSE_ID
-    severity: high
-    dimension: consistency
-    message: Assignment marked completed has no completion evidence in learning history
-    why_it_matters: An assignment STATUS of Completed with no corresponding learning history record means there is no
-      auditable evidence that the training actually happened. For compliance training this is exactly the gap an auditor
-      will flag.
-    rule_authority: best_practice
-    sap_impact: Compliance audit evidence is missing for a learner marked as compliant. Certification cannot be substantiated.
-    fix_map:
-      __other__: Record the completion event via Learning Administration > Record Learning, or correct the assignment
-        status if it was marked complete in error.
-    record_fix_template: Assignment for {LEARNINGASSIGNMENT.USERID}, course {LEARNINGASSIGNMENT.COURSE_ID} is marked
-      Completed but has no completion record in learning history.
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS:
-      - Completed
-  - id: LMS036
-    field: LEARNINGASSIGNMENT.ITEM_TYPE
-    check_class: domain_value_check
-    allowed_values:
-    - ONLINE
-    - CLASSROOM
-    - CURRICULUM
-    - OJT
-    - EXTERNAL
-    severity: medium
-    dimension: accuracy
-    message: Learning item type is not one of the recognised delivery methods
-    why_it_matters: ITEM_TYPE determines which rules and workflows apply to the assignment (e.g. classroom scheduling,
-      curriculum roll-up, external evidence capture). An unrecognised type means the wrong workflow — or none — applies.
-    rule_authority: best_practice
-    sap_impact: The assignment is not picked up by the delivery-method-specific workflow (session reminders, curriculum
-      roll-up, external approval) it should follow.
-    valid_values_with_labels:
-      ONLINE: Self-paced online course
-      CLASSROOM: Instructor-led classroom session
-      CURRICULUM: Grouped curriculum/program item
-      OJT: On-the-job training
-      EXTERNAL: External training recorded for credit
-    fix_map:
-      __other__: Item type '{invalid_value}' is not recognised. Set to ONLINE, CLASSROOM, CURRICULUM, OJT or EXTERNAL via
-        Learning > Admin > Course Management.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: ITEM_TYPE ''{actual_value}'' is not recognised.'
-    auto_fix:
-      steps:
-      - op: strip
-      - op: upper
-      confidence: high
-  - id: LMS037
-    field: LEARNINGASSIGNMENT.APPROVAL_STATUS
-    check_class: domain_value_check
-    allowed_values:
-    - Approved
-    - Pending
-    - Rejected
-    severity: medium
-    dimension: accuracy
-    message: Learning assignment approval status is not one of the recognised values
-    why_it_matters: APPROVAL_STATUS gates whether a self-requested or external item is treated as authorised training.
-      An unrecognised value cannot be evaluated by the approval workflow, leaving the request stuck.
-    rule_authority: best_practice
-    sap_impact: The approval workflow cannot process this assignment; it remains indefinitely unresolved in the manager
-      queue.
-    valid_values_with_labels:
-      Approved: Authorised by the approver
-      Pending: Awaiting approver action
-      Rejected: Declined by the approver
-    fix_map:
-      __other__: Approval status '{invalid_value}' is not recognised. Set to Approved, Pending or Rejected via Learning
-        > Admin > Assignment Management.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: APPROVAL_STATUS ''{actual_value}'' is not recognised.'
-    auto_fix:
-      steps:
-      - op: strip
-      - op: title
-      confidence: high
-  - id: LMS038
-    field: LEARNINGCOMPLETION.SCORE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.STATUS` == "COMPLETE" and `LEARNINGCOMPLETION.SCORE` < `LEARNINGCOMPLETION.PASSING_SCORE`'
-    require_populated: true
-    severity: high
-    dimension: consistency
-    message: Learning history marked complete but the recorded score is below the passing threshold
-    why_it_matters: A record marked COMPLETE should mean the learner satisfied the requirement, including any minimum
-      score. A COMPLETE status alongside a score below the item's own passing threshold means someone is being credited
-      with training they did not actually pass — a direct compliance and audit risk.
-    rule_authority: best_practice
-    sap_impact: Compliance reporting certifies a learner who did not meet the passing score; the audit trail is false.
-    fix_map:
-      __other__: Reconcile the score and status in Learning Administration > Learning History. Either correct the status
-        to FAILED or correct the recorded score.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: marked COMPLETE
-      with score {LEARNINGCOMPLETION.SCORE} below the passing score {LEARNINGCOMPLETION.PASSING_SCORE}.'
-  - id: LMS039
-    field: LEARNINGASSIGNMENT.CURRICULUM_ID
-    check_class: null_check
-    severity: medium
-    dimension: completeness
-    message: Curriculum item is missing its curriculum ID
-    why_it_matters: A CURRICULUM item is, by definition, part of a curriculum/program. Without CURRICULUM_ID it cannot
-      be rolled up into the curriculum's overall completion status, so the programme appears incomplete even when its
-      items are being completed.
-    rule_authority: best_practice
-    sap_impact: Curriculum roll-up completion status cannot include this item. Programme-level compliance reporting is
-      understated.
-    fix_map:
-      __blank__: Set the curriculum ID via Learning > Admin > Course Management, linking the item to its parent curriculum.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: item is type CURRICULUM but CURRICULUM_ID is missing.'
-    applies_when:
-      LEARNINGASSIGNMENT.ITEM_TYPE:
-      - CURRICULUM
-  - id: LMS040
-    field: LEARNINGASSIGNMENT.CLASS_START_DATE
-    check_class: null_check
-    severity: medium
-    dimension: completeness
-    message: Classroom item is missing its scheduled start date
-    why_it_matters: A CLASSROOM item is delivered in a scheduled session. Without CLASS_START_DATE the learner has no
-      session to attend and the system cannot send scheduling reminders.
-    rule_authority: best_practice
-    sap_impact: No session reminder is generated. Learner has no visible session to attend for mandatory classroom training.
-    fix_map:
-      __blank__: Set the scheduled session start date via Learning > Admin > Offering Management.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: item is type CLASSROOM but CLASS_START_DATE is
-      missing.'
-    applies_when:
-      LEARNINGASSIGNMENT.ITEM_TYPE:
-      - CLASSROOM
-  - id: LMS041
-    field: LEARNINGASSIGNMENT.CLASS_END_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.CLASS_END_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.CLASS_START_DATE`.dt.normalize()'
-    require_populated: true
-    severity: medium
-    dimension: consistency
-    message: Classroom session end date is before its start date
-    why_it_matters: A session that ends before it starts is a scheduling data error. Downstream calendar invites and
-      attendance capture cannot be generated from an inverted date range.
-    rule_authority: best_practice
-    sap_impact: Session invite and attendance capture for this offering cannot be generated correctly.
-    fix_map:
-      __other__: Correct the session start or end date via Learning > Admin > Offering Management.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: CLASS_END_DATE {LEARNINGASSIGNMENT.CLASS_END_DATE}
-      is before CLASS_START_DATE {LEARNINGASSIGNMENT.CLASS_START_DATE}.'
-  - id: LMS042
-    field: LEARNINGASSIGNMENT.APPROVAL_STATUS
-    check_class: null_check
-    severity: medium
-    dimension: completeness
-    message: External training item is missing its approval status
-    why_it_matters: EXTERNAL training is only valid for credit once it has been through the approval workflow. Without
-      APPROVAL_STATUS there is no record of whether the external training was ever authorised.
-    rule_authority: best_practice
-    sap_impact: External training is credited without evidence it was ever approved — an audit exposure for external
-      certification claims.
-    fix_map:
-      __blank__: Route the item through the approval workflow and set APPROVAL_STATUS via Learning > Admin > Assignment
-        Management.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: item is type EXTERNAL but APPROVAL_STATUS is missing.'
-    applies_when:
-      LEARNINGASSIGNMENT.ITEM_TYPE:
-      - EXTERNAL
-  - id: LMS043
-    field: LEARNINGASSIGNMENT.COURSE_ID
-    check_class: regex_check
-    pattern: ^[A-Za-z0-9._-]{1,90}$
-    severity: medium
-    dimension: validity
-    message: Learning assignment course ID must contain only valid characters
-    why_it_matters: COURSE_ID must match the format of the component ID in the Learning catalogue. Invalid characters
-      (e.g. embedded delimiters from a bad export) break the join to the catalogue and to learning history.
-    rule_authority: best_practice
-    sap_impact: Assignment cannot be matched to its catalogue item or to completion records with the same course ID.
-    fix_map:
-      __other__: Course ID '{invalid_value}' contains invalid characters. Correct via Learning > Admin > Assignment
-        Management.
-    record_fix_template: 'Assignment for {LEARNINGASSIGNMENT.USERID}: COURSE_ID ''{actual_value}'' has an invalid format.'
-    auto_fix:
-      steps:
-      - op: strip
-      confidence: high
-  - id: LMS044
-    field: LEARNINGCOMPLETION.SCORE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.STATUS` == "FAILED" and `LEARNINGCOMPLETION.SCORE` >= `LEARNINGCOMPLETION.PASSING_SCORE`'
-    require_populated: true
-    severity: medium
-    dimension: consistency
-    message: Learning history marked failed despite a score at or above the passing threshold
-    why_it_matters: A record marked FAILED alongside a score that actually meets the passing threshold understates the
-      learner's real completion status and may force an unnecessary retake of compliance training.
-    rule_authority: best_practice
-    sap_impact: Learner is incorrectly shown as non-compliant and may be required to repeat training they already passed.
-    fix_map:
-      __other__: Reconcile the score and status in Learning Administration > Learning History.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: marked FAILED
-      with score {LEARNINGCOMPLETION.SCORE} at or above the passing score {LEARNINGCOMPLETION.PASSING_SCORE}.'
-  - id: LMS045
-    field: LEARNINGCOMPLETION.PASSING_SCORE
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: Failed learning history record is missing the passing score it was measured against
-    why_it_matters: When a record is marked FAILED, auditors and managers need to see the bar the learner missed.
-      Without PASSING_SCORE there is no way to verify the fail determination was correct.
-    rule_authority: best_practice
-    sap_impact: Fail determination cannot be independently verified during a compliance audit or a learner appeal.
-    fix_map:
-      __blank__: Populate the passing score from the course configuration via Learning Administration > Learning History.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: marked FAILED
-      but PASSING_SCORE is missing.'
-    applies_when:
-      LEARNINGCOMPLETION.STATUS:
-      - FAILED
-
-  - id: LMS046
-    field: LEARNINGASSIGNMENT.SCHEDULE_ID
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.SCHEDULE_ID`.notna()'
-    applies_when:
-      LEARNINGASSIGNMENT.ITEM_TYPE:
-      - CURRICULUM
-    severity: low
-    dimension: consistency
-    message: Curriculum assignment carries a scheduled-offering ID
-    why_it_matters: Scheduled offerings (classes) belong to items, not curricula. A schedule on a curriculum assignment was
-      copied from an item and points at a class the curriculum cannot register for.
-    rule_authority: best_practice
-    sap_impact: Registration and seat counts on the class are wrong.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Remove the
-        schedule from the curriculum.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: curriculum with schedule
-      {LEARNINGASSIGNMENT.SCHEDULE_ID}.'
-  - id: LMS047
-    field: LEARNINGASSIGNMENT.EXPIRATION_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.EXPIRATION_DATE`.dt.normalize() < @today'
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS:
-      - Completed
-      LEARNINGASSIGNMENT.REQUIRED: &id001
-      - 'true'
-      - 'True'
-      - 'TRUE'
-      - Y
-      - '1'
-      - X
-    severity: high
-    dimension: timeliness
-    message: Required certification has expired
-    why_it_matters: Required items with a retraining period expire. An expired completion means the employee is no longer certified
-      — a compliance gap for regulated training (safety, licences).
-    rule_authority: best_practice
-    sap_impact: Compliance reports show the employee as certified when they are not.
-    fix_map:
-      __blank__: Assign the retraining item and notify the employee and manager.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: expired {LEARNINGASSIGNMENT.EXPIRATION_DATE}.'
-  - id: LMS048
-    field: LEARNINGASSIGNMENT.EXPIRATION_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.EXPIRATION_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.ASSIGNED_DATE`'
-    require_populated: true
-    severity: medium
-    dimension: validity
-    message: Assignment expires before it was assigned
-    why_it_matters: An expiry before the assignment date is impossible; the retraining period or date was imported wrongly.
-    rule_authority: best_practice
-    sap_impact: Item shows as expired from day one.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Correct the
-        expiration date.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: assigned {LEARNINGASSIGNMENT.ASSIGNED_DATE},
-      expires {LEARNINGASSIGNMENT.EXPIRATION_DATE}.'
-  - id: LMS049
-    field: LEARNINGASSIGNMENT.STATUS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.DUE_DATE` < @today'
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS:
-      - Assigned
-      - Not Started
-      - In Progress
-      - Registered
-    severity: low
-    dimension: consistency
-    message: Open assignment is past due but its status is not Overdue
-    why_it_matters: Overdue reporting and escalation rely on the status. An open item past its due date that is not Overdue
-      escapes the escalation process.
-    rule_authority: best_practice
-    sap_impact: Overdue escalations not sent.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Refresh the
-        assignment status.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: due {LEARNINGASSIGNMENT.DUE_DATE},
-      status {LEARNINGASSIGNMENT.STATUS}.'
-  - id: LMS050
-    field: LEARNINGCOMPLETION.CPE_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.CPE_HOURS` > `LEARNINGCOMPLETION.TOTAL_HOURS`'
-    require_populated: true
-    severity: medium
-    dimension: validity
-    message: CPE hours exceed the total hours of the item
-    why_it_matters: Continuing-professional-education hours are a subset of the item's total hours; more CPE than total hours
-      over-credits professional licences.
-    rule_authority: best_practice
-    sap_impact: CPE transcripts over-state credit — an audit finding for licensing bodies.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the CPE or total
-        hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      CPE {LEARNINGCOMPLETION.CPE_HOURS} > total {LEARNINGCOMPLETION.TOTAL_HOURS}.'
-  - id: LMS051
-    field: LEARNINGCOMPLETION.CONTACT_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.CONTACT_HOURS` > `LEARNINGCOMPLETION.TOTAL_HOURS`'
-    require_populated: true
-    severity: medium
-    dimension: validity
-    message: Contact hours exceed the total hours of the item
-    why_it_matters: Contact hours (instructor time) are part of the total hours. More contact than total hours is a data error.
-    rule_authority: best_practice
-    sap_impact: Training-hour statistics and statutory training reports wrong.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      contact {LEARNINGCOMPLETION.CONTACT_HOURS} > total {LEARNINGCOMPLETION.TOTAL_HOURS}.'
-  - id: LMS052
-    field: LEARNINGCOMPLETION.TOTAL_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.TOTAL_HOURS` < 0'
-    require_populated: true
-    severity: medium
-    dimension: validity
-    message: Total hours are negative
-    why_it_matters: Training hours cannot be negative; a sign error reduces the learner's and the company's reported training
+  severity: low
+  dimension: consistency
+  message: Open assignment is past due but its status is not Overdue
+  why_it_matters: Overdue reporting and escalation rely on the status. An open item past its due date that is not Overdue
+    escapes the escalation process.
+  rule_authority: best_practice
+  sap_impact: Overdue escalations not sent.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Refresh the
+      assignment status.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: due {LEARNINGASSIGNMENT.DUE_DATE},
+    status {LEARNINGASSIGNMENT.STATUS}.'
+- id: LMS050
+  field: LEARNINGCOMPLETION.CPE_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.CPE_HOURS` > `LEARNINGCOMPLETION.TOTAL_HOURS`'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: CPE hours exceed the total hours of the item
+  why_it_matters: Continuing-professional-education hours are a subset of the item's total hours; more CPE than total hours
+    over-credits professional licences.
+  rule_authority: best_practice
+  sap_impact: CPE transcripts over-state credit — an audit finding for licensing bodies.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the CPE or total
       hours.
-    rule_authority: best_practice
-    sap_impact: Training-hour totals understated.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the total hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      total hours {LEARNINGCOMPLETION.TOTAL_HOURS}.'
-  - id: LMS053
-    field: LEARNINGCOMPLETION.CONTACT_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.CONTACT_HOURS` < 0'
-    require_populated: true
-    severity: medium
-    dimension: validity
-    message: Contact hours are negative
-    why_it_matters: Contact hours cannot be negative.
-    rule_authority: best_practice
-    sap_impact: Training-hour totals understated.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the contact hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      contact hours {LEARNINGCOMPLETION.CONTACT_HOURS}.'
-  - id: LMS054
-    field: LEARNINGCOMPLETION.CPE_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.CPE_HOURS` < 0'
-    require_populated: true
-    severity: medium
-    dimension: validity
-    message: CPE hours are negative
-    why_it_matters: CPE hours cannot be negative; a sign error removes credit from the learner's licence transcript.
-    rule_authority: best_practice
-    sap_impact: CPE transcript understated.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the CPE hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      CPE hours {LEARNINGCOMPLETION.CPE_HOURS}.'
-  - id: LMS055
-    field: LEARNINGCOMPLETION.CREDIT_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` > `LEARNINGCOMPLETION.TOTAL_HOURS`'
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Credit hours exceed the total hours of the item
-    why_it_matters: Credit hours are normally at most the item's total hours. More credit than hours delivered is usually a
-      units error.
-    rule_authority: best_practice
-    sap_impact: Learner over-credited.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the credit or total
-        hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      credit {LEARNINGCOMPLETION.CREDIT_HOURS} > total {LEARNINGCOMPLETION.TOTAL_HOURS}.'
-  - id: LMS056
-    field: LEARNINGASSIGNMENT.INSTRUCTOR_ID
-    check_class: null_check
-    applies_when:
-      LEARNINGASSIGNMENT.ITEM_TYPE:
-      - CLASSROOM
-      LEARNINGASSIGNMENT.SCHEDULE_ID:
-        populated: true
-    severity: medium
-    dimension: completeness
-    message: Scheduled classroom item has no instructor
-    why_it_matters: A classroom offering needs an instructor for delivery, roster and attendance recording. Without one the
-      class cannot be marked complete by an instructor.
-    rule_authority: best_practice
-    sap_impact: Attendance and completion recording blocked.
-    fix_map:
-      __blank__: Assign an instructor to the scheduled offering.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: classroom schedule {LEARNINGASSIGNMENT.SCHEDULE_ID}
-      has no instructor.'
-  - id: LMS057
-    field: LEARNINGASSIGNMENT.INSTRUCTOR_ID
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.INSTRUCTOR_ID` == `LEARNINGASSIGNMENT.USERID`'
-    require_populated: true
-    severity: medium
-    dimension: accuracy
-    message: Learner is the instructor of their own class
-    why_it_matters: An instructor records completion for the class. Instructing yourself lets the learner certify their own
-      attendance — a segregation-of-duties gap for compliance training.
-    rule_authority: best_practice
-    sap_impact: Self-certified compliance training.
-    fix_map:
-      __blank__: Assign a different instructor or remove the learner from the roster.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: learner is the instructor.'
-  - id: LMS058
-    field: LEARNINGASSIGNMENT.SCHEDULE_ID
-    check_class: null_check
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS:
-      - Registered
-    severity: medium
-    dimension: completeness
-    message: Registered assignment has no scheduled offering
-    why_it_matters: Registered means the learner holds a seat in a class. Without a schedule ID the registration points at no
-      class.
-    rule_authority: best_practice
-    sap_impact: Seat counts and wait lists wrong.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Register the
-        learner into the right offering.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: registered with no schedule.'
-  - id: LMS059
-    field: LEARNINGASSIGNMENT.EXPIRATION_DATE
-    check_class: cross_field_check
-    fail_when: (`LEARNINGASSIGNMENT.EXPIRATION_DATE`.dt.normalize() - `LEARNINGASSIGNMENT.ASSIGNED_DATE`).dt.days < 30
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Assignment expires within 30 days of being assigned
-    why_it_matters: Retraining periods are normally months or years. Under 30 days usually means days were entered where months
-      were meant.
-    rule_authority: best_practice
-    sap_impact: Item expires before the learner can complete it.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Check the retraining
-        period.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: assigned {LEARNINGASSIGNMENT.ASSIGNED_DATE},
-      expires {LEARNINGASSIGNMENT.EXPIRATION_DATE}.'
-  - id: LMS060
-    field: LEARNINGASSIGNMENT.EXPIRATION_DATE
-    check_class: cross_field_check
-    fail_when: (`LEARNINGASSIGNMENT.EXPIRATION_DATE`.dt.normalize() - `LEARNINGASSIGNMENT.ASSIGNED_DATE`).dt.days > 3653
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Assignment expires more than ten years after being assigned
-    why_it_matters: A retraining period over ten years is almost always a year typo, which silently removes the item from retraining.
-    rule_authority: best_practice
-    sap_impact: Retraining never triggered.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Check the retraining
-        period.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: expires {LEARNINGASSIGNMENT.EXPIRATION_DATE}.'
-  - id: LMS061
-    field: LEARNINGASSIGNMENT.ITEM_ACTIVE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.ITEM_ACTIVE`.str.lower().isin([''false'',''n'',''0''])'
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS: &id004
-      - Assigned
-      - Not Started
-      - In Progress
-      - Registered
-      - Overdue
-    severity: medium
-    dimension: consistency
-    message: Open assignment points at an inactive learning item
-    why_it_matters: Inactive items cannot be launched or registered. Learners keep an open assignment they cannot complete.
-    rule_authority: best_practice
-    sap_impact: Learners blocked; overdue counts inflated.
-    fix_map:
-      __blank__: Replace the inactive item with its successor or remove the assignment.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: item inactive, status
-      {LEARNINGASSIGNMENT.STATUS}.'
-  - id: LMS062
-    field: LEARNINGASSIGNMENT.REQUIRED
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.ITEM_ACTIVE`.str.lower().isin([''false'',''n'',''0''])'
-    require_populated: true
-    applies_when: &id003
-      LEARNINGASSIGNMENT.REQUIRED: *id001
-    severity: medium
-    dimension: consistency
-    message: Required assignment points at an inactive learning item
-    why_it_matters: A required item that is inactive cannot be completed, so the learner is permanently non-compliant.
-    rule_authority: best_practice
-    sap_impact: Compliance reports show unavoidable non-compliance.
-    fix_map:
-      __blank__: Reassign to the active replacement item.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: required but item inactive.'
-  - id: LMS063
-    field: LEARNINGCOMPLETION.CREDIT_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` > 0'
-    require_populated: true
-    applies_when:
-      LEARNINGCOMPLETION.STATUS:
-      - FAILED
-    severity: medium
-    dimension: consistency
-    message: Failed learning record awards credit hours
-    why_it_matters: Credit is earned by completing an item. A FAILED record that carries credit hours over-credits the learner's
-      transcript.
-    rule_authority: best_practice
-    sap_impact: Transcript and CPE credit overstated.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Remove the credit from
-        the failed record.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      failed with {LEARNINGCOMPLETION.CREDIT_HOURS} credit hours.'
-  - id: LMS064
-    field: LEARNINGCOMPLETION.REVISION_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.REVISION_DATE`.dt.normalize() > `LEARNINGCOMPLETION.COMPLETION_DATE`'
-    require_populated: true
-    severity: medium
-    dimension: consistency
-    message: Learning was completed before the item revision it is recorded against existed
-    why_it_matters: A completion is recorded against the revision the learner took. A revision dated after the completion was
-      not available at the time.
-    rule_authority: best_practice
-    sap_impact: Retraining on revision change triggers wrongly.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Record the completion against
-        the right revision.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      revision {LEARNINGCOMPLETION.REVISION_DATE}.'
-  - id: LMS065
-    field: LEARNINGASSIGNMENT.REVISION_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.REVISION_DATE`.dt.normalize() > @today'
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Assigned item revision is dated in the future
-    why_it_matters: Revisions take effect when published; a future revision date is a date error.
-    rule_authority: best_practice
-    sap_impact: Revision-based retraining logic wrong.
-    fix_map:
-      __blank__: Correct the item revision date.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: revision {LEARNINGASSIGNMENT.REVISION_DATE}.'
-  - id: LMS066
-    field: LEARNINGCOMPLETION.CPE_HOURS
-    check_class: cross_field_check
-    fail_when: (`LEARNINGCOMPLETION.CPE_HOURS` > 0) & `LEARNINGCOMPLETION.TOTAL_HOURS`.isna()
-    severity: low
-    dimension: completeness
-    message: CPE hours recorded without total hours
-    why_it_matters: CPE hours are part of the item's total hours; without total hours the CPE credit cannot be checked.
-    rule_authority: best_practice
-    sap_impact: CPE credit unverifiable.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Record the item's total
-        hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      CPE {LEARNINGCOMPLETION.CPE_HOURS}, no total hours.'
-  - id: LMS067
-    field: LEARNINGASSIGNMENT.DUE_DATE
-    check_class: cross_field_check
-    fail_when: (`LEARNINGASSIGNMENT.DUE_DATE` - `LEARNINGASSIGNMENT.ASSIGNED_DATE`).dt.days > 730
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Assignment is due more than two years after being assigned
-    why_it_matters: Due dates are typically days to months after assignment. Two years is a year typo and postpones the compliance
-      deadline.
-    rule_authority: best_practice
-    sap_impact: Compliance deadline effectively removed.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Correct the
-        due date.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: assigned {LEARNINGASSIGNMENT.ASSIGNED_DATE},
-      due {LEARNINGASSIGNMENT.DUE_DATE}.'
-  - id: LMS068
-    field: LEARNINGASSIGNMENT.CLASS_END_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.CLASS_END_DATE` < @today'
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS:
-      - Registered
-    severity: medium
-    dimension: timeliness
-    message: Class has ended but the learner is still only registered
-    why_it_matters: After a class ends the instructor records attendance. A learner still Registered was never marked complete
-      or no-show.
-    rule_authority: best_practice
-    sap_impact: Training attended is not on the transcript.
-    fix_map:
-      __blank__: Record completion or no-show for the class roster.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: class ended {LEARNINGASSIGNMENT.CLASS_END_DATE}.'
-  - id: LMS069
-    field: LEARNINGASSIGNMENT.SCHEDULE_ID
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.SCHEDULE_ID`.notna()'
-    applies_when:
-      LEARNINGASSIGNMENT.ITEM_TYPE:
-      - ONLINE
-    severity: low
-    dimension: consistency
-    message: Online item assignment carries a scheduled-offering ID
-    why_it_matters: Self-paced online items are launched directly, not through classes. A schedule ID on an online item points
-      at a class of another item.
-    rule_authority: best_practice
-    sap_impact: Registration data inconsistent.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Remove the
-        schedule or fix the item type.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: online item with schedule
-      {LEARNINGASSIGNMENT.SCHEDULE_ID}.'
-  - id: LMS070
-    field: LEARNINGASSIGNMENT.CLASS_END_DATE
-    check_class: cross_field_check
-    fail_when: (`LEARNINGASSIGNMENT.CLASS_END_DATE` - `LEARNINGASSIGNMENT.CLASS_START_DATE`).dt.days > 30
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Class runs for more than 30 days
-    why_it_matters: Scheduled offerings are normally days long. More than 30 days usually means a wrong end year or month.
-    rule_authority: best_practice
-    sap_impact: Instructor and room booked for the wrong period.
-    fix_map:
-      __blank__: Correct the class dates.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: class {LEARNINGASSIGNMENT.CLASS_START_DATE}
-      to {LEARNINGASSIGNMENT.CLASS_END_DATE}.'
-  - id: LMS071
-    field: LEARNINGASSIGNMENT.INSTRUCTOR_ID
-    check_class: regex_check
-    pattern: ^[a-zA-Z0-9._@-]{1,90}$
-    severity: low
-    dimension: validity
-    message: Instructor ID contains invalid characters
-    why_it_matters: Instructor IDs are Learning instructor keys; whitespace or symbols break the link to the instructor record.
-    rule_authority: best_practice
-    sap_impact: Class has no resolvable instructor.
-    fix_map:
-      __other__: Correct the instructor ID.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: instructor ID ''{actual_value}''
-      is invalid.'
-    auto_fix: &id002
-      steps:
-      - op: strip
-      confidence: high
-  - id: LMS072
-    field: LEARNINGASSIGNMENT.SCHEDULE_ID
-    check_class: regex_check
-    pattern: ^[A-Za-z0-9._-]{1,90}$
-    severity: low
-    dimension: validity
-    message: Schedule ID contains invalid characters
-    why_it_matters: Schedule IDs are numeric or code keys of scheduled offerings; whitespace or symbols break the registration
-      link.
-    rule_authority: best_practice
-    sap_impact: Registration points at no class.
-    fix_map:
-      __other__: Correct the schedule ID.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: schedule ID ''{actual_value}''
-      is invalid.'
-    auto_fix: *id002
-  - id: LMS073
-    field: LEARNINGASSIGNMENT.ASSIGNMENT_TYPE
-    check_class: null_check
-    applies_when: *id003
-    severity: low
-    dimension: completeness
-    message: Required assignment has no assignment type
-    why_it_matters: The assignment type records how the item reached the learner (admin, assignment profile, self). For required
-      items it is the audit evidence that the requirement was deliberately assigned.
-    rule_authority: best_practice
-    sap_impact: Compliance audit cannot show who required the training.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Set the assignment
-        type.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: required with no assignment
-      type.'
-  - id: LMS074
-    field: LEARNINGCOMPLETION.CREDIT_HOURS
-    check_class: cross_field_check
-    fail_when: (`LEARNINGCOMPLETION.CREDIT_HOURS` > 0) & (`LEARNINGCOMPLETION.TOTAL_HOURS` == 0)
-    require_populated: true
-    severity: low
-    dimension: consistency
-    message: Credit hours awarded for an item with zero total hours
-    why_it_matters: Credit is earned from learning time. Credit on a zero-hour item means one of the two values is missing.
-    rule_authority: best_practice
-    sap_impact: Credit unverifiable.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      credit {LEARNINGCOMPLETION.CREDIT_HOURS}, total 0.'
-  - id: LMS075
-    field: LEARNINGCOMPLETION.PASSING_SCORE
-    check_class: cross_field_check
-    fail_when: (`LEARNINGCOMPLETION.PASSING_SCORE` < 0) | (`LEARNINGCOMPLETION.PASSING_SCORE` > 100)
-    require_populated: true
-    severity: medium
-    dimension: validity
-    message: Passing score is outside 0-100
-    why_it_matters: Scores are percentages; a passing score outside 0-100 makes every pass/fail decision on the item wrong.
-    rule_authority: best_practice
-    sap_impact: Learners passed or failed incorrectly.
-    fix_map:
-      __blank__: Correct the item's passing score.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      passing score {LEARNINGCOMPLETION.PASSING_SCORE}.'
-  - id: LMS076
-    field: LEARNINGCOMPLETION.SCORE
-    check_class: null_check
-    applies_when:
-      LEARNINGCOMPLETION.STATUS:
-      - COMPLETE
-      LEARNINGCOMPLETION.PASSING_SCORE:
-        populated: true
-    severity: low
-    dimension: completeness
-    message: Completed learning record has no score although a passing score is set
-    why_it_matters: When an item has a passing score, the completion should carry the learner's score as evidence of passing.
-    rule_authority: best_practice
-    sap_impact: Pass decision unsupported by evidence.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Record the learner's score.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      completed, passing score {LEARNINGCOMPLETION.PASSING_SCORE}, no score.'
-  - id: LMS077
-    field: LEARNINGASSIGNMENT.STATUS
-    check_class: cross_field_check
-    fail_when: '`EMPEMPLOYMENT.END_DATE` < @today'
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS: *id004
-      LEARNINGASSIGNMENT.REQUIRED: *id001
-    severity: medium
-    dimension: consistency
-    message: Open required training is still assigned to an employee who has left
-    why_it_matters: Leavers' open assignments inflate overdue and non-compliance figures. They should be removed at termination.
-    rule_authority: best_practice
-    sap_impact: Compliance percentage understated.
-    fix_map:
-      __blank__: Remove the leaver's open assignments.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: status {LEARNINGASSIGNMENT.STATUS},
-      employment ended {EMPEMPLOYMENT.END_DATE}.'
-  - id: LMS078
-    field: LEARNINGASSIGNMENT.STATUS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.DUE_DATE` >= @today'
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS:
-      - Overdue
-    severity: low
-    dimension: consistency
-    message: Assignment is marked Overdue but its due date has not passed
-    why_it_matters: Overdue status triggers escalation e-mails. Marking an item overdue before its due date escalates wrongly.
-    rule_authority: best_practice
-    sap_impact: Learner and manager receive false overdue notices.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Refresh the
-        assignment status.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: overdue, due {LEARNINGASSIGNMENT.DUE_DATE}.'
-  - id: LMS079
-    field: LEARNINGCOMPLETION.CREDIT_HOURS
-    check_class: cross_field_check
-    fail_when: (`LEARNINGCOMPLETION.TOTAL_HOURS` > 0) & `LEARNINGCOMPLETION.CREDIT_HOURS`.isna()
-    applies_when:
-      LEARNINGCOMPLETION.STATUS:
-      - COMPLETE
-    severity: low
-    dimension: completeness
-    message: Completed item with hours awards no credit hours
-    why_it_matters: Completed items with learning hours normally award credit; a missing credit leaves the learner's transcript
-      short.
-    rule_authority: best_practice
-    sap_impact: Transcript credit understated.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Record the credit hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      completed, {LEARNINGCOMPLETION.TOTAL_HOURS} hours, no credit.'
-  - id: LMS080
-    field: LEARNINGASSIGNMENT.REQUIRED
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.REQUIRED`.str.lower().isin([''true'',''y'',''1'',''x''])'
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.STATUS:
-      - Withdrawn
-    severity: low
-    dimension: consistency
-    message: Withdrawn assignment is still flagged as required
-    why_it_matters: Withdrawing ends the assignment. Keeping the required flag counts the learner as non-compliant for training
-      they no longer need.
-    rule_authority: best_practice
-    sap_impact: Compliance reports overstate non-compliance.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Clear the required
-        flag or reinstate the assignment.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: withdrawn but required.'
-  - id: LMS081
-    field: LEARNINGASSIGNMENT.STATUS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.STATUS`.isin([''In Progress'',''Completed''])'
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.APPROVAL_STATUS:
-      - Rejected
-    severity: medium
-    dimension: consistency
-    message: Training whose approval was rejected is in progress or completed
-    why_it_matters: Items that need approval (external, costed training) must be approved before the learner starts. Progress
-      on a rejected request bypasses the approval control.
-    rule_authority: best_practice
-    sap_impact: Unapproved training cost incurred.
-    fix_map:
-      __blank__: Review the request; approve it retrospectively or withdraw the assignment.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: approval rejected, status
-      {LEARNINGASSIGNMENT.STATUS}.'
-  - id: LMS082
-    field: LEARNINGASSIGNMENT.APPROVAL_STATUS
-    check_class: cross_field_check
-    fail_when: (@today - `LEARNINGASSIGNMENT.ASSIGNED_DATE`).dt.days > 30
-    require_populated: true
-    applies_when:
-      LEARNINGASSIGNMENT.APPROVAL_STATUS:
-      - Pending
-    severity: low
-    dimension: timeliness
-    message: Training request has waited more than 30 days for approval
-    why_it_matters: Pending approvals block registration. A month-old request has been forgotten by the approver.
-    rule_authority: best_practice
-    sap_impact: Learner cannot attend; class seats lost.
-    fix_map:
-      __blank__: Approve or reject the pending request.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: pending approval since
-      {LEARNINGASSIGNMENT.ASSIGNED_DATE}.'
-  - id: LMS083
-    field: LEARNINGCOMPLETION.STATUS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.SCORE`.notna()'
-    applies_when:
-      LEARNINGCOMPLETION.STATUS:
-      - WITHDRAWN
-    severity: low
-    dimension: consistency
-    message: Withdrawn learning record carries a score
-    why_it_matters: A withdrawn learner did not finish the item; a score on the record suggests the status was set wrongly.
-    rule_authority: best_practice
-    sap_impact: Learning history status unreliable.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the status or clear
-        the score.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      withdrawn with score {LEARNINGCOMPLETION.SCORE}.'
-  - id: LMS084
-    field: LEARNINGASSIGNMENT.DUE_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.DUE_DATE` < `LEARNINGASSIGNMENT.CLASS_END_DATE`'
-    require_populated: true
-    severity: low
-    dimension: consistency
-    message: Assignment is due before its class ends
-    why_it_matters: A learner registered in a class cannot complete before the class ends. A due date earlier than the class
-      end makes the learner overdue through no fault of their own.
-    rule_authority: best_practice
-    sap_impact: False overdue notices.
-    fix_map:
-      __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Align the due
-        date with the class.
-    record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: due {LEARNINGASSIGNMENT.DUE_DATE},
-      class ends {LEARNINGASSIGNMENT.CLASS_END_DATE}.'
-  - id: LMS085
-    field: LEARNINGCOMPLETION.TOTAL_HOURS
-    check_class: cross_field_check
-    fail_when: '`LEARNINGCOMPLETION.TOTAL_HOURS` > 1000'
-    require_populated: true
-    severity: low
-    dimension: validity
-    message: Total hours for a single learning item exceed 1000
-    why_it_matters: A single learning item over 1000 hours is implausible and usually minutes entered as hours.
-    rule_authority: best_practice
-    sap_impact: Training-hour totals grossly overstated.
-    fix_map:
-      __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the total hours.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
-      total hours {LEARNINGCOMPLETION.TOTAL_HOURS}.'
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    CPE {LEARNINGCOMPLETION.CPE_HOURS} > total {LEARNINGCOMPLETION.TOTAL_HOURS}.'
+- id: LMS051
+  field: LEARNINGCOMPLETION.CONTACT_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.CONTACT_HOURS` > `LEARNINGCOMPLETION.TOTAL_HOURS`'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Contact hours exceed the total hours of the item
+  why_it_matters: Contact hours (instructor time) are part of the total hours. More contact than total hours is a data error.
+  rule_authority: best_practice
+  sap_impact: Training-hour statistics and statutory training reports wrong.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    contact {LEARNINGCOMPLETION.CONTACT_HOURS} > total {LEARNINGCOMPLETION.TOTAL_HOURS}.'
+- id: LMS052
+  field: LEARNINGCOMPLETION.TOTAL_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.TOTAL_HOURS` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Total hours are negative
+  why_it_matters: Training hours cannot be negative; a sign error reduces the learner's and the company's reported training
+    hours.
+  rule_authority: best_practice
+  sap_impact: Training-hour totals understated.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the total hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    total hours {LEARNINGCOMPLETION.TOTAL_HOURS}.'
+- id: LMS053
+  field: LEARNINGCOMPLETION.CONTACT_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.CONTACT_HOURS` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Contact hours are negative
+  why_it_matters: Contact hours cannot be negative.
+  rule_authority: best_practice
+  sap_impact: Training-hour totals understated.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the contact hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    contact hours {LEARNINGCOMPLETION.CONTACT_HOURS}.'
+- id: LMS054
+  field: LEARNINGCOMPLETION.CPE_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.CPE_HOURS` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: CPE hours are negative
+  why_it_matters: CPE hours cannot be negative; a sign error removes credit from the learner's licence transcript.
+  rule_authority: best_practice
+  sap_impact: CPE transcript understated.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the CPE hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    CPE hours {LEARNINGCOMPLETION.CPE_HOURS}.'
+- id: LMS055
+  field: LEARNINGCOMPLETION.CREDIT_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` > `LEARNINGCOMPLETION.TOTAL_HOURS`'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Credit hours exceed the total hours of the item
+  why_it_matters: Credit hours are normally at most the item's total hours. More credit than hours delivered is usually
+    a units error.
+  rule_authority: best_practice
+  sap_impact: Learner over-credited.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the credit or
+      total hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    credit {LEARNINGCOMPLETION.CREDIT_HOURS} > total {LEARNINGCOMPLETION.TOTAL_HOURS}.'
+- id: LMS056
+  field: LEARNINGASSIGNMENT.INSTRUCTOR_ID
+  check_class: null_check
+  applies_when:
+    LEARNINGASSIGNMENT.ITEM_TYPE:
+    - CLASSROOM
+    LEARNINGASSIGNMENT.SCHEDULE_ID:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Scheduled classroom item has no instructor
+  why_it_matters: A classroom offering needs an instructor for delivery, roster and attendance recording. Without one the
+    class cannot be marked complete by an instructor.
+  rule_authority: best_practice
+  sap_impact: Attendance and completion recording blocked.
+  fix_map:
+    __blank__: Assign an instructor to the scheduled offering.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: classroom schedule
+    {LEARNINGASSIGNMENT.SCHEDULE_ID} has no instructor.'
+- id: LMS057
+  field: LEARNINGASSIGNMENT.INSTRUCTOR_ID
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.INSTRUCTOR_ID` == `LEARNINGASSIGNMENT.USERID`'
+  require_populated: true
+  severity: medium
+  dimension: accuracy
+  message: Learner is the instructor of their own class
+  why_it_matters: An instructor records completion for the class. Instructing yourself lets the learner certify their own
+    attendance — a segregation-of-duties gap for compliance training.
+  rule_authority: best_practice
+  sap_impact: Self-certified compliance training.
+  fix_map:
+    __blank__: Assign a different instructor or remove the learner from the roster.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: learner is the instructor.'
+- id: LMS058
+  field: LEARNINGASSIGNMENT.SCHEDULE_ID
+  check_class: null_check
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS:
+    - Registered
+  severity: medium
+  dimension: completeness
+  message: Registered assignment has no scheduled offering
+  why_it_matters: Registered means the learner holds a seat in a class. Without a schedule ID the registration points at
+    no class.
+  rule_authority: best_practice
+  sap_impact: Seat counts and wait lists wrong.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Register
+      the learner into the right offering.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: registered with no
+    schedule.'
+- id: LMS059
+  field: LEARNINGASSIGNMENT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: (`LEARNINGASSIGNMENT.EXPIRATION_DATE`.dt.normalize() - `LEARNINGASSIGNMENT.ASSIGNED_DATE`).dt.days < 30
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Assignment expires within 30 days of being assigned
+  why_it_matters: Retraining periods are normally months or years. Under 30 days usually means days were entered where months
+    were meant.
+  rule_authority: best_practice
+  sap_impact: Item expires before the learner can complete it.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Check the
+      retraining period.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: assigned {LEARNINGASSIGNMENT.ASSIGNED_DATE},
+    expires {LEARNINGASSIGNMENT.EXPIRATION_DATE}.'
+- id: LMS060
+  field: LEARNINGASSIGNMENT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: (`LEARNINGASSIGNMENT.EXPIRATION_DATE`.dt.normalize() - `LEARNINGASSIGNMENT.ASSIGNED_DATE`).dt.days > 3653
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Assignment expires more than ten years after being assigned
+  why_it_matters: A retraining period over ten years is almost always a year typo, which silently removes the item from
+    retraining.
+  rule_authority: best_practice
+  sap_impact: Retraining never triggered.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Check the
+      retraining period.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: expires {LEARNINGASSIGNMENT.EXPIRATION_DATE}.'
+- id: LMS061
+  field: LEARNINGASSIGNMENT.ITEM_ACTIVE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.ITEM_ACTIVE`.str.lower().isin([''false'',''n'',''0''])'
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS: &id004
+    - Assigned
+    - Not Started
+    - In Progress
+    - Registered
+    - Overdue
+  severity: medium
+  dimension: consistency
+  message: Open assignment points at an inactive learning item
+  why_it_matters: Inactive items cannot be launched or registered. Learners keep an open assignment they cannot complete.
+  rule_authority: best_practice
+  sap_impact: Learners blocked; overdue counts inflated.
+  fix_map:
+    __blank__: Replace the inactive item with its successor or remove the assignment.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: item inactive, status
+    {LEARNINGASSIGNMENT.STATUS}.'
+- id: LMS062
+  field: LEARNINGASSIGNMENT.REQUIRED
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.ITEM_ACTIVE`.str.lower().isin([''false'',''n'',''0''])'
+  require_populated: true
+  applies_when: &id003
+    LEARNINGASSIGNMENT.REQUIRED: *id001
+  severity: medium
+  dimension: consistency
+  message: Required assignment points at an inactive learning item
+  why_it_matters: A required item that is inactive cannot be completed, so the learner is permanently non-compliant.
+  rule_authority: best_practice
+  sap_impact: Compliance reports show unavoidable non-compliance.
+  fix_map:
+    __blank__: Reassign to the active replacement item.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: required but item inactive.'
+- id: LMS063
+  field: LEARNINGCOMPLETION.CREDIT_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` > 0'
+  require_populated: true
+  applies_when:
+    LEARNINGCOMPLETION.STATUS:
+    - FAILED
+  severity: medium
+  dimension: consistency
+  message: Failed learning record awards credit hours
+  why_it_matters: Credit is earned by completing an item. A FAILED record that carries credit hours over-credits the learner's
+    transcript.
+  rule_authority: best_practice
+  sap_impact: Transcript and CPE credit overstated.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Remove the credit from
+      the failed record.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    failed with {LEARNINGCOMPLETION.CREDIT_HOURS} credit hours.'
+- id: LMS064
+  field: LEARNINGCOMPLETION.REVISION_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.REVISION_DATE`.dt.normalize() > `LEARNINGCOMPLETION.COMPLETION_DATE`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Learning was completed before the item revision it is recorded against existed
+  why_it_matters: A completion is recorded against the revision the learner took. A revision dated after the completion
+    was not available at the time.
+  rule_authority: best_practice
+  sap_impact: Retraining on revision change triggers wrongly.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Record the completion
+      against the right revision.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    revision {LEARNINGCOMPLETION.REVISION_DATE}.'
+- id: LMS065
+  field: LEARNINGASSIGNMENT.REVISION_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.REVISION_DATE`.dt.normalize() > @today'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Assigned item revision is dated in the future
+  why_it_matters: Revisions take effect when published; a future revision date is a date error.
+  rule_authority: best_practice
+  sap_impact: Revision-based retraining logic wrong.
+  fix_map:
+    __blank__: Correct the item revision date.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: revision {LEARNINGASSIGNMENT.REVISION_DATE}.'
+- id: LMS066
+  field: LEARNINGCOMPLETION.CPE_HOURS
+  check_class: cross_field_check
+  fail_when: (`LEARNINGCOMPLETION.CPE_HOURS` > 0) & `LEARNINGCOMPLETION.TOTAL_HOURS`.isna()
+  severity: low
+  dimension: completeness
+  message: CPE hours recorded without total hours
+  why_it_matters: CPE hours are part of the item's total hours; without total hours the CPE credit cannot be checked.
+  rule_authority: best_practice
+  sap_impact: CPE credit unverifiable.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Record the item's total
+      hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    CPE {LEARNINGCOMPLETION.CPE_HOURS}, no total hours.'
+- id: LMS067
+  field: LEARNINGASSIGNMENT.DUE_DATE
+  check_class: cross_field_check
+  fail_when: (`LEARNINGASSIGNMENT.DUE_DATE` - `LEARNINGASSIGNMENT.ASSIGNED_DATE`).dt.days > 730
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Assignment is due more than two years after being assigned
+  why_it_matters: Due dates are typically days to months after assignment. Two years is a year typo and postpones the compliance
+    deadline.
+  rule_authority: best_practice
+  sap_impact: Compliance deadline effectively removed.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Correct the
+      due date.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: assigned {LEARNINGASSIGNMENT.ASSIGNED_DATE},
+    due {LEARNINGASSIGNMENT.DUE_DATE}.'
+- id: LMS068
+  field: LEARNINGASSIGNMENT.CLASS_END_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.CLASS_END_DATE` < @today'
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS:
+    - Registered
+  severity: medium
+  dimension: timeliness
+  message: Class has ended but the learner is still only registered
+  why_it_matters: After a class ends the instructor records attendance. A learner still Registered was never marked complete
+    or no-show.
+  rule_authority: best_practice
+  sap_impact: Training attended is not on the transcript.
+  fix_map:
+    __blank__: Record completion or no-show for the class roster.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: class ended {LEARNINGASSIGNMENT.CLASS_END_DATE}.'
+- id: LMS069
+  field: LEARNINGASSIGNMENT.SCHEDULE_ID
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.SCHEDULE_ID`.notna()'
+  applies_when:
+    LEARNINGASSIGNMENT.ITEM_TYPE:
+    - ONLINE
+  severity: low
+  dimension: consistency
+  message: Online item assignment carries a scheduled-offering ID
+  why_it_matters: Self-paced online items are launched directly, not through classes. A schedule ID on an online item points
+    at a class of another item.
+  rule_authority: best_practice
+  sap_impact: Registration data inconsistent.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Remove the
+      schedule or fix the item type.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: online item with schedule
+    {LEARNINGASSIGNMENT.SCHEDULE_ID}.'
+- id: LMS070
+  field: LEARNINGASSIGNMENT.CLASS_END_DATE
+  check_class: cross_field_check
+  fail_when: (`LEARNINGASSIGNMENT.CLASS_END_DATE` - `LEARNINGASSIGNMENT.CLASS_START_DATE`).dt.days > 30
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Class runs for more than 30 days
+  why_it_matters: Scheduled offerings are normally days long. More than 30 days usually means a wrong end year or month.
+  rule_authority: best_practice
+  sap_impact: Instructor and room booked for the wrong period.
+  fix_map:
+    __blank__: Correct the class dates.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: class {LEARNINGASSIGNMENT.CLASS_START_DATE}
+    to {LEARNINGASSIGNMENT.CLASS_END_DATE}.'
+- id: LMS071
+  field: LEARNINGASSIGNMENT.INSTRUCTOR_ID
+  check_class: regex_check
+  pattern: ^[a-zA-Z0-9._@-]{1,90}$
+  severity: low
+  dimension: validity
+  message: Instructor ID contains invalid characters
+  why_it_matters: Instructor IDs are Learning instructor keys; whitespace or symbols break the link to the instructor record.
+  rule_authority: best_practice
+  sap_impact: Class has no resolvable instructor.
+  fix_map:
+    __other__: Correct the instructor ID.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: instructor ID ''{actual_value}''
+    is invalid.'
+  auto_fix: &id002
+    steps:
+    - op: strip
+    confidence: high
+- id: LMS072
+  field: LEARNINGASSIGNMENT.SCHEDULE_ID
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9._-]{1,90}$
+  severity: low
+  dimension: validity
+  message: Schedule ID contains invalid characters
+  why_it_matters: Schedule IDs are numeric or code keys of scheduled offerings; whitespace or symbols break the registration
+    link.
+  rule_authority: best_practice
+  sap_impact: Registration points at no class.
+  fix_map:
+    __other__: Correct the schedule ID.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: schedule ID ''{actual_value}''
+    is invalid.'
+  auto_fix: *id002
+- id: LMS073
+  field: LEARNINGASSIGNMENT.ASSIGNMENT_TYPE
+  check_class: null_check
+  applies_when: *id003
+  severity: low
+  dimension: completeness
+  message: Required assignment has no assignment type
+  why_it_matters: The assignment type records how the item reached the learner (admin, assignment profile, self). For required
+    items it is the audit evidence that the requirement was deliberately assigned.
+  rule_authority: best_practice
+  sap_impact: Compliance audit cannot show who required the training.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Set the assignment
+      type.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: required with no assignment
+    type.'
+- id: LMS074
+  field: LEARNINGCOMPLETION.CREDIT_HOURS
+  check_class: cross_field_check
+  fail_when: (`LEARNINGCOMPLETION.CREDIT_HOURS` > 0) & (`LEARNINGCOMPLETION.TOTAL_HOURS` == 0)
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Credit hours awarded for an item with zero total hours
+  why_it_matters: Credit is earned from learning time. Credit on a zero-hour item means one of the two values is missing.
+  rule_authority: best_practice
+  sap_impact: Credit unverifiable.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    credit {LEARNINGCOMPLETION.CREDIT_HOURS}, total 0.'
+- id: LMS075
+  field: LEARNINGCOMPLETION.PASSING_SCORE
+  check_class: cross_field_check
+  fail_when: (`LEARNINGCOMPLETION.PASSING_SCORE` < 0) | (`LEARNINGCOMPLETION.PASSING_SCORE` > 100)
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Passing score is outside 0-100
+  why_it_matters: Scores are percentages; a passing score outside 0-100 makes every pass/fail decision on the item wrong.
+  rule_authority: best_practice
+  sap_impact: Learners passed or failed incorrectly.
+  fix_map:
+    __blank__: Correct the item's passing score.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    passing score {LEARNINGCOMPLETION.PASSING_SCORE}.'
+- id: LMS076
+  field: LEARNINGCOMPLETION.SCORE
+  check_class: null_check
+  applies_when:
+    LEARNINGCOMPLETION.STATUS:
+    - COMPLETE
+    LEARNINGCOMPLETION.PASSING_SCORE:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: Completed learning record has no score although a passing score is set
+  why_it_matters: When an item has a passing score, the completion should carry the learner's score as evidence of passing.
+  rule_authority: best_practice
+  sap_impact: Pass decision unsupported by evidence.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Record the learner's
+      score.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    completed, passing score {LEARNINGCOMPLETION.PASSING_SCORE}, no score.'
+- id: LMS077
+  field: LEARNINGASSIGNMENT.STATUS
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.END_DATE` < @today'
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS: *id004
+    LEARNINGASSIGNMENT.REQUIRED: *id001
+  severity: medium
+  dimension: consistency
+  message: Open required training is still assigned to an employee who has left
+  why_it_matters: Leavers' open assignments inflate overdue and non-compliance figures. They should be removed at termination.
+  rule_authority: best_practice
+  sap_impact: Compliance percentage understated.
+  fix_map:
+    __blank__: Remove the leaver's open assignments.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: status {LEARNINGASSIGNMENT.STATUS},
+    employment ended {EMPEMPLOYMENT.END_DATE}.'
+- id: LMS078
+  field: LEARNINGASSIGNMENT.STATUS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.DUE_DATE` >= @today'
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS:
+    - Overdue
+  severity: low
+  dimension: consistency
+  message: Assignment is marked Overdue but its due date has not passed
+  why_it_matters: Overdue status triggers escalation e-mails. Marking an item overdue before its due date escalates wrongly.
+  rule_authority: best_practice
+  sap_impact: Learner and manager receive false overdue notices.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Refresh the
+      assignment status.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: overdue, due {LEARNINGASSIGNMENT.DUE_DATE}.'
+- id: LMS079
+  field: LEARNINGCOMPLETION.CREDIT_HOURS
+  check_class: cross_field_check
+  fail_when: (`LEARNINGCOMPLETION.TOTAL_HOURS` > 0) & `LEARNINGCOMPLETION.CREDIT_HOURS`.isna()
+  applies_when:
+    LEARNINGCOMPLETION.STATUS:
+    - COMPLETE
+  severity: low
+  dimension: completeness
+  message: Completed item with hours awards no credit hours
+  why_it_matters: Completed items with learning hours normally award credit; a missing credit leaves the learner's transcript
+    short.
+  rule_authority: best_practice
+  sap_impact: Transcript credit understated.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Record the credit hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    completed, {LEARNINGCOMPLETION.TOTAL_HOURS} hours, no credit.'
+- id: LMS080
+  field: LEARNINGASSIGNMENT.REQUIRED
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.REQUIRED`.str.lower().isin([''true'',''y'',''1'',''x''])'
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.STATUS:
+    - Withdrawn
+  severity: low
+  dimension: consistency
+  message: Withdrawn assignment is still flagged as required
+  why_it_matters: Withdrawing ends the assignment. Keeping the required flag counts the learner as non-compliant for training
+    they no longer need.
+  rule_authority: best_practice
+  sap_impact: Compliance reports overstate non-compliance.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Clear the
+      required flag or reinstate the assignment.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: withdrawn but required.'
+- id: LMS081
+  field: LEARNINGASSIGNMENT.STATUS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.STATUS`.isin([''In Progress'',''Completed''])'
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.APPROVAL_STATUS:
+    - Rejected
+  severity: medium
+  dimension: consistency
+  message: Training whose approval was rejected is in progress or completed
+  why_it_matters: Items that need approval (external, costed training) must be approved before the learner starts. Progress
+    on a rejected request bypasses the approval control.
+  rule_authority: best_practice
+  sap_impact: Unapproved training cost incurred.
+  fix_map:
+    __blank__: Review the request; approve it retrospectively or withdraw the assignment.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: approval rejected,
+    status {LEARNINGASSIGNMENT.STATUS}.'
+- id: LMS082
+  field: LEARNINGASSIGNMENT.APPROVAL_STATUS
+  check_class: cross_field_check
+  fail_when: (@today - `LEARNINGASSIGNMENT.ASSIGNED_DATE`).dt.days > 30
+  require_populated: true
+  applies_when:
+    LEARNINGASSIGNMENT.APPROVAL_STATUS:
+    - Pending
+  severity: low
+  dimension: timeliness
+  message: Training request has waited more than 30 days for approval
+  why_it_matters: Pending approvals block registration. A month-old request has been forgotten by the approver.
+  rule_authority: best_practice
+  sap_impact: Learner cannot attend; class seats lost.
+  fix_map:
+    __blank__: Approve or reject the pending request.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: pending approval since
+    {LEARNINGASSIGNMENT.ASSIGNED_DATE}.'
+- id: LMS083
+  field: LEARNINGCOMPLETION.STATUS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.SCORE`.notna()'
+  applies_when:
+    LEARNINGCOMPLETION.STATUS:
+    - WITHDRAWN
+  severity: low
+  dimension: consistency
+  message: Withdrawn learning record carries a score
+  why_it_matters: A withdrawn learner did not finish the item; a score on the record suggests the status was set wrongly.
+  rule_authority: best_practice
+  sap_impact: Learning history status unreliable.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the status or
+      clear the score.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    withdrawn with score {LEARNINGCOMPLETION.SCORE}.'
+- id: LMS084
+  field: LEARNINGASSIGNMENT.DUE_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.DUE_DATE` < `LEARNINGASSIGNMENT.CLASS_END_DATE`'
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Assignment is due before its class ends
+  why_it_matters: A learner registered in a class cannot complete before the class ends. A due date earlier than the class
+    end makes the learner overdue through no fault of their own.
+  rule_authority: best_practice
+  sap_impact: False overdue notices.
+  fix_map:
+    __blank__: Correct the assignment in Learning Administration > Users > Assignment Profile / Learning Plan. Align the
+      due date with the class.
+  record_fix_template: 'Assignment of {LEARNINGASSIGNMENT.COURSE_ID} to {LEARNINGASSIGNMENT.USERID}: due {LEARNINGASSIGNMENT.DUE_DATE},
+    class ends {LEARNINGASSIGNMENT.CLASS_END_DATE}.'
+- id: LMS085
+  field: LEARNINGCOMPLETION.TOTAL_HOURS
+  check_class: cross_field_check
+  fail_when: '`LEARNINGCOMPLETION.TOTAL_HOURS` > 1000'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Total hours for a single learning item exceed 1000
+  why_it_matters: A single learning item over 1000 hours is implausible and usually minutes entered as hours.
+  rule_authority: best_practice
+  sap_impact: Training-hour totals grossly overstated.
+  fix_map:
+    __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the total hours.
+  record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
+    total hours {LEARNINGCOMPLETION.TOTAL_HOURS}.'
+- field: LEARNINGASSIGNMENT.CLASS_END_DATE
+  check_class: cross_field_check
+  fail_when: '`LEARNINGASSIGNMENT.CLASS_END_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.CLASS_START_DATE`.dt.normalize()'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Class ends before it starts
+  why_it_matters: 'A class end date before the start date is a scheduling data error: the learner''s calendar shows a negative
+    duration, completion tracking counts wrong attendance, and instructor/session reports are unreliable.'
+  rule_authority: best_practice
+  sap_impact: Session duration and attendance reports wrong; completion tracking unreliable.
+  fix_map:
+    __blank__: Correct the class start/end dates in Learning Administration > Classes.
+  record_fix_template: 'Assignment {LEARNINGASSIGNMENT.COURSE_ID}: class ends {LEARNINGASSIGNMENT.CLASS_END_DATE} before
+    it starts ({LEARNINGASSIGNMENT.CLASS_START_DATE}).'
+  id: LMS086
+- field: LEARNINGASSIGNMENT.ITEM_ACTIVE
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Item-active flag is not Y or N
+  why_it_matters: ITEM_ACTIVE gates whether an assigned course is launchable. A value outside Y/N leaves the flag uninterpretable,
+    so the learner may not see a course that should be live.
+  rule_authority: best_practice
+  sap_impact: Course visibility/launch state indeterminate.
+  fix_map:
+    __blank__: Set the item-active flag to Y or N.
+  id: LMS087
+  allowed_values:
+  - Y
+  - N
+  - 'true'
+  - 'false'
+  - 'True'
+  - 'False'
+  valid_values_with_labels:
+    Y: Active
+    N: Inactive
+    'true': Active
+    'false': Inactive
+    'True': Active
+    'False': Inactive

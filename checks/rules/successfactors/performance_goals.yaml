@@ -6,17 +6,18 @@ rules:
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: "User ID is mandatory \u2014 links performance review to employee record"
-  why_it_matters: USERID is the primary key linking a performance review result to its employee. Without it, the review cannot
-    be associated with any employee, meaning compensation decisions that depend on performance ratings have no input data.
+  message: User ID is mandatory — links performance review to employee record
+  why_it_matters: USERID is the primary key linking a performance review result to its employee. Without it, the review
+    cannot be associated with any employee, meaning compensation decisions that depend on performance ratings have no input
+    data.
   rule_authority: best_practice
   sap_impact: Performance-compensation integration fails. Calibration sessions cannot include this review, and merit cycle
     calculations skip the employee.
   fix_map:
     __blank__: Look up the correct employee User ID from Employee Central and populate PMREVIEWRESULT.USERID. Cross-reference
       the review form assignment history to identify the intended employee.
-  record_fix_template: 'Review for {PMREVIEWRESULT.USERID}: USERID is missing. Look up the employee from the review form assignment
-    and populate PMREVIEWRESULT.USERID.'
+  record_fix_template: 'Review for {PMREVIEWRESULT.USERID}: USERID is missing. Look up the employee from the review form
+    assignment and populate PMREVIEWRESULT.USERID.'
 - id: PERF002
   field: PMREVIEWRESULT.OVERALL_RATING
   check_class: null_check
@@ -24,16 +25,16 @@ rules:
   dimension: completeness
   message: Overall rating is required for calibration and compensation planning
   why_it_matters: OVERALL_RATING is the final performance score used in calibration sessions and as input to the compensation
-    merit cycle. Without it, the employee is excluded from calibration grids and compensation planning worksheets cannot calculate
-    merit increases.
+    merit cycle. Without it, the employee is excluded from calibration grids and compensation planning worksheets cannot
+    calculate merit increases.
   rule_authority: best_practice
   sap_impact: Employee excluded from calibration session. Compensation planning worksheet shows no performance rating, blocking
     merit increase calculation.
   fix_map:
     __blank__: Ensure the review form is completed and the overall rating is calculated or manually entered by the manager.
       Check if the rating scale is configured correctly on the review template.
-  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: OVERALL_RATING is missing. Complete the review form and
-    ensure the final rating is submitted.'
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: OVERALL_RATING is missing. Complete the review form
+    and ensure the final rating is submitted.'
   applies_when:
     PMREVIEWRESULT.FORM_STATUS:
     - '3'
@@ -45,11 +46,12 @@ rules:
   severity: high
   dimension: completeness
   message: Review period is required to assign review to the correct performance cycle
-  why_it_matters: REVIEW_PERIOD determines which annual or mid-year cycle the review belongs to. Without it, the review cannot
-    be placed in the correct performance cycle, causing it to be excluded from period-specific reporting and calibration sessions.
+  why_it_matters: REVIEW_PERIOD determines which annual or mid-year cycle the review belongs to. Without it, the review
+    cannot be placed in the correct performance cycle, causing it to be excluded from period-specific reporting and calibration
+    sessions.
   rule_authority: best_practice
-  sap_impact: Review not assigned to any performance cycle. Period-based analytics and calibration sessions exclude this review
-    entirely.
+  sap_impact: Review not assigned to any performance cycle. Period-based analytics and calibration sessions exclude this
+    review entirely.
   fix_map:
     __blank__: Determine the correct review period from the review form template configuration and populate REVIEW_PERIOD.
       Cross-reference the review creation date with active performance cycles.
@@ -69,8 +71,8 @@ rules:
   fix_map:
     __blank__: 'Set the review date to the date the form was finalised. Update via Performance > Admin > Form Management.
       Format: YYYY-MM-DD.'
-  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: REVIEW_DATE is missing. Set via Performance > Admin >
-    Form Management. Format: YYYY-MM-DD.'
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: REVIEW_DATE is missing. Set via Performance > Admin
+    > Form Management. Format: YYYY-MM-DD.'
 - id: PERF006
   field: PMREVIEWRESULT.MANAGER_RATING
   check_class: null_check
@@ -99,8 +101,8 @@ rules:
   severity: high
   dimension: completeness
   message: User ID is required to link goal plan to employee
-  why_it_matters: USERID on the goal plan links the goals to the employee record. Without it, the goal plan is orphaned and
-    goals are not visible in the employee's performance review form, breaking the goal-performance alignment.
+  why_it_matters: USERID on the goal plan links the goals to the employee record. Without it, the goal plan is orphaned
+    and goals are not visible in the employee's performance review form, breaking the goal-performance alignment.
   rule_authority: best_practice
   sap_impact: Goal plan not visible in performance review form. Manager cannot assess goal achievement during the review.
     Goal completion metrics excluded from dashboards.
@@ -113,15 +115,16 @@ rules:
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: "Goal name is required \u2014 goals without names cannot be reviewed or tracked"
+  message: Goal name is required — goals without names cannot be reviewed or tracked
   why_it_matters: GOAL_NAME is the human-readable description that appears in the employee's goal plan and performance review
-    form. A blank goal name makes it impossible for the manager to assess achievement and renders the goal invisible in dashboards.
+    form. A blank goal name makes it impossible for the manager to assess achievement and renders the goal invisible in
+    dashboards.
   rule_authority: best_practice
   sap_impact: Goal appears as blank entry in review form. Manager cannot assess achievement. Goal tracking dashboards show
     unnamed entries.
   fix_map:
-    __blank__: Add a descriptive goal name via the Goal Plan editor. Goals should follow the SMART framework (Specific, Measurable,
-      Achievable, Relevant, Time-bound).
+    __blank__: Add a descriptive goal name via the Goal Plan editor. Goals should follow the SMART framework (Specific,
+      Measurable, Achievable, Relevant, Time-bound).
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_NAME is blank. Add a descriptive name
     via the Goal Plan editor.'
 - id: PERF010
@@ -136,10 +139,10 @@ rules:
   sap_impact: No overdue alerts for this goal. Goal timeline dashboards show no deadline. Performance review cannot assess
     timeliness of goal completion.
   fix_map:
-    __blank__: 'Set the target date via the Goal Plan editor. Align with the performance cycle end date or the specific project
-      milestone. Format: YYYY-MM-DD.'
-  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: TARGET_DATE is missing. Set via the Goal Plan
-    editor. Format: YYYY-MM-DD.'
+    __blank__: 'Set the target date via the Goal Plan editor. Align with the performance cycle end date or the specific
+      project milestone. Format: YYYY-MM-DD.'
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: TARGET_DATE is missing. Set via the Goal
+    Plan editor. Format: YYYY-MM-DD.'
 - id: PERF011
   field: GOALPLAN.GOAL_WEIGHT
   check_class: null_check
@@ -147,30 +150,31 @@ rules:
   dimension: completeness
   message: Goal weight is required for weighted score calculation in performance reviews
   why_it_matters: GOAL_WEIGHT determines how much each goal contributes to the overall goal achievement score. Without weights,
-    the system cannot calculate a weighted performance score, and all goals are treated equally regardless of strategic importance.
+    the system cannot calculate a weighted performance score, and all goals are treated equally regardless of strategic
+    importance.
   rule_authority: best_practice
   sap_impact: Weighted goal score cannot be calculated. Performance review overall score may be incorrect. Goals of different
     strategic importance treated equally.
   fix_map:
     __blank__: Assign a weight (0-100) to each goal based on its strategic importance. Weights across all goals for an employee
       should sum to 100. Update via the Goal Plan editor.
-  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_WEIGHT is missing. Assign a weight (0-100)
-    via the Goal Plan editor.'
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_WEIGHT is missing. Assign a weight
+    (0-100) via the Goal Plan editor.'
 - id: PERF012
   field: GOALPLAN.GOAL_METRIC
   check_class: null_check
   severity: low
   dimension: completeness
   message: Goal metric is recommended for objective measurement of achievement
-  why_it_matters: GOAL_METRIC defines the measurable indicator used to assess whether the goal was achieved. Without it, goal
-    achievement assessment becomes purely subjective, which reduces the objectivity of performance reviews and increases calibration
-    disagreements.
+  why_it_matters: GOAL_METRIC defines the measurable indicator used to assess whether the goal was achieved. Without it,
+    goal achievement assessment becomes purely subjective, which reduces the objectivity of performance reviews and increases
+    calibration disagreements.
   rule_authority: best_practice
   sap_impact: Goal achievement assessment is subjective only. Calibration sessions lack objective data points. Goal tracking
     dashboards show no measurable progress.
   fix_map:
-    __blank__: Define a specific, measurable metric for this goal (e.g., revenue target, completion percentage, customer satisfaction
-      score). Update via the Goal Plan editor.
+    __blank__: Define a specific, measurable metric for this goal (e.g., revenue target, completion percentage, customer
+      satisfaction score). Update via the Goal Plan editor.
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_METRIC is missing. Define a measurable
     indicator via the Goal Plan editor.'
 - id: PERF013
@@ -196,15 +200,16 @@ rules:
   severity: medium
   dimension: uniqueness
   message: Duplicate performance review records per employee per cycle — only one review should exist
-  why_it_matters: Duplicate reviews cause conflicting ratings, incorrect calibration results, and compensation decision errors.
+  why_it_matters: Duplicate reviews cause conflicting ratings, incorrect calibration results, and compensation decision
+    errors.
   rule_authority: best_practice
-  sap_impact: Calibration sessions show conflicting ratings. Compensation decisions reference the wrong review. Overall rating
-    is ambiguous.
+  sap_impact: Calibration sessions show conflicting ratings. Compensation decisions reference the wrong review. Overall
+    rating is ambiguous.
   fix_map:
     __blank__: Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form. Verify the correct
       form is routed in the current cycle.
-  record_fix_template: "Employee {PMREVIEWRESULT.USERID}: more than one review for period {PMREVIEWRESULT.REVIEW_PERIOD}. Keep the final review and remove the other."
-
+  record_fix_template: 'Employee {PMREVIEWRESULT.USERID}: more than one review for period {PMREVIEWRESULT.REVIEW_PERIOD}.
+    Keep the final review and remove the other.'
 - id: PERF016
   field: GOALPLAN.GOAL_WEIGHT
   check_class: cross_field_check
@@ -251,15 +256,14 @@ rules:
   severity: medium
   dimension: consistency
   message: Performance review period starts after the employment ended
-  why_it_matters: A leaver cannot be reviewed for a period they did not work. Such forms are usually created by a mass
-    launch that did not exclude terminated employees.
+  why_it_matters: A leaver cannot be reviewed for a period they did not work. Such forms are usually created by a mass launch
+    that did not exclude terminated employees.
   rule_authority: best_practice
   sap_impact: Managers get review forms for leavers; completion rates and calibration include people who left.
   fix_map:
     __other__: Delete or cancel the review form in Performance Management, and exclude terminated employees from future
       form launches.
-  record_fix_template: 'Employee {PMREVIEWRESULT.USERID}: review from {PMREVIEWRESULT.REVIEW_PERIOD}, employment ended
-    {EMPEMPLOYMENT.END_DATE}.'
+  record_fix_template: 'Employee {PMREVIEWRESULT.USERID}: review from {PMREVIEWRESULT.REVIEW_PERIOD}, employment ended {EMPEMPLOYMENT.END_DATE}.'
 - id: PERF019
   field: GOALPLAN.USERID
   check_class: exists_check
@@ -367,8 +371,8 @@ rules:
   dimension: accuracy
   message: Goal status must be one of the configured goal plan states
   why_it_matters: GOAL_STATUS is a tenant-configured picklist that downstream reporting filters on. A value outside the
-    configured set is either a migration artefact or an integration write using a stale state code, and such goals are
-    silently excluded from every status-filtered report.
+    configured set is either a migration artefact or an integration write using a stale state code, and such goals are silently
+    excluded from every status-filtered report.
   rule_authority: customer_configured
   sap_impact: Goal is invisible to status-filtered dashboards and cannot be routed by workflow rules that branch on state.
   valid_values_with_labels:
@@ -382,8 +386,8 @@ rules:
   fix_map:
     __other__: Goal status '{invalid_value}' is not a configured state. Correct it via the Goal Plan editor or Admin Center
       > Performance & Goals > Goal Plan Template picklist configuration.
-  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: GOAL_STATUS ''{invalid_value}'' is not a configured state. Correct via the
-    Goal Plan editor.'
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: GOAL_STATUS ''{invalid_value}'' is not a configured state. Correct via
+    the Goal Plan editor.'
   auto_fix:
     steps:
     - op: strip
@@ -436,8 +440,8 @@ rules:
     slips.
   fix_map:
     __other__: Route the form back to manager/employee discussion before final sign-off, or flag for the calibration committee.
-  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: self rating and manager rating differ by more than 2
-    points. Flag for calibration.'
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: self rating and manager rating differ by more than
+    2 points. Flag for calibration.'
   applies_when:
     PMREVIEWRESULT.FORM_STATUS:
     - '3'
@@ -488,8 +492,8 @@ rules:
   fix_map:
     __blank__: Set the goal start date via the Goal Plan editor. Align with the performance cycle start or the goal plan
       launch date.
-  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_START_DATE is missing. Set via the Goal
-    Plan editor.'
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_START_DATE is missing. Set via the
+    Goal Plan editor.'
 - id: PERF031
   field: GOALPLAN.GOAL_START_DATE
   check_class: cross_field_check
@@ -554,8 +558,8 @@ rules:
   dimension: consistency
   message: Goal is cascaded from a parent goal that does not exist
   why_it_matters: CASCADED_FROM links a goal to the higher-level (e.g. manager or departmental) goal it was aligned from.
-    A reference to a parent goal ID that is not in the extract means the alignment chain is broken — either the parent
-    was deleted or the ID was mistyped during manual cascade.
+    A reference to a parent goal ID that is not in the extract means the alignment chain is broken — either the parent was
+    deleted or the ID was mistyped during manual cascade.
   rule_authority: best_practice
   sap_impact: Goal alignment / cascade reporting cannot trace this goal to its organisational objective, breaking strategy-to-execution
     dashboards.
@@ -660,8 +664,8 @@ rules:
   dimension: completeness
   message: Sign-off date is missing on a completed review — audit trail is incomplete
   why_it_matters: SIGNOFF_DATE records when the employee formally acknowledged the final review, closing the audit trail
-    for the performance cycle. A completed form without a recorded sign-off date cannot evidence that the employee saw
-    the final rating, which matters for dispute and compliance purposes.
+    for the performance cycle. A completed form without a recorded sign-off date cannot evidence that the employee saw the
+    final rating, which matters for dispute and compliance purposes.
   rule_authority: best_practice
   sap_impact: Compliance and audit reporting cannot evidence employee acknowledgement of the completed review.
   fix_map:
@@ -701,8 +705,8 @@ rules:
     left on a cancelled goal will still be counted by any rollup that does not explicitly exclude cancelled goals, silently
     distorting the result.
   rule_authority: best_practice
-  sap_impact: Weighted goal score includes a goal the employee is no longer pursuing, overstating or understating the
-    overall rollup depending on whether downstream logic excludes it.
+  sap_impact: Weighted goal score includes a goal the employee is no longer pursuing, overstating or understating the overall
+    rollup depending on whether downstream logic excludes it.
   fix_map:
     __other__: Set the weight to 0 on the cancelled goal, or redistribute its weight across the remaining active goals.
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: cancelled goal still has non-zero weight.
@@ -716,8 +720,8 @@ rules:
   dimension: consistency
   message: Active goal has zero weight — it cannot contribute to the weighted achievement rollup
   why_it_matters: An active goal with a weight of zero is excluded from any weighted achievement calculation, meaning the
-    employee can be fully assessed on this goal in the review form while it contributes nothing to the overall score —
-    a mismatch between what the manager rates and what rolls up.
+    employee can be fully assessed on this goal in the review form while it contributes nothing to the overall score — a
+    mismatch between what the manager rates and what rolls up.
   rule_authority: best_practice
   sap_impact: Manager rates goal achievement in the review form, but the weighted rollup ignores it entirely; overall score
     does not reflect the assessed work.
@@ -757,8 +761,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Achievement for the goal is measured over the wrong period; the goal can be assessed in two cycles.
   fix_map:
-    __blank__: Correct the goal in the employee's goal plan (Performance & Goals > Goals) or via Goal Plan import. Move the
-      start date into the plan period or move the goal to the right plan.
+    __blank__: Correct the goal in the employee's goal plan (Performance & Goals > Goals) or via Goal Plan import. Move
+      the start date into the plan period or move the goal to the right plan.
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: starts {GOALPLAN.GOAL_START_DATE}, before plan
     start {GOALPLAN.PLAN_START_DATE}.'
 - id: PERF046
@@ -774,8 +778,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Goal rated in the review before its due date; overdue reporting never fires within the plan.
   fix_map:
-    __blank__: Correct the goal in the employee's goal plan (Performance & Goals > Goals) or via Goal Plan import. Bring the
-      target date inside the plan period or move the goal to next year's plan.
+    __blank__: Correct the goal in the employee's goal plan (Performance & Goals > Goals) or via Goal Plan import. Bring
+      the target date inside the plan period or move the goal to next year's plan.
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: target {GOALPLAN.TARGET_DATE} is after plan end
     {GOALPLAN.PLAN_END_DATE}.'
 - id: PERF047
@@ -821,13 +825,13 @@ rules:
   severity: low
   dimension: timeliness
   message: Open goal is more than 90 days past its target date
-  why_it_matters: An active goal far past its due date is either finished but never closed or abandoned. Either way the goal
-    plan and the review form show a misleading open workload.
+  why_it_matters: An active goal far past its due date is either finished but never closed or abandoned. Either way the
+    goal plan and the review form show a misleading open workload.
   rule_authority: best_practice
   sap_impact: Goal completion and overdue dashboards overstate open goals; review form rates a stale goal.
   fix_map:
-    __blank__: Correct the goal in the employee's goal plan (Performance & Goals > Goals) or via Goal Plan import. Close the
-      goal as Completed or Cancelled, or agree a new target date.
+    __blank__: Correct the goal in the employee's goal plan (Performance & Goals > Goals) or via Goal Plan import. Close
+      the goal as Completed or Cancelled, or agree a new target date.
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: target {GOALPLAN.TARGET_DATE}, status {GOALPLAN.GOAL_STATUS}.'
 - id: PERF050
   field: GOALPLAN.GOAL_STATUS
@@ -859,8 +863,8 @@ rules:
   severity: medium
   dimension: consistency
   message: Review form is still open for an employee who has left
-  why_it_matters: Forms of terminated employees stay in managers' inboxes and block route-map completion statistics. SAP recommends
-    handling them via the inactive-user form handling (move to completed or delete).
+  why_it_matters: Forms of terminated employees stay in managers' inboxes and block route-map completion statistics. SAP
+    recommends handling them via the inactive-user form handling (move to completed or delete).
   rule_authority: best_practice
   sap_impact: Form completion rate under-reported; managers keep forms for leavers in their inbox.
   fix_map:
@@ -876,13 +880,13 @@ rules:
   severity: medium
   dimension: timeliness
   message: Open review form is more than 30 days past its route-map step due date
-  why_it_matters: Each route-map step has a due date; a form far past it is stuck with one participant and will miss the calibration
-    and compensation deadlines that depend on the final rating.
+  why_it_matters: Each route-map step has a due date; a form far past it is stuck with one participant and will miss the
+    calibration and compensation deadlines that depend on the final rating.
   rule_authority: best_practice
   sap_impact: Rating not available for calibration or merit planning; form completion dashboards red.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Remind
-      or replace the current step owner, or advance the form.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Remind or replace the current step owner, or advance the form.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     step {PMREVIEWRESULT.CURRENT_STEP} due {PMREVIEWRESULT.STEP_DUE_DATE}.'
 - id: PERF053
@@ -892,13 +896,13 @@ rules:
   severity: medium
   dimension: completeness
   message: Open review form has no current route-map step
-  why_it_matters: An in-progress form always sits in a route-map step. Without one the form cannot be routed or found in anyone's
-    inbox — it is orphaned.
+  why_it_matters: An in-progress form always sits in a route-map step. Without one the form cannot be routed or found in
+    anyone's inbox — it is orphaned.
   rule_authority: best_practice
   sap_impact: Form cannot be routed or completed; it never reaches signature.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Restore
-      the form to its correct route-map step.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Restore the form to its correct route-map step.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     form status {PMREVIEWRESULT.FORM_STATUS} with no current step.'
 - id: PERF054
@@ -909,13 +913,13 @@ rules:
   severity: high
   dimension: validity
   message: Review period ends before it starts
-  why_it_matters: The review period bounds the goals and competencies assessed. An inverted period cannot match any goal and
-    breaks period-based reporting.
+  why_it_matters: The review period bounds the goals and competencies assessed. An inverted period cannot match any goal
+    and breaks period-based reporting.
   rule_authority: best_practice
   sap_impact: Goal section filters out every goal; rating history by period is wrong.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Correct
-      the review start/end date on the form.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Correct the review start/end date on the form.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     review period {PMREVIEWRESULT.REVIEW_PERIOD} to {PMREVIEWRESULT.REVIEW_END_DATE}.'
 - id: PERF055
@@ -931,8 +935,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Form is immediately overdue; reminder notifications fire wrongly.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Correct
-      the form due date.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Correct the form due date.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     due {PMREVIEWRESULT.REVIEW_DUE_DATE}, before period start {PMREVIEWRESULT.REVIEW_PERIOD}.'
 - id: PERF056
@@ -948,8 +952,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Audit trail of review acknowledgement is unreliable.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Correct
-      the sign-off date to the actual signature date.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Correct the sign-off date to the actual signature date.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     sign-off dated {PMREVIEWRESULT.SIGNOFF_DATE}.'
 - id: PERF057
@@ -960,13 +964,13 @@ rules:
   severity: medium
   dimension: consistency
   message: Review form was last changed before it was created
-  why_it_matters: A form's last-modified date cannot precede its creation; one of the timestamps was overwritten during an
-    import and the form's history is no longer trustworthy.
+  why_it_matters: A form's last-modified date cannot precede its creation; one of the timestamps was overwritten during
+    an import and the form's history is no longer trustworthy.
   rule_authority: best_practice
   sap_impact: Form audit history inconsistent; ageing reports wrong.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Re-extract
-      the form dates from the audit trail and correct the imported values.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Re-extract the form dates from the audit trail and correct the imported values.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     created {PMREVIEWRESULT.CREATION_DATE}, last changed {PMREVIEWRESULT.REVIEW_DATE}.'
 - id: PERF058
@@ -982,8 +986,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Calibration and compensation guidelines read an impossible rating.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Re-enter
-      the manager rating on the configured rating scale.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Re-enter the manager rating on the configured rating scale.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     manager rating {PMREVIEWRESULT.MANAGER_RATING} is outside 0-5.'
 - id: PERF059
@@ -998,8 +1002,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Self vs manager gap analysis distorted.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Re-enter
-      the self rating on the configured rating scale.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Re-enter the self rating on the configured rating scale.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     self rating {PMREVIEWRESULT.SELF_RATING} is outside 0-5.'
 - id: PERF060
@@ -1034,8 +1038,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Rating distribution and compensation eligibility disagree for this employee.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Either
-      clear the rating or set the form to rated.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Either clear the rating or set the form to rated.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     flagged not rated but overall rating {PMREVIEWRESULT.OVERALL_RATING}.'
 - id: PERF062
@@ -1065,8 +1069,8 @@ rules:
   severity: high
   dimension: uniqueness
   message: Goal ID is used by more than one goal
-  why_it_matters: The goal ID is the goal's key in the goal plan and in cascade links. Duplicates make cascades and goal updates
-    hit the wrong goal and fail the migration load.
+  why_it_matters: The goal ID is the goal's key in the goal plan and in cascade links. Duplicates make cascades and goal
+    updates hit the wrong goal and fail the migration load.
   rule_authority: best_practice
   sap_impact: Goal import fails or overwrites another goal; cascade links point at the wrong goal.
   fix_map:
@@ -1079,8 +1083,8 @@ rules:
   severity: low
   dimension: validity
   message: Goal name has leading, trailing or repeated spaces
-  why_it_matters: Stray spaces make otherwise identical goals look different to duplicate detection and to goal library matching,
-    and print badly on the review form.
+  why_it_matters: Stray spaces make otherwise identical goals look different to duplicate detection and to goal library
+    matching, and print badly on the review form.
   rule_authority: best_practice
   sap_impact: Duplicate goals are not detected; goal library matching misses the goal.
   fix_map:
@@ -1123,7 +1127,8 @@ rules:
   sap_impact: Goal orphaned; no one can update or rate it.
   fix_map:
     __other__: Transfer the goal to an active owner.
-  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: current owner {GOALPLAN.CURRENT_OWNER} has no employment.'
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: current owner {GOALPLAN.CURRENT_OWNER} has no
+    employment.'
 - id: PERF067
   field: GOALPLAN.ACTUAL_ACHIEVEMENT
   check_class: cross_field_check
@@ -1132,8 +1137,8 @@ rules:
   severity: medium
   dimension: validity
   message: Goal actual achievement is negative
-  why_it_matters: Achievement is measured against a target metric; a negative actual is a sign or unit error that drags the
-    weighted goal score below zero.
+  why_it_matters: Achievement is measured against a target metric; a negative actual is a sign or unit error that drags
+    the weighted goal score below zero.
   rule_authority: best_practice
   sap_impact: Weighted goal score and goal-based bonus understated.
   fix_map:
@@ -1149,8 +1154,8 @@ rules:
   severity: low
   dimension: consistency
   message: Goal is 100% complete but its status is still open
-  why_it_matters: A goal at 100% completion should be closed as Completed; leaving it open overstates the open workload and
-    keeps it in overdue reminders.
+  why_it_matters: A goal at 100% completion should be closed as Completed; leaving it open overstates the open workload
+    and keeps it in overdue reminders.
   rule_authority: best_practice
   sap_impact: Goal status dashboards overstate open goals.
   fix_map:
@@ -1171,8 +1176,8 @@ rules:
   sap_impact: Goal never appears in a review; achievement is lost.
   fix_map:
     __blank__: Move the goal to the goal plan for its period.
-  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: starts {GOALPLAN.GOAL_START_DATE}, after plan end
-    {GOALPLAN.PLAN_END_DATE}.'
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: starts {GOALPLAN.GOAL_START_DATE}, after plan
+    end {GOALPLAN.PLAN_END_DATE}.'
 - id: PERF070
   field: GOALPLAN.TARGET_DATE
   check_class: cross_field_check
@@ -1212,8 +1217,8 @@ rules:
   severity: medium
   dimension: consistency
   message: Review form was created after the employee left
-  why_it_matters: Forms should not be launched for terminated users; a form created after the end date was launched from a
-    stale population and will never be completed.
+  why_it_matters: Forms should not be launched for terminated users; a form created after the end date was launched from
+    a stale population and will never be completed.
   rule_authority: best_practice
   sap_impact: Orphan forms in managers' inboxes; completion statistics distorted.
   fix_map:
@@ -1229,8 +1234,8 @@ rules:
   severity: low
   dimension: consistency
   message: Review form originator is not an employee
-  why_it_matters: The originator launched the form; an unknown originator means the form was created by a removed admin or
-    imported with a bad user reference.
+  why_it_matters: The originator launched the form; an unknown originator means the form was created by a removed admin
+    or imported with a bad user reference.
   rule_authority: best_practice
   sap_impact: Form audit trail points at a non-existent user.
   fix_map:
@@ -1328,8 +1333,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Form filtered out of current-cycle reports.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Correct
-      the review period start.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Correct the review period start.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     period starts {PMREVIEWRESULT.REVIEW_PERIOD}.'
 - id: PERF080
@@ -1345,8 +1350,8 @@ rules:
   rule_authority: best_practice
   sap_impact: Missing ratings at compensation planning; employee left without a review.
   fix_map:
-    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step). Complete
-      or cancel the overdue form.
+    __blank__: Correct the form in Admin Center > Performance Management > Manage Forms (or route it to the right step).
+      Complete or cancel the overdue form.
   record_fix_template: 'Review form {PMREVIEWRESULT.FORM_DATA_ID} of user {PMREVIEWRESULT.USERID} (period {PMREVIEWRESULT.REVIEW_PERIOD}):
     due {PMREVIEWRESULT.REVIEW_DUE_DATE}, status {PMREVIEWRESULT.FORM_STATUS}.'
 - id: PERF081
@@ -1373,8 +1378,8 @@ rules:
   severity: low
   dimension: accuracy
   message: Goal metric only repeats the goal name
-  why_it_matters: SMART goals need a measurable metric. A metric that copies the name gives the rater nothing to measure achievement
-    against.
+  why_it_matters: SMART goals need a measurable metric. A metric that copies the name gives the rater nothing to measure
+    achievement against.
   rule_authority: best_practice
   sap_impact: Goal achievement cannot be objectively rated.
   fix_map:
@@ -1391,11 +1396,41 @@ rules:
   severity: low
   dimension: completeness
   message: Completed goal with a metric has no actual achievement
-  why_it_matters: A completed measurable goal should record what was actually achieved; without it the rating cannot be verified
-    against the metric.
+  why_it_matters: A completed measurable goal should record what was actually achieved; without it the rating cannot be
+    verified against the metric.
   rule_authority: best_practice
   sap_impact: Goal rating unsupported by evidence; audit of goal-based bonus fails.
   fix_map:
     __blank__: Correct the goal in the employee's goal plan (Performance & Goals > Goals) or via Goal Plan import. Record
       the actual achievement.
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: completed with no actual achievement recorded.'
+- field: GOALPLAN.COMPLETION_PERCENT
+  check_class: cross_field_check
+  fail_when: '`GOALPLAN.COMPLETION_PERCENT` < 0 | `GOALPLAN.COMPLETION_PERCENT` > 100'
+  require_populated: true
+  severity: high
+  dimension: accuracy
+  message: Goal completion percentage outside 0–100
+  why_it_matters: Completion percent drives progress dashboards and review scoring. A value below 0 or above 100 is impossible
+    and distorts goal attainment averages.
+  rule_authority: best_practice
+  sap_impact: Progress and attainment reporting distorted.
+  fix_map:
+    __blank__: Correct the completion percentage to a value between 0 and 100.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: completion {GOALPLAN.COMPLETION_PERCENT} outside 0–100.'
+  id: PERF084
+- field: GOALPLAN.PLAN_END_DATE
+  check_class: cross_field_check
+  fail_when: '`GOALPLAN.PLAN_END_DATE`.dt.normalize() < `GOALPLAN.PLAN_START_DATE`.dt.normalize()'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Plan ends before it starts
+  why_it_matters: A plan window that ends before it starts makes every goal in the plan fall outside its review period,
+    breaking period-to-period comparison.
+  rule_authority: best_practice
+  sap_impact: Plan period comparisons wrong.
+  fix_map:
+    __blank__: Correct the plan start/end dates.
+  record_fix_template: 'Plan {GOALPLAN.GOAL_PLAN_ID}: ends {GOALPLAN.PLAN_END_DATE} before it starts ({GOALPLAN.PLAN_START_DATE}).'
+  id: PERF085
