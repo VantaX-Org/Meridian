@@ -155,6 +155,9 @@ export function DataTable<T>({
   const savedViews = useSyncExternalStore(subscribePreferences, () => readPrefs().saved_views?.[viewsKey], () => undefined);
   useEffect(() => setViews(loadViews(viewsKey)), [viewsKey, savedViews]);
   const [globalFilter, setGlobalFilter] = useState("");
+  // An embedded table (hideToolbar) shows its filter box only once it has eight rows or a filter is typed; a bare
+  // box above three rows is noise. Full explorer tables always keep it.
+  const showSearch = !hideSearch && (!hideToolbar || data.length >= 8 || globalFilter !== "");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [openRow, setOpenRow] = useState<T | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -324,9 +327,9 @@ export function DataTable<T>({
 
   return (
     <div>
-      {(!hideSearch || !hideToolbar) && (
+      {(showSearch || !hideToolbar) && (
         <div className="m-text-meta mb-2 flex flex-wrap items-center gap-2" style={{ minHeight: 32 }}>
-          {!hideSearch && (
+          {showSearch && (
             <Input
               aria-label="Filter rows"
               placeholder="Type to filter rows"

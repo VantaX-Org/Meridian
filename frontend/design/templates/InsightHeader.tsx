@@ -48,7 +48,7 @@ function Cell({ label, cell, loading, hero, children }: { label: string; cell: I
   const body = loading ? <Skeleton height={16} hero={hero} /> : cell.sentence;
   const ink = hero ? "var(--m-hero-ink)" : "var(--m-ink)";
   return (
-    <div className="grid content-start gap-1 p-3 @5xl:flex @5xl:min-h-9 @5xl:items-center @5xl:gap-2 @5xl:px-3 @5xl:py-1" style={{ borderTop: `2px solid ${(hero ? HERO_TONE : TONE)[cell.tone ?? "neutral"]}` }}>
+    <div className="grid content-start gap-1 p-3 @5xl:flex @5xl:min-h-9 @5xl:flex-wrap @5xl:items-center @5xl:gap-x-2 @5xl:gap-y-1 @5xl:px-3 @5xl:py-1" style={{ borderTop: `2px solid ${(hero ? HERO_TONE : TONE)[cell.tone ?? "neutral"]}` }}>
       <span className="m-text-meta shrink-0 font-medium @5xl:text-[11px]" style={{ color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{label}</span>
       {cell.href && !loading ? (
         <Link href={cell.href} className="m-text-body underline-offset-2 hover:underline" style={{ color: ink }}>{body}</Link>
@@ -79,7 +79,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
         <Cell label="Why it matters" cell={why} loading={loading} hero={hero} />
         <Cell label="Do next" cell={next} loading={loading} hero={hero}>
           {a && !loading && (
-            <span className="mt-1 inline-flex items-center gap-2">
+            <span className="mt-1 inline-flex shrink-0 items-center gap-2 @5xl:basis-full">
               {a.href ? (
                 <Button variant={hero ? "secondary" : undefined} render={<Link href={a.href}>{a.label}</Link>} />
               ) : (

@@ -38,6 +38,8 @@ Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is high, `--m-no-go` i
 
 Type scale (px, size/line): label 11/14, meta 12/16, body 13/18, heading 15/20, page title 20/26, hero number 28/32, verdict number 44/48. Use the `m-text-*` utility classes, never `text-[Npx]` literals in pages.
 
+Density: the user's preference (`/me/preferences`) lands on `<html data-density>` as `compact`, `default` or `comfortable`, and `tokens.css` retunes `--m-row-h`, `--m-row-h-dense`, `--m-control-h`, `--m-card-pad*`, `--m-hero-pad`, `--m-stat-pad`, `--m-stat-h`, `--m-stat-hero-h`, `--m-section-gap` and `--m-page-pad` per tier. Cards, stat tiles, the hero and the insight page gap read those tokens, so no component carries a density branch. Presentation mode (`[data-present="1"]`) steps the type scale, the hero and the page padding up one size the same way.
+
 Contrast: `npm run check:contrast` fails unless ink on sheet and canvas, accent on sheet, and every defect hue on sheet are at least 4.5:1, in light, explicit dark and system dark.
 
 ## 3. Components

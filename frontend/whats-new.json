@@ -14,6 +14,11 @@
         "href": "/insights/progress"
       },
       {
+        "title": "Fix it or download it, one click each",
+        "body": "A finding now offers Auto clean this rule, which queues every failing record of the rule in this run as a fix batch, next to Download list for manual clean (Excel).",
+        "href": "/insights/rules"
+      },
+      {
         "title": "Explore by any axis",
         "body": "Pivot the failing rules by object, field, dimension, severity or S/4 status, then save the view and share its link.",
         "href": "/insights/rules"
@@ -32,6 +37,11 @@
         "title": "Homes by role",
         "body": "Each role lands on its own home. Data managers start runs from any insight page.",
         "href": "/home"
+      },
+      {
+        "title": "Row density that works",
+        "body": "Compact, default and comfortable under Preferences now retune rows, controls, cards, tiles and page spacing. Presentation mode steps type and the hero up a size.",
+        "href": "/me/preferences"
       }
     ]
   },

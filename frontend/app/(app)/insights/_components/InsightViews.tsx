@@ -26,7 +26,7 @@ export function InsightTabs() {
   const search = useSearchParams();
   const run = search?.get("run") ?? undefined;
   const view = viewOf(pathname);
-  if (!view) return null;
+  if (!view || search?.get("present") === "1") return null;
   return (
     <nav aria-label={`${view.label} views`} data-tour="insight-views" className="flex flex-wrap items-center gap-1 border-b" style={{ borderColor: "var(--m-line)" }}>
       {view.tabs.map(([href, label]) => {

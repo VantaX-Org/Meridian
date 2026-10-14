@@ -75,7 +75,7 @@ export function InsightFrame({ title, meta, actions, insight, state, emptyProps,
     body = <ErrorState message={errorProps?.message ?? "Something went wrong"} onRetry={errorProps?.onRetry} />;
   }
   return (
-    <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+    <div className="mx-auto flex w-full flex-col" style={{ gap: "var(--m-section-gap)", padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
       <PageHeader title={title} meta={meta} actions={actions} tabs={<InsightTabs />} />
       {insight && state !== "empty" && state !== "error" && (
         <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />

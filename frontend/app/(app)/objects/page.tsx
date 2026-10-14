@@ -158,7 +158,7 @@ export default function ObjectsPage() {
   const { scopeFilter } = usePermissions();
   const objects = (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
 
-  useBreadcrumbScope(data ? [`${objects.length} objects`, ...(version?.label ? [`run ${version.label}`] : [])] : []);
+  useBreadcrumbScope(data ? [`${objects.length} ${objects.length === 1 ? "object" : "objects"}`, ...(version?.label ? [`run ${version.label}`] : [])] : []);
 
   let state: "loading" | "empty" | "error" | undefined;
   let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = { title: "No objects in this run", ghost: "table" };
