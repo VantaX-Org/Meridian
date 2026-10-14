@@ -15,9 +15,9 @@ describe("design tokens", () => {
   });
 
   it("exposes radius and motion", () => {
-    expect(mRadius.control).toBe(6);
-    expect(mRadius.sheet).toBe(10);
-    expect(mRadius.tile).toBe(14);
+    expect(mRadius.control).toBe(2);
+    expect(mRadius.sheet).toBe(0);
+    expect(mRadius.tile).toBe(0);
     expect(mMotion.duration).toBe(120);
     expect(mMotion.ease).toBe("cubic-bezier(0.2, 0, 0, 1)");
     expect(mMotion.slow).toBe(240);

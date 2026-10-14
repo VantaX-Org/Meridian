@@ -173,7 +173,7 @@ export const mSpace = {
 } as const;
 
 // Mirrors tokens.css radii.
-export const mRadius = { control: 6, sheet: 10, tile: 14, pill: 999 } as const;
+export const mRadius = { control: 2, sheet: 0, tile: 0, pill: 999 } as const;
 
 export const mMotion = {
   duration: 120, slow: 240, draw: 480, count: 900, shimmer: 1400, staggerStep: 40, staggerBar: 20,
