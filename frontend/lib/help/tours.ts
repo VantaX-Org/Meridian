@@ -93,6 +93,11 @@ export const TOURS: readonly TourDef[] = [
         body: "Export the executive report as a PDF to share the verdict, the trend and the blocking rules.",
       },
       {
+        target: "insight-views", href: "/insights/exec", placement: "bottom",
+        title: "Five views",
+        body: "Summary, Progress, Explore, Readiness and Operate. Each view's detail screens sit in this strip, and every page offers Run analysis, Auto clean, Present and Export.",
+      },
+      {
         target: "owners", href: "/insights/owners", placement: "top",
         title: "Owners",
         body: "Who owns the open items, their score and whether it is improving. Start with the lowest score.",

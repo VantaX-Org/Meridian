@@ -28,7 +28,7 @@ export function InsightTabs() {
   const view = viewOf(pathname);
   if (!view) return null;
   return (
-    <nav aria-label={`${view.label} views`} className="flex flex-wrap items-center gap-1 border-b" style={{ borderColor: "var(--m-line)" }}>
+    <nav aria-label={`${view.label} views`} data-tour="insight-views" className="flex flex-wrap items-center gap-1 border-b" style={{ borderColor: "var(--m-line)" }}>
       {view.tabs.map(([href, label]) => {
         const current = href === pathname;
         return (

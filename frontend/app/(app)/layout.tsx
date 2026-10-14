@@ -10,6 +10,8 @@ import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
 import { useJobs } from "@/hooks/use-jobs";
+import { VIEWS } from "@/app/(app)/insights/_components/InsightViews";
+import { BarChart3 } from "lucide-react";
 import { usePreferencesSync } from "@/hooks/use-preferences";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
@@ -33,7 +35,7 @@ const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
   const { role } = useRole();
-  const items = groups.flatMap((g) =>
+  const navItems = groups.flatMap((g) =>
     flattenNav(g.items).map((item) => ({
       label: item.label,
       href: resolveNavHref(item.href, role),
@@ -42,6 +44,15 @@ function CommandPaletteSlot() {
       shortcut: item.shortcut,
     })),
   );
+  // The insight views' tabs are not nav entries; they stay reachable by name from the palette.
+  const seen = new Set(navItems.map((i) => i.href));
+  const insightsGroup = groups.find((g) => g.items.some((i) => i.href === "/insights"))?.group;
+  const viewTabs = insightsGroup
+    ? VIEWS.flatMap((v) => v.tabs.filter(([href]) => href.startsWith("/insights") && !seen.has(href)).map(([href, label]) => ({
+        label: `${v.label}: ${label}`, href, group: insightsGroup, icon: <BarChart3 size={16} aria-hidden />, shortcut: undefined,
+      })))
+    : [];
+  const items = [...navItems, ...viewTabs];
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const grammar = {
