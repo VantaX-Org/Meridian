@@ -47,7 +47,8 @@ export function RouteInsight() {
   const llmOn = llmQ.data?.llm_available === true;
   const execQ = useQuery({ queryKey: queryKeys.insights("exec", runId), queryFn: () => getExec({ version_id: runId }), enabled: !!section && hasRun && !!runId && llmOn });
 
-  if (!section) return null;
+  // Insight pages carry their own four-sentence header (InsightFrame); the shell strip would repeat it.
+  if (!section || pathname.startsWith("/insights")) return null;
 
   const agg = aggQ.data;
   const worst = [...(agg?.by_module ?? [])].sort((a, b) => b.critical - a.critical || b.findings - a.findings)[0];

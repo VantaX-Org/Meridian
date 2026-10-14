@@ -1,7 +1,9 @@
 // frontend/design/templates/FindingDrawer.tsx
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Drawer } from "../primitives/Drawer";
 import { Button } from "../primitives/Button";
@@ -15,6 +17,8 @@ import { ExportMenu } from "../primitives/ExportMenu";
 import { isSeverity, type Severity } from "../tokens";
 import { buildDrillHref } from "../shell/DrillLink";
 import { exportFindingRecords, getFinding } from "@/lib/api/findings";
+import { createBatch } from "@/lib/api/remediation";
+import { useRole } from "@/hooks/use-role";
 import { getFindingImpact } from "@/lib/api/analytics";
 import { getConfigRootCause, type RootCauseType } from "@/lib/api/config-intelligence";
 import { queryKeys } from "@/lib/query-keys";
@@ -71,6 +75,20 @@ export interface FindingDrawerProps {
 }
 
 /** One finding, in full: what failed, how many, why, impact, samples, fix. */
+/** One click from a finding to its fix batch: every failing record of this rule, in this run, queued for cleaning. */
+function AutoCleanButton({ checkId, module, versionId }: { checkId: string; module: string; versionId: string }) {
+  const { can } = useRole();
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const create = useMutation({
+    mutationFn: () => createBatch(`${checkId} ${module}`, { check_id: checkId, module, version_id: versionId }),
+    onSuccess: (b) => { setBatchId(b.id); toast.success(`Fix batch created with ${b.item_count.toLocaleString()} ${b.item_count === 1 ? "item" : "items"}`); },
+    onError: () => toast.error("Could not create the fix batch"),
+  });
+  if (!can("apply")) return null;
+  if (batchId) return <Button render={<Link href={`/fix/${batchId}`}>Open fix batch</Link>} />;
+  return <Button onClick={() => create.mutate()} pending={create.isPending}>Auto clean this rule</Button>;
+}
+
 export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerProps) {
   const findingQuery = useQuery({
     queryKey: queryKeys.finding(findingId ?? "", versionId),
@@ -216,7 +234,8 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
 
               <RootCauseSection checkId={finding.check_id} versionId={finding.version_id} />
 
-              <div className="flex gap-2 pt-2 border-t" style={{ borderColor: "var(--m-line)" }}>
+              <div className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: "var(--m-line)" }}>
+                <AutoCleanButton checkId={finding.check_id} module={finding.module} versionId={finding.version_id} />
                 <Button
                   variant="secondary"
                   render={<Link href={buildDrillHref({ object: finding.module, ruleId: finding.check_id, run: finding.version_id })}>Open records</Link>}
@@ -225,7 +244,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                   variant="secondary"
                   render={<Link href={`/rules/${encodeURIComponent(finding.check_id)}`}>Open rule</Link>}
                 />
-                <ExportMenu options={[{ format: "xlsx", label: "Records list (Excel)", run: () => exportFindingRecords(finding.version_id, finding.check_id, "xlsx") }]} />
+                <ExportMenu options={[{ format: "xlsx", label: "Download list for manual clean (Excel)", run: () => exportFindingRecords(finding.version_id, finding.check_id, "xlsx") }]} />
               </div>
             </div>
           );

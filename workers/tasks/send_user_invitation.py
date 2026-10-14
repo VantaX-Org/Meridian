@@ -14,6 +14,7 @@ import requests
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from workers import email_templates as mail
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 from workers.email_backends.microsoft_graph import create_graph_client
@@ -93,49 +94,21 @@ def _build_invitation_email(
 
     subject = f"Welcome to Meridian — {tenant_name} Data Quality Platform"
     
-    # All styling is inline (no <style> block) — best compatibility with
-    # Outlook desktop and other clients that strip <head> styles. Brand colors
-    # follow the Meridian design system: --mn-primary (#F97316), --mn-primary-50
-    # (#FFF7ED), ink tones #0F172A / #475569 / #94A3B8.
-    role_pretty = role.replace('_', ' ').title()
-    body = f"""
-    <html>
-    <body style="margin:0;padding:0;background-color:#F7F8FA;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#0F172A;">
-      <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
-        <div style="padding:20px 24px;background:#F97316;border-radius:10px 10px 0 0;">
-          <div style="color:#FFFFFF;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Meridian &middot; Data Quality</div>
-          <h1 style="color:#FFFFFF;font-size:22px;font-weight:700;letter-spacing:-0.01em;margin:6px 0 0;">Welcome to {tenant_name}</h1>
-        </div>
-        <div style="background:#FFFFFF;padding:28px 24px;border-radius:0 0 10px 10px;border:1px solid #E5E7EB;border-top:none;">
-          <p style="font-size:16px;font-weight:600;color:#0F172A;margin:0 0 12px;">Hi {recipient_name},</p>
-          <p style="font-size:14px;line-height:1.6;color:#475569;margin:0 0 14px;">
-            You&rsquo;ve been invited to join <strong style="color:#0F172A;">{tenant_name}</strong> on the Meridian SAP Data Quality platform.
-          </p>
-          <div style="font-size:13px;color:#475569;background:#FFF7ED;padding:12px 14px;border-radius:8px;border-left:3px solid #F97316;margin:18px 0;">
-            <strong style="color:#0F172A;">Role:</strong> {role_pretty}
-          </div>
-          <p style="font-size:14px;line-height:1.6;color:#475569;margin:0 0 14px;">
-            {cta_help}
-          </p>
-          <p style="margin:8px 0 18px;">
-            <a href="{login_url}" style="display:inline-block;background:#F97316;color:#FFFFFF;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;font-size:14px;">{cta_label}</a>
-          </p>
-          <p style="font-size:12px;color:#64748B;margin:0 0 14px;">
-            Button not working? Copy this link:<br>
-            <code style="background:#F1F5F9;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',Menlo,Consolas,monospace;font-size:11px;color:#334155;word-break:break-all;">{login_url}</code>
-          </p>
-          <p style="font-size:13px;line-height:1.6;color:#475569;margin:18px 0 0;">
-            Questions? Contact your administrator.
-          </p>
-        </div>
-        <div style="margin-top:24px;text-align:center;font-size:11px;color:#94A3B8;letter-spacing:0.06em;">
-          AUTOMATED MESSAGE &middot; MERIDIAN &middot; &copy; 2026 VANTAX
-        </div>
-      </div>
-    </body>
-    </html>
-    """
-    
+    role_pretty = role.replace("_", " ").capitalize()
+    body = mail.render_email(
+        title=f"Welcome to {tenant_name}",
+        tenant=tenant_name,
+        preheader=f"You have been invited to {tenant_name} on Meridian as {role_pretty}",
+        blocks=[
+            mail.greeting(recipient_name),
+            mail.paragraph(f"You have been invited to join {tenant_name} on Meridian, the SAP data quality platform."),
+            mail.note(f"Your role: {role_pretty}"),
+            mail.paragraph(cta_help, muted=True),
+            mail.button(cta_label, login_url),
+            mail.link_fallback(login_url),
+            mail.paragraph("Questions? Contact your administrator.", muted=True),
+        ],
+    )
     return subject, body
 
 

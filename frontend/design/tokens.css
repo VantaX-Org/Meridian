@@ -119,7 +119,7 @@
 
   /* ---------- Gradients: only on hero, login, cover, ghost, fade, count-settle surfaces ---------- */
   --m-grad-hero: linear-gradient(135deg, #0E1540 0%, #16288A 58%, #2B4BE0 100%);
-  --m-grad-hero-flare: radial-gradient(70% 90% at 100% 0%, rgb(204 52 16 / 0.42) 0%, rgb(204 52 16 / 0) 68%);
+  --m-grad-hero-flare: radial-gradient(70% 90% at 100% 0%, rgb(204 52 16 / 0.22) 0%, rgb(204 52 16 / 0) 68%);
   --m-grad-login: linear-gradient(160deg, #0E1540 0%, #1C35A8 70%, #2B4BE0 100%);
   --m-grad-login-flare: radial-gradient(55% 55% at 18% 88%, rgb(204 52 16 / 0.55) 0%, rgb(204 52 16 / 0) 70%);
   --m-grad-cover: linear-gradient(180deg, #0E1540 0%, #1C35A8 100%);
@@ -167,6 +167,16 @@
   --m-row-h-dense: 30px;
   --m-control-h: 32px;
   --m-control-h-lg: 40px;
+
+  /* ---------- Density (the `[data-density]` tiers below retune these) ---------- */
+  --m-card-pad: 20px;
+  --m-card-pad-sm: 12px;
+  --m-card-pad-lg: 24px;
+  --m-hero-pad: 28px 32px;
+  --m-stat-pad: 12px 16px;
+  --m-stat-h: 84px;
+  --m-stat-hero-h: 112px;
+  --m-section-gap: var(--m-space-4);
 
   /* ---------- Elevation (three levels + focus) ---------- */
   --m-elev-0: none;
@@ -269,7 +279,7 @@
   --m-seq-1: #1A2247; --m-seq-2: #2A3A80; --m-seq-3: #4360C8; --m-seq-4: #8DA3FF; --m-seq-5: #C5D0FF;
   --m-div-neg-2: #F2756B; --m-div-neg-1: #6B2520; --m-div-mid: #1A1C22; --m-div-pos-1: #1D5A36; --m-div-pos-2: #5FCF8A;
   --m-grad-hero: linear-gradient(135deg, #0A0F2E 0%, #16288A 62%, #3650D6 100%);
-  --m-grad-hero-flare: radial-gradient(70% 90% at 100% 0%, rgb(255 122 69 / 0.38) 0%, rgb(255 122 69 / 0) 68%);
+  --m-grad-hero-flare: radial-gradient(70% 90% at 100% 0%, rgb(255 122 69 / 0.2) 0%, rgb(255 122 69 / 0) 68%);
   --m-grad-login: linear-gradient(160deg, #0A0F2E 0%, #16288A 70%, #3650D6 100%);
   --m-grad-login-flare: radial-gradient(55% 55% at 18% 88%, rgb(255 122 69 / 0.50) 0%, rgb(255 122 69 / 0) 70%);
   --m-grad-cover: linear-gradient(180deg, #0A0F2E 0%, #16288A 100%);
@@ -355,7 +365,7 @@
     --m-seq-1: #1A2247; --m-seq-2: #2A3A80; --m-seq-3: #4360C8; --m-seq-4: #8DA3FF; --m-seq-5: #C5D0FF;
     --m-div-neg-2: #F2756B; --m-div-neg-1: #6B2520; --m-div-mid: #1A1C22; --m-div-pos-1: #1D5A36; --m-div-pos-2: #5FCF8A;
     --m-grad-hero: linear-gradient(135deg, #0A0F2E 0%, #16288A 62%, #3650D6 100%);
-    --m-grad-hero-flare: radial-gradient(70% 90% at 100% 0%, rgb(255 122 69 / 0.38) 0%, rgb(255 122 69 / 0) 68%);
+    --m-grad-hero-flare: radial-gradient(70% 90% at 100% 0%, rgb(255 122 69 / 0.2) 0%, rgb(255 122 69 / 0) 68%);
     --m-grad-login: linear-gradient(160deg, #0A0F2E 0%, #16288A 70%, #3650D6 100%);
     --m-grad-login-flare: radial-gradient(55% 55% at 18% 88%, rgb(255 122 69 / 0.50) 0%, rgb(255 122 69 / 0) 70%);
     --m-grad-cover: linear-gradient(180deg, #0A0F2E 0%, #16288A 100%);
@@ -387,11 +397,11 @@
 .m-elev-1 { box-shadow: var(--m-elev-1); }
 .m-elev-2 { box-shadow: var(--m-elev-2); }
 .m-elev-3 { box-shadow: var(--m-elev-3); }
-.m-text-label { font-size: 11px; line-height: 14px; }
-.m-text-meta  { font-size: 12px; line-height: 16px; }
-.m-text-body  { font-size: 13px; line-height: 18px; }
-.m-text-h     { font-size: 15px; line-height: 20px; }
-.m-text-title { font-size: 20px; line-height: 26px; }
+.m-text-label { font-size: var(--m-text-micro); line-height: var(--m-leading-micro); }
+.m-text-meta  { font-size: var(--m-text-meta); line-height: var(--m-leading-meta); }
+.m-text-body  { font-size: var(--m-text-body); line-height: var(--m-leading-body); }
+.m-text-h     { font-size: var(--m-text-section); line-height: var(--m-leading-section); }
+.m-text-title { font-size: var(--m-text-title); line-height: var(--m-leading-title); }
 .m-text-verdict { font-size: var(--m-text-verdict-num); line-height: var(--m-leading-verdict-num); }
 .m-ring { box-shadow: var(--m-ring); }
 .m-textarea { height: auto; min-height: calc(var(--m-control-h) * 2); padding: 6px 10px; resize: vertical; }
@@ -438,6 +448,56 @@
 .m-spin { animation: m-spin var(--m-motion-shimmer) linear infinite; transform-origin: center; }
 .m-skeleton-sweep { animation: m-shimmer var(--m-motion-shimmer) linear infinite; }
 
+/* ---------- Density tiers: the user's preference on <html data-density>. Compact is the analyst's
+   screen (Explore, Operate, long tables); comfortable is for touch and large displays. ---------- */
+[data-density="compact"] {
+  --m-row-h: 32px;
+  --m-row-h-dense: 26px;
+  --m-control-h: 28px;
+  --m-card-pad: 14px;
+  --m-card-pad-sm: 8px;
+  --m-card-pad-lg: 18px;
+  --m-hero-pad: 20px 24px;
+  --m-stat-pad: 8px 12px;
+  --m-stat-h: 72px;
+  --m-stat-hero-h: 96px;
+  --m-section-gap: var(--m-space-3);
+  --m-page-pad: var(--m-space-4);
+  --m-text-stat: 22px;
+  --m-leading-stat: 26px;
+}
+[data-density="comfortable"] {
+  --m-row-h: 44px;
+  --m-row-h-dense: 36px;
+  --m-control-h: 36px;
+  --m-card-pad: 24px;
+  --m-card-pad-sm: 16px;
+  --m-card-pad-lg: 32px;
+  --m-hero-pad: 36px 40px;
+  --m-stat-pad: 16px 20px;
+  --m-stat-h: 96px;
+  --m-stat-hero-h: 128px;
+  --m-section-gap: var(--m-space-5);
+  --m-page-pad: var(--m-space-8);
+}
+
+/* ---------- Presentation: `?present=1` fills a boardroom screen; type and the hero step up one size. ---------- */
+[data-present="1"] {
+  --m-text-hero: 72px;        --m-leading-hero: 76px;
+  --m-text-stat: 34px;        --m-leading-stat: 40px;
+  --m-text-verdict-num: 56px; --m-leading-verdict-num: 60px;
+  --m-text-title: 24px;       --m-leading-title: 30px;
+  --m-text-section: 17px;     --m-leading-section: 24px;
+  --m-text-body: 15px;        --m-leading-body: 22px;
+  --m-text-meta: 13px;        --m-leading-meta: 18px;
+  --m-hero-pad: 40px 48px;
+  --m-stat-h: 100px;
+  --m-stat-hero-h: 136px;
+  --m-section-gap: var(--m-space-6);
+  --m-page-pad: var(--m-space-10);
+  --m-page-max: 1800px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --m-motion-duration: 0ms;
@@ -460,7 +520,7 @@
 }
 
 /* ---------- Colour-pass utilities (hero, depth, tone, domain, heat) ---------- */
-.m-hero { position: relative; color: var(--m-hero-ink); border-radius: var(--m-radius-tile); padding: 28px 32px; background-color: var(--m-hero-bg); background-image: var(--m-grad-hero-flare), var(--m-grad-hero); box-shadow: var(--m-elev-hero); }
+.m-hero { position: relative; color: var(--m-hero-ink); border-radius: var(--m-radius-tile); padding: var(--m-hero-pad); background-color: var(--m-hero-bg); background-image: var(--m-grad-hero-flare), var(--m-grad-hero); box-shadow: var(--m-elev-hero); }
 .m-hero :focus-visible { outline: none; box-shadow: var(--m-elev-focus-hero); }
 .m-brand-panel { position: relative; color: var(--m-hero-ink); padding: 48px; background-color: var(--m-hero-bg); background-image: var(--m-grad-login-flare), var(--m-grad-login); box-shadow: var(--m-elev-hero); }
 .m-brand-panel :focus-visible { outline: none; box-shadow: var(--m-elev-focus-hero); }

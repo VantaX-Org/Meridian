@@ -13,6 +13,8 @@ export function InsightActions({ run, module, options = [] }: { run?: string; mo
   const pathname = usePathname() ?? "";
   const search = useSearchParams();
   const presentHref = `${pathname}?${new URLSearchParams({ ...Object.fromEntries(search?.entries() ?? []), present: "1" })}`;
+  // On a boardroom screen only the content shows; Exit presentation floats at the corner.
+  if (search?.get("present") === "1") return null;
   const list: ExportOption[] = run
     ? [...options, { format: "xlsx", label: "Failing records list (Excel)", run: () => exportFindings("xlsx", { version_id: run, module, sort: "impact" }) }]
     : options;
