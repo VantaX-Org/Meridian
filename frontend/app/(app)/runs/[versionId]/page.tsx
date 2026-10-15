@@ -4,12 +4,12 @@
 import { isAxiosError } from "axios";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, Card, DataTable, Delta, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Heatmap, Line, Mono, Pager, Pill,
+  Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill,
   DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone, type HeatmapCell,
   entityTabs, NextActions,
   PageHeader,
@@ -25,7 +25,7 @@ import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
-import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
+import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/api/versions";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
@@ -462,6 +462,20 @@ export default function RunDetailPage() {
   });
 
   const isBaseline = version.data?.metadata?.baseline === true;
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [draftLabel, setDraftLabel] = useState("");
+  const rename = useMutation({
+    mutationFn: () => patchVersionLabel(versionId, draftLabel.trim()),
+    onSuccess: (next) => {
+      qc.setQueryData<Version>(queryKeys.run(versionId), (prev) => (prev ? { ...prev, label: next.label } : prev));
+      qc.invalidateQueries({ queryKey: queryKeys.run("list") });
+      qc.invalidateQueries({ queryKey: ["versions-list"] });
+      setRenameOpen(false);
+      toast.success("Run renamed");
+    },
+    onError: (e: Error) => toast.error(errorText(e)),
+  });
+  const openRename = () => { setDraftLabel(version.data?.label ?? ""); setRenameOpen(true); };
   const pin = useMutation({
     mutationFn: () => pinBaseline(versionId, !isBaseline),
     onMutate: async () => {
@@ -544,9 +558,12 @@ export default function RunDetailPage() {
           {prevId ? <Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`}>Compare with previous</Link>} /> : null}
           {baseId ? <Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`}>Compare with baseline</Link>} /> : null}
           {can("analyse") ? (
-            <Button variant="ghost" onClick={() => pin.mutate()}>
-              {isBaseline ? "Unpin baseline" : "Pin as baseline"}
-            </Button>
+            <>
+              <Button variant="ghost" onClick={openRename}>Rename</Button>
+              <Button variant="ghost" onClick={() => pin.mutate()}>
+                {isBaseline ? "Unpin baseline" : "Pin as baseline"}
+              </Button>
+            </>
           ) : null}
           {can("export") ? <ExportMenu options={exportOptions} /> : null}
         </>
@@ -558,6 +575,22 @@ export default function RunDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Dialog
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        title="Rename run"
+        footer={
+          <>
+            <Button variant="secondary" disabled={rename.isPending} onClick={() => setRenameOpen(false)}>Keep</Button>
+            <Button pending={rename.isPending} disabled={!draftLabel.trim()} onClick={() => rename.mutate()}>Save name</Button>
+          </>
+        }
+      >
+        <Field label="Name">
+          <Input value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} autoFocus
+            onKeyDown={(e) => { if (e.key === "Enter" && draftLabel.trim() && !rename.isPending) rename.mutate(); }} />
+        </Field>
+      </Dialog>
       <div>{header}</div>
       {analysisStatus.data?.status === "queued" || analysisStatus.data?.status === "processing" ? (
         <RunProgressBanner

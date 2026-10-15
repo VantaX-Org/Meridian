@@ -53,6 +53,8 @@ export interface Version {
     parquet_path?: string;
     system_id?: string;
     baseline?: boolean;
+    /** Hidden from run lists by "Archive older runs"; nothing is deleted. */
+    archived?: boolean;
     /** "extraction" when the run was read from a system. */
     source?: string;
     /** Records downloaded per object (system downloads). */

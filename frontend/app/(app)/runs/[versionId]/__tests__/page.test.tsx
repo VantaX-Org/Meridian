@@ -126,6 +126,19 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(pin).toHaveBeenCalledWith("v2", true));
   });
 
+  it("renames the run from the header and shows the new name", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    const patch = vi.spyOn(versionsApi, "patchVersionLabel").mockResolvedValue({ ...current, label: "Go-live baseline" });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Rename" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    const input = await screen.findByLabelText("Name");
+    fireEvent.change(input, { target: { value: "Go-live baseline" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith("v2", "Go-live baseline"));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Go-live baseline" })).toBeInTheDocument());
+  });
+
   it("shows the Baseline pill and the unpin action for a pinned run", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(baseline);
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [baseline] });

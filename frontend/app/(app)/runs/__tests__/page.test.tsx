@@ -147,6 +147,37 @@ describe("RunsPage", () => {
   });
 });
 
+describe("RunsPage archive", () => {
+  it("archives older runs keeping the newest N and refreshes the list", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const archive = vi.spyOn(versionsApi, "archiveVersions").mockResolvedValue({ archived: 1 });
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Archive older runs" }));
+    const keep = await screen.findByLabelText("Keep the newest");
+    fireEvent.change(keep, { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(archive).toHaveBeenCalledWith(3));
+  });
+
+  it("?archived=1 asks for archived runs, marks them, and offers restore", async () => {
+    searchParams.set("archived", "1");
+    const archived = version({ id: "v0", label: "Old upload", run_at: "2026-09-01T00:00:00Z", metadata: { system_id: "sys-1", archived: true } });
+    const get = vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, archived] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const restore = vi.spyOn(versionsApi, "restoreVersions").mockResolvedValue({ restored: 1 });
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Old upload")).toBeInTheDocument());
+    expect(get).toHaveBeenCalledWith(expect.objectContaining({ include_archived: true }));
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove filter Including archived" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Restore archived runs" }));
+    await waitFor(() => expect(restore).toHaveBeenCalled());
+    searchParams.delete("archived");
+  });
+});
+
 describe("RunsPage status param", () => {
   it.each(["garbage", "constructor"])("ignores ?status=%s: every run, no banner", async (v) => {
     searchParams.set("status", v);
