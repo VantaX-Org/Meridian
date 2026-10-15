@@ -1,6 +1,9 @@
 """The per-version Config Intelligence task: frames → engine records → both engines."""
 
+import asyncio
+
 import pandas as pd
+import pytest
 
 from workers.tasks.run_config_intelligence import frames_to_records
 
@@ -99,3 +102,79 @@ def test_variant_discovery_failure_does_not_fail_the_task(monkeypatch):
     out = task.run_config_intelligence.run("00000000-0000-0000-0000-0000000000aa",
                                            "00000000-0000-0000-0000-000000000001", "x")
     assert out["status"] == "complete" and out["process_variants"] == 0 and persisted == ["config"]
+
+
+# ── _persist is one transaction ───────────────────────────────────────────────
+
+
+class _AsyncSession:
+    """Records statements and commits; `fail_on` raises inside save_run to simulate a mid-run failure."""
+
+    def __init__(self, log: list):
+        self.log = log
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc):
+        self.log.append("close")
+        return False
+
+    async def execute(self, stmt, params=None):
+        self.log.append(("sql", str(stmt).split()[0]))
+
+    async def commit(self):
+        self.log.append("commit")
+
+
+def _persist_fixture(monkeypatch, save_run):
+    import workers.tasks.run_config_intelligence as task
+
+    log: list = []
+
+    class _Engine:
+        async def dispose(self):
+            log.append("dispose")
+
+    monkeypatch.setattr(task, "_async_url", lambda: "postgresql+asyncpg://x")
+    monkeypatch.setattr(task, "create_async_engine", lambda *_a, **_k: _Engine())
+    monkeypatch.setattr(task, "async_sessionmaker", lambda *_a, **_k: (lambda: _AsyncSession(log)))
+
+    class _Cfg:
+        async def save_run(self, db, tid, rid, result):
+            log.append("save_run")
+            await save_run()
+
+        async def get_previous_run_id(self, db, tid, rid):
+            return None
+
+    import api.services.config_intelligence.persistence as cp
+
+    monkeypatch.setattr(cp, "ConfigIntelligencePersistence", _Cfg)
+    return task, log
+
+
+def test_persist_commits_once_after_every_write(monkeypatch):
+    async def ok():
+        return None
+
+    task, log = _persist_fixture(monkeypatch, ok)
+    out = asyncio.run(task._persist("t1", "v1", object(), None))
+    assert out == {"drift": 0}
+    assert log.count("commit") == 1
+    # the deletes and the save all precede the single commit
+    assert log.index("save_run") < log.index("commit") < log.index("close")
+    assert all(x[0] == "sql" for x in log[: log.index("save_run")] if isinstance(x, tuple))
+
+
+def test_persist_failure_leaves_the_previous_results(monkeypatch):
+    async def boom():
+        raise RuntimeError("disk full")
+
+    task, log = _persist_fixture(monkeypatch, boom)
+    with pytest.raises(RuntimeError):
+        asyncio.run(task._persist("t1", "v1", object(), None))
+    # the deletes ran inside the same transaction and were never committed
+    assert "commit" not in log
+    assert any(x == ("sql", "DELETE") for x in log)
+    assert log[-1] == "dispose" and "close" in log

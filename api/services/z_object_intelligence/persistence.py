@@ -129,7 +129,6 @@ class ZObjectPersistence:
                 },
             )
 
-        await db.commit()
         return entry_id
 
     async def get_registry(
@@ -236,7 +235,6 @@ class ZObjectPersistence:
             ),
             params,
         )
-        await db.commit()
         return result.rowcount > 0
 
     async def get_registry_status_map(
@@ -307,7 +305,6 @@ class ZObjectPersistence:
                     "trend": p.trend_direction.value if p.trend_direction else None,
                 },
             )
-        await db.commit()
 
     async def get_latest_profile(
         self, db: AsyncSession, tenant_id: str, z_object_id: str
@@ -446,7 +443,6 @@ class ZObjectPersistence:
                 {"snap": baseline_json, "zoid": z_oid},
             )
 
-        await db.commit()
 
     # ------------------------------------------------------------------
     # Anomaly Operations
@@ -487,7 +483,6 @@ class ZObjectPersistence:
                     "dev": a.deviation_pct,
                 },
             )
-        await db.commit()
 
     async def get_anomalies(
         self,
@@ -545,7 +540,6 @@ class ZObjectPersistence:
             ),
             {"status": status, "uid": user_id, "aid": anomaly_id, "tid": tenant_id},
         )
-        await db.commit()
         return result.rowcount > 0
 
     # ------------------------------------------------------------------
@@ -602,7 +596,6 @@ class ZObjectPersistence:
                 {"rule_id": json.dumps([f.rule_id]), "zoid": z_oid},
             )
 
-        await db.commit()
 
     async def _resolve_rule_id(
         self, db: AsyncSession, tenant_id: str, template_id: str, rule_name: str
@@ -682,7 +675,6 @@ class ZObjectPersistence:
                 "uid": user_id,
             },
         )
-        await db.commit()
         return rule_id
 
     # ------------------------------------------------------------------

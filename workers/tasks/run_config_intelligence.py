@@ -73,8 +73,9 @@ async def _persist(tenant_id: str, run_id: str, config_result, z_result) -> dict
     try:
         async with maker() as db:
             await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": tenant_id})
-            await db.commit()
 
+            # One transaction: the version's old rows go only when the new ones are all in, so a run that
+            # fails midway leaves the previous results in place (the persistence classes never commit).
             # idempotent: a re-analysis of the version replaces its own rows
             await db.execute(text("DELETE FROM config_process_steps WHERE process_id IN "
                                   "(SELECT id FROM config_processes WHERE tenant_id = :tid AND run_id = :rid)"),
@@ -84,7 +85,6 @@ async def _persist(tenant_id: str, run_id: str, config_result, z_result) -> dict
             for t in CONFIG_TABLES + Z_RUN_TABLES:
                 await db.execute(text(f"DELETE FROM {t} WHERE tenant_id = :tid AND run_id = :rid"),
                                  {"tid": tenant_id, "rid": run_id})
-            await db.commit()
 
             cfg = ConfigIntelligencePersistence()
             await cfg.save_run(db, tenant_id, run_id, config_result)
@@ -106,6 +106,7 @@ async def _persist(tenant_id: str, run_id: str, config_result, z_result) -> dict
                 await zp.save_baselines(db, tenant_id, z_result.baselines, ids)
                 await zp.save_anomalies(db, tenant_id, run_id, z_result.anomalies, ids)
                 await zp.save_rule_findings(db, tenant_id, run_id, z_result.rule_findings, ids)
+            await db.commit()
     finally:
         await engine.dispose()
     return out
@@ -118,7 +119,9 @@ async def _persist_variants(tenant_id: str, version_id: str, variants) -> int:
     maker = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with maker() as db:
-            return await ConfigIntelligencePersistence().save_variants(db, tenant_id, version_id, variants)
+            stored = await ConfigIntelligencePersistence().save_variants(db, tenant_id, version_id, variants)
+            await db.commit()
+            return stored
     finally:
         await engine.dispose()
 
@@ -131,6 +134,7 @@ async def _persist_derivation(tenant_id: str, version_id: str, system_type: str,
     try:
         async with maker() as db:
             await ConfigIntelligencePersistence().save_derivation(db, tenant_id, version_id, system_type, document)
+            await db.commit()
     finally:
         await engine.dispose()
 

@@ -84,6 +84,7 @@ async def detect_z_objects(
     await persistence.save_baselines(db, tenant_id, result.baselines, z_object_ids)
     await persistence.save_anomalies(db, tenant_id, run_id, result.anomalies, z_object_ids)
     await persistence.save_rule_findings(db, tenant_id, run_id, result.rule_findings, z_object_ids)
+    await db.commit()
 
     return ZFullAnalysisResponse(
         run_id=run_id,
@@ -163,6 +164,7 @@ async def update_registry_entry(
     tid = str(tenant.id)
     updates = request.model_dump(exclude_none=True)
     updated = await persistence.update_registry_entry(db, tid, z_id, updates)
+    await db.commit()
     if not updated:
         raise HTTPException(status_code=404, detail=f"Z object '{z_id}' not found or no changes")
     entry = await persistence.get_registry_entry(db, tid, z_id)
@@ -235,6 +237,7 @@ async def submit_anomaly_feedback(
     tid = str(tenant.id)
     user_id = str(tenant.id)  # In production this would be the actual user ID
     updated = await persistence.update_anomaly_feedback(db, tid, anomaly_id, request.status, user_id)
+    await db.commit()
     if not updated:
         raise HTTPException(status_code=404, detail=f"Anomaly '{anomaly_id}' not found")
 
@@ -367,6 +370,7 @@ async def create_custom_rule(
     user_id = str(tenant.id)  # In production this would be the actual user ID
     rule_data = request.model_dump()
     rule_id = await persistence.create_custom_rule(db, tid, rule_data, user_id)
+    await db.commit()
     return {"id": rule_id, "status": "created", **rule_data}
 
 
