@@ -226,8 +226,11 @@ def _legacy(findings: list[CheckResult], weights: dict, thresholds: dict, critic
         dims[dim] = (sum(f.pass_rate * f.total_count for f in rows) / n if n
                      else sum(f.pass_rate for f in rows) / len(rows) if rows else 100.0)
     composite, capped, cap_reason, _ = _composite(dims, coverage, ["critical failure"] * critical, weights)
-    composite = 100.0 if composite is None else composite  # the old formula scored "nothing measured" as 100
-    return {"composite_score": round(composite, 2), "dimension_scores": {k: round(v, 2) for k, v in dims.items()},
+    # "Nothing measured" stays None, as it is for raw_score/composite_score above. It used to be
+    # coerced to 100.0 here, which is how a module whose rules all skipped read 100/100 with
+    # coverage 0.0 in the UI: nothing checked is not a pass.
+    return {"composite_score": None if composite is None else round(composite, 2),
+            "dimension_scores": {k: round(v, 2) for k, v in dims.items()},
             "capped": capped, "cap_reason": cap_reason, "tier": tier(composite, thresholds)}
 
 

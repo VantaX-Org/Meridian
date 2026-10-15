@@ -173,3 +173,22 @@ def test_score_all_modules_maps_field_unmaintained_to_not_applicable():
     assert r.not_applicable_checks == 15, "field_unmaintained and field_suppressed must fold into not_applicable"
     assert r.coverage == round(1.0 / (1 + 2), 4), "coverage = findings / (findings + not_evaluable)"
     assert r.total_checks == 1, "the suppressed rule must not count as a finding"
+
+def test_a_module_with_nothing_measured_has_no_score_not_a_perfect_one():
+    """Nothing checked is not a pass.
+
+    A module whose rules all skipped (missing field, empty population) measured
+    nothing. ``composite_score``/``raw_score`` already say so (None), and the
+    ``legacy`` view must agree: it used to coerce "nothing measured" to 100.0 with
+    tier "pass", which is how the SuccessFactors learning_management and
+    time_attendance modules came to read 100/100 on coverage 0.0 in the UI.
+    """
+    result = score_module([], {}, module="learning_management", skipped=80)
+    assert result.raw_score is None and result.composite_score is None
+    assert result.tier is None
+    assert result.legacy["composite_score"] is None
+    assert result.legacy["tier"] is None
+    # a partially measured module still scores, and says how much it covered
+    partial = score_module([_make_result("T1", dimension="completeness")], {}, module="m", skipped=3)
+    assert partial.composite_score == 100.0 and partial.coverage == 0.25
+    assert partial.low_confidence is True
