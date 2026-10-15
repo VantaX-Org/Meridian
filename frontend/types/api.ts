@@ -232,12 +232,16 @@ export interface LicenceStatus {
   reason?: string;
 }
 
+/** Which email backend the API picked from its environment; null means per-user email cannot be sent. */
+export type EmailBackend = "graph" | "smtp" | "resend";
+
 export interface HealthResponse {
   status: string;
   version: string;
   llm_provider: string;
   llm_connected: boolean;
   licence: LicenceStatus;
+  email_backend: EmailBackend | null;
   timestamp: string;
 }
 

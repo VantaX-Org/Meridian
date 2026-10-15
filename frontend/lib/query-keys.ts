@@ -138,6 +138,7 @@ export const queryKeys = {
   triageSla: () => ["triage-sla"] as const,
   triageSettings: () => ["triage-settings"] as const,
   adminDoctor: () => ["admin-doctor"] as const,
+  health: () => ["health"] as const,
   contracts: (filters: Record<string, unknown>) => ["contracts", normalizeFilters(filters)] as const,
   contractCompliance: (id: string) => ["contract-compliance", id] as const,
   scoringSettings: () => ["scoring-settings"] as const,
