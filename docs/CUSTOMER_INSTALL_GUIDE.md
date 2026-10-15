@@ -170,6 +170,18 @@ Once installation completes, you'll see:
 
 3. **Start using Meridian!**
 
+### Email delivery
+
+Meridian sends email through one of three backends, tried in this order. Set the variables for the one you use in `.env` (the API and the workers read the same file) and restart the stack.
+
+| Backend | Variables | Notes |
+|---|---|---|
+| Microsoft Graph | `MICROSOFT_TENANT_ID`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `EMAIL_FROM` | Sends as a mailbox in your Microsoft 365 tenant; all four are required |
+| SMTP relay | `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | For air-gapped networks with an internal relay |
+| Resend | `RESEND_API_KEY` | Hosted API; needs outbound HTTPS |
+
+Tenant alert channels (Admin > Notifications) and per-user delivery both use this backend. Per-user delivery, the digest and "tell me at once" choices each person makes under Me > Preferences, needs one of the three to be configured; without it users still get their in-app notifications, the preferences page says email is not configured, and `GET /health` reports `"email_backend": null`. Each user can confirm their own setup with "Send me a test" on that page.
+
 ---
 
 ## Useful Commands
