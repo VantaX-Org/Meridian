@@ -416,12 +416,19 @@
 @keyframes m-grow-y  { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 @keyframes m-pulse-once { from { r: var(--m-pulse-r0, 12px); opacity: 1; } to { r: var(--m-pulse-r1, 18px); opacity: 0; } }
 @keyframes m-count-settle { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@keyframes m-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .m-motion-spin    { animation: m-spin var(--m-motion-shimmer) linear infinite; }
 .m-motion-slide   { transition: transform var(--m-motion-slow) var(--m-motion-ease), width var(--m-motion-slow) var(--m-motion-ease); }
 .m-motion-width   { transition: width var(--m-motion-slow) var(--m-motion-ease); }
 .m-motion-fade    { transition: opacity var(--m-motion-duration) var(--m-motion-ease-out); }
 .m-motion-colors  { transition: color var(--m-motion-duration) var(--m-motion-ease-out), background-color var(--m-motion-duration) var(--m-motion-ease-out), border-color var(--m-motion-duration) var(--m-motion-ease-out), box-shadow var(--m-motion-duration) var(--m-motion-ease-out); }
+.m-motion-fade-in { animation: m-fade-in var(--m-motion-duration) var(--m-motion-ease-out) both; }
+/* Every control shares one transition so hover, press and focus read as the same material everywhere. */
+.m-btn, .m-iconbtn, .m-input, .m-chip, .m-tab, .m-popup-item, .m-pill, .m-stat, .m-stat-edge, .m-row-expand { transition: color var(--m-motion-duration) var(--m-motion-ease-out), background-color var(--m-motion-duration) var(--m-motion-ease-out), border-color var(--m-motion-duration) var(--m-motion-ease-out), box-shadow var(--m-motion-duration) var(--m-motion-ease-out), transform var(--m-motion-duration) var(--m-motion-ease-out); }
+.m-bar-fill { transition: width var(--m-motion-slow) var(--m-motion-ease); }
+.m-popup { transform-origin: top; animation: m-scale-in var(--m-motion-duration) var(--m-motion-ease-out) both; }
+.m-tooltip-pop { animation: m-scale-in var(--m-motion-duration) var(--m-motion-ease-out) both; }
 .m-motion-rise    { animation: m-rise var(--m-motion-slow) var(--m-motion-ease) both; }
 .m-motion-scale-in{ animation: m-scale-in var(--m-motion-slow) var(--m-motion-ease) both; }
 .m-motion-slide-in-right { animation: m-slide-in-right var(--m-motion-slow) var(--m-motion-ease) both; }
@@ -504,7 +511,8 @@
   .m-count-settle, .m-pulse-once, .m-motion-grow-y { animation: none; }
   .m-motion-rise, .m-motion-scale-in, .m-motion-slide-in-right, .m-motion-draw, .m-motion-stagger > *,
   .m-skeleton-sweep, .m-spin, .m-motion-spin { animation: none; }
-  .m-motion-width, .m-motion-fade, .m-motion-colors { transition: none; }
+  .m-motion-width, .m-motion-fade, .m-motion-colors, .m-bar-fill, .m-btn, .m-iconbtn, .m-input, .m-chip, .m-tab, .m-popup-item, .m-pill, .m-stat, .m-stat-edge, .m-row-expand { transition: none; }
+  .m-motion-fade-in, .m-popup, .m-tooltip-pop { animation: none; }
   /* Blanket guard in addition to the per-class rules above and the JS helper. */
   *, *::before, *::after { animation: none !important; transition-duration: 0ms !important; }
 }
@@ -522,8 +530,9 @@
 .m-fade-bottom { background-image: var(--m-grad-fade-bottom); }
 
 .m-lift, .m-lift-sm { transition: transform var(--m-motion-duration) var(--m-ease-spring), box-shadow var(--m-motion-duration) var(--m-ease), background-color var(--m-motion-duration) var(--m-ease); }
-.m-lift:hover, .m-lift:focus-visible { transform: none; background-color: var(--m-sheet-raised); }
-.m-lift-sm:hover { transform: none; }
+.m-lift:hover, .m-lift:focus-visible { transform: translateY(-1px); box-shadow: var(--m-elev-2); background-color: var(--m-sheet-raised); }
+.m-lift-sm:hover { transform: translateY(-1px); }
+.m-lift:active, .m-lift-sm:active { transform: translateY(0); }
 .m-count-settle { background-image: var(--m-grad-count-settle); background-size: 200% 100%; background-repeat: no-repeat; animation: m-count-settle var(--m-motion-draw) var(--m-ease-out) both; }
 .m-motion-grow-y { transform-origin: bottom; transform-box: fill-box; animation: m-grow-y var(--m-motion-draw) var(--m-ease-out) both; animation-delay: calc(var(--m-bar-i, 0) * var(--m-motion-stagger-bar)); }
 .m-pulse-once { fill: var(--m-glow-critical-fill); animation: m-pulse-once var(--m-motion-draw) var(--m-ease-out) 1 both; }

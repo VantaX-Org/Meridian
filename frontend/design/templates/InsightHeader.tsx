@@ -80,7 +80,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
           )}
         </div>
       )}
-      <div className="grid gap-4 md:grid-cols-4 @5xl:grid-cols-4">
+      <div className="m-motion-stagger grid gap-4 md:grid-cols-4 @5xl:grid-cols-4">
         <Cell label="Situation" cell={situation} loading={loading} hero={hero} />
         <Cell label="What changed" cell={changed} loading={loading} hero={hero} />
         <Cell label="Why it matters" cell={why} loading={loading} hero={hero} />

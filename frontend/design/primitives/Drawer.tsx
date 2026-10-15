@@ -22,7 +22,7 @@ export function Drawer({
   return (
     <BaseDrawer.Root open={open} onOpenChange={onOpenChange}>
       <BaseDrawer.Portal>
-        <BaseDrawer.Backdrop className="fixed inset-0 z-50" style={{ background: "var(--m-scrim)" }} />
+        <BaseDrawer.Backdrop className="m-motion-fade-in fixed inset-0 z-50" style={{ background: "var(--m-scrim)" }} />
         <BaseDrawer.Popup
           className="m-elev-3 m-motion-slide-in-right fixed z-50 right-0 top-0 h-full w-[480px] max-w-full flex flex-col overflow-hidden lg:right-2 lg:top-2 lg:h-[calc(100%-16px)] lg:rounded-[var(--m-radius-sheet)]"
           style={{ background: "var(--m-sheet)" }}

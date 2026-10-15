@@ -8,7 +8,7 @@ export function Tooltip({
   children,
   render,
   side = "top",
-  sideOffset,
+  sideOffset = 6,
   preLine = false,
   maxWidth,
 }: {
@@ -32,7 +32,7 @@ export function Tooltip({
         <BaseTooltip.Portal>
           <BaseTooltip.Positioner side={side} sideOffset={sideOffset}>
             <BaseTooltip.Popup
-              className="rounded px-2 py-1 m-text-meta"
+              className="m-tooltip-pop rounded px-2 py-1 m-text-meta"
               style={{
                 background: "var(--m-ink)",
                 color: "var(--m-sheet)",
