@@ -10,7 +10,7 @@ export function Pager({
       ? `${total === 0 ? 0 : (page - 1) * pageSize + 1}\u2013${Math.min(page * pageSize, total)} of ${total.toLocaleString()}`
       : `Page ${page} of ${pageCount}`;
   return (
-    <div className="flex items-center justify-end gap-2 text-[12px] leading-4 m-numeric" style={{ color: "var(--m-ink-3)" }}>
+    <div className="flex items-center justify-end gap-2 m-text-meta m-numeric" style={{ color: "var(--m-ink-3)" }}>
       <span>{label}</span>
       <IconButton aria-label="Previous" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
         <ChevronLeft size={16} />

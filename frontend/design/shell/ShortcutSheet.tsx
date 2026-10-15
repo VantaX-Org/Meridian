@@ -30,8 +30,8 @@ export function ShortcutSheet({ open, onOpenChange, first }: { open: boolean; on
       <div className="flex flex-col gap-6" data-testid="shortcut-sheet">
         {sections.map((section) => (
           <section key={section.group} aria-labelledby={`shortcuts-${section.group}`}>
-            <h3 id={`shortcuts-${section.group}`} className="mb-2 text-[13px] leading-[18px] font-semibold" style={{ color: "var(--m-ink)" }}>{section.group}</h3>
-            <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-[13px] leading-[18px]">
+            <h3 id={`shortcuts-${section.group}`} className="mb-2 m-text-body font-semibold" style={{ color: "var(--m-ink)" }}>{section.group}</h3>
+            <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 m-text-body">
               {section.items.map((s) => (
                 <div key={`${s.group}-${s.keys}`} className="contents">
                   <dt><kbd className="m-kbd">{s.keys}</kbd></dt>

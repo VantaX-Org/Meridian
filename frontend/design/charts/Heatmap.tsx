@@ -12,13 +12,13 @@ export interface HeatmapCell {
 }
 
 /**
- * `tone` (default): tone soft fill with a 3px left bar in the tone solid, the bar replaces the old dot.
+ * `tone` (default): tone soft fill with a 2px left bar in the tone solid.
  * `seq`: numeric cells on the five-step sequential ramp, text from `seqInk`.
  * `div`: numeric cells on the diverging ramp, text from `divInk`.
  */
 export type HeatmapMode = "tone" | "seq" | "div";
 
-const toneLook = (t: HeatmapTone) => ({ background: `var(--m-${t}-soft)`, boxShadow: `inset 3px 0 0 var(--m-${t})`, color: `var(--m-${t}-ink)` });
+const toneLook = (t: HeatmapTone) => ({ background: `var(--m-${t}-soft)`, boxShadow: `inset 2px 0 0 var(--m-${t})`, color: `var(--m-${t}-ink)` });
 
 /** Maps a backend tier string (go, at_risk, no_go) onto a heatmap tone. Unknown tiers return undefined. */
 export function toneOfTier(tier: string | null | undefined): HeatmapTone | undefined {
@@ -38,7 +38,7 @@ function cellStyle(value: HeatmapCell["value"], mode: HeatmapMode, range: readon
 
 /** Grid heatmap for the readiness cockpit (spec 8.1) — not a recharts chart, a styled table. */
 export function Heatmap({
-  rows, cols, cells, onPointClick, cellSize = 32, rowHref, draw = false, mode = "tone", range = mode === "div" ? [-1, 1] : [0, 100], tone,
+  rows, cols, cells, onPointClick, cellSize = 30, rowHref, draw = false, mode = "tone", range = mode === "div" ? [-1, 1] : [0, 100], tone,
 }: {
   rows: string[];
   cols: string[];
@@ -56,12 +56,12 @@ export function Heatmap({
   const byKey = new Map(cells.map((c) => [`${c.row}:${c.col}`, c]));
   let cellIndex = 0;
   return (
-    <table className="text-[12px] leading-4" style={{ borderCollapse: "separate", borderSpacing: 2 }}>
+    <table className="m-text-meta" style={{ borderCollapse: "separate", borderSpacing: 1 }}>
       <thead>
         <tr>
           <th />
           {cols.map((c, ci) => (
-            <th key={`${ci}:${c}`} className="px-2 py-1" style={{ color: "var(--m-ink-2)" }}>{c}</th>
+            <th key={`${ci}:${c}`} className="px-1 py-1 font-medium" style={{ color: "var(--m-ink-2)", borderBottom: "1px solid var(--m-line)" }}>{c}</th>
           ))}
         </tr>
       </thead>
@@ -86,7 +86,7 @@ export function Heatmap({
                     style={{
                       width: cellSize,
                       height: cellSize,
-                      borderRadius: 3,
+                      borderRadius: 0,
                       background: look ? look.background : "var(--m-sheet-sunken)",
                       boxShadow: look?.boxShadow,
                       color: look?.color,
@@ -96,7 +96,7 @@ export function Heatmap({
                       animationDelay: draw ? `calc(var(--m-motion-duration) * ${index / 10})` : undefined,
                     }}
                   >
-                    {look && typeof cell?.value === "number" && String(Math.round(cell.value * 10) / 10)}
+                    {look && typeof cell?.value === "number" && String(Math.round(cell.value))}
                   </button>
                 </td>
               );

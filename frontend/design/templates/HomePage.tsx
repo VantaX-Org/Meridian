@@ -126,20 +126,7 @@ export function HomePage({
       )}
 
       {state === "data" && verdict && (
-        <section className="m-hero flex flex-wrap items-center justify-between gap-6" data-testid="home-verdict-row" data-tour="home-verdict">
-          <div className="flex min-w-0 flex-1 flex-col gap-2" style={{ minWidth: "min(320px, 100%)" }}>
-            <div className="flex flex-wrap items-center gap-2">
-              {verdict.capLine && <Pill ember>Capped</Pill>}
-              {runLabel && <span className="m-text-meta" style={{ color: "var(--m-hero-ink-3)" }}>{runLabel}</span>}
-            </div>
-            <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>
-            {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
-            {verdict.action && (
-              <div className="pt-2">
-                <Button variant="secondary" render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />
-              </div>
-            )}
-          </div>
+        <section className="m-hero grid items-end gap-x-10 gap-y-6 md:grid-cols-[auto_1fr]" data-testid="home-verdict-row" data-tour="home-verdict">
           <div data-testid="home-dqs" data-tour="home-score" style={{ width: 220 }}>
             <Stat
               hero
@@ -151,6 +138,19 @@ export function HomePage({
               hint={verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
               delta={verdict.delta != null ? <Delta hero value={verdict.delta} /> : undefined}
             />
+          </div>
+          <div className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "64ch" }}>
+            <div className="flex flex-wrap items-center gap-2">
+              {verdict.capLine && <Pill ember>Capped</Pill>}
+              {runLabel && <span className="m-text-meta" style={{ color: "var(--m-hero-ink-3)" }}>{runLabel}</span>}
+            </div>
+            <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>
+            {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
+            {verdict.action && (
+              <div className="pt-2">
+                <Button variant="secondary" render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />
+              </div>
+            )}
           </div>
         </section>
       )}

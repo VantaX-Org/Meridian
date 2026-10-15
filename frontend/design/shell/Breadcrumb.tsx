@@ -34,7 +34,7 @@ function Overflow({ crumbs }: { crumbs: Crumb[] }) {
   const router = useRouter();
   return (
     <Menu
-      trigger={<button type="button" aria-label="Earlier pages" className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>…</button>}
+      trigger={<button type="button" aria-label="Earlier pages" className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>…</button>}
       items={crumbs.map((c) => ({ label: c.label, onSelect: () => router.push(c.href) }))}
     />
   );
@@ -56,7 +56,7 @@ export function Breadcrumb() {
   const hidden = leadingCrumbs.slice(0, Math.max(0, leadingCrumbs.length - MAX_LEADING));
   const shown = leadingCrumbs.slice(hidden.length);
   return (
-    <nav className="flex min-w-0 items-center gap-2 text-[12px] leading-[16px]" aria-label="Breadcrumb">
+    <nav className="flex min-w-0 items-center gap-2 m-text-meta" aria-label="Breadcrumb">
       {hidden.length > 0 && (
         <>
           <Overflow crumbs={hidden} />

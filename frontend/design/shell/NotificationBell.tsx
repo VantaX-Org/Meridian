@@ -24,6 +24,7 @@ const TONE: Record<NotificationType, PillTone> = {
   approval: "info",
   digest: "neutral",
   warning: "at-risk",
+  monitor: "at-risk",
 };
 
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
@@ -33,6 +34,7 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   approval: "Approval",
   digest: "Digest",
   warning: "Warning",
+  monitor: "Monitor",
 };
 
 /** Only in-app paths are followed: a notification never sends the user off the customer's own host. */

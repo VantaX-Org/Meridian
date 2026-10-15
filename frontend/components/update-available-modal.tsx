@@ -39,7 +39,7 @@ const TERMINAL_PHASES: ProgressPhase[] = ["done", "failed", "rolled_back", "reco
 function Notice({ tone, title, children }: { tone: "warning" | "danger"; title: string; children?: React.ReactNode }) {
   const colour = tone === "danger" ? "var(--m-critical)" : "var(--m-medium)";
   return (
-    <div className="rounded border px-3 py-2 text-[13px] mt-2" style={{ borderColor: colour, color: "var(--m-ink)" }}>
+    <div className="rounded border px-3 py-2 m-text-body mt-2" style={{ borderColor: colour, color: "var(--m-ink)" }}>
       <p className="font-medium" style={{ color: colour }}>{title}</p>
       {children ? <p className="mt-1" style={{ color: "var(--m-ink-2)" }}>{children}</p> : null}
     </div>
@@ -287,7 +287,7 @@ export function UpdateAvailableModal() {
     footer = <Button variant="ghost" onClick={handleClose}>Close</Button>;
   }
 
-  const note = "text-[13px]";
+  const note = "m-text-body";
   return (
     <Dialog
       open

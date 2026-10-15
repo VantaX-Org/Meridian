@@ -34,9 +34,9 @@ export function HelpHint({ term, onHero = false }: { term: GlossaryKey; /** Hero
         <Popover.Positioner sideOffset={8}>
           <Popover.Popup className="m-motion-scale-in" style={{ width: 320, maxWidth: "calc(100vw - 32px)", boxShadow: "var(--m-elev-2)", borderRadius: "var(--m-radius-sheet)" }}>
             <Card title={entry.term} padding="sm">
-              <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{entry.long}</p>
+              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{entry.long}</p>
               {entry.href && (
-                <p className="mt-2 text-[13px] leading-[18px]">
+                <p className="mt-2 m-text-body">
                   <Link href={entry.href} style={{ color: "var(--m-accent)" }}>Learn more</Link>
                 </p>
               )}

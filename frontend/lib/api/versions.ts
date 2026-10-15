@@ -7,6 +7,7 @@ export async function getVersions(params?: {
   offset?: number;
   module?: string;
   system_id?: string;
+  include_archived?: boolean;
 }): Promise<VersionList> {
   const { data } = await apiClient.get<VersionList>("/api/v1/versions", {
     params,

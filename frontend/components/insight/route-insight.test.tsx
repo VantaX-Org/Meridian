@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const m = vi.hoisted(() => ({ llm: vi.fn(), exec: vi.fn(), compare: vi.fn(), versions: { v: [{ id: "r1", status: "complete" }] }, admin: { v: true } }));
+const m = vi.hoisted(() => ({ llm: vi.fn(), exec: vi.fn(), compare: vi.fn(), versions: { v: [{ id: "r1", status: "complete" }] as { id: string; status: string; metadata?: { system_id?: string } }[] }, admin: { v: true } }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/objects", useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ step: undefined }) }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ isAdmin: m.admin.v }) }));
@@ -48,6 +48,18 @@ describe("RouteInsight gating", () => {
     mount();
     await waitFor(() => expect(m.compare).toHaveBeenCalledWith("r1", "r2"));
     await waitFor(() => expect(document.querySelector('a[href="/runs/r2/vs/r1"]')).toBeTruthy());
+  });
+
+  it("compares only with the previous finished run of the same system", async () => {
+    m.llm.mockResolvedValue({ llm_available: false });
+    m.versions.v = [
+      { id: "r3", status: "complete", metadata: { system_id: "sf" } },
+      { id: "r2", status: "complete", metadata: { system_id: "ecc" } },
+      { id: "r1", status: "complete", metadata: { system_id: "sf" } },
+    ];
+    m.compare.mockResolvedValue({ v1: { id: "r1" }, v2: { id: "r3" }, delta: {}, checks: {} });
+    mount();
+    await waitFor(() => expect(m.compare).toHaveBeenCalledWith("r1", "r3"));
   });
 
   it("skips compare when there is no earlier finished run", async () => {

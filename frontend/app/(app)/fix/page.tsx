@@ -12,7 +12,8 @@ import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { BatchesTab } from "./batches-tab";
-import { DedupTab, MonitorTab } from "./monitor-dedup-tabs";
+import { DedupTab } from "./monitor-dedup-tabs";
+import { MonitorTab } from "./monitor-tab";
 
 const columns: ColumnDef<CleaningBatchSummary>[] = [
   { accessorKey: "batch_id", header: "Batch", cell: ({ row }) => <Mono>{row.original.batch_id}</Mono> },

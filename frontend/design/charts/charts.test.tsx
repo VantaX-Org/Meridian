@@ -97,11 +97,11 @@ describe("chart tooltip and theme", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("Heatmap tone cells use the soft tone with a 3px left bar and no dot", () => {
+  it("Heatmap tone cells use the soft tone with a 2px left bar and no dot", () => {
     render(<Heatmap rows={["a"]} cols={["b"]} cells={[{ row: "a", col: "b", value: "at-risk" }]} />);
     const btn = screen.getByLabelText("a b: at-risk");
     expect(btn.style.background).toContain("--m-at-risk-soft");
-    expect(btn.style.boxShadow).toContain("inset 3px 0 0");
+    expect(btn.style.boxShadow).toContain("inset 2px 0 0");
     expect(btn.style.boxShadow).toContain("--m-at-risk");
     expect(btn.querySelector("span")).toBeNull();
   });

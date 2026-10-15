@@ -45,7 +45,7 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className="px-2 py-0.5 m-text-meta leading-4 rounded-full border"
+      className="px-2 py-0.5 m-text-meta rounded-full border"
       style={{
         color: active ? "var(--m-pass)" : "var(--m-ink-3)",
         borderColor: active ? "var(--m-pass)" : "var(--m-line)",

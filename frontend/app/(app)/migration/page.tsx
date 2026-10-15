@@ -113,7 +113,7 @@ export default function MigrationPage() {
           </div>
         ) : undefined}
         filterBar={
-          <div className="flex items-center justify-between gap-2 text-[13px]">
+          <div className="flex items-center justify-between gap-2 m-text-body">
             {verdict ? (
               <span className="flex items-center gap-2">
                 <span style={{ color: "var(--m-ink-2)" }}>Showing {verdict.replace("_", " ")} waves.</span>

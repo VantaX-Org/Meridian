@@ -22,17 +22,17 @@ export function RunProgressBanner({
   const pct = Math.min(100, Math.max(0, Math.round(percent)));
   return (
     <div
-      className="flex flex-col gap-2 rounded-lg border p-4"
+      className="flex flex-col gap-2 rounded-[var(--m-radius-sheet)] border p-4"
       style={{ borderColor: "var(--m-border)" }}
     >
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[13px] leading-[18px] font-medium" style={{ color: "var(--m-ink)" }}>
+        <span className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>
           {label}
           {step ? (
             <span style={{ color: "var(--m-ink-3)" }}> | {step}</span>
           ) : null}
         </span>
-        <span className="m-numeric text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>
+        <span className="m-numeric m-text-meta" style={{ color: "var(--m-ink-3)" }}>
           {pct}%
         </span>
       </div>
@@ -47,7 +47,7 @@ export function RunProgressBanner({
         <div className="m-motion-width" style={{ width: `${pct}%`, height: "100%", background: "var(--m-accent)" }} />
       </div>
       {detail ? (
-        <div className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>
+        <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
           {detail}
         </div>
       ) : null}

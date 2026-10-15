@@ -21,7 +21,7 @@ function QueuePanel({ title, items, total, empty }: { title: string; items: Stew
       {items && items.length > 0 ? (
         <ul className="flex flex-col">
           {items.map((i) => (
-            <li key={i.id} className="flex items-baseline justify-between gap-3 py-1 m-text-body" style={{ borderTop: "1px solid var(--m-line-soft)" }}>
+            <li key={i.id} className="flex items-baseline justify-between gap-3 py-1 m-text-body" style={{ borderTop: "1px solid var(--m-line)" }}>
               <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <span>{formatModuleName(i.domain)}</span>
                 <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{itemLabel(i.item_type)}</span>

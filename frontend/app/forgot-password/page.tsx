@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
           <Notice tone="info" title="Check your email">
             If an account uses {email.trim()}, a reset link is on its way. The link is valid for one hour.
           </Notice>
-          <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>No email after a few minutes? Check spam, or ask your administrator to reset the password for you.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>No email after a few minutes? Check spam, or ask your administrator to reset the password for you.</p>
         </>
       ) : (
         <form className={authFormClass} onSubmit={onSubmit} noValidate>

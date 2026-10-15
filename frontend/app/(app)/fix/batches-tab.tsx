@@ -18,10 +18,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, Card, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip,
+  Button, Card, DataTable, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip,
   type PillTone, type SelectOption, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
-import { useNowSec } from "@/hooks/use-now";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -40,14 +39,27 @@ const SORTS = SORT_COLS.flatMap((c) => [`${c}:asc`, `${c}:desc`]);
 const STATUS_TONE: Record<BatchStatus, PillTone> = { draft: "neutral", approved: "at-risk", exported: "go" };
 const FORMATS: SelectOption[] = Object.entries(FORMAT_LABEL).map(([value, label]) => ({ value, label }));
 const ITEM_PAGE_SIZE = 100;
-/** A run older than this since the last check is stale: the monitor may not have seen recent SAP changes. */
-const STALE_AFTER_MS = 36 * 60 * 60 * 1000;
 
 function pct(n: number, total: number): number {
   return total ? Math.round((n / total) * 100) : 0;
 }
 
 /** "scope" is a system id or "upload"; show the system's own name instead. */
+/** One line on what monitoring found; the full picture lives on the Monitor tab. */
+function MonitorSummaryNotice() {
+  const monitor = useQuery({ queryKey: queryKeys.remediationMonitor(), queryFn: getMonitor, staleTime: 60_000 });
+  const items = monitor.data?.items ?? [];
+  if (!items.length) return null;
+  const regressed = items.filter((m) => (m.monitor?.regressed_check_count ?? 0) > 0);
+  return (
+    <Notice tone={regressed.length ? "warning" : "info"} action={<Button variant="secondary" render={<Link href="?tab=monitor">Open monitor</Link>} />}>
+      {regressed.length
+        ? `${regressed.map(scopeLabel).join(", ")} regressed since the baseline.`
+        : `${items.length} scope${items.length === 1 ? "" : "s"} holding since the baseline.`}
+    </Notice>
+  );
+}
+
 function scopeLabel(m: MonitorItem): string {
   return m.system_name ?? (m.scope === "upload" ? "Imported files" : m.scope);
 }
@@ -161,7 +173,7 @@ export function BatchesTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <MonitoringSection onOpenBatch={setBatchId} />
+      <MonitorSummaryNotice />
 
       <div className="flex flex-col gap-2">
         <div className="flex gap-6 m-motion-stagger" data-tour="fix-batches">
@@ -530,80 +542,3 @@ function PackagesSection({ items }: { items: ExportPackage[] | undefined }) {
   );
 }
 
-/** Each monitored system's latest run against its pinned post-cleanup baseline. */
-function MonitoringSection({ onOpenBatch }: { onOpenBatch: (id: string) => void }) {
-  const monitor = useQuery({ queryKey: queryKeys.remediationMonitor(), queryFn: getMonitor, staleTime: 60_000 });
-  const items = monitor.data?.items ?? [];
-  const newestCheck = items.reduce<string | null>(
-    (max, m) => (!max || (m.latest.run_at && m.latest.run_at > max) ? m.latest.run_at : max),
-    null,
-  );
-
-  return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <h3 className="m-text-body font-semibold">Monitoring since cleanup</h3>
-        {newestCheck ? (
-          <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Checked {relativeTime(newestCheck)}</span>
-        ) : null}
-      </div>
-      {monitor.isLoading ? (
-        <Skeleton height={120} />
-      ) : monitor.isError ? (
-        <ErrorState message={errorText(monitor.error)} onRetry={() => monitor.refetch()} />
-      ) : items.length === 0 ? (
-        <EmptyState title="No pinned baseline yet" detail="Pin a run after a cleanup to start monitoring it" action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />
-      ) : (
-        <div className="flex flex-col gap-3">
-          {items.map((m) => <MonitorRow key={m.scope} item={m} onOpenBatch={onOpenBatch} />)}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function MonitorRow({ item: m, onOpenBatch }: { item: MonitorItem; onOpenBatch: (id: string) => void }) {
-  // Not ticking: a static "now" read once per render is enough for a staleness threshold in hours.
-  const nowMs = useNowSec(false) * 1000;
-  const stale = m.latest.run_at ? nowMs - new Date(m.latest.run_at).getTime() > STALE_AFTER_MS : true;
-  const changed = m.monitor;
-  const delta = m.baseline.dqs != null && m.latest.dqs != null ? Math.round((m.latest.dqs - m.baseline.dqs) * 10) / 10 : null;
-  return (
-    <Card padding="sm">
-      <div className="flex items-center justify-between">
-        <strong className="m-text-body">{scopeLabel(m)}</strong>
-        <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
-          Baseline {m.baseline.run_at ? formatDate(m.baseline.run_at, "datetime") : "—"}
-        </span>
-      </div>
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
-        <Link href={`/runs/${m.baseline.id}`} className="underline">Baseline {m.baseline.dqs != null ? m.baseline.dqs.toFixed(1) : "—"}</Link>
-        {" to "}
-        <Link href={`/runs/${m.latest.id}`} className="underline">latest {m.latest.dqs != null ? m.latest.dqs.toFixed(1) : "—"}</Link>
-        {delta != null ? <> (<Delta value={delta} />)</> : null}
-      </p>
-      {!changed ? (
-        <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>No regressions since the baseline.</span>
-      ) : changed.batch_id ? (
-        (() => {
-          const batchIdToOpen = changed.batch_id;
-          return (
-            <Button type="button" variant="ghost" className="underline self-start justify-start" onClick={() => onOpenBatch(batchIdToOpen)}>
-              {changed.new_records.toLocaleString()} record{changed.new_records === 1 ? "" : "s"} regressed, {changed.batch_items.toLocaleString()} in a new fix batch
-            </Button>
-          );
-        })()
-      ) : (
-        <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
-          {changed.new_records.toLocaleString()} record{changed.new_records === 1 ? "" : "s"} regressed. Already in an open fix batch.
-        </span>
-      )}
-      {stale ? (
-        <p className="m-text-body flex items-center gap-2">
-          <Pill tone="at-risk">Stale check</Pill>
-          <span style={{ color: "var(--m-ink-2)" }}>This system has not been checked in over 36 hours. The comparison above may not reflect recent SAP changes.</span>
-        </p>
-      ) : null}
-    </Card>
-  );
-}

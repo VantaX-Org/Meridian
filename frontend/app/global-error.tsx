@@ -55,8 +55,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         >
           <div
             role="alert"
-            className="m-elev-1"
-            style={{ maxWidth: 560, width: "100%", background: "var(--m-sheet)", borderRadius: "var(--m-radius-sheet)", borderTop: "3px solid var(--m-critical)", padding: "var(--m-space-6)", display: "flex", flexDirection: "column", gap: "var(--m-space-2)" }}
+            style={{ maxWidth: 560, width: "100%", background: "var(--m-sheet)", borderTop: "2px solid var(--m-critical)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-6)", display: "flex", flexDirection: "column", gap: "var(--m-space-2)" }}
           >
             <h1 style={{ margin: 0, fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)", fontWeight: 600 }}>This page hit an error</h1>
             <p style={{ margin: 0, color: "var(--m-ink-2)" }}>

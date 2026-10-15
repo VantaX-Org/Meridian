@@ -18,7 +18,7 @@ export interface PageHeaderProps {
 export function PageHeader({ title, meta, status, actions, tabs }: PageHeaderProps) {
   usePageTitleShown();
   return (
-    <header className="flex flex-col gap-3">
+    <header className="flex flex-col gap-3" style={{ borderBottom: "1px solid var(--m-line)", paddingBottom: tabs ? 0 : "var(--m-space-3)" }}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex items-center gap-3">

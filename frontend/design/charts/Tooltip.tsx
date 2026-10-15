@@ -18,7 +18,7 @@ export function ChartTooltip({
       data-chart-tooltip
       role="status"
       aria-live="polite"
-      className="text-[12px] leading-4"
+      className="m-text-meta"
       style={{
         background: chartTheme.tooltipBg,
         color: chartTheme.tooltipInk,

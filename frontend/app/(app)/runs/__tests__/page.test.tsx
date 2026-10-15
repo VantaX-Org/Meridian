@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import { Button } from "@/design";
 import * as connectivityApi from "@/lib/api/connectivity";
+import * as uploadApi from "@/lib/api/upload";
 import * as versionsApi from "@/lib/api/versions";
 import type { DimensionScores, SAPSystemExtended, Version } from "@/types/api";
 import RunsPage from "../page";
@@ -109,6 +110,20 @@ describe("RunsPage", () => {
     expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
   });
 
+  it("shows live progress on a run that is still being analysed", async () => {
+    const running: Version = { ...newer, id: "v3", label: "Tonight", status: "running" };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [running, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    vi.spyOn(uploadApi, "getAnalysisStatus").mockResolvedValue({
+      version_id: "v3", status: "processing", error: null, db_status: "running",
+      progress: { current_step: "Running checks", step_number: 2, total_steps: 4, rows_processed: 500, total_rows: 1000, percent_complete: 42 },
+      result: null,
+    } as unknown as uploadApi.AnalysisStatusResponse);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("42% Running checks")).toBeInTheDocument());
+    expect(screen.getByRole("progressbar", { name: "Running checks progress" })).toHaveAttribute("aria-valuenow", "42");
+  });
+
   it("shows the empty state when there are no runs", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
@@ -144,6 +159,37 @@ describe("RunsPage", () => {
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Remove filter System: ECC Prod" })).toBeInTheDocument();
     searchParams.delete("system");
+  });
+});
+
+describe("RunsPage archive", () => {
+  it("archives older runs keeping the newest N and refreshes the list", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const archive = vi.spyOn(versionsApi, "archiveVersions").mockResolvedValue({ archived: 1 });
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Archive older runs" }));
+    const keep = await screen.findByLabelText("Keep the newest");
+    fireEvent.change(keep, { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(archive).toHaveBeenCalledWith(3));
+  });
+
+  it("?archived=1 asks for archived runs, marks them, and offers restore", async () => {
+    searchParams.set("archived", "1");
+    const archived = version({ id: "v0", label: "Old upload", run_at: "2026-09-01T00:00:00Z", metadata: { system_id: "sys-1", archived: true } });
+    const get = vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, archived] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const restore = vi.spyOn(versionsApi, "restoreVersions").mockResolvedValue({ restored: 1 });
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Old upload")).toBeInTheDocument());
+    expect(get).toHaveBeenCalledWith(expect.objectContaining({ include_archived: true }));
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove filter Including archived" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Restore archived runs" }));
+    await waitFor(() => expect(restore).toHaveBeenCalled());
+    searchParams.delete("archived");
   });
 });
 

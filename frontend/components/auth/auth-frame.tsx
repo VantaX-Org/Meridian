@@ -31,7 +31,7 @@ function Instrument() {
   return (
     <div className="relative" style={{ width: RING, height: RING }}>
       <svg width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`} aria-hidden="true" className="absolute inset-0">
-        <circle cx={c} cy={c} r={R} fill="none" stroke="rgb(237 237 240 / 0.14)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(-45 ${c} ${c})`} {...arc} />
+        <circle cx={c} cy={c} r={R} fill="none" stroke="var(--m-hero-line)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(-45 ${c} ${c})`} {...arc} />
         <circle className="m-motion-draw" cx={c} cy={c} r={R} fill="none" stroke="var(--m-ember)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(-45 ${c} ${c})`}
           style={{ "--m-draw-length": ARC } as CSSProperties} {...arc} />
         <line x1={c} x2={c} y1={STROKE / 2} y2={RING - STROKE / 2} stroke="var(--m-hero-ink)" strokeOpacity={0.4} strokeWidth={1} />
@@ -67,7 +67,7 @@ export function AuthFrame({ title, lead, children }: { title: string; lead?: Rea
       </aside>
       <div className="relative flex flex-col items-center justify-center px-4 py-12">
         <div className="m-motion-stagger flex w-full max-w-[400px] flex-col gap-2">
-          <div className="m-card m-motion-rise flex w-full flex-col gap-4 p-6 min-[480px]:p-8 [&_.m-btn]:h-10 [&_.m-input]:h-10" style={{ boxShadow: "var(--m-elev-2)" }}>
+          <div className="m-card m-motion-rise flex w-full flex-col gap-4 p-6 min-[480px]:p-8 [&_.m-btn]:h-10 [&_.m-input]:h-10">
             <h1 className="font-semibold" style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", color: "var(--m-ink)" }}>{title}</h1>
             {lead ? <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{lead}</p> : null}
             {children}

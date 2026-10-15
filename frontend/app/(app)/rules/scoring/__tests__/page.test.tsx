@@ -37,7 +37,7 @@ describe("rules scoring page", () => {
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
     renderWithQuery(<ScoringPage />);
     await waitFor(() => expect(screen.getByText("Dimension weights")).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByRole("img", { name: "Score 89" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("88.5")).toBeInTheDocument());
   });
 
   it("shows a retryable error when settings fail to load", async () => {

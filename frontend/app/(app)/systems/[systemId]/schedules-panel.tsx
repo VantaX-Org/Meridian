@@ -23,7 +23,7 @@ const PRESETS = [
   { value: "0 * * * *", label: "Hourly" },
   { value: CUSTOM, label: "Custom cron…" },
 ];
-const presetLabel = (cron: string | null) =>
+export const presetLabel = (cron: string | null) =>
   !cron ? "Manual only" : PRESETS.find((p) => p.value === cron)?.label ?? cron;
 
 const MODES = [

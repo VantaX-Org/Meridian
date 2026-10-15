@@ -38,8 +38,8 @@ export function Select({
         aria-label={label}
         className={className ?? "m-input inline-flex items-center justify-between gap-2 min-w-[160px]"}
       >
-        <BaseSelect.Value placeholder={placeholder} />
-        <ChevronDown size={14} />
+        <BaseSelect.Value placeholder={placeholder} className="min-w-0 truncate" />
+        <ChevronDown size={14} className="shrink-0" />
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
         <BaseSelect.Positioner>

@@ -6,6 +6,7 @@ import * as ownersApi from "@/lib/api/owners";
 import userEvent from "@testing-library/user-event";
 import OwnersPage from "../page";
 
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(""), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/" }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 

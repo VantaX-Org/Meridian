@@ -30,11 +30,11 @@ export interface StatProps {
   href?: string;
   /** Renders a `<button className="m-stat m-stat-link">`. Ignored when `href` is set. */
   onClick?: () => void;
-  /** 4px left edge in the status tone. Wins over `domain`. */
+  /** 2px left rule in the status tone. Wins over `domain`. */
   tone?: StatTone;
-  /** 4px left edge in the domain solid, when no `tone` is set. */
+  /** 2px left rule in the domain solid, when no `tone` is set. */
   domain?: DomainKey;
-  /** Hero mode: translucent tile for use inside `.m-hero`, hero ink, 56/60 value, count-up on by default. */
+  /** Hero mode: ruled column inside `.m-hero`, hero ink, hero-size numeral, count-up on by default. */
   hero?: boolean;
   /** Sparkline under the value, drawn when at least 3 points. */
   spark?: number[];
@@ -68,11 +68,11 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
       />
       {help && !interactive ? (
         <span className="flex items-center gap-1" style={{ minWidth: 0 }}>
-          <span className="text-[12px] leading-4 truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+          <span className="m-text-meta truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
           <HelpHint term={help} onHero={hero} />
         </span>
       ) : (
-        <span className="text-[12px] leading-4 truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+        <span className="m-text-meta truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
       )}
       <span className="flex items-baseline gap-2">
         <span
@@ -85,12 +85,12 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
             color: hero ? "var(--m-hero-ink)" : "var(--m-ink)",
           }}
         >
-          {loading ? <Skeleton width="4ch" height={hero ? 56 : 30} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : value}
+          {loading ? <Skeleton width="4ch" height={hero ? 76 : 30} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : value}
         </span>
         {delta != null && !loading && <span>{delta}</span>}
       </span>
       {spark && spark.length >= 3 && !loading && (
-        <span className="absolute" style={{ top: 12, right: 16 }}>
+        <span className="absolute" style={{ top: 8, right: 0 }}>
           <Sparkline data={spark.map((y, x) => ({ x: String(x), y }))} width={60} height={16} color={sparkColor} />
         </span>
       )}
@@ -99,7 +99,7 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
       )}
     </>
   );
-  const cls = clsx("m-stat relative flex flex-col overflow-hidden", hero && "m-stat-hero", interactive && "m-stat-link m-lift m-motion-colors");
+  const cls = clsx("m-stat relative flex flex-col overflow-hidden", hero && "m-stat-hero", interactive && "m-stat-link m-motion-colors");
   const minHeight = undefined;
   const tile = href
     ? <Link href={href} className={cls} style={{ minHeight }} {...prefetch}>{body}</Link>
@@ -111,7 +111,7 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
     return (
       <div className="relative" style={{ minWidth: 0 }}>
         {tile}
-        <span className="absolute" style={{ top: 8, right: spark && spark.length >= 3 ? 84 : 12 }}><HelpHint term={help} /></span>
+        <span className="absolute" style={{ top: 4, right: spark && spark.length >= 3 ? 68 : 0 }}><HelpHint term={help} /></span>
       </div>
     );
   }

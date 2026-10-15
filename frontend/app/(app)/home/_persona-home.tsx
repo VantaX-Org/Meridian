@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -76,7 +76,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const { scopeFilter } = usePermissions();
   const wantsFindings = role !== "basis";
 
-  const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
+  // The topbar run selector writes ?run=; home follows it like every other page.
+  const run = useSearchParams().get("run") ?? "latest";
+  const objectsQ = useQuery({ queryKey: queryKeys.objects(run), queryFn: () => getObjects(run) });
   const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
   // Same key as the rail's counts, so this is not a second request; Basis has no inbox tile.
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, enabled: wantsFindings });
@@ -85,7 +87,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const finished = (versionsQ.data?.versions ?? [])
     .filter((v) => v.dqs_summary && Object.keys(v.dqs_summary).length > 0)
     .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime());
-  const latest = finished[0];
+  const latest = finished.find((v) => v.id === run) ?? finished[0];
   // Highest-impact findings of this run: names each object's blocking rule.
   const findingsQ = useQuery({
     queryKey: ["home-top-findings", latest?.id],

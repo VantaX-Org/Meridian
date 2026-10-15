@@ -95,7 +95,7 @@ export function GhostPanel() {
               {DIMENSIONS.map((d) => (
                 <div key={d} className="flex items-center gap-3">
                   <span
-                    className="text-[12px]"
+                    className="m-text-meta"
                     style={{ width: 88, color: "var(--m-ink-3)" }}
                   >
                     {d}
@@ -106,7 +106,6 @@ export function GhostPanel() {
                     style={{
                       height: 12,
                       background: "var(--m-sheet-sunken)",
-                      borderRadius: "var(--m-radius-control)",
                     }}
                   />
                 </div>

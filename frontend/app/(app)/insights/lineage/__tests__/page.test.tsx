@@ -7,6 +7,7 @@ import LineagePage from "../page";
 
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
 // mock it wholesale so the page renders without an auth provider.
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(""), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/" }));
 vi.mock("@/hooks/use-day-one", () => ({
   useDayOne: () => ({ status: "ready", step: null }),
   DayOneAction: () => null,

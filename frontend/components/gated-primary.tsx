@@ -47,7 +47,7 @@ export function GatedPrimary({ kind, allowed, systemId, scopeLabel, children, ..
       {perms ? (
         <button
           type="button"
-          className="text-[12px] underline"
+          className="m-text-meta underline"
           style={{ color: "var(--m-accent)" }}
           onClick={() => perms.requestAccess({ resource: p.resource, action: p.action, system_id: systemId ?? null, systemLabel: scopeLabel })}
         >

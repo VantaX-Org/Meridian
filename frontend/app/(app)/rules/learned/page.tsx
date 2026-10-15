@@ -5,6 +5,7 @@
  * proposal into an active rule with a new LR- id; `manage_rules` can reject. */
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -58,7 +59,9 @@ export default function LearnedRulesPage() {
   });
 
   const versions = useQuery({ queryKey: ["versions-list", { for: "mine" }], queryFn: () => getVersions({ limit: 20 }), staleTime: 60_000 });
-  const latestRun = versions.data?.versions.find((v) => v.status !== "pending" && v.status !== "running" && v.status !== "failed");
+  const fromUrl = useSearchParams().get("run");
+  const finished = (versions.data?.versions ?? []).filter((v) => v.status !== "pending" && v.status !== "running" && v.status !== "failed");
+  const latestRun = finished.find((v) => v.id === fromUrl) ?? finished[0];
   const mine = useMutation({
     mutationFn: () => mineLearnedRules((latestRun as { id: string }).id),
     onSuccess: () => { toast.success("Mining queued. New proposals appear here when it finishes"); refresh(); },

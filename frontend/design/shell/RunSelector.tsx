@@ -37,7 +37,7 @@ export function RunSelector({ runs: all, systems }: { runs: RunOption[]; systems
   return (
     <label
       data-pinned={pinned || undefined}
-      className="flex items-center gap-2 px-2 text-[12px] leading-[16px] border"
+      className="flex items-center gap-2 px-2 m-text-meta border"
       style={{ height: "var(--m-control-h)", borderColor: pinned ? "var(--m-accent-soft-2)" : "var(--m-line-strong)", background: pinned ? "var(--m-accent-soft)" : "var(--m-sheet)", borderRadius: "var(--m-radius-control)", color: pinned ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}
     >
       <History size={14} aria-hidden className="lg:hidden" />
@@ -46,7 +46,7 @@ export function RunSelector({ runs: all, systems }: { runs: RunOption[]; systems
         value={current}
         onValueChange={onChange}
         options={runs.map((r) => ({ value: r.id, label: r.label }))}
-        className="flex h-full items-center justify-between gap-2 border-0 bg-transparent text-[13px] leading-[18px] font-medium max-lg:w-4 max-lg:[&>span]:hidden lg:w-[160px] xl:w-[240px] min-[1440px]:w-[280px]"
+        className="flex h-full items-center justify-between gap-2 border-0 bg-transparent m-text-body font-medium max-lg:w-4 max-lg:[&>span]:hidden lg:w-[160px] xl:w-[240px] min-[1440px]:w-[280px]"
       />
       {currentRun?.at && <span className="max-xl:hidden shrink-0 m-numeric">{relativeTime(currentRun.at)}</span>}
     </label>

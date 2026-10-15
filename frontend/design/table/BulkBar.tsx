@@ -10,7 +10,7 @@ export function BulkBar({ count, actions }: { count: number; actions: ReactNode 
           [&_.m-btn-ghost]:!text-[var(--m-sheet)] [&_.m-btn-secondary]:!bg-transparent [&_.m-btn-secondary]:!border-transparent [&_.m-btn-secondary]:!text-[var(--m-sheet)]"
         style={{ background: "var(--m-ink)", color: "var(--m-sheet)" }}
       >
-        <span className="text-[13px] leading-[18px] m-numeric">{count} selected</span>
+        <span className="m-text-body m-numeric">{count} selected</span>
         <div className="flex gap-2">{actions}</div>
       </div>
     </div>

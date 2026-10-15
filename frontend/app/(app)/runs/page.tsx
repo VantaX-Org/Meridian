@@ -4,15 +4,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pager, Pill, Select, Skeleton, Stat, StatSkeleton, usePrefetch, type CellMeta, type PillTone } from "@/design";
+import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Select, Skeleton, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
 import { getSystems } from "@/lib/api/connectivity";
 import { exportRuns } from "@/lib/api/v1/runs";
-import { compareVersions, getVersions } from "@/lib/api/versions";
+import { getAnalysisStatus } from "@/lib/api/upload";
+import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
 import { formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { overallDqs, previousRunId, scopeOf } from "@/lib/runs";
@@ -29,6 +32,35 @@ const STATUS_TONE: Record<string, PillTone> = {
 const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk";
 
 const runName = (v: Version) => v.label ?? formatDate(v.run_at, "datetime");
+const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
+
+/** Live progress for a run that is still being analysed: polls the status endpoint until it settles, then refreshes the list. */
+function RunRowProgress({ id }: { id: string }) {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: [...queryKeys.run(id), "status"],
+    queryFn: () => getAnalysisStatus(id),
+    retry: false,
+    refetchInterval: (query) => (query.state.data && query.state.data.status !== "queued" && query.state.data.status !== "processing" ? false : 2500),
+  });
+  const status = q.data?.status;
+  useEffect(() => {
+    if (status === "completed" || status === "failed") void qc.invalidateQueries({ queryKey: ["run"] });
+  }, [status, qc]);
+  if (!q.data || (status !== "queued" && status !== "processing")) return null;
+  const p = q.data.progress;
+  const pct = Math.min(100, Math.max(0, Math.round(p?.percent_complete ?? 0)));
+  const detail = status === "queued" ? "Queued" : p?.current_step ?? "Running";
+  return (
+    <span className="inline-flex items-center gap-2" title={p?.total_rows ? `${p.rows_processed.toLocaleString()} of ${p.total_rows.toLocaleString()} rows` : undefined}>
+      <span role="progressbar" aria-label={`${detail} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
+        style={{ width: 64, height: 4, borderRadius: "var(--m-radius-pill)", background: "var(--m-sheet-sunken)", overflow: "hidden" }}>
+        <span className="m-motion-width block" style={{ width: `${pct}%`, height: "100%", background: "var(--m-accent)" }} />
+      </span>
+      <span className="m-text-meta m-numeric" style={{ color: "var(--m-ink-3)" }}>{pct}% {detail}</span>
+    </span>
+  );
+}
 
 function makeColumns(systemName: Map<string, string>, allVersions: Version[]): ColumnDef<Version>[] {
   return [
@@ -37,7 +69,13 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[]): C
       id: "status",
       accessorFn: (v) => v.status,
       header: "Status",
-      cell: ({ row }) => <Pill tone={statusTone(row.original.status)} variant="solid">{labelOf(row.original.status)}</Pill>,
+      cell: ({ row }) => (
+        <span className="inline-flex gap-1">
+          <Pill tone={statusTone(row.original.status)} variant="solid">{labelOf(row.original.status)}</Pill>
+          {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
+          {IN_PROGRESS.has(row.original.status) ? <RunRowProgress id={row.original.id} /> : null}
+        </span>
+      ),
     },
     { id: "run_at", accessorFn: (v) => v.run_at, header: "Started", cell: ({ row }) => formatDate(row.original.run_at, "datetime") },
     { id: "system", accessorFn: (v) => systemName.get(v.metadata?.system_id ?? "") ?? "—", header: "System" },
@@ -113,14 +151,22 @@ export default function RunsPage() {
   const router = useRouter();
   const [system, setSystem] = useUrlState("system");
   const [rawStatus, setStatus] = useUrlState("status", "");
+  const [archivedParam, setArchived] = useUrlState("archived", "");
+  const showArchived = archivedParam === "1";
+  const { can } = useRole();
+  const qc = useQueryClient();
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [keepLatest, setKeepLatest] = useState("1");
   const failedOnly = rawStatus === "failed";
   const dayOne = useDayOne();
 
   const [page, setPage] = useState(1);
   const all = useQuery({
-    queryKey: page === 1 ? queryKeys.run("list") : queryKeys.run(`list-page-${page}`),
-    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    queryKey: page === 1 && !showArchived ? queryKeys.run("list") : queryKeys.run(`list-page-${page}${showArchived ? "-archived" : ""}`),
+    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, ...(showArchived ? { include_archived: true } : {}) }),
     placeholderData: keepPreviousData,
+    // Keep the list fresh while any run on this page is still being analysed.
+    refetchInterval: (query) => (query.state.data?.versions?.some((v) => IN_PROGRESS.has(v.status)) ? 5000 : false),
   });
   // Summary stats and the trend use the newest page only, whichever table page is showing. Page 1 shares the cache key above.
   const head = useQuery({
@@ -164,6 +210,20 @@ export default function RunsPage() {
   );
 
   const exportOptions = [{ format: "xlsx" as const, run: () => exportRuns("xlsx", { system_id: system || undefined, limit: 100 }) }];
+  const refreshLists = () => {
+    void qc.invalidateQueries({ queryKey: ["run"] });
+    void qc.invalidateQueries({ queryKey: ["versions-list"] });
+  };
+  const archive = useMutation({
+    mutationFn: () => archiveVersions(Math.max(0, Number(keepLatest) || 0)),
+    onSuccess: (r) => { setArchiveOpen(false); refreshLists(); toast.success(r.archived === 0 ? "No older runs to archive." : `${r.archived} run${r.archived === 1 ? "" : "s"} archived. Show archived runs to restore them.`); },
+    onError: (e) => toast.error(errorText(e)),
+  });
+  const restore = useMutation({
+    mutationFn: restoreVersions,
+    onSuccess: (r) => { refreshLists(); toast.success(r.restored === 0 ? "No archived runs." : `${r.restored} run${r.restored === 1 ? "" : "s"} restored.`); },
+    onError: (e) => toast.error(errorText(e)),
+  });
   const firstSystem = systems.data?.[0];
 
   const header = (
@@ -172,10 +232,25 @@ export default function RunsPage() {
       actions={
         <>
           <ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />
+          {can("analyse") ? (
+            showArchived ? (
+              <Tooltip label="Bring every archived run back into the lists" render={<Button variant="secondary" onClick={() => restore.mutate()} pending={restore.isPending} />}>
+                Restore archived runs
+              </Tooltip>
+            ) : (
+              <Tooltip label="Hide finished runs older than the newest ones you keep. Nothing is deleted." maxWidth={260} render={<Button variant="secondary" onClick={() => setArchiveOpen(true)} />}>
+                Archive older runs
+              </Tooltip>
+            )
+          ) : null}
           {firstSystem ? (
-            <Button render={<Link href={`/systems/${firstSystem.id}`}>Run analysis</Link>} />
+            <Tooltip label="Extract and check the connected system now" render={<Button render={<Link href={`/systems/${firstSystem.id}`} />} />}>
+              Run analysis
+            </Tooltip>
           ) : (
-            <Button disabled title="Connect a system first">Run analysis</Button>
+            <Tooltip label="Connect a system first" render={<Button aria-disabled="true" onClick={() => undefined} />}>
+              Run analysis
+            </Tooltip>
           )}
         </>
       }
@@ -226,6 +301,13 @@ export default function RunsPage() {
       <Select label="System" value={system} onValueChange={setSystem} options={systemOptions} placeholder="All systems" />
       {system ? <FilterChip label={`System: ${systemName.get(system) ?? system}`} onRemove={() => setSystem("")} /> : null}
       {failedOnly ? <FilterChip label="Status: failed" onRemove={() => setStatus("")} /> : null}
+      {showArchived ? (
+        <FilterChip label="Including archived" onRemove={() => setArchived("")} />
+      ) : (
+        <Tooltip label="Include runs that were archived" render={<Button variant="ghost" onClick={() => setArchived("1")} />}>
+          Show archived
+        </Tooltip>
+      )}
     </div>
   );
 
@@ -235,6 +317,28 @@ export default function RunsPage() {
   };
 
   return (
+    <>
+    <ConfirmDialog
+      open={archiveOpen}
+      onOpenChange={setArchiveOpen}
+      title="Archive older runs"
+      confirmLabel="Archive"
+      pending={archive.isPending}
+      onConfirm={() => archive.mutate()}
+      body={
+        <div className="flex flex-col gap-3">
+          <p>Finished runs older than the newest ones you keep are hidden from every list. Nothing is deleted: findings, reports and history stay, and you can restore them at any time.</p>
+          <Field label="Keep the newest">
+            <Input type="number" min={0} max={100} value={keepLatest} onChange={(e) => setKeepLatest(e.target.value)} />
+          </Field>
+          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+            {all.data?.total != null
+              ? `Up to ${Math.max(0, all.data.total - Math.max(0, Number(keepLatest) || 0)).toLocaleString()} of ${all.data.total.toLocaleString()} runs will be archived.`
+              : "Runs older than the ones you keep will be archived."}
+          </p>
+        </div>
+      }
+    />
     <ExplorerPage
       header={header}
       filterBar={filterBar}
@@ -271,5 +375,6 @@ export default function RunsPage() {
       }
       errorProps={{ message: errorText(all.error), onRetry: () => all.refetch() }}
     />
+    </>
   );
 }

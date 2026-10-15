@@ -15,7 +15,7 @@ export const STAGE_LABEL: Record<WaveStage, string> = {
   plan: "Plan", mock1: "Mock 1", mock2: "Mock 2", dress: "Dress rehearsal", cutover: "Cutover",
 };
 
-const field = "w-full rounded-md border px-2 py-1 text-[13px]";
+const field = "w-full rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body";
 const fieldStyle = { borderColor: "var(--m-line)", color: "var(--m-ink)" };
 
 function isWaveStage(v: string): v is WaveStage {
@@ -63,35 +63,35 @@ export function CreateWaveDialog({ open, onOpenChange }: { open: boolean; onOpen
           save.mutate();
         }}
       >
-        <label className="flex flex-col gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+        <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
           Name
           <input className={field} style={fieldStyle} value={name} onChange={(e) => setName(e.target.value)} required />
         </label>
-        <label className="flex flex-col gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+        <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
           Source system
           <select className={field} style={fieldStyle} value={source} onChange={(e) => setSource(e.target.value)}>
             <option value="">None yet</option>
             {systemOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+        <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
           Target system
           <select className={field} style={fieldStyle} value={target} onChange={(e) => setTarget(e.target.value)}>
             <option value="">S/4HANA standard</option>
             {systemOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+        <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
           Modules
           <input className={field} style={fieldStyle} value={modules} onChange={(e) => setModules(e.target.value)}
                  placeholder="material_master, accounts_payable" />
         </label>
         <div className="grid grid-cols-3 gap-3">
-          <label className="flex flex-col gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+          <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
             Target date
             <input type="date" className={field} style={fieldStyle} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
-          <label className="flex flex-col gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+          <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
             Stage
             <select className={field} style={fieldStyle} value={stage}
                     onChange={(e) => {
@@ -101,7 +101,7 @@ export function CreateWaveDialog({ open, onOpenChange }: { open: boolean; onOpen
               {Object.entries(STAGE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+          <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
             Minimum readiness %
             <input type="number" min={0} max={100} className={field} style={fieldStyle} value={minReadiness}
                    onChange={(e) => setMinReadiness(e.target.value)} />

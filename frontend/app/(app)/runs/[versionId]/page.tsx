@@ -4,12 +4,12 @@
 import { isAxiosError } from "axios";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, Card, DataTable, Delta, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Heatmap, Line, Mono, Pager, Pill,
+  Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip,
   DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone, type HeatmapCell,
   entityTabs, NextActions,
   PageHeader,
@@ -25,8 +25,9 @@ import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
-import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
+import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/api/versions";
 import { getAnalysisStatus } from "@/lib/api/upload";
+import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
@@ -462,6 +463,30 @@ export default function RunDetailPage() {
   });
 
   const isBaseline = version.data?.metadata?.baseline === true;
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [draftLabel, setDraftLabel] = useState("");
+  const rename = useMutation({
+    mutationFn: () => patchVersionLabel(versionId, draftLabel.trim()),
+    onSuccess: (next) => {
+      qc.setQueryData<Version>(queryKeys.run(versionId), (prev) => (prev ? { ...prev, label: next.label } : prev));
+      qc.invalidateQueries({ queryKey: queryKeys.run("list") });
+      qc.invalidateQueries({ queryKey: ["versions-list"] });
+      setRenameOpen(false);
+      toast.success("Run renamed");
+    },
+    onError: (e: Error) => toast.error(errorText(e)),
+  });
+  const openRename = () => { setDraftLabel(version.data?.label ?? ""); setRenameOpen(true); };
+  const running = analysisStatus.data?.status === "queued" || analysisStatus.data?.status === "processing";
+  const rerun = useMutation({
+    mutationFn: () => analyseVersion(versionId),
+    onSuccess: () => {
+      toast.success("Re-analysis started. Progress shows above.");
+      void qc.invalidateQueries({ queryKey: [...queryKeys.run(versionId), "status"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.run(versionId), exact: true });
+    },
+    onError: (e: Error) => toast.error(errorText(e)),
+  });
   const pin = useMutation({
     mutationFn: () => pinBaseline(versionId, !isBaseline),
     onMutate: async () => {
@@ -470,8 +495,9 @@ export default function RunDetailPage() {
       if (prev?.metadata) qc.setQueryData<Version>(queryKeys.run(versionId), { ...prev, metadata: { ...prev.metadata, baseline: !isBaseline } });
       return { prev };
     },
-    onSuccess: () => {
-      toast.success(isBaseline ? "Baseline unpinned" : "Pinned as baseline");
+    onSuccess: (r) => {
+      // The optimistic update has already flipped isBaseline; trust the server's answer.
+      toast.success(r.baseline ? "Pinned as baseline" : "Baseline unpinned");
       qc.invalidateQueries({ queryKey: queryKeys.run("list") });
       qc.invalidateQueries({ queryKey: ["versions-list"] });
     },
@@ -541,12 +567,35 @@ export default function RunDetailPage() {
       }
       actions={
         <>
-          {prevId ? <Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`}>Compare with previous</Link>} /> : null}
-          {baseId ? <Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`}>Compare with baseline</Link>} /> : null}
+          {prevId ? (
+            <Tooltip label="What changed since the run before this one" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`} />} />}>
+              Compare with previous
+            </Tooltip>
+          ) : null}
+          {baseId ? (
+            <Tooltip label="What changed since the pinned baseline run" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`} />} />}>
+              Compare with baseline
+            </Tooltip>
+          ) : null}
           {can("analyse") ? (
-            <Button variant="ghost" onClick={() => pin.mutate()}>
-              {isBaseline ? "Unpin baseline" : "Pin as baseline"}
-            </Button>
+            <>
+              <Tooltip label="Give this run a name you will recognise in lists and comparisons" render={<Button variant="ghost" onClick={openRename} />}>
+                Rename
+              </Tooltip>
+              <Tooltip
+                label={isBaseline ? "Stop comparing later runs in this system with this run" : "Later runs in this system are compared with this run on the Monitor tab"}
+                render={<Button variant="ghost" onClick={() => pin.mutate()} pending={pin.isPending} />}
+              >
+                {isBaseline ? "Unpin baseline" : "Pin as baseline"}
+              </Tooltip>
+              <Tooltip
+                label={running ? "Analysis is already running" : "Re-check this run's stored data with the current rules. Findings are replaced; the name, baseline and history stay."}
+                maxWidth={280}
+                render={<Button variant="ghost" onClick={() => rerun.mutate()} pending={rerun.isPending} disabled={running} />}
+              >
+                Re-run analysis
+              </Tooltip>
+            </>
           ) : null}
           {can("export") ? <ExportMenu options={exportOptions} /> : null}
         </>
@@ -558,6 +607,22 @@ export default function RunDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Dialog
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        title="Rename run"
+        footer={
+          <>
+            <Button variant="secondary" disabled={rename.isPending} onClick={() => setRenameOpen(false)}>Keep</Button>
+            <Button pending={rename.isPending} disabled={!draftLabel.trim()} onClick={() => rename.mutate()}>Save name</Button>
+          </>
+        }
+      >
+        <Field label="Name">
+          <Input value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} autoFocus placeholder={v ? formatDate(v.run_at, "datetime") : undefined}
+            onKeyDown={(e) => { if (e.key === "Enter" && draftLabel.trim() && !rename.isPending) rename.mutate(); }} />
+        </Field>
+      </Dialog>
       <div>{header}</div>
       {analysisStatus.data?.status === "queued" || analysisStatus.data?.status === "processing" ? (
         <RunProgressBanner
@@ -602,7 +667,7 @@ export default function RunDetailPage() {
                 emptyProps={{
                   title: "No steps recorded",
                   detail: "This run has no step history.",
-                  action: <Button render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Re-run analysis</Link>} />,
+                  action: can("analyse") ? <Button onClick={() => rerun.mutate()} pending={rerun.isPending} disabled={running}>Re-run analysis</Button> : undefined,
                 }}
                 errorProps={{ message: errorText(steps.error), onRetry: () => steps.refetch() }}
               />

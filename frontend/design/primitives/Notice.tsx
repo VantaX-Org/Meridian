@@ -17,7 +17,7 @@ export function Notice({ tone = "info", title, children, action }: {
   const urgent = tone === "danger" || tone === "warning";
   return (
     <div
-      className="flex items-start justify-between gap-3 px-3 py-2 text-[13px] leading-[18px]"
+      className="flex items-start justify-between gap-3 px-3 py-2 m-text-body"
       style={{ background: t.bg, borderLeft: `3px solid ${t.bar}`, color: t.ink, borderRadius: "var(--m-radius-control)" }}
       role={urgent ? "alert" : "status"}
     >

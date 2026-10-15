@@ -5,10 +5,11 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, EmptyState, ErrorState, ReportPage, ScoreRing, Select, Stat, Waterfall } from "@/design";
+import { Button, Card, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall } from "@/design";
 import { createSimulation, getSimulation, isSimulationResult } from "@/lib/api/simulation";
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { useSearchParams } from "next/navigation";
 import { usePermissions } from "@/lib/permissions";
 import { CreateBatchFromSimulation, RuleImpact } from "./rule-impact";
 
@@ -18,7 +19,8 @@ export default function WhatIfPage() {
   const [simId, setSimId] = useState<string | null>(null);
   const versions = useQuery({ queryKey: ["versions", "what-if"], queryFn: () => getVersions({ limit: 25 }) });
   const runs = (versions.data?.versions ?? []).filter((v) => v.status === "complete" || v.status === "agents_complete" || v.status === "ai_enriched");
-  const versionId = picked || runs[0]?.id || "";
+  const fromUrl = useSearchParams().get("run");
+  const versionId = picked || runs.find((v) => v.id === fromUrl)?.id || runs[0]?.id || "";
   const run = useMutation({
     mutationFn: () => createSimulation({ version_id: versionId, all_rule_fixes: true, rank: true }),
     onSuccess: (r) => setSimId(r.simulation_id),
@@ -53,8 +55,8 @@ export default function WhatIfPage() {
       charts={
         result && o ? (
           <>
-            <Card title="Score before"><ScoreRing score={o.before ?? 0} size={120} /></Card>
-            <Card title="Score after"><ScoreRing score={o.after ?? 0} size={120} /></Card>
+            <Card title="Score before"><Stat label="Data quality score" value={o.before ?? 0} decimals={1} /></Card>
+            <Card title="Score after"><Stat label="Data quality score" value={o.after ?? 0} decimals={1} tone={(o.after ?? 0) >= (o.before ?? 0) ? "go" : "at-risk"} delta={o.before != null && o.after != null ? <Delta value={o.after - o.before} /> : undefined} /></Card>
             <Card title="Change by module">
               <Waterfall
                 label="Score change by module"

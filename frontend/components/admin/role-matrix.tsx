@@ -31,7 +31,7 @@ export function RoleMatrix({ matrix, onChange, label, scoped = false }: { matrix
   const toggle = (r: string, a: string) => onChange?.({ ...matrix, [r]: { ...matrix[r], [a]: !matrix[r][a] } });
   return (
     <div className="overflow-x-auto">
-      <table className="text-[12px]" aria-label={label}>
+      <table className="m-text-meta" aria-label={label}>
         <thead>
           <tr>
             <th scope="col" className="text-left pr-3">Resource</th>

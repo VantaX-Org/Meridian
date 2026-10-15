@@ -9,8 +9,8 @@ function TableGhost() {
     <div className="flex flex-col gap-2" style={{ width: 200 }}>
       {[70, 50, 60].map((w, i) => (
         <div key={w} className="flex items-center gap-2" style={{ height: 24 }}>
-          {i === 0 && <span style={{ width: 24, height: 24, background: mColor.dom.material, borderRadius: 4 }} />}
-          <span style={{ width: `${w}%`, height: 8, background: "var(--m-accent-soft-2)", borderRadius: 4 }} />
+          {i === 0 && <span style={{ width: 24, height: 24, background: mColor.dom.material }} />}
+          <span style={{ width: `${w}%`, height: 8, background: "var(--m-accent-soft-2)" }} />
         </div>
       ))}
     </div>
@@ -26,7 +26,7 @@ function ChartGhost() {
   return (
     <svg width={140} height={80} aria-hidden>
       {bars.map((b, i) => (
-        <rect key={i} x={12 + i * 40} y={79 - b.h} width={24} height={b.h} fill={b.fill} opacity={0.6} rx={2} />
+        <rect key={i} x={12 + i * 40} y={79 - b.h} width={24} height={b.h} fill={b.fill} opacity={0.6} />
       ))}
       <line x1={0} x2={140} y1={79.5} y2={79.5} stroke="var(--m-line-strong)" />
     </svg>
@@ -37,7 +37,7 @@ function GridGhost() {
   return (
     <div className="grid grid-cols-3 gap-1">
       {Array.from({ length: 9 }, (_, i) => (
-        <span key={i} style={{ width: 16, height: 16, borderRadius: 3, background: i === 4 ? "var(--m-accent)" : "var(--m-accent-soft-2)" }} />
+        <span key={i} style={{ width: 16, height: 16, background: i === 4 ? "var(--m-accent)" : "var(--m-accent-soft-2)" }} />
       ))}
     </div>
   );
@@ -50,7 +50,7 @@ function ListGhost() {
       {dots.map((c, row) => (
         <div key={row} className="flex items-center gap-3">
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />
-          <span style={{ width: 120 - row * 14, height: 8, background: "var(--m-accent-soft-2)", borderRadius: 4 }} />
+          <span style={{ width: 120 - row * 14, height: 8, background: "var(--m-accent-soft-2)" }} />
         </div>
       ))}
     </div>
@@ -95,7 +95,7 @@ const GHOST_SHAPE: Record<EmptyStateGhost, () => ReactNode> = {
 function GhostShape({ kind }: { kind: EmptyStateGhost }) {
   const Shape = GHOST_SHAPE[kind];
   return (
-    <div aria-hidden className="m-ghost-bg m-motion-fade flex items-center justify-center" style={{ height: 120, pointerEvents: "none", opacity: 0.9, margin: "var(--m-space-3) var(--m-space-3) 0" }}>
+    <div aria-hidden className="m-ghost-bg m-motion-fade flex items-center justify-center" style={{ height: 120, pointerEvents: "none", opacity: 0.9 }}>
       <Shape />
     </div>
   );
@@ -118,7 +118,7 @@ export function EmptyState({
 }) {
   if (variant === "inline") {
     return (
-      <div data-state="empty" className="flex items-center gap-3 text-[13px]" style={{ minHeight: 36, padding: "0 var(--m-space-3)", color: "var(--m-ink-2)" }}>
+      <div data-state="empty" className="m-text-body flex items-center gap-3" style={{ minHeight: 36, padding: "0 var(--m-space-3)", color: "var(--m-ink-2)" }}>
         <span>{title}</span>
         {detail && <span style={{ color: "var(--m-ink-3)" }}>{detail}</span>}
         {action}
@@ -128,13 +128,13 @@ export function EmptyState({
   return (
     <div
       data-state="empty"
-      className="m-card m-elev-1 flex flex-col text-left"
+      className="m-card flex flex-col text-left"
       style={{ maxWidth: 560, padding: 0, overflow: "hidden" }}
     >
       {ghost && <GhostShape kind={ghost} />}
       <div className="flex flex-col gap-2" style={{ padding: "var(--m-space-8) var(--m-space-6)" }}>
-        <p className="text-[15px] leading-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>{title}</p>
-        {detail && <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{detail}</p>}
+        <p className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{title}</p>
+        {detail && <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{detail}</p>}
         {action && <div className="mt-2">{action}</div>}
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 // frontend/design/charts/Waterfall.tsx
-import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 import { ChartTooltip } from "./Tooltip";
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 
@@ -23,6 +23,7 @@ export function Waterfall({ data, onPointClick, label }: { data: ChartPoint[]; o
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" vertical={false} />
         <XAxis dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
         <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+        <ReferenceLine y={0} stroke={chartTheme.axis} strokeWidth={1} />
         <Tooltip
           cursor={false}
           content={({ active, payload, label: x }) => (
@@ -39,7 +40,7 @@ export function Waterfall({ data, onPointClick, label }: { data: ChartPoint[]; o
         />
         {/* Transparent riser so each value bar floats at its running total. */}
         <RBar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} legendType="none" tooltipType="none" />
-        <RBar dataKey="value" name={label ?? "Change"} stackId="w" radius={[3, 3, 0, 0]} onClick={(_, index) => onPointClick?.(data[index])}>
+        <RBar dataKey="value" name={label ?? "Change"} stackId="w" radius={0} onClick={(_, index) => onPointClick?.(data[index])}>
           {bars.map((p) => (
             <Cell key={p.x} fill={p.total ? chartTheme.accent : p.y >= 0 ? chartTheme.pass : chartTheme.critical} />
           ))}

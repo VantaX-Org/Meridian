@@ -37,7 +37,7 @@ export default async function DocsPage({ searchParams }: { searchParams: Promise
                   <Link
                     href={`/docs?page=${p.slug}`}
                     aria-current={active ? "page" : undefined}
-                    className="m-motion-colors flex items-center px-3 text-[13px] leading-[18px]"
+                    className="m-motion-colors flex items-center px-3 m-text-body"
                     style={{
                       height: "var(--m-control-h)",
                       borderRadius: "var(--m-radius-control)",
