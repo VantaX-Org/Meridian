@@ -3,6 +3,9 @@
 Supports triggers: critical_found, dqs_drop, thresholds, scheduled_daily, scheduled_weekly, scheduled_monthly.
 ``thresholds`` runs after the deterministic checks: every breach of the tenant's
 alert thresholds becomes an in-app notification.
+Per-user delivery (users.preferences.notifications) rides on the same two entry
+points: ``_send_immediate_critical`` and ``send_alert_digest`` — see the section
+"Per-user delivery" below.
 Never raises — notification failures must not affect analysis results.
 """
 
@@ -598,8 +601,11 @@ def _drop_threshold(session: Session, tenant_id: str) -> float:
 
 
 def _send_immediate_critical(session: Session, tenant_id: str, version_id: str) -> None:
+    """Tenant alert channels opted into immediate delivery, then every user who asked to be
+    told at once (users.preferences.notifications.immediate_critical)."""
     channels = _channels(session, "immediate_critical")
-    if not channels:
+    recipients = _recipients_safe(session, tenant_id, "critical")
+    if not channels and not recipients:
         return
     from workers.tasks.send_user_invitation import _resolve_app_base_url
     run = session.execute(text(f"SELECT run_at, {_SCOPE} FROM analysis_versions WHERE id = :v"),
@@ -613,6 +619,154 @@ def _send_immediate_critical(session: Session, tenant_id: str, version_id: str) 
         alert["system_name"] = _system_name(session, run[1])
     for ch in channels if alert else []:
         _deliver_safe(ch, alert)
+    if alert and recipients:
+        _notify_users_critical(session, tenant_id, alert, recipients)
+
+
+# ── Per-user delivery (users.preferences.notifications, migration 083) ───────
+# Each opted-in user gets an addressed in-app notification; email only when they asked
+# for it (channels.email) and a backend is configured. Every attempt is recorded in
+# notification_deliveries; a run with no email backend writes one no_backend row per
+# tenant instead of one per user.
+
+USER_DIGEST_TITLE = {"daily": "Your daily data quality digest", "weekly": "Your weekly data quality digest"}
+
+
+def _recipients_safe(session: Session, tenant_id: str, kind: str) -> list:
+    """resolve_recipients, but a missing column or table (deployment behind migration 081/083)
+    reads as "nobody opted in" so the tenant channels still go out."""
+    from api.services.user_notifications import resolve_recipients
+    try:
+        return resolve_recipients(session, tenant_id, kind)
+    except Exception as e:
+        logger.warning(f"per-user recipients unavailable for tenant {tenant_id}: {type(e).__name__}")
+        session.rollback()
+        return []
+
+
+def _email_user(session: Session, tenant_id: str, user_id: str, email: str, kind: str,
+                subject: str, body: str) -> bool:
+    """One email to one user, recorded as sent or failed. Never logs the address."""
+    from api.services.user_notifications import record_delivery
+    try:
+        ok = bool(_deliver_email(email, subject, body))
+        error = None
+    except Exception as e:  # a raise inside a backend (e.g. an expired Graph token)
+        ok, error = False, type(e).__name__
+        logger.error(f"per-user email ({kind}) to user {user_id} raised: {error}")
+    record_delivery(session, tenant_id, user_id, "email", kind, "sent" if ok else "failed", error)
+    return ok
+
+
+def _record_no_backend(session: Session, tenant_id: str, kind: str) -> None:
+    from api.services.user_notifications import record_delivery
+    record_delivery(session, tenant_id, None, "email", kind, "no_backend", "no email backend configured")
+
+
+def _notify_users_critical(session: Session, tenant_id: str, alert: dict, recipients: list) -> int:
+    """Addressed in-app notification per opted-in user, plus the email for those who asked for
+    it. Returns the number of emails sent."""
+    from api.services.notifications import create_notification_sync
+    from api.services.user_notifications import email_backend_name, record_delivery
+
+    backend = email_backend_name()
+    count = alert["new_critical_count"]
+    where = alert.get("system_name") or "your SAP data"
+    title = f"{where}: {count} new critical rule(s) failing"
+    body = alert_text(alert)
+    link = f"/findings?version_id={alert['version_id']}" if alert.get("version_id") else "/findings"
+    subject = f"Meridian critical alert — {where}"
+    html_body = mail.render_email(title="Critical findings", blocks=[
+        mail.paragraph(body), mail.button("Open findings", alert["links"]["findings"])])
+
+    emailed = 0
+    if backend is None and any(r.wants_email for r in recipients):
+        _record_no_backend(session, tenant_id, "critical")
+    for r in recipients:
+        create_notification_sync(tenant_id, r.user_id, "dq_alert", title[:200], body, link, session)
+        record_delivery(session, tenant_id, r.user_id, "in_app", "critical", "sent")
+        if r.wants_email and backend is not None:
+            emailed += _email_user(session, tenant_id, r.user_id, r.email, "critical", subject, html_body)
+    session.commit()
+    return emailed
+
+
+_OPEN_SQL = "status NOT IN ('resolved', 'accepted')"
+
+
+def _user_open_items(session: Session, tenant_id: str, user_id: str) -> dict[str, int]:
+    """Open triage items assigned to one user: record issues by severity plus stewardship items."""
+    issues = session.execute(text(f"""
+        SELECT severity, COUNT(*) FROM record_issues
+         WHERE tenant_id = CAST(:tid AS uuid) AND assigned_to = CAST(:uid AS uuid) AND {_OPEN_SQL}
+         GROUP BY severity
+    """), {"tid": str(tenant_id), "uid": user_id}).fetchall()
+    queue = session.execute(text(f"""
+        SELECT COUNT(*) FROM stewardship_queue
+         WHERE tenant_id = CAST(:tid AS uuid) AND assigned_to = CAST(:uid AS uuid) AND {_OPEN_SQL}
+    """), {"tid": str(tenant_id), "uid": user_id}).scalar() or 0
+    out = {str(sev): int(n) for sev, n in issues if n}
+    if queue:
+        out["stewardship"] = int(queue)
+    return out
+
+
+def _owner_cards(session: Session, tenant_id: str) -> dict:
+    """Owner scorecards by display name (api/services/insights_owners.py), once per tenant;
+    only owners with something open."""
+    from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
+    rows = session.execute(text(OWNER_ISSUE_SQL), {"tid": str(tenant_id), "cutoff": baseline_cutoff()}).fetchall()
+    aggregates = load_owner_aggregates([dict(r._mapping) for r in rows])
+    return {name: build_owner_card(name, agg["score"], agg["delta"], agg["open_by_severity"],
+                                   agg["fixed_since_baseline"], agg["oldest_item_age_days"])
+            for name, agg in aggregates.items() if agg["open_by_severity"]}
+
+
+def personal_digest(name: str, items: dict[str, int], card) -> tuple[str, str]:
+    """Title and body of one user's digest. Pure: ``items`` is {severity|stewardship: count} of the
+    triage items assigned to the user, ``card`` the owner scorecard matched on the display name (or None)."""
+    total = sum(items.values())
+    parts = [f"{n} {sev}" for sev, n in items.items() if sev != "stewardship"]
+    if items.get("stewardship"):
+        parts.append(f"{items['stewardship']} stewardship")
+    lines = [f"You have {total} open item(s) assigned to you" + (f": {', '.join(parts)}." if parts else ".")]
+    if card is not None:
+        lines.append(card.digest)
+    return f"{total} open item(s)", "\n".join(lines)
+
+
+def _send_user_digests(session: Session, tenant_id: str, period: str, recipients: list, base_url: str) -> int:
+    """One personal digest per opted-in user with open items; users with nothing open get no
+    notification and no email. Returns the number of emails sent."""
+    from api.services.notifications import create_notification_sync
+    from api.services.user_notifications import email_backend_name, record_delivery
+
+    backend = email_backend_name()
+    cards = _owner_cards(session, tenant_id)
+    heading = USER_DIGEST_TITLE.get(period, "Your data quality digest")
+    no_backend_written = False
+    emailed = 0
+    for r in recipients:
+        items = _user_open_items(session, tenant_id, r.user_id)
+        card = cards.get(r.name) if r.name else None
+        if not items and card is None:
+            continue
+        title, body = personal_digest(r.name, items, card)
+        create_notification_sync(tenant_id, r.user_id, "digest", heading, body, "/inbox", session)
+        record_delivery(session, tenant_id, r.user_id, "in_app", "digest", "sent")
+        if not r.wants_email:
+            continue
+        if backend is None:
+            if not no_backend_written:
+                _record_no_backend(session, tenant_id, "digest")
+                no_backend_written = True
+            continue
+        html_body = mail.render_email(title=heading, blocks=[
+            mail.paragraph(body), mail.button("Open Meridian", f"{base_url}/inbox")])
+        emailed += _email_user(session, tenant_id, r.user_id, r.email, "digest",
+                               f"Meridian {period} digest — {title}", html_body)
+    session.commit()
+    return emailed
 
 
 @celery_app.task(name="workers.tasks.send_notifications.send_alert_digest",
@@ -622,7 +776,8 @@ def send_alert_digest(period: str) -> dict:
     window — score drop beyond the tenant's threshold against that system's last run before the
     window, critical rules newly failing, records regressed since its baseline — plus one
     tenant-level alert for exception SLAs breached (exceptions carry no system). Silent when
-    nothing fired."""
+    nothing fired. Also one personal digest per user whose preference names this period
+    (their own assigned triage items and owner scorecard), skipping users with nothing open."""
     from workers.tasks.send_user_invitation import _resolve_app_base_url
 
     since = datetime.now(timezone.utc) - DIGEST_WINDOW[period]
@@ -636,6 +791,9 @@ def send_alert_digest(period: str) -> dict:
             with Session(engine) as session:
                 session.execute(text("SET app.tenant_id = :tid"), {"tid": tid})
                 channels = _channels(session, "digest = :p", {"p": period})
+                recipients = _recipients_safe(session, tid, period)
+                if recipients:  # personal digests: each user's own open items
+                    sent += _send_user_digests(session, tid, period, recipients, base_url)
                 if not channels:
                     continue
                 drop_limit = _drop_threshold(session, tid)
