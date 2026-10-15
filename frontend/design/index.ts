@@ -53,6 +53,7 @@ export * from "./charts/Radar";
 export * from "./charts/Heatmap";
 export * from "./charts/Sparkline";
 export * from "./charts/Graph";
+export * from "./charts/Lineage";
 export * from "./charts/Legend";
 export * from "./charts/HoverBar";
 export * from "./charts/Funnel";

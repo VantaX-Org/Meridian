@@ -3,8 +3,8 @@
 
 /**
  * SAP field to config, process step, SAP feature and business KPI, drawn as
- * a force-directed graph. Trace any node; the table ranks the KPIs,
- * processes and features the latest version's failing rules reach.
+ * a layered trace in data-flow order. Trace any node; the table ranks the
+ * KPIs, processes and features the selected run's failing rules reach.
  * Selecting a node opens its guarding rules or blast radius.
  */
 
@@ -13,10 +13,9 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, DataTable, Drawer, EmptyState, ErrorState, Graph, Input, type GraphEdge, type GraphNode,
+  Button, DataTable, Drawer, EmptyState, ErrorState, Input, LineageChart, type LineageChartEdge, type LineageChartNode,
   Card, Mono, Pill, type PillTone, Select, Skeleton,
 } from "@/design";
-import { domainOf } from "@/design/tokens";
 import { useLatestVersion } from "@/components/process/shared";
 import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
@@ -28,7 +27,7 @@ import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 const pct = (v: number | null | undefined) => (v == null ? "" : `${(v * 100).toFixed(1)}%`);
-// ponytail: force layout past this many nodes is unreadable. Narrow the trace depth to see the rest.
+// ponytail: the layered chart past this many nodes gets taller than a screen. Narrow the trace depth to see the rest.
 const MAX_NODES = 150;
 
 const SEV_TONE: Record<Severity, PillTone> = { low: "neutral", medium: "at-risk", high: "no-go", critical: "no-go" };
@@ -133,35 +132,43 @@ export default function LineagePage() {
 
   const { nodes, edges, capped } = useMemo(() => {
     const g = graphQ.data;
-    if (!g) return { nodes: [] as GraphNode[], edges: [] as GraphEdge[], capped: false };
+    if (!g) return { nodes: [] as LineageChartNode[], edges: [] as LineageChartEdge[], capped: false };
     const keep = [...g.nodes].sort((a, b) => Math.abs(a.depth) - Math.abs(b.depth)).slice(0, MAX_NODES);
     const ids = new Set(keep.map((n) => n.id));
     return {
       capped: g.nodes.length > keep.length,
-      nodes: keep.map((n) => ({ id: n.id, label: n.label, size: 4 + (worst.get(n.id) ? 4 : 0), domain: domainOf(n.id) })),
-      edges: g.edges.filter((e) => ids.has(e.source) && ids.has(e.target)).map((e, i) => (
-        { id: `${e.source}-${e.target}-${i}`, source: e.source, target: e.target, label: e.rel }
-      )),
+      nodes: keep.map((n) => ({ id: n.id, type: n.type, label: n.label, atRisk: worst.has(n.id) })),
+      edges: g.edges.filter((e) => ids.has(e.source) && ids.has(e.target)).map((e) => ({ source: e.source, target: e.target, impact: e.impact_type })),
     };
   }, [graphQ.data, worst]);
 
   const columns = useMemo<ColumnDef<ImpactRow>[]>(() => [
-    { id: "name", header: "Name", accessorFn: (r) => r.label },
-    { id: "type", header: "Type", accessorFn: (r) => TYPE_LABEL[r.type] },
-    { id: "findings", header: "Findings", accessorFn: (r) => r.findings },
+    { id: "name", header: "Name", accessorFn: (r) => r.label, size: 280, cell: ({ row }) => <span className="whitespace-nowrap">{row.original.label}</span> },
+    { id: "type", header: "Type", accessorFn: (r) => TYPE_LABEL[r.type], size: 120 },
+    { id: "hops", header: "Hops", accessorFn: (r) => r.min_hops, size: 72, meta: { numeric: true } },
     {
-      id: "records", header: "Records", accessorFn: (r) => r.records_affected,
-      cell: ({ row }) => `${row.original.records_affected.toLocaleString()} (at least ${row.original.max_records.toLocaleString()})`,
+      id: "findings", header: "Findings", accessorFn: (r) => r.findings, size: 96, meta: { numeric: true },
+      cell: ({ row }) => {
+        const ids = row.original.check_ids;
+        const href = ids.length === 1 ? `/rules/${encodeURIComponent(ids[0])}` : `/insights/rules${latest ? `?run=${latest.id}` : ""}`;
+        return <Link className="underline underline-offset-2" href={href} title={ids.join(", ")} onClick={(e) => e.stopPropagation()}>{row.original.findings.toLocaleString()}</Link>;
+      },
     },
     {
-      id: "blocks", header: "Effect", accessorFn: (r) => r.worst_impact ?? "",
-      cell: ({ row }) => row.original.worst_impact === "full_block" ? "Blocks" : row.original.worst_impact === "degraded" ? "Degrades" : "",
+      id: "records", header: "Records affected", accessorFn: (r) => r.records_affected, size: 220, meta: { numeric: true },
+      cell: ({ row }) => <span className="whitespace-nowrap">{row.original.max_records < row.original.records_affected
+        ? `${row.original.max_records.toLocaleString()} to ${row.original.records_affected.toLocaleString()}`
+        : row.original.records_affected.toLocaleString()}</span>,
     },
     {
-      id: "worst", header: "Worst", accessorFn: (r) => r.worst_severity ?? "",
+      id: "blocks", header: "Effect", accessorFn: (r) => r.worst_impact ?? "", size: 120,
+      cell: ({ row }) => row.original.worst_impact === "full_block" ? "Blocks" : row.original.worst_impact === "degraded" ? "Degrades" : row.original.worst_impact === "cosmetic" ? "Cosmetic" : "Not modelled",
+    },
+    {
+      id: "worst", header: "Severity", accessorFn: (r) => r.worst_severity ?? "", size: 110,
       cell: ({ row }) => row.original.worst_severity ? <Pill tone={SEV_TONE[row.original.worst_severity]}>{SEV_LABEL[row.original.worst_severity]}</Pill> : null,
     },
-  ], []);
+  ], [latest]);
 
   const trace = (id: string) => { setDraft(id); setFocus(id); setSelId(id); };
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (draft.trim()) { setFocus(draft.trim()); setSelId(null); } };
@@ -174,7 +181,7 @@ export default function LineagePage() {
   const model = modelQ.data;
   const sel: LineageNode | null = selId ? graphQ.data?.nodes.find((n) => n.id === selId) ?? null : null;
   const neighbours = sel ? (graphQ.data?.edges ?? []).filter((e) => e.source === sel.id || e.target === sel.id) : [];
-  const label = (id: string) => graphQ.data?.nodes.find((n) => n.id === id)?.label ?? id;
+  const label = (id: string) => graphQ.data?.nodes.find((n) => n.id === id)?.label ?? rows.find((r) => r.id === id)?.label ?? id;
   const kpis = impact?.kpis.length ?? 0;
   const features = impact?.features.length ?? 0;
 
@@ -182,10 +189,10 @@ export default function LineagePage() {
     <>
       <InsightFrame
         title="Lineage"
-        meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} edges`}
+        meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} links`}
         insight={{
           situation: { sentence: impact ? `${kpis.toLocaleString()} KPIs and ${features.toLocaleString()} features are at risk` : "Impact needs a completed analysis", tone: kpis ? "at-risk" : "neutral" },
-          changed: { sentence: focus ? `${nodes.length} nodes in the current trace` : "—" },
+          changed: { sentence: focus ? `Tracing ${label(focus)}: ${nodes.length.toLocaleString()} nodes within ${depth} hops` : "Nothing traced yet" },
           why: { sentence: impact ? `${rows.length.toLocaleString()} KPIs, processes and features are reached by failing rules` : "—" },
           next: { sentence: rows[0] ? `Trace ${rows[0].label}` : "Run an analysis", action: rows[0] ? { label: "Trace it", onClick: () => trace(rows[0].id) } : undefined },
         }}
@@ -209,8 +216,12 @@ export default function LineagePage() {
               )
               : nodes.length ? (
                 <>
-                  <Graph nodes={nodes} edges={edges} height={420} onNodeClick={(id) => setSelId(id)} />
-                  {capped ? <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Nearest {MAX_NODES} of {graphQ.data?.nodes.length.toLocaleString()} nodes shown.</p> : null}
+                  <LineageChart nodes={nodes} edges={edges} focusId={focus} selectedId={selId} onNodeClick={(id) => setSelId(id)} />
+                  <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                    {nodes.length.toLocaleString()} nodes and {edges.length.toLocaleString()} links {direction === "both" ? "up and downstream of" : direction === "up" ? "upstream of" : "downstream of"} {label(focus)}.
+                    {capped ? ` Nearest ${MAX_NODES} of ${graphQ.data?.nodes.length.toLocaleString()} nodes shown; narrow the depth to see the rest.` : ""}
+                    {" "}Red squares are reached by a failing rule. Red and orange links block or degrade their target.
+                  </p>
                 </>
               ) : <EmptyState title="Nothing is linked to this node" detail="Try a node from the table below, or a wider depth." action={rows[0] ? <Button onClick={() => trace(rows[0].id)}>{`Trace ${rows[0].label}`}</Button> : <Button render={<Link href="/rules">Open rules</Link>} />} />}
           </div>
@@ -227,12 +238,10 @@ export default function LineagePage() {
         </Card>
       </InsightFrame>
 
-      <Drawer open={!!sel} onOpenChange={(o) => { if (!o) setSelId(null); }} title={sel?.label ?? ""}>
+      <Drawer open={!!sel} onOpenChange={(o) => { if (!o) setSelId(null); }} title={sel?.label ?? ""}
+        subtitle={sel ? <><Mono>{sel.id}</Mono>{sel.tcode ? <>, <Mono>{sel.tcode}</Mono></> : null}</> : null}>
         {sel ? (
           <div className="flex flex-col gap-3">
-            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
-              <Mono>{sel.id}</Mono>{sel.tcode ? <>, <Mono>{sel.tcode}</Mono></> : null}
-            </p>
             {sel.definition ? <p className="m-text-body">{sel.definition}</p> : null}
             <div><Button onClick={() => trace(sel.id)}>Trace from here</Button></div>
             {sel.type === "object" ? (
@@ -249,7 +258,7 @@ export default function LineagePage() {
                   <li key={i} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
                     <div className="flex items-center gap-3">
                       <span className="flex-1">{label(e.source === sel.id ? e.target : e.source)}</span>
-                      <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{e.source === sel.id ? "downstream" : "upstream"}, {e.rel}</span>
+                      <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{e.source === sel.id ? "Downstream" : "Upstream"}, {e.rel.replaceAll("_", " ")}</span>
                     </div>
                   </li>
                 ))}
