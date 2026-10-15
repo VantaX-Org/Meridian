@@ -8,6 +8,7 @@ import type { Version } from "@/types/api";
 import type { LearnedRule } from "@/lib/api/learnedRules";
 import LearnedRulesPage from "../page";
 
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(""), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/rules/learned" }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const RULE: LearnedRule = {
