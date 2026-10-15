@@ -11,8 +11,13 @@ On 2026-10-15, on the Meridian deployment (`meridiansrv`, 8-core Xeon, 30 GB):
 | run | objects | checks | `record_issues` step | outcome |
 |---|---|---|---|---|
 | `b901357e` material_master | 1 | 615 ran / 91 skipped | **skipped** — "not the newest run" | `agents_complete`, complete scores |
-| `c4d1cba0` ECC 4-module | 4 (BP, AP, AR, fi_gl) | all 4 modules checked | **killed at the 6 h limit** | `partial`, but per-module scores preserved by the checkpoint |
-| `70afeca6` SuccessFactors | 9 | — | — | running |
+| `c4d1cba0` ECC 4-module | 4 (BP, AP, AR, fi_gl) | all 4 modules checked | **killed at the 6 h limit** (2.78 M issues in scope) | `partial`, but per-module scores preserved by the checkpoint |
+| `70afeca6` SuccessFactors | 9 | all 9 modules checked | **~2 minutes** (235 K failing records) | `agents_complete`, complete scores |
+
+So this is **not** a wall every run hits: SuccessFactors completed the same step in
+about two minutes. What differs is the size of `record_issues` in the system's scope
+(ECC carries ~2.8 M rows). The cost scales with that table, so it grows as more
+objects are analysed — the ECC system is simply the first to reach the limit.
 
 The ECC 4-module run checked all four modules in ~14 minutes, then spent **5 h 50 m**
 inside `api/services/record_issues.py::track`, was killed by
