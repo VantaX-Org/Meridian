@@ -219,7 +219,23 @@ def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[di
 
 # A full extract (e.g. a quarter of BSEG) needs far more than the old 5 minutes;
 # checks on a capped material master (~21M rows) run past 30. Same ceiling as extraction.
-_CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "21600"))
+#
+# The default is 24 h, not 6, because the ceiling has to clear the *whole* run, and the
+# tail of a run is the cross-run issue lifecycle (api/services/record_issues.py::track),
+# whose cost scales with the system's accumulated record_issues rather than with the
+# rules. Measured on the Komatsu sandbox (8-core Xeon, 30 GB): SuccessFactors finished
+# that step in ~2 minutes against 235K failing records, while the ECC system — 2.78M
+# record_issues rows, 1.94M of them left by an earlier material_master run — took over
+# 5 h 50 m and was killed at the old 6 h limit, leaving a `partial` version whose DQS
+# was never written out even though every module had finished. 24 h clears that with
+# headroom for a system several times larger.
+#
+# Raising it is safe to do by halves: a run killed by this limit is recorded, not lost
+# (the checkpoint in `metadata.checks_checkpoint` keeps every finished module and
+# `_mark_failed` writes the rest as `missing`), and the lost-delivery guard below still
+# stops a task that is genuinely killing its worker. Set MERIDIAN_CHECKS_TIME_LIMIT on a
+# deployment whose largest object needs longer still.
+_CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", str(24 * 3600)))
 
 
 # A worker the kernel OOM-kills never acknowledges its task, so with acks_late and

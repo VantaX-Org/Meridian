@@ -111,3 +111,33 @@ def test_a_queued_run_is_never_dropped_for_waiting_on_the_checks_slot():
             mod.run_checks.pop_request()
     body.assert_not_called()  # never started; it only ever waited
     assert retry.call_args.kwargs["countdown"] == mod._SLOT_WAIT_S
+
+def test_the_run_ceiling_clears_the_issue_lifecycle_and_stays_configurable():
+    """The limit has to clear the whole run, and the tail is the issue lifecycle.
+
+    On the Komatsu sandbox the ECC system needed over 5 h 50 m in
+    api/services/record_issues.py::track (2.78M record_issues rows) and was killed at
+    the old 6 h default, leaving a `partial` version whose scores were never written
+    out even though all four modules had finished. The default must leave headroom
+    above that, and a deployment whose largest object needs longer must be able to
+    say so.
+    """
+    from workers.tasks import run_checks as mod
+
+    assert mod._CHECKS_LIMIT >= 12 * 3600, f"default ceiling is {mod._CHECKS_LIMIT}s"
+    # the task carries the limit, with the hard kill one minute behind the soft one
+    assert mod.run_checks.soft_time_limit == mod._CHECKS_LIMIT
+    assert mod.run_checks.time_limit == mod._CHECKS_LIMIT + 60
+
+    # and the environment overrides it (checked in a subprocess so this module's
+    # import-time constant is never mutated for the rest of the suite)
+    import os
+    import subprocess
+    import sys
+
+    out = subprocess.run(
+        [sys.executable, "-c",
+         "import workers.tasks.run_checks as m; print(m._CHECKS_LIMIT)"],
+        capture_output=True, text=True, check=True,
+        env={**os.environ, "MERIDIAN_CHECKS_TIME_LIMIT": "7200"})
+    assert out.stdout.strip() == "7200", out
