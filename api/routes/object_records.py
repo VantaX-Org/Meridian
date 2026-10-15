@@ -28,7 +28,9 @@ router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
 _SUPPORTED = {"material_master", "business_partner"}
 
 # BUT000 fields worth surfacing in the Identity "labels" bag, in priority order.
-_BP_LABEL_FIELDS = ("PARTNER", "BU_TYPE", "NAME1", "NAME_ORG1")
+# The names are the SAP field names the data dictionary carries (BUT000.TYPE is
+# SAP's "business partner category"; BU_TYPE is its data element).
+_BP_LABEL_FIELDS = ("PARTNER", "TYPE", "NAME1", "NAME_ORG1")
 
 
 def _bp_label(field: str, raw: Optional[str]) -> Optional[str]:

@@ -66,7 +66,7 @@ def test_business_partner_record_fix_sheet(monkeypatch):
     assert body["views"] == []
     assert body["makt"] == []
     assert body["description"] == "Acme Logistics GmbH"
-    assert body["labels"]["BU_TYPE"] == "Organisation (legal entity)"
+    assert body["labels"]["TYPE"] == "Organisation (legal entity)"
     assert body["labels"]["NAME1"] == "Acme Logistics GmbH"
 
 

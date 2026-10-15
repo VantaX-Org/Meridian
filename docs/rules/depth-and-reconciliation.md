@@ -84,7 +84,7 @@ moved out of the broken column, they did not regress.
 | `interface_health` | `IDH051` uniqueness, `IDH052` accuracy, `IDH053` timeliness |
 | `s4hc_master_data` | `S4HC042` accuracy, `S4HC043` timeliness |
 | `concur_users` | `CNU042` uniqueness |
-| `succession_planning` | `SUCC081` uniqueness |
+| `succession_planning` | `SUC085` uniqueness |
 | `ariba_supplier` | `ARS041` uniqueness, `ARS042` accuracy |
 | `ariba_procurement` | `ARP043` timeliness |
 | `ariba_spend` | `ARSP011` timeliness, `ARSP012` uniqueness |
