@@ -9,6 +9,7 @@ import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as runsApi from "@/lib/api/v1/runs";
 import * as versionsApi from "@/lib/api/versions";
+import * as systemObjectsApi from "@/lib/api/system-objects";
 import type { Version } from "@/types/api";
 import RunDetailPage from "../page";
 
@@ -137,6 +138,15 @@ describe("RunDetailPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save name" }));
     await waitFor(() => expect(patch).toHaveBeenCalledWith("v2", "Go-live baseline"));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Go-live baseline" })).toBeInTheDocument());
+  });
+
+  it("re-runs analysis on the stored data from the header", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    const analyse = vi.spyOn(systemObjectsApi, "analyseVersion").mockResolvedValue({ status: "pending" });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Re-run analysis" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Re-run analysis" }));
+    await waitFor(() => expect(analyse).toHaveBeenCalledWith("v2"));
   });
 
   it("shows the Baseline pill and the unpin action for a pinned run", async () => {

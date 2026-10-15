@@ -29,7 +29,9 @@ export function Button({ className, variant, size, style, render, pending, child
     </>
   );
   if (render) {
+    // Forward the rest (e.g. a Tooltip trigger's hover and focus handlers) so a Link-rendered button still behaves like one.
     return cloneElement(render, {
+      ...props,
       className: clsx(classes, render.props.className),
       style: { ...style, ...render.props.style },
       children: render.props.children ?? content,

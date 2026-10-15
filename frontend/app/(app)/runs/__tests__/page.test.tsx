@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import { Button } from "@/design";
 import * as connectivityApi from "@/lib/api/connectivity";
+import * as uploadApi from "@/lib/api/upload";
 import * as versionsApi from "@/lib/api/versions";
 import type { DimensionScores, SAPSystemExtended, Version } from "@/types/api";
 import RunsPage from "../page";
@@ -107,6 +108,20 @@ describe("RunsPage", () => {
     const bulkBar = screen.getByText("2 selected").parentElement as HTMLElement;
     fireEvent.click(within(bulkBar).getByRole("button", { name: "Compare" }));
     expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
+  });
+
+  it("shows live progress on a run that is still being analysed", async () => {
+    const running: Version = { ...newer, id: "v3", label: "Tonight", status: "running" };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [running, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    vi.spyOn(uploadApi, "getAnalysisStatus").mockResolvedValue({
+      version_id: "v3", status: "processing", error: null, db_status: "running",
+      progress: { current_step: "Running checks", step_number: 2, total_steps: 4, rows_processed: 500, total_rows: 1000, percent_complete: 42 },
+      result: null,
+    } as unknown as uploadApi.AnalysisStatusResponse);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("42% Running checks")).toBeInTheDocument());
+    expect(screen.getByRole("progressbar", { name: "Running checks progress" })).toHaveAttribute("aria-valuenow", "42");
   });
 
   it("shows the empty state when there are no runs", async () => {

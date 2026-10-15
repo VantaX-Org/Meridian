@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tan
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill,
+  Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip,
   DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone, type HeatmapCell,
   entityTabs, NextActions,
   PageHeader,
@@ -27,6 +27,7 @@ import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
 import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/api/versions";
 import { getAnalysisStatus } from "@/lib/api/upload";
+import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
@@ -476,6 +477,16 @@ export default function RunDetailPage() {
     onError: (e: Error) => toast.error(errorText(e)),
   });
   const openRename = () => { setDraftLabel(version.data?.label ?? ""); setRenameOpen(true); };
+  const running = analysisStatus.data?.status === "queued" || analysisStatus.data?.status === "processing";
+  const rerun = useMutation({
+    mutationFn: () => analyseVersion(versionId),
+    onSuccess: () => {
+      toast.success("Re-analysis started. Progress shows above.");
+      void qc.invalidateQueries({ queryKey: [...queryKeys.run(versionId), "status"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.run(versionId), exact: true });
+    },
+    onError: (e: Error) => toast.error(errorText(e)),
+  });
   const pin = useMutation({
     mutationFn: () => pinBaseline(versionId, !isBaseline),
     onMutate: async () => {
@@ -555,14 +566,34 @@ export default function RunDetailPage() {
       }
       actions={
         <>
-          {prevId ? <Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`}>Compare with previous</Link>} /> : null}
-          {baseId ? <Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`}>Compare with baseline</Link>} /> : null}
+          {prevId ? (
+            <Tooltip label="What changed since the run before this one" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`} />} />}>
+              Compare with previous
+            </Tooltip>
+          ) : null}
+          {baseId ? (
+            <Tooltip label="What changed since the pinned baseline run" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`} />} />}>
+              Compare with baseline
+            </Tooltip>
+          ) : null}
           {can("analyse") ? (
             <>
-              <Button variant="ghost" onClick={openRename}>Rename</Button>
-              <Button variant="ghost" onClick={() => pin.mutate()}>
+              <Tooltip label="Give this run a name you will recognise in lists and comparisons" render={<Button variant="ghost" onClick={openRename} />}>
+                Rename
+              </Tooltip>
+              <Tooltip
+                label={isBaseline ? "Stop comparing later runs in this system with this run" : "Later runs in this system are compared with this run on the Monitor tab"}
+                render={<Button variant="ghost" onClick={() => pin.mutate()} pending={pin.isPending} />}
+              >
                 {isBaseline ? "Unpin baseline" : "Pin as baseline"}
-              </Button>
+              </Tooltip>
+              <Tooltip
+                label={running ? "Analysis is already running" : "Re-check this run's stored data with the current rules. Findings are replaced; the name, baseline and history stay."}
+                maxWidth={280}
+                render={<Button variant="ghost" onClick={() => rerun.mutate()} pending={rerun.isPending} disabled={running} />}
+              >
+                Re-run analysis
+              </Tooltip>
             </>
           ) : null}
           {can("export") ? <ExportMenu options={exportOptions} /> : null}
@@ -587,7 +618,7 @@ export default function RunDetailPage() {
         }
       >
         <Field label="Name">
-          <Input value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} autoFocus
+          <Input value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} autoFocus placeholder={v ? formatDate(v.run_at, "datetime") : undefined}
             onKeyDown={(e) => { if (e.key === "Enter" && draftLabel.trim() && !rename.isPending) rename.mutate(); }} />
         </Field>
       </Dialog>
@@ -635,7 +666,7 @@ export default function RunDetailPage() {
                 emptyProps={{
                   title: "No steps recorded",
                   detail: "This run has no step history.",
-                  action: <Button render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Re-run analysis</Link>} />,
+                  action: can("analyse") ? <Button onClick={() => rerun.mutate()} pending={rerun.isPending} disabled={running}>Re-run analysis</Button> : undefined,
                 }}
                 errorProps={{ message: errorText(steps.error), onRetry: () => steps.refetch() }}
               />
