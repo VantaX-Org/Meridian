@@ -5550,6 +5550,7 @@ rules:
 - id: PUR417
   field: EKKO.EBELN
   check_class: null_check
+  grain: EKKO
   severity: critical
   dimension: completeness
   message: Purchasing document number is mandatory
@@ -5567,6 +5568,7 @@ rules:
 - id: PUR419
   field: EKPO.EBELP
   check_class: null_check
+  grain: EKPO
   severity: critical
   dimension: completeness
   message: Purchasing document item number is mandatory

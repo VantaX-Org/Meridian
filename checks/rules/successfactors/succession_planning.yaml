@@ -1643,7 +1643,7 @@ rules:
         update readiness.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: ranked first
       but NOT_READY.'
-  - id: SUCC081
+  - id: SUC085
     field: SUCCESSIONCANDIDATE.NOMINEE_ID
     check_class: uniqueness_check
     fields:

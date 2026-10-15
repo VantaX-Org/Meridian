@@ -11,7 +11,7 @@ from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
-PACKS = {"interface_health": ("IDH", 9, 42), "s4hc_master_data": ("S4C", 11, 31)}
+PACKS = {"interface_health": ("IDH", 9, 45), "s4hc_master_data": ("S4C", 11, 31)}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 DDIC = get_dictionary("ecc6")

@@ -10,7 +10,11 @@ from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
-PACKS = {"mm_purchasing": ("PUR", 369, 48), "plant_maintenance": ("PM", 319, 51)}
+PACKS = {"mm_purchasing": ("PUR", 369, 50), "plant_maintenance": ("PM", 319, 51)}
+# Withdrawn rather than weakened, so the range they would occupy is a documented gap.
+#   PUR418  a null_check on EKKO.LIFNR fired on a purchasing document the pack's own
+#           presence rules treat as legitimate (see docs/rules/depth-and-reconciliation.md)
+WITHDRAWN = {"PUR418"}
 MANDATORY = ["id", "field", "check_class", "grain", "severity", "dimension", "message", "why_it_matters",
              "rule_authority", "sap_impact", "fix_map", "record_fix_template"]
 DDIC = get_dictionary("ecc6")
@@ -49,7 +53,11 @@ def test_new_ids_are_unique_and_contiguous(mod):
     ids = [r["id"] for r in pack]
     assert len(ids) == len(set(ids))
     new = sorted(int(r["id"][len(prefix):]) for r in NEW if MODULE[r["id"]] == mod)
-    assert new == list(range(start, start + count))
+    assert len(new) == count, (mod, len(new), count)  # every requested rule was authored
+    # The id range is start..start+count-1 plus one slot for each withdrawn id in this pack.
+    span = count + sum(1 for w in WITHDRAWN if w.startswith(prefix))
+    expected = [n for n in range(start, start + span) if f"{prefix}{n:03d}" not in WITHDRAWN]
+    assert new == expected, mod
 
 
 def test_every_new_rule_has_full_metadata():

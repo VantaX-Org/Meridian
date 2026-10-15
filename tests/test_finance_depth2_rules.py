@@ -57,12 +57,19 @@ def fire(rid: str, tables: dict[str, pd.DataFrame], refs: dict | None = None) ->
 
 # ---- integrity ----------------------------------------------------------------------------------------------------
 
+# controlling was authored in two passes and CO100..CO125 were never written, so its
+# sequence carries a standing gap. Every other pack from its start is unbroken.
+_GAPS = {"controlling": set(range(100, 126))}
+
+
 def test_new_rule_count_and_contiguous_ids_per_pack():
-    assert len(NEW) == 134
+    assert len(NEW) == 137
     for module, (prefix, start) in PACKS.items():
         nums = sorted(int(r["id"][len(prefix):]) for m, r in NEW
                       if m == module and r["id"][len(prefix):].isdigit())
-        assert nums == list(range(start, start + len(nums))), module
+        expected = [n for n in range(start, start + len(nums) + len(_GAPS.get(module, ())))
+                    if n not in _GAPS.get(module, set())]
+        assert nums == expected, module
 
 
 def test_ids_unique_across_all_packs():

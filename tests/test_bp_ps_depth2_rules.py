@@ -10,7 +10,7 @@ from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
-PACKS = {"business_partner": ("BP", 249, 47), "project_system": ("PS", 116, 50)}
+PACKS = {"business_partner": ("BP", 249, 48), "project_system": ("PS", 116, 50)}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 AUTHORITIES = {"sap_hard_constraint", "best_practice", "s4hana_migration", "regulatory", "iso_standard"}
