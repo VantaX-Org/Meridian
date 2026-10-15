@@ -19,7 +19,7 @@ import StewardHomePage from "../steward/page";
 import BasisHomePage from "../basis/page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams("") }));
 
 const OBJECTS: ObjectSummary[] = [
   { module: "material_master", label: "Material Master", composite_score: 72.5, readiness: "warn", failing_checks: 1, affected_records: 120 },

@@ -13,6 +13,7 @@ import { sendOwnerDigests } from "@/lib/api/owners";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { useInsightScope } from "../_components/useInsightScope";
 
 /** No direct severity->PillTone mapping exists yet; critical/high read as blocking (no-go), medium as at-risk, low/other as neutral. */
 function severityTone(severity: string): PillTone {
@@ -74,6 +75,7 @@ function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend
 
 export default function OwnersPage() {
   const { can } = useRole();
+  const { run } = useInsightScope();
   const canSend = can("manage_rules");
   const send = useSendDigests();
   const [confirmAll, setConfirmAll] = useState(false);
@@ -82,7 +84,7 @@ export default function OwnersPage() {
     queryFn: () => getOwners(),
   });
 
-  const readiness = useQuery({ queryKey: queryKeys.insights("readiness", undefined), queryFn: () => getReadiness() });
+  const readiness = useQuery({ queryKey: queryKeys.insights("readiness", run), queryFn: () => getReadiness({ version_id: run }) });
   const owners = data?.owners ?? [];
 
   const threshold = readiness.data?.threshold;
