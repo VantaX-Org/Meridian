@@ -6,7 +6,7 @@ module: ewms_transfer_orders
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR01964
+- id: DXR2bf42b34
   enabled: false
   field: LTAK.BWART
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: LTAK.BWART '{invalid_value}' is not defined in the check table T156.BWART. Correct it there or add the missing
       entry.
   record_fix_template: LTAK.BWART points at a check table T156.BWART entry that does not exist.
-- id: DXR01965
+- id: DXR211e88e8
   enabled: false
   field: LTAK.TRART
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: LTAK.TRART '{invalid_value}' is not defined in the check table T333A.TRART. Correct it there or add the missing
       entry.
   record_fix_template: LTAK.TRART points at a check table T333A.TRART entry that does not exist.
-- id: DXR01966
+- id: DXR303a90a1
   enabled: false
   field: LTAK.REFNR
   check_class: referential_check
@@ -56,7 +56,7 @@ rules:
     __other__: LTAK.REFNR '{invalid_value}' is not defined in the check table T311.REFNR. Correct it there or add the missing
       entry.
   record_fix_template: LTAK.REFNR points at a check table T311.REFNR entry that does not exist.
-- id: DXR01967
+- id: DXR12ccf3fe
   enabled: false
   field: LTAK.DRUKZ
   check_class: referential_check
@@ -73,7 +73,7 @@ rules:
     __other__: LTAK.DRUKZ '{invalid_value}' is not defined in the check table T329F.DRUKZ. Correct it there or add the missing
       entry.
   record_fix_template: LTAK.DRUKZ points at a check table T329F.DRUKZ entry that does not exist.
-- id: DXV00615
+- id: DXV9ff5d642
   enabled: false
   field: LTAK.KR2SO
   check_class: domain_value_check
@@ -92,7 +92,7 @@ rules:
   fix_map:
     __other__: 'LTAK.KR2SO ''{invalid_value}'' is not in domain LTAK_KR2SO. Set it to one of: 1, N, V.'
   record_fix_template: 'LTAK.KR2SO is {actual_value}; expected one of: 1, N, V.'
-- id: DXV00616
+- id: DXV65b4273f
   enabled: false
   field: LTAK.KZLEI
   check_class: domain_value_check
@@ -112,7 +112,7 @@ rules:
   fix_map:
     __other__: 'LTAK.KZLEI ''{invalid_value}'' is not in domain LVS_KZLEI. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'LTAK.KZLEI is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXV00617
+- id: DXV38a77a57
   enabled: false
   field: LTAK.KISTZ
   check_class: domain_value_check
@@ -131,7 +131,7 @@ rules:
   fix_map:
     __other__: 'LTAK.KISTZ ''{invalid_value}'' is not in domain LVS_KISTZ. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAK.KISTZ is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00618
+- id: DXV2f7bc302
   enabled: false
   field: LTAK.HRSTS
   check_class: domain_value_check
@@ -150,7 +150,7 @@ rules:
   fix_map:
     __other__: 'LTAK.HRSTS ''{invalid_value}'' is not in domain LTAK_HRSTS. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAK.HRSTS is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00619
+- id: DXV6e86a6fb
   enabled: false
   field: LTAK.L2SKA
   check_class: domain_value_check
@@ -168,7 +168,7 @@ rules:
   fix_map:
     __other__: 'LTAK.L2SKA ''{invalid_value}'' is not in domain LVS_2SKTAART. Set it to one of: 1, 2.'
   record_fix_template: 'LTAK.L2SKA is {actual_value}; expected one of: 1, 2.'
-- id: DXV00620
+- id: DXV63124b41
   enabled: false
   field: LTAK.KZVEP
   check_class: domain_value_check
@@ -186,7 +186,7 @@ rules:
   fix_map:
     __other__: 'LTAK.KZVEP ''{invalid_value}'' is not in domain LVS_KZVEP. Set it to one of: 1, 2.'
   record_fix_template: 'LTAK.KZVEP is {actual_value}; expected one of: 1, 2.'
-- id: DXR01968
+- id: DXR03ba572f
   enabled: false
   field: LTAK.AUSFB
   check_class: referential_check
@@ -203,7 +203,7 @@ rules:
     __other__: LTAK.AUSFB '{invalid_value}' is not defined in the check table T339.AUSFB. Correct it there or add the missing
       entry.
   record_fix_template: LTAK.AUSFB points at a check table T339.AUSFB entry that does not exist.
-- id: DXV00621
+- id: DXV4d695444
   enabled: false
   field: LTAK.SPEZI
   check_class: domain_value_check
@@ -221,7 +221,7 @@ rules:
   fix_map:
     __other__: 'LTAK.SPEZI ''{invalid_value}'' is not in domain LTAK_SPEZI. Set it to one of: A, B.'
   record_fix_template: 'LTAK.SPEZI is {actual_value}; expected one of: A, B.'
-- id: DXV00622
+- id: DXV197ac313
   enabled: false
   field: LTAK.VBTYP
   check_class: domain_value_check
@@ -306,7 +306,7 @@ rules:
     __other__: 'LTAK.VBTYP ''{invalid_value}'' is not in domain VBTYP. Set it to one of: #, $, &, *, +, ,, -, ., 0, 1, 2,
       3 ....'
   record_fix_template: 'LTAK.VBTYP is {actual_value}; expected one of: #, $, &, *, +, ,, -, ., 0, 1, 2, 3 ....'
-- id: DXV00623
+- id: DXV8450b613
   enabled: false
   field: LTAK.LATER
   check_class: domain_value_check
@@ -325,7 +325,7 @@ rules:
   fix_map:
     __other__: 'LTAK.LATER ''{invalid_value}'' is not in domain LTAK_LATER. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAK.LATER is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR01969
+- id: DXR7a620c9a
   enabled: false
   field: LTAP.WERKS
   check_class: referential_check
@@ -341,7 +341,7 @@ rules:
     __other__: LTAP.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXV00624
+- id: DXVf093bde4
   enabled: false
   field: LTAP.BESTQ
   check_class: domain_value_check
@@ -360,7 +360,7 @@ rules:
   fix_map:
     __other__: 'LTAP.BESTQ ''{invalid_value}'' is not in domain BESTQ. Set it to one of: Q, R, S.'
   record_fix_template: 'LTAP.BESTQ is {actual_value}; expected one of: Q, R, S.'
-- id: DXR01970
+- id: DXR8dae1121
   enabled: false
   field: LTAP.SOBKZ
   check_class: referential_check
@@ -377,7 +377,7 @@ rules:
     __other__: LTAP.SOBKZ '{invalid_value}' is not defined in the check table T148.SOBKZ. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.SOBKZ points at a check table T148.SOBKZ entry that does not exist.
-- id: DXR01971
+- id: DXR9fbdd9b5
   enabled: false
   field: LTAP.MEINS
   check_class: referential_check
@@ -394,7 +394,7 @@ rules:
     __other__: LTAP.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.MEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01972
+- id: DXRfcc8049d
   enabled: false
   field: LTAP.ALTME
   check_class: referential_check
@@ -411,7 +411,7 @@ rules:
     __other__: LTAP.ALTME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.ALTME points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01973
+- id: DXR4735ddc4
   enabled: false
   field: LTAP.LETYP
   check_class: referential_check
@@ -428,7 +428,7 @@ rules:
     __other__: LTAP.LETYP '{invalid_value}' is not defined in the check table T307.LETYP. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.LETYP points at a check table T307.LETYP entry that does not exist.
-- id: DXV00625
+- id: DXVf9aaeee0
   enabled: false
   field: LTAP.NULKO
   check_class: domain_value_check
@@ -452,7 +452,7 @@ rules:
   fix_map:
     __other__: 'LTAP.NULKO ''{invalid_value}'' is not in domain LTAP_NULKO. Set it to one of: 0, 1, 2, 3, 4, 5, 6.'
   record_fix_template: 'LTAP.NULKO is {actual_value}; expected one of: 0, 1, 2, 3, 4, 5, 6.'
-- id: DXV00626
+- id: DXVfe7130dc
   enabled: false
   field: LTAP.KZINV
   check_class: domain_value_check
@@ -475,7 +475,7 @@ rules:
   fix_map:
     __other__: 'LTAP.KZINV ''{invalid_value}'' is not in domain LVS_KZINV. Set it to one of: CC, DC, MA, PE, PN, PZ, ST.'
   record_fix_template: 'LTAP.KZINV is {actual_value}; expected one of: CC, DC, MA, PE, PN, PZ, ST.'
-- id: DXR01974
+- id: DXRa939c4bf
   enabled: false
   field: LTAP.LDEST
   check_class: referential_check
@@ -492,7 +492,7 @@ rules:
     __other__: LTAP.LDEST '{invalid_value}' is not defined in the check table TSP03.PADEST. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.LDEST points at a check table TSP03.PADEST entry that does not exist.
-- id: DXR01975
+- id: DXRde21aba1
   enabled: false
   field: LTAP.VLBER
   check_class: referential_check
@@ -509,7 +509,7 @@ rules:
     __other__: LTAP.VLBER '{invalid_value}' is not defined in the check table T302.LGBER. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.VLBER points at a check table T302.LGBER entry that does not exist.
-- id: DXR01976
+- id: DXR5657cd55
   enabled: false
   field: LTAP.NLBER
   check_class: referential_check
@@ -526,7 +526,7 @@ rules:
     __other__: LTAP.NLBER '{invalid_value}' is not defined in the check table T302.LGBER. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.NLBER points at a check table T302.LGBER entry that does not exist.
-- id: DXR01977
+- id: DXR5be75f4c
   enabled: false
   field: LTAP.RLTYP
   check_class: referential_check
@@ -543,7 +543,7 @@ rules:
     __other__: LTAP.RLTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.RLTYP points at a check table T301.LGTYP entry that does not exist.
-- id: DXR01978
+- id: DXRd46cc11f
   enabled: false
   field: LTAP.RLBER
   check_class: referential_check
@@ -560,7 +560,7 @@ rules:
     __other__: LTAP.RLBER '{invalid_value}' is not defined in the check table T302.LGBER. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.RLBER points at a check table T302.LGBER entry that does not exist.
-- id: DXR01979
+- id: DXRcc6a45c1
   enabled: false
   field: LTAP.KZDIF
   check_class: referential_check
@@ -577,7 +577,7 @@ rules:
     __other__: LTAP.KZDIF '{invalid_value}' is not defined in the check table T336.KZDIF. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.KZDIF points at a check table T336.KZDIF entry that does not exist.
-- id: DXR01980
+- id: DXRaeba7cd1
   enabled: false
   field: LTAP.VLENR
   check_class: referential_check
@@ -594,7 +594,7 @@ rules:
     __other__: LTAP.VLENR '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.VLENR points at a check table LEIN.LENUM entry that does not exist.
-- id: DXR01981
+- id: DXR4d805fc1
   enabled: false
   field: LTAP.NLENR
   check_class: referential_check
@@ -611,7 +611,7 @@ rules:
     __other__: LTAP.NLENR '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.NLENR points at a check table LEIN.LENUM entry that does not exist.
-- id: DXR01982
+- id: DXRed5d15c3
   enabled: false
   field: LTAP.DLENR
   check_class: referential_check
@@ -628,7 +628,7 @@ rules:
     __other__: LTAP.DLENR '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.DLENR points at a check table LEIN.LENUM entry that does not exist.
-- id: DXV00627
+- id: DXV4b2170ca
   enabled: false
   field: LTAP.VLEST
   check_class: domain_value_check
@@ -653,7 +653,7 @@ rules:
   fix_map:
     __other__: 'LTAP.VLEST ''{invalid_value}'' is not in domain LEIN_STATU. Set it to one of: 1, 2, 3, 4, 5, 6, A, B, C.'
   record_fix_template: 'LTAP.VLEST is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, A, B, C.'
-- id: DXV00628
+- id: DXV39ea9115
   enabled: false
   field: LTAP.NLEST
   check_class: domain_value_check
@@ -678,7 +678,7 @@ rules:
   fix_map:
     __other__: 'LTAP.NLEST ''{invalid_value}'' is not in domain LEIN_STATU. Set it to one of: 1, 2, 3, 4, 5, 6, A, B, C.'
   record_fix_template: 'LTAP.NLEST is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, A, B, C.'
-- id: DXV00629
+- id: DXV92973e0a
   enabled: false
   field: LTAP.POSTY
   check_class: domain_value_check
@@ -696,7 +696,7 @@ rules:
   fix_map:
     __other__: 'LTAP.POSTY ''{invalid_value}'' is not in domain LTAP_POSTY. Set it to one of: 1, 2.'
   record_fix_template: 'LTAP.POSTY is {actual_value}; expected one of: 1, 2.'
-- id: DXV00630
+- id: DXVf1ae8f8f
   enabled: false
   field: LTAP.VSUMM
   check_class: domain_value_check
@@ -714,7 +714,7 @@ rules:
   fix_map:
     __other__: 'LTAP.VSUMM ''{invalid_value}'' is not in domain T331BSUMME. Set it to one of: 1, 2.'
   record_fix_template: 'LTAP.VSUMM is {actual_value}; expected one of: 1, 2.'
-- id: DXV00631
+- id: DXV76b341b4
   enabled: false
   field: LTAP.NSUMM
   check_class: domain_value_check
@@ -732,7 +732,7 @@ rules:
   fix_map:
     __other__: 'LTAP.NSUMM ''{invalid_value}'' is not in domain T331BSUMME. Set it to one of: 1, 2.'
   record_fix_template: 'LTAP.NSUMM is {actual_value}; expected one of: 1, 2.'
-- id: DXV00632
+- id: DXV21d16635
   enabled: false
   field: LTAP.VKAPA
   check_class: domain_value_check
@@ -754,7 +754,7 @@ rules:
   fix_map:
     __other__: 'LTAP.VKAPA ''{invalid_value}'' is not in domain T331_KAPAP. Set it to one of: 1, 2, 3, 4, 5, 6.'
   record_fix_template: 'LTAP.VKAPA is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6.'
-- id: DXV00633
+- id: DXV9f917faf
   enabled: false
   field: LTAP.NKAPA
   check_class: domain_value_check
@@ -776,7 +776,7 @@ rules:
   fix_map:
     __other__: 'LTAP.NKAPA ''{invalid_value}'' is not in domain T331_KAPAP. Set it to one of: 1, 2, 3, 4, 5, 6.'
   record_fix_template: 'LTAP.NKAPA is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6.'
-- id: DXV00634
+- id: DXVb103f475
   enabled: false
   field: LTAP.RKAPA
   check_class: domain_value_check
@@ -798,7 +798,7 @@ rules:
   fix_map:
     __other__: 'LTAP.RKAPA ''{invalid_value}'' is not in domain T331_KAPAP. Set it to one of: 1, 2, 3, 4, 5, 6.'
   record_fix_template: 'LTAP.RKAPA is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6.'
-- id: DXV00635
+- id: DXV4efad79e
   enabled: false
   field: LTAP.KZSUB
   check_class: domain_value_check
@@ -816,7 +816,7 @@ rules:
   fix_map:
     __other__: 'LTAP.KZSUB ''{invalid_value}'' is not in domain LTAP_KZSUB. Set it to one of: 1, X.'
   record_fix_template: 'LTAP.KZSUB is {actual_value}; expected one of: 1, X.'
-- id: DXR01983
+- id: DXR74c08d9c
   enabled: false
   field: LTAP.LGORT
   check_class: referential_check
@@ -833,7 +833,7 @@ rules:
     __other__: LTAP.LGORT '{invalid_value}' is not defined in the check table T001L.LGORT. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.LGORT points at a check table T001L.LGORT entry that does not exist.
-- id: DXR01984
+- id: DXR4b9c1cf0
   enabled: false
   field: LTAP.ZEIEI
   check_class: referential_check
@@ -850,7 +850,7 @@ rules:
     __other__: LTAP.ZEIEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.ZEIEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00636
+- id: DXV2e1fc557
   enabled: false
   field: LTAP.IMREL
   check_class: domain_value_check
@@ -868,7 +868,7 @@ rules:
   fix_map:
     __other__: 'LTAP.IMREL ''{invalid_value}'' is not in domain LVS_IMREL. Set it to one of: 1, 2.'
   record_fix_template: 'LTAP.IMREL is {actual_value}; expected one of: 1, 2.'
-- id: DXR01985
+- id: DXR12c1e36a
   enabled: false
   field: LTAP.WIRME
   check_class: referential_check
@@ -885,7 +885,7 @@ rules:
     __other__: LTAP.WIRME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: LTAP.WIRME points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00637
+- id: DXV7844f472
   enabled: false
   field: LTAP.KBNKZ
   check_class: domain_value_check
@@ -902,7 +902,7 @@ rules:
   fix_map:
     __other__: 'LTAP.KBNKZ ''{invalid_value}'' is not in domain KBNKZ. Set it to one of: X, Y.'
   record_fix_template: 'LTAP.KBNKZ is {actual_value}; expected one of: X, Y.'
-- id: DXV00638
+- id: DXVbaa6ba67
   enabled: false
   field: LTAP.KZFME
   check_class: domain_value_check
@@ -920,7 +920,7 @@ rules:
   fix_map:
     __other__: 'LTAP.KZFME ''{invalid_value}'' is not in domain KZFME. Set it to one of: A, B.'
   record_fix_template: 'LTAP.KZFME is {actual_value}; expected one of: A, B.'
-- id: DXV00639
+- id: DXVc8c1674d
   enabled: false
   field: LTAP.QUSUB
   check_class: domain_value_check
@@ -940,7 +940,7 @@ rules:
   fix_map:
     __other__: 'LTAP.QUSUB ''{invalid_value}'' is not in domain RL03TQUKNZ. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAP.QUSUB is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00640
+- id: DXV479c41a7
   enabled: false
   field: LTAP.FHUTA
   check_class: domain_value_check
@@ -959,7 +959,7 @@ rules:
   fix_map:
     __other__: 'LTAP.FHUTA ''{invalid_value}'' is not in domain LTAP_FHUTA. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAP.FHUTA is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00641
+- id: DXV447f8d73
   enabled: false
   field: LTAP.PCKPF
   check_class: domain_value_check

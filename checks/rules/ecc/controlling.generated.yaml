@@ -6,7 +6,7 @@ module: controlling
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00259
+- id: DXR7dc335ab
   enabled: false
   field: CEPC.VERAK_USER
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: CEPC.VERAK_USER '{invalid_value}' is not defined in the check table USR02.BNAME. Correct it there or add the
       missing entry.
   record_fix_template: CEPC.VERAK_USER points at a check table USR02.BNAME entry that does not exist.
-- id: DXR00260
+- id: DXR98be31ff
   enabled: false
   field: CEPC.LAND1
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: CEPC.LAND1 '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.LAND1 points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00261
+- id: DXR97a5e684
   enabled: false
   field: CEPC.SPRAS
   check_class: referential_check
@@ -57,7 +57,7 @@ rules:
     __other__: CEPC.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00262
+- id: DXR99a1c61f
   enabled: false
   field: CEPC.VNAME
   check_class: referential_check
@@ -74,7 +74,7 @@ rules:
     __other__: CEPC.VNAME '{invalid_value}' is not defined in the check table T8JV.VNAME. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.VNAME points at a check table T8JV.VNAME entry that does not exist.
-- id: DXR00263
+- id: DXRa06bc0c8
   enabled: false
   field: CEPC.RECID
   check_class: referential_check
@@ -91,7 +91,7 @@ rules:
     __other__: CEPC.RECID '{invalid_value}' is not defined in the check table T8JJ.RECID. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.RECID points at a check table T8JJ.RECID entry that does not exist.
-- id: DXR00264
+- id: DXRdb6bd6ac
   enabled: false
   field: CEPC.ETYPE
   check_class: referential_check
@@ -108,7 +108,7 @@ rules:
     __other__: CEPC.ETYPE '{invalid_value}' is not defined in the check table T8JE.ETYPE. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.ETYPE points at a check table T8JE.ETYPE entry that does not exist.
-- id: DXR00265
+- id: DXRbbb9e3ef
   enabled: false
   field: CEPC.TXJCD
   check_class: referential_check
@@ -125,7 +125,7 @@ rules:
     __other__: CEPC.TXJCD '{invalid_value}' is not defined in the check table TTXJ.TXJCD. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.TXJCD points at a check table TTXJ.TXJCD entry that does not exist.
-- id: DXR00266
+- id: DXR8432b70c
   enabled: false
   field: CEPC.REGIO
   check_class: referential_check
@@ -142,7 +142,7 @@ rules:
     __other__: CEPC.REGIO '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.REGIO points at a check table T005S.BLAND entry that does not exist.
-- id: DXR00267
+- id: DXR6cb99bf6
   enabled: false
   field: CEPC.KVEWE
   check_class: referential_check
@@ -159,7 +159,7 @@ rules:
     __other__: CEPC.KVEWE '{invalid_value}' is not defined in the check table T681V.KVEWE. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.KVEWE points at a check table T681V.KVEWE entry that does not exist.
-- id: DXR00268
+- id: DXRb230a09c
   enabled: false
   field: CEPC.KAPPL
   check_class: referential_check
@@ -176,7 +176,7 @@ rules:
     __other__: CEPC.KAPPL '{invalid_value}' is not defined in the check table T681A.KAPPL. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.KAPPL points at a check table T681A.KAPPL entry that does not exist.
-- id: DXR00269
+- id: DXR51781475
   enabled: false
   field: CEPC.KALSM
   check_class: referential_check
@@ -193,7 +193,7 @@ rules:
     __other__: CEPC.KALSM '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.KALSM points at a check table T683.KALSM entry that does not exist.
-- id: DXR00270
+- id: DXRb8853f64
   enabled: false
   field: CEPC.LOGSYSTEM
   check_class: referential_check
@@ -210,7 +210,7 @@ rules:
     __other__: CEPC.LOGSYSTEM '{invalid_value}' is not defined in the check table TBDLS.LOGSYS. Correct it there or add the
       missing entry.
   record_fix_template: CEPC.LOGSYSTEM points at a check table TBDLS.LOGSYS entry that does not exist.
-- id: DXR00271
+- id: DXRca4e527f
   enabled: false
   field: CEPC.PCA_TEMPLATE
   check_class: referential_check
@@ -227,7 +227,7 @@ rules:
     __other__: CEPC.PCA_TEMPLATE '{invalid_value}' is not defined in the check table COTPL.TEMPLATE. Correct it there or add
       the missing entry.
   record_fix_template: CEPC.PCA_TEMPLATE points at a check table COTPL.TEMPLATE entry that does not exist.
-- id: DXR00272
+- id: DXR10f128d9
   enabled: false
   field: CSKA.FUNC_AREA
   check_class: referential_check
@@ -244,7 +244,7 @@ rules:
     __other__: CSKA.FUNC_AREA '{invalid_value}' is not defined in the check table TFKB.FKBER. Correct it there or add the
       missing entry.
   record_fix_template: CSKA.FUNC_AREA points at a check table TFKB.FKBER entry that does not exist.
-- id: DXR00273
+- id: DXRc6aaed98
   enabled: false
   field: CSKB.MSEHI
   check_class: referential_check
@@ -261,7 +261,7 @@ rules:
     __other__: CSKB.MSEHI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: CSKB.MSEHI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00274
+- id: DXR0637ff23
   enabled: false
   field: CSKB.RECID
   check_class: referential_check
@@ -278,7 +278,7 @@ rules:
     __other__: CSKB.RECID '{invalid_value}' is not defined in the check table T8JJ.RECID. Correct it there or add the missing
       entry.
   record_fix_template: CSKB.RECID points at a check table T8JJ.RECID entry that does not exist.
-- id: DXR00275
+- id: DXRd7a5c857
   enabled: false
   field: CSKS.KALSM
   check_class: referential_check
@@ -295,7 +295,7 @@ rules:
     __other__: CSKS.KALSM '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
       entry.
   record_fix_template: CSKS.KALSM points at a check table T683.KALSM entry that does not exist.
-- id: DXR00276
+- id: DXR759d77e0
   enabled: false
   field: CSKS.REGIO
   check_class: referential_check
@@ -312,7 +312,7 @@ rules:
     __other__: CSKS.REGIO '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: CSKS.REGIO points at a check table T005S.BLAND entry that does not exist.
-- id: DXR00277
+- id: DXR7a8acef5
   enabled: false
   field: CSKS.SPRAS
   check_class: referential_check
@@ -329,7 +329,7 @@ rules:
     __other__: CSKS.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: CSKS.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00278
+- id: DXR352f89b8
   enabled: false
   field: CSKS.OBJNR
   check_class: referential_check
@@ -346,7 +346,7 @@ rules:
     __other__: CSKS.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: CSKS.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR00279
+- id: DXR4c0a6e87
   enabled: false
   field: CSKS.LOGSYSTEM
   check_class: referential_check
@@ -363,7 +363,7 @@ rules:
     __other__: CSKS.LOGSYSTEM '{invalid_value}' is not defined in the check table TBDLS.LOGSYS. Correct it there or add the
       missing entry.
   record_fix_template: CSKS.LOGSYSTEM points at a check table TBDLS.LOGSYS entry that does not exist.
-- id: DXV00088
+- id: DXVae255d3f
   enabled: false
   field: CSLA.LATYPI
   check_class: domain_value_check
@@ -384,7 +384,7 @@ rules:
   fix_map:
     __other__: 'CSLA.LATYPI ''{invalid_value}'' is not in domain LATYPI. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'CSLA.LATYPI is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR00280
+- id: DXR88515228
   enabled: false
   field: CSLA.AUSEH
   check_class: referential_check
@@ -401,7 +401,7 @@ rules:
     __other__: CSLA.AUSEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: CSLA.AUSEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00281
+- id: DXR73ca1d27
   enabled: false
   field: CSLA.TARKZ
   check_class: referential_check
@@ -418,7 +418,7 @@ rules:
     __other__: CSLA.TARKZ '{invalid_value}' is not defined in the check table TKA10.TARKZ. Correct it there or add the missing
       entry.
   record_fix_template: CSLA.TARKZ points at a check table TKA10.TARKZ entry that does not exist.
-- id: DXR00282
+- id: DXR11f0167a
   enabled: false
   field: CSLA.TARKZ_I
   check_class: referential_check

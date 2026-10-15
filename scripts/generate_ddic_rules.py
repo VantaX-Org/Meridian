@@ -420,6 +420,34 @@ def _target_state(module: str) -> str:
         return "ECC_AND_S4HANA"
 
 
+def _rule_id(kind: str, module: str, rule: dict) -> str:
+    """A stable id for a derived rule, derived from what the rule is about.
+
+    Ids must survive an edit to any rule pack. They do not just label a rule here:
+    ``rules_hq_cache``, the tenant ``rules`` table and ``checks/lifecycle.py`` all
+    key on the bare id, so an id that moves silently re-points a tenant's or HQ's
+    "enable this" decision at a different rule. The original scheme numbered rules
+    from a single counter across every module in sorted order, which meant adding
+    one rule to one module shifted the id of every later rule: adding a single
+    authored rule to ``interface_health`` moved 1,584 of the 2,118 derived ids onto
+    different fields, and the 1,962 DDIC rules a deployment had explicitly enabled
+    would have started governing the wrong ones.
+
+    So the id is a digest of the rule's natural key — its kind, module, field and
+    (for a referential check) the table it points at — which is unique within a
+    module and does not depend on position. Adding, removing or reordering rules
+    leaves every other id alone.
+    """
+    import hashlib
+
+    key = "|".join((
+        kind, module, str(rule.get("field") or ""), str(rule.get("target_table") or ""),
+        str(rule.get("check_class") or ""),
+    ))
+    digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:8]
+    return f"{ID_PREFIX[kind]}{digest}"
+
+
 def build() -> dict[tuple[str, str], str]:
     """(category, module) -> rendered sidecar, for modules that have a hand-written pack."""
     dictionary = get_dictionary("s4hana")
@@ -428,21 +456,25 @@ def build() -> dict[tuple[str, str], str]:
     by_home: dict[tuple[str, str], list[tuple[str, dict]]] = defaultdict(list)
     for category, module, kind, rule in derive(dictionary, exposed, covered):
         by_home[(category, module)].append((kind, rule))
-    # Rule ids are unique across the whole catalogue, not per module: the seeded tenant
-    # rule table and the integrity gate both key on the bare id.
-    counters: Counter = Counter()
     out: dict[tuple[str, str], str] = {}
+    seen_ids: set[str] = set()
     for category, module in sorted(by_home):
         if not (RULES_DIR / category / f"{module}.yaml").exists():
             continue  # a registry-only module (process_discovery, s4_load_sim): no pack to sit beside
         rules = []
         for kind, rule in by_home[(category, module)]:
-            counters[kind] += 1
+            rid = _rule_id(kind, module, rule)
+            if rid in seen_ids:
+                raise SystemExit(
+                    f"generated rule id collision: {rid} ({module} {rule.get('field')}). "
+                    f"The natural key must identify one rule."
+                )
+            seen_ids.add(rid)
             # Derived rules ship disabled: they are mechanically sound (every one is
             # proven to fire on a failing record) but not yet consultant-validated
             # against real customer data, so they must not flag clean records by
             # default. A tenant/HQ explicitly enables them via the rules table.
-            rules.append({"id": f"{ID_PREFIX[kind]}{counters[kind]:05d}", "enabled": False, **rule})
+            rules.append({"id": rid, "enabled": False, **rule})
         out[(category, module)] = render(module, rules, _target_state(module))
     return out
 

@@ -6,7 +6,7 @@ module: material_master
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00433
+- id: DXR27593d30
   enabled: false
   field: AUSP.ATAWE
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: AUSP.ATAWE '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: AUSP.ATAWE points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00434
+- id: DXR338de320
   enabled: false
   field: AUSP.ATAW1
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: AUSP.ATAW1 '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: AUSP.ATAW1 points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00129
+- id: DXVa60e6c06
   enabled: false
   field: AUSP.ATPRZ
   check_class: domain_value_check
@@ -58,7 +58,7 @@ rules:
   fix_map:
     __other__: 'AUSP.ATPRZ ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'AUSP.ATPRZ is {actual_value}; expected one of: *, X.'
-- id: DXV00130
+- id: DXVffd3cbcd
   enabled: false
   field: AUSP.ATAUT
   check_class: domain_value_check
@@ -83,7 +83,7 @@ rules:
   fix_map:
     __other__: 'AUSP.ATAUT ''{invalid_value}'' is not in domain ATAUT. Set it to one of: 1, 2, 3, 4, 5, 6, 7, 8, X.'
   record_fix_template: 'AUSP.ATAUT is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7, 8, X.'
-- id: DXV00131
+- id: DXV6e383340
   enabled: false
   field: AUSP.ATVGLART
   check_class: domain_value_check
@@ -107,7 +107,7 @@ rules:
   fix_map:
     __other__: 'AUSP.ATVGLART ''{invalid_value}'' is not in domain ATVGLART. Set it to one of: 1, 2, 3, 4, 5, 6, 7.'
   record_fix_template: 'AUSP.ATVGLART is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7.'
-- id: DXV00132
+- id: DXV103f82a8
   enabled: false
   field: AUSP.TYPE_BP_GUID
   check_class: domain_value_check
@@ -126,7 +126,7 @@ rules:
   fix_map:
     __other__: 'AUSP.TYPE_BP_GUID ''{invalid_value}'' is not in domain BU_TYPE. Set it to one of: 1, 2, 3.'
   record_fix_template: 'AUSP.TYPE_BP_GUID is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00133
+- id: DXVe5d54f80
   enabled: false
   field: CABN.ATEND
   check_class: domain_value_check
@@ -144,7 +144,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATEND ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATEND is {actual_value}; expected one of: *, X.'
-- id: DXV00134
+- id: DXV89598f52
   enabled: false
   field: CABN.ATERF
   check_class: domain_value_check
@@ -161,7 +161,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATERF ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATERF is {actual_value}; expected one of: *, X.'
-- id: DXV00135
+- id: DXV381e78ba
   enabled: false
   field: CABN.ATGLO
   check_class: domain_value_check
@@ -179,7 +179,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATGLO ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATGLO is {actual_value}; expected one of: *, X.'
-- id: DXV00136
+- id: DXV52a27f0f
   enabled: false
   field: CABN.ATINT
   check_class: domain_value_check
@@ -197,7 +197,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATINT ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATINT is {actual_value}; expected one of: *, X.'
-- id: DXV00137
+- id: DXV1b668896
   enabled: false
   field: CABN.ATUNS
   check_class: domain_value_check
@@ -215,7 +215,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATUNS ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATUNS is {actual_value}; expected one of: *, X.'
-- id: DXV00138
+- id: DXVdc737df0
   enabled: false
   field: CABN.ATSON
   check_class: domain_value_check
@@ -233,7 +233,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATSON ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATSON is {actual_value}; expected one of: *, X.'
-- id: DXV00139
+- id: DXV66775789
   enabled: false
   field: CABN.ATWRD
   check_class: domain_value_check
@@ -251,7 +251,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATWRD ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATWRD is {actual_value}; expected one of: *, X.'
-- id: DXV00140
+- id: DXV419a555a
   enabled: false
   field: CABN.ATFOD
   check_class: domain_value_check
@@ -269,7 +269,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATFOD ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATFOD is {actual_value}; expected one of: *, X.'
-- id: DXV00141
+- id: DXVc704b9a6
   enabled: false
   field: CABN.ATHIE
   check_class: domain_value_check
@@ -287,7 +287,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATHIE ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATHIE is {actual_value}; expected one of: *, X.'
-- id: DXV00142
+- id: DXV9c058206
   enabled: false
   field: CABN.ATDEX
   check_class: domain_value_check
@@ -307,7 +307,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATDEX ''{invalid_value}'' is not in domain ATDEX. Set it to one of: 0, 1, 2, 3.'
   record_fix_template: 'CABN.ATDEX is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00143
+- id: DXVb12da4d3
   enabled: false
   field: CABN.ATVSC
   check_class: domain_value_check
@@ -325,7 +325,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATVSC ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATVSC is {actual_value}; expected one of: *, X.'
-- id: DXV00144
+- id: DXV2e4e6590
   enabled: false
   field: CABN.ATYAC
   check_class: domain_value_check
@@ -343,7 +343,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATYAC ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATYAC is {actual_value}; expected one of: *, X.'
-- id: DXR00435
+- id: DXR0302b8cd
   enabled: false
   field: CABN.ATMST
   check_class: referential_check
@@ -360,7 +360,7 @@ rules:
     __other__: CABN.ATMST '{invalid_value}' is not defined in the check table TCMS.ATMST. Correct it there or add the missing
       entry.
   record_fix_template: CABN.ATMST points at a check table TCMS.ATMST entry that does not exist.
-- id: DXV00145
+- id: DXV0432def9
   enabled: false
   field: CABN.ATWSO
   check_class: domain_value_check
@@ -378,7 +378,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATWSO ''{invalid_value}'' is not in domain ATSOR. Set it to one of: A, D.'
   record_fix_template: 'CABN.ATWSO is {actual_value}; expected one of: A, D.'
-- id: DXV00146
+- id: DXV6aa6ea6c
   enabled: false
   field: CABN.ATBSO
   check_class: domain_value_check
@@ -396,7 +396,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATBSO ''{invalid_value}'' is not in domain ATSOR. Set it to one of: A, D.'
   record_fix_template: 'CABN.ATBSO is {actual_value}; expected one of: A, D.'
-- id: DXR00436
+- id: DXR161c82c1
   enabled: false
   field: CABN.AENNR
   check_class: referential_check
@@ -413,7 +413,7 @@ rules:
     __other__: CABN.AENNR '{invalid_value}' is not defined in the check table AENR.AENNR. Correct it there or add the missing
       entry.
   record_fix_template: CABN.AENNR points at a check table AENR.AENNR entry that does not exist.
-- id: DXV00147
+- id: DXV84ca0fb7
   enabled: false
   field: CABN.ATINP
   check_class: domain_value_check
@@ -431,7 +431,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATINP ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATINP is {actual_value}; expected one of: *, X.'
-- id: DXV00148
+- id: DXV26bc8a78
   enabled: false
   field: CABN.ATVIE
   check_class: domain_value_check
@@ -449,7 +449,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATVIE ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATVIE is {actual_value}; expected one of: *, X.'
-- id: DXV00149
+- id: DXV652ebf6c
   enabled: false
   field: CABN.ATHKA
   check_class: domain_value_check
@@ -467,7 +467,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATHKA ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATHKA is {actual_value}; expected one of: *, X.'
-- id: DXV00150
+- id: DXVe01b73cc
   enabled: false
   field: CABN.ATHKO
   check_class: domain_value_check
@@ -485,7 +485,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATHKO ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATHKO is {actual_value}; expected one of: *, X.'
-- id: DXR00437
+- id: DXR8dbe9419
   enabled: false
   field: CABN.CLINT
   check_class: referential_check
@@ -502,7 +502,7 @@ rules:
     __other__: CABN.CLINT '{invalid_value}' is not defined in the check table KLAH.CLINT. Correct it there or add the missing
       entry.
   record_fix_template: CABN.CLINT points at a check table KLAH.CLINT entry that does not exist.
-- id: DXV00151
+- id: DXVb36158ee
   enabled: false
   field: CABN.ATTOL
   check_class: domain_value_check
@@ -520,7 +520,7 @@ rules:
   fix_map:
     __other__: 'CABN.ATTOL ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CABN.ATTOL is {actual_value}; expected one of: *, X.'
-- id: DXR00438
+- id: DXRb4aed29d
   enabled: false
   field: CAWN.ATAWE
   check_class: referential_check
@@ -537,7 +537,7 @@ rules:
     __other__: CAWN.ATAWE '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: CAWN.ATAWE points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00439
+- id: DXRc842beee
   enabled: false
   field: CAWN.ATAW1
   check_class: referential_check
@@ -554,7 +554,7 @@ rules:
     __other__: CAWN.ATAW1 '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: CAWN.ATAW1 points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00440
+- id: DXRe838f2cb
   enabled: false
   field: CAWN.SPRAS
   check_class: referential_check
@@ -571,7 +571,7 @@ rules:
     __other__: CAWN.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: CAWN.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00441
+- id: DXR1c3ab974
   enabled: false
   field: CAWN.AENNR
   check_class: referential_check
@@ -588,7 +588,7 @@ rules:
     __other__: CAWN.AENNR '{invalid_value}' is not defined in the check table AENR.AENNR. Correct it there or add the missing
       entry.
   record_fix_template: CAWN.AENNR points at a check table AENR.AENNR entry that does not exist.
-- id: DXV00152
+- id: DXV2b182010
   enabled: false
   field: CAWN.ATPRZ
   check_class: domain_value_check
@@ -606,7 +606,7 @@ rules:
   fix_map:
     __other__: 'CAWN.ATPRZ ''{invalid_value}'' is not in domain ATXFE. Set it to one of: *, X.'
   record_fix_template: 'CAWN.ATPRZ is {actual_value}; expected one of: *, X.'
-- id: DXR00442
+- id: DXR4447dff4
   enabled: false
   field: CKMLHD.BWTAR
   check_class: referential_check
@@ -623,7 +623,7 @@ rules:
     __other__: CKMLHD.BWTAR '{invalid_value}' is not defined in the check table T149D.BWTAR. Correct it there or add the missing
       entry.
   record_fix_template: CKMLHD.BWTAR points at a check table T149D.BWTAR entry that does not exist.
-- id: DXV00153
+- id: DXV554bf8d6
   enabled: false
   field: CKMLHD.KZBWS
   check_class: domain_value_check
@@ -641,7 +641,7 @@ rules:
   fix_map:
     __other__: 'CKMLHD.KZBWS ''{invalid_value}'' is not in domain KZBWS. Set it to one of: A, M.'
   record_fix_template: 'CKMLHD.KZBWS is {actual_value}; expected one of: A, M.'
-- id: DXR00443
+- id: DXR4423ee82
   enabled: false
   field: INOB.ROBTAB
   check_class: referential_check
@@ -658,7 +658,7 @@ rules:
     __other__: INOB.ROBTAB '{invalid_value}' is not defined in the check table TCLO.OBTAB. Correct it there or add the missing
       entry.
   record_fix_template: INOB.ROBTAB points at a check table TCLO.OBTAB entry that does not exist.
-- id: DXR00444
+- id: DXR346ec21d
   enabled: false
   field: INOB.CLINT
   check_class: referential_check
@@ -675,7 +675,7 @@ rules:
     __other__: INOB.CLINT '{invalid_value}' is not defined in the check table KLAH.CLINT. Correct it there or add the missing
       entry.
   record_fix_template: INOB.CLINT points at a check table KLAH.CLINT entry that does not exist.
-- id: DXR00445
+- id: DXRe1deb9eb
   enabled: false
   field: KLAH.MEINS
   check_class: referential_check
@@ -692,7 +692,7 @@ rules:
     __other__: KLAH.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: KLAH.MEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00446
+- id: DXR331e9fe2
   enabled: false
   field: MARA.WRKST
   check_class: referential_check
@@ -709,7 +709,7 @@ rules:
     __other__: MARA.WRKST '{invalid_value}' is not defined in the check table TWSPR.WRKST. Correct it there or add the missing
       entry.
   record_fix_template: MARA.WRKST points at a check table TWSPR.WRKST entry that does not exist.
-- id: DXR00447
+- id: DXR5e4540db
   enabled: false
   field: MARA.KUNNR
   check_class: referential_check
@@ -726,7 +726,7 @@ rules:
     __other__: MARA.KUNNR '{invalid_value}' is not defined in the check table V_KNA1WETT.KUNNR. Correct it there or add the
       missing entry.
   record_fix_template: MARA.KUNNR points at a check table V_KNA1WETT.KUNNR entry that does not exist.
-- id: DXR00448
+- id: DXR82827435
   enabled: false
   field: MARA.BWVOR
   check_class: referential_check
@@ -743,7 +743,7 @@ rules:
     __other__: MARA.BWVOR '{invalid_value}' is not defined in the check table T6WP1.BWVOR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.BWVOR points at a check table T6WP1.BWVOR entry that does not exist.
-- id: DXR00449
+- id: DXR129d3763
   enabled: false
   field: MARA.BWSCL
   check_class: referential_check
@@ -760,7 +760,7 @@ rules:
     __other__: MARA.BWSCL '{invalid_value}' is not defined in the check table TMBW1.BWSCL. Correct it there or add the missing
       entry.
   record_fix_template: MARA.BWSCL points at a check table TMBW1.BWSCL entry that does not exist.
-- id: DXR00450
+- id: DXR09a2cf1b
   enabled: false
   field: MARA.SAISO
   check_class: referential_check
@@ -777,7 +777,7 @@ rules:
     __other__: MARA.SAISO '{invalid_value}' is not defined in the check table T6WSP.SAISO. Correct it there or add the missing
       entry.
   record_fix_template: MARA.SAISO points at a check table T6WSP.SAISO entry that does not exist.
-- id: DXR00451
+- id: DXR36533588
   enabled: false
   field: MARA.ETIAR
   check_class: referential_check
@@ -794,7 +794,7 @@ rules:
     __other__: MARA.ETIAR '{invalid_value}' is not defined in the check table T6WP3.ETIAR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.ETIAR points at a check table T6WP3.ETIAR entry that does not exist.
-- id: DXR00452
+- id: DXRdac83765
   enabled: false
   field: MARA.ETIFO
   check_class: referential_check
@@ -811,7 +811,7 @@ rules:
     __other__: MARA.ETIFO '{invalid_value}' is not defined in the check table T6WP4.ETIFO. Correct it there or add the missing
       entry.
   record_fix_template: MARA.ETIFO points at a check table T6WP4.ETIFO entry that does not exist.
-- id: DXR00453
+- id: DXRc21c50e7
   enabled: false
   field: MARA.PLGTP
   check_class: referential_check
@@ -828,7 +828,7 @@ rules:
     __other__: MARA.PLGTP '{invalid_value}' is not defined in the check table TWPT.PLGTP. Correct it there or add the missing
       entry.
   record_fix_template: MARA.PLGTP points at a check table TWPT.PLGTP entry that does not exist.
-- id: DXR00454
+- id: DXRebe1308b
   enabled: false
   field: MARA.PMATA
   check_class: referential_check
@@ -845,7 +845,7 @@ rules:
     __other__: MARA.PMATA '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.PMATA points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00455
+- id: DXRe08b2623
   enabled: false
   field: MARA.RBNRM
   check_class: referential_check
@@ -862,7 +862,7 @@ rules:
     __other__: MARA.RBNRM '{invalid_value}' is not defined in the check table T352B.RBNR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.RBNRM points at a check table T352B.RBNR entry that does not exist.
-- id: DXR00456
+- id: DXR2bf39a04
   enabled: false
   field: MARA.ETIAG
   check_class: referential_check
@@ -879,7 +879,7 @@ rules:
     __other__: MARA.ETIAG '{invalid_value}' is not defined in the check table TWEA.ARTGR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.ETIAG points at a check table TWEA.ARTGR entry that does not exist.
-- id: DXR00457
+- id: DXRb64e6812
   enabled: false
   field: MARA.KOSCH
   check_class: referential_check
@@ -896,7 +896,7 @@ rules:
     __other__: MARA.KOSCH '{invalid_value}' is not defined in the check table T190S.KOSCH. Correct it there or add the missing
       entry.
   record_fix_template: MARA.KOSCH points at a check table T190S.KOSCH entry that does not exist.
-- id: DXV00154
+- id: DXV5eec5ca4
   enabled: false
   field: MARA.SPROF
   check_class: domain_value_check
@@ -914,7 +914,7 @@ rules:
   fix_map:
     __other__: 'MARA.SPROF ''{invalid_value}'' is not in domain SPROF. Set it to one of: 1, 2.'
   record_fix_template: 'MARA.SPROF is {actual_value}; expected one of: 1, 2.'
-- id: DXV00155
+- id: DXVd93a814d
   enabled: false
   field: MARA.NRFHG
   check_class: domain_value_check
@@ -933,7 +933,7 @@ rules:
   fix_map:
     __other__: 'MARA.NRFHG ''{invalid_value}'' is not in domain NRFHG. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MARA.NRFHG is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00458
+- id: DXR13522b59
   enabled: false
   field: MARA.MFRNR
   check_class: referential_check
@@ -950,7 +950,7 @@ rules:
     __other__: MARA.MFRNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.MFRNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00459
+- id: DXR5ae06691
   enabled: false
   field: MARA.MPROF
   check_class: referential_check
@@ -967,7 +967,7 @@ rules:
     __other__: MARA.MPROF '{invalid_value}' is not defined in the check table TMPPF.MPROF. Correct it there or add the missing
       entry.
   record_fix_template: MARA.MPROF points at a check table TMPPF.MPROF entry that does not exist.
-- id: DXR00460
+- id: DXRd9b4a7b8
   enabled: false
   field: MARA.SAITY
   check_class: referential_check
@@ -984,7 +984,7 @@ rules:
     __other__: MARA.SAITY '{invalid_value}' is not defined in the check table T6WSA.SAITY. Correct it there or add the missing
       entry.
   record_fix_template: MARA.SAITY points at a check table T6WSA.SAITY entry that does not exist.
-- id: DXR00461
+- id: DXR92d52587
   enabled: false
   field: MARA.COMPL
   check_class: referential_check
@@ -1001,7 +1001,7 @@ rules:
     __other__: MARA.COMPL '{invalid_value}' is not defined in the check table TCSCP_COMP_LVL.COMP_LEVEL. Correct it there
       or add the missing entry.
   record_fix_template: MARA.COMPL points at a check table TCSCP_COMP_LVL.COMP_LEVEL entry that does not exist.
-- id: DXV00156
+- id: DXV5da36f82
   enabled: false
   field: MARA.BFLME
   check_class: domain_value_check
@@ -1020,7 +1020,7 @@ rules:
   fix_map:
     __other__: 'MARA.BFLME ''{invalid_value}'' is not in domain BFLME. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MARA.BFLME is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00462
+- id: DXRc6037121
   enabled: false
   field: MARA.GENNR
   check_class: referential_check
@@ -1037,7 +1037,7 @@ rules:
     __other__: MARA.GENNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.GENNR points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00463
+- id: DXRdb2be70f
   enabled: false
   field: MARA.RMATP
   check_class: referential_check
@@ -1054,7 +1054,7 @@ rules:
     __other__: MARA.RMATP '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.RMATP points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00464
+- id: DXRf18a1cb1
   enabled: false
   field: MARA.HUTYP_DFLT
   check_class: referential_check
@@ -1071,7 +1071,7 @@ rules:
     __other__: MARA.HUTYP_DFLT '{invalid_value}' is not defined in the check table THUTYP.HUTYP. Correct it there or add the
       missing entry.
   record_fix_template: MARA.HUTYP_DFLT points at a check table THUTYP.HUTYP entry that does not exist.
-- id: DXR00465
+- id: DXRc94b8522
   enabled: false
   field: MARA.HUTYP
   check_class: referential_check
@@ -1088,7 +1088,7 @@ rules:
     __other__: MARA.HUTYP '{invalid_value}' is not defined in the check table THUTYP.HUTYP. Correct it there or add the missing
       entry.
   record_fix_template: MARA.HUTYP points at a check table THUTYP.HUTYP entry that does not exist.
-- id: DXR00466
+- id: DXRe93d8eb0
   enabled: false
   field: MARA.QQTIMEUOM
   check_class: referential_check
@@ -1105,7 +1105,7 @@ rules:
     __other__: MARA.QQTIMEUOM '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: MARA.QQTIMEUOM points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00467
+- id: DXR6761d883
   enabled: false
   field: MARA.PS_SMARTFORM
   check_class: referential_check
@@ -1122,7 +1122,7 @@ rules:
     __other__: MARA.PS_SMARTFORM '{invalid_value}' is not defined in the check table STXFADM.FORMNAME. Correct it there or
       add the missing entry.
   record_fix_template: MARA.PS_SMARTFORM points at a check table STXFADM.FORMNAME entry that does not exist.
-- id: DXR00468
+- id: DXRf547979f
   enabled: false
   field: MARA.LOGUNIT
   check_class: referential_check
@@ -1139,7 +1139,7 @@ rules:
     __other__: MARA.LOGUNIT '{invalid_value}' is not defined in the check table MARM.MEINH. Correct it there or add the missing
       entry.
   record_fix_template: MARA.LOGUNIT points at a check table MARM.MEINH entry that does not exist.
-- id: DXR00469
+- id: DXR20f83955
   enabled: false
   field: MARA.CWQPROC
   check_class: referential_check
@@ -1156,7 +1156,7 @@ rules:
     __other__: MARA.CWQPROC '{invalid_value}' is not defined in the check table TCWQPROC.CWQPROC. Correct it there or add
       the missing entry.
   record_fix_template: MARA.CWQPROC points at a check table TCWQPROC.CWQPROC entry that does not exist.
-- id: DXR00470
+- id: DXRdec48f61
   enabled: false
   field: MARA.CWQTOLGR
   check_class: referential_check
@@ -1173,7 +1173,7 @@ rules:
     __other__: MARA.CWQTOLGR '{invalid_value}' is not defined in the check table TCWQTOLGR.CWQTOLGR. Correct it there or add
       the missing entry.
   record_fix_template: MARA.CWQTOLGR points at a check table TCWQTOLGR.CWQTOLGR entry that does not exist.
-- id: DXR00471
+- id: DXR8b6c0de5
   enabled: false
   field: MARA.ADPROF
   check_class: referential_check
@@ -1190,7 +1190,7 @@ rules:
     __other__: MARA.ADPROF '{invalid_value}' is not defined in the check table TAPROF.ADPROF. Correct it there or add the
       missing entry.
   record_fix_template: MARA.ADPROF points at a check table TAPROF.ADPROF entry that does not exist.
-- id: DXR00472
+- id: DXR89228e26
   enabled: false
   field: MARA.MEDIUM
   check_class: referential_check
@@ -1206,7 +1206,7 @@ rules:
     __other__: MARA.MEDIUM '{invalid_value}' is not defined in the check table T372M.MEDIU. Correct it there or add the missing
       entry.
   record_fix_template: MARA.MEDIUM points at a check table T372M.MEDIU entry that does not exist.
-- id: DXR00473
+- id: DXRf052b066
   enabled: false
   field: MARA.COMMODITY
   check_class: referential_check
@@ -1223,7 +1223,7 @@ rules:
     __other__: MARA.COMMODITY '{invalid_value}' is not defined in the check table TBAC_PHYSCOMM.COMMODITY. Correct it there
       or add the missing entry.
   record_fix_template: MARA.COMMODITY points at a check table TBAC_PHYSCOMM.COMMODITY entry that does not exist.
-- id: DXR00474
+- id: DXRe92d645f
   enabled: false
   field: MARA.ANP
   check_class: referential_check
@@ -1240,7 +1240,7 @@ rules:
     __other__: MARA.ANP '{invalid_value}' is not defined in the check table J_1BTANP.J_1BANP. Correct it there or add the
       missing entry.
   record_fix_template: MARA.ANP points at a check table J_1BTANP.J_1BANP entry that does not exist.
-- id: DXR00475
+- id: DXReba2dc43
   enabled: false
   field: MARA./BEV1/LULDEGRP
   check_class: referential_check
@@ -1257,7 +1257,7 @@ rules:
     __other__: MARA./BEV1/LULDEGRP '{invalid_value}' is not defined in the check table /BEV1/LUT906./BEV1/LULDEGRP. Correct
       it there or add the missing entry.
   record_fix_template: MARA./BEV1/LULDEGRP points at a check table /BEV1/LUT906./BEV1/LULDEGRP entry that does not exist.
-- id: DXR00476
+- id: DXRef33844c
   enabled: false
   field: MARA./DSD/SL_TOLTYP
   check_class: referential_check
@@ -1274,7 +1274,7 @@ rules:
     __other__: MARA./DSD/SL_TOLTYP '{invalid_value}' is not defined in the check table /DSD/SL_TGTYP.TOLTYP_ID. Correct it
       there or add the missing entry.
   record_fix_template: MARA./DSD/SL_TOLTYP points at a check table /DSD/SL_TGTYP.TOLTYP_ID entry that does not exist.
-- id: DXR00477
+- id: DXRbe5a1064
   enabled: false
   field: MARA./DSD/SV_CNT_GRP
   check_class: referential_check
@@ -1291,7 +1291,7 @@ rules:
     __other__: MARA./DSD/SV_CNT_GRP '{invalid_value}' is not defined in the check table /DSD/SV_CNTGR.COUNT_GROUP. Correct
       it there or add the missing entry.
   record_fix_template: MARA./DSD/SV_CNT_GRP points at a check table /DSD/SV_CNTGR.COUNT_GROUP entry that does not exist.
-- id: DXR00478
+- id: DXR5563a087
   enabled: false
   field: MARA./DSD/VC_GROUP
   check_class: referential_check
@@ -1308,7 +1308,7 @@ rules:
     __other__: MARA./DSD/VC_GROUP '{invalid_value}' is not defined in the check table /DSD/VC_GRP.GRP. Correct it there or
       add the missing entry.
   record_fix_template: MARA./DSD/VC_GROUP points at a check table /DSD/VC_GRP.GRP entry that does not exist.
-- id: DXR00479
+- id: DXR4395e91e
   enabled: false
   field: MARA.PACKCODE
   check_class: referential_check
@@ -1325,7 +1325,7 @@ rules:
     __other__: MARA.PACKCODE '{invalid_value}' is not defined in the check table CCUNC121.PACKCODE. Correct it there or add
       the missing entry.
   record_fix_template: MARA.PACKCODE points at a check table CCUNC121.PACKCODE entry that does not exist.
-- id: DXR00480
+- id: DXRdb15bd70
   enabled: false
   field: MARA.DG_PACK_STATUS
   check_class: referential_check
@@ -1342,7 +1342,7 @@ rules:
     __other__: MARA.DG_PACK_STATUS '{invalid_value}' is not defined in the check table TDG101.DG_PACK_STATUS. Correct it there
       or add the missing entry.
   record_fix_template: MARA.DG_PACK_STATUS points at a check table TDG101.DG_PACK_STATUS entry that does not exist.
-- id: DXV00157
+- id: DXV1ab12822
   enabled: false
   field: MARA.MCOND
   check_class: domain_value_check
@@ -1360,7 +1360,7 @@ rules:
   fix_map:
     __other__: 'MARA.MCOND ''{invalid_value}'' is not in domain DFPS_MCOND. Set it to one of: 1, 2.'
   record_fix_template: 'MARA.MCOND is {actual_value}; expected one of: 1, 2.'
-- id: DXR00481
+- id: DXR46e3c42e
   enabled: false
   field: MARA.BSTAT
   check_class: referential_check
@@ -1377,7 +1377,7 @@ rules:
     __other__: MARA.BSTAT '{invalid_value}' is not defined in the check table WRFMATBSTAT.BSTAT. Correct it there or add the
       missing entry.
   record_fix_template: MARA.BSTAT points at a check table WRFMATBSTAT.BSTAT entry that does not exist.
-- id: DXR00482
+- id: DXR78f5b608
   enabled: false
   field: MARA.BRAND_ID
   check_class: referential_check
@@ -1394,7 +1394,7 @@ rules:
     __other__: MARA.BRAND_ID '{invalid_value}' is not defined in the check table WRF_BRANDS.BRAND_ID. Correct it there or
       add the missing entry.
   record_fix_template: MARA.BRAND_ID points at a check table WRF_BRANDS.BRAND_ID entry that does not exist.
-- id: DXR00483
+- id: DXRf14e825d
   enabled: false
   field: MARA.FIBER_CODE1
   check_class: referential_check
@@ -1411,7 +1411,7 @@ rules:
     __other__: MARA.FIBER_CODE1 '{invalid_value}' is not defined in the check table WRF_FIBER_CODES.FIBER_CODE. Correct it
       there or add the missing entry.
   record_fix_template: MARA.FIBER_CODE1 points at a check table WRF_FIBER_CODES.FIBER_CODE entry that does not exist.
-- id: DXR00484
+- id: DXR69365ffd
   enabled: false
   field: MARA.FIBER_CODE2
   check_class: referential_check
@@ -1428,7 +1428,7 @@ rules:
     __other__: MARA.FIBER_CODE2 '{invalid_value}' is not defined in the check table WRF_FIBER_CODES.FIBER_CODE. Correct it
       there or add the missing entry.
   record_fix_template: MARA.FIBER_CODE2 points at a check table WRF_FIBER_CODES.FIBER_CODE entry that does not exist.
-- id: DXR00485
+- id: DXR3a477f32
   enabled: false
   field: MARA.FIBER_CODE3
   check_class: referential_check
@@ -1445,7 +1445,7 @@ rules:
     __other__: MARA.FIBER_CODE3 '{invalid_value}' is not defined in the check table WRF_FIBER_CODES.FIBER_CODE. Correct it
       there or add the missing entry.
   record_fix_template: MARA.FIBER_CODE3 points at a check table WRF_FIBER_CODES.FIBER_CODE entry that does not exist.
-- id: DXR00486
+- id: DXR17ad6735
   enabled: false
   field: MARA.FIBER_CODE4
   check_class: referential_check
@@ -1462,7 +1462,7 @@ rules:
     __other__: MARA.FIBER_CODE4 '{invalid_value}' is not defined in the check table WRF_FIBER_CODES.FIBER_CODE. Correct it
       there or add the missing entry.
   record_fix_template: MARA.FIBER_CODE4 points at a check table WRF_FIBER_CODES.FIBER_CODE entry that does not exist.
-- id: DXR00487
+- id: DXR5d4fa318
   enabled: false
   field: MARA.FIBER_CODE5
   check_class: referential_check
@@ -1479,7 +1479,7 @@ rules:
     __other__: MARA.FIBER_CODE5 '{invalid_value}' is not defined in the check table WRF_FIBER_CODES.FIBER_CODE. Correct it
       there or add the missing entry.
   record_fix_template: MARA.FIBER_CODE5 points at a check table WRF_FIBER_CODES.FIBER_CODE entry that does not exist.
-- id: DXR00488
+- id: DXR17cf8f41
   enabled: false
   field: MARA.FASHGRD
   check_class: referential_check
@@ -1496,7 +1496,7 @@ rules:
     __other__: MARA.FASHGRD '{invalid_value}' is not defined in the check table T6WFG.FASHGRD. Correct it there or add the
       missing entry.
   record_fix_template: MARA.FASHGRD points at a check table T6WFG.FASHGRD entry that does not exist.
-- id: DXR00489
+- id: DXRba047ed6
   enabled: false
   field: MARC.BWTTY
   check_class: referential_check
@@ -1513,7 +1513,7 @@ rules:
     __other__: MARC.BWTTY '{invalid_value}' is not defined in the check table T149C.BWTTY. Correct it there or add the missing
       entry.
   record_fix_template: MARC.BWTTY points at a check table T149C.BWTTY entry that does not exist.
-- id: DXV00158
+- id: DXV52dc0927
   enabled: false
   field: MARC.KZBED
   check_class: domain_value_check
@@ -1531,7 +1531,7 @@ rules:
   fix_map:
     __other__: 'MARC.KZBED ''{invalid_value}'' is not in domain KZBED. Set it to one of: 0, T.'
   record_fix_template: 'MARC.KZBED is {actual_value}; expected one of: 0, T.'
-- id: DXR00490
+- id: DXRb820e6e4
   enabled: false
   field: MARC.LZEIH
   check_class: referential_check
@@ -1548,7 +1548,7 @@ rules:
     __other__: MARC.LZEIH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: MARC.LZEIH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00491
+- id: DXR90393917
   enabled: false
   field: MARC.AUFTL
   check_class: referential_check
@@ -1565,7 +1565,7 @@ rules:
     __other__: MARC.AUFTL '{invalid_value}' is not defined in the check table T439P.AUFTL. Correct it there or add the missing
       entry.
   record_fix_template: MARC.AUFTL points at a check table T439P.AUFTL entry that does not exist.
-- id: DXR00492
+- id: DXR0906ca84
   enabled: false
   field: MARC.PLVAR
   check_class: referential_check
@@ -1582,7 +1582,7 @@ rules:
     __other__: MARC.PLVAR '{invalid_value}' is not defined in the check table T778P.PLVAR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.PLVAR points at a check table T778P.PLVAR entry that does not exist.
-- id: DXR00493
+- id: DXR0a3951c8
   enabled: false
   field: MARC.OTYPE
   check_class: referential_check
@@ -1599,7 +1599,7 @@ rules:
     __other__: MARC.OTYPE '{invalid_value}' is not defined in the check table T778O.OTYPE. Correct it there or add the missing
       entry.
   record_fix_template: MARC.OTYPE points at a check table T778O.OTYPE entry that does not exist.
-- id: DXR00494
+- id: DXR0a8064cf
   enabled: false
   field: MARC.PERIV
   check_class: referential_check
@@ -1616,7 +1616,7 @@ rules:
     __other__: MARC.PERIV '{invalid_value}' is not defined in the check table T009.PERIV. Correct it there or add the missing
       entry.
   record_fix_template: MARC.PERIV points at a check table T009.PERIV entry that does not exist.
-- id: DXR00495
+- id: DXR8fa3ff6d
   enabled: false
   field: MARC.BWSCL
   check_class: referential_check
@@ -1633,7 +1633,7 @@ rules:
     __other__: MARC.BWSCL '{invalid_value}' is not defined in the check table TMBW1.BWSCL. Correct it there or add the missing
       entry.
   record_fix_template: MARC.BWSCL points at a check table TMBW1.BWSCL entry that does not exist.
-- id: DXR00496
+- id: DXRe2f833a3
   enabled: false
   field: MARC.HERKR
   check_class: referential_check
@@ -1650,7 +1650,7 @@ rules:
     __other__: MARC.HERKR '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: MARC.HERKR points at a check table T005S.BLAND entry that does not exist.
-- id: DXR00497
+- id: DXR14d889c9
   enabled: false
   field: MARC.STLAN
   check_class: referential_check
@@ -1666,7 +1666,7 @@ rules:
     __other__: MARC.STLAN '{invalid_value}' is not defined in the check table T416.STLAN. Correct it there or add the missing
       entry.
   record_fix_template: MARC.STLAN points at a check table T416.STLAN entry that does not exist.
-- id: DXR00498
+- id: DXR1e97fd25
   enabled: false
   field: MARC.SOBSK
   check_class: referential_check
@@ -1683,7 +1683,7 @@ rules:
     __other__: MARC.SOBSK '{invalid_value}' is not defined in the check table T460A.SOBSL. Correct it there or add the missing
       entry.
   record_fix_template: MARC.SOBSK points at a check table T460A.SOBSL entry that does not exist.
-- id: DXR00499
+- id: DXR91ba4740
   enabled: false
   field: MARC.DISGR
   check_class: referential_check
@@ -1700,7 +1700,7 @@ rules:
     __other__: MARC.DISGR '{invalid_value}' is not defined in the check table T438M.MTART. Correct it there or add the missing
       entry.
   record_fix_template: MARC.DISGR points at a check table T438M.MTART entry that does not exist.
-- id: DXR00500
+- id: DXR903021a0
   enabled: false
   field: MARC.STDPD
   check_class: referential_check
@@ -1717,7 +1717,7 @@ rules:
     __other__: MARC.STDPD '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.STDPD points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00501
+- id: DXRc8e1828e
   enabled: false
   field: MARC.LFRHY
   check_class: referential_check
@@ -1734,7 +1734,7 @@ rules:
     __other__: MARC.LFRHY '{invalid_value}' is not defined in the check table T439G.MRPPP. Correct it there or add the missing
       entry.
   record_fix_template: MARC.LFRHY points at a check table T439G.MRPPP entry that does not exist.
-- id: DXR00502
+- id: DXReeea3bbb
   enabled: false
   field: MARC.RDPRF
   check_class: referential_check
@@ -1751,7 +1751,7 @@ rules:
     __other__: MARC.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
       entry.
   record_fix_template: MARC.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
-- id: DXR00503
+- id: DXR7e3c6136
   enabled: false
   field: MARC.VRBMT
   check_class: referential_check
@@ -1768,7 +1768,7 @@ rules:
     __other__: MARC.VRBMT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.VRBMT points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00504
+- id: DXR43e2741e
   enabled: false
   field: MARC.VRBWK
   check_class: referential_check
@@ -1785,7 +1785,7 @@ rules:
     __other__: MARC.VRBWK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: MARC.VRBWK points at a check table T001W.WERKS entry that does not exist.
-- id: DXV00159
+- id: DXV56c31b2d
   enabled: false
   field: MARC.PREFE
   check_class: domain_value_check
@@ -1807,7 +1807,7 @@ rules:
   fix_map:
     __other__: 'MARC.PREFE ''{invalid_value}'' is not in domain PREFE. Set it to one of: A, B, C, D, E, F.'
   record_fix_template: 'MARC.PREFE is {actual_value}; expected one of: A, B, C, D, E, F.'
-- id: DXV00160
+- id: DXV4ebe4174
   enabled: false
   field: MARC.PRENC
   check_class: domain_value_check
@@ -1826,7 +1826,7 @@ rules:
   fix_map:
     __other__: 'MARC.PRENC ''{invalid_value}'' is not in domain PRENC. Set it to one of: A, B, C.'
   record_fix_template: 'MARC.PRENC is {actual_value}; expected one of: A, B, C.'
-- id: DXV00161
+- id: DXV3bcdcb7f
   enabled: false
   field: MARC.PRENE
   check_class: domain_value_check
@@ -1846,7 +1846,7 @@ rules:
   fix_map:
     __other__: 'MARC.PRENE ''{invalid_value}'' is not in domain PRENE. Set it to one of: A, B, C, D.'
   record_fix_template: 'MARC.PRENE is {actual_value}; expected one of: A, B, C, D.'
-- id: DXR00505
+- id: DXR9d60b6ad
   enabled: false
   field: MARC.SERVG
   check_class: referential_check
@@ -1863,7 +1863,7 @@ rules:
     __other__: MARC.SERVG '{invalid_value}' is not defined in the check table TWSG.SERVG. Correct it there or add the missing
       entry.
   record_fix_template: MARC.SERVG points at a check table TWSG.SERVG entry that does not exist.
-- id: DXR00506
+- id: DXR6342c7b4
   enabled: false
   field: MARC.PLNTY
   check_class: referential_check
@@ -1880,7 +1880,7 @@ rules:
     __other__: MARC.PLNTY '{invalid_value}' is not defined in the check table TCA01.PLNTY. Correct it there or add the missing
       entry.
   record_fix_template: MARC.PLNTY points at a check table TCA01.PLNTY entry that does not exist.
-- id: DXR00507
+- id: DXRc359959b
   enabled: false
   field: MARC.UOMGR
   check_class: referential_check
@@ -1897,7 +1897,7 @@ rules:
     __other__: MARC.UOMGR '{invalid_value}' is not defined in the check table OIB06.UOMGR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.UOMGR points at a check table OIB06.UOMGR entry that does not exist.
-- id: DXR00508
+- id: DXR935619f3
   enabled: false
   field: MARC.UMRSL
   check_class: referential_check
@@ -1914,7 +1914,7 @@ rules:
     __other__: MARC.UMRSL '{invalid_value}' is not defined in the check table OIB01.UMRSL. Correct it there or add the missing
       entry.
   record_fix_template: MARC.UMRSL points at a check table OIB01.UMRSL entry that does not exist.
-- id: DXR00509
+- id: DXR81edc2e4
   enabled: false
   field: MARC.MDACH
   check_class: referential_check
@@ -1931,7 +1931,7 @@ rules:
     __other__: MARC.MDACH '{invalid_value}' is not defined in the check table T46AC.MDACH. Correct it there or add the missing
       entry.
   record_fix_template: MARC.MDACH points at a check table T46AC.MDACH entry that does not exist.
-- id: DXR00510
+- id: DXRf35c731d
   enabled: false
   field: MARC.MEGRU
   check_class: referential_check
@@ -1948,7 +1948,7 @@ rules:
     __other__: MARC.MEGRU '{invalid_value}' is not defined in the check table TWMEG.MEGRU. Correct it there or add the missing
       entry.
   record_fix_template: MARC.MEGRU points at a check table TWMEG.MEGRU entry that does not exist.
-- id: DXR00511
+- id: DXR03dd08c6
   enabled: false
   field: MARC.MFRGR
   check_class: referential_check
@@ -1965,7 +1965,7 @@ rules:
     __other__: MARC.MFRGR '{invalid_value}' is not defined in the check table TMFG.MFRGR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.MFRGR points at a check table TMFG.MFRGR entry that does not exist.
-- id: DXR00512
+- id: DXR3a0eb0a2
   enabled: false
   field: MARC.LOGGR
   check_class: referential_check
@@ -1982,7 +1982,7 @@ rules:
     __other__: MARC.LOGGR '{invalid_value}' is not defined in the check table TLOG.LOGGR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.LOGGR points at a check table TLOG.LOGGR entry that does not exist.
-- id: DXR00513
+- id: DXRa8ade56f
   enabled: false
   field: MARC.FPRFM
   check_class: referential_check
@@ -1999,7 +1999,7 @@ rules:
     __other__: MARC.FPRFM '{invalid_value}' is not defined in the check table TMFPF.FPRFM. Correct it there or add the missing
       entry.
   record_fix_template: MARC.FPRFM points at a check table TMFPF.FPRFM entry that does not exist.
-- id: DXV00162
+- id: DXVa34ba125
   enabled: false
   field: MARC.INDUS
   check_class: domain_value_check
@@ -2019,7 +2019,7 @@ rules:
   fix_map:
     __other__: 'MARC.INDUS ''{invalid_value}'' is not in domain J_1BINDUS3. Set it to one of: 00, 01, 02, 03.'
   record_fix_template: 'MARC.INDUS is {actual_value}; expected one of: 00, 01, 02, 03.'
-- id: DXR00514
+- id: DXR0de3128a
   enabled: false
   field: MARC.MOWNR
   check_class: referential_check
@@ -2036,7 +2036,7 @@ rules:
     __other__: MARC.MOWNR '{invalid_value}' is not defined in the check table T618M.MOWNR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.MOWNR points at a check table T618M.MOWNR entry that does not exist.
-- id: DXR00515
+- id: DXR704e9164
   enabled: false
   field: MARC.MOGRU
   check_class: referential_check
@@ -2053,7 +2053,7 @@ rules:
     __other__: MARC.MOGRU '{invalid_value}' is not defined in the check table T618G.MOGRU. Correct it there or add the missing
       entry.
   record_fix_template: MARC.MOGRU points at a check table T618G.MOGRU entry that does not exist.
-- id: DXR00516
+- id: DXR7fcfb7c4
   enabled: false
   field: MARC.CASNR
   check_class: referential_check
@@ -2070,7 +2070,7 @@ rules:
     __other__: MARC.CASNR '{invalid_value}' is not defined in the check table T610C.CASNR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.CASNR points at a check table T610C.CASNR entry that does not exist.
-- id: DXR00517
+- id: DXRc0cd7e04
   enabled: false
   field: MARC.GPNUM
   check_class: referential_check
@@ -2087,7 +2087,7 @@ rules:
     __other__: MARC.GPNUM '{invalid_value}' is not defined in the check table T609G.GPNUM. Correct it there or add the missing
       entry.
   record_fix_template: MARC.GPNUM points at a check table T609G.GPNUM entry that does not exist.
-- id: DXR00518
+- id: DXR9c4ad229
   enabled: false
   field: MARC.STEUC
   check_class: referential_check
@@ -2104,7 +2104,7 @@ rules:
     __other__: MARC.STEUC '{invalid_value}' is not defined in the check table T604F.STEUC. Correct it there or add the missing
       entry.
   record_fix_template: MARC.STEUC points at a check table T604F.STEUC entry that does not exist.
-- id: DXR00519
+- id: DXR8d016cc1
   enabled: false
   field: MARC.VSPVB
   check_class: referential_check
@@ -2121,7 +2121,7 @@ rules:
     __other__: MARC.VSPVB '{invalid_value}' is not defined in the check table PVBE.PRVBE. Correct it there or add the missing
       entry.
   record_fix_template: MARC.VSPVB points at a check table PVBE.PRVBE entry that does not exist.
-- id: DXV00163
+- id: DXVa19b36e1
   enabled: false
   field: MARC.DPLFS
   check_class: domain_value_check
@@ -2139,7 +2139,7 @@ rules:
   fix_map:
     __other__: 'MARC.DPLFS ''{invalid_value}'' is not in domain DPLFS. Set it to one of: A, B, X.'
   record_fix_template: 'MARC.DPLFS is {actual_value}; expected one of: A, B, X.'
-- id: DXR00520
+- id: DXR2301d32e
   enabled: false
   field: MARC.COMPL
   check_class: referential_check
@@ -2156,7 +2156,7 @@ rules:
     __other__: MARC.COMPL '{invalid_value}' is not defined in the check table TCSCP_COMP_LVL.COMP_LEVEL. Correct it there
       or add the missing entry.
   record_fix_template: MARC.COMPL points at a check table TCSCP_COMP_LVL.COMP_LEVEL entry that does not exist.
-- id: DXR00521
+- id: DXR39b3581e
   enabled: false
   field: MARC.CONVT
   check_class: referential_check
@@ -2173,7 +2173,7 @@ rules:
     __other__: MARC.CONVT '{invalid_value}' is not defined in the check table TCSCP_CONV_TYPE.CONV_TYPE. Correct it there
       or add the missing entry.
   record_fix_template: MARC.CONVT points at a check table TCSCP_CONV_TYPE.CONV_TYPE entry that does not exist.
-- id: DXR00522
+- id: DXRa744ddb4
   enabled: false
   field: MARC.OCMPF
   check_class: referential_check
@@ -2190,7 +2190,7 @@ rules:
     __other__: MARC.OCMPF '{invalid_value}' is not defined in the check table TCO48.GPROFILE. Correct it there or add the
       missing entry.
   record_fix_template: MARC.OCMPF points at a check table TCO48.GPROFILE entry that does not exist.
-- id: DXV00164
+- id: DXV30f74428
   enabled: false
   field: MARC.ROTATION_DATE
   check_class: domain_value_check
@@ -2211,7 +2211,7 @@ rules:
   fix_map:
     __other__: 'MARC.ROTATION_DATE ''{invalid_value}'' is not in domain ROTATION_DATE. Set it to one of: 1, 2, G, O, P.'
   record_fix_template: 'MARC.ROTATION_DATE is {actual_value}; expected one of: 1, 2, G, O, P.'
-- id: DXR00523
+- id: DXRdc152b1a
   enabled: false
   field: MARC.UCMAT
   check_class: referential_check
@@ -2228,7 +2228,7 @@ rules:
     __other__: MARC.UCMAT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MARC.UCMAT points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00524
+- id: DXR3b73b508
   enabled: false
   field: MARC./VSO/R_PKGRP
   check_class: referential_check
@@ -2245,7 +2245,7 @@ rules:
     __other__: MARC./VSO/R_PKGRP '{invalid_value}' is not defined in the check table /VSO/M_PKG.PKGRP. Correct it there or
       add the missing entry.
   record_fix_template: MARC./VSO/R_PKGRP points at a check table /VSO/M_PKG.PKGRP entry that does not exist.
-- id: DXR00525
+- id: DXR485ddc5c
   enabled: false
   field: MARC.IUID_TYPE
   check_class: referential_check
@@ -2262,7 +2262,7 @@ rules:
     __other__: MARC.IUID_TYPE '{invalid_value}' is not defined in the check table TIUID_TYPE.IUID_TYPE. Correct it there or
       add the missing entry.
   record_fix_template: MARC.IUID_TYPE points at a check table TIUID_TYPE.IUID_TYPE entry that does not exist.
-- id: DXR00526
+- id: DXR5097c676
   enabled: false
   field: MARC.CONS_PROCG
   check_class: referential_check
@@ -2279,7 +2279,7 @@ rules:
     __other__: MARC.CONS_PROCG '{invalid_value}' is not defined in the check table WRFT_CONS_PROCG.WRF_CONS_PROCG. Correct
       it there or add the missing entry.
   record_fix_template: MARC.CONS_PROCG points at a check table WRFT_CONS_PROCG.WRF_CONS_PROCG entry that does not exist.
-- id: DXR00527
+- id: DXRe7011de1
   enabled: false
   field: MARC.REF_SCHEMA
   check_class: referential_check
@@ -2296,7 +2296,7 @@ rules:
     __other__: MARC.REF_SCHEMA '{invalid_value}' is not defined in the check table WRF_REF_RFS.REF_SCHEMA. Correct it there
       or add the missing entry.
   record_fix_template: MARC.REF_SCHEMA points at a check table WRF_REF_RFS.REF_SCHEMA entry that does not exist.
-- id: DXR00528
+- id: DXR2ad53b58
   enabled: false
   field: MARD.HERKL
   check_class: referential_check
@@ -2313,7 +2313,7 @@ rules:
     __other__: MARD.HERKL '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: MARD.HERKL points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00529
+- id: DXRcc2af5a2
   enabled: false
   field: MARM.NUMTP
   check_class: referential_check
@@ -2330,7 +2330,7 @@ rules:
     __other__: MARM.NUMTP '{invalid_value}' is not defined in the check table TNTP.NUMTP. Correct it there or add the missing
       entry.
   record_fix_template: MARM.NUMTP points at a check table TNTP.NUMTP entry that does not exist.
-- id: DXV00165
+- id: DXV21c59368
   enabled: false
   field: MARM.KZWSO
   check_class: domain_value_check
@@ -2348,7 +2348,7 @@ rules:
   fix_map:
     __other__: 'MARM.KZWSO ''{invalid_value}'' is not in domain KZWSO. Set it to one of: A, B.'
   record_fix_template: 'MARM.KZWSO is {actual_value}; expected one of: A, B.'
-- id: DXR00530
+- id: DXR38c161b2
   enabled: false
   field: MARM.MSEHI
   check_class: referential_check
@@ -2365,7 +2365,7 @@ rules:
     __other__: MARM.MSEHI '{invalid_value}' is not defined in the check table TCHW2.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: MARM.MSEHI points at a check table TCHW2.MSEHI entry that does not exist.
-- id: DXV00166
+- id: DXVa5426699
   enabled: false
   field: MARM.BFLME_MARM
   check_class: domain_value_check
@@ -2384,7 +2384,7 @@ rules:
   fix_map:
     __other__: 'MARM.BFLME_MARM ''{invalid_value}'' is not in domain BFLME. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MARM.BFLME_MARM is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00167
+- id: DXV468a52be
   enabled: false
   field: MARM.TY2TQ
   check_class: domain_value_check
@@ -2402,7 +2402,7 @@ rules:
   fix_map:
     __other__: 'MARM.TY2TQ ''{invalid_value}'' is not in domain DO_EWMTY2TQ. Set it to one of: B, C.'
   record_fix_template: 'MARM.TY2TQ is {actual_value}; expected one of: B, C.'
-- id: DXR00531
+- id: DXRe12b4343
   enabled: false
   field: MBEW.VJBKL
   check_class: referential_check
@@ -2419,7 +2419,7 @@ rules:
     __other__: MBEW.VJBKL '{invalid_value}' is not defined in the check table T025.BKLAS. Correct it there or add the missing
       entry.
   record_fix_template: MBEW.VJBKL points at a check table T025.BKLAS entry that does not exist.
-- id: DXR00532
+- id: DXR6529043e
   enabled: false
   field: MBEW.MYPOL
   check_class: referential_check
@@ -2436,7 +2436,7 @@ rules:
     __other__: MBEW.MYPOL '{invalid_value}' is not defined in the check table TPOOL.MYPOOL. Correct it there or add the missing
       entry.
   record_fix_template: MBEW.MYPOL points at a check table TPOOL.MYPOOL entry that does not exist.
-- id: DXR00533
+- id: DXR9d873c99
   enabled: false
   field: MBEW.BWVA1
   check_class: referential_check
@@ -2453,7 +2453,7 @@ rules:
     __other__: MBEW.BWVA1 '{invalid_value}' is not defined in the check table TCK05.BWVAR. Correct it there or add the missing
       entry.
   record_fix_template: MBEW.BWVA1 points at a check table TCK05.BWVAR entry that does not exist.
-- id: DXR00534
+- id: DXR71a58b2e
   enabled: false
   field: MBEW.BWVA2
   check_class: referential_check
@@ -2470,7 +2470,7 @@ rules:
     __other__: MBEW.BWVA2 '{invalid_value}' is not defined in the check table TCK05.BWVAR. Correct it there or add the missing
       entry.
   record_fix_template: MBEW.BWVA2 points at a check table TCK05.BWVAR entry that does not exist.
-- id: DXR00535
+- id: DXR9f3221b8
   enabled: false
   field: MBEW.BWVA3
   check_class: referential_check
@@ -2487,7 +2487,7 @@ rules:
     __other__: MBEW.BWVA3 '{invalid_value}' is not defined in the check table TCK05.BWVAR. Correct it there or add the missing
       entry.
   record_fix_template: MBEW.BWVA3 points at a check table TCK05.BWVAR entry that does not exist.
-- id: DXV00168
+- id: DXV1aadb010
   enabled: false
   field: MBEW.LBWST
   check_class: domain_value_check
@@ -2513,7 +2513,7 @@ rules:
   fix_map:
     __other__: 'MBEW.LBWST ''{invalid_value}'' is not in domain CK_BWST. Set it to one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
   record_fix_template: 'MBEW.LBWST is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
-- id: DXV00169
+- id: DXVcea22f33
   enabled: false
   field: MBEW.VBWST
   check_class: domain_value_check
@@ -2539,7 +2539,7 @@ rules:
   fix_map:
     __other__: 'MBEW.VBWST ''{invalid_value}'' is not in domain CK_BWST. Set it to one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
   record_fix_template: 'MBEW.VBWST is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
-- id: DXV00170
+- id: DXVa881e25e
   enabled: false
   field: MBEW.FBWST
   check_class: domain_value_check
@@ -2565,7 +2565,7 @@ rules:
   fix_map:
     __other__: 'MBEW.FBWST ''{invalid_value}'' is not in domain CK_BWST. Set it to one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
   record_fix_template: 'MBEW.FBWST is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
-- id: DXV00171
+- id: DXVad461afd
   enabled: false
   field: MBEW.MTUSE
   check_class: domain_value_check
@@ -2585,7 +2585,7 @@ rules:
   fix_map:
     __other__: 'MBEW.MTUSE ''{invalid_value}'' is not in domain J_1BMATUSE. Set it to one of: 0, 1, 2, 3.'
   record_fix_template: 'MBEW.MTUSE is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00172
+- id: DXV5dfcfad6
   enabled: false
   field: MBEW.MTORG
   check_class: domain_value_check
@@ -2604,7 +2604,7 @@ rules:
   fix_map:
     __other__: 'MBEW.MTORG ''{invalid_value}'' is not in domain J_1BMATORG. Set it to one of: 0, 1, 2.'
   record_fix_template: 'MBEW.MTORG is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00536
+- id: DXR747de16b
   enabled: false
   field: MBEW.OKLAS
   check_class: referential_check
@@ -2621,7 +2621,7 @@ rules:
     __other__: MBEW.OKLAS '{invalid_value}' is not defined in the check table T025.BKLAS. Correct it there or add the missing
       entry.
   record_fix_template: MBEW.OKLAS points at a check table T025.BKLAS entry that does not exist.
-- id: DXR00537
+- id: DXR6bb703cf
   enabled: false
   field: MDMA.WERKS
   check_class: referential_check
@@ -2638,7 +2638,7 @@ rules:
     __other__: MDMA.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR00538
+- id: DXRe3e0a8ed
   enabled: false
   field: MDMA.DISPR
   check_class: referential_check
@@ -2655,7 +2655,7 @@ rules:
     __other__: MDMA.DISPR '{invalid_value}' is not defined in the check table MDIP.DISPR. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.DISPR points at a check table MDIP.DISPR entry that does not exist.
-- id: DXR00539
+- id: DXR14b15bd6
   enabled: false
   field: MDMA.DISPO
   check_class: referential_check
@@ -2672,7 +2672,7 @@ rules:
     __other__: MDMA.DISPO '{invalid_value}' is not defined in the check table T024D.DISPO. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.DISPO points at a check table T024D.DISPO entry that does not exist.
-- id: DXR00540
+- id: DXRa6d50e3d
   enabled: false
   field: MDMA.DISGR
   check_class: referential_check
@@ -2689,7 +2689,7 @@ rules:
     __other__: MDMA.DISGR '{invalid_value}' is not defined in the check table T438M.MTART. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.DISGR points at a check table T438M.MTART entry that does not exist.
-- id: DXR00541
+- id: DXR201e02ce
   enabled: false
   field: MDMA.LFRHY
   check_class: referential_check
@@ -2706,7 +2706,7 @@ rules:
     __other__: MDMA.LFRHY '{invalid_value}' is not defined in the check table T439G.MRPPP. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.LFRHY points at a check table T439G.MRPPP entry that does not exist.
-- id: DXR00542
+- id: DXR330e81fe
   enabled: false
   field: MDMA.RDPRF
   check_class: referential_check
@@ -2723,7 +2723,7 @@ rules:
     __other__: MDMA.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
-- id: DXR00543
+- id: DXRb1525356
   enabled: false
   field: MDMA.SOBSL
   check_class: referential_check
@@ -2740,7 +2740,7 @@ rules:
     __other__: MDMA.SOBSL '{invalid_value}' is not defined in the check table T460A.SOBSL. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.SOBSL points at a check table T460A.SOBSL entry that does not exist.
-- id: DXR00544
+- id: DXR6b97ab41
   enabled: false
   field: MDMA.LGPRO
   check_class: referential_check
@@ -2757,7 +2757,7 @@ rules:
     __other__: MDMA.LGPRO '{invalid_value}' is not defined in the check table MDLG.LGORT. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.LGPRO points at a check table MDLG.LGORT entry that does not exist.
-- id: DXR00545
+- id: DXR68f8e522
   enabled: false
   field: MDMA.LGFSB
   check_class: referential_check
@@ -2774,7 +2774,7 @@ rules:
     __other__: MDMA.LGFSB '{invalid_value}' is not defined in the check table MDLG.LGORT. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.LGFSB points at a check table MDLG.LGORT entry that does not exist.
-- id: DXR00546
+- id: DXRa751d4ff
   enabled: false
   field: MDMA.MRPPP
   check_class: referential_check
@@ -2791,7 +2791,7 @@ rules:
     __other__: MDMA.MRPPP '{invalid_value}' is not defined in the check table T439G.MRPPP. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.MRPPP points at a check table T439G.MRPPP entry that does not exist.
-- id: DXR00547
+- id: DXRc04b2a00
   enabled: false
   field: MDMA.RWPRO
   check_class: referential_check
@@ -2808,7 +2808,7 @@ rules:
     __other__: MDMA.RWPRO '{invalid_value}' is not defined in the check table T438R.RWPRO. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.RWPRO points at a check table T438R.RWPRO entry that does not exist.
-- id: DXR00548
+- id: DXR41e3cd2f
   enabled: false
   field: MDMA.LAGPR
   check_class: referential_check
@@ -2825,7 +2825,7 @@ rules:
     __other__: MDMA.LAGPR '{invalid_value}' is not defined in the check table T439L.LAGPR. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.LAGPR points at a check table T439L.LAGPR entry that does not exist.
-- id: DXR00549
+- id: DXR29afff09
   enabled: false
   field: MDMA.SHPRO
   check_class: referential_check
@@ -2842,7 +2842,7 @@ rules:
     __other__: MDMA.SHPRO '{invalid_value}' is not defined in the check table T438V.SHPRO. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.SHPRO points at a check table T438V.SHPRO entry that does not exist.
-- id: DXV00173
+- id: DXV19d82b68
   enabled: false
   field: MDMA.SHFLG
   check_class: domain_value_check
@@ -2860,7 +2860,7 @@ rules:
   fix_map:
     __other__: 'MDMA.SHFLG ''{invalid_value}'' is not in domain SHFLG. Set it to one of: 1, 2.'
   record_fix_template: 'MDMA.SHFLG is {actual_value}; expected one of: 1, 2.'
-- id: DXV00174
+- id: DXVebc0e925
   enabled: false
   field: MDMA.APOKZ
   check_class: domain_value_check
@@ -2879,7 +2879,7 @@ rules:
   fix_map:
     __other__: 'MDMA.APOKZ ''{invalid_value}'' is not in domain APOKZ. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MDMA.APOKZ is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00550
+- id: DXR3690f808
   enabled: false
   field: MKAL.PLNTY
   check_class: referential_check
@@ -2896,7 +2896,7 @@ rules:
     __other__: MKAL.PLNTY '{invalid_value}' is not defined in the check table TCA01.PLNTY. Correct it there or add the missing
       entry.
   record_fix_template: MKAL.PLNTY points at a check table TCA01.PLNTY entry that does not exist.
-- id: DXR00551
+- id: DXR85b6413b
   enabled: false
   field: MKAL.MDV02
   check_class: referential_check
@@ -2913,7 +2913,7 @@ rules:
     __other__: MKAL.MDV02 '{invalid_value}' is not defined in the check table T437P.PLAN_ID. Correct it there or add the missing
       entry.
   record_fix_template: MKAL.MDV02 points at a check table T437P.PLAN_ID entry that does not exist.
-- id: DXV00175
+- id: DXV7ee783f8
   enabled: false
   field: MKAL.RGEKZ
   check_class: domain_value_check
@@ -2931,7 +2931,7 @@ rules:
   fix_map:
     __other__: 'MKAL.RGEKZ ''{invalid_value}'' is not in domain CO_RGEKZ. Set it to one of: 1, 2.'
   record_fix_template: 'MKAL.RGEKZ is {actual_value}; expected one of: 1, 2.'
-- id: DXR00552
+- id: DXR5be0d531
   enabled: false
   field: MKAL.PLTYG
   check_class: referential_check
@@ -2948,7 +2948,7 @@ rules:
     __other__: MKAL.PLTYG '{invalid_value}' is not defined in the check table TCA01.PLNTY. Correct it there or add the missing
       entry.
   record_fix_template: MKAL.PLTYG points at a check table TCA01.PLNTY entry that does not exist.
-- id: DXR00553
+- id: DXR4bbbc8e6
   enabled: false
   field: MKAL.PLTYM
   check_class: referential_check
@@ -2965,7 +2965,7 @@ rules:
     __other__: MKAL.PLTYM '{invalid_value}' is not defined in the check table TCA01.PLNTY. Correct it there or add the missing
       entry.
   record_fix_template: MKAL.PLTYM points at a check table TCA01.PLNTY entry that does not exist.
-- id: DXR00554
+- id: DXRff4c5690
   enabled: false
   field: MKAL.CSPLT
   check_class: referential_check
@@ -2982,7 +2982,7 @@ rules:
     __other__: MKAL.CSPLT '{invalid_value}' is not defined in the check table MAKV.CSPLIT. Correct it there or add the missing
       entry.
   record_fix_template: MKAL.CSPLT points at a check table MAKV.CSPLIT entry that does not exist.
-- id: DXR00555
+- id: DXRded4dc3a
   enabled: false
   field: MKAL.MATKO
   check_class: referential_check
@@ -2999,7 +2999,7 @@ rules:
     __other__: MKAL.MATKO '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MKAL.MATKO points at a check table MARA.MATNR entry that does not exist.
-- id: DXV00176
+- id: DXV1f028702
   enabled: false
   field: MKAL.PRFG_F
   check_class: domain_value_check
@@ -3018,7 +3018,7 @@ rules:
   fix_map:
     __other__: 'MKAL.PRFG_F ''{invalid_value}'' is not in domain PRFG. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MKAL.PRFG_F is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00177
+- id: DXV112f0416
   enabled: false
   field: MKAL.PRFG_R
   check_class: domain_value_check
@@ -3037,7 +3037,7 @@ rules:
   fix_map:
     __other__: 'MKAL.PRFG_R ''{invalid_value}'' is not in domain PRFG. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MKAL.PRFG_R is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00178
+- id: DXV6c3134db
   enabled: false
   field: MKAL.PRFG_G
   check_class: domain_value_check
@@ -3056,7 +3056,7 @@ rules:
   fix_map:
     __other__: 'MKAL.PRFG_G ''{invalid_value}'' is not in domain PRFG. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MKAL.PRFG_G is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00179
+- id: DXVd1a9b0f7
   enabled: false
   field: MKAL.PRFG_S
   check_class: domain_value_check
@@ -3075,7 +3075,7 @@ rules:
   fix_map:
     __other__: 'MKAL.PRFG_S ''{invalid_value}'' is not in domain PRFG. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MKAL.PRFG_S is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00556
+- id: DXRac877d20
   enabled: false
   field: MLGN.LHME2
   check_class: referential_check
@@ -3092,7 +3092,7 @@ rules:
     __other__: MLGN.LHME2 '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: MLGN.LHME2 points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00557
+- id: DXRca740501
   enabled: false
   field: MLGN.LHME3
   check_class: referential_check
@@ -3109,7 +3109,7 @@ rules:
     __other__: MLGN.LHME3 '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: MLGN.LHME3 points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00558
+- id: DXR2a786b39
   enabled: false
   field: MLGN.LETY2
   check_class: referential_check
@@ -3126,7 +3126,7 @@ rules:
     __other__: MLGN.LETY2 '{invalid_value}' is not defined in the check table T307.LETYP. Correct it there or add the missing
       entry.
   record_fix_template: MLGN.LETY2 points at a check table T307.LETYP entry that does not exist.
-- id: DXR00559
+- id: DXRb629d5b3
   enabled: false
   field: MLGN.LETY3
   check_class: referential_check
@@ -3143,7 +3143,7 @@ rules:
     __other__: MLGN.LETY3 '{invalid_value}' is not defined in the check table T307.LETYP. Correct it there or add the missing
       entry.
   record_fix_template: MLGN.LETY3 points at a check table T307.LETYP entry that does not exist.
-- id: DXR00560
+- id: DXRff4f4584
   enabled: false
   field: MVKE.SSTUF
   check_class: referential_check
@@ -3160,7 +3160,7 @@ rules:
     __other__: MVKE.SSTUF '{invalid_value}' is not defined in the check table TWSS.SSTUF. Correct it there or add the missing
       entry.
   record_fix_template: MVKE.SSTUF points at a check table TWSS.SSTUF entry that does not exist.
-- id: DXR00561
+- id: DXReb17dee3
   enabled: false
   field: MVKE.PFLKS
   check_class: referential_check
@@ -3177,7 +3177,7 @@ rules:
     __other__: MVKE.PFLKS '{invalid_value}' is not defined in the check table TWSP.PFLKS. Correct it there or add the missing
       entry.
   record_fix_template: MVKE.PFLKS points at a check table TWSP.PFLKS entry that does not exist.
-- id: DXR00562
+- id: DXRf419f076
   enabled: false
   field: MVKE.LSTFL
   check_class: referential_check
@@ -3194,7 +3194,7 @@ rules:
     __other__: MVKE.LSTFL '{invalid_value}' is not defined in the check table TWLV.LSTFL. Correct it there or add the missing
       entry.
   record_fix_template: MVKE.LSTFL points at a check table TWLV.LSTFL entry that does not exist.
-- id: DXR00563
+- id: DXR645c63cb
   enabled: false
   field: MVKE.LSTVZ
   check_class: referential_check
@@ -3211,7 +3211,7 @@ rules:
     __other__: MVKE.LSTVZ '{invalid_value}' is not defined in the check table TWLV.LSTFL. Correct it there or add the missing
       entry.
   record_fix_template: MVKE.LSTVZ points at a check table TWLV.LSTFL entry that does not exist.
-- id: DXR00564
+- id: DXR0dfad11e
   enabled: false
   field: MVKE.RDPRF
   check_class: referential_check
@@ -3228,7 +3228,7 @@ rules:
     __other__: MVKE.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
       entry.
   record_fix_template: MVKE.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
-- id: DXR00565
+- id: DXR316846f3
   enabled: false
   field: MVKE.MEGRU
   check_class: referential_check
@@ -3245,7 +3245,7 @@ rules:
     __other__: MVKE.MEGRU '{invalid_value}' is not defined in the check table TWMEG.MEGRU. Correct it there or add the missing
       entry.
   record_fix_template: MVKE.MEGRU points at a check table TWMEG.MEGRU entry that does not exist.
-- id: DXV00180
+- id: DXV68b4e633
   enabled: false
   field: MVKE.MATKC
   check_class: domain_value_check
@@ -3264,7 +3264,7 @@ rules:
   fix_map:
     __other__: 'MVKE.MATKC ''{invalid_value}'' is not in domain MATKC. Set it to one of: A, B, C.'
   record_fix_template: 'MVKE.MATKC is {actual_value}; expected one of: A, B, C.'
-- id: DXR00566
+- id: DXR63e3901b
   enabled: false
   field: MVKE./BEV1/EMLGRP
   check_class: referential_check
@@ -3281,7 +3281,7 @@ rules:
     __other__: MVKE./BEV1/EMLGRP '{invalid_value}' is not defined in the check table /BEV1/EMGRP.LGGRP. Correct it there or
       add the missing entry.
   record_fix_template: MVKE./BEV1/EMLGRP points at a check table /BEV1/EMGRP.LGGRP entry that does not exist.
-- id: DXR00567
+- id: DXR96082907
   enabled: false
   field: MVKE.PLGTP
   check_class: referential_check
@@ -3298,7 +3298,7 @@ rules:
     __other__: MVKE.PLGTP '{invalid_value}' is not defined in the check table TWPT.PLGTP. Correct it there or add the missing
       entry.
   record_fix_template: MVKE.PLGTP points at a check table TWPT.PLGTP entry that does not exist.
-- id: DXR00568
+- id: DXRa6f91053
   enabled: false
   field: QPRS.OBJNR
   check_class: referential_check
@@ -3315,7 +3315,7 @@ rules:
     __other__: QPRS.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR00569
+- id: DXR8e8b527b
   enabled: false
   field: QPRS.STSMA
   check_class: referential_check
@@ -3332,7 +3332,7 @@ rules:
     __other__: QPRS.STSMA '{invalid_value}' is not defined in the check table TJ20.STSMA. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.STSMA points at a check table TJ20.STSMA entry that does not exist.
-- id: DXR00570
+- id: DXR26dd7083
   enabled: false
   field: QPRS.PRART
   check_class: referential_check
@@ -3349,7 +3349,7 @@ rules:
     __other__: QPRS.PRART '{invalid_value}' is not defined in the check table TQ40.PRART. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.PRART points at a check table TQ40.PRART entry that does not exist.
-- id: DXR00571
+- id: DXRbe28d4d4
   enabled: false
   field: QPRS.PRTYP
   check_class: referential_check
@@ -3366,7 +3366,7 @@ rules:
     __other__: QPRS.PRTYP '{invalid_value}' is not defined in the check table TQ44.PRTYP. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.PRTYP points at a check table TQ44.PRTYP entry that does not exist.
-- id: DXR00572
+- id: DXRb188c8f7
   enabled: false
   field: QPRS.PN_NR
   check_class: referential_check
@@ -3383,7 +3383,7 @@ rules:
     __other__: QPRS.PN_NR '{invalid_value}' is not defined in the check table QPRN.PN_NR. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.PN_NR points at a check table QPRN.PN_NR entry that does not exist.
-- id: DXR00573
+- id: DXRf6d15309
   enabled: false
   field: QPRS.GBTYP
   check_class: referential_check
@@ -3400,7 +3400,7 @@ rules:
     __other__: QPRS.GBTYP '{invalid_value}' is not defined in the check table TQ42.GEBINDETYP. Correct it there or add the
       missing entry.
   record_fix_template: QPRS.GBTYP points at a check table TQ42.GEBINDETYP entry that does not exist.
-- id: DXR00574
+- id: DXR3544a3cd
   enabled: false
   field: QPRS.MEINH
   check_class: referential_check
@@ -3417,7 +3417,7 @@ rules:
     __other__: QPRS.MEINH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.MEINH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00575
+- id: DXR0e68c902
   enabled: false
   field: QPRS.PLOS2
   check_class: referential_check
@@ -3434,7 +3434,7 @@ rules:
     __other__: QPRS.PLOS2 '{invalid_value}' is not defined in the check table QALS.PRUEFLOS. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.PLOS2 points at a check table QALS.PRUEFLOS entry that does not exist.
-- id: DXR00576
+- id: DXRcdce1467
   enabled: false
   field: QPRS.MATNR
   check_class: referential_check
@@ -3451,7 +3451,7 @@ rules:
     __other__: QPRS.MATNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.MATNR points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00577
+- id: DXR55597912
   enabled: false
   field: QPRS.WERKS
   check_class: referential_check
@@ -3467,7 +3467,7 @@ rules:
     __other__: QPRS.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR00578
+- id: DXR3d9aa118
   enabled: false
   field: QPRS.CHARG
   check_class: referential_check
@@ -3484,7 +3484,7 @@ rules:
     __other__: QPRS.CHARG '{invalid_value}' is not defined in the check table MCH1.CHARG. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.CHARG points at a check table MCH1.CHARG entry that does not exist.
-- id: DXR00579
+- id: DXRf8e95182
   enabled: false
   field: QPRS.QAUTH
   check_class: referential_check
@@ -3501,7 +3501,7 @@ rules:
     __other__: QPRS.QAUTH '{invalid_value}' is not defined in the check table TQ01B.QMATAUTH. Correct it there or add the
       missing entry.
   record_fix_template: QPRS.QAUTH points at a check table TQ01B.QMATAUTH entry that does not exist.
-- id: DXR00580
+- id: DXRc7a42ad5
   enabled: false
   field: QPRS.PNVER
   check_class: referential_check
@@ -3518,7 +3518,7 @@ rules:
     __other__: QPRS.PNVER '{invalid_value}' is not defined in the check table QPRVK.PRZIEHVERF. Correct it there or add the
       missing entry.
   record_fix_template: QPRS.PNVER points at a check table QPRVK.PRZIEHVERF entry that does not exist.
-- id: DXR00581
+- id: DXR48aa72c5
   enabled: false
   field: QPRS.PNVEV
   check_class: referential_check
@@ -3535,7 +3535,7 @@ rules:
     __other__: QPRS.PNVEV '{invalid_value}' is not defined in the check table QPRVK.VERSION. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.PNVEV points at a check table QPRVK.VERSION entry that does not exist.
-- id: DXR00582
+- id: DXR51b7f01d
   enabled: false
   field: QPRS.GEBEH
   check_class: referential_check
@@ -3552,7 +3552,7 @@ rules:
     __other__: QPRS.GEBEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.GEBEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00583
+- id: DXR4e6e2c6e
   enabled: false
   field: QPRS.LGORT
   check_class: referential_check
@@ -3569,7 +3569,7 @@ rules:
     __other__: QPRS.LGORT '{invalid_value}' is not defined in the check table T001L.LGORT. Correct it there or add the missing
       entry.
   record_fix_template: QPRS.LGORT points at a check table T001L.LGORT entry that does not exist.
-- id: DXR00584
+- id: DXReb35dcde
   enabled: false
   field: QPRS.ABORT
   check_class: referential_check
@@ -3586,7 +3586,7 @@ rules:
     __other__: QPRS.ABORT '{invalid_value}' is not defined in the check table TQ41.AUFBEWORT. Correct it there or add the
       missing entry.
   record_fix_template: QPRS.ABORT points at a check table TQ41.AUFBEWORT entry that does not exist.
-- id: DXR00585
+- id: DXR87da8cd5
   enabled: false
   field: QPRS.PRIMPACK
   check_class: referential_check
@@ -3603,7 +3603,7 @@ rules:
     __other__: QPRS.PRIMPACK '{invalid_value}' is not defined in the check table TQ45.PRIMPACK. Correct it there or add the
       missing entry.
   record_fix_template: QPRS.PRIMPACK points at a check table TQ45.PRIMPACK entry that does not exist.
-- id: DXR00586
+- id: DXR44ee37bf
   enabled: false
   field: QPRS.STABICON
   check_class: referential_check

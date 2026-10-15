@@ -6,7 +6,7 @@ module: sd_customer_master
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXV00509
+- id: DXV9dba64b6
   enabled: false
   field: KNVD.DOVER
   check_class: domain_value_check
@@ -25,7 +25,7 @@ rules:
   fix_map:
     __other__: 'KNVD.DOVER ''{invalid_value}'' is not in domain NA_VSZTP. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'KNVD.DOVER is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXV00510
+- id: DXVc39a4ce9
   enabled: false
   field: KNVD.NACHA
   check_class: domain_value_check
@@ -51,7 +51,7 @@ rules:
   fix_map:
     __other__: 'KNVD.NACHA ''{invalid_value}'' is not in domain NA_NACHA. Set it to one of: 1, 2, 4, 5, 6, 7, 8, 9, A, T.'
   record_fix_template: 'KNVD.NACHA is {actual_value}; expected one of: 1, 2, 4, 5, 6, 7, 8, 9, A, T.'
-- id: DXR01479
+- id: DXR8e0427e0
   enabled: false
   field: KNVV.PERRL
   check_class: referential_check
@@ -68,7 +68,7 @@ rules:
     __other__: KNVV.PERRL '{invalid_value}' is not defined in the check table TFACD.IDENT. Correct it there or add the missing
       entry.
   record_fix_template: KNVV.PERRL points at a check table TFACD.IDENT entry that does not exist.
-- id: DXR01480
+- id: DXR3c072adb
   enabled: false
   field: KNVV.VSORT
   check_class: referential_check
@@ -85,7 +85,7 @@ rules:
     __other__: KNVV.VSORT '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: KNVV.VSORT points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR01481
+- id: DXRd9e9a962
   enabled: false
   field: KNVV.KABSS
   check_class: referential_check
@@ -102,7 +102,7 @@ rules:
     __other__: KNVV.KABSS '{invalid_value}' is not defined in the check table T691P.KABSS. Correct it there or add the missing
       entry.
   record_fix_template: KNVV.KABSS points at a check table T691P.KABSS entry that does not exist.
-- id: DXR01482
+- id: DXRf8230b80
   enabled: false
   field: KNVV.MEGRU
   check_class: referential_check
@@ -119,7 +119,7 @@ rules:
     __other__: KNVV.MEGRU '{invalid_value}' is not defined in the check table TWMEG.MEGRU. Correct it there or add the missing
       entry.
   record_fix_template: KNVV.MEGRU points at a check table TWMEG.MEGRU entry that does not exist.
-- id: DXR01483
+- id: DXRfe5f9f74
   enabled: false
   field: KNVV.PVKSM
   check_class: referential_check

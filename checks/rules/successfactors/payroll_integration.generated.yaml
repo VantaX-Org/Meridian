@@ -6,7 +6,7 @@ module: payroll_integration
 target_state: SUCCESSFACTORS
 generated: true
 rules:
-- id: DXV00609
+- id: DXV97b96f9f
   enabled: false
   field: HRPY_RGDIR.SRTZA
   check_class: domain_value_check
@@ -25,7 +25,7 @@ rules:
   fix_map:
     __other__: 'HRPY_RGDIR.SRTZA ''{invalid_value}'' is not in domain SRTZA. Set it to one of: A, O, P.'
   record_fix_template: 'HRPY_RGDIR.SRTZA is {actual_value}; expected one of: A, O, P.'
-- id: DXV00610
+- id: DXV8c12a6d2
   enabled: false
   field: HRPY_RGDIR.PAYTY
   check_class: domain_value_check
@@ -44,7 +44,7 @@ rules:
   fix_map:
     __other__: 'HRPY_RGDIR.PAYTY ''{invalid_value}'' is not in domain PAYTY. Set it to one of: A, B, C, S.'
   record_fix_template: 'HRPY_RGDIR.PAYTY is {actual_value}; expected one of: A, B, C, S.'
-- id: DXR01853
+- id: DXR4c1467b7
   enabled: false
   field: HRPY_RGDIR.PERMO
   check_class: referential_check
@@ -61,7 +61,7 @@ rules:
     __other__: HRPY_RGDIR.PERMO '{invalid_value}' is not defined in the check table T549R.PERMO. Correct it there or add the
       missing entry.
   record_fix_template: HRPY_RGDIR.PERMO points at a check table T549R.PERMO entry that does not exist.
-- id: DXV00611
+- id: DXV9f5a058b
   enabled: false
   field: HRPY_RGDIR.INPTY
   check_class: domain_value_check
@@ -80,7 +80,7 @@ rules:
   fix_map:
     __other__: 'HRPY_RGDIR.INPTY ''{invalid_value}'' is not in domain PAYTY. Set it to one of: A, B, C, S.'
   record_fix_template: 'HRPY_RGDIR.INPTY is {actual_value}; expected one of: A, B, C, S.'
-- id: DXR01854
+- id: DXRb6f3a420
   enabled: false
   field: PA0008.PARTN
   check_class: referential_check
@@ -97,7 +97,7 @@ rules:
     __other__: PA0008.PARTN '{invalid_value}' is not defined in the check table T577.AUSPR. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.PARTN points at a check table T577.AUSPR entry that does not exist.
-- id: DXR01855
+- id: DXR6bf5a48d
   enabled: false
   field: PA0008.VGLTA
   check_class: referential_check
@@ -114,7 +114,7 @@ rules:
     __other__: PA0008.VGLTA '{invalid_value}' is not defined in the check table T510A.TRFAR. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.VGLTA points at a check table T510A.TRFAR entry that does not exist.
-- id: DXR01856
+- id: DXRe18b265c
   enabled: false
   field: PA0008.VGLGB
   check_class: referential_check
@@ -131,7 +131,7 @@ rules:
     __other__: PA0008.VGLGB '{invalid_value}' is not defined in the check table T510G.TRFGB. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.VGLGB points at a check table T510G.TRFGB entry that does not exist.
-- id: DXR01857
+- id: DXRe1bbd579
   enabled: false
   field: PA0008.EIN01
   check_class: referential_check
@@ -148,7 +148,7 @@ rules:
     __other__: PA0008.EIN01 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN01 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01858
+- id: DXR4e30433a
   enabled: false
   field: PA0008.LGA02
   check_class: referential_check
@@ -165,7 +165,7 @@ rules:
     __other__: PA0008.LGA02 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA02 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01859
+- id: DXR2b6206b2
   enabled: false
   field: PA0008.EIN02
   check_class: referential_check
@@ -182,7 +182,7 @@ rules:
     __other__: PA0008.EIN02 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN02 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01860
+- id: DXRd76cfa02
   enabled: false
   field: PA0008.LGA03
   check_class: referential_check
@@ -199,7 +199,7 @@ rules:
     __other__: PA0008.LGA03 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA03 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01861
+- id: DXRe2808f48
   enabled: false
   field: PA0008.EIN03
   check_class: referential_check
@@ -216,7 +216,7 @@ rules:
     __other__: PA0008.EIN03 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN03 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01862
+- id: DXRce1d8ce8
   enabled: false
   field: PA0008.LGA04
   check_class: referential_check
@@ -233,7 +233,7 @@ rules:
     __other__: PA0008.LGA04 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA04 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01863
+- id: DXR3d286867
   enabled: false
   field: PA0008.EIN04
   check_class: referential_check
@@ -250,7 +250,7 @@ rules:
     __other__: PA0008.EIN04 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN04 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01864
+- id: DXRa424c123
   enabled: false
   field: PA0008.LGA05
   check_class: referential_check
@@ -267,7 +267,7 @@ rules:
     __other__: PA0008.LGA05 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA05 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01865
+- id: DXR0d14b7cb
   enabled: false
   field: PA0008.EIN05
   check_class: referential_check
@@ -284,7 +284,7 @@ rules:
     __other__: PA0008.EIN05 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN05 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01866
+- id: DXRfffbe203
   enabled: false
   field: PA0008.LGA06
   check_class: referential_check
@@ -301,7 +301,7 @@ rules:
     __other__: PA0008.LGA06 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA06 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01867
+- id: DXR21ef7414
   enabled: false
   field: PA0008.EIN06
   check_class: referential_check
@@ -318,7 +318,7 @@ rules:
     __other__: PA0008.EIN06 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN06 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01868
+- id: DXRc7f26630
   enabled: false
   field: PA0008.LGA07
   check_class: referential_check
@@ -335,7 +335,7 @@ rules:
     __other__: PA0008.LGA07 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA07 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01869
+- id: DXRad929d32
   enabled: false
   field: PA0008.EIN07
   check_class: referential_check
@@ -352,7 +352,7 @@ rules:
     __other__: PA0008.EIN07 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN07 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01870
+- id: DXR24d23f4e
   enabled: false
   field: PA0008.LGA08
   check_class: referential_check
@@ -369,7 +369,7 @@ rules:
     __other__: PA0008.LGA08 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA08 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01871
+- id: DXR482217cd
   enabled: false
   field: PA0008.EIN08
   check_class: referential_check
@@ -386,7 +386,7 @@ rules:
     __other__: PA0008.EIN08 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN08 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01872
+- id: DXRe6b10ef3
   enabled: false
   field: PA0008.LGA09
   check_class: referential_check
@@ -403,7 +403,7 @@ rules:
     __other__: PA0008.LGA09 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA09 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01873
+- id: DXR6f3fda61
   enabled: false
   field: PA0008.EIN09
   check_class: referential_check
@@ -420,7 +420,7 @@ rules:
     __other__: PA0008.EIN09 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN09 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01874
+- id: DXR7e13b8ee
   enabled: false
   field: PA0008.LGA10
   check_class: referential_check
@@ -437,7 +437,7 @@ rules:
     __other__: PA0008.LGA10 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA10 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01875
+- id: DXRdd600dc3
   enabled: false
   field: PA0008.EIN10
   check_class: referential_check
@@ -454,7 +454,7 @@ rules:
     __other__: PA0008.EIN10 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN10 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01876
+- id: DXRf2711704
   enabled: false
   field: PA0008.LGA11
   check_class: referential_check
@@ -471,7 +471,7 @@ rules:
     __other__: PA0008.LGA11 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA11 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01877
+- id: DXRa4c9587d
   enabled: false
   field: PA0008.EIN11
   check_class: referential_check
@@ -488,7 +488,7 @@ rules:
     __other__: PA0008.EIN11 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN11 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01878
+- id: DXR8501e92e
   enabled: false
   field: PA0008.LGA12
   check_class: referential_check
@@ -505,7 +505,7 @@ rules:
     __other__: PA0008.LGA12 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA12 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01879
+- id: DXRfac91002
   enabled: false
   field: PA0008.EIN12
   check_class: referential_check
@@ -522,7 +522,7 @@ rules:
     __other__: PA0008.EIN12 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN12 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01880
+- id: DXRb3da39ab
   enabled: false
   field: PA0008.LGA13
   check_class: referential_check
@@ -539,7 +539,7 @@ rules:
     __other__: PA0008.LGA13 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA13 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01881
+- id: DXRcb4ce32b
   enabled: false
   field: PA0008.EIN13
   check_class: referential_check
@@ -556,7 +556,7 @@ rules:
     __other__: PA0008.EIN13 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN13 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01882
+- id: DXRb01dd0d2
   enabled: false
   field: PA0008.LGA14
   check_class: referential_check
@@ -573,7 +573,7 @@ rules:
     __other__: PA0008.LGA14 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA14 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01883
+- id: DXR4fd3dbaa
   enabled: false
   field: PA0008.EIN14
   check_class: referential_check
@@ -590,7 +590,7 @@ rules:
     __other__: PA0008.EIN14 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN14 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01884
+- id: DXR9af69727
   enabled: false
   field: PA0008.LGA15
   check_class: referential_check
@@ -607,7 +607,7 @@ rules:
     __other__: PA0008.LGA15 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA15 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01885
+- id: DXR9df59074
   enabled: false
   field: PA0008.EIN15
   check_class: referential_check
@@ -624,7 +624,7 @@ rules:
     __other__: PA0008.EIN15 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN15 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01886
+- id: DXR3edd3685
   enabled: false
   field: PA0008.LGA16
   check_class: referential_check
@@ -641,7 +641,7 @@ rules:
     __other__: PA0008.LGA16 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA16 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01887
+- id: DXR397a40af
   enabled: false
   field: PA0008.EIN16
   check_class: referential_check
@@ -658,7 +658,7 @@ rules:
     __other__: PA0008.EIN16 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN16 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01888
+- id: DXR385083b8
   enabled: false
   field: PA0008.LGA17
   check_class: referential_check
@@ -675,7 +675,7 @@ rules:
     __other__: PA0008.LGA17 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA17 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01889
+- id: DXR75e7abe4
   enabled: false
   field: PA0008.EIN17
   check_class: referential_check
@@ -692,7 +692,7 @@ rules:
     __other__: PA0008.EIN17 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN17 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01890
+- id: DXR51ba7970
   enabled: false
   field: PA0008.LGA18
   check_class: referential_check
@@ -709,7 +709,7 @@ rules:
     __other__: PA0008.LGA18 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA18 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01891
+- id: DXR8d42158f
   enabled: false
   field: PA0008.EIN18
   check_class: referential_check
@@ -726,7 +726,7 @@ rules:
     __other__: PA0008.EIN18 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN18 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01892
+- id: DXR9d6398c4
   enabled: false
   field: PA0008.LGA19
   check_class: referential_check
@@ -743,7 +743,7 @@ rules:
     __other__: PA0008.LGA19 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA19 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01893
+- id: DXR98ee83bf
   enabled: false
   field: PA0008.EIN19
   check_class: referential_check
@@ -760,7 +760,7 @@ rules:
     __other__: PA0008.EIN19 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN19 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01894
+- id: DXR60236b70
   enabled: false
   field: PA0008.LGA20
   check_class: referential_check
@@ -777,7 +777,7 @@ rules:
     __other__: PA0008.LGA20 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA20 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01895
+- id: DXR7b5712e7
   enabled: false
   field: PA0008.EIN20
   check_class: referential_check
@@ -794,7 +794,7 @@ rules:
     __other__: PA0008.EIN20 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN20 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01896
+- id: DXR82e7004b
   enabled: false
   field: PA0008.LGA21
   check_class: referential_check
@@ -811,7 +811,7 @@ rules:
     __other__: PA0008.LGA21 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA21 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01897
+- id: DXReabb6371
   enabled: false
   field: PA0008.EIN21
   check_class: referential_check
@@ -828,7 +828,7 @@ rules:
     __other__: PA0008.EIN21 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN21 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01898
+- id: DXR047ffb9a
   enabled: false
   field: PA0008.LGA22
   check_class: referential_check
@@ -845,7 +845,7 @@ rules:
     __other__: PA0008.LGA22 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA22 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01899
+- id: DXReff2afaa
   enabled: false
   field: PA0008.EIN22
   check_class: referential_check
@@ -862,7 +862,7 @@ rules:
     __other__: PA0008.EIN22 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN22 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01900
+- id: DXRbcce117d
   enabled: false
   field: PA0008.LGA23
   check_class: referential_check
@@ -879,7 +879,7 @@ rules:
     __other__: PA0008.LGA23 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA23 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01901
+- id: DXR58709c93
   enabled: false
   field: PA0008.EIN23
   check_class: referential_check
@@ -896,7 +896,7 @@ rules:
     __other__: PA0008.EIN23 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN23 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01902
+- id: DXR3606239d
   enabled: false
   field: PA0008.LGA24
   check_class: referential_check
@@ -913,7 +913,7 @@ rules:
     __other__: PA0008.LGA24 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA24 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01903
+- id: DXR387203ab
   enabled: false
   field: PA0008.EIN24
   check_class: referential_check
@@ -930,7 +930,7 @@ rules:
     __other__: PA0008.EIN24 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN24 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01904
+- id: DXR883458ba
   enabled: false
   field: PA0008.LGA25
   check_class: referential_check
@@ -947,7 +947,7 @@ rules:
     __other__: PA0008.LGA25 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA25 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01905
+- id: DXRcbd899e1
   enabled: false
   field: PA0008.EIN25
   check_class: referential_check
@@ -964,7 +964,7 @@ rules:
     __other__: PA0008.EIN25 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN25 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01906
+- id: DXR6aa8b892
   enabled: false
   field: PA0008.LGA26
   check_class: referential_check
@@ -981,7 +981,7 @@ rules:
     __other__: PA0008.LGA26 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA26 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01907
+- id: DXR5a5ad786
   enabled: false
   field: PA0008.EIN26
   check_class: referential_check
@@ -998,7 +998,7 @@ rules:
     __other__: PA0008.EIN26 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN26 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01908
+- id: DXR0157ecc5
   enabled: false
   field: PA0008.LGA27
   check_class: referential_check
@@ -1015,7 +1015,7 @@ rules:
     __other__: PA0008.LGA27 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA27 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01909
+- id: DXR13147f79
   enabled: false
   field: PA0008.EIN27
   check_class: referential_check
@@ -1032,7 +1032,7 @@ rules:
     __other__: PA0008.EIN27 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN27 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01910
+- id: DXR2e584a3e
   enabled: false
   field: PA0008.LGA28
   check_class: referential_check
@@ -1049,7 +1049,7 @@ rules:
     __other__: PA0008.LGA28 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA28 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01911
+- id: DXR898e77ef
   enabled: false
   field: PA0008.EIN28
   check_class: referential_check
@@ -1066,7 +1066,7 @@ rules:
     __other__: PA0008.EIN28 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN28 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01912
+- id: DXR5022bf50
   enabled: false
   field: PA0008.LGA29
   check_class: referential_check
@@ -1083,7 +1083,7 @@ rules:
     __other__: PA0008.LGA29 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA29 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01913
+- id: DXReee97544
   enabled: false
   field: PA0008.EIN29
   check_class: referential_check
@@ -1100,7 +1100,7 @@ rules:
     __other__: PA0008.EIN29 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN29 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01914
+- id: DXR3f360838
   enabled: false
   field: PA0008.LGA30
   check_class: referential_check
@@ -1117,7 +1117,7 @@ rules:
     __other__: PA0008.LGA30 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA30 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01915
+- id: DXR104ce4a9
   enabled: false
   field: PA0008.EIN30
   check_class: referential_check
@@ -1134,7 +1134,7 @@ rules:
     __other__: PA0008.EIN30 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN30 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01916
+- id: DXR681ce9d8
   enabled: false
   field: PA0008.LGA31
   check_class: referential_check
@@ -1151,7 +1151,7 @@ rules:
     __other__: PA0008.LGA31 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA31 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01917
+- id: DXR74dd501c
   enabled: false
   field: PA0008.EIN31
   check_class: referential_check
@@ -1168,7 +1168,7 @@ rules:
     __other__: PA0008.EIN31 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN31 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01918
+- id: DXR635b04d7
   enabled: false
   field: PA0008.LGA32
   check_class: referential_check
@@ -1185,7 +1185,7 @@ rules:
     __other__: PA0008.LGA32 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA32 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01919
+- id: DXR381d570c
   enabled: false
   field: PA0008.EIN32
   check_class: referential_check
@@ -1202,7 +1202,7 @@ rules:
     __other__: PA0008.EIN32 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN32 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01920
+- id: DXR06849506
   enabled: false
   field: PA0008.LGA33
   check_class: referential_check
@@ -1219,7 +1219,7 @@ rules:
     __other__: PA0008.LGA33 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA33 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01921
+- id: DXR84629732
   enabled: false
   field: PA0008.EIN33
   check_class: referential_check
@@ -1236,7 +1236,7 @@ rules:
     __other__: PA0008.EIN33 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN33 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01922
+- id: DXR47202cc4
   enabled: false
   field: PA0008.LGA34
   check_class: referential_check
@@ -1253,7 +1253,7 @@ rules:
     __other__: PA0008.LGA34 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA34 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01923
+- id: DXRc10c1f2f
   enabled: false
   field: PA0008.EIN34
   check_class: referential_check
@@ -1270,7 +1270,7 @@ rules:
     __other__: PA0008.EIN34 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN34 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01924
+- id: DXRd690e9bd
   enabled: false
   field: PA0008.LGA35
   check_class: referential_check
@@ -1287,7 +1287,7 @@ rules:
     __other__: PA0008.LGA35 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA35 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01925
+- id: DXR199d2762
   enabled: false
   field: PA0008.EIN35
   check_class: referential_check
@@ -1304,7 +1304,7 @@ rules:
     __other__: PA0008.EIN35 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN35 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01926
+- id: DXRdc8f84fd
   enabled: false
   field: PA0008.LGA36
   check_class: referential_check
@@ -1321,7 +1321,7 @@ rules:
     __other__: PA0008.LGA36 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA36 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01927
+- id: DXR9aa38c4a
   enabled: false
   field: PA0008.EIN36
   check_class: referential_check
@@ -1338,7 +1338,7 @@ rules:
     __other__: PA0008.EIN36 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN36 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01928
+- id: DXRc94bcf21
   enabled: false
   field: PA0008.LGA37
   check_class: referential_check
@@ -1355,7 +1355,7 @@ rules:
     __other__: PA0008.LGA37 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA37 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01929
+- id: DXR0d0a1436
   enabled: false
   field: PA0008.EIN37
   check_class: referential_check
@@ -1372,7 +1372,7 @@ rules:
     __other__: PA0008.EIN37 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN37 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01930
+- id: DXRa767eece
   enabled: false
   field: PA0008.LGA38
   check_class: referential_check
@@ -1389,7 +1389,7 @@ rules:
     __other__: PA0008.LGA38 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA38 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01931
+- id: DXRa0ceac5b
   enabled: false
   field: PA0008.EIN38
   check_class: referential_check
@@ -1406,7 +1406,7 @@ rules:
     __other__: PA0008.EIN38 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN38 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01932
+- id: DXRb86ceb81
   enabled: false
   field: PA0008.LGA39
   check_class: referential_check
@@ -1423,7 +1423,7 @@ rules:
     __other__: PA0008.LGA39 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA39 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01933
+- id: DXR004b9b4b
   enabled: false
   field: PA0008.EIN39
   check_class: referential_check
@@ -1440,7 +1440,7 @@ rules:
     __other__: PA0008.EIN39 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN39 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01934
+- id: DXRaacbccdd
   enabled: false
   field: PA0008.LGA40
   check_class: referential_check
@@ -1457,7 +1457,7 @@ rules:
     __other__: PA0008.LGA40 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.LGA40 points at a check table T512Z.LGART entry that does not exist.
-- id: DXR01935
+- id: DXR7c993932
   enabled: false
   field: PA0008.EIN40
   check_class: referential_check
@@ -1474,7 +1474,7 @@ rules:
     __other__: PA0008.EIN40 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN40 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01936
+- id: DXR583cef02
   enabled: false
   field: PA0008.ANCUR
   check_class: referential_check
@@ -1491,7 +1491,7 @@ rules:
     __other__: PA0008.ANCUR '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.ANCUR points at a check table TCURC.WAERS entry that does not exist.
-- id: DXV00612
+- id: DXVb61ed1ce
   enabled: false
   field: PA0008.CPIND
   check_class: domain_value_check
@@ -1510,7 +1510,7 @@ rules:
   fix_map:
     __other__: 'PA0008.CPIND ''{invalid_value}'' is not in domain P_CPIND. Set it to one of: D, S, T.'
   record_fix_template: 'PA0008.CPIND is {actual_value}; expected one of: D, S, T.'
-- id: DXR01937
+- id: DXRb4d50977
   enabled: false
   field: PA0014.PREAS
   check_class: referential_check
@@ -1527,7 +1527,7 @@ rules:
     __other__: PA0014.PREAS '{invalid_value}' is not defined in the check table T530E.PREAS. Correct it there or add the missing
       entry.
   record_fix_template: PA0014.PREAS points at a check table T530E.PREAS entry that does not exist.
-- id: DXR01938
+- id: DXR82d08303
   enabled: false
   field: PA0014.ZEINH
   check_class: referential_check
@@ -1544,7 +1544,7 @@ rules:
     __other__: PA0014.ZEINH '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0014.ZEINH points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01939
+- id: DXR8c55150e
   enabled: false
   field: PA0014.ZEINZ
   check_class: referential_check
@@ -1561,7 +1561,7 @@ rules:
     __other__: PA0014.ZEINZ '{invalid_value}' is not defined in the check table T538C.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0014.ZEINZ points at a check table T538C.ZEINH entry that does not exist.
-- id: DXR01940
+- id: DXR6fe5a06e
   enabled: false
   field: PA0014.MODEL
   check_class: referential_check
@@ -1578,7 +1578,7 @@ rules:
     __other__: PA0014.MODEL '{invalid_value}' is not defined in the check table T549W.MODEL. Correct it there or add the missing
       entry.
   record_fix_template: PA0014.MODEL points at a check table T549W.MODEL entry that does not exist.
-- id: DXR01941
+- id: DXR85b79002
   enabled: false
   field: PA0015.PREAS
   check_class: referential_check
@@ -1595,7 +1595,7 @@ rules:
     __other__: PA0015.PREAS '{invalid_value}' is not defined in the check table T530E.PREAS. Correct it there or add the missing
       entry.
   record_fix_template: PA0015.PREAS points at a check table T530E.PREAS entry that does not exist.
-- id: DXR01942
+- id: DXR726c903d
   enabled: false
   field: PA0015.ZEINH
   check_class: referential_check
@@ -1612,7 +1612,7 @@ rules:
     __other__: PA0015.ZEINH '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0015.ZEINH points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR01943
+- id: DXRfb33063f
   enabled: false
   field: PERINFO.COUNTRY_OF_BIRTH
   check_class: referential_check
@@ -1629,7 +1629,7 @@ rules:
     __other__: PERINFO.COUNTRY_OF_BIRTH '{invalid_value}' is not defined in the check table Country.externalCode. Correct
       it there or add the missing entry.
   record_fix_template: PERINFO.COUNTRY_OF_BIRTH points at a check table Country.externalCode entry that does not exist.
-- id: DXR01944
+- id: DXR7b5b4578
   enabled: false
   field: PERINFO.SECOND_NATIONALITY
   check_class: referential_check

@@ -6,7 +6,7 @@ module: accounts_receivable
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00060
+- id: DXRb1d21941
   enabled: false
   field: KNA1.KNAZK
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: KNA1.KNAZK '{invalid_value}' is not defined in the check table TFACD.IDENT. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KNAZK points at a check table TFACD.IDENT entry that does not exist.
-- id: DXR00061
+- id: DXR841c47ec
   enabled: false
   field: KNA1.NIELS
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: KNA1.NIELS '{invalid_value}' is not defined in the check table TNLS.NIELS. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.NIELS points at a check table TNLS.NIELS entry that does not exist.
-- id: DXR00062
+- id: DXR98d921bc
   enabled: false
   field: KNA1.COUNC
   check_class: referential_check
@@ -57,7 +57,7 @@ rules:
     __other__: KNA1.COUNC '{invalid_value}' is not defined in the check table T005E.COUNC. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.COUNC points at a check table T005E.COUNC entry that does not exist.
-- id: DXR00063
+- id: DXRf26cea8d
   enabled: false
   field: KNA1.CITYC
   check_class: referential_check
@@ -74,7 +74,7 @@ rules:
     __other__: KNA1.CITYC '{invalid_value}' is not defined in the check table T005G.CITYC. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.CITYC points at a check table T005G.CITYC entry that does not exist.
-- id: DXR00064
+- id: DXR42723128
   enabled: false
   field: KNA1.LZONE
   check_class: referential_check
@@ -91,7 +91,7 @@ rules:
     __other__: KNA1.LZONE '{invalid_value}' is not defined in the check table TZONE.ZONE1. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.LZONE points at a check table TZONE.ZONE1 entry that does not exist.
-- id: DXR00065
+- id: DXR679ee230
   enabled: false
   field: KNA1.GFORM
   check_class: referential_check
@@ -108,7 +108,7 @@ rules:
     __other__: KNA1.GFORM '{invalid_value}' is not defined in the check table TVGF.GFORM. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.GFORM points at a check table TVGF.GFORM entry that does not exist.
-- id: DXR00066
+- id: DXR89c11ffc
   enabled: false
   field: KNA1.BRAN1
   check_class: referential_check
@@ -125,7 +125,7 @@ rules:
     __other__: KNA1.BRAN1 '{invalid_value}' is not defined in the check table TBRC.BRACO. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.BRAN1 points at a check table TBRC.BRACO entry that does not exist.
-- id: DXR00067
+- id: DXR7c08097b
   enabled: false
   field: KNA1.BRAN2
   check_class: referential_check
@@ -142,7 +142,7 @@ rules:
     __other__: KNA1.BRAN2 '{invalid_value}' is not defined in the check table TBRC.BRACO. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.BRAN2 points at a check table TBRC.BRACO entry that does not exist.
-- id: DXR00068
+- id: DXR034f510b
   enabled: false
   field: KNA1.BRAN3
   check_class: referential_check
@@ -159,7 +159,7 @@ rules:
     __other__: KNA1.BRAN3 '{invalid_value}' is not defined in the check table TBRC.BRACO. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.BRAN3 points at a check table TBRC.BRACO entry that does not exist.
-- id: DXR00069
+- id: DXR450a344d
   enabled: false
   field: KNA1.BRAN4
   check_class: referential_check
@@ -176,7 +176,7 @@ rules:
     __other__: KNA1.BRAN4 '{invalid_value}' is not defined in the check table TBRC.BRACO. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.BRAN4 points at a check table TBRC.BRACO entry that does not exist.
-- id: DXR00070
+- id: DXRffa3baf1
   enabled: false
   field: KNA1.BRAN5
   check_class: referential_check
@@ -193,7 +193,7 @@ rules:
     __other__: KNA1.BRAN5 '{invalid_value}' is not defined in the check table TBRC.BRACO. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.BRAN5 points at a check table TBRC.BRACO entry that does not exist.
-- id: DXR00071
+- id: DXRd0c38fca
   enabled: false
   field: KNA1.EKONT
   check_class: referential_check
@@ -210,7 +210,7 @@ rules:
     __other__: KNA1.EKONT '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.EKONT points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR00072
+- id: DXRd55e0899
   enabled: false
   field: KNA1.UWAER
   check_class: referential_check
@@ -227,7 +227,7 @@ rules:
     __other__: KNA1.UWAER '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.UWAER points at a check table TCURC.WAERS entry that does not exist.
-- id: DXR00073
+- id: DXR0050aab4
   enabled: false
   field: KNA1.KATR1
   check_class: referential_check
@@ -244,7 +244,7 @@ rules:
     __other__: KNA1.KATR1 '{invalid_value}' is not defined in the check table TVK1.KATR1. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR1 points at a check table TVK1.KATR1 entry that does not exist.
-- id: DXR00074
+- id: DXR4038a350
   enabled: false
   field: KNA1.KATR2
   check_class: referential_check
@@ -261,7 +261,7 @@ rules:
     __other__: KNA1.KATR2 '{invalid_value}' is not defined in the check table TVK2.KATR2. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR2 points at a check table TVK2.KATR2 entry that does not exist.
-- id: DXR00075
+- id: DXR183a8564
   enabled: false
   field: KNA1.KATR3
   check_class: referential_check
@@ -278,7 +278,7 @@ rules:
     __other__: KNA1.KATR3 '{invalid_value}' is not defined in the check table TVK3.KATR3. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR3 points at a check table TVK3.KATR3 entry that does not exist.
-- id: DXR00076
+- id: DXRd7403695
   enabled: false
   field: KNA1.KATR4
   check_class: referential_check
@@ -295,7 +295,7 @@ rules:
     __other__: KNA1.KATR4 '{invalid_value}' is not defined in the check table TVK4.KATR4. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR4 points at a check table TVK4.KATR4 entry that does not exist.
-- id: DXR00077
+- id: DXR4ee9ef3f
   enabled: false
   field: KNA1.KATR5
   check_class: referential_check
@@ -312,7 +312,7 @@ rules:
     __other__: KNA1.KATR5 '{invalid_value}' is not defined in the check table TVK5.KATR5. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR5 points at a check table TVK5.KATR5 entry that does not exist.
-- id: DXR00078
+- id: DXR2a49dfa6
   enabled: false
   field: KNA1.KATR6
   check_class: referential_check
@@ -329,7 +329,7 @@ rules:
     __other__: KNA1.KATR6 '{invalid_value}' is not defined in the check table TVK6.KATR6. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR6 points at a check table TVK6.KATR6 entry that does not exist.
-- id: DXR00079
+- id: DXRe69dbe07
   enabled: false
   field: KNA1.KATR7
   check_class: referential_check
@@ -346,7 +346,7 @@ rules:
     __other__: KNA1.KATR7 '{invalid_value}' is not defined in the check table TVK7.KATR7. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR7 points at a check table TVK7.KATR7 entry that does not exist.
-- id: DXR00080
+- id: DXR2c27e566
   enabled: false
   field: KNA1.KATR8
   check_class: referential_check
@@ -363,7 +363,7 @@ rules:
     __other__: KNA1.KATR8 '{invalid_value}' is not defined in the check table TVK8.KATR8. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR8 points at a check table TVK8.KATR8 entry that does not exist.
-- id: DXR00081
+- id: DXRb91fd24b
   enabled: false
   field: KNA1.KATR9
   check_class: referential_check
@@ -380,7 +380,7 @@ rules:
     __other__: KNA1.KATR9 '{invalid_value}' is not defined in the check table TVK9.KATR9. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR9 points at a check table TVK9.KATR9 entry that does not exist.
-- id: DXR00082
+- id: DXRb373b459
   enabled: false
   field: KNA1.KATR10
   check_class: referential_check
@@ -397,7 +397,7 @@ rules:
     __other__: KNA1.KATR10 '{invalid_value}' is not defined in the check table TVK0.KATR10. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KATR10 points at a check table TVK0.KATR10 entry that does not exist.
-- id: DXR00083
+- id: DXRe6bd8901
   enabled: false
   field: KNA1.PERIV
   check_class: referential_check
@@ -414,7 +414,7 @@ rules:
     __other__: KNA1.PERIV '{invalid_value}' is not defined in the check table T009.PERIV. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.PERIV points at a check table T009.PERIV entry that does not exist.
-- id: DXR00084
+- id: DXR7e51cda2
   enabled: false
   field: KNA1.ABRVW
   check_class: referential_check
@@ -431,7 +431,7 @@ rules:
     __other__: KNA1.ABRVW '{invalid_value}' is not defined in the check table TVLV.ABRVW. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.ABRVW points at a check table TVLV.ABRVW entry that does not exist.
-- id: DXR00085
+- id: DXRa4ad574a
   enabled: false
   field: KNA1.KTOCD
   check_class: referential_check
@@ -448,7 +448,7 @@ rules:
     __other__: KNA1.KTOCD '{invalid_value}' is not defined in the check table T077D.KTOKD. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KTOCD points at a check table T077D.KTOKD entry that does not exist.
-- id: DXR00086
+- id: DXR383d29e3
   enabled: false
   field: KNA1.WERKS
   check_class: referential_check
@@ -464,7 +464,7 @@ rules:
     __other__: KNA1.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXV00014
+- id: DXV2f0381b9
   enabled: false
   field: KNA1.DTAMS
   check_class: domain_value_check
@@ -482,7 +482,7 @@ rules:
   fix_map:
     __other__: 'KNA1.DTAMS ''{invalid_value}'' is not in domain DTAMS. Set it to one of: 0, 1.'
   record_fix_template: 'KNA1.DTAMS is {actual_value}; expected one of: 0, 1.'
-- id: DXV00015
+- id: DXV99263d15
   enabled: false
   field: KNA1.DUEFL
   check_class: domain_value_check
@@ -500,7 +500,7 @@ rules:
   fix_map:
     __other__: 'KNA1.DUEFL ''{invalid_value}'' is not in domain DUEFL_BKPF. Set it to one of: A, X.'
   record_fix_template: 'KNA1.DUEFL is {actual_value}; expected one of: A, X.'
-- id: DXR00087
+- id: DXR2a181341
   enabled: false
   field: KNA1.ETIKG
   check_class: referential_check
@@ -517,7 +517,7 @@ rules:
     __other__: KNA1.ETIKG '{invalid_value}' is not defined in the check table TWEK.KUNGR. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.ETIKG points at a check table TWEK.KUNGR entry that does not exist.
-- id: DXR00088
+- id: DXR7bda4d64
   enabled: false
   field: KNA1.KDKG1
   check_class: referential_check
@@ -534,7 +534,7 @@ rules:
     __other__: KNA1.KDKG1 '{invalid_value}' is not defined in the check table TVKGG.KDKGR. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KDKG1 points at a check table TVKGG.KDKGR entry that does not exist.
-- id: DXR00089
+- id: DXR2758b782
   enabled: false
   field: KNA1.KDKG2
   check_class: referential_check
@@ -551,7 +551,7 @@ rules:
     __other__: KNA1.KDKG2 '{invalid_value}' is not defined in the check table TVKGG.KDKGR. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KDKG2 points at a check table TVKGG.KDKGR entry that does not exist.
-- id: DXR00090
+- id: DXRcd398692
   enabled: false
   field: KNA1.KDKG3
   check_class: referential_check
@@ -568,7 +568,7 @@ rules:
     __other__: KNA1.KDKG3 '{invalid_value}' is not defined in the check table TVKGG.KDKGR. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KDKG3 points at a check table TVKGG.KDKGR entry that does not exist.
-- id: DXR00091
+- id: DXRa1ae15e2
   enabled: false
   field: KNA1.KDKG4
   check_class: referential_check
@@ -585,7 +585,7 @@ rules:
     __other__: KNA1.KDKG4 '{invalid_value}' is not defined in the check table TVKGG.KDKGR. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KDKG4 points at a check table TVKGG.KDKGR entry that does not exist.
-- id: DXR00092
+- id: DXReade3c4c
   enabled: false
   field: KNA1.KDKG5
   check_class: referential_check
@@ -602,7 +602,7 @@ rules:
     __other__: KNA1.KDKG5 '{invalid_value}' is not defined in the check table TVKGG.KDKGR. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.KDKG5 points at a check table TVKGG.KDKGR entry that does not exist.
-- id: DXR00093
+- id: DXRc0229159
   enabled: false
   field: KNA1.FITYP
   check_class: referential_check
@@ -619,7 +619,7 @@ rules:
     __other__: KNA1.FITYP '{invalid_value}' is not defined in the check table J_1AFITP.J_1AFITP. Correct it there or add the
       missing entry.
   record_fix_template: KNA1.FITYP points at a check table J_1AFITP.J_1AFITP entry that does not exist.
-- id: DXR00094
+- id: DXRa27be5ca
   enabled: false
   field: KNA1.STCDT
   check_class: referential_check
@@ -636,7 +636,7 @@ rules:
     __other__: KNA1.STCDT '{invalid_value}' is not defined in the check table J_1ATODC.J_1ATODC. Correct it there or add the
       missing entry.
   record_fix_template: KNA1.STCDT points at a check table J_1ATODC.J_1ATODC entry that does not exist.
-- id: DXR00095
+- id: DXRf34d211d
   enabled: false
   field: KNA1.XSUBT
   check_class: referential_check
@@ -653,7 +653,7 @@ rules:
     __other__: KNA1.XSUBT '{invalid_value}' is not defined in the check table J_1BTXSTG.STGRP. Correct it there or add the
       missing entry.
   record_fix_template: KNA1.XSUBT points at a check table J_1BTXSTG.STGRP entry that does not exist.
-- id: DXV00016
+- id: DXV8a3be0ae
   enabled: false
   field: KNA1.CFOPC
   check_class: domain_value_check
@@ -680,7 +680,7 @@ rules:
     __other__: 'KNA1.CFOPC ''{invalid_value}'' is not in domain J_1BINDUS1. Set it to one of: 00, 01, 02, 03, 04, 05, 06,
       07, 08, 09.'
   record_fix_template: 'KNA1.CFOPC is {actual_value}; expected one of: 00, 01, 02, 03, 04, 05, 06, 07, 08, 09.'
-- id: DXR00096
+- id: DXR6528af71
   enabled: false
   field: KNA1.TXLW1
   check_class: referential_check
@@ -697,7 +697,7 @@ rules:
     __other__: KNA1.TXLW1 '{invalid_value}' is not defined in the check table J_1BATL1.TAXLAW. Correct it there or add the
       missing entry.
   record_fix_template: KNA1.TXLW1 points at a check table J_1BATL1.TAXLAW entry that does not exist.
-- id: DXR00097
+- id: DXRf0705dc7
   enabled: false
   field: KNA1.TXLW2
   check_class: referential_check
@@ -714,7 +714,7 @@ rules:
     __other__: KNA1.TXLW2 '{invalid_value}' is not defined in the check table J_1BATL2.TAXLAW. Correct it there or add the
       missing entry.
   record_fix_template: KNA1.TXLW2 points at a check table J_1BATL2.TAXLAW entry that does not exist.
-- id: DXR00098
+- id: DXRa17f540e
   enabled: false
   field: KNA1.J_1KFTBUS
   check_class: referential_check
@@ -731,7 +731,7 @@ rules:
     __other__: KNA1.J_1KFTBUS '{invalid_value}' is not defined in the check table BUSTYPE.GESTYP. Correct it there or add
       the missing entry.
   record_fix_template: KNA1.J_1KFTBUS points at a check table BUSTYPE.GESTYP entry that does not exist.
-- id: DXR00099
+- id: DXR9d74c1f6
   enabled: false
   field: KNA1.J_1KFTIND
   check_class: referential_check
@@ -748,7 +748,7 @@ rules:
     __other__: KNA1.J_1KFTIND '{invalid_value}' is not defined in the check table INDUSTYPE.INDTYPE. Correct it there or add
       the missing entry.
   record_fix_template: KNA1.J_1KFTIND points at a check table INDUSTYPE.INDTYPE entry that does not exist.
-- id: DXR00100
+- id: DXRf532ecb3
   enabled: false
   field: KNA1.CNAE
   check_class: referential_check
@@ -765,7 +765,7 @@ rules:
     __other__: KNA1.CNAE '{invalid_value}' is not defined in the check table J_1BTCNAE.J_1BCNAE. Correct it there or add the
       missing entry.
   record_fix_template: KNA1.CNAE points at a check table J_1BTCNAE.J_1BCNAE entry that does not exist.
-- id: DXR00101
+- id: DXR6afe6629
   enabled: false
   field: KNA1.LEGALNAT
   check_class: referential_check
@@ -782,7 +782,7 @@ rules:
     __other__: KNA1.LEGALNAT '{invalid_value}' is not defined in the check table J_1BTLEGALNAT.J_1BLEGALNAT. Correct it there
       or add the missing entry.
   record_fix_template: KNA1.LEGALNAT points at a check table J_1BTLEGALNAT.J_1BLEGALNAT entry that does not exist.
-- id: DXV00017
+- id: DXVc5097eb4
   enabled: false
   field: KNA1.CRTN
   check_class: domain_value_check
@@ -800,7 +800,7 @@ rules:
   fix_map:
     __other__: 'KNA1.CRTN ''{invalid_value}'' is not in domain J_1BCRTN. Set it to one of: 1, 2, 3.'
   record_fix_template: 'KNA1.CRTN is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00102
+- id: DXRd5f1dd59
   enabled: false
   field: KNA1.ICMSTAXPAY
   check_class: referential_check
@@ -817,7 +817,7 @@ rules:
     __other__: KNA1.ICMSTAXPAY '{invalid_value}' is not defined in the check table J_1BTICMSTAXPAY.J_1BICMSTAXPAY. Correct
       it there or add the missing entry.
   record_fix_template: KNA1.ICMSTAXPAY points at a check table J_1BTICMSTAXPAY.J_1BICMSTAXPAY entry that does not exist.
-- id: DXR00103
+- id: DXR996d23ce
   enabled: false
   field: KNA1.INDTYP
   check_class: referential_check
@@ -834,7 +834,7 @@ rules:
     __other__: KNA1.INDTYP '{invalid_value}' is not defined in the check table J_1BTINDTYP.J_1BINDTYP. Correct it there or
       add the missing entry.
   record_fix_template: KNA1.INDTYP points at a check table J_1BTINDTYP.J_1BINDTYP entry that does not exist.
-- id: DXR00104
+- id: DXR9edd6169
   enabled: false
   field: KNA1.TDT
   check_class: referential_check
@@ -851,7 +851,7 @@ rules:
     __other__: KNA1.TDT '{invalid_value}' is not defined in the check table J_1BTTDT.J_1BTDT. Correct it there or add the
       missing entry.
   record_fix_template: KNA1.TDT points at a check table J_1BTTDT.J_1BTDT entry that does not exist.
-- id: DXR00105
+- id: DXRce6ee16e
   enabled: false
   field: KNA1.COMSIZE
   check_class: referential_check
@@ -868,7 +868,7 @@ rules:
     __other__: KNA1.COMSIZE '{invalid_value}' is not defined in the check table J_1BTCOMSIZE.J_1BCOMSIZE. Correct it there
       or add the missing entry.
   record_fix_template: KNA1.COMSIZE points at a check table J_1BTCOMSIZE.J_1BCOMSIZE entry that does not exist.
-- id: DXR00106
+- id: DXR89fc0cc5
   enabled: false
   field: KNA1.DECREGPC
   check_class: referential_check
@@ -885,7 +885,7 @@ rules:
     __other__: KNA1.DECREGPC '{invalid_value}' is not defined in the check table J_1BTDECREGPC.J_1BDECREGPC. Correct it there
       or add the missing entry.
   record_fix_template: KNA1.DECREGPC points at a check table J_1BTDECREGPC.J_1BDECREGPC entry that does not exist.
-- id: DXR00107
+- id: DXR97e6a61a
   enabled: false
   field: KNA1./VSO/R_PAL_UL
   check_class: referential_check
@@ -902,7 +902,7 @@ rules:
     __other__: KNA1./VSO/R_PAL_UL '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add
       the missing entry.
   record_fix_template: KNA1./VSO/R_PAL_UL points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00108
+- id: DXR7d0d0891
   enabled: false
   field: KNA1./VSO/R_MATPAL
   check_class: referential_check
@@ -919,7 +919,7 @@ rules:
     __other__: KNA1./VSO/R_MATPAL '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add
       the missing entry.
   record_fix_template: KNA1./VSO/R_MATPAL points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00109
+- id: DXR48ba3709
   enabled: false
   field: KNA1./VSO/R_DPOINT
   check_class: referential_check
@@ -936,7 +936,7 @@ rules:
     __other__: KNA1./VSO/R_DPOINT '{invalid_value}' is not defined in the check table /VSO/R_DPOINT./VSO/R_DPOINT. Correct
       it there or add the missing entry.
   record_fix_template: KNA1./VSO/R_DPOINT points at a check table /VSO/R_DPOINT./VSO/R_DPOINT entry that does not exist.
-- id: DXR00110
+- id: DXRec51af60
   enabled: false
   field: KNA1.ALC
   check_class: referential_check
@@ -953,7 +953,7 @@ rules:
     __other__: KNA1.ALC '{invalid_value}' is not defined in the check table FMFGT_ALC.ALC. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.ALC points at a check table FMFGT_ALC.ALC entry that does not exist.
-- id: DXR00111
+- id: DXR1c6f4b1d
   enabled: false
   field: KNA1.PMT_OFFICE
   check_class: referential_check
@@ -970,7 +970,7 @@ rules:
     __other__: KNA1.PMT_OFFICE '{invalid_value}' is not defined in the check table FMFGT_PO.PMT_OFFICE. Correct it there or
       add the missing entry.
   record_fix_template: KNA1.PMT_OFFICE points at a check table FMFGT_PO.PMT_OFFICE entry that does not exist.
-- id: DXR00112
+- id: DXR69be92ff
   enabled: false
   field: KNA1.PSOFG
   check_class: referential_check
@@ -987,7 +987,7 @@ rules:
     __other__: KNA1.PSOFG '{invalid_value}' is not defined in the check table PSO19.PSOFG. Correct it there or add the missing
       entry.
   record_fix_template: KNA1.PSOFG points at a check table PSO19.PSOFG entry that does not exist.
-- id: DXV00018
+- id: DXV2ddedad2
   enabled: false
   field: KNB1.ZINRT
   check_class: domain_value_check
@@ -1017,7 +1017,7 @@ rules:
     __other__: 'KNB1.ZINRT ''{invalid_value}'' is not in domain ZINRT. Set it to one of: 01, 02, 03, 04, 05, 06, 07, 08, 09,
       10, 11, 12.'
   record_fix_template: 'KNB1.ZINRT is {actual_value}; expected one of: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12.'
-- id: DXR00113
+- id: DXRcadf0eb6
   enabled: false
   field: KNB1.REMIT
   check_class: referential_check
@@ -1034,7 +1034,7 @@ rules:
     __other__: KNB1.REMIT '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.REMIT points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR00114
+- id: DXRaf8b5f15
   enabled: false
   field: KNB1.ZGRUP
   check_class: referential_check
@@ -1051,7 +1051,7 @@ rules:
     __other__: KNB1.ZGRUP '{invalid_value}' is not defined in the check table TZGR.ZGRUP. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.ZGRUP points at a check table TZGR.ZGRUP entry that does not exist.
-- id: DXR00115
+- id: DXRe8d108f8
   enabled: false
   field: KNB1.URLID
   check_class: referential_check
@@ -1068,7 +1068,7 @@ rules:
     __other__: KNB1.URLID '{invalid_value}' is not defined in the check table T052A.URLID. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.URLID points at a check table T052A.URLID entry that does not exist.
-- id: DXR00116
+- id: DXRebf28d96
   enabled: false
   field: KNB1.MGRUP
   check_class: referential_check
@@ -1085,7 +1085,7 @@ rules:
     __other__: KNB1.MGRUP '{invalid_value}' is not defined in the check table T047R.MGRUP. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.MGRUP points at a check table T047R.MGRUP entry that does not exist.
-- id: DXR00117
+- id: DXRe3cc6d35
   enabled: false
   field: KNB1.EKVBD
   check_class: referential_check
@@ -1102,7 +1102,7 @@ rules:
     __other__: KNB1.EKVBD '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.EKVBD points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR00118
+- id: DXR3becaf68
   enabled: false
   field: KNB1.SREGL
   check_class: referential_check
@@ -1119,7 +1119,7 @@ rules:
     __other__: KNB1.SREGL '{invalid_value}' is not defined in the check table T053A.SREGL. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.SREGL points at a check table T053A.SREGL entry that does not exist.
-- id: DXR00119
+- id: DXRfa65742f
   enabled: false
   field: KNB1.FRGRP
   check_class: referential_check
@@ -1136,7 +1136,7 @@ rules:
     __other__: KNB1.FRGRP '{invalid_value}' is not defined in the check table VBWF08.FRGRP. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.FRGRP points at a check table VBWF08.FRGRP entry that does not exist.
-- id: DXR00120
+- id: DXR61bb167f
   enabled: false
   field: KNB1.VRSDG
   check_class: referential_check
@@ -1153,7 +1153,7 @@ rules:
     __other__: KNB1.VRSDG '{invalid_value}' is not defined in the check table T053V.VRSDG. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.VRSDG points at a check table T053V.VRSDG entry that does not exist.
-- id: DXR00121
+- id: DXR1de817ff
   enabled: false
   field: KNB1.GRICD
   check_class: referential_check
@@ -1170,7 +1170,7 @@ rules:
     __other__: KNB1.GRICD '{invalid_value}' is not defined in the check table J_1AGICD.J_1AGICD. Correct it there or add the
       missing entry.
   record_fix_template: KNB1.GRICD points at a check table J_1AGICD.J_1AGICD entry that does not exist.
-- id: DXR00122
+- id: DXRbe15620b
   enabled: false
   field: KNB1.GRIDT
   check_class: referential_check
@@ -1187,7 +1187,7 @@ rules:
     __other__: KNB1.GRIDT '{invalid_value}' is not defined in the check table J_1ADTYP.J_1ADTYP. Correct it there or add the
       missing entry.
   record_fix_template: KNB1.GRIDT points at a check table J_1ADTYP.J_1ADTYP entry that does not exist.
-- id: DXR00123
+- id: DXRe2bd845e
   enabled: false
   field: KNB1.WBRSL
   check_class: referential_check
@@ -1204,7 +1204,7 @@ rules:
     __other__: KNB1.WBRSL '{invalid_value}' is not defined in the check table T044G.WBRSL. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.WBRSL points at a check table T044G.WBRSL entry that does not exist.
-- id: DXR00124
+- id: DXRdfb9fbfa
   enabled: false
   field: KNB1.CESSION_KZ
   check_class: referential_check
@@ -1221,7 +1221,7 @@ rules:
     __other__: KNB1.CESSION_KZ '{invalid_value}' is not defined in the check table TCESSION.CESSION_KZ. Correct it there or
       add the missing entry.
   record_fix_template: KNB1.CESSION_KZ points at a check table TCESSION.CESSION_KZ entry that does not exist.
-- id: DXV00019
+- id: DXV082f768c
   enabled: false
   field: KNB1.AVSND
   check_class: domain_value_check
@@ -1239,7 +1239,7 @@ rules:
   fix_map:
     __other__: 'KNB1.AVSND ''{invalid_value}'' is not in domain AVSND. Set it to one of: X, Y.'
   record_fix_template: 'KNB1.AVSND is {actual_value}; expected one of: X, Y.'
-- id: DXR00125
+- id: DXR122dd15d
   enabled: false
   field: KNB1.QLAND
   check_class: referential_check
@@ -1256,7 +1256,7 @@ rules:
     __other__: KNB1.QLAND '{invalid_value}' is not defined in the check table T005Q.QLAND. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.QLAND points at a check table T005Q.QLAND entry that does not exist.
-- id: DXR00126
+- id: DXR305d7130
   enabled: false
   field: KNB5.KNRMA
   check_class: referential_check
@@ -1273,7 +1273,7 @@ rules:
     __other__: KNB5.KNRMA '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: KNB5.KNRMA points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR00127
+- id: DXR35079473
   enabled: false
   field: KNB5.BUSAB
   check_class: referential_check
@@ -1290,7 +1290,7 @@ rules:
     __other__: KNB5.BUSAB '{invalid_value}' is not defined in the check table T001S.BUSAB. Correct it there or add the missing
       entry.
   record_fix_template: KNB5.BUSAB points at a check table T001S.BUSAB entry that does not exist.
-- id: DXR00128
+- id: DXR9365a3b0
   enabled: false
   field: KNKA.WAERS
   check_class: referential_check
@@ -1307,7 +1307,7 @@ rules:
     __other__: KNKA.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: KNKA.WAERS points at a check table TCURC.WAERS entry that does not exist.
-- id: DXR00129
+- id: DXR3e2e8e02
   enabled: false
   field: QDQL.LIFNR
   check_class: referential_check
@@ -1324,7 +1324,7 @@ rules:
     __other__: QDQL.LIFNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: QDQL.LIFNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00130
+- id: DXRad5050a2
   enabled: false
   field: QDQL.HERSTELLER
   check_class: referential_check
@@ -1341,7 +1341,7 @@ rules:
     __other__: QDQL.HERSTELLER '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the
       missing entry.
   record_fix_template: QDQL.HERSTELLER points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00131
+- id: DXR57704903
   enabled: false
   field: QDQL.KUNNR
   check_class: referential_check
@@ -1358,7 +1358,7 @@ rules:
     __other__: QDQL.KUNNR '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: QDQL.KUNNR points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR00132
+- id: DXR8a95edd7
   enabled: false
   field: QDQL.PRUEFART
   check_class: referential_check
@@ -1375,7 +1375,7 @@ rules:
     __other__: QDQL.PRUEFART '{invalid_value}' is not defined in the check table TQ30.ART. Correct it there or add the missing
       entry.
   record_fix_template: QDQL.PRUEFART points at a check table TQ30.ART entry that does not exist.
-- id: DXR00133
+- id: DXR222110fe
   enabled: false
   field: QDQL.VPLTY
   check_class: referential_check
@@ -1392,7 +1392,7 @@ rules:
     __other__: QDQL.VPLTY '{invalid_value}' is not defined in the check table TCA01.PLNTY. Correct it there or add the missing
       entry.
   record_fix_template: QDQL.VPLTY points at a check table TCA01.PLNTY entry that does not exist.
-- id: DXV00020
+- id: DXVb12856b1
   enabled: false
   field: QDQL.BWLOS
   check_class: domain_value_check
@@ -1410,7 +1410,7 @@ rules:
   fix_map:
     __other__: 'QDQL.BWLOS ''{invalid_value}'' is not in domain QBEWERTUNG. Set it to one of: A, R.'
   record_fix_template: 'QDQL.BWLOS is {actual_value}; expected one of: A, R.'
-- id: DXV00021
+- id: DXV9c6c43c0
   enabled: false
   field: QDQL.BWLOSDYN
   check_class: domain_value_check
@@ -1428,7 +1428,7 @@ rules:
   fix_map:
     __other__: 'QDQL.BWLOSDYN ''{invalid_value}'' is not in domain QBEWERTUNG. Set it to one of: A, R.'
   record_fix_template: 'QDQL.BWLOSDYN is {actual_value}; expected one of: A, R.'
-- id: DXR00134
+- id: DXR5e4e6c56
   enabled: false
   field: QDQL.STICHPRVER
   check_class: referential_check
@@ -1445,7 +1445,7 @@ rules:
     __other__: QDQL.STICHPRVER '{invalid_value}' is not defined in the check table QDSV.STICHPRVER. Correct it there or add
       the missing entry.
   record_fix_template: QDQL.STICHPRVER points at a check table QDSV.STICHPRVER entry that does not exist.
-- id: DXR00135
+- id: DXRe43c8e07
   enabled: false
   field: QDQL.DYNREGEL
   check_class: referential_check
@@ -1462,7 +1462,7 @@ rules:
     __other__: QDQL.DYNREGEL '{invalid_value}' is not defined in the check table QDDR.DYNREGEL. Correct it there or add the
       missing entry.
   record_fix_template: QDQL.DYNREGEL points at a check table QDDR.DYNREGEL entry that does not exist.
-- id: DXR00136
+- id: DXRba2d0405
   enabled: false
   field: QDQL.PRSTUFENAE
   check_class: referential_check
@@ -1479,7 +1479,7 @@ rules:
     __other__: QDQL.PRSTUFENAE '{invalid_value}' is not defined in the check table QDPS.PRSTUFE. Correct it there or add the
       missing entry.
   record_fix_template: QDQL.PRSTUFENAE points at a check table QDPS.PRSTUFE entry that does not exist.
-- id: DXV00022
+- id: DXV9e5fec53
   enabled: false
   field: QDQL.DBEWERTG
   check_class: domain_value_check
@@ -1498,7 +1498,7 @@ rules:
   fix_map:
     __other__: 'QDQL.DBEWERTG ''{invalid_value}'' is not in domain QEEBEWERTG. Set it to one of: A, F, R.'
   record_fix_template: 'QDQL.DBEWERTG is {actual_value}; expected one of: A, F, R.'
-- id: DXV00023
+- id: DXV70ee33e2
   enabled: false
   field: QDQL.MBEWERTG
   check_class: domain_value_check
@@ -1517,7 +1517,7 @@ rules:
   fix_map:
     __other__: 'QDQL.MBEWERTG ''{invalid_value}'' is not in domain QEEBEWERTG. Set it to one of: A, F, R.'
   record_fix_template: 'QDQL.MBEWERTG is {actual_value}; expected one of: A, F, R.'
-- id: DXR00137
+- id: DXR990522c2
   enabled: false
   field: UKM_KKBER2SGM.CREDIT_SGMNT
   check_class: referential_check

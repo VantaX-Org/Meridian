@@ -6,7 +6,7 @@ module: ewms_stock
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR01950
+- id: DXR62f8e329
   enabled: false
   field: LAGP.SPGRU
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: LAGP.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
       entry.
   record_fix_template: LAGP.SPGRU points at a check table T330.SPGRU entry that does not exist.
-- id: DXR01951
+- id: DXR8f3a1c0c
   enabled: false
   field: LAGP.GEWEI
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: LAGP.GEWEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: LAGP.GEWEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01952
+- id: DXRe7af44b6
   enabled: false
   field: LAGP.BRAND
   check_class: referential_check
@@ -57,7 +57,7 @@ rules:
     __other__: LAGP.BRAND '{invalid_value}' is not defined in the check table T309.BRAND. Correct it there or add the missing
       entry.
   record_fix_template: LAGP.BRAND points at a check table T309.BRAND entry that does not exist.
-- id: DXR01953
+- id: DXReded4c5d
   enabled: false
   field: LAGP.KOBER
   check_class: referential_check
@@ -74,7 +74,7 @@ rules:
     __other__: LAGP.KOBER '{invalid_value}' is not defined in the check table T30A.KOBER. Correct it there or add the missing
       entry.
   record_fix_template: LAGP.KOBER points at a check table T30A.KOBER entry that does not exist.
-- id: DXR01954
+- id: DXR71d3fac2
   enabled: false
   field: LEIN.LETYP
   check_class: referential_check
@@ -91,7 +91,7 @@ rules:
     __other__: LEIN.LETYP '{invalid_value}' is not defined in the check table T307.LETYP. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.LETYP points at a check table T307.LETYP entry that does not exist.
-- id: DXR01955
+- id: DXRfefad394
   enabled: false
   field: LEIN.LGTYP
   check_class: referential_check
@@ -108,7 +108,7 @@ rules:
     __other__: LEIN.LGTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.LGTYP points at a check table T301.LGTYP entry that does not exist.
-- id: DXR01956
+- id: DXRb8d9bc9e
   enabled: false
   field: LEIN.SPGRU
   check_class: referential_check
@@ -125,7 +125,7 @@ rules:
     __other__: LEIN.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.SPGRU points at a check table T330.SPGRU entry that does not exist.
-- id: DXV00614
+- id: DXVa5deb95d
   enabled: false
   field: LEIN.STATU
   check_class: domain_value_check
@@ -150,7 +150,7 @@ rules:
   fix_map:
     __other__: 'LEIN.STATU ''{invalid_value}'' is not in domain LEIN_STATU. Set it to one of: 1, 2, 3, 4, 5, 6, A, B, C.'
   record_fix_template: 'LEIN.STATU is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, A, B, C.'
-- id: DXR01957
+- id: DXR4912f2ee
   enabled: false
   field: LEIN.GEWEI
   check_class: referential_check
@@ -167,7 +167,7 @@ rules:
     __other__: LEIN.GEWEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.GEWEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01958
+- id: DXR377f4942
   enabled: false
   field: LEIN.REFNR
   check_class: referential_check
@@ -183,7 +183,7 @@ rules:
     __other__: LEIN.REFNR '{invalid_value}' is not defined in the check table T311.REFNR. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.REFNR points at a check table T311.REFNR entry that does not exist.
-- id: DXR01959
+- id: DXR916f8a87
   enabled: false
   field: LEIN.UVTYP
   check_class: referential_check
@@ -200,7 +200,7 @@ rules:
     __other__: LEIN.UVTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.UVTYP points at a check table T301.LGTYP entry that does not exist.
-- id: DXR01960
+- id: DXR94b3c54c
   enabled: false
   field: LQUA.WERKS
   check_class: referential_check
@@ -216,7 +216,7 @@ rules:
     __other__: LQUA.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: LQUA.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01961
+- id: DXR121cd2cb
   enabled: false
   field: LQUA.SPGRU
   check_class: referential_check
@@ -233,7 +233,7 @@ rules:
     __other__: LQUA.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
       entry.
   record_fix_template: LQUA.SPGRU points at a check table T330.SPGRU entry that does not exist.
-- id: DXR01962
+- id: DXR4c7458f3
   enabled: false
   field: LQUA.LENUM
   check_class: referential_check
@@ -250,7 +250,7 @@ rules:
     __other__: LQUA.LENUM '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
       entry.
   record_fix_template: LQUA.LENUM points at a check table LEIN.LENUM entry that does not exist.
-- id: DXR01963
+- id: DXRad4d1906
   enabled: false
   field: LQUA.LGORT
   check_class: referential_check

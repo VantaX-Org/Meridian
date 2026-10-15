@@ -6,7 +6,7 @@ module: ariba_procurement
 target_state: ARIBA
 generated: true
 rules:
-- id: DXI00003
+- id: DXI22245a5a
   enabled: false
   field: ARIBA_PO.TOTAL_AMOUNT
   check_class: cross_field_check
@@ -21,7 +21,7 @@ rules:
   fix_map:
     __other__: ARIBA_PO.TOTAL_AMOUNT is negative; the source does not return negative amounts here.
   record_fix_template: ARIBA_PO.TOTAL_AMOUNT is negative.
-- id: DXI00004
+- id: DXI0e8bd79d
   enabled: false
   field: ARIBA_INVOICE.TOTAL_AMOUNT
   check_class: cross_field_check

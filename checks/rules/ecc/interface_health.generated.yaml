@@ -6,7 +6,7 @@ module: interface_health
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00428
+- id: DXRfe0d1bcb
   enabled: false
   field: ARFCSSTATE.ARFCFNAM
   check_class: referential_check
@@ -23,24 +23,7 @@ rules:
     __other__: ARFCSSTATE.ARFCFNAM '{invalid_value}' is not defined in the check table TFDIR.FUNCNAME. Correct it there or
       add the missing entry.
   record_fix_template: ARFCSSTATE.ARFCFNAM points at a check table TFDIR.FUNCNAME entry that does not exist.
-- id: DXR00429
-  enabled: false
-  field: EDIDC.STATUS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Status of IDoc must exist in the check table TEDS1.STATUS
-  why_it_matters: STATUS (Status of IDoc) is defined in the SAP Data Dictionary with check table TEDS1.STATUS on domain EDI_STATUS.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read STATUS resolve it through check table TEDS1.STATUS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: EDIDC.STATUS '{invalid_value}' is not defined in the check table TEDS1.STATUS. Correct it there or add the
-      missing entry.
-  record_fix_template: EDIDC.STATUS points at a check table TEDS1.STATUS entry that does not exist.
-- id: DXV00128
+- id: DXV87781de2
   enabled: false
   field: EDIDC.OUTMOD
   check_class: domain_value_check
@@ -59,7 +42,7 @@ rules:
   fix_map:
     __other__: 'EDIDC.OUTMOD ''{invalid_value}'' is not in domain EDI_OUTMOD. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'EDIDC.OUTMOD is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXR00430
+- id: DXR16948ec0
   enabled: false
   field: EDIDC.MESTYP
   check_class: referential_check
@@ -76,7 +59,7 @@ rules:
     __other__: EDIDC.MESTYP '{invalid_value}' is not defined in the check table EDMSG.MSGTYP. Correct it there or add the
       missing entry.
   record_fix_template: EDIDC.MESTYP points at a check table EDMSG.MSGTYP entry that does not exist.
-- id: DXR00431
+- id: DXRcd7f8033
   enabled: false
   field: EDIDC.IDOCTP
   check_class: referential_check
@@ -93,7 +76,7 @@ rules:
     __other__: EDIDC.IDOCTP '{invalid_value}' is not defined in the check table EDBAS.IDOCTYP. Correct it there or add the
       missing entry.
   record_fix_template: EDIDC.IDOCTP points at a check table EDBAS.IDOCTYP entry that does not exist.
-- id: DXR00432
+- id: DXR746df4e8
   enabled: false
   field: EDIDC.CIMTYP
   check_class: referential_check

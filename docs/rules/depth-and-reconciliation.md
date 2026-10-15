@@ -130,6 +130,43 @@ record — which the proof harness rejects, correctly. The honest answer is that
 these are data-model gaps (a missing source entity, a missing timestamp), not
 rule gaps.
 
+## Generated rule ids are stable now
+
+`scripts/generate_ddic_rules.py` numbered its derived rules from a **single counter
+across every module** in sorted order. A generated id is not just a label:
+`rules_hq_cache`, the tenant `rules` table and `checks/lifecycle.py` all key on the
+bare id, so a rule whose id moves silently re-points an operator's or HQ's "enable
+this rule" decision at a different rule.
+
+The counter made that happen on any pack edit. Adding one authored rule to
+`interface_health` shifted the id of every later derived rule: **1,584 of the 2,118**
+derived ids came to point at a different field, and the 1,962 DDIC rules the Meridian
+deployment had explicitly enabled would have started governing the wrong ones — the
+DDIC referential check for `EDIDC.MESTYP` enabled in the place of the one for
+`EDIDC.CIMTYP`, and so on. `generate_ddic_rules.py --check` passed throughout,
+because the sidecars were correctly regenerated; nothing asserted that an id still
+meant the same thing.
+
+An id is now a digest of the rule's **natural key** — its kind, module, field, check
+class and target table — so it depends on what the rule is about and on nothing else.
+Adding, removing or reordering rules leaves every other id alone.
+`tests/checks/test_ddic_conformance.py::test_generated_rule_id_depends_only_on_the_rules_natural_key`
+pins the property.
+
+### Migrating an existing deployment
+
+This is a one-time rename of every derived id, so a deployment that enabled DDIC
+rules by id needs its overrides re-pointed. The mapping is rebuilt from the sidecars
+either side of the change, pairing each rule's natural key:
+
+```sql
+-- dxr_remap(old_id, new_id) built from the pre- and post-change sidecars
+UPDATE rules_hq_cache c SET id = m.new_id FROM dxr_remap m WHERE c.id = m.old_id;
+```
+
+On the Meridian deployment all 1,962 cached ids resolved to the same field under the
+new scheme, so no enabled rule changed meaning.
+
 ## Reproducing the numbers
 
 ```bash

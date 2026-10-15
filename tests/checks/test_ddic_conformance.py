@@ -72,3 +72,31 @@ def test_numeric_length_matches_the_old_split_form():
     nodot = pd.Series(["1", "123456", None, "-7"], dtype="string")
     f = SimpleNamespace(type="DEC", length=4, decimals=0, lowercase=False, allowed_values=lambda: None)
     assert _violations(nodot, f, None)["length"].tolist() == _old_length(nodot, f).tolist()
+
+
+# A generated rule's id is load-bearing outside the repository: rules_hq_cache, the tenant
+# `rules` table and checks/lifecycle.py all key on the bare id, so an id that moves when a
+# rule pack is edited silently re-points an operator's or HQ's "enable this rule" decision
+# at a different rule. The original scheme numbered from one counter across every module in
+# sorted order: adding one authored rule to interface_health moved 1,584 of the 2,118 derived
+# ids onto different fields. Pin the property that a rule's id depends on what the rule is
+# about and on nothing else.
+def test_generated_rule_id_depends_only_on_the_rules_natural_key():
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    from generate_ddic_rules import _rule_id
+
+    a = {"field": "MARC.DISMM", "check_class": "referential_check", "target_table": "T438A"}
+    b = {"field": "MARC.DISPO", "check_class": "referential_check", "target_table": "T024D"}
+
+    # deterministic
+    assert _rule_id("checktab", "material_master", a) == _rule_id("checktab", "material_master", a)
+    # two different fields never share an id
+    assert _rule_id("checktab", "material_master", a) != _rule_id("checktab", "material_master", b)
+    # the kind, the module and the target table all discriminate
+    assert _rule_id("checktab", "material_master", a) != _rule_id("domain", "material_master", a)
+    assert _rule_id("checktab", "material_master", a) != _rule_id("checktab", "mm_purchasing", a)
+    other_target = {**a, "target_table": "T438M"}
+    assert _rule_id("checktab", "material_master", a) != _rule_id("checktab", "material_master", other_target)

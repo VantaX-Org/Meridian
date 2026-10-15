@@ -6,7 +6,7 @@ module: ariba_supplier
 target_state: ARIBA
 generated: true
 rules:
-- id: DXI00006
+- id: DXI20813947
   enabled: false
   field: ARIBA_SUPPLIER.REGISTRATION_DATE
   check_class: cross_field_check

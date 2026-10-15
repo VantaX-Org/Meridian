@@ -6,7 +6,7 @@ module: ariba_spend
 target_state: ARIBA
 generated: true
 rules:
-- id: DXI00005
+- id: DXI3000d8ce
   enabled: false
   field: ARIBA_SPEND.AMOUNT
   check_class: cross_field_check

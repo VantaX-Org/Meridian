@@ -6,7 +6,7 @@ module: ariba_contracts
 target_state: ARIBA
 generated: true
 rules:
-- id: DXI00001
+- id: DXIbd20ff2c
   enabled: false
   field: ARIBA_CONTRACT.EFFECTIVE_DATE
   check_class: cross_field_check
@@ -24,7 +24,7 @@ rules:
   fix_map:
     __other__: Correct ARIBA_CONTRACT.EFFECTIVE_DATE or ARIBA_CONTRACT.EXPIRATION_DATE so the pair is ordered.
   record_fix_template: ARIBA_CONTRACT.EFFECTIVE_DATE is after ARIBA_CONTRACT.EXPIRATION_DATE.
-- id: DXI00002
+- id: DXI1021103c
   enabled: false
   field: ARIBA_CONTRACT.CONTRACT_AMOUNT
   check_class: cross_field_check

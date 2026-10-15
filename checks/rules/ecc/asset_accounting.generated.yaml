@@ -6,7 +6,7 @@ module: asset_accounting
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00138
+- id: DXR112205fb
   enabled: false
   field: ANKB.FELEI
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: ANKB.FELEI '{invalid_value}' is not defined in the check table T082A.FELEI. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.FELEI points at a check table T082A.FELEI entry that does not exist.
-- id: DXR00139
+- id: DXR7f977d1c
   enabled: false
   field: ANKB.KTOGR
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: ANKB.KTOGR '{invalid_value}' is not defined in the check table T095A.KTOGR. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.KTOGR points at a check table T095A.KTOGR entry that does not exist.
-- id: DXV00024
+- id: DXVc99108c6
   enabled: false
   field: ANKB.XGWGK
   check_class: domain_value_check
@@ -59,7 +59,7 @@ rules:
   fix_map:
     __other__: 'ANKB.XGWGK ''{invalid_value}'' is not in domain XGWGK. Set it to one of: 0, 1, 2.'
   record_fix_template: 'ANKB.XGWGK is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00140
+- id: DXRdf39f87a
   enabled: false
   field: ANKB.INVSL
   check_class: referential_check
@@ -76,7 +76,7 @@ rules:
     __other__: ANKB.INVSL '{invalid_value}' is not defined in the check table T085.INVSL. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.INVSL points at a check table T085.INVSL entry that does not exist.
-- id: DXR00141
+- id: DXRc80222d2
   enabled: false
   field: ANKB.WBIND
   check_class: referential_check
@@ -93,7 +93,7 @@ rules:
     __other__: ANKB.WBIND '{invalid_value}' is not defined in the check table T094A.WBIND. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.WBIND points at a check table T094A.WBIND entry that does not exist.
-- id: DXR00142
+- id: DXRa92a13c5
   enabled: false
   field: ANKB.ALIND
   check_class: referential_check
@@ -110,7 +110,7 @@ rules:
     __other__: ANKB.ALIND '{invalid_value}' is not defined in the check table T094A.WBIND. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.ALIND points at a check table T094A.WBIND entry that does not exist.
-- id: DXR00143
+- id: DXR21b782be
   enabled: false
   field: ANKB.ANLGR
   check_class: referential_check
@@ -127,7 +127,7 @@ rules:
     __other__: ANKB.ANLGR '{invalid_value}' is not defined in the check table ANLH.ANLN1. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.ANLGR points at a check table ANLH.ANLN1 entry that does not exist.
-- id: DXR00144
+- id: DXRa39d29e7
   enabled: false
   field: ANKB.J_1AARVKEY
   check_class: referential_check
@@ -144,7 +144,7 @@ rules:
     __other__: ANKB.J_1AARVKEY '{invalid_value}' is not defined in the check table J_1AAA2.J_1AARVKEY. Correct it there or
       add the missing entry.
   record_fix_template: ANKB.J_1AARVKEY points at a check table J_1AAA2.J_1AARVKEY entry that does not exist.
-- id: DXV00025
+- id: DXV30639f35
   enabled: false
   field: ANLA.ANLTP
   check_class: domain_value_check
@@ -162,7 +162,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ANLTP ''{invalid_value}'' is not in domain ANLTP. Set it to one of: 0, 1, 2.'
   record_fix_template: 'ANLA.ANLTP is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00145
+- id: DXR582d88c8
   enabled: false
   field: ANLA.ORD41
   check_class: referential_check
@@ -179,7 +179,7 @@ rules:
     __other__: ANLA.ORD41 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ORD41 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00146
+- id: DXRc7198ea5
   enabled: false
   field: ANLA.ORD42
   check_class: referential_check
@@ -196,7 +196,7 @@ rules:
     __other__: ANLA.ORD42 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ORD42 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00147
+- id: DXRb490a270
   enabled: false
   field: ANLA.ORD43
   check_class: referential_check
@@ -213,7 +213,7 @@ rules:
     __other__: ANLA.ORD43 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ORD43 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00148
+- id: DXRe6fc36fb
   enabled: false
   field: ANLA.ORD44
   check_class: referential_check
@@ -230,7 +230,7 @@ rules:
     __other__: ANLA.ORD44 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ORD44 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00149
+- id: DXRcab54338
   enabled: false
   field: ANLA.ANLUE
   check_class: referential_check
@@ -247,7 +247,7 @@ rules:
     __other__: ANLA.ANLUE '{invalid_value}' is not defined in the check table T087U.ANLUE. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ANLUE points at a check table T087U.ANLUE entry that does not exist.
-- id: DXR00150
+- id: DXR521fa74f
   enabled: false
   field: ANLA.ZUAWA
   check_class: referential_check
@@ -264,7 +264,7 @@ rules:
     __other__: ANLA.ZUAWA '{invalid_value}' is not defined in the check table TZUN.ZUAWA. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ZUAWA points at a check table TZUN.ZUAWA entry that does not exist.
-- id: DXV00026
+- id: DXVde50f032
   enabled: false
   field: ANLA.ANEQK
   check_class: domain_value_check
@@ -282,7 +282,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ANEQK ''{invalid_value}'' is not in domain ANEQK. Set it to one of: 0, 1.'
   record_fix_template: 'ANLA.ANEQK is {actual_value}; expected one of: 0, 1.'
-- id: DXV00027
+- id: DXV2841b94d
   enabled: false
   field: ANLA.ANEQS
   check_class: domain_value_check
@@ -303,7 +303,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ANEQS ''{invalid_value}'' is not in domain ANEQS. Set it to one of: 0, 1, 2, 3, 4.'
   record_fix_template: 'ANLA.ANEQS is {actual_value}; expected one of: 0, 1, 2, 3, 4.'
-- id: DXR00151
+- id: DXRe149bc9a
   enabled: false
   field: ANLA.LAND1
   check_class: referential_check
@@ -320,7 +320,7 @@ rules:
     __other__: ANLA.LAND1 '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.LAND1 points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00152
+- id: DXR00f3f094
   enabled: false
   field: ANLA.EIGKZ
   check_class: referential_check
@@ -337,7 +337,7 @@ rules:
     __other__: ANLA.EIGKZ '{invalid_value}' is not defined in the check table T097.EIGKZ. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.EIGKZ points at a check table T097.EIGKZ entry that does not exist.
-- id: DXR00153
+- id: DXR225ebd02
   enabled: false
   field: ANLA.MEINS
   check_class: referential_check
@@ -354,7 +354,7 @@ rules:
     __other__: ANLA.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.MEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00154
+- id: DXRf44aaf52
   enabled: false
   field: ANLA.IZWEK
   check_class: referential_check
@@ -371,7 +371,7 @@ rules:
     __other__: ANLA.IZWEK '{invalid_value}' is not defined in the check table T087I.IZWEK. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.IZWEK points at a check table T087I.IZWEK entry that does not exist.
-- id: DXR00155
+- id: DXRfeccf99d
   enabled: false
   field: ANLA.VMGLI
   check_class: referential_check
@@ -388,7 +388,7 @@ rules:
     __other__: ANLA.VMGLI '{invalid_value}' is not defined in the check table T092.VMGLI. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.VMGLI points at a check table T092.VMGLI entry that does not exist.
-- id: DXR00156
+- id: DXRb22eb271
   enabled: false
   field: ANLA.GRUND
   check_class: referential_check
@@ -405,7 +405,7 @@ rules:
     __other__: ANLA.GRUND '{invalid_value}' is not defined in the check table T098.GRUND. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.GRUND points at a check table T098.GRUND entry that does not exist.
-- id: DXR00157
+- id: DXRa0b86e1d
   enabled: false
   field: ANLA.FEINS
   check_class: referential_check
@@ -421,7 +421,7 @@ rules:
     __other__: ANLA.FEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.FEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00158
+- id: DXRe86d7bbf
   enabled: false
   field: ANLA.VBUND
   check_class: referential_check
@@ -438,7 +438,7 @@ rules:
     __other__: ANLA.VBUND '{invalid_value}' is not defined in the check table T880.RCOMP. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.VBUND points at a check table T880.RCOMP entry that does not exist.
-- id: DXR00159
+- id: DXR00110052
   enabled: false
   field: ANLA.SPRAS
   check_class: referential_check
@@ -455,7 +455,7 @@ rules:
     __other__: ANLA.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00160
+- id: DXRf612e8db
   enabled: false
   field: ANLA.LEAFI
   check_class: referential_check
@@ -472,7 +472,7 @@ rules:
     __other__: ANLA.LEAFI '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.LEAFI points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXV00028
+- id: DXV2e5f11f9
   enabled: false
   field: ANLA.ANUPD
   check_class: domain_value_check
@@ -491,7 +491,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ANUPD ''{invalid_value}'' is not in domain ANUPD. Set it to one of: D, I, U.'
   record_fix_template: 'ANLA.ANUPD is {actual_value}; expected one of: D, I, U.'
-- id: DXV00029
+- id: DXVf5d3da3f
   enabled: false
   field: ANLA.AIMMO
   check_class: domain_value_check
@@ -509,7 +509,7 @@ rules:
   fix_map:
     __other__: 'ANLA.AIMMO ''{invalid_value}'' is not in domain AIMMO. Set it to one of: 0, 1.'
   record_fix_template: 'ANLA.AIMMO is {actual_value}; expected one of: 0, 1.'
-- id: DXR00161
+- id: DXR827aae96
   enabled: false
   field: ANLA.OBJNR
   check_class: referential_check
@@ -526,7 +526,7 @@ rules:
     __other__: ANLA.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR00162
+- id: DXRc5996103
   enabled: false
   field: ANLA.LEART
   check_class: referential_check
@@ -543,7 +543,7 @@ rules:
     __other__: ANLA.LEART '{invalid_value}' is not defined in the check table T083L.LEART. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.LEART points at a check table T083L.LEART entry that does not exist.
-- id: DXR00163
+- id: DXRe72a7f17
   enabled: false
   field: ANLA.GDLGRP
   check_class: referential_check
@@ -560,7 +560,7 @@ rules:
     __other__: ANLA.GDLGRP '{invalid_value}' is not defined in the check table T087G.GDLGRP. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.GDLGRP points at a check table T087G.GDLGRP entry that does not exist.
-- id: DXR00164
+- id: DXR270b2b88
   enabled: false
   field: ANLA.UMWKZ
   check_class: referential_check
@@ -577,7 +577,7 @@ rules:
     __other__: ANLA.UMWKZ '{invalid_value}' is not defined in the check table T087K.UMWKZ. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.UMWKZ points at a check table T087K.UMWKZ entry that does not exist.
-- id: DXV00030
+- id: DXVee82e88a
   enabled: false
   field: ANLA.ACT_CHANGE_PM
   check_class: domain_value_check
@@ -596,7 +596,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ACT_CHANGE_PM ''{invalid_value}'' is not in domain AAPM_ACT. Set it to one of: 1, 2, 3.'
   record_fix_template: 'ANLA.ACT_CHANGE_PM is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00165
+- id: DXR5ca48eb3
   enabled: false
   field: ANLB.FELEI
   check_class: referential_check
@@ -613,7 +613,7 @@ rules:
     __other__: ANLB.FELEI '{invalid_value}' is not defined in the check table T082A.FELEI. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.FELEI points at a check table T082A.FELEI entry that does not exist.
-- id: DXV00031
+- id: DXV0ca51313
   enabled: false
   field: ANLB.XGWGK
   check_class: domain_value_check
@@ -632,7 +632,7 @@ rules:
   fix_map:
     __other__: 'ANLB.XGWGK ''{invalid_value}'' is not in domain XGWGK. Set it to one of: 0, 1, 2.'
   record_fix_template: 'ANLB.XGWGK is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00166
+- id: DXR4c1e7de0
   enabled: false
   field: ANLB.INVSL
   check_class: referential_check
@@ -649,7 +649,7 @@ rules:
     __other__: ANLB.INVSL '{invalid_value}' is not defined in the check table T085.INVSL. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.INVSL points at a check table T085.INVSL entry that does not exist.
-- id: DXR00167
+- id: DXR40df93ef
   enabled: false
   field: ANLB.WBIND
   check_class: referential_check
@@ -666,7 +666,7 @@ rules:
     __other__: ANLB.WBIND '{invalid_value}' is not defined in the check table T094A.WBIND. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.WBIND points at a check table T094A.WBIND entry that does not exist.
-- id: DXR00168
+- id: DXRd02762d3
   enabled: false
   field: ANLB.ALIND
   check_class: referential_check
@@ -683,7 +683,7 @@ rules:
     __other__: ANLB.ALIND '{invalid_value}' is not defined in the check table T094A.WBIND. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.ALIND points at a check table T094A.WBIND entry that does not exist.
-- id: DXV00032
+- id: DXV074a88bd
   enabled: false
   field: ANLB.ANUPD
   check_class: domain_value_check
@@ -702,7 +702,7 @@ rules:
   fix_map:
     __other__: 'ANLB.ANUPD ''{invalid_value}'' is not in domain ANUPD. Set it to one of: D, I, U.'
   record_fix_template: 'ANLB.ANUPD is {actual_value}; expected one of: D, I, U.'
-- id: DXR00169
+- id: DXR16b7bdc5
   enabled: false
   field: ANLB.ANLGR2
   check_class: referential_check
@@ -719,7 +719,7 @@ rules:
     __other__: ANLB.ANLGR2 '{invalid_value}' is not defined in the check table ANLA.ANLN2. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.ANLGR2 points at a check table ANLA.ANLN2 entry that does not exist.
-- id: DXR00170
+- id: DXR4dd7e4f8
   enabled: false
   field: ANLB.J_1AARVKEY
   check_class: referential_check
@@ -736,7 +736,7 @@ rules:
     __other__: ANLB.J_1AARVKEY '{invalid_value}' is not defined in the check table J_1AAA2.J_1AARVKEY. Correct it there or
       add the missing entry.
   record_fix_template: ANLB.J_1AARVKEY points at a check table J_1AAA2.J_1AARVKEY entry that does not exist.
-- id: DXV00033
+- id: DXV61e6a61d
   enabled: false
   field: ANLH.ANUPD
   check_class: domain_value_check
@@ -755,7 +755,7 @@ rules:
   fix_map:
     __other__: 'ANLH.ANUPD ''{invalid_value}'' is not in domain ANUPD. Set it to one of: D, I, U.'
   record_fix_template: 'ANLH.ANUPD is {actual_value}; expected one of: D, I, U.'
-- id: DXR00171
+- id: DXR0b369e27
   enabled: false
   field: ANLH.FUNTN
   check_class: referential_check
@@ -772,7 +772,7 @@ rules:
     __other__: ANLH.FUNTN '{invalid_value}' is not defined in the check table ANLA.ANLN2. Correct it there or add the missing
       entry.
   record_fix_template: ANLH.FUNTN points at a check table ANLA.ANLN2 entry that does not exist.
-- id: DXR00172
+- id: DXR7a789d8d
   enabled: false
   field: ANLZ.GSBER
   check_class: referential_check
@@ -789,7 +789,7 @@ rules:
     __other__: ANLZ.GSBER '{invalid_value}' is not defined in the check table TGSB.GSBER. Correct it there or add the missing
       entry.
   record_fix_template: ANLZ.GSBER points at a check table TGSB.GSBER entry that does not exist.
-- id: DXR00173
+- id: DXR727bf61e
   enabled: false
   field: ANLZ.IAUFN
   check_class: referential_check
@@ -806,7 +806,7 @@ rules:
     __other__: ANLZ.IAUFN '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: ANLZ.IAUFN points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXV00034
+- id: DXV63f3f539
   enabled: false
   field: ANLZ.ANUPD
   check_class: domain_value_check
@@ -825,7 +825,7 @@ rules:
   fix_map:
     __other__: 'ANLZ.ANUPD ''{invalid_value}'' is not in domain ANUPD. Set it to one of: D, I, U.'
   record_fix_template: 'ANLZ.ANUPD is {actual_value}; expected one of: D, I, U.'
-- id: DXR00174
+- id: DXRa174002a
   enabled: false
   field: ANLZ.TXJCD
   check_class: referential_check
@@ -842,7 +842,7 @@ rules:
     __other__: ANLZ.TXJCD '{invalid_value}' is not defined in the check table TTXJ.TXJCD. Correct it there or add the missing
       entry.
   record_fix_template: ANLZ.TXJCD points at a check table TTXJ.TXJCD entry that does not exist.
-- id: DXR00175
+- id: DXRb1a75f8f
   enabled: false
   field: ANLZ.IPSNR
   check_class: referential_check
@@ -859,7 +859,7 @@ rules:
     __other__: ANLZ.IPSNR '{invalid_value}' is not defined in the check table PRPS.PSPNR. Correct it there or add the missing
       entry.
   record_fix_template: ANLZ.IPSNR points at a check table PRPS.PSPNR entry that does not exist.
-- id: DXR00176
+- id: DXR22dd7fd5
   enabled: false
   field: ANLZ.SEGMENT
   check_class: referential_check

@@ -6,7 +6,7 @@ module: banking_tax
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00177
+- id: DXR70b0e73c
   enabled: false
   field: BNKA.PROVZ
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: BNKA.PROVZ '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: BNKA.PROVZ points at a check table T005S.BLAND entry that does not exist.
-- id: DXV00035
+- id: DXVa9598989
   enabled: false
   field: BNKA.SDD_B2B
   check_class: domain_value_check
@@ -42,7 +42,7 @@ rules:
   fix_map:
     __other__: 'BNKA.SDD_B2B ''{invalid_value}'' is not in domain SDD_B2B. Set it to one of: 0, 1, 9.'
   record_fix_template: 'BNKA.SDD_B2B is {actual_value}; expected one of: 0, 1, 9.'
-- id: DXV00036
+- id: DXV391c7dbb
   enabled: false
   field: BNKA.SDD_COR1
   check_class: domain_value_check
@@ -61,7 +61,7 @@ rules:
   fix_map:
     __other__: 'BNKA.SDD_COR1 ''{invalid_value}'' is not in domain SDD_COR1. Set it to one of: 0, 1, 9.'
   record_fix_template: 'BNKA.SDD_COR1 is {actual_value}; expected one of: 0, 1, 9.'
-- id: DXV00037
+- id: DXV48228ff5
   enabled: false
   field: BNKA.SDD_RTRANS
   check_class: domain_value_check
@@ -82,7 +82,7 @@ rules:
   fix_map:
     __other__: 'BNKA.SDD_RTRANS ''{invalid_value}'' is not in domain SDD_RTRANS. Set it to one of: 0, 1, 2, 3, 9.'
   record_fix_template: 'BNKA.SDD_RTRANS is {actual_value}; expected one of: 0, 1, 2, 3, 9.'
-- id: DXV00038
+- id: DXV4037ae2d
   enabled: false
   field: KNBK.EBPP_BVSTATUS
   check_class: domain_value_check
@@ -102,7 +102,7 @@ rules:
   fix_map:
     __other__: 'KNBK.EBPP_BVSTATUS ''{invalid_value}'' is not in domain EBPP_BVSTATUS. Set it to one of: A, B, C, D.'
   record_fix_template: 'KNBK.EBPP_BVSTATUS is {actual_value}; expected one of: A, B, C, D.'
-- id: DXR00178
+- id: DXRf2b771de
   enabled: false
   field: LFBW.QSREC
   check_class: referential_check
@@ -119,7 +119,7 @@ rules:
     __other__: LFBW.QSREC '{invalid_value}' is not defined in the check table T059C.QSREC. Correct it there or add the missing
       entry.
   record_fix_template: LFBW.QSREC points at a check table T059C.QSREC entry that does not exist.
-- id: DXR00179
+- id: DXR38c7ef89
   enabled: false
   field: LFBW.WT_WTEXRS
   check_class: referential_check
