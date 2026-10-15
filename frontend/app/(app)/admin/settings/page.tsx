@@ -10,6 +10,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { formatDate, labelOf, humanizeIds } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { AlertChannelsPanel } from "./alert-channels-panel";
+import { RetentionPanel } from "./retention-panel";
 
 // ponytail: FIX_HREF kept local to this page (only consumer); legacy version lived in
 // the legacy admin surface, pointing at hash-tab routes (/admin?tab=ai, /admin?tab=licence)
@@ -65,6 +66,7 @@ export default function AdminSettingsPage() {
       </Card>
 
       {can("manage_settings") ? <AlertChannelsPanel /> : null}
+      {can("manage_settings") ? <RetentionPanel /> : null}
 
       {can("manage_system") && doctor.isError ? (
         <ErrorState message={apiErrorMessage(doctor.error)} onRetry={() => doctor.refetch()} />
