@@ -174,7 +174,7 @@ function Presentation({ children }: { children: ReactNode }) {
   }, [pathname, searchParams]);
   return (
     <div className="flex h-screen flex-col" data-present="1">
-      <main id="main" tabIndex={-1} className="flex-1 overflow-auto outline-none" style={{ background: "var(--m-canvas)" }}>
+      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none" style={{ background: "var(--m-canvas)" }}>
         <RootPageFrame>{children}</RootPageFrame>
       </main>
       <div className="fixed bottom-4 right-4 m-print-hide">
@@ -201,7 +201,7 @@ function Chrome({ children }: { children: ReactNode }) {
             notifications={<NotificationBell />}
             userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
-          <main id="main" tabIndex={-1} className="flex-1 overflow-auto outline-none m-print-flow" style={{ background: "var(--m-canvas)" }}>
+          <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow" style={{ background: "var(--m-canvas)" }}>
             <Suspense fallback={null}><RouteInsight /></Suspense>
             <RootPageFrame>{children}</RootPageFrame>
           </main>
