@@ -13024,3 +13024,20 @@ rules:
     __other__: Correct the production version in ME12 or create it (C223).
   record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': production
     version {actual_value} does not exist.'
+- id: MM887
+  field: MARC.WERKS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Plant is mandatory on a plant-level material segment
+  why_it_matters: MARC is the plant-level segment of a material and WERKS is its key. A segment with no
+    plant cannot be read back through MM02/MM03 (Fiori F1602), cannot be planned, procured, or
+    inventory-posted, and cannot be matched to its material in MARA - the row is orphaned storage.
+  rule_authority: sap_hard_constraint
+  sap_impact: The plant segment is unreachable in MM02/MM03 and Fiori F1602. Planning, procurement and
+    inventory postings for the material at that plant cannot resolve.
+  fix_map:
+    __blank__: 'Assign the plant. In ECC re-create the segment via MM01 with the correct plant. In
+      S/4HANA use Fiori app F1602 (Manage Product Master Data) and add the plant.'
+  record_fix_template: 'Material {MARC.MATNR}: plant is {actual_value}. Assign the plant via MM01 (ECC)
+    or Fiori F1602 (S/4HANA).'

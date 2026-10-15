@@ -1883,3 +1883,49 @@ rules:
     __other__: Recreate the activity type with a valid number in KL01.
   record_fix_template: 'Activity type in controlling area {CSLA.KOKRS}: LSTAR is ''{actual_value}''. Correct it in
     KL02.'
+- id: CO126
+  field: CSKB.KSTAR
+  check_class: exists_check
+  fields:
+  - CSKB.KSTAR
+  - CSKB.KOKRS
+  target_table: CSKA
+  target_fields:
+  - KSTAR
+  - KTOPL
+  applies_when:
+    CSKB.DATBI:
+    - '99991231'
+  severity: critical
+  dimension: accuracy
+  message: Cost element in the controlling area has no chart-of-accounts master record
+  why_it_matters: CSKB holds the cost element per controlling area and validity period, and it must
+    resolve to a chart-of-accounts cost element in CSKA. Without the CSKA row the cost element has no
+    account assignment, so postings that carry it cannot be classified as cost or revenue and the
+    controlling-area reconciliation to FI breaks.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings using the cost element fail account determination or land in reconciliation
+    accounts, and the cost element report in KA03 shows an incomplete object.
+  fix_map:
+    __other__: Create or correct the cost element in KA01/KA06 so CSKA holds the chart-of-accounts
+      entry, or end-date the redundant controlling-area record.
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: no matching chart-of-accounts cost
+    element exists.'
+- id: CO127
+  field: AUFK.IDAT3
+  check_class: freshness_check
+  max_age_hours: 8760
+  severity: low
+  dimension: timeliness
+  message: Internal order has not changed in over a year
+  why_it_matters: The IDAT3/IDAT1 dates drive the order's schedule and the availability check. An order
+    whose dates have not moved for a year is usually finished or abandoned, but it still holds budget
+    commitment and still appears in the order list, so commitment lines and budget reports overstate
+    the open work.
+  rule_authority: best_practice
+  sap_impact: Budget commitments are overstated and the open-order list is cluttered with orders that
+    will never settle.
+  fix_map:
+    __other__: Review the order in KO02/KO03; settle and close it, or correct the dates if the work is
+      still live.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: dates unchanged for over a year.'

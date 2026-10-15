@@ -175,14 +175,28 @@ def reconcile_allowed_values(rules: list[dict]) -> list[ValueDrift]:
 
 
 def coverage_gaps(rules: list[dict]) -> list[CoverageGap]:
-    """Mandatory dictionary fields with no null_check rule."""
-    null_checked: set[str] = set()
+    """Mandatory dictionary fields no rule holds to a closed set of values.
+
+    A ``null_check`` is the obvious form, but it is not the only sound one and for
+    some fields it is the wrong one. ``is_blank`` reads six zeros as an SAP initial
+    value, and ``BUT100.RLTYP`` uses exactly that as the general business-partner
+    role: a null_check there condemns every partner that carries it. A
+    ``domain_value_check`` with an explicit ``allowed_values`` closes the same hole
+    without that false positive, because every value outside the set — including a
+    blank — fails it, and the field can only hold a value the domain defines.
+    """
+    covered: set[str] = set()
     for rule in rules:
-        if rule.get("check_class") != "null_check":
+        cls = rule.get("check_class")
+        if cls == "null_check":
+            pass
+        elif cls == "domain_value_check" and rule.get("allowed_values"):
+            pass
+        else:
             continue
         parts = _split_field(rule.get("field", ""))
         if parts is not None:
-            null_checked.add(f"{parts[0]}.{parts[1]}")
+            covered.add(f"{parts[0]}.{parts[1]}")
 
     gaps: list[CoverageGap] = []
     for table, fields in DATA_DICTIONARY.items():
@@ -190,7 +204,7 @@ def coverage_gaps(rules: list[dict]) -> list[CoverageGap]:
             if not meta.get("mandatory"):
                 continue
             key = f"{table.upper()}.{fld.upper()}"
-            if key not in null_checked:
+            if key not in covered:
                 gaps.append(CoverageGap(table=table.upper(), field=key))
     return gaps
 
@@ -226,7 +240,7 @@ def _format_report(report: ReconcileReport) -> str:
 
     lines.append("")
     lines.append(f"Coverage gaps: {len(report.coverage_gaps)} mandatory "
-                 f"dictionary field(s) with no null_check")
+                 f"dictionary field(s) with no null_check or closed domain_value_check")
     for g in report.coverage_gaps:
         lines.append(f"  {g.field}")
 

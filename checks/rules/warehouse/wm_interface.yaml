@@ -826,3 +826,61 @@ rules:
     record_fix_template: >-
       Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: warehouse view still exists while
       flagged for deletion in MARA.
+  - id: WMI060
+    field: LEIN.LENUM
+    check_class: uniqueness_check
+    fields:
+    - LEIN.LENUM
+    - LEIN.LGNUM
+    severity: high
+    dimension: uniqueness
+    message: Storage unit number is held twice in the same warehouse
+    why_it_matters: LEIN is keyed by storage unit number, within a warehouse. A duplicate means two rows
+      describe one physical handling unit, so its bin assignment, weight and contents disagree between
+      them and a stock transfer may move the wrong record.
+    rule_authority: sap_hard_constraint
+    sap_impact: The handling unit's location and contents are ambiguous; stock transfers and inventory
+      counts act on the wrong row.
+    fix_map:
+      __other__: Reconcile the two storage units in LX09/LS26 (ECC) or the warehouse monitor
+        (S/4HANA EWM) and remove the redundant record.
+    record_fix_template: 'Warehouse {LEIN.LGNUM}: storage unit {LEIN.LENUM} is held more than once.'
+  - id: WMI061
+    field: MLGN.LGNUM
+    check_class: exists_check
+    fields:
+    - MLGN.LGNUM
+    target_table: T300
+    target_fields:
+    - LGNUM
+    severity: critical
+    dimension: accuracy
+    message: Material's warehouse number does not exist in the warehouse master
+    why_it_matters: MLGN stores the material's warehouse-management data per warehouse number, and
+      T300 is the warehouse master. A warehouse number with no T300 entry has no storage types, no
+      control parameters and no number ranges, so every WM transaction on the material fails or posts
+      to a warehouse the system does not know.
+    rule_authority: sap_hard_constraint
+    sap_impact: All WM movements for the material are rejected. Putaway, removal and inventory
+      postings cannot resolve a storage type.
+    fix_map:
+      __other__: Create the warehouse number in SPRO > Logistics Execution > Warehouse Management >
+        Master Data > Define Warehouse Number (or correct MLGN in MM02 > Warehouse Management view).
+    record_fix_template: 'Material {MLGN.MATNR}: warehouse {MLGN.LGNUM} has no warehouse master record.'
+  - id: WMI062
+    field: LEIN.BDATU
+    check_class: freshness_check
+    max_age_hours: 8760
+    severity: low
+    dimension: timeliness
+    message: Storage unit was created more than a year ago and has not been changed
+    why_it_matters: A storage unit that has stood unchanged for a year usually represents stock that is
+      physically gone or a handling unit that was never closed. It still occupies a bin in the WM view,
+      so bin capacity and available space are understated.
+    rule_authority: best_practice
+    sap_impact: Storage bins appear full; putaway searches avoid bins that are in fact free.
+    fix_map:
+      __other__: Confirm the storage unit in LX09/LS26 (ECC) or the warehouse monitor (S/4HANA EWM)
+        and close it if the stock has gone.
+    record_fix_template: 'Storage unit {LEIN.LENUM} in warehouse {LEIN.LGNUM}: created more than a year
+      ago and unchanged.'

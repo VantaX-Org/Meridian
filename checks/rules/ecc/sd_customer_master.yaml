@@ -1882,3 +1882,43 @@ rules:
     fix_map:
       __other__: Enter the transmission medium (XD02 > Sales > Output) or reset the number of copies.
     record_fix_template: 'Customer {KNVD.KUNNR}, sales area {KNVD.VKORG}: copies requested, no transmission medium.'
+  - id: SDCM099
+    field: KNVV.WAERS
+    check_class: exists_check
+    fields:
+    - KNVV.WAERS
+    target_table: TCURC
+    target_fields:
+    - WAERS
+    severity: high
+    dimension: accuracy
+    message: Sales-area currency of the customer is not a defined currency
+    why_it_matters: KNVV.WAERS is the currency the sales area prices and invoices the customer in. A code
+      with no TCURC entry has no decimal places, no exchange rate and no rounding rules, so the sales
+      order, the pricing procedure and the invoice all fail or post amounts the size of the smallest
+      difference between two defined currencies.
+    rule_authority: sap_hard_constraint
+    sap_impact: Sales orders and billing documents for the customer cannot be priced or posted.
+    fix_map:
+      __other__: Correct the currency in VD02/XK02 (sales area data) to a currency defined in SPRO >
+        SAP NetWeaver > General Settings > Currencies, or create the missing currency.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}:
+      currency {KNVV.WAERS} is not defined.'
+  - id: SDCM100
+    field: KNVV.ERDAT
+    check_class: cross_field_check
+    fail_when: '`KNVV.ERDAT`.notna() & (`KNVV.ERDAT`.astype(''string'').str.strip() != '''') & (`KNVV.ERDAT` > @today)'
+    severity: high
+    dimension: timeliness
+    message: Customer sales-area record was created in the future
+    why_it_matters: ERDAT is the date the sales-area record was created. A date after the day the check runs
+      means the record carries a timestamp from a different clock, or was written by an interface that
+      misread the date, so every age and last-changed figure derived from it is wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: The record's creation date cannot be trusted, so staleness and change reporting on the
+      customer sales area is wrong for this record.
+    fix_map:
+      __other__: Correct the creation date in the source system or interface and re-extract. A creation
+        date cannot be later than the day it is read.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}:
+      creation date {actual_value} is in the future.'

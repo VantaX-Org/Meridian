@@ -177,3 +177,42 @@ rules:
   fix_map:
     __other__: Re-post the expense against the request, or correct the trip dates if no spend exists.
   record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: posted amount is {CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT}.'
+- id: CTR014
+  field: CONCUR_TRAVEL_REQUEST.START_DATE
+  check_class: freshness_check
+  max_age_hours: 8760
+  severity: low
+  dimension: timeliness
+  message: Travel request is more than a year old and still open
+  why_it_matters: A travel request that has not been closed a year after its start date is either a
+    trip that happened and was never reconciled, or one that never happened. It still appears in the
+    approval and reconciliation worklists, so the open-request count and the committed travel spend are
+    both overstated.
+  rule_authority: best_practice
+  sap_impact: Open travel requests accumulate, overstating committed travel spend and cluttering the
+    approver's worklist.
+  fix_map:
+    __other__: Reconcile the request against the expense report in Concur and close it, or cancel it
+      if the trip did not take place.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: started
+    {CONCUR_TRAVEL_REQUEST.START_DATE} and still open.'
+- id: CTR015
+  field: CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT
+  check_class: cross_field_check
+  fields:
+  - CONCUR_TRAVEL_REQUEST.REQUEST_ID
+  - CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT
+  fail_when: "`CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT`.notna() & (`CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT` < 0)"
+  severity: high
+  dimension: accuracy
+  message: Travel request has a negative posted amount
+  why_it_matters: TOTAL_POSTED_AMOUNT is what the request has actually cost. A negative value means a
+    credit was posted against the request without a matching original charge, so the trip's cost is
+    understated and the credit cannot be traced to the expense it reverses.
+  rule_authority: sap_hard_constraint
+  sap_impact: Travel cost is understated; the credit cannot be reconciled to an expense report line.
+  fix_map:
+    __other__: Trace the credit in Concur to the expense report it belongs to and re-post it against
+      that report, rather than the travel request.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: posted amount
+    {CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT} is negative.'

@@ -1271,3 +1271,22 @@ rules:
     fix_map:
       __other__: Extend the material to the warehouse number (MM50).
     record_fix_template: 'Quant {LQUA.LQNUM}: {LQUA.MATNR} has no warehouse data in {LQUA.LGNUM}.'
+  - id: EWMS142
+    field: LQUA.LGNUM
+    check_class: uniqueness_check
+    fields:
+    - LQUA.LGNUM
+    - LQUA.LQNUM
+    severity: high
+    dimension: uniqueness
+    message: Quant number is held twice in the same warehouse
+    why_it_matters: LQUA is keyed by warehouse number and quant. A repeated quant number means the same
+      physical stock is described by two rows, so the warehouse's stock figures are double counted and a
+      putaway or removal reads whichever row it finds first.
+    rule_authority: sap_hard_constraint
+    sap_impact: Inventory figures for the warehouse are wrong, and stock removal can target the wrong
+      storage bin.
+    fix_map:
+      __other__: Merge or remove the duplicate quant (LS24/LX02 in ECC; /SCWM/MON in S/4HANA EWM),
+        then re-run the warehouse stock comparison.
+    record_fix_template: 'Warehouse {LQUA.LGNUM}: quant {LQUA.LQNUM} is held more than once.'

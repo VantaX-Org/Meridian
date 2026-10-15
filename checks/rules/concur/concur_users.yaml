@@ -606,3 +606,24 @@ rules:
   fix_map:
     __other__: Capitalise the first letter of the first name.
   record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name {actual_value} is not capitalised.'
+- id: CNU042
+  field: CONCUR_USER.LOGIN_ID
+  check_class: uniqueness_check
+  fields:
+  - CONCUR_USER.LOGIN_ID
+  - CONCUR_USER.EMPLOYEE_ID
+  - CONCUR_USER.ORG_UNIT
+  severity: medium
+  dimension: uniqueness
+  message: One login is held against more than one employee record
+  why_it_matters: A Concur login identifies one person. When the same login appears under two employee
+    records the expense reports it files are attributed to two identities, so the approver, the cost
+    centre charged and the audit trail for those claims are all ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: Expense reports are attributed to the wrong employee, so cost-centre postings and the
+    approval trail are wrong for every report the login files.
+  fix_map:
+    __other__: Identify the correct employee for the login in Concur (User Administration) and remove
+      or re-point the other record, then reassign its expense reports.
+  record_fix_template: 'Concur login {CONCUR_USER.LOGIN_ID}: held against more than one employee
+    record.'

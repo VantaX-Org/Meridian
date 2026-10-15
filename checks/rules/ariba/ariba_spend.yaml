@@ -144,3 +144,41 @@ rules:
   fix_map:
     __blank__: Re-extract the spend data for the affected periods.
   record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: period is {actual_value}.'
+- id: ARSP011
+  field: ARIBA_SPEND.PERIOD
+  check_class: cross_field_check
+  fail_when: "~`ARIBA_SPEND.PERIOD`.astype('string').str.fullmatch(r'[0-9]{4}(0[1-9]|1[0-2])')"
+  severity: high
+  dimension: timeliness
+  message: Spend period is not a valid calendar month
+  why_it_matters: PERIOD is the reporting month a spend figure belongs to, as YYYYMM. A value that is
+    not a calendar month cannot be placed in the reporting calendar, so the figure either lands in the
+    wrong month of the spend report or falls out of it altogether while the total still includes it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spend is reported in the wrong period or omitted, so category and supplier totals do not
+    reconcile to the underlying transactions.
+  fix_map:
+    __other__: Correct the period on the spend record to the YYYYMM month of the underlying
+      transaction, then re-run the spend aggregation.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: period {ARIBA_SPEND.PERIOD} is not a
+    valid YYYYMM month.'
+- id: ARSP012
+  field: ARIBA_SPEND.SPEND_ID
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_SPEND.SPEND_ID
+  - ARIBA_SPEND.PERIOD
+  - ARIBA_SPEND.CURRENCY_CODE
+  severity: medium
+  dimension: uniqueness
+  message: The same spend record is held more than once for one period and currency
+  why_it_matters: A spend record states one amount for one supplier, category and period. A duplicate
+    for the same record, period and currency adds the amount twice, so category spend and the supplier's
+    reported volume are both overstated.
+  rule_authority: best_practice
+  sap_impact: Spend analysis double counts the amount; category and supplier totals do not reconcile to
+    the source transactions.
+  fix_map:
+    __other__: Remove the duplicate spend record and re-run the period's spend aggregation.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID} for {ARIBA_SPEND.PERIOD}: held more than
+    once.'

@@ -721,3 +721,21 @@ rules:
     fix_map:
       __other__: Merge the assignments.
     record_fix_template: 'User assignment {GRACUSERROLE.USERROLEID}: role {GRACUSERROLE.ROLE_ID} repeated.'
+  - id: GRC042
+    field: GRACUSERROLE.ROLE_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Role is mandatory on a user role assignment
+    why_it_matters: ROLE_ID names the role whose access the assignment grants. Without it the row
+      records that a user holds access without saying what access, so SoD analysis, access
+      certification and the role-to-permission mapping all lose their subject and the assignment can
+      never be reviewed or revoked.
+    rule_authority: sap_hard_constraint
+    sap_impact: The assignment cannot be certified or revoked. SoD analysis omits it and the access
+      review is incomplete - an audit finding.
+    fix_map:
+      __blank__: 'Set the role on the assignment in GRC Access Control (NWBC > Access Management). In
+        S/4HANA use Fiori app F3873 (Manage Access Requests).'
+    record_fix_template: 'User assignment {GRACUSERROLE.USERROLEID}: role is {actual_value}. Set the
+      role via GRC Access Control.'

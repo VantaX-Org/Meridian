@@ -1646,3 +1646,25 @@ rules:
   fix_map:
     __other__: Correct the tax type in FTXP.
   record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: tax type {T007A.MWART} invalid.'
+- id: BKT108
+  field: LFBK.BANKS
+  check_class: exists_check
+  fields:
+  - LFBK.BANKS
+  target_table: T005
+  target_fields:
+  - LAND1
+  severity: high
+  dimension: accuracy
+  message: Bank country of the vendor's bank detail is not a defined country
+  why_it_matters: LFBK.BANKS is the bank country of the vendor's bank detail. It selects the country's
+    bank-key format, IBAN structure and validation rules. A code with no T005 entry means none of those
+    rules can be applied, so the account number is accepted unchecked and the payment file cannot be
+    built for the country.
+  rule_authority: sap_hard_constraint
+  sap_impact: The payment run cannot format the vendor's bank transfer; the payment is not made and the
+    account number goes unvalidated.
+  fix_map:
+    __other__: Correct the bank country in FI02/XK02 (bank data) to a country defined in SPRO > SAP
+      NetWeaver > General Settings > Set Countries, or add the missing country.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank detail country {LFBK.BANKS} is not defined.'

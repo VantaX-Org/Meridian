@@ -600,3 +600,21 @@ rules:
   fix_map:
     __blank__: Reject the invoice back to the supplier for re-issue with the supplier identified.
   record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: supplier is {actual_value}.'
+- id: ARP043
+  field: ARIBA_PO.ORDER_DATE
+  check_class: freshness_check
+  max_age_hours: 8760
+  severity: low
+  dimension: timeliness
+  message: Purchase order has been open for more than a year
+  why_it_matters: A purchase order open for a year has either been received and never closed or never
+    fulfilled at all. Either way it still holds an open commitment, so the spend reported against the
+    supplier and the company code is overstated and the order hides the fact that the goods never
+    arrived.
+  rule_authority: best_practice
+  sap_impact: Open commitments are overstated; orders that will never be fulfilled remain in the
+    procurement worklist.
+  fix_map:
+    __other__: Confirm the receipt status in Ariba and either close the order or cancel it, then
+      release the commitment.
+  record_fix_template: 'Purchase order {ARIBA_PO.ORDER_ID}: open since {ARIBA_PO.ORDER_DATE}.'

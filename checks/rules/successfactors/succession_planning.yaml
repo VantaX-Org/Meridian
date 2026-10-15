@@ -1643,3 +1643,24 @@ rules:
         update readiness.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: ranked first
       but NOT_READY.'
+  - id: SUCC081
+    field: SUCCESSIONCANDIDATE.NOMINEE_ID
+    check_class: uniqueness_check
+    fields:
+    - SUCCESSIONCANDIDATE.NOMINEE_ID
+    - SUCCESSIONCANDIDATE.POSITION_ID
+    - SUCCESSIONCANDIDATE.NOMINATED_DATE
+    severity: medium
+    dimension: uniqueness
+    message: The same successor is nominated twice for one position on one date
+    why_it_matters: A nomination is one successor on one position on one date. A second row for the same
+      pair splits the readiness, ranking and calibration fields across two records, so the succession
+      chart shows the candidate twice and the calibration decision updates only one of them.
+    rule_authority: sap_hard_constraint
+    sap_impact: The succession chart double counts the candidate; readiness and ranking are read from an
+      arbitrary one of the two nominations.
+    fix_map:
+      __other__: Keep the nomination that carries the current readiness and ranking, and remove the
+        duplicate in the Succession Planning nomination screen.
+    record_fix_template: 'Position {SUCCESSIONCANDIDATE.POSITION_ID}: successor
+      {SUCCESSIONCANDIDATE.NOMINEE_ID} is nominated more than once for {SUCCESSIONCANDIDATE.NOMINATED_DATE}.'

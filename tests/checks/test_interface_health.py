@@ -85,7 +85,7 @@ def test_time_field_gives_hour_precision():
 
 def test_rules_carry_enrichment():
     rules = yaml.safe_load(_find_module_yaml("interface_health").read_text())["rules"]
-    assert len(rules) == 50
+    assert len(rules) == 53  # +IDH051 status-record uniqueness, IDH052 status accuracy, IDH053 status-record age
     for r in rules:
         for key in ("fix_map", "rule_authority", "why_it_matters", "sap_impact", "record_fix_template"):
             assert r.get(key), (r["id"], key)

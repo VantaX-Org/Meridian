@@ -952,3 +952,22 @@ rules:
     fix_map:
       __other__: Reopen the item or confirm it with the quantity moved.
     record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: confirmed with no actual quantity.'
+  - id: EWMSTO152
+    field: LTAK.LGNUM
+    check_class: uniqueness_check
+    fields:
+    - LTAK.LGNUM
+    - LTAK.TANUM
+    severity: high
+    dimension: uniqueness
+    message: Transfer order number is held twice in the same warehouse
+    why_it_matters: LTAK is the transfer order header, keyed by warehouse number and transfer order. A
+      duplicate order number makes confirmation ambiguous - LT12 confirms one of the two rows, so the
+      movement is either applied twice or never applied to the row the user was shown.
+    rule_authority: sap_hard_constraint
+    sap_impact: Stock movements are confirmed against the wrong order row, leaving the warehouse stock
+      and the source document out of step.
+    fix_map:
+      __other__: Compare the two orders in LT23/LT22 (ECC) or the warehouse monitor (S/4HANA EWM),
+        cancel the redundant one and reverse any confirmation posted against it.
+    record_fix_template: 'Warehouse {LTAK.LGNUM}: transfer order {LTAK.TANUM} is held more than once.'

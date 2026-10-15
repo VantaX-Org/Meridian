@@ -1025,3 +1025,44 @@ rules:
   record_fix_template: >-
     Supplier {LFA1.LIFNR} points to customer {LFA1.KUNNR}, but the customer has no supplier
     reference. Complete the link.
+- id: S4HC042
+  field: CVI_VEND_LINK.VENDOR
+  check_class: exists_check
+  fields:
+  - CVI_VEND_LINK.VENDOR
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  severity: critical
+  dimension: accuracy
+  message: CVI vendor link points at a vendor that does not exist
+  why_it_matters: CVI_VEND_LINK is the mapping table that ties a business partner to its vendor master
+    record. A link whose vendor has no LFA1 entry is a dangling mapping - the BP cannot be read as a
+    vendor, the CVI synchronisation writes into nothing, and the duplication check cannot tell whether
+    the vendor already exists.
+  rule_authority: sap_hard_constraint
+  sap_impact: The business partner cannot be used as a vendor; CVI synchronisation fails and the BP
+    appears as a duplicate candidate on every subsequent run.
+  fix_map:
+    __other__: Recreate or correct the mapping in transaction BP > Relationships (or run the CVI
+      consistency report MDS_LOAD_COCKPIT), so the link points at an existing vendor.
+  record_fix_template: 'Business partner {CVI_VEND_LINK.PARTNER_GUID}: linked vendor
+    {CVI_VEND_LINK.VENDOR} has no vendor master record.'
+- id: S4HC043
+  field: CVI_VEND_LINK.CRDAT
+  check_class: freshness_check
+  max_age_hours: 8760
+  severity: low
+  dimension: timeliness
+  message: CVI vendor link has not changed in over a year
+  why_it_matters: A link that has stood for more than a year on a partner that has since been blocked,
+    deleted or renumbered is the residue that keeps an obsolete vendor reachable in the BP transaction.
+    Stale links are also the usual cause of the same vendor reappearing as a duplicate on a later load.
+  rule_authority: best_practice
+  sap_impact: Obsolete vendor mappings stay active, so duplicate vendor records are created on later
+    CVI loads and the BP shows a vendor that should no longer exist.
+  fix_map:
+    __other__: Check the link in transaction BP against the vendor master and remove it if the vendor
+      was deleted or merged, or correct the mapping if it points at the wrong vendor.
+  record_fix_template: 'Business partner {CVI_VEND_LINK.PARTNER_GUID}: vendor link unchanged for over
+    a year.'

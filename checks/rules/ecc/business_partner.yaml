@@ -2707,3 +2707,33 @@ rules:
   fix_map:
     __other__: Maintain current bank details and delete the expired ones in BP > Payment transactions.
   record_fix_template: 'Business partner {BUT0BK.PARTNER} bank detail {BUT0BK.BKVID}: validity has ended.'
+- id: BP296
+  field: BUT100.RLTYP
+  check_class: domain_value_check
+  allowed_values:
+  - '000000'
+  - FLCU00
+  - FLCU01
+  - FLCU02
+  - FLVN00
+  - FLVN01
+  - BUP001
+  - BUP002
+  - BUP003
+  severity: high
+  dimension: validity
+  message: Business partner role is not a role the system defines
+  why_it_matters: BUT100.RLTYP is the key of the role-assignment row and is what makes a business
+    partner usable as a vendor, customer, contact person or employee. A value the role master does not
+    define grants no access and no sub-ledger view (LFA1/KNA1) can be synchronised from it. The general
+    role 000000 is one of the defined roles, not a blank.
+  rule_authority: sap_hard_constraint
+  sap_impact: The role assignment is inert. CVI cannot derive the vendor or customer view, so
+    procure-to-pay and order-to-cash are blocked for the partner.
+  fix_map:
+    __blank__: 'Add a role in transaction BP (ECC) or Fiori F3893 (Manage Business Partner) on the Role
+      tab. Standard roles: FLCU00 (customer), FLVN00 (vendor), BUP001 (contact person).'
+    __other__: 'Role ''{invalid_value}'' is not defined in the role master. Assign a defined role in
+      transaction BP (ECC), Fiori F3893 (S/4HANA), or maintain the role in SPRO > Cross-Application
+      Components > SAP Business Partner > Business Partner Roles.'
+  record_fix_template: 'Business partner {BUT100.PARTNER}: role {actual_value} is not a defined role.'

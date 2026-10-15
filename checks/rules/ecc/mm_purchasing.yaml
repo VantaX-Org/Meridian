@@ -5547,3 +5547,37 @@ rules:
     __other__: Re-save the item in ME22N so pricing recalculates the value, or correct the interface that wrote it.
   record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: value {EKPO.NETWR} for quantity {EKPO.MENGE} at {EKPO.NETPR} per
     {EKPO.PEINH}.'
+- id: PUR417
+  field: EKKO.EBELN
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Purchasing document number is mandatory
+  why_it_matters: EBELN is the key every purchasing item, schedule line, confirmation and goods receipt
+    points at. A header row without it cannot be displayed in ME23N or Fiori F2229, and no follow-on
+    document can reference the purchase order.
+  rule_authority: sap_hard_constraint
+  sap_impact: The PO header is unreachable (ME23N / Fiori F2229). Items, schedule lines, goods receipts
+    and invoice verification have no document to attach to.
+  fix_map:
+    __blank__: 'The document number is assigned by the number range at creation (ME21N / Fiori F2229).
+      Re-create the purchase order so the number range assigns a number.'
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: document number is {actual_value}. Re-create
+    the PO via ME21N (ECC) or Fiori F2229 (S/4HANA).'
+- id: PUR419
+  field: EKPO.EBELP
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Purchasing document item number is mandatory
+  why_it_matters: EBELP is the key of the PO line item. Every schedule line, goods receipt, service
+    entry sheet and invoice line addresses the document by (EBELN, EBELP), so an item with no number
+    can never be receipted or invoiced.
+  rule_authority: sap_hard_constraint
+  sap_impact: The line item is unreachable. Goods receipt (MIGO / Fiori F0842) and invoice verification
+    (MIRO / Fiori F0859) cannot address the line.
+  fix_map:
+    __blank__: 'The item number is assigned by the item number range when the line is added. Re-add the
+      item in ME22N (ECC) or Fiori F2229 (S/4HANA).'
+  record_fix_template: 'Purchasing document {EKPO.EBELN}: item number is {actual_value}. Re-add the
+    item via ME22N or Fiori F2229.'

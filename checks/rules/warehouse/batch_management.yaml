@@ -670,3 +670,42 @@ rules:
     fix_map:
       __other__: Enter the shelf-life expiration date on the batch.
     record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: no expiry date.'
+  - id: BATCH041
+    field: MCH1.MATNR
+    check_class: uniqueness_check
+    fields:
+    - MCH1.MATNR
+    - MCH1.CHARG
+    severity: high
+    dimension: uniqueness
+    message: The same batch number is held twice for one material
+    why_it_matters: MCH1 is the material's batch master and is keyed by material and batch. A second row
+      for the same pair means one of the two batches is unreachable - its shelf life, classification and
+      characteristic values are read from whichever row the reader happens to hit first.
+    rule_authority: sap_hard_constraint
+    sap_impact: Batch determination and shelf-life checks read an arbitrary one of the duplicate rows, so
+      the same batch can be accepted on one document and rejected on another.
+    fix_map:
+      __other__: Keep one batch master record and remove the duplicate in MSC1N/MSC2N (ECC) or Fiori
+        F1866 (S/4HANA); move any dependent stock onto the surviving batch.
+    record_fix_template: 'Material {MCH1.MATNR}: batch {MCH1.CHARG} is held more than once in the batch
+      master.'
+  - id: BATCH042
+    field: MCH1.ERSDA
+    check_class: freshness_check
+    fields:
+    - MCH1.MATNR
+    max_age_hours: 17520
+    severity: low
+    dimension: timeliness
+    message: Batch master record has not been reviewed in two years
+    why_it_matters: A batch master with no change for two years usually means the batch is long consumed,
+      expired or superseded, yet it still appears in batch determination and in FSCM/quality lookups. The
+      shelf-life and status fields on it are stale.
+    rule_authority: best_practice
+    sap_impact: Obsolete batches stay selectable, so users can pick a stale batch in MIGO or an SD delivery.
+    fix_map:
+      __other__: Review the batch in MSC3N (ECC) or Fiori F1866 (S/4HANA); archive or delete it if the
+        stock is gone, or refresh the shelf-life and status data if it is still in use.
+    record_fix_template: 'Material {MCH1.MATNR} batch {MCH1.CHARG}: master record unchanged for over two
+      years.'

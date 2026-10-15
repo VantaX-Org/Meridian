@@ -40,9 +40,9 @@ def test_runner_returns_correct_count():
     df = _make_bp_dataframe(50)
     results = run_checks("business_partner", df, "test-tenant")
     # Non-None results = rules whose fields exist in this synthetic extract.
-    # 20: BP220 (role vs category), BP226 (organisation name similarity) and BP273 (creation date in the future)
-    # find their fields here too.
-    assert len(results) == 20
+    # 21: BP220 (role vs category), BP226 (organisation name similarity), BP273 (creation date in
+    # the future) and BP296 (BUT100.RLTYP is a defined role) find their fields here too.
+    assert len(results) == 21
     assert all(isinstance(r, CheckResult) for r in results)
 
 

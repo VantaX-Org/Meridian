@@ -747,3 +747,22 @@ rules:
         change request maintenance.
     record_fix_template: Entity row for request {USMD1213.USMD_CREQUEST} / entity {USMD1213.USMD_ENTITY} has no entity
       object key.
+  - id: MDG052
+    field: USMD120C.USMD_CREQUEST
+    check_class: uniqueness_check
+    fields:
+    - USMD120C.USMD_CREQUEST
+    - USMD120C.USMD_CREATED_AT
+    severity: high
+    dimension: uniqueness
+    message: The same change request is held twice
+    why_it_matters: USMD120C is keyed by the change request number. A second row for the same request
+      splits its workflow state - the approver acts on one row while the other keeps the request open, so
+      the change never activates and the audit trail has two contradictory records.
+    rule_authority: sap_hard_constraint
+    sap_impact: The governance workflow stalls; the master-data change is neither activated nor
+      demonstrably rejected, and the audit trail is ambiguous.
+    fix_map:
+      __other__: Keep one record for the change request, close the duplicate in the MDG worklist and
+        re-run the activation for the surviving request.
+    record_fix_template: 'Change request {USMD120C.USMD_CREQUEST} is held more than once.'

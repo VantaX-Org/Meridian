@@ -180,3 +180,38 @@ def test_extraction_plan_covers_every_field_the_active_rules_read(system_type):
         f"{system_type}: the extraction plan never requests {len(missing)} field(s) its active "
         f"rules read, so those rules would skip at run time: {missing[:8]}"
     )
+
+
+# ``sap/data_dictionary.py`` is the curated metadata the rule reconciler
+# (checks/rule_reconciler.py) reconciles domain values and mandatory-field coverage
+# against. It is a second, hand-maintained description of the same SAP fields as the
+# shipped DDIC bundle (``sap/dictionaries/``), and it had silently rotted: it named 23
+# fields no SAP table has (``BUT000.BU_TYPE`` where SAP says ``BUT000.TYPE``,
+# ``LFA1.BANKN`` which lives on LFBK, ``EQUI.EQKTX`` which lives on EQKT) and two tables
+# the bundle does not contain (GRACRISK, MCH7). Because the reconciler treats every
+# curated entry as something that must be judged, those phantom entries produced
+# mandatory-field "coverage gaps" that could never be closed without inventing rules for
+# fields that do not exist. A curated reference that does not resolve is a defect in the
+# catalogue, so pin it here.
+def test_curated_dictionary_references_only_real_dictionary_fields():
+    from sap.data_dictionary import DATA_DICTIONARY
+
+    d = get_dictionary("s4hana")
+    bad_tables: list[str] = []
+    bad_fields: list[str] = []
+    for table, fields in DATA_DICTIONARY.items():
+        resolved = d.table(table)
+        if resolved is None:
+            bad_tables.append(table)
+            continue
+        for field in fields:
+            if field not in resolved.fields:
+                bad_fields.append(f"{table}.{field}")
+    assert not bad_tables, (
+        f"sap/data_dictionary.py declares {len(bad_tables)} table(s) the shipped DDIC bundle "
+        f"does not contain, so the reconciler can never judge them: {sorted(bad_tables)}"
+    )
+    assert not bad_fields, (
+        f"sap/data_dictionary.py declares {len(bad_fields)} field(s) their SAP table does not "
+        f"have, so the reconciler reports unfixable coverage gaps for them: {sorted(bad_fields)}"
+    )

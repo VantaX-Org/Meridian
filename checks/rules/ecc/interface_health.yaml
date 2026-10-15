@@ -1304,3 +1304,70 @@ rules:
     record_fix_template: >-
       tRFC call to {ARFCSSTATE.ARFCDEST} has no function module. Inspect and remove it
       in SM58.
+  - id: IDH051
+    field: EDIDS.DOCNUM
+    check_class: uniqueness_check
+    fields:
+    - EDIDS.DOCNUM
+    - EDIDS.LOGDAT
+    - EDIDS.LOGTIM
+    severity: medium
+    dimension: uniqueness
+    message: The same IDoc status record is held twice
+    why_it_matters: EDIDS keeps one row per status the IDoc passed through. Two rows with the same
+      document, date and time describe one transition twice, so the status history read in WE02/BD87
+      shows a step that never happened and the time between steps is miscounted.
+    rule_authority: best_practice
+    sap_impact: Misleading status history for the IDoc; support reads a transition that did not occur.
+    fix_map:
+      __other__: Remove the duplicate status row in WE02 > Status records, keeping the entry written by
+        the original transition.
+    record_fix_template: 'IDoc {EDIDS.DOCNUM}: status record for {EDIDS.LOGDAT} {EDIDS.LOGTIM} is held
+      more than once.'
+  - id: IDH052
+    field: EDIDC.STATUS
+    check_class: exists_check
+    fields:
+    - EDIDC.STATUS
+    - EDIDC.DOCNUM
+    target_table: EDIDS
+    target_fields:
+    - STATUS
+    - DOCNUM
+    severity: high
+    dimension: accuracy
+    message: IDoc control record carries a status the status history does not contain
+    why_it_matters: EDIDC.STATUS is the IDoc's current status, and EDIDS holds the transitions that got
+      it there. When the control status has no matching status record, the IDoc's own history does not
+      explain its state, so reprocessing in BD87 has no intermediate steps to work from and the IDoc can
+      neither be corrected nor archived.
+    rule_authority: sap_hard_constraint
+    sap_impact: The IDoc cannot be reprocessed reliably in BD87; its history is incomplete and support
+      cannot tell which step stalled.
+    fix_map:
+      __other__: Compare the IDoc with the partner's transmission log, then reset and reprocess it in
+        BD87, or set it to status 68 (no further processing) if the message is obsolete.
+    record_fix_template: 'IDoc {EDIDC.DOCNUM}: control status {EDIDC.STATUS} has no matching status
+      record.'
+  - id: IDH053
+    field: EDIDS.LOGDAT
+    check_class: freshness_check
+    time_field: EDIDS.LOGTIM
+    fields:
+    - EDIDS.DOCNUM
+    max_age_hours: 720
+    severity: medium
+    dimension: timeliness
+    message: IDoc status record is older than 30 days and still references an open document
+    why_it_matters: Status records for IDocs that finished more than a month ago are safe to archive.
+      Ones that remain in the active status tables past 30 days keep the IDoc in the system's working
+      set, so the status tables grow without bound and the daily reconciliation has to read history that
+      has already been settled.
+    rule_authority: best_practice
+    sap_impact: The IDoc status tables grow continuously; reconciliation and archiving runs take longer
+      every month for data that no longer changes.
+    fix_map:
+      __other__: Confirm the IDoc completed, then archive it with SARA (object IDOC) or delete the
+        status records in BD87 > Delete.
+    record_fix_template: 'IDoc {EDIDS.DOCNUM}: status record from {EDIDS.LOGDAT} is more than 30 days
+      old.'
