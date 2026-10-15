@@ -85,22 +85,21 @@ describe("BatchesTab", () => {
     await waitFor(() => expect(getBatch.mock.calls.length).toBeGreaterThan(callsBeforeAccept));
   });
 
-  it("shows a regression link in Monitoring that opens the batch drawer", async () => {
+  it("summarises a regression and links to the Monitor tab", async () => {
     const monitorItem: MonitorItem = {
       scope: "sys1", system_name: "ECC Prod",
       baseline: { id: "v1", run_at: "2026-01-01T00:00:00Z", dqs: 90 },
       latest: { id: "v2", run_at: "2026-01-05T00:00:00Z", dqs: 85 },
       monitor: {
         baseline_id: "v1", baseline_run_at: "2026-01-01T00:00:00Z", new_records: 4,
-        regressed_checks: [], regressed_check_count: 0, resolved_records: 0,
+        regressed_checks: [{ check_id: "AP001", module: "business_partner", severity: "high", new: 4 }], regressed_check_count: 1, resolved_records: 0,
         batch_id: "b1", batch_items: 4, batch_auto_approvable: 2,
       },
     };
     vi.spyOn(remediationApi, "getMonitor").mockResolvedValue({ items: [monitorItem] });
     renderWithQuery(<BatchesTab />);
-    const link = await screen.findByRole("button", { name: /records regressed.*in a new fix batch/ });
-    await userEvent.click(link);
-    await waitFor(() => expect(remediationApi.getBatch).toHaveBeenCalledWith("b1"));
+    expect(await screen.findByText("ECC Prod regressed since the baseline.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open monitor" })).toHaveAttribute("href", "?tab=monitor");
   });
 
   it("disables approve without the matching permission", async () => {

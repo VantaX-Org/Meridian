@@ -488,6 +488,7 @@ export interface ComplianceHistoryResponse {
 
 export type NotificationType =
   | "finding"
+  | "monitor"
   | "cleaning"
   | "exception"
   | "approval"
