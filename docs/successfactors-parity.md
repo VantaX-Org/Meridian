@@ -66,6 +66,46 @@ them:
 - `NominationTarget` exposes only `nominationId`, `nominationType` — no
   `positionCode`.
 
+## How much is actually recoverable (resolved field by field)
+
+Resolving every field the SF rules read to the `Entity.property` the canonical
+dictionary declares, then testing that property against the tenant's `$metadata`
+(`scripts/successfactors_parity.py`), gives the size of the prize:
+
+| object | rule fields the tenant can serve | fields no property carries | recoverable |
+|---|---|---|---|
+| `employee_central` | 181 | 9 | **95%** |
+| `compensation` | 73 | 9 | **89%** |
+| `time_attendance` | 33 | 4 | **89%** |
+| `payroll_integration` | 36 | 14 | 72% |
+| `benefits` | 19 | 12 | 61% |
+| `recruiting_onboarding` | 30 | 19 | 61% |
+| `performance_goals` | 18 | 20 | 47% |
+| `succession_planning` | 13 | 21 | 38% |
+| `learning_management` | 3 | 29 | **9%** |
+| **total** | **406** | **137** | **75%** |
+
+So **three quarters of the gap is a mapping correction**, not missing data: the
+tenant serves 406 of the 543 rule-referenced fields, and today's registry reads only
+a fraction of them. `employee_central`, `compensation` and `time_attendance` can
+reach near-parity by mapping alone.
+
+The remaining quarter is concentrated in four tables and cannot be mapped at all:
+
+| table | readable | why |
+|---|---|---|
+| `SUCCESSIONCANDIDATE` | 5 of 26 | `Successor` is a child entity (403 at top level) and lacks `approvalStatus`, `calibrationDate`, `eligibilityFlag`, `emergencySuccessor` |
+| `LEARNINGASSIGNMENT` | 0 of 18 | Learning is a separate SF module; `LearningHistoryV1` is not served |
+| `GOALPLAN` | 3 of 18 | the entity is `Goal_<planId>`, not a fixed set — these fields *are* readable via `Goal_1` (`userId`, `goalId`, `name`, `metric`, `category`, `status`, `weight`, `start`, `due`, …), so this one is a wiring gap rather than missing data |
+| `BENEFITENROLLMENT` | 0 of 10 | `BenefitEnrollment` has no entity set |
+| `PAYRESULT` | 0 of 13 | EC Payroll results need the export/upload path |
+
+Note `GOALPLAN`: all 15 "unusable" fields exist on the tenant's `Goal_1` entity
+(`name`, `metric`, `category`, `status`, `weight`, `userId`, `start`, `due`, `id`,
+`currentOwner`, `modifier`, `lastModified`, …). They are unusable only because the
+canonical dictionary declares them against `Goal`, and the resolver therefore looks
+in the wrong place. That is the clearest single illustration of the drift.
+
 ## What this means for the handover
 
 The ECC objects are at parity and can be baselined. **The SuccessFactors objects
