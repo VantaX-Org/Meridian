@@ -92,6 +92,7 @@ async def discover_config(
         drift = engine.detect_drift(prev_inventory, result.config_inventory)
         if drift:
             await persistence.save_drift(db, tenant_id, run_id, drift)
+    await db.commit()
 
     return result_to_discover_response(run_id, result)
 

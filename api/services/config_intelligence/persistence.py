@@ -167,7 +167,6 @@ class ConfigIntelligencePersistence:
                 },
             )
 
-        await db.commit()
 
     async def save_variants(self, db: AsyncSession, tenant_id: str, version_id: str, variants) -> int:
         """Replace the version's process variants (idempotent: delete, then insert)."""
@@ -184,7 +183,6 @@ class ConfigIntelligencePersistence:
                  "first": date.fromisoformat(v.first_seen) if v.first_seen else None,
                  "last": date.fromisoformat(v.last_seen) if v.last_seen else None,
                  "cls": v.classification, "cfg": v.config_table, "ev": v.evidence})
-        await db.commit()
         return len(variants)
 
     async def save_derivation(self, db: AsyncSession, tenant_id: str, version_id: str, system_type: str,
@@ -198,7 +196,6 @@ class ConfigIntelligencePersistence:
                  "document = EXCLUDED.document, created_at = now()"),
             {"id": str(uuid.uuid4()), "tid": str(tenant_id), "vid": str(version_id), "st": system_type,
              "doc": json.dumps(document)})
-        await db.commit()
 
     async def save_drift(
         self,
@@ -230,7 +227,6 @@ class ConfigIntelligencePersistence:
                     "curr": d.current_value,
                 },
             )
-        await db.commit()
 
     # ------------------------------------------------------------------
     # Read helpers
