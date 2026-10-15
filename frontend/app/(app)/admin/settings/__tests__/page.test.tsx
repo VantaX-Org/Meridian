@@ -4,11 +4,20 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as licenceApi from "@/lib/api/licence";
 import * as doctorApi from "@/lib/api/admin-doctor";
 import * as notificationsApi from "@/lib/api/notifications";
+import * as retentionApi from "@/lib/api/retention";
 import type { LicenceManifest } from "@/lib/api/licence";
 import type { DoctorItem } from "@/lib/api/admin-doctor";
 import AdminSettingsPage from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+
+function mockRetention() {
+  vi.spyOn(retentionApi, "getRetention").mockResolvedValue({
+    policy: { versions_days: null, reports_days: null, audit_days: null, keep_baseline: true, keep_latest_per_system: 1 },
+    enforcement: { flag_enabled: false, dry_run_until: null, enforced: false },
+  });
+  vi.spyOn(retentionApi, "getPurgeLog").mockResolvedValue([]);
+}
 
 const MANIFEST: LicenceManifest = {
   valid: true, status: "active", tier: "professional", enabled_modules: ["*"], enabled_menu_items: [],
@@ -20,6 +29,7 @@ const ITEM: DoctorItem = { id: "llm", label: "Language model", status: "ok", det
 describe("admin settings page", () => {
   it("renders licence and health checks once loaded", async () => {
     vi.spyOn(notificationsApi, "getAlertChannels").mockResolvedValue([]);
+    mockRetention();
     vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue(MANIFEST);
     vi.spyOn(doctorApi, "getDoctor").mockResolvedValue({ items: [ITEM], last_checked: "2026-01-01T00:00:00Z" });
     renderWithQuery(<AdminSettingsPage />);
@@ -28,6 +38,7 @@ describe("admin settings page", () => {
 
   it("shows a retryable error when the licence fails to load", async () => {
     vi.spyOn(notificationsApi, "getAlertChannels").mockResolvedValue([]);
+    mockRetention();
     const spy = vi.spyOn(licenceApi, "getLicenceManifest").mockRejectedValue(new Error("network down"));
     vi.spyOn(doctorApi, "getDoctor").mockResolvedValue({ items: [ITEM], last_checked: "2026-01-01T00:00:00Z" });
     renderWithQuery(<AdminSettingsPage />);

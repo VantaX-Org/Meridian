@@ -52,6 +52,7 @@ class Tenant(Base):
     dqs_weights = Column(JSONB, nullable=True)
     alert_thresholds = Column(JSONB, nullable=True)
     cost_model = Column(JSONB, nullable=True)  # overrides of checks/cost_model.yaml
+    retention = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))  # api/services/retention.py
     stripe_customer_id = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
@@ -2233,4 +2234,26 @@ class InsightFeedback(Base):
     __table_args__ = (
         CheckConstraint("vote IN ('up', 'down')", name="ck_insight_feedback_vote"),
         Index("ix_insight_feedback_tenant", "tenant_id", "created_at"),
+    )
+
+
+class PurgeLog(Base):
+    """One row per purge, dry run or real (api/services/purge.py, migration 082)."""
+    __tablename__ = "purge_log"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    kind = Column(Text, nullable=False)  # version | reports | audit | tenant
+    target_id = Column(UUID(as_uuid=True), nullable=True)
+    dry_run = Column(Boolean, nullable=False, server_default=text("false"))
+    rows_by_table = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    bytes_freed = Column(BigInteger, nullable=False, server_default="0")
+    blocked_reason = Column(Text, nullable=True)
+    actor_user_id = Column(UUID(as_uuid=True), nullable=True)
+    actor_email = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('version', 'reports', 'audit', 'tenant')", name="ck_purge_log_kind"),
+        Index("ix_purge_log_tenant_created", "tenant_id", "created_at"),
     )

@@ -345,6 +345,30 @@ sudo ufw allow 22/tcp    # SSH (already allowed)
 
 ---
 
+## Retention and purge
+
+Meridian keeps every analysis run until you tell it otherwise. Archiving a run (Runs > Archive older runs) only hides it. Deleting data for good is a separate, deliberate step:
+
+1. **Set the policy** in Admin > Settings > Retention: how many days to keep runs, reports and audit rows, how many of the newest runs per system to keep regardless, and whether the pinned baseline is kept. Use **Preview what would be purged** to see the exact runs, rows and storage the policy selects right now, and why a run would be refused.
+2. **Let the dry runs accumulate.** The nightly task (02:30 UTC) writes a dry-run row to the purge log for everything it would delete. Nothing is deleted yet.
+3. **Enable enforcement** once you are happy with a week of previews. Add to `.env` and restart the workers:
+   ```bash
+   MERIDIAN_PURGE_ENABLED=true
+   docker compose up -d worker beat
+   ```
+   Deletion starts only when this flag is on **and** the tenant's oldest dry-run entry is at least seven days old. The Retention panel shows the current state ("Dry run until ...; set MERIDIAN_PURGE_ENABLED to enforce").
+
+Rules that always apply:
+
+- Only archived runs are purged; the pinned baseline and the newest runs of each system never are.
+- A run with open stewardship items, unfinished cleaning or pending write-backs is refused until that work is closed. The refusal and its reason appear in the purge log.
+- Golden records, learned rules, glossary terms, data contracts and your own rules are never touched.
+- Storage (the parquet extract under `staging/<tenant>/<run>/` and the report PDF) is removed after the database rows; a storage error is recorded on the purge log entry rather than failing the purge.
+
+To delete **one run** by hand, open Runs, show archived runs and choose **Delete permanently**; you must type the run's name. To delete **everything** (for example at the end of a contract), an administrator calls `POST /api/v1/admin/purge-tenant` once to receive a token, waits 24 hours, and calls it again with the token. The response is a certificate of deletion (PDF) listing the rows removed per table, the storage freed, the time and the requesting user. See `docs/legal/DPA.md` section 11.
+
+---
+
 ## Support & Contact
 
 ### Need Help?

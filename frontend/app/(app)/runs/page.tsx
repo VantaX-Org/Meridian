@@ -14,6 +14,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
 import { getSystems } from "@/lib/api/connectivity";
 import { exportRuns } from "@/lib/api/v1/runs";
+import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
 import { formatDate, labelOf } from "@/lib/format";
@@ -62,7 +63,20 @@ function RunRowProgress({ id }: { id: string }) {
   );
 }
 
-function makeColumns(systemName: Map<string, string>, allVersions: Version[]): ColumnDef<Version>[] {
+/** The value the user must type to purge a run: its label, or its id when it has none (api/routes/retention.py). */
+const confirmValueOf = (v: Version) => v.label ?? v.id;
+
+function makeColumns(systemName: Map<string, string>, allVersions: Version[], onDelete?: (v: Version) => void): ColumnDef<Version>[] {
+  const actions: ColumnDef<Version>[] = onDelete ? [{
+    id: "actions",
+    header: "",
+    enableSorting: false,
+    cell: ({ row }) => (row.original.metadata?.archived ? (
+      <Button variant="ghost" aria-label={`Delete ${runName(row.original)} permanently`} onClick={(e) => { e.stopPropagation(); onDelete(row.original); }}>
+        Delete permanently
+      </Button>
+    ) : null),
+  }] : [];
   return [
     { id: "label", accessorFn: runName, header: "Run" },
     {
@@ -105,6 +119,7 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[]): C
       accessorFn: (v) => (v.metadata?.baseline === true ? "Baseline" : ""),
       cell: ({ row }) => (row.original.metadata?.baseline === true ? <Pill>Baseline</Pill> : null),
     },
+    ...actions,
   ];
 }
 
@@ -178,7 +193,12 @@ export default function RunsPage() {
 
   const systemName = useMemo(() => new Map((systems.data ?? []).map((s) => [s.id, s.name])), [systems.data]);
   const allVersions = useMemo(() => all.data?.versions ?? [], [all.data]);
-  const columns = useMemo(() => makeColumns(systemName, allVersions), [systemName, allVersions]);
+  const [deleteTarget, setDeleteTarget] = useState<Version | null>(null);
+  const canPurge = can("manage_settings");
+  const columns = useMemo(
+    () => makeColumns(systemName, allVersions, canPurge ? setDeleteTarget : undefined),
+    [systemName, allVersions, canPurge],
+  );
   // The upload scope has no system_id to filter by, so only real systems are offered.
   const systemOptions = useMemo(() => {
     const ids = [...new Set(allVersions.map(scopeOf))].filter((id) => id !== "upload");
@@ -223,6 +243,20 @@ export default function RunsPage() {
     mutationFn: restoreVersions,
     onSuccess: (r) => { refreshLists(); toast.success(r.restored === 0 ? "No archived runs." : `${r.restored} run${r.restored === 1 ? "" : "s"} restored.`); },
     onError: (e) => toast.error(errorText(e)),
+  });
+  const purge = useMutation({
+    mutationFn: (v: Version) => deleteVersion(v.id, confirmValueOf(v)),
+    onSuccess: (r, v) => {
+      setDeleteTarget(null);
+      refreshLists();
+      void qc.invalidateQueries({ queryKey: queryKeys.purgeLog() });
+      const rows = Object.values(r.rows_by_table).reduce<number>((n, x) => n + (typeof x === "number" ? x : 0), 0);
+      toast.success(`${runName(v)} deleted permanently: ${rows.toLocaleString()} rows removed.`);
+    },
+    onError: (e) => {
+      const blocked = blockedReasonOf(e);
+      toast.error(blocked ? `Not deleted: ${blocked}` : errorText(e));
+    },
   });
   const firstSystem = systems.data?.[0];
 
@@ -318,6 +352,22 @@ export default function RunsPage() {
 
   return (
     <>
+    <ConfirmDialog
+      open={deleteTarget !== null}
+      onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+      title="Delete run permanently"
+      tone="danger"
+      confirmLabel="Delete permanently"
+      cancelLabel="Keep"
+      typeToConfirm={deleteTarget ? confirmValueOf(deleteTarget) : undefined}
+      pending={purge.isPending}
+      onConfirm={() => { if (deleteTarget) purge.mutate(deleteTarget); }}
+      body={
+        <p>
+          Every finding, record, profile, report and fix of this run is removed from the database and from storage. This cannot be undone. Runs with open stewardship items, unfinished cleaning or pending write-backs are refused.
+        </p>
+      }
+    />
     <ConfirmDialog
       open={archiveOpen}
       onOpenChange={setArchiveOpen}

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import { Button } from "@/design";
 import * as connectivityApi from "@/lib/api/connectivity";
+import * as retentionApi from "@/lib/api/retention";
 import * as uploadApi from "@/lib/api/upload";
 import * as versionsApi from "@/lib/api/versions";
 import type { DimensionScores, SAPSystemExtended, Version } from "@/types/api";
@@ -216,5 +217,50 @@ describe("RunsPage status param", () => {
     await waitFor(() => expect(screen.getByText("Broken run")).toBeInTheDocument());
     expect(screen.queryByText("Oct 8 upload")).not.toBeInTheDocument();
     searchParams.delete("status");
+  });
+});
+
+describe("RunsPage delete permanently", () => {
+  const archived = version({ id: "v0", label: "Old upload", run_at: "2026-09-01T00:00:00Z", metadata: { system_id: "sys-1", archived: true } });
+
+  it("offers the action on archived runs only and purges after the label is typed", async () => {
+    searchParams.set("archived", "1");
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, archived] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const del = vi.spyOn(retentionApi, "deleteVersion").mockResolvedValue({
+      version_id: "v0", rows_by_table: { findings: 3, analysis_versions: 1 }, bytes_freed: 10, blocked_reason: null,
+      storage_errors: [], purge_log_id: "l1",
+    });
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Old upload")).toBeInTheDocument());
+    expect(screen.getAllByRole("button", { name: /Delete .* permanently/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Delete Old upload permanently" }));
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog).getByRole("button", { name: "Delete permanently" });
+    expect(confirm).toBeDisabled();
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.change(within(dialog).getByLabelText("Type to confirm"), { target: { value: "Old upload" } });
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+    await waitFor(() => expect(del).toHaveBeenCalledWith("v0", "Old upload"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    searchParams.delete("archived");
+  });
+
+  it("keeps the run when the dialog is dismissed", async () => {
+    searchParams.set("archived", "1");
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, archived] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const del = vi.spyOn(retentionApi, "deleteVersion").mockResolvedValue({
+      version_id: "v0", rows_by_table: {}, bytes_freed: 0, blocked_reason: null, storage_errors: [], purge_log_id: null,
+    });
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Old upload")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Delete Old upload permanently" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(del).not.toHaveBeenCalled();
+    searchParams.delete("archived");
   });
 });

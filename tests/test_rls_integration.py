@@ -136,6 +136,7 @@ def two_tenants(engine):
             # Some tables have FKs to others; order matters. Wipe in reverse.
             for table in (
                 "audit_log",
+                "purge_log",
                 "findings",
                 "analysis_versions",
                 "master_records",
@@ -343,3 +344,132 @@ def test_unset_tenant_returns_nothing(engine, two_tenants):
             f"RLS leak: unscoped session saw {len(rows)} row(s) — "
             "every table should return zero rows until app.tenant_id is set"
         )
+
+
+# ── retention purge ──────────────────────────────────────────────────────────
+
+_PURGE_TABLES = (
+    "findings", "finding_records", "reports", "record_fixes", "impact_records", "analysis_run_steps",
+    "field_profiles", "write_back_log", "finding_root_causes", "proven_cost_results",
+)
+
+
+def _seed_version(conn, tid: uuid.UUID, label: str, days_ago: int, archived: bool) -> tuple[uuid.UUID, uuid.UUID]:
+    """One version with a row in every purge-relevant table. Returns (version_id, finding_id)."""
+    from sqlalchemy import text
+
+    vid, fid = uuid.uuid4(), uuid.uuid4()
+    meta = '{"archived": true}' if archived else '{}'
+    p = {"vid": str(vid), "tid": str(tid), "fid": str(fid), "label": label, "days": days_ago, "meta": meta}
+    conn.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, label, run_at, metadata) "
+                      "VALUES (:vid, :tid, 'complete', :label, now() - make_interval(days => :days), "
+                      "CAST(:meta AS jsonb))"), p)
+    conn.execute(text("INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, "
+                      "affected_count, total_count, pass_rate) VALUES (:fid, :vid, :tid, 'business_partner', "
+                      "'BP_001', 'high', 'completeness', 5, 100, 0.95)"), p)
+    conn.execute(text("INSERT INTO finding_records (tenant_id, version_id, check_id, module, record_key) "
+                      "VALUES (:tid, :vid, 'BP_001', 'business_partner', 'PARTNER=1')"), p)
+    conn.execute(text("INSERT INTO reports (id, version_id, tenant_id, report_json, pdf_path) "
+                      "VALUES (gen_random_uuid(), :vid, :tid, '{}'::jsonb, 'reports/x.pdf')"), p)
+    conn.execute(text("INSERT INTO record_fixes (id, tenant_id, version_id, check_id, module, record_id) "
+                      "VALUES (gen_random_uuid(), :tid, :vid, 'BP_001', 'business_partner', '1')"), p)
+    conn.execute(text("INSERT INTO impact_records (id, tenant_id, version_id, category) "
+                      "VALUES (gen_random_uuid(), :tid, :vid, 'ops')"), p)
+    conn.execute(text("INSERT INTO analysis_run_steps (tenant_id, version_id, step_number, step_name) "
+                      "VALUES (:tid, :vid, 1, 'load')"), p)
+    conn.execute(text("INSERT INTO field_profiles (id, tenant_id, version_id, module, table_name, field) "
+                      "VALUES (gen_random_uuid(), :tid, :vid, 'business_partner', 'BUT000', 'NAME_ORG1')"), p)
+    conn.execute(text("INSERT INTO write_back_log (id, tenant_id, finding_id, version_id, requested_by, dry_run, "
+                      "applied_at) VALUES (gen_random_uuid(), :tid, :fid, :vid, 'u1', false, now())"), p)
+    conn.execute(text("INSERT INTO finding_root_causes (tenant_id, version_id, check_id, status) "
+                      "VALUES (:tid, :vid, 'BP_001', 'computed')"), p)
+    conn.execute(text("INSERT INTO proven_cost_results (tenant_id, version_id, metric, amount, documents) "
+                      "VALUES (:tid, :vid, 'blocked_invoices', 10, 1)"), p)
+    return vid, fid
+
+
+def _rows_for(conn, table: str, vid: uuid.UUID) -> int:
+    from sqlalchemy import text
+
+    return conn.execute(text(f"SELECT count(*) FROM {table} WHERE version_id = :v"), {"v": str(vid)}).scalar()
+
+
+def test_purge_version_removes_every_dependent_row_and_nothing_else(engine, two_tenants, monkeypatch):
+    """purge_version on a real Postgres: every version-keyed table ends empty for the purged
+    version, the sibling version keeps every row, open write-backs block the purge, and the
+    exception that pointed at a purged finding survives with its pointer cleared."""
+    from sqlalchemy import text
+
+    from api.services import storage
+    from api.services.purge import Actor, purge_version
+    from workers.db import tenant_session
+
+    eng, _app_eng = engine
+    tid, _other = two_tenants
+    monkeypatch.setattr(storage, "delete_prefix", lambda bucket, prefix: (1, 4096))
+    monkeypatch.setattr(storage, "object_size", lambda bucket, name: 100)
+    monkeypatch.setattr(storage, "delete_file", lambda bucket, name: None)
+
+    with eng.begin() as conn:
+        _set_tenant(conn, tid)
+        v_old, f_old = _seed_version(conn, tid, "old run", 400, archived=True)
+        v_new, f_new = _seed_version(conn, tid, "new run", 1, archived=False)
+        conn.execute(text("INSERT INTO exceptions (id, tenant_id, type, category, severity, title, description, "
+                          "linked_finding_id) VALUES (gen_random_uuid(), :t, 'data_quality', 'bp', 'high', 'x', "
+                          "'y', :f)"), {"t": str(tid), "f": str(f_old)})
+        # the new version has a write-back that is approved but not applied: open work
+        conn.execute(text("INSERT INTO write_back_log (id, tenant_id, finding_id, version_id, requested_by, "
+                          "approved_by, dry_run) VALUES (gen_random_uuid(), :t, :f, :v, 'u1', 'u2', false)"),
+                     {"t": str(tid), "f": str(f_new), "v": str(v_new)})
+
+    try:
+        with tenant_session(eng, tid) as session:
+            blocked = purge_version(session, str(tid), str(v_new), dry_run=False, actor=None)
+        assert "write-back" in (blocked["blocked_reason"] or "")
+
+        with tenant_session(eng, tid) as session:
+            dry = purge_version(session, str(tid), str(v_old), dry_run=True, actor=None)
+        assert dry["blocked_reason"] is None
+        assert dry["rows_by_table"]["findings"] == 1 and dry["rows_by_table"]["analysis_versions"] == 1
+        assert dry["rows_by_table"]["exceptions (unlinked)"] == 1
+
+        with eng.connect() as conn:
+            _set_tenant(conn, tid)
+            assert _rows_for(conn, "findings", v_old) == 1, "a dry run must delete nothing"
+
+        with tenant_session(eng, tid) as session:
+            real = purge_version(session, str(tid), str(v_old), dry_run=False,
+                                 actor=Actor(user_id=None, email="admin@example.com", method="DELETE",
+                                             path="/api/v1/versions/x"))
+        assert real["blocked_reason"] is None and real["bytes_freed"] == 4096 + 100
+        assert real["rows_by_table"]["write_back_log"] == 1
+
+        with eng.connect() as conn:
+            _set_tenant(conn, tid)
+            for table in _PURGE_TABLES:
+                assert _rows_for(conn, table, v_old) == 0, f"{table} still holds rows of the purged version"
+                assert _rows_for(conn, table, v_new) == 1 + (table == "write_back_log"), \
+                    f"{table} lost rows of the other version"
+            assert conn.execute(text("SELECT count(*) FROM analysis_versions WHERE id = :v"),
+                                {"v": str(v_old)}).scalar() == 0
+            assert conn.execute(text("SELECT count(*) FROM analysis_versions WHERE id = :v"),
+                                {"v": str(v_new)}).scalar() == 1
+            exc = conn.execute(text("SELECT linked_finding_id FROM exceptions WHERE tenant_id = :t"),
+                               {"t": str(tid)}).fetchall()
+            assert exc == [(None,)], "the exception must survive with its finding pointer cleared"
+            logs = conn.execute(text("SELECT kind, dry_run, blocked_reason, bytes_freed, actor_email FROM purge_log "
+                                     "WHERE tenant_id = :t ORDER BY created_at"), {"t": str(tid)}).fetchall()
+            assert [(r[0], r[1], bool(r[2])) for r in logs] == [("version", False, True), ("version", True, False),
+                                                                 ("version", False, False)]
+            assert logs[-1][3] == 4196 and logs[-1][4] == "admin@example.com"
+            audit = conn.execute(text("SELECT action, entity_type, entity_id, actor_email FROM audit_log "
+                                      "WHERE tenant_id = :t"), {"t": str(tid)}).fetchall()
+            assert audit == [("purge", "analysis_version", str(v_old), "admin@example.com")]
+    finally:
+        # leave the fixture nothing it cannot delete: clear the open work, purge the rest
+        with eng.begin() as conn:
+            _set_tenant(conn, tid)
+            conn.execute(text("DELETE FROM write_back_log WHERE tenant_id = :t"), {"t": str(tid)})
+            conn.execute(text("DELETE FROM exceptions WHERE tenant_id = :t"), {"t": str(tid)})
+        with tenant_session(eng, tid) as session:
+            purge_version(session, str(tid), str(v_new), dry_run=False, actor=None, force=True)
