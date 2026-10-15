@@ -15,6 +15,14 @@ describe("route insight", () => {
     expect(h.changed.sentence).toMatch(/Nothing has changed yet/);
     expect(h.next.action?.href).toBe("/systems");
   });
+  it("says analysis is running while no run has finished, and renders a status step without a button", () => {
+    const h = buildInsight("runs", { ...empty, running: 2, dayOne: { label: "Analysis is running", href: "/runs/r2", status: true } });
+    expect(h.situation.sentence).toBe("Analysis is running for 2 runs. The score appears here when it finishes.");
+    expect(h.situation.href).toBe("/runs");
+    expect(h.next.sentence).toBe("Analysis is running");
+    expect(h.next.href).toBe("/runs/r2");
+    expect(h.next.action).toBeUndefined();
+  });
   it("builds live sentences from aggregate fields", () => {
     const h = buildInsight("objects", {
       ...empty, hasRun: true, runId: "r1", dqs: 72.4, prevDqs: 70, critical: 3, total: 120, affected: 4500,

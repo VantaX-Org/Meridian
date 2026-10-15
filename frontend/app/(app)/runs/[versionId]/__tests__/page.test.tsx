@@ -10,6 +10,7 @@ import * as objectsApi from "@/lib/api/v1/objects";
 import * as runsApi from "@/lib/api/v1/runs";
 import * as versionsApi from "@/lib/api/versions";
 import * as systemObjectsApi from "@/lib/api/system-objects";
+import { toast } from "sonner";
 import type { Version } from "@/types/api";
 import RunDetailPage from "../page";
 
@@ -23,6 +24,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
   useSearchParams: () => searchParams,
 }));
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const can = vi.fn((action: string) => action === "analyse" || action === "export");
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ role: "analyst", can, isAdmin: false, isManager: false, isViewer: false }) }));
@@ -125,6 +128,18 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Pin as baseline" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Pin as baseline" }));
     await waitFor(() => expect(pin).toHaveBeenCalledWith("v2", true));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Pinned as baseline"));
+  });
+
+  it("unpins the baseline and confirms with the matching toast", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(baseline);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [baseline] });
+    const pin = vi.spyOn(versionsApi, "pinBaseline").mockResolvedValue({ baseline: false });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Unpin baseline" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Unpin baseline" }));
+    await waitFor(() => expect(pin).toHaveBeenCalledWith("v2", false));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Baseline unpinned"));
   });
 
   it("renames the run from the header and shows the new name", async () => {

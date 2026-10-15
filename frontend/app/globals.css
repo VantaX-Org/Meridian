@@ -197,6 +197,8 @@
   .m-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--m-control-h); padding: 0 12px; border: 1px solid transparent; border-radius: var(--m-radius-control); font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 500; cursor: pointer; }
   .m-btn:focus-visible, .m-iconbtn:focus-visible, .m-input:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
   .m-btn:disabled, .m-btn[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+  /* Tactile press: every control sinks one pixel while held, so a click reads as a physical push. */
+  .m-btn:active:not(:disabled):not([aria-disabled="true"]), .m-iconbtn:active { transform: translateY(1px); }
   .m-btn-sm { height: 28px; padding: 0 10px; font-size: var(--m-text-meta); line-height: var(--m-leading-meta); }
   .m-btn-lg { height: var(--m-control-h-lg); padding: 0 16px; }
   .m-btn-primary { background: var(--m-accent); color: var(--m-ink-on-accent); box-shadow: var(--m-elev-accent); }
@@ -204,8 +206,10 @@
   .m-btn-primary:active { background: var(--m-accent-active); }
   .m-btn-secondary { background: var(--m-sheet); border-color: var(--m-line-strong); color: var(--m-ink); }
   .m-btn-secondary:hover { background: var(--m-sheet-raised); border-color: var(--m-ink-3); }
+  .m-btn-secondary:active { background: var(--m-sheet-sunken); }
   .m-btn-ghost { background: transparent; color: var(--m-ink-2); }
   .m-btn-ghost:hover { background: var(--m-sheet-raised); color: var(--m-ink); }
+  .m-btn-ghost:active { background: var(--m-sheet-sunken); }
   .m-btn-danger { background: var(--m-critical); color: var(--m-critical-on); }
   .m-btn-danger:hover { background: var(--m-critical-ink); }
   .m-btn-danger:active { background: var(--m-critical-ink); }

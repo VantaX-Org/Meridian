@@ -495,8 +495,9 @@ export default function RunDetailPage() {
       if (prev?.metadata) qc.setQueryData<Version>(queryKeys.run(versionId), { ...prev, metadata: { ...prev.metadata, baseline: !isBaseline } });
       return { prev };
     },
-    onSuccess: () => {
-      toast.success(isBaseline ? "Baseline unpinned" : "Pinned as baseline");
+    onSuccess: (r) => {
+      // The optimistic update has already flipped isBaseline; trust the server's answer.
+      toast.success(r.baseline ? "Pinned as baseline" : "Baseline unpinned");
       qc.invalidateQueries({ queryKey: queryKeys.run("list") });
       qc.invalidateQueries({ queryKey: ["versions-list"] });
     },

@@ -21,7 +21,10 @@ export interface InsightFacts {
   /** stewardship/metrics backlog_total */
   backlog: number | null;
   /** useDayOne step while no run is finished */
-  dayOne?: { label: string; href: string | null };
+  /** `status` marks a step that only reports progress (analysis running): the cell links, but no button is shown. */
+  dayOne?: { label: string; href: string | null; status?: boolean };
+  /** Runs still extracting or analysing; shown instead of the fresh-install copy. */
+  running?: number;
 }
 
 const n = (x: number) => x.toLocaleString("en-US");
@@ -76,10 +79,14 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   if (!f.hasRun) {
     const step = f.dayOne;
     const next = step
-      ? { sentence: step.label, href: step.href ?? undefined, action: step.href ? { label: step.label, href: step.href } : undefined }
+      ? { sentence: step.label, href: step.href ?? undefined, action: step.href && !step.status ? { label: step.label, href: step.href } : undefined }
       : { sentence: "Connect a system or import a file to start.", href: "/systems" };
+    const running = f.running ?? 0;
+    const situation = running > 0
+      ? { sentence: `Analysis is running for ${n(running)} run${running === 1 ? "" : "s"}. The score appears here when it finishes.`, href: "/runs" }
+      : { sentence: FRESH[section], href: "/systems" };
     return {
-      situation: { sentence: FRESH[section], href: "/systems" },
+      situation,
       changed: { sentence: "Nothing has changed yet. Change appears after the second run.", href: "/runs" },
       why: { sentence: FRESH_WHY[section], href: "/home" },
       next,

@@ -18,6 +18,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { buildInsight, sectionOf, type InsightFacts } from "@/lib/route-insight";
 
 const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
+const FAILED = new Set(["failed", "agents_failed"]);
 
 /** The insight header above every (app) page. Layout-level, so no page needs to opt in. */
 export function RouteInsight() {
@@ -33,8 +34,10 @@ export function RouteInsight() {
   const aggQ = useQuery({ queryKey: ["insight", "aggregate", runId], queryFn: () => getFindingsAggregate(runId), enabled: !!section && hasRun && !!runId });
   const finished = (versionsQ.data?.versions ?? []).filter((v) => FINISHED.has(v.status));
   // Changed cell: per-object movement between this run and the finished run before it (list is newest first); falls back to the score delta.
-  const at = finished.findIndex((v) => v.id === runId);
-  const prevId = at >= 0 ? finished[at + 1]?.id : undefined;
+  const current = finished.find((v) => v.id === runId);
+  const sameSystem = finished.filter((v) => v.metadata?.system_id === current?.metadata?.system_id);
+  const at = sameSystem.findIndex((v) => v.id === runId);
+  const prevId = at >= 0 ? sameSystem[at + 1]?.id : undefined;
   const cmpQ = useQuery({
     queryKey: ["insight", "compare", prevId, runId],
     queryFn: () => compareVersions(prevId as string, runId as string),
@@ -76,7 +79,8 @@ export function RouteInsight() {
     systems: (systemsQ.data ?? []).length,
     waves: (wavesQ.data ?? []).length,
     backlog: backlogQ.data?.backlog_total ?? null,
-    dayOne: dayOne.step ? { label: dayOne.step.label, href: dayOne.step.href } : undefined,
+    running: (versionsQ.data?.versions ?? []).filter((v) => !FINISHED.has(v.status) && !FAILED.has(v.status)).length,
+    dayOne: dayOne.step ? { label: dayOne.step.label, href: dayOne.step.href, status: dayOne.step.key === "running" } : undefined,
   };
   const cells = buildInsight(section, facts);
   const loading = versionsQ.isLoading || (hasRun && aggQ.isLoading);

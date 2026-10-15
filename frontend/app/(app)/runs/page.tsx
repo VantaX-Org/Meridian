@@ -166,7 +166,7 @@ export default function RunsPage() {
     queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, ...(showArchived ? { include_archived: true } : {}) }),
     placeholderData: keepPreviousData,
     // Keep the list fresh while any run on this page is still being analysed.
-    refetchInterval: (query) => (query.state.data?.versions.some((v) => IN_PROGRESS.has(v.status)) ? 5000 : false),
+    refetchInterval: (query) => (query.state.data?.versions?.some((v) => IN_PROGRESS.has(v.status)) ? 5000 : false),
   });
   // Summary stats and the trend use the newest page only, whichever table page is showing. Page 1 shares the cache key above.
   const head = useQuery({
