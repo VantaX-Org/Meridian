@@ -79,3 +79,35 @@ def test_completed_runs_do_not_count_as_lost_deliveries():
     for _ in range(4):
         assert _deliver(mod, redis, body) == {"status": "complete"}
     assert body.call_count == 4 and redis.store == {}
+
+
+def test_a_queued_run_is_never_dropped_for_waiting_on_the_checks_slot():
+    """Waiting for the single checks slot is not a failure and must not be capped.
+
+    The wait retries this task for as long as another run holds the slot, which is
+    hours for a large object (material_master took 3.5 h). Celery's ``retry()``
+    ignores a call-site ``max_retries=None`` and falls back to the task's own
+    attribute, so if that attribute is finite the wait exhausts it and the queued
+    run dies with MaxRetriesExceededError — the version then sits at "pending"
+    forever with nothing left in the queue to run it. Two runs were lost exactly
+    that way while material_master held the slot.
+    """
+    from workers.tasks import run_checks as mod
+
+    assert mod.run_checks.max_retries is None
+
+    # the slot-wait path itself still retries rather than failing the version
+    engine = MagicMock()
+    engine.connect.return_value.execute.return_value.scalar.return_value = True
+    with patch.object(mod, "get_sync_engine", return_value=engine), \
+            patch.object(mod, "_CHECKS_SLOTS", 0), \
+            patch.object(mod, "_run_checks") as body, \
+            patch.object(mod.run_checks, "retry", side_effect=mod.run_checks.MaxRetriesExceededError) as retry:
+        mod.run_checks.push_request(id="task-queued")
+        try:
+            with pytest.raises(mod.run_checks.MaxRetriesExceededError):
+                mod.run_checks.run("v1", "t1", "path")
+        finally:
+            mod.run_checks.pop_request()
+    body.assert_not_called()  # never started; it only ever waited
+    assert retry.call_args.kwargs["countdown"] == mod._SLOT_WAIT_S

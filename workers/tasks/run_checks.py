@@ -458,7 +458,15 @@ def _restore_module(session: Session, version_id: str, module: str, entry: dict,
 @celery_app.task(bind=True, name="workers.tasks.run_checks.run_checks",
                  soft_time_limit=_CHECKS_LIMIT, time_limit=_CHECKS_LIMIT + 60,
                  # Redelivered after a worker restart; every write below upserts, so a rerun is safe.
-                 acks_late=True, reject_on_worker_lost=True)
+                 acks_late=True, reject_on_worker_lost=True,
+                 # Unlimited, because the slot wait below retries this task for as long as another
+                 # run holds the only checks slot, which can be hours. Celery's retry() falls back
+                 # to this attribute whenever the call site passes max_retries=None, so without it
+                 # the wait exhausts the 3 automatic retries (the dispatch default) and the queued
+                 # run is dropped with MaxRetriesExceededError: the platform then shows it as
+                 # "pending" forever and nothing ever runs it. The crash-loop guard is unaffected —
+                 # it counts lost *deliveries* (_count_delivery), and a slot wait is not a delivery.
+                 max_retries=None)
 def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
                reanalyse: bool = False) -> dict[str, str | int]:
     """Execute the full check suite against a dataset (``reanalyse``: again, on the same version)."""
