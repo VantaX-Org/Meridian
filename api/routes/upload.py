@@ -235,7 +235,19 @@ async def upload_file(
     logger.debug(f"Stored parquet: {parquet_path}")
 
     # Step 8: Create analysis_versions record
-    from db.queries.versions import create_version
+    #
+    # Resolved through the module rather than imported at call time. The deferred
+    # ``from db.queries.versions import create_version`` binds whatever object the module
+    # holds at request time, which makes the call site un-patchable from the source module:
+    # a test that patches ``db.queries.versions.create_version`` (the obvious seam, and how
+    # the other route tests do it) can silently miss this one whenever something earlier in
+    # the session has left ``sys.modules['db.queries.versions']`` rebound, and the route then
+    # calls the real function against the test's fake session. Observed exactly that:
+    # tests/test_upload_path.py passes alone and fails deep in the full suite with
+    # ``AttributeError: 'NoneType' object has no attribute 'execute'``. Going through
+    # ``versions`` makes the module attribute the single seam, so the patch always lands.
+    from db.queries import versions
+    create_version = versions.create_version
 
     metadata = {
         "file_name": filename,
@@ -294,8 +306,9 @@ async def _enqueue_checks(db: AsyncSession, tenant_id: uuid.UUID, version_id: uu
     The version row is already committed, so a broker failure here must not leave it
     ``pending`` forever with no job behind it: it is marked ``failed`` with the reason, the
     progress stream is told, and the caller gets a 503 to retry the upload."""
-    from db.queries.versions import mark_version_failed
+    from db.queries import versions
     from workers.tasks.run_checks import run_checks
+    mark_version_failed = versions.mark_version_failed
 
     try:
         job = run_checks.delay(str(version_id), str(tenant_id), parquet_path)
