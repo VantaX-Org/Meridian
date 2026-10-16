@@ -53,18 +53,47 @@ returned no result at all, which reads as a passing reconciliation; the option w
 rather than left half-working. A rule needing debits positive and credits negative should sum a
 field that already carries the sign, or be written as an `aggregate_check` over one table.
 
-## Status
+## Status, and the measured reason there is no rule yet
 
 The class is built, registered and unit-tested (`tests/checks/test_reconciliation_check.py`, 7
 cases covering equal totals, a difference beyond and within tolerance, the three refusals, and
 the no-target path).
 
-**No shipped rule uses it yet.** That is deliberate: a reconciliation needs a target table that
-a deployment actually extracts and reads in full, and on this tenant the candidate pairs
-(sub-ledger against G/L, goods-receipt accrual against its clearing account) have not been
-verified end to end against a real run. Writing rules that resolve to nothing would raise the
-rule count and change no client outcome - the failure mode this repository has already been
-cleaned of twice.
+**No shipped rule uses it, and the check that round 18's note asked for shows why.** I ran the
+verification it required - confirm both tables are planned *and read in full* - against the
+extraction plan for every module (491 tables planned, **446 read in full**):
 
-The next step is to pick one pair, confirm both tables are extracted in full, and add the first
-rule with a golden fixture that seeds a difference.
+| candidate | read in full? |
+|---|---|
+| `BSIK` (open vendor items) | **yes** (`partial=False`) |
+| `BSID` (open customer items) | **yes** |
+| `BSEG` (G/L line items) | **no** - `partial=True`, keyed via `BKPF` |
+| `BKPF` (document header) | **no** - `partial=True`, windowed |
+| `BSAK` (cleared vendor items) | **no** - `partial=True`, windowed |
+
+So the reconciliation a finance close actually wants - the sub-ledger against the general
+ledger - **cannot be evaluated on this deployment at all**, because the G/L side is a windowed
+read and `reconciliation_check` refuses a partial target by design. It would return "not
+evaluated: BSEG was not read in full" on every run. That is the correct behaviour and it is not
+a rule that can be written.
+
+The pairs that *are* both full reads do not reconcile with each other. Scanning all full-read
+tables for a shared amount column gives 10 candidate pairs; the finance one is `BSIK` against
+`BSID`, which are open payables and open receivables - two different sides of the balance sheet,
+with no reason to be equal - and the rest are `MENGE` coincidences between purchasing tables
+(`ANLA`/`STPO`/`EKAB`/`EKKN`), a bill of materials, a release-order table and account
+assignments, none of which carry a control total another of them holds.
+
+**What the first rule therefore needs**, in order of preference:
+
+1. A target the extractor reads in full that carries a total the source must equal - which for
+   the sub-ledger/GL case means changing `BSEG` from a windowed read to a full read. That is a
+   client-facing decision about extract size, not a rule.
+2. Or a reconciliation between two tables that are *both* already full reads and genuinely
+   should agree - a control-total-to-detail pair inside one module. None surfaced in the scan
+   above, but the scan only looked at shared column *names*; a real pair may use a different
+   column on each side, which `field`/`target_field` supports.
+
+Until one of those exists, a rule written here would resolve to the "not evaluated" path, raise
+the rule count and change no client outcome - the failure mode this library has already been
+cleaned of twice.
