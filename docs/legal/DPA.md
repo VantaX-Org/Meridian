@@ -77,6 +77,16 @@ See Annex I.
 
 11.1 On termination of the EULA, the Processor will delete or return all Personal Data held by the Licence Service and sub-processors, within thirty (30) days. Certification of deletion will be provided on request.
 
+11.2 Data processed by the Software inside the Controller's own environment (SAP extracts, findings, reports, audit rows) never reaches the Processor, so the Controller deletes it itself through the Software's own retention mechanism:
+
+(a) **Retention policy.** An administrator sets, in Admin > Settings > Retention, how many days analysis runs, reports and audit rows are kept. Runs past the limit are deleted for good by a nightly task, which first runs in dry-run mode for seven days and writes what it would delete to a purge log; deletion starts only when the operator also sets `MERIDIAN_PURGE_ENABLED=true` on the deployment.
+
+(b) **Deletion of one run.** An administrator can delete any archived run permanently from the Runs page after typing its name. A run with open stewardship work, unfinished cleaning or pending write-backs is refused until that work is closed, so no deletion silently discards a decision in progress.
+
+(c) **Deletion of all data.** An administrator can request the deletion of every run, report and audit row through `POST /api/v1/admin/purge-tenant`. The request issues a token that becomes usable after twenty-four (24) hours; a second call with that token performs the deletion and returns a certificate of deletion (PDF) stating the tenant, the rows removed per table, the storage freed, the time and the requesting user. This is the certification referred to in 11.1 for data held in the Controller's environment.
+
+(d) **Record.** Every deletion, dry run and refusal is written to the purge log with the actor, the rows removed per table and the storage freed, and to the audit log. Golden records, learned rules, glossary terms, data contracts and the Controller's own rules are configuration, not Personal Data extracts, and are not removed by (a) or (b).
+
 ---
 
 ## Annex I — Processing details

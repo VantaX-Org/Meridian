@@ -1,0 +1,37 @@
+{% extends "_base.html" %}
+{% block body %}
+<p>This certifies that Meridian deleted every analysis version, report and audit row held for the tenant below from its own database and object storage, including the uploaded files and staged datasets under the tenant's storage prefixes, at the request of the person named. SAP data processed by Meridian never left this deployment; nothing remains to be deleted elsewhere.</p>
+<p>The audit entry for this purge request and the purge log entry are retained as the record of deletion.</p>
+
+<table class="meta">
+<tr><td class="k">Tenant</td><td>{{ tenant }}</td></tr>
+<tr><td class="k">Tenant ID</td><td class="mono">{{ tenant_id }}</td></tr>
+<tr><td class="k">Purged at</td><td>{{ purged_at }}</td></tr>
+<tr><td class="k">Requested by</td><td>{{ actor }}</td></tr>
+<tr><td class="k">Versions purged</td><td>{{ versions | n }}</td></tr>
+<tr><td class="k">Storage freed</td><td>{{ bytes_freed | n }} bytes</td></tr>
+<tr><td class="k">Purge log</td><td class="mono">{{ purge_log_id }}</td></tr>
+</table>
+
+<h2>Rows deleted per table</h2>
+{% if rows %}
+<table class="data">
+<thead><tr><th>Table</th><th class="r">Rows</th></tr></thead>
+<tbody>
+{% for table, count in rows %}
+<tr><td class="mono">{{ table }}</td><td class="r">{{ count | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No rows were held for this tenant.</div>
+{% endif %}
+
+{% if storage_errors %}
+<h2>Storage objects not confirmed</h2>
+<p>The rows above are gone. These object deletions reported an error and should be checked by the operator:</p>
+<ul>
+{% for e in storage_errors %}<li class="mono">{{ e }}</li>{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}
