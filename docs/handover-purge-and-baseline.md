@@ -1,0 +1,135 @@
+# Client handover: purge and re-baseline
+
+The order these have to happen in, and what has to be true before each step. Prefix the
+commands with `ssh meridian`.
+
+## 0. Before the purge — two decisions, not engineering
+
+The SuccessFactors mapping now resolves 353 of its 472 declared sources against the Komatsu
+tenant. The remaining 119 are concentrated where the tenant does not serve the data
+(`docs/successfactors-parity.md`). Two of those are commercial decisions:
+
+1. **Learning, Benefits and Payroll.** `learning_management` (0 of 29 sources resolvable),
+   `benefits` (`BenefitEnrollment` has no entity set) and `payroll_integration`
+   (`PAYRESULT` needs the EC Payroll export). Either the client supplies those by export —
+   the upload path exists — or those objects are scoped out of acceptance. No code change
+   makes these evaluate.
+2. **Succession.** Whether `succession_planning`'s rules should be scoped to the fields
+   `Successor` actually carries (18 of its 26 sources are unresolvable).
+
+Decide these before the purge, because the baselines are the handover evidence and a
+re-baseline costs another full run per object.
+
+## 1. Take a database dump
+
+The purge is not reversible.
+
+```bash
+sudo bash /opt/meridian/scripts/backup.sh          # writes /opt/meridian/backups/pre-update-*.dump
+ls -la /opt/meridian/backups | tail -3             # confirm the dump exists and is recent
+```
+
+## 2. Purge the tenant data, keeping the connections
+
+`scripts/purge_tenant_data.py` derives what to purge from the live schema: every table
+carrying a `tenant_id` is emptied in foreign-key order (children first — most keys onto
+`analysis_versions` are RESTRICT, so deleting the version before its findings fails), and
+it refuses to run if a kept table would be affected.
+
+Kept: `tenants`, `users`, `sap_systems`, `system_credentials`, `system_module_map`,
+`sync_profiles`, `alembic_version`.
+
+```bash
+docker cp /opt/meridian/scripts/purge_tenant_data.py docker-api-1:/tmp/purge.py
+docker exec docker-api-1 python /tmp/purge.py --dry-run      # review the tables and row counts
+docker exec docker-api-1 python /tmp/purge.py --execute      # one transaction; any error rolls it back
+```
+
+The dry run is the default. It prints every table it will empty and how many rows each
+holds, so the list can be eyeballed against the customer's expectation before anything is
+deleted.
+
+**Also purge the object store.** The staged parquet for every analysed version lives
+outside Postgres, under the uploads bucket:
+
+```
+staging/<tenant-id>/<version-id>/
+```
+
+That was ~2.5 M rows of `finding_records` and 3 GB of staged data at the last measurement.
+Removing the tenant's `staging/` prefix reclaims it; the purge script does not touch it.
+
+## 3. Verify the deployment is clean
+
+```bash
+# no analysis history left
+docker exec docker-db-1 psql -U meridian -d meridian -c \
+  "SELECT count(*) AS versions FROM analysis_versions;"
+# the connections survived, with credentials
+docker exec docker-db-1 psql -U meridian -d meridian -c \
+  "SELECT name, system_type, company_id FROM sap_systems;"
+docker exec docker-db-1 psql -U meridian -d meridian -c \
+  "SELECT count(*) AS creds FROM system_credentials;"
+# the engine still loads every rule pack
+docker exec docker-api-1 python -c \
+  "from checks.runner import module_rules; print(len(module_rules('material_master')), 'rules')"
+```
+
+Then re-test each connection from Admin → Systems → Test, and confirm the top bar shows the
+right object count.
+
+## 4. Baseline run 1 — material_master
+
+Start from the UI (Admin → analyse), or:
+
+```bash
+# the extract, then the checks, exactly as the UI does
+curl -sS -X POST http://127.0.0.1/api/v1/extract \
+  -H 'Content-Type: application/json' \
+  -d '{"system_id":"<ecc-system-uuid>","modules":["material_master"],"sync_type":"full"}'
+```
+
+Expect: the ECC checks phase takes tens of minutes, then the cross-run issue lifecycle,
+which is the slow tail (measured 5 h 50 m for four ECC modules on this box — that is why
+`MERIDIAN_CHECKS_TIME_LIMIT` defaults to 24 h). Watch it:
+
+```bash
+docker logs -f docker-worker-1 | grep -E "Module '|skipped|record issues"
+```
+
+Success is `status = complete` (or `agents_complete`) with `dqs_summary` non-null:
+
+```bash
+docker exec docker-db-1 psql -U meridian -d meridian -c \
+  "SELECT id, status, dqs_summary IS NOT NULL AS scored FROM analysis_versions ORDER BY run_at DESC;"
+```
+
+Record, per module: `raw_score`, `composite_score`, `coverage`, and the dimension scores —
+plus the checks that ran versus skipped, which the worker log states as
+`Module '<name>': ran N checks, M passed` and `skipped K checks (<reasons>)`.
+
+## 5. Baseline run 2 — SuccessFactors
+
+Same again with the SF system id and its nine modules. This one is fast (the checks took
+~4 minutes at the last measurement; the lifecycle ~2 minutes).
+
+```bash
+curl -sS -X POST http://127.0.0.1/api/v1/extract \
+  -H 'Content-Type: application/json' \
+  -d '{"system_id":"<sf-system-uuid>","modules":["benefits","compensation","employee_central","learning_management","payroll_integration","performance_goals","recruiting_onboarding","succession_planning","time_attendance"],"sync_type":"full"}'
+```
+
+Expect coverage to be **bounded by what the tenant serves**, not uniform: `employee_central`
+and `compensation` near the ECC numbers, `learning_management` at or near zero. That is the
+mapping limit in `docs/successfactors-parity.md`, not a data-quality result, and it should
+be presented to the client as such.
+
+## 6. What "done" looks like
+
+- `analysis_versions` holds exactly the two baseline runs, both scored, nothing `partial`.
+- Every object reports checks-run and checks-skipped with reasons; no module reads 0 checks
+  without an explanation in the coverage metadata.
+- The two connection rows are intact and test green.
+- The numbers in `docs/successfactors-parity.md` match what the SF baseline reports; if they
+  do not, the mapping drifted again — `scripts/successfactors_parity.py --strict` is the gate
+  to wire in for that.
