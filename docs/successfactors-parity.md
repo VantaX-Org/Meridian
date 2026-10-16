@@ -105,3 +105,53 @@ the tenant — `Successor.userId` → `Successor.nomineeUserId`, `Successor.appr
 → `Successor.status`, `NominationTarget.positionCode` → the parent nomination's
 position. Each needs a judgement about whether the tenant property means the same
 thing; that is consultant work, not a script, which is why it is not done here.
+
+## Portability: what transfers to another customer, and what does not
+
+The SuccessFactors OData surface differs per tenant — entity names, property spellings and
+which modules are licensed. That makes "the mapping" a layered thing, and it matters which
+layer a correction belongs in:
+
+| layer | lives in | transfers to a new customer? |
+|---|---|---|
+| canonical SAP field semantics | `sap/dictionaries/canonical/successfactors.yaml` | **yes** — this is what a field *means* |
+| the OData `Entity.property` a field reads | same file, `source:` | **mostly**, but not always (see below) |
+| which entity a tenant actually serves | resolved from `$metadata` at extraction time | automatic — `_extract_successfactors` only selects properties the tenant has |
+| tenant-only spellings and aliases | **should be an override, not the canonical map** | no — they are this customer's API |
+
+The corrections in this document sit in the second layer, and most are genuine API facts
+rather than one-off quirks (`Goal_1` is the entity set; `workscheduleCode` is the spelling;
+`TalentPool.code` is the identifier). A new customer is expected to differ in three ways:
+
+1. **Different entity sets.** `Goal_<planId>` is per-tenant, and whether `Successor` is
+   readable at all depends on the licence and the API user's permissions.
+2. **Different property spellings.** `workscheduleCode` vs `workScheduleCode` is exactly the
+   kind of variation that has no correct global answer.
+3. **Different modules licensed.** Learning, Benefits and EC Payroll are add-on modules; a
+   tenant without them cannot evaluate those rules however good the mapping is.
+
+### Onboarding a new customer
+
+Before trusting any SuccessFactors number for a new tenant:
+
+```bash
+# 1. capture the tenant's own metadata
+curl -u "SF_API@<company>:<password>" \
+     "https://api2.successfactors.eu/odata/v2/\$metadata" -o sf_metadata.xml
+# 2. see exactly what the canonical map cannot source there
+python -m scripts.successfactors_parity --metadata sf_metadata.xml
+# 3. after resolving the tenant's differences, keep it honest in CI
+python -m scripts.successfactors_parity --metadata sf_metadata.xml --strict
+```
+
+Step 2 is the real answer to "will this work for another customer": it reports, per table,
+which declared sources their API does not serve — before an analysis rather than as
+mysteriously low coverage afterwards.
+
+**What is still missing for true multi-tenant support**: those per-tenant corrections have
+nowhere to live yet. Today a tenant-specific spelling has to be written into the shared
+canonical file, which is what this document had to do for Komatsu. The next step is a
+tenant override layer — a `source:` remap keyed by system id, applied in
+`_extract_successfactors` alongside the existing `field_status` overlay — so the canonical
+map stays generic and each customer's quirks stay theirs. Until that exists, treat a new
+SF customer as requiring a mapping review, not just a connection.
