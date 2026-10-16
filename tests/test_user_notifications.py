@@ -15,6 +15,9 @@ class _Result:
     def fetchall(self):
         return self._rows
 
+    def first(self):
+        return self._rows[0] if self._rows else None
+
 
 class _Session:
     """Holds a tenant's users and answers the one recipients query the way Postgres would
@@ -23,11 +26,18 @@ class _Session:
     def __init__(self, users):
         self.users = users
         self.statements = []
+        self.claimed = set()
 
     def execute(self, stmt, params=None):
         sql = " ".join(str(stmt).split())
         self.statements.append((sql, params))
-        if sql.startswith("INSERT INTO notification_deliveries"):
+        if sql.startswith("INSERT INTO notification_deliveries") and "ON CONFLICT" in sql:
+            key = (params["tid"], params["uid"], params["channel"], params["key"])
+            if key in self.claimed:
+                return _Result([])
+            self.claimed.add(key)
+            return _Result([(params["id"],)])
+        if sql.startswith("INSERT INTO notification_deliveries") or sql.startswith("UPDATE notification_deliveries"):
             return _Result([])
         assert "FROM users" in sql and "is_active" in sql
         rows = []
@@ -173,6 +183,44 @@ def test_record_delivery_tenant_level_row_has_no_user():
     assert s.statements[0][1]["uid"] is None and s.statements[0][1]["error"] is None
 
 
+# ── claim_delivery / finish_delivery (idempotency) ────────────────────────────
+
+def test_claim_inserts_pending_row_with_key_and_returns_none_on_repeat():
+    s = _Session([])
+    row_id = un.claim_delivery(s, "tid", "uid", "email", "critical", "v1")
+    sql, params = s.statements[0]
+    assert row_id == params["id"]
+    assert "ON CONFLICT (tenant_id, user_id, channel, delivery_key) DO NOTHING" in sql
+    assert "'pending'" in sql and "RETURNING id" in sql
+    assert params["key"] == "v1" and params["kind"] == "critical"
+    assert un.claim_delivery(s, "tid", "uid", "email", "critical", "v1") is None, "same key: not claimed again"
+    assert un.claim_delivery(s, "tid", "uid", "in_app", "critical", "v1") is not None, "another channel is its own claim"
+    assert un.claim_delivery(s, "tid", "uid", "email", "critical", "v2") is not None
+
+
+def test_finish_updates_status_and_truncates_error():
+    s = _Session([])
+    un.finish_delivery(s, "row", "failed", "x" * 600)
+    sql, params = s.statements[0]
+    assert sql.startswith("UPDATE notification_deliveries SET status = :status, error = :error WHERE id = :id")
+    assert params == {"id": "row", "status": "failed", "error": "x" * 500}
+    un.finish_delivery(s, "row", "sent")
+    assert s.statements[1][1]["error"] is None
+
+
+def test_digest_keys_name_the_period():
+    from datetime import datetime, timezone
+
+    at = datetime(2026, 1, 1, 23, 59, tzinfo=timezone.utc)  # ISO week 1 of 2026
+    assert un.digest_key("daily", at) == "daily:2026-01-01"
+    assert un.digest_key("weekly", at) == "weekly:2026-W01"
+    assert un.digest_key("weekly", datetime(2024, 12, 30, tzinfo=timezone.utc)) == "weekly:2025-W01"
+    assert un.digest_key("daily").startswith("daily:")
+    with pytest.raises(ValueError):
+        un.digest_key("monthly", at)
+    assert un.test_key() != un.test_key() and un.test_key().startswith("test:")
+
+
 def test_migration_083_follows_082_and_the_model_has_rls_shape():
     import importlib.util
     from pathlib import Path
@@ -187,5 +235,9 @@ def test_migration_083_follows_082_and_the_model_has_rls_shape():
     src = path.read_text()
     assert "ALTER TABLE notification_deliveries ENABLE ROW LEVEL SECURITY" in src
     cols = NotificationDelivery.__table__.c
-    assert {"tenant_id", "user_id", "channel", "kind", "status", "error", "created_at"} <= set(cols.keys())
+    assert {"tenant_id", "user_id", "channel", "kind", "status", "error", "delivery_key", "created_at"} <= set(cols.keys())
     assert cols.user_id.nullable and cols.error.nullable and not cols.channel.nullable
+    assert "uq_notification_deliveries_key" in src and "'pending'" in src
+    unique = [ix for ix in NotificationDelivery.__table__.indexes if ix.name == "uq_notification_deliveries_key"]
+    assert unique and unique[0].unique
+    assert [c.name for c in unique[0].columns] == ["tenant_id", "user_id", "channel", "delivery_key"]

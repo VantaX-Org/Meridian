@@ -11,6 +11,13 @@ Email goes through the same backends as the tenant alert channels
 (workers/tasks/send_notifications.py: Microsoft Graph, else the SMTP relay, else
 Resend); ``email_backend_name`` reports which one the environment selects so the
 worker can write one ``no_backend`` row per run and ``/health`` can tell the UI.
+
+Delivery is idempotent per (tenant, user, channel, delivery key): ``claim_delivery``
+inserts a ``pending`` row with ``ON CONFLICT DO NOTHING`` before anything is sent and
+returns None when the key was already claimed, so a repeated run (a Celery retry, a
+beat task fired twice, a re-queued alert) sends nothing twice. A ``failed`` row keeps
+the key too: a failed external send is not retried automatically; the test-send
+button on Me > Preferences is the manual path.
 """
 
 from __future__ import annotations
@@ -19,6 +26,7 @@ import json
 import os
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from sqlalchemy import text
@@ -27,7 +35,7 @@ from sqlalchemy.orm import Session
 Kind = Literal["critical", "daily", "weekly"]
 Channel = Literal["email", "in_app"]
 DeliveryKind = Literal["critical", "digest", "test"]
-DeliveryStatus = Literal["sent", "failed", "no_backend", "skipped"]
+DeliveryStatus = Literal["pending", "sent", "failed", "no_backend", "skipped"]
 EmailBackend = Literal["graph", "smtp", "resend"]
 
 #: create_graph_client() in workers/email_backends/microsoft_graph.py needs all four.
@@ -106,6 +114,70 @@ _INSERT_SQL = """
     INSERT INTO notification_deliveries (id, tenant_id, user_id, channel, kind, status, error, created_at)
     VALUES (:id, :tid, :uid, :channel, :kind, :status, :error, now())
 """
+
+_CLAIM_SQL = """
+    INSERT INTO notification_deliveries (id, tenant_id, user_id, channel, kind, status, delivery_key, created_at)
+    VALUES (:id, :tid, :uid, :channel, :kind, 'pending', :key, now())
+    ON CONFLICT (tenant_id, user_id, channel, delivery_key) DO NOTHING
+    RETURNING id
+"""
+
+_FINISH_SQL = """
+    UPDATE notification_deliveries SET status = :status, error = :error WHERE id = :id
+"""
+
+
+def digest_key(period: str, when: Optional[datetime] = None) -> str:
+    """Idempotency key of one digest period: ``daily:<YYYY-MM-DD>`` or
+    ``weekly:<ISO year>-W<ISO week>`` (UTC), so a beat task fired twice in the same period
+    delivers once."""
+    now = when or datetime.now(timezone.utc)
+    if period == "weekly":
+        iso = now.isocalendar()
+        return f"weekly:{iso[0]}-W{iso[1]:02d}"
+    if period == "daily":
+        return f"daily:{now.strftime('%Y-%m-%d')}"
+    raise ValueError(f"unknown digest period: {period}")
+
+
+def test_key() -> str:
+    """Each test send is its own event."""
+    return f"test:{uuid.uuid4()}"
+
+
+def _claim_params(tenant_id: str, user_id: str, channel: Channel, kind: DeliveryKind, key: str) -> dict:
+    return {"id": str(uuid.uuid4()), "tid": str(tenant_id), "uid": str(user_id),
+            "channel": channel, "kind": kind, "key": key}
+
+
+def _finish_params(row_id: str, status: DeliveryStatus, error: Optional[str]) -> dict:
+    return {"id": row_id, "status": status, "error": (error or None) and str(error)[:500]}
+
+
+def claim_delivery(session: Session, tenant_id: str, user_id: str, channel: Channel, kind: DeliveryKind,
+                   key: str) -> Optional[str]:
+    """Claim ``key`` for one user and channel before sending: a ``pending`` row, or None when the
+    key was already claimed (sent, failed or still pending), in which case the caller sends
+    nothing. The caller commits."""
+    row = session.execute(text(_CLAIM_SQL), _claim_params(tenant_id, user_id, channel, kind, key)).first()
+    return str(row[0]) if row else None
+
+
+def finish_delivery(session: Session, row_id: str, status: DeliveryStatus, error: Optional[str] = None) -> None:
+    """Record the outcome on a claimed row (the caller commits)."""
+    session.execute(text(_FINISH_SQL), _finish_params(row_id, status, error))
+
+
+async def claim_delivery_async(db, tenant_id: str, user_id: str, channel: Channel, kind: DeliveryKind,
+                               key: str) -> Optional[str]:
+    """``claim_delivery`` for FastAPI routes (AsyncSession)."""
+    row = (await db.execute(text(_CLAIM_SQL), _claim_params(tenant_id, user_id, channel, kind, key))).first()
+    return str(row[0]) if row else None
+
+
+async def finish_delivery_async(db, row_id: str, status: DeliveryStatus, error: Optional[str] = None) -> None:
+    """``finish_delivery`` for FastAPI routes (AsyncSession)."""
+    await db.execute(text(_FINISH_SQL), _finish_params(row_id, status, error))
 
 
 def record_delivery(session: Session, tenant_id: str, user_id: Optional[str], channel: Channel,

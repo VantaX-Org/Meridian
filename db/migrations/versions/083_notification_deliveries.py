@@ -8,6 +8,12 @@ One row per outbound attempt of a per-user notification (email or in-app, for a
 critical alert, a digest or a test), so a user can see on Me > Preferences what
 reached them and an operator can tell "no email backend" from "the send failed".
 
+``delivery_key`` makes delivery idempotent: a sender claims (tenant, user, channel,
+key) with ``INSERT ... ON CONFLICT DO NOTHING`` before it sends, so a re-run of the
+same alert (the version id), the same digest period (``daily:<date>``,
+``weekly:<iso-year>-W<week>``) or the same test (``test:<uuid>``) sends nothing
+twice. The tenant-level ``no_backend`` row carries no key.
+
 Revision 082 (tenant retention and the purge log) is written on another branch;
 this file only names it as its parent. Do not run ``alembic upgrade`` until both
 are merged.
@@ -35,16 +41,19 @@ def upgrade() -> None:
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=True),
         sa.Column("channel", sa.Text(), nullable=False),   # email | in_app
         sa.Column("kind", sa.Text(), nullable=False),      # critical | digest | test
-        sa.Column("status", sa.Text(), nullable=False),    # sent | failed | no_backend | skipped
+        sa.Column("status", sa.Text(), nullable=False),    # pending | sent | failed | no_backend | skipped
         sa.Column("error", sa.Text(), nullable=True),      # exception type or backend reason, never an address
+        sa.Column("delivery_key", sa.Text(), nullable=True),  # idempotency key, see the module docstring
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.CheckConstraint("channel IN ('email', 'in_app')", name="ck_notification_deliveries_channel"),
         sa.CheckConstraint("kind IN ('critical', 'digest', 'test')", name="ck_notification_deliveries_kind"),
-        sa.CheckConstraint("status IN ('sent', 'failed', 'no_backend', 'skipped')",
+        sa.CheckConstraint("status IN ('pending', 'sent', 'failed', 'no_backend', 'skipped')",
                            name="ck_notification_deliveries_status"),
     )
     op.create_index("ix_notification_deliveries_tenant_user_created", _TABLE,
                     ["tenant_id", "user_id", "created_at"])
+    op.create_index("uq_notification_deliveries_key", _TABLE,
+                    ["tenant_id", "user_id", "channel", "delivery_key"], unique=True)
 
     op.execute("ALTER TABLE notification_deliveries ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE notification_deliveries FORCE ROW LEVEL SECURITY")

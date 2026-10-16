@@ -1287,12 +1287,15 @@ class NotificationDelivery(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     channel = Column(Text, nullable=False)  # email | in_app
     kind = Column(Text, nullable=False)  # critical | digest | test
-    status = Column(Text, nullable=False)  # sent | failed | no_backend | skipped
+    status = Column(Text, nullable=False)  # pending | sent | failed | no_backend | skipped
     error = Column(Text, nullable=True)
+    #: idempotency key claimed before sending: version id, daily:<date>, weekly:<year>-W<week>, test:<uuid>
+    delivery_key = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (
         Index("ix_notification_deliveries_tenant_user_created", "tenant_id", "user_id", "created_at"),
+        Index("uq_notification_deliveries_key", "tenant_id", "user_id", "channel", "delivery_key", unique=True),
     )
 
 
