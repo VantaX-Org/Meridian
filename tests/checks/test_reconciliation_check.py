@@ -84,3 +84,25 @@ def test_without_a_target_total_nothing_is_condemned():
     res = _result({**BASE_RULE}, pd.DataFrame({"BSIK.DMBTR": ["100.00"]}))
     assert res.affected_count == 0
     assert res.details.get("skipped") == "target total unavailable"
+
+
+# ── the constraint that stops the first shipped rule ────────────────────────────────────────────
+# docs/reconciliation-check.md records that no reconciliation rule can ship on this deployment
+# because the G/L side is a windowed read. That reasoning is only true while the extraction plan
+# says so, so it is asserted here: if BSEG ever becomes a full read, this test fails and the
+# finance reconciliation becomes writable - which is the moment worth noticing.
+
+def test_the_documented_full_read_facts_still_hold():
+    from sap.extraction_plan import plan_modules, MODULES_BY_SYSTEM
+
+    modules = [m for ms in MODULES_BY_SYSTEM.values() for m in ms]
+    plans = plan_modules(modules, D)
+    full = {t: not getattr(p, "partial", True) for t, p in plans.items()}
+
+    assert full.get("BSIK") is True, "BIK is the full-read source side"
+    assert full.get("BSID") is True, "BSID is the full-read source side"
+    for t in ("BSEG", "BKPF", "BSAK"):
+        assert full.get(t) is False, (
+            f"{t} is now read in full - the sub-ledger/GL reconciliation documented as "
+            f"unwritable in docs/reconciliation-check.md has become writable"
+        )
