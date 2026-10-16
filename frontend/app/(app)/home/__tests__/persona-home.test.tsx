@@ -151,6 +151,20 @@ describe("PersonaHomePage blocking and loading states", () => {
     expect(screen.getByText(/Capped at 60 by 3 critical rules/)).toHaveTextContent(/and 1 more/);
   });
 
+  it("takes count and names from the cap reason, so the line always adds up, even before findings load", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    const reason = "4 critical failures over tolerance (BP019: 4% of BUT000 rows; BP002: 3% of BUT000 rows; BP007: 2% of BUT000 rows; BP011: 2% of BUT000 rows) — score capped at 70";
+    const bp: Version = { ...LATEST, dqs_summary: { material_master: { ...LATEST.dqs_summary!.material_master, composite_score: 70, critical_count: 6, capped: true, cap_reason: reason } } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [bp] });
+    vi.spyOn(findingsApi, "getFindings").mockReturnValue(new Promise(() => {}));
+
+    renderWithQuery(<LeadHomePage />);
+
+    const line = await screen.findByText(/Capped at 70 by 4 critical rules/);
+    expect(line).toHaveTextContent("Capped at 70 by 4 critical rules: BP019, BP002 and 2 more");
+    expect(screen.getByRole("link", { name: "BP019" })).toHaveAttribute("href", "/objects/material_master/rules/BP019?run=v1");
+  });
+
   it("shows plain cap text while findings load", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
@@ -219,7 +233,7 @@ describe("PersonaHomePage header actions (T20)", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    await waitFor(() => expect(screen.getByText(/no analysis yet|analysed yet|objects are not ready/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no analysis yet|analysed yet|ready for go-live/i)).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Export" })).not.toBeInTheDocument();
   });
 });

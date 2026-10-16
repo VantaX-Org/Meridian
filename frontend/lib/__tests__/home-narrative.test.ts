@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildNarrative } from "../home-narrative";
+import { buildNarrative, verdictSentence } from "../home-narrative";
 import type { ObjectSummary } from "../api/v1/objects";
 
 const objects: ObjectSummary[] = [
@@ -35,5 +35,17 @@ describe("buildNarrative", () => {
     ];
     const text = buildNarrative({ role: "lead", objects: withUnanalysed });
     expect(text).toContain("Material Master");
+  });
+});
+
+describe("verdictSentence", () => {
+  const one: ObjectSummary = { module: "controlling", label: "Controlling", composite_score: 70, readiness: "fail", failing_checks: 6, affected_records: 10 };
+  it("agrees noun and verb with the counts", () => {
+    expect(verdictSentence([one])).toBe("1 of 1 object is not ready for go-live.");
+    expect(verdictSentence(objects)).toBe("1 of 2 objects is not ready for go-live.");
+    expect(verdictSentence([one, { ...one, module: "fi_gl" }])).toBe("2 of 2 objects are not ready for go-live.");
+  });
+  it("never says zero objects are not ready", () => {
+    expect(verdictSentence([{ ...one, readiness: "pass" }, { ...one, module: "fi_gl", readiness: "pass" }])).toBe("All 2 objects are ready for go-live.");
   });
 });

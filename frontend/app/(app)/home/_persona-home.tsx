@@ -12,7 +12,7 @@ import {
 } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { getFindings } from "@/lib/api/findings";
-import { getVersions } from "@/lib/api/versions";
+import { useRunListWith } from "@/hooks/use-run-list";
 import { getShellCounts } from "@/lib/api/shell";
 import { getSystems } from "@/lib/api/connectivity";
 import { usePermissions } from "@/lib/permissions";
@@ -27,11 +27,11 @@ import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, delta as runDelta, trend, readinessOf,
+  runCap, capRules, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, delta as runDelta, trend, readinessOf,
   severityTotals, worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
-import { formatDate, formatModuleName, plural } from "@/lib/format";
-import { previousInLineage } from "@/lib/runs";
+import { formatDate, formatModuleName, plural, shortCapReason } from "@/lib/format";
+import { previousInLineage, runPageHref } from "@/lib/runs";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
@@ -80,12 +80,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   // The topbar run selector writes ?run=; home follows it like every other page.
   const run = useSearchParams().get("run") ?? "latest";
   const objectsQ = useQuery({ queryKey: queryKeys.objects(run), queryFn: () => getObjects(run) });
-  const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
+  const { list: versionsQ, versions: allVersions } = useRunListWith(run === "latest" ? undefined : run);
   // Same key as the rail's counts, so this is not a second request; Basis has no inbox tile.
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, enabled: wantsFindings });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
-  const finished = (versionsQ.data?.versions ?? [])
+  const finished = allVersions
     .filter((v) => v.dqs_summary && Object.keys(v.dqs_summary).length > 0)
     .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime());
   const latest = finished.find((v) => v.id === run) ?? finished[0];
@@ -121,7 +121,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const sentence = verdictSentence(objects);
 
   if (dayOne.step !== null) {
-    const versions = versionsQ.data?.versions ?? [];
+    const versions = allVersions;
     return (
       <HomePage
         persona={role}
@@ -139,7 +139,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     );
   }
 
-  const versions = versionsQ.data?.versions ?? [];
+  const versions = allVersions;
   // dayOne says a finished run exists but it hasn't landed in this cache yet: treat as loading rather than crash.
   if (!latest) return <HomePage persona={role} state="loading" />;
 
@@ -168,19 +168,24 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           })();
 
   const capReason = cappedReason(latest);
-  // Distinct critical rules from the loaded findings: two are named, the rest counted; none until they load.
-  const criticalRules = [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, f])).values()];
-  const capRules = criticalRules.slice(0, 2);
-  const moreRules = Math.max(cap ? cap.criticals : criticalRules.length, criticalRules.length) - capRules.length;
+  // The rules the cap reasons name (else the distinct critical rules of the loaded findings): one list gives both
+  // the count and the names, so "by N critical rules: A, B and M more" always adds up.
+  const reasonRules = capRules(latest);
+  const criticalRules = reasonRules.length
+    ? reasonRules
+    : [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, { check_id: f.check_id, module: f.module }])).values()];
+  const capTotal = reasonRules.length ? reasonRules.length : Math.max(cap?.criticals ?? 0, criticalRules.length);
+  const namedRules = criticalRules.slice(0, 2);
+  const moreRules = capTotal - namedRules.length;
   const capLine = cap || capReason ? (
     <>
       {cap ? (
         <>
-          Capped at {cap.cap} by {plural(cap.criticals, "critical rule")}
-          {capRules.length > 0 && (
+          Capped at {cap.cap} by {plural(capTotal, "critical rule")}
+          {namedRules.length > 0 && (
             <>
               {": "}
-              {capRules.map((f, i) => (
+              {namedRules.map((f, i) => (
                 <span key={f.check_id}>
                   {i > 0 && ", "}
                   <DrillLink href={buildDrillHref({ object: f.module, ruleId: f.check_id, run: latest.id })}><Mono>{f.check_id}</Mono></DrillLink>
@@ -190,7 +195,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
             </>
           )}
         </>
-      ) : `Capped: ${capReason}`}
+      ) : `Capped: ${shortCapReason(capReason)}`}
     </>
   ) : undefined;
 
@@ -277,7 +282,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         ) : (
           <Line
             data={trendPoints}
-            onPointClick={(point) => router.push(`/runs/${(point as unknown as { runId: string }).runId}`)}
+            onPointClick={(point) => { if (point.runId) router.push(runPageHref(point.runId)); }}
             height={160}
             dqsThreshold={bands?.target}
             label="DQS over runs"

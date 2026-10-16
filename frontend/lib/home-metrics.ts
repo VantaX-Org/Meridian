@@ -1,7 +1,7 @@
 // frontend/lib/home-metrics.ts
 import type { Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
-import { round1, formatDate, formatModuleName, runAxisLabels } from "@/lib/format";
+import { capRuleIds, round1, formatDate, formatModuleName, runAxisLabels } from "@/lib/format";
 import { lineageOf } from "@/lib/runs";
 import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
 
@@ -94,6 +94,16 @@ export function severityTotals(v: Version): SeverityTotals {
 }
 
 /** The reason the first capped module in this run gives, or null if none is capped. */
+/** The critical rules a run's cap reasons name, each with the object whose score they capped, in reason order. */
+export function capRules(v: Version): { check_id: string; module: string }[] {
+  const out = new Map<string, { check_id: string; module: string }>();
+  for (const [module, m] of Object.entries(v.dqs_summary ?? {})) {
+    if (!m.capped) continue;
+    for (const id of capRuleIds(m.cap_reason)) if (!out.has(id)) out.set(id, { check_id: id, module });
+  }
+  return [...out.values()];
+}
+
 export function cappedReason(v: Version): string | null {
   for (const m of Object.values(v.dqs_summary ?? {})) {
     if (m.capped) return m.cap_reason ?? "A severity cap applied.";

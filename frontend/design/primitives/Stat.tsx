@@ -85,7 +85,7 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
             color: hero ? "var(--m-hero-ink)" : "var(--m-ink)",
           }}
         >
-          {loading ? <Skeleton width="4ch" height={hero ? 76 : 30} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : value}
+          {loading ? <Skeleton width="4ch" height={hero ? 76 : 30} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : typeof value === "number" ? value.toLocaleString("en-US") : value}
         </span>
         {delta != null && !loading && <span>{delta}</span>}
       </span>

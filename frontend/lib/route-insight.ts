@@ -129,7 +129,8 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
         ? "No critical findings, so the score is not capped."
         : "No findings in this run.";
 
-  const risk = f.costAtRisk != null && f.costAtRisk > 0 ? ` About ${formatMoney(Math.round(f.costAtRisk), f.currency)} is at risk.` : "";
+  // Held until the cost model names the currency, so the sentence never reads as a bare number.
+  const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` About ${formatMoney(Math.round(f.costAtRisk), f.currency)} is at risk.` : "";
   const next =
     worst && f.total > 0
       ? {

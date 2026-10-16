@@ -58,4 +58,9 @@ describe("route insight lineage and money", () => {
     expect(h.why.sentence).toMatch(/About ZAR[  ]?5[,.  ]672[,.  ]930 is at risk\./);
     expect(h.why.sentence).not.toMatch(/About 5672930/);
   });
+  it("holds the value-at-risk sentence until the currency is known, never a bare number", () => {
+    const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: 70, critical: 0, total: 5, affected: 9, costAtRisk: 1008920, currency: undefined });
+    expect(h.why.sentence).not.toMatch(/at risk/);
+    expect(h.why.sentence).toBe("No critical findings, so the score is not capped.");
+  });
 });

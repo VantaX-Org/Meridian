@@ -53,6 +53,9 @@ describe("InsightsOverviewPage", () => {
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getAllByTestId("insight-hero-stats")).toHaveLength(1);
     expect(screen.getByRole("link", { name: /^Reports/ })).toBeInTheDocument();
+    // The hero names what it counts (config-impact blocking gaps), so it never contradicts Readiness's "Blockers".
+    expect(screen.getByText("Blocking gaps")).toBeInTheDocument();
+    expect(screen.queryByText("Blockers")).toBeNull();
   });
 
   it("shows the worst L1 and never a cross-L1 total", async () => {

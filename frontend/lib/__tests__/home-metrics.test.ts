@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Version } from "@/types/api";
 import {
+  capRules,
   cappedReason,
   delta,
   dimensionBarPoints,
@@ -168,6 +169,22 @@ describe("home-metrics", () => {
       { x: "1 Jan 2026", y: 70 },
       { x: "2 Jan 2026", y: 85 },
     ]);
+  });
+});
+
+describe("capRules", () => {
+  it("names the rules each capped object's reason lists, once, with the object they capped", () => {
+    const v = version("v1", "2026-01-01", { business_partner: 70, fi_gl: 70, mm: 95 });
+    Object.assign(v.dqs_summary!.business_partner, { capped: true, cap_reason: "2 critical failures over tolerance (BP019: 4.0% of BUT000 rows; BP002: 3.1% of BUT000 rows) — score capped at 70" });
+    Object.assign(v.dqs_summary!.fi_gl, { capped: true, cap_reason: "2 critical failures over tolerance (GL024: 2.0% of SKA1 rows; BP019: 1.0% of BUT000 rows) — score capped at 70" });
+    expect(capRules(v)).toEqual([
+      { check_id: "BP019", module: "business_partner" },
+      { check_id: "BP002", module: "business_partner" },
+      { check_id: "GL024", module: "fi_gl" },
+    ]);
+  });
+  it("is empty when nothing is capped", () => {
+    expect(capRules(version("v1", "2026-01-01", { a: 90 }))).toEqual([]);
   });
 });
 
