@@ -4,6 +4,7 @@ from typing import Optional
 
 import urllib3
 from minio import Minio
+from minio.error import S3Error
 
 from api.config import settings
 
@@ -90,9 +91,13 @@ def delete_prefix(bucket: str, prefix: str) -> tuple[int, int]:
 
 
 def object_size(bucket: str, object_name: str) -> Optional[int]:
-    """Size of one object, or None when it does not exist."""
+    """Size of one object, or None when it does not exist. Any other storage
+    failure propagates so the caller can record it instead of counting the
+    object as gone."""
     client = get_minio_client()
     try:
         return int(client.stat_object(bucket, object_name).size or 0)
-    except Exception:
-        return None
+    except S3Error as e:
+        if e.code == "NoSuchKey":
+            return None
+        raise

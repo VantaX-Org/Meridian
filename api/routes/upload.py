@@ -243,6 +243,8 @@ async def upload_file(
         "columns": list(df.columns),
         "modules": [module],
         "parquet_path": parquet_path,
+        # the raw file, so a purge of this version can remove it too (api/services/purge.py)
+        "upload_path": object_name,
         "standard_fields_present": sorted(present_standard),
         "standard_fields_missing": sorted(missing_standard),
         "custom_fields": sorted(custom_fields),

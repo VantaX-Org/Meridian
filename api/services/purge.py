@@ -21,6 +21,17 @@ Golden records, learned rules, glossary terms, contracts, exceptions, remediatio
 batches and the tenant's own rules are tenant assets and are never deleted here;
 where one of them points at the version, the pointer is cleared.
 
+Record issues (api/services/record_issues.py) are tenant-wide lifecycle rows. One
+whose ``last_seen_version`` is the purged version is deleted when it is closed
+(``CLOSED_ISSUE_STATUSES``); when it is still open its ``last_seen_version`` (and a
+``first_seen_version`` that also points here) moves to the newest remaining version
+of the same system, and when no such version exists the purge is blocked.
+
+Every DELETE and UPDATE carries ``tenant_id = :t`` as well as the version predicate;
+row-level security is the second line, never the only one. Storage keys read from
+version metadata are honoured only under this tenant's own prefixes; anything else
+is skipped and listed as ``skipped_untrusted_key`` on the purge_log row.
+
 ``dry_run=True`` runs the same checks and counts the same rows but commits only
 the purge_log row.
 """
@@ -37,55 +48,75 @@ from sqlalchemy import text
 
 logger = logging.getLogger("meridian.purge")
 
+# Record issue lifecycle (record_issues.status, migration 048): open ones survive a purge.
+OPEN_ISSUE_STATUSES: tuple[str, ...] = ("open", "in_progress")
+CLOSED_ISSUE_STATUSES: tuple[str, ...] = ("resolved", "accepted")
+_OPEN_ISSUES = "status IN ('open', 'in_progress')"
+# The newest remaining version of the same system as the issue (uploads are system "upload").
+_NEWEST_OTHER_VERSION = (
+    "SELECT av.id FROM analysis_versions av WHERE av.tenant_id = :t AND av.id <> :v "
+    "AND COALESCE(av.metadata->>'system_id', 'upload') = record_issues.scope "
+    "ORDER BY av.run_at DESC NULLS LAST, av.id LIMIT 1"
+)
+_VERSION_FINDINGS = "SELECT id FROM findings WHERE tenant_id = :t AND version_id = :v"
+
 # (table, where-clause) deleted in this order. Children first so no foreign key
 # without ON DELETE CASCADE can stop the transaction:
 #   write_back_log -> findings; exceptions -> findings (unlinked, see UNLINK);
 #   finding_records, finding_root_causes -> findings' version; the rest -> the version.
+# Every clause names the tenant as well as the version (RLS is the second line).
 DELETE_ORDER: tuple[tuple[str, str], ...] = (
-    ("write_back_log", "version_id = :v OR finding_id IN (SELECT id FROM findings WHERE version_id = :v)"),
-    ("finding_records", "version_id = :v"),
-    ("finding_root_causes", "version_id = :v"),
-    ("findings", "version_id = :v"),
-    ("config_matches", "version_id = :v"),
-    ("config_impact_results", "version_id = :v"),
-    ("impact_records", "version_id = :v"),
-    ("data_duplicates", "version_id = :v"),
-    ("data_anomalies", "version_id = :v"),
-    ("data_relationships", "version_id = :v"),
-    ("field_dependencies", "version_id = :v"),
-    ("field_profiles", "version_id = :v"),
-    ("table_profiles", "version_id = :v"),
-    ("analysis_run_steps", "version_id = :v"),
-    ("record_fixes", "version_id = :v"),
-    ("proven_cost_results", "version_id = :v"),
-    ("process_derivations", "version_id = :v"),
-    ("process_variants", "version_id = :v"),
-    ("record_hashes", "version_id = :v"),
-    ("insight_feedback", "run_id = CAST(:v AS text)"),
-    # issues whose last evidence lived only in this version; their events cascade
-    ("record_issues", "last_seen_version = :v"),
-    ("reports", "version_id = :v"),
+    ("write_back_log", f"tenant_id = :t AND (version_id = :v OR finding_id IN ({_VERSION_FINDINGS}))"),
+    ("finding_records", "tenant_id = :t AND version_id = :v"),
+    ("finding_root_causes", "tenant_id = :t AND version_id = :v"),
+    ("findings", "tenant_id = :t AND version_id = :v"),
+    ("config_matches", "tenant_id = :t AND version_id = :v"),
+    ("config_impact_results", "tenant_id = :t AND version_id = :v"),
+    ("impact_records", "tenant_id = :t AND version_id = :v"),
+    ("data_duplicates", "tenant_id = :t AND version_id = :v"),
+    ("data_anomalies", "tenant_id = :t AND version_id = :v"),
+    ("data_relationships", "tenant_id = :t AND version_id = :v"),
+    ("field_dependencies", "tenant_id = :t AND version_id = :v"),
+    ("field_profiles", "tenant_id = :t AND version_id = :v"),
+    ("table_profiles", "tenant_id = :t AND version_id = :v"),
+    ("analysis_run_steps", "tenant_id = :t AND version_id = :v"),
+    ("record_fixes", "tenant_id = :t AND version_id = :v"),
+    ("proven_cost_results", "tenant_id = :t AND version_id = :v"),
+    ("process_derivations", "tenant_id = :t AND version_id = :v"),
+    ("process_variants", "tenant_id = :t AND version_id = :v"),
+    ("record_hashes", "tenant_id = :t AND version_id = :v"),
+    ("insight_feedback", "tenant_id = :t AND run_id = CAST(:v AS text)"),
+    # closed issues whose last evidence lived only in this version (their events cascade);
+    # an open one goes too only when no other version of its system remains, which
+    # open_work() refuses unless the purge is forced (whole-tenant purge)
+    ("record_issues", f"tenant_id = :t AND last_seen_version = :v AND (NOT ({_OPEN_ISSUES}) "
+                      f"OR NOT EXISTS ({_NEWEST_OTHER_VERSION}))"),
+    ("reports", "tenant_id = :t AND version_id = :v"),
 )
 
 # Tenant assets that point at the version: the pointer is cleared, the row stays.
 UNLINK: tuple[tuple[str, str, str], ...] = (
     ("exceptions", "linked_finding_id = NULL",
-     "linked_finding_id IN (SELECT id FROM findings WHERE version_id = :v)"),
+     f"tenant_id = :t AND linked_finding_id IN ({_VERSION_FINDINGS})"),
+    # open issues last seen in this version move to the newest remaining version of their system
+    ("record_issues", f"last_seen_version = ({_NEWEST_OTHER_VERSION})",
+     f"tenant_id = :t AND last_seen_version = :v AND {_OPEN_ISSUES} AND EXISTS ({_NEWEST_OTHER_VERSION})"),
     ("record_issues", "first_seen_version = last_seen_version",
-     "first_seen_version = :v AND last_seen_version <> :v"),
-    ("record_issues", "resolved_version = NULL", "resolved_version = :v"),
-    ("record_issue_events", "version_id = NULL", "version_id = :v"),
-    ("remediation_events", "version_id = NULL", "version_id = :v"),
-    ("remediation_items", "recon_version = NULL", "recon_version = :v"),
-    ("cleaning_queue", "version_id = NULL", "version_id = :v"),
-    ("contract_compliance_history", "version_id = NULL", "version_id = :v"),
-    ("learned_rule_proposals", "version_id = NULL", "version_id = :v"),
-    ("migration_runs", "source_version_id = NULL", "source_version_id = :v"),
-    ("process_discovery_runs", "extraction_version_id = NULL", "extraction_version_id = :v"),
+     "tenant_id = :t AND first_seen_version = :v AND last_seen_version <> :v"),
+    ("record_issues", "resolved_version = NULL", "tenant_id = :t AND resolved_version = :v"),
+    ("record_issue_events", "version_id = NULL", "tenant_id = :t AND version_id = :v"),
+    ("remediation_events", "version_id = NULL", "tenant_id = :t AND version_id = :v"),
+    ("remediation_items", "recon_version = NULL", "tenant_id = :t AND recon_version = :v"),
+    ("cleaning_queue", "version_id = NULL", "tenant_id = :t AND version_id = :v"),
+    ("contract_compliance_history", "version_id = NULL", "tenant_id = :t AND version_id = :v"),
+    ("learned_rule_proposals", "version_id = NULL", "tenant_id = :t AND version_id = :v"),
+    ("migration_runs", "source_version_id = NULL", "tenant_id = :t AND source_version_id = :v"),
+    ("process_discovery_runs", "extraction_version_id = NULL", "tenant_id = :t AND extraction_version_id = :v"),
 )
 
 # The unlink steps that must run before a delete step they would otherwise collide with.
-# exceptions.linked_finding_id has no ON DELETE clause, so findings cannot go first.
+# exceptions.linked_finding_id has no ON DELETE clause, so findings cannot go first;
+# record_issues.first_seen_version is NOT NULL and open issues are re-pointed, not deleted.
 _UNLINK_BEFORE_DELETE = {"exceptions", "record_issues"}
 
 OPEN_STEWARDSHIP_SQL = """
@@ -100,12 +131,18 @@ OPEN_STEWARDSHIP_SQL = """
 OPEN_CLEANING_SQL = """
     SELECT count(*) FROM cleaning_queue
      WHERE tenant_id = :t AND version_id = :v
-       AND status NOT IN ('applied', 'rejected', 'rolled_back', 'merged')
+       AND status NOT IN ('applied', 'verified', 'rejected', 'rolled_back', 'merged')
 """
-OPEN_WRITEBACK_SQL = """
+OPEN_WRITEBACK_SQL = f"""
     SELECT count(*) FROM write_back_log w
      WHERE w.tenant_id = :t AND w.dry_run = false AND w.applied_at IS NULL
-       AND (w.version_id = :v OR w.finding_id IN (SELECT id FROM findings WHERE version_id = :v))
+       AND (w.version_id = :v OR w.finding_id IN ({_VERSION_FINDINGS}))
+"""
+# Open record issues last seen in this version with no other version of their system to move to.
+STRANDED_ISSUES_SQL = f"""
+    SELECT count(*) FROM record_issues
+     WHERE tenant_id = :t AND last_seen_version = :v AND {_OPEN_ISSUES}
+       AND NOT EXISTS ({_NEWEST_OTHER_VERSION})
 """
 
 
@@ -149,6 +186,10 @@ def open_work(session: Any, tenant_id: str, version_id: str) -> Optional[str]:
     n = session.execute(text(OPEN_WRITEBACK_SQL), p).scalar() or 0
     if n:
         reasons.append(f"{n} write-back request{'s' if n != 1 else ''} pending or approved")
+    n = session.execute(text(STRANDED_ISSUES_SQL), p).scalar() or 0
+    if n:
+        reasons.append(f"{n} open record issue{'s were' if n != 1 else ' was'} only observed in this run; "
+                       "resolve or dismiss them first")
     return "; ".join(reasons) if reasons else None
 
 
@@ -156,24 +197,57 @@ def _count(session: Any, table: str, where: str, p: dict) -> int:
     return int(session.execute(text(f"SELECT count(*) FROM {table} WHERE {where}"), p).scalar() or 0)
 
 
+def _trusted_key(key: Any, *prefixes: str) -> Optional[str]:
+    """``key`` when it is a plain object name under one of ``prefixes``, else None."""
+    if not isinstance(key, str) or not key or "://" in key or key.startswith("/"):
+        return None
+    if any(part in ("..", "") for part in key.split("/")[:-1]):
+        return None
+    return key if any(key.startswith(p) for p in prefixes) else None
+
+
 def _storage_targets(session: Any, tenant_id: str, version_id: str, metadata: Optional[dict]) -> dict[str, Any]:
-    """What to remove from object storage: the staging prefix plus named objects."""
+    """What to remove from object storage: prefixes plus named objects.
+
+    Keys read from the database are honoured only under this tenant's own prefixes
+    (``staging/<tenant>/``, ``uploads/<tenant>/`` in the uploads bucket; ``reports/<tenant>/``,
+    ``archive/<tenant>/`` in the reports bucket). Anything else lands in ``skipped``.
+    """
     from api.config import settings
 
     meta = metadata or {}
+    uploads, reports = settings.minio_bucket_uploads, settings.minio_bucket_reports
+    staging_root, uploads_root = f"staging/{tenant_id}/", f"uploads/{tenant_id}/"
+    prefixes: list[tuple[str, str]] = [(uploads, f"{staging_root}{version_id}/")]
     objects: list[tuple[str, str]] = []
+    skipped: list[str] = []
+
+    def add_object(bucket: str, key: Any, *allowed: str) -> None:
+        ok = _trusted_key(key, *allowed)
+        if ok is None:
+            skipped.append(str(key))
+        elif not any(b == bucket and ok.startswith(pfx) for b, pfx in prefixes):
+            objects.append((bucket, ok))
+
     pdf_paths = session.execute(text(
-        "SELECT pdf_path FROM reports WHERE version_id = :v AND pdf_path IS NOT NULL"), {"v": str(version_id)}
-    ).fetchall()
+        "SELECT pdf_path FROM reports WHERE tenant_id = :t AND version_id = :v AND pdf_path IS NOT NULL"),
+        {"t": str(tenant_id), "v": str(version_id)}).fetchall()
     for (path,) in pdf_paths:
-        objects.append((settings.minio_bucket_reports, path))
+        add_object(reports, path, f"reports/{tenant_id}/")
     if meta.get("findings_archive"):
-        objects.append((settings.minio_bucket_reports, str(meta["findings_archive"])))
-    prefix = f"staging/{tenant_id}/{version_id}/"
+        add_object(reports, meta["findings_archive"], f"archive/{tenant_id}/")
     dataset = meta.get("dataset_path")
-    if isinstance(dataset, str) and dataset and not dataset.startswith(prefix) and "://" not in dataset:
-        objects.append((settings.minio_bucket_uploads, dataset))
-    return {"prefix_bucket": settings.minio_bucket_uploads, "prefix": prefix, "objects": objects}
+    if isinstance(dataset, str) and dataset:
+        add_object(uploads, dataset, staging_root)
+        # an upload's parquet is staging/<tenant>/<file_id>.parquet; its raw file sits at
+        # uploads/<tenant>/<file_id>.<ext> (older versions carry no upload_path)
+        if _trusted_key(dataset, staging_root) and dataset.endswith(".parquet"):
+            file_id = dataset[len(staging_root):-len(".parquet")]
+            if file_id and "/" not in file_id:
+                prefixes.append((uploads, f"{uploads_root}{file_id}."))
+    if meta.get("upload_path"):
+        add_object(uploads, meta["upload_path"], uploads_root)
+    return {"prefixes": prefixes, "objects": objects, "skipped": skipped}
 
 
 def _measure_storage(targets: dict[str, Any]) -> tuple[int, list[str]]:
@@ -182,10 +256,11 @@ def _measure_storage(targets: dict[str, Any]) -> tuple[int, list[str]]:
 
     errors: list[str] = []
     total = 0
-    try:
-        total += sum(size for _, size in storage.list_prefix(targets["prefix_bucket"], targets["prefix"]))
-    except Exception as e:  # noqa: BLE001 — storage down must not block a preview
-        errors.append(f"list {targets['prefix']}: {e}")
+    for bucket, prefix in targets["prefixes"]:
+        try:
+            total += sum(size for _, size in storage.list_prefix(bucket, prefix))
+        except Exception as e:  # noqa: BLE001 — storage down must not block a preview
+            errors.append(f"list {prefix}: {e}")
     for bucket, name in targets["objects"]:
         try:
             total += storage.object_size(bucket, name) or 0
@@ -199,10 +274,12 @@ def _delete_storage(targets: dict[str, Any]) -> tuple[int, list[str]]:
 
     errors: list[str] = []
     freed = 0
-    try:
-        _, freed = storage.delete_prefix(targets["prefix_bucket"], targets["prefix"])
-    except Exception as e:  # noqa: BLE001
-        errors.append(f"delete prefix {targets['prefix']}: {e}")
+    for bucket, prefix in targets["prefixes"]:
+        try:
+            _, n = storage.delete_prefix(bucket, prefix)
+            freed += n
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"delete prefix {prefix}: {e}")
     for bucket, name in targets["objects"]:
         try:
             size = storage.object_size(bucket, name)
@@ -215,18 +292,24 @@ def _delete_storage(targets: dict[str, Any]) -> tuple[int, list[str]]:
     return freed, errors
 
 
+PURGE_SOURCES = ("nightly", "preview", "manual", "tenant")
+
+
 def write_purge_log(session: Any, tenant_id: str, kind: str, target_id: Optional[str], dry_run: bool,
-                    rows_by_table: dict[str, int], bytes_freed: int, blocked_reason: Optional[str],
-                    actor: Optional[Actor]) -> str:
-    """Insert the purge_log row (caller commits). Returns its id."""
+                    rows_by_table: dict[str, Any], bytes_freed: int, blocked_reason: Optional[str],
+                    actor: Optional[Actor], source: str = "manual") -> str:
+    """Insert the purge_log row (caller commits). Returns its id. ``source`` says who
+    wrote it (``PURGE_SOURCES``); only ``nightly`` dry runs count towards the gate."""
+    if source not in PURGE_SOURCES:
+        raise ValueError(f"unknown purge source {source!r}")
     log_id = str(uuid.uuid4())
     session.execute(text(
-        "INSERT INTO purge_log (id, tenant_id, kind, target_id, dry_run, rows_by_table, bytes_freed, "
-        "blocked_reason, actor_user_id, actor_email) VALUES (:id, :t, :k, :target, :d, CAST(:r AS jsonb), :b, "
-        ":why, :u, :e)"),
+        "INSERT INTO purge_log (id, tenant_id, kind, target_id, dry_run, source, rows_by_table, bytes_freed, "
+        "blocked_reason, actor_user_id, actor_email) VALUES (:id, :t, :k, :target, :d, :src, CAST(:r AS jsonb), "
+        ":b, :why, :u, :e)"),
         {"id": log_id, "t": str(tenant_id), "k": kind, "target": str(target_id) if target_id else None,
-         "d": dry_run, "r": json.dumps(rows_by_table), "b": int(bytes_freed), "why": blocked_reason,
-         "u": actor.user_id if actor else None, "e": actor.email if actor else None})
+         "d": dry_run, "src": source, "r": json.dumps(rows_by_table), "b": int(bytes_freed),
+         "why": blocked_reason, "u": actor.user_id if actor else None, "e": actor.email if actor else None})
     return log_id
 
 
@@ -242,11 +325,12 @@ def write_audit_row(session: Any, tenant_id: str, actor: Optional[Actor], action
 
 
 def purge_version(session: Any, tenant_id: str, version_id: str, *, dry_run: bool,
-                  actor: Optional[Actor] = None, force: bool = False) -> dict[str, Any]:
+                  actor: Optional[Actor] = None, force: bool = False, source: str = "manual") -> dict[str, Any]:
     """Delete one version and everything keyed to it. See the module docstring.
 
-    ``force`` skips the open-work check (tenant purge only). Raises
-    ``VersionNotFound`` when the version is not this tenant's.
+    ``force`` skips the open-work check (tenant purge only). ``source`` is written to
+    the purge_log row (``PURGE_SOURCES``). Raises ``VersionNotFound`` when the version
+    is not this tenant's.
     """
     tid, vid = str(tenant_id), str(version_id)
     p = {"t": tid, "v": vid}
@@ -260,11 +344,15 @@ def purge_version(session: Any, tenant_id: str, version_id: str, *, dry_run: boo
     blocked = None if force else open_work(session, tid, vid)
     if blocked:
         result.blocked_reason = blocked
-        result.purge_log_id = write_purge_log(session, tid, "version", vid, dry_run, {}, 0, blocked, actor)
+        result.purge_log_id = write_purge_log(session, tid, "version", vid, dry_run, {}, 0, blocked, actor,
+                                              source=source)
         session.commit()
         return result.as_dict()
 
     targets = _storage_targets(session, tid, vid, metadata)
+    notes: dict[str, Any] = {"skipped_untrusted_key": targets["skipped"]} if targets["skipped"] else {}
+    if targets["skipped"]:
+        logger.warning("purge %s: storage keys outside the tenant's prefixes skipped: %s", vid, targets["skipped"])
 
     if dry_run:
         for table, where in DELETE_ORDER:
@@ -278,8 +366,8 @@ def purge_version(session: Any, tenant_id: str, version_id: str, *, dry_run: boo
                 result.rows_by_table[key] = result.rows_by_table.get(key, 0) + n
         result.rows_by_table["analysis_versions"] = 1
         result.bytes_freed, result.storage_errors = _measure_storage(targets)
-        result.purge_log_id = write_purge_log(session, tid, "version", vid, True, result.rows_by_table,
-                                              result.bytes_freed, None, actor)
+        result.purge_log_id = write_purge_log(session, tid, "version", vid, True, {**result.rows_by_table, **notes},
+                                              result.bytes_freed, None, actor, source=source)
         session.commit()
         return result.as_dict()
 
@@ -306,7 +394,8 @@ def purge_version(session: Any, tenant_id: str, version_id: str, *, dry_run: boo
     n = session.execute(text("DELETE FROM analysis_versions WHERE id = :v AND tenant_id = :t"), p).rowcount or 0
     result.rows_by_table["analysis_versions"] = n
 
-    result.purge_log_id = write_purge_log(session, tid, "version", vid, False, result.rows_by_table, 0, None, actor)
+    result.purge_log_id = write_purge_log(session, tid, "version", vid, False, {**result.rows_by_table, **notes},
+                                          0, None, actor, source=source)
     write_audit_row(session, tid, actor, "purge", "analysis_version", vid,
                     {"label": label, "rows_by_table": result.rows_by_table, "purge_log_id": result.purge_log_id})
     session.commit()
