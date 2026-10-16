@@ -9,7 +9,8 @@ export interface RetentionPolicy {
   keep_latest_per_system: number;
 }
 
-/** Whether the nightly task deletes for real: the env flag plus a week of dry runs. */
+/** Whether the nightly task deletes for real: the env flag plus a week of nightly dry runs
+ *  under the current policy (the window restarts when the policy is saved). */
 export interface RetentionEnforcement {
   flag_enabled: boolean;
   dry_run_until: string | null;

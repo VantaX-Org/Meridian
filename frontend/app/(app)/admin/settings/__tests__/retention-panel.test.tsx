@@ -3,7 +3,7 @@ import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as retentionApi from "@/lib/api/retention";
 import type { PurgeLogEntry, RetentionResponse } from "@/lib/api/retention";
-import { RetentionPanel, formatBytes } from "../retention-panel";
+import { RetentionPanel, formatBytes, rangeError } from "../retention-panel";
 
 const RESPONSE: RetentionResponse = {
   policy: { versions_days: 180, reports_days: null, audit_days: 365, keep_baseline: true, keep_latest_per_system: 1 },
@@ -24,11 +24,54 @@ describe("RetentionPanel", () => {
     expect(screen.getByLabelText("Keep reports for (days)")).toHaveValue(null);
     expect(screen.getByRole("switch", { name: "Keep the baseline run" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByText(/Dry run until .*2026; set MERIDIAN_PURGE_ENABLED to enforce\./)).toBeInTheDocument();
+    expect(screen.getByText("Dry run restarts when the policy changes")).toBeInTheDocument();
     const grid = screen.getByRole("grid");
     expect(within(grid).getByText("Dry run")).toBeInTheDocument();
     expect(within(grid).getByText("finding_records 300, findings 12, analysis_versions 1")).toBeInTheDocument();
     expect(within(grid).getByText("2 KB")).toBeInTheDocument();
     expect(within(grid).getByText("Scheduler")).toBeInTheDocument();
+  });
+
+  it("shows each field's range error and keeps Save disabled while any field is invalid", async () => {
+    vi.spyOn(retentionApi, "getRetention").mockResolvedValue(RESPONSE);
+    vi.spyOn(retentionApi, "getPurgeLog").mockResolvedValue([]);
+    const update = vi.spyOn(retentionApi, "updateRetention");
+    renderWithQuery(<RetentionPanel />);
+    await waitFor(() => expect(screen.getByLabelText("Keep runs for (days)")).toHaveValue(180));
+    const save = screen.getByRole("button", { name: "Save policy" });
+    const runs = screen.getByLabelText("Keep runs for (days)");
+    // 0 is out of range, not "for ever"
+    fireEvent.change(runs, { target: { value: "0" } });
+    expect(screen.getByText("Between 1 and 3650")).toBeInTheDocument();
+    expect(runs).toHaveAttribute("aria-invalid", "true");
+    expect(save).toBeDisabled();
+    fireEvent.change(runs, { target: { value: "4000" } });
+    expect(screen.getByText("Between 1 and 3650")).toBeInTheDocument();
+    expect(save).toBeDisabled();
+    fireEvent.change(runs, { target: { value: "" } });
+    expect(screen.queryByText("Between 1 and 3650")).not.toBeInTheDocument();
+    expect(save).toBeEnabled(); // empty means keep for ever, a real change from 180
+    // the latest-per-system count is required and capped at 100, never clamped
+    const latest = screen.getByLabelText("Keep latest per system");
+    fireEvent.change(latest, { target: { value: "250" } });
+    expect(screen.getByText("Between 0 and 100")).toBeInTheDocument();
+    expect(save).toBeDisabled();
+    fireEvent.change(latest, { target: { value: "" } });
+    expect(screen.getByText("Between 0 and 100")).toBeInTheDocument();
+    expect(save).toBeDisabled();
+    fireEvent.change(latest, { target: { value: "3" } });
+    expect(screen.queryByText("Between 0 and 100")).not.toBeInTheDocument();
+    expect(save).toBeEnabled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("validates ranges without normalising", () => {
+    expect(rangeError("", 1, 3650)).toBeUndefined();
+    expect(rangeError("0", 1, 3650)).toBe("Between 1 and 3650");
+    expect(rangeError("1.5", 1, 3650)).toBe("Between 1 and 3650");
+    expect(rangeError("3650", 1, 3650)).toBeUndefined();
+    expect(rangeError("", 0, 100, true)).toBe("Between 0 and 100");
+    expect(rangeError("0", 0, 100, true)).toBeUndefined();
   });
 
   it("saves an edited policy and refuses audit retention under 30 days", async () => {
@@ -42,7 +85,7 @@ describe("RetentionPanel", () => {
     const save = screen.getByRole("button", { name: "Save policy" });
     expect(save).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Keep audit rows for (days)"), { target: { value: "7" } });
-    expect(screen.getByText("At least 30 days")).toBeInTheDocument();
+    expect(screen.getByText("Between 30 and 3650")).toBeInTheDocument();
     expect(save).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Keep audit rows for (days)"), { target: { value: "365" } });
     fireEvent.change(screen.getByLabelText("Keep runs for (days)"), { target: { value: "90" } });

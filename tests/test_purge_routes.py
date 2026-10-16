@@ -44,6 +44,7 @@ class _DB:
         self.log_rows = list(log_rows)
         self.updates = []
         self.audits = []
+        self.seen_gate_sql = []
         self.commits = 0
 
     async def execute(self, stmt, params=None):
@@ -53,6 +54,7 @@ class _DB:
         if sql.startswith("SELECT retention"):
             return _Result([(self.retention,)])
         if sql.startswith("SELECT min(created_at) FROM purge_log"):
+            self.seen_gate_sql.append(sql)
             return _Result([(self.oldest_dry_run,)])
         if sql.startswith("UPDATE tenants SET retention"):
             self.updates.append(params)
@@ -137,6 +139,54 @@ def test_put_retention_validates_stores_and_audits(monkeypatch):
     assert db.commits == 1 and len(db.audits) == 1
     assert db.audits[0]["a"] == "update" and db.audits[0]["et"] == "retention_policy"
     assert r.json()["policy"]["keep_latest_per_system"] == 2
+    # every PUT stamps the policy so the dry-run window restarts from it
+    assert db.retention["updated_at"] == NOW.isoformat()
+    assert "updated_at" not in r.json()["policy"]
+    # and a stored stamp is not echoed back by GET
+    assert "updated_at" not in c.get("/api/v1/settings/retention").json()["policy"]
+
+
+def test_status_counts_only_nightly_dry_runs_since_the_policy_changed(monkeypatch):
+    """The gate query names the source and the policy stamp; the SQL itself is proven
+    against Postgres in tests/test_rls_integration.py."""
+    from api.services.retention import OLDEST_NIGHTLY_DRY_RUN_SQL
+
+    assert "source = 'nightly'" in OLDEST_NIGHTLY_DRY_RUN_SQL and "dry_run = true" in OLDEST_NIGHTLY_DRY_RUN_SQL
+    assert "retention->>'updated_at'" in OLDEST_NIGHTLY_DRY_RUN_SQL
+    monkeypatch.setenv("MERIDIAN_PURGE_ENABLED", "true")
+    c, db = _client(monkeypatch, _DB(retention={}, oldest_dry_run=NOW - timedelta(days=9)))
+    assert c.get("/api/v1/settings/retention").json()["enforcement"]["enforced"] is True
+    assert db.seen_gate_sql and all("source = 'nightly'" in q for q in db.seen_gate_sql)
+
+
+def test_preview_writes_preview_rows_and_a_manual_delete_writes_manual_rows(monkeypatch):
+    """The sync helpers pass the source through to purge_version."""
+    from api.services import purge as purge_service
+    from api.services import retention as retention_service
+
+    seen = []
+
+    def fake(session, tenant_id, version_id, *, dry_run, actor=None, force=False, source="manual"):
+        seen.append((version_id, dry_run, source))
+        return {"rows_by_table": {}, "bytes_freed": 0, "blocked_reason": None, "storage_errors": [],
+                "purge_log_id": "x"}
+
+    class _Ctx:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(routes, "purge_version", fake)
+    monkeypatch.setattr(routes, "_sync_session", lambda tid: _Ctx())
+    monkeypatch.setattr(routes, "load_policy", lambda s, t: retention_service.RetentionPolicy(versions_days=1))
+    monkeypatch.setattr(routes, "select_expired_versions", lambda s, t, policy, now: [
+        retention_service.ExpiredVersion(id=str(VID), label="Q1", run_at=NOW, system_id="upload", status="complete")])
+    routes._preview(str(TENANT))
+    routes._delete_version(str(TENANT), str(VID), routes.Actor())
+    assert seen == [(str(VID), True, "preview"), (str(VID), False, "manual")]
+    assert "preview" in purge_service.PURGE_SOURCES and "manual" in purge_service.PURGE_SOURCES
 
 
 def test_preview_runs_the_dry_run_helper(monkeypatch):
@@ -197,6 +247,56 @@ def test_delete_version_blocked_is_409_with_reason(monkeypatch):
     assert r.json()["detail"]["blocked_reason"] == "2 write-back requests pending or approved"
 
 
+def test_delete_version_blocked_by_open_record_issues(monkeypatch):
+    """The real purge_version on a fake session: issues only seen in this run block the delete."""
+    monkeypatch.setattr(routes, "_version_label", lambda tid, vid: ("Q1", True))
+
+    class _Res:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def fetchone(self):
+            return self.rows[0] if self.rows else None
+
+        def scalar(self):
+            return self.rows[0][0] if self.rows else None
+
+    class _Session:
+        def __init__(self):
+            self.logs = []
+
+        def execute(self, stmt, params=None):
+            sql = " ".join(str(stmt).split())
+            if sql.startswith("SELECT label, metadata FROM analysis_versions"):
+                return _Res([("Q1", {})])
+            if sql.startswith("SELECT count(*) FROM record_issues"):
+                return _Res([(2,)])
+            if sql.startswith("SELECT count(*)"):
+                return _Res([(0,)])
+            if sql.startswith("INSERT INTO purge_log"):
+                self.logs.append(params)
+                return _Res([])
+            raise AssertionError(sql)
+
+        def commit(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    session = _Session()
+    monkeypatch.setattr(routes, "_sync_session", lambda tid: session)
+    c, _ = _client(monkeypatch)
+    r = c.request("DELETE", f"/api/v1/versions/{VID}", json={"confirm": "Q1"})
+    assert r.status_code == 409
+    assert r.json()["detail"]["blocked_reason"] == \
+        "2 open record issues were only observed in this run; resolve or dismiss them first"
+    assert session.logs[0]["src"] == "manual" and session.logs[0]["why"].startswith("2 open record issues")
+
+
 def test_delete_version_returns_the_purge_result(monkeypatch):
     monkeypatch.setattr(routes, "_version_label", lambda tid, vid: ("Q1", True))
     got = []
@@ -211,6 +311,91 @@ def test_delete_version_returns_the_purge_result(monkeypatch):
 
 
 # ── tenant purge token flow ──────────────────────────────────────────────────
+
+def test_tenant_purge_sweeps_the_tenant_prefixes_and_counts_them(monkeypatch):
+    from api.config import settings
+
+    tid = str(TENANT)
+
+    class _Res:
+        def __init__(self, rows, rowcount=0):
+            self.rows, self.rowcount = rows, rowcount
+
+        def fetchall(self):
+            return self.rows
+
+        def __iter__(self):
+            return iter(self.rows)
+
+    class _Session:
+        logs: list[dict] = []
+        deletes: list[str] = []
+
+        def execute(self, stmt, params=None):
+            sql = " ".join(str(stmt).split())
+            if sql.startswith("SELECT id FROM analysis_versions"):
+                return _Res([])
+            if sql.startswith("SELECT pdf_path FROM reports"):
+                return _Res([(f"reports/{tid}/a.pdf",), ("reports/other-tenant/b.pdf",)])
+            if sql.startswith("INSERT INTO purge_log"):
+                _Session.logs.append(params)
+                return _Res([])
+            if sql.startswith("DELETE FROM"):
+                _Session.deletes.append(sql)
+                return _Res([], rowcount=3)
+            raise AssertionError(sql)
+
+        def commit(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    swept, removed = [], []
+    monkeypatch.setattr(routes, "_sync_session", lambda t: _Session())
+    monkeypatch.setattr("api.services.storage.object_size", lambda b, n: 10)
+    monkeypatch.setattr("api.services.storage.delete_file", lambda b, n: removed.append(n))
+
+    def delete_prefix(bucket, prefix):
+        swept.append((bucket, prefix))
+        return (2, 100) if prefix.startswith("uploads/") else (0, 0)
+
+    monkeypatch.setattr("api.services.storage.delete_prefix", delete_prefix)
+    out = routes._purge_tenant(tid, routes.Actor(email="admin@example.com"))
+    assert swept == [(settings.minio_bucket_uploads, f"uploads/{tid}/"), (settings.minio_bucket_uploads, f"staging/{tid}/"),
+                     (settings.minio_bucket_reports, f"reports/{tid}/"), (settings.minio_bucket_reports, f"archive/{tid}/")]
+    assert out["rows_by_table"][f"storage objects uploads/{tid}/"] == 2
+    assert out["bytes_freed"] == 100 + 10
+    # the report keyed outside this tenant's prefix is neither deleted nor counted
+    assert removed == [f"reports/{tid}/a.pdf"]
+    log = _Session.logs[-1]
+    assert log["src"] == "tenant" and log["k"] == "tenant"
+    assert '"skipped_untrusted_key": ["reports/other-tenant/b.pdf"]' in log["r"]
+    assert f'"storage objects uploads/{tid}/": 2' in log["r"]
+
+
+def test_certificate_says_the_request_records_are_retained(monkeypatch):
+    from api.services import pdf_reports
+
+    captured = {}
+
+    def render(template, ctx):
+        html = pdf_reports._env().get_template(template).render(**ctx)
+        captured["html"] = html
+        return html.encode()
+
+    monkeypatch.setattr(pdf_reports, "render", render)
+    outcome = {"rows_by_table": {"findings": 4, "analysis_versions": 2, f"storage objects uploads/{TENANT}/": 3},
+               "bytes_freed": 99, "versions": 2, "storage_errors": [], "purge_log_id": "log-9", "purged_at": NOW}
+    routes._certificate_pdf("Acme", str(TENANT), outcome, routes.Actor(email="admin@example.com"))
+    html = captured["html"]
+    assert ("The audit entry for this purge request and the purge log entry are retained as the record of "
+            "deletion.") in html
+    assert f"storage objects uploads/{TENANT}/" in html and "uploaded files" in html
+
 
 def test_tenant_purge_needs_redis(monkeypatch):
     monkeypatch.setattr(routes, "get_redis", lambda: None)

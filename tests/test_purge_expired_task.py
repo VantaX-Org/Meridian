@@ -33,6 +33,7 @@ class _Session:
         self.old_reports = list(old_reports)
         self.old_audit = old_audit
         self.deletes: list[str] = []
+        self.params: list[dict] = []
         self.logs: list[dict] = []
         self.commits = 0
 
@@ -55,6 +56,7 @@ class _Session:
             return _Result([])
         if sql.startswith("DELETE FROM") or sql.startswith("UPDATE purge_log"):
             self.deletes.append(sql)
+            self.params.append(params)
             return _Result([])
         raise AssertionError(sql)
 
@@ -69,8 +71,8 @@ def _version(days_ago: int):
 def _stub_purge(monkeypatch):
     calls = []
 
-    def fake(session, tenant_id, version_id, *, dry_run, actor=None, force=False):
-        calls.append({"version_id": version_id, "dry_run": dry_run})
+    def fake(session, tenant_id, version_id, *, dry_run, actor=None, force=False, source="manual"):
+        calls.append({"version_id": version_id, "dry_run": dry_run, "source": source})
         return {"rows_by_table": {}, "bytes_freed": 0, "blocked_reason": None, "storage_errors": [],
                 "purge_log_id": "x"}
 
@@ -86,6 +88,33 @@ def test_gate_requires_flag_and_seven_days_of_dry_runs():
     s = _Session({}, NOW - timedelta(days=7))
     assert task.enforcement_allowed(s, TENANT, NOW, flag_enabled=True) is True
     assert task.enforcement_allowed(s, TENANT, NOW, flag_enabled=False) is False
+
+
+def test_gate_asks_for_nightly_rows_under_the_current_policy():
+    seen = []
+
+    class _S(_Session):
+        def execute(self, stmt, params=None):
+            seen.append(" ".join(str(stmt).split()))
+            return super().execute(stmt, params)
+
+    task.enforcement_allowed(_S({}, None), TENANT, NOW, flag_enabled=True)
+    assert seen and "source = 'nightly'" in seen[0] and "retention->>'updated_at'" in seen[0]
+
+
+def test_report_storage_failures_are_recorded_on_the_log_row(monkeypatch):
+    _stub_purge(monkeypatch)
+    s = _Session({"reports_days": 60}, NOW - timedelta(days=8), old_reports=[(uuid.uuid4(), "reports/t/a.pdf")])
+
+    def boom(bucket, path):
+        raise RuntimeError("storage unreachable")
+
+    monkeypatch.setattr("api.services.storage.object_size", boom)
+    task.run_for_tenant(s, TENANT, NOW, flag_enabled=True)
+    outcome = [d for d in s.deletes if d.startswith("UPDATE purge_log")]
+    assert outcome, "the storage outcome must be written back onto the purge_log row"
+    assert any("storage unreachable" in str(p.get("e", "")) for p in s.params if p)
+    assert s.logs[-1]["src"] == "nightly"
 
 
 def test_gate_reads_the_env_flag(monkeypatch):
@@ -105,10 +134,10 @@ def test_flag_on_but_young_dry_runs_writes_dry_run_rows_only(monkeypatch):
     monkeypatch.setattr("api.services.storage.object_size", lambda b, p: 512)
     summary = task.run_for_tenant(s, TENANT, NOW, flag_enabled=True)
     assert summary["dry_run"] is True and summary["versions"] == 1
-    assert calls == [{"version_id": str(s.versions[1][0]), "dry_run": True}]
+    assert calls == [{"version_id": str(s.versions[1][0]), "dry_run": True, "source": "nightly"}]
     assert summary["reports"] == 1 and summary["audit"] == 7
     assert s.deletes == []  # nothing deleted
-    assert [(l["k"], l["d"]) for l in s.logs] == [("reports", True), ("audit", True)]
+    assert [(l["k"], l["d"], l["src"]) for l in s.logs] == [("reports", True, "nightly"), ("audit", True, "nightly")]
     assert s.logs[0]["b"] == 512
 
 
@@ -121,11 +150,11 @@ def test_after_the_window_with_the_flag_the_task_deletes(monkeypatch):
     monkeypatch.setattr("api.services.storage.delete_file", lambda b, p: removed.append(p))
     summary = task.run_for_tenant(s, TENANT, NOW, flag_enabled=True)
     assert summary["dry_run"] is False
-    assert calls == [{"version_id": str(s.versions[1][0]), "dry_run": False}]
+    assert calls == [{"version_id": str(s.versions[1][0]), "dry_run": False, "source": "nightly"}]
     assert any(d.startswith("DELETE FROM reports") for d in s.deletes)
     assert any(d.startswith("DELETE FROM audit_log") for d in s.deletes)
     assert removed == ["reports/t/a.pdf"]
-    assert [(l["k"], l["d"]) for l in s.logs] == [("reports", False), ("audit", False)]
+    assert [(l["k"], l["d"], l["src"]) for l in s.logs] == [("reports", False, "nightly"), ("audit", False, "nightly")]
 
 
 def test_flag_off_after_the_window_still_dry_runs(monkeypatch):
@@ -145,7 +174,7 @@ def test_empty_policy_touches_nothing(monkeypatch):
 
 
 def test_blocked_versions_are_counted_not_raised(monkeypatch):
-    def fake(session, tenant_id, version_id, *, dry_run, actor=None, force=False):
+    def fake(session, tenant_id, version_id, *, dry_run, actor=None, force=False, source="manual"):
         return {"rows_by_table": {}, "bytes_freed": 0, "blocked_reason": "open work", "storage_errors": [],
                 "purge_log_id": "x"}
 

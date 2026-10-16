@@ -7,11 +7,12 @@ api/services/purge.py:
 * report rows (and their PDF objects) older than ``reports_days`` are removed;
 * audit rows older than ``audit_days`` are removed.
 
-Dry-run gate. Every run writes purge_log rows. Real deletes happen only when
-``MERIDIAN_PURGE_ENABLED=true`` *and* the tenant's oldest dry-run purge_log row
-is at least DRY_RUN_DAYS old, so an operator always has a week of nightly
-previews in the purge log before anything is deleted. Until then the task writes
-dry-run rows only. The task is idempotent: a version purged tonight is not
+Dry-run gate. Every run writes purge_log rows with ``source = 'nightly'``. Real
+deletes happen only when ``MERIDIAN_PURGE_ENABLED=true`` *and* the tenant's oldest
+nightly dry-run row written since the policy last changed is at least DRY_RUN_DAYS
+old, so an operator always has a week of nightly previews of the current policy in
+the purge log before anything is deleted. Previews and manual deletes never count.
+Until then the task writes dry-run rows only. The task is idempotent: a version purged tonight is not
 selected tomorrow, and a dry run changes nothing but the log.
 """
 
@@ -59,12 +60,13 @@ def _purge_reports(session: Any, tenant_id: str, days: int, now: datetime, dry_r
                     freed += storage.object_size(settings.minio_bucket_reports, path) or 0
                 except Exception as e:  # noqa: BLE001
                     errors.append(f"stat {path}: {e}")
-        log_id = write_purge_log(session, tenant_id, "reports", None, True, counts, freed, None, None)
+        log_id = write_purge_log(session, tenant_id, "reports", None, True, counts, freed, None, None,
+                                 source="nightly")
         session.commit()
         return {"rows_by_table": counts, "bytes_freed": freed, "purge_log_id": log_id}
     session.execute(text("DELETE FROM reports WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[]))"),
                     {"t": tenant_id, "ids": [str(r[0]) for r in rows]})
-    log_id = write_purge_log(session, tenant_id, "reports", None, False, counts, 0, None, None)
+    log_id = write_purge_log(session, tenant_id, "reports", None, False, counts, 0, None, None, source="nightly")
     write_audit_row(session, tenant_id, None, "purge", "reports", "retention", {"rows": counts})
     session.commit()
     for _, path in rows:
@@ -95,7 +97,8 @@ def _purge_audit(session: Any, tenant_id: str, days: int, now: datetime, dry_run
         return {"rows_by_table": {}, "purge_log_id": None}
     if not dry_run:
         session.execute(text("DELETE FROM audit_log WHERE tenant_id = :t AND created_at < :cutoff"), p)
-    log_id = write_purge_log(session, tenant_id, "audit", None, dry_run, {"audit_log": n}, 0, None, None)
+    log_id = write_purge_log(session, tenant_id, "audit", None, dry_run, {"audit_log": n}, 0, None, None,
+                             source="nightly")
     session.commit()
     return {"rows_by_table": {"audit_log": n}, "purge_log_id": log_id}
 
@@ -113,7 +116,7 @@ def run_for_tenant(session: Any, tenant_id: str, now: Optional[datetime] = None,
     summary: dict[str, Any] = {"tenant_id": tenant_id, "dry_run": dry_run, "versions": 0, "blocked": 0,
                                "reports": 0, "audit": 0}
     for v in select_expired_versions(session, tenant_id, policy, now):
-        r = purge_version(session, tenant_id, v.id, dry_run=dry_run, actor=None)
+        r = purge_version(session, tenant_id, v.id, dry_run=dry_run, actor=None, source="nightly")
         if r["blocked_reason"]:
             summary["blocked"] += 1
         else:

@@ -1,6 +1,7 @@
 {% extends "_base.html" %}
 {% block body %}
-<p>This certifies that Meridian deleted every analysis version, report and audit row held for the tenant below from its own database and object storage, at the request of the person named. SAP data processed by Meridian never left this deployment; nothing remains to be deleted elsewhere.</p>
+<p>This certifies that Meridian deleted every analysis version, report and audit row held for the tenant below from its own database and object storage, including the uploaded files and staged datasets under the tenant's storage prefixes, at the request of the person named. SAP data processed by Meridian never left this deployment; nothing remains to be deleted elsewhere.</p>
+<p>The audit entry for this purge request and the purge log entry are retained as the record of deletion.</p>
 
 <table class="meta">
 <tr><td class="k">Tenant</td><td>{{ tenant }}</td></tr>

@@ -29,6 +29,17 @@ UPLOAD_SCOPE = "upload"
 # Real deletes start only after this many days of nightly dry runs (and the env flag).
 DRY_RUN_DAYS = 7
 PURGE_FLAG = "MERIDIAN_PURGE_ENABLED"
+# Key inside tenants.retention set on every PUT; dry runs older than it do not count.
+POLICY_UPDATED_KEY = "updated_at"
+# The oldest nightly dry run written since the policy last changed. Previews and
+# manual deletes never count, nor does anything from before the current policy.
+OLDEST_NIGHTLY_DRY_RUN_SQL = """
+    SELECT min(created_at) FROM purge_log
+     WHERE tenant_id = :t AND dry_run = true AND source = 'nightly'
+       AND created_at > COALESCE(
+             (SELECT NULLIF(retention->>'updated_at', '')::timestamptz FROM tenants WHERE id = :t),
+             '-infinity'::timestamptz)
+"""
 
 
 def purge_flag_enabled() -> bool:
@@ -38,7 +49,8 @@ def purge_flag_enabled() -> bool:
 def enforcement(oldest_dry_run: Optional[datetime], now: Optional[datetime] = None,
                 flag_enabled: Optional[bool] = None) -> dict[str, Any]:
     """Whether the nightly task may delete for real: the flag is on and the tenant's
-    oldest dry-run purge_log row is at least DRY_RUN_DAYS old."""
+    oldest nightly dry-run purge_log row written under the current policy
+    (``oldest_dry_run``, see OLDEST_NIGHTLY_DRY_RUN_SQL) is at least DRY_RUN_DAYS old."""
     now = now or datetime.now(timezone.utc)
     flag = purge_flag_enabled() if flag_enabled is None else flag_enabled
     until = None
@@ -51,9 +63,8 @@ def enforcement(oldest_dry_run: Optional[datetime], now: Optional[datetime] = No
 
 
 def oldest_dry_run(session: Any, tenant_id: str) -> Optional[datetime]:
-    return session.execute(text(
-        "SELECT min(created_at) FROM purge_log WHERE tenant_id = :t AND dry_run = true"), {"t": str(tenant_id)}
-    ).scalar()
+    """The oldest nightly dry run since the policy last changed, or None."""
+    return session.execute(text(OLDEST_NIGHTLY_DRY_RUN_SQL), {"t": str(tenant_id)}).scalar()
 
 
 class RetentionPolicy(BaseModel):

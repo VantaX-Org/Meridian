@@ -44,12 +44,19 @@ const toForm = (p: RetentionPolicy): FormState => ({
   versions: dayField(p.versions_days), reports: dayField(p.reports_days), audit: dayField(p.audit_days),
   keepBaseline: p.keep_baseline, keepLatest: String(p.keep_latest_per_system),
 });
-const parseDays = (s: string): number | null => {
-  const t = s.trim();
-  if (t === "") return null;
+const MAX_DAYS = 3650;
+const MAX_KEEP_LATEST = 100;
+
+/** The inline error for a whole-number field, or undefined when it is in range. An empty
+ *  days field means "keep for ever"; `0` is out of range, never "for ever". */
+export function rangeError(raw: string, min: number, max: number, required = false): string | undefined {
+  const t = raw.trim();
+  if (t === "") return required ? `Between ${min} and ${max}` : undefined;
   const n = Number(t);
-  return Number.isInteger(n) && n > 0 ? n : null;
-};
+  if (!Number.isInteger(n) || n < min || n > max) return `Between ${min} and ${max}`;
+  return undefined;
+}
+const parseDays = (s: string): number | null => (s.trim() === "" ? null : Number(s.trim()));
 
 /** The retention policy, a dry-run preview of what it would purge now, and the purge log. */
 export function RetentionPanel() {
@@ -71,15 +78,22 @@ export function RetentionPanel() {
   const { versions, reports, audit, keepBaseline, keepLatest } = form;
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
+  // No silent normalisation: an out-of-range field shows its error and blocks Save.
+  const errors = {
+    versions: rangeError(versions, 1, MAX_DAYS),
+    reports: rangeError(reports, 1, MAX_DAYS),
+    audit: rangeError(audit, 30, MAX_DAYS),
+    keepLatest: rangeError(keepLatest, 0, MAX_KEEP_LATEST, true),
+  };
+  const invalid = Object.values(errors).some(Boolean);
   const draft: RetentionPolicy = {
     versions_days: parseDays(versions),
     reports_days: parseDays(reports),
     audit_days: parseDays(audit),
     keep_baseline: keepBaseline,
-    keep_latest_per_system: Math.max(0, Math.min(100, Number(keepLatest) || 0)),
+    keep_latest_per_system: Number(keepLatest.trim()),
   };
-  const auditTooShort = draft.audit_days !== null && draft.audit_days < 30;
-  const dirty = !!policy && JSON.stringify(draft) !== JSON.stringify(policy);
+  const dirty = !!policy && !invalid && JSON.stringify(draft) !== JSON.stringify(policy);
 
   const save = useMutation({
     mutationFn: () => updateRetention(draft),
@@ -126,7 +140,7 @@ export function RetentionPanel() {
     if (enforcement.enforced) return "Purges are enforced. The nightly task deletes what the policy selects.";
     const until = enforcement.dry_run_until
       ? `Dry run until ${formatDate(enforcement.dry_run_until, "date")}`
-      : "Dry run until seven days after the first nightly preview";
+      : "Dry run until seven days after the first nightly run under this policy";
     return enforcement.flag_enabled
       ? `${until}. The nightly task writes dry-run rows to the purge log only.`
       : `${until}; set MERIDIAN_PURGE_ENABLED to enforce.`;
@@ -141,24 +155,25 @@ export function RetentionPanel() {
           <>
             {statusLine ? (
               <Notice tone={enforcement?.enforced ? "warning" : "info"}>
-                {statusLine}
+                <span>{statusLine}</span>
+                {enforcement?.enforced ? null : <p className="m-text-meta mt-1">Dry run restarts when the policy changes</p>}
               </Notice>
             ) : null}
             <div className="flex flex-wrap items-end gap-3">
-              <Field label="Keep runs for (days)">
-                <Input type="number" min={1} max={3650} inputMode="numeric" placeholder="For ever" value={versions} onChange={(e) => set({ versions: e.target.value })} />
+              <Field label="Keep runs for (days)" error={errors.versions}>
+                <Input type="number" min={1} max={MAX_DAYS} inputMode="numeric" placeholder="For ever" value={versions} onChange={(e) => set({ versions: e.target.value })} />
               </Field>
-              <Field label="Keep reports for (days)">
-                <Input type="number" min={1} max={3650} inputMode="numeric" placeholder="For ever" value={reports} onChange={(e) => set({ reports: e.target.value })} />
+              <Field label="Keep reports for (days)" error={errors.reports}>
+                <Input type="number" min={1} max={MAX_DAYS} inputMode="numeric" placeholder="For ever" value={reports} onChange={(e) => set({ reports: e.target.value })} />
               </Field>
-              <Field label="Keep audit rows for (days)" error={auditTooShort ? "At least 30 days" : undefined}>
-                <Input type="number" min={30} max={3650} inputMode="numeric" placeholder="For ever" value={audit} onChange={(e) => set({ audit: e.target.value })} />
+              <Field label="Keep audit rows for (days)" error={errors.audit}>
+                <Input type="number" min={30} max={MAX_DAYS} inputMode="numeric" placeholder="For ever" value={audit} onChange={(e) => set({ audit: e.target.value })} />
               </Field>
-              <Field label="Keep latest per system">
-                <Input type="number" min={0} max={100} inputMode="numeric" value={keepLatest} onChange={(e) => set({ keepLatest: e.target.value })} />
+              <Field label="Keep latest per system" error={errors.keepLatest}>
+                <Input type="number" min={0} max={MAX_KEEP_LATEST} inputMode="numeric" value={keepLatest} onChange={(e) => set({ keepLatest: e.target.value })} />
               </Field>
               <Switch checked={keepBaseline} onCheckedChange={(v) => set({ keepBaseline: v })} label="Keep the baseline run" />
-              <Button disabled={!dirty || auditTooShort} pending={save.isPending} onClick={() => save.mutate()}>Save policy</Button>
+              <Button disabled={!dirty || invalid} pending={save.isPending} onClick={() => save.mutate()}>Save policy</Button>
             </div>
             <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
               Only archived runs are purged, never the baseline nor the newest runs of each system. Golden records, rules, glossary terms and contracts are never touched.
