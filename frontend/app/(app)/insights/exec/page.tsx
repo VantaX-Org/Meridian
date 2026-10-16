@@ -9,7 +9,7 @@ import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
-import { deltaSentence, formatModuleName, labelOf, plural } from "@/lib/format";
+import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -114,7 +114,7 @@ export default function ExecPage() {
       insight={{
         hero: true,
         lead: dqs && typeof dqs.composite === "number" ? (
-          <div className="grid items-end gap-x-8 gap-y-4 sm:grid-cols-[auto_1fr]">
+          <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
             <div style={{ minWidth: 200, width: "max-content", maxWidth: 360 }}>
               <Stat
                 hero
@@ -127,12 +127,12 @@ export default function ExecPage() {
                 delta={dqs.delta != null ? <Delta hero value={dqs.delta} /> : undefined}
               />
             </div>
-            <div className="flex min-w-0 flex-col gap-1" style={{ maxWidth: "48ch" }}>
+            <div className="flex min-w-0 flex-1 flex-col gap-1" style={{ minWidth: "min(100%, 16rem)", maxWidth: "48ch" }}>
               <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
                 {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
               </span>
               <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
-                {dqs.capped && dqs.cap_reason ? `Capped: ${dqs.cap_reason}` : deltaSentence(dqs.delta)}
+                {dqs.capped && dqs.cap_reason ? `Capped: ${shortCapReason(dqs.cap_reason)}` : deltaSentence(dqs.delta)}
               </span>
             </div>
           </div>

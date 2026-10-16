@@ -11,7 +11,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
 import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
-import { formatDate, formatModuleName, plural } from "@/lib/format";
+import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
@@ -35,6 +35,8 @@ export default function ReportsPage() {
   // Only runs of the same lineage (same system, or uploads of the same objects) can be compared.
   const currentRun = runs.find((r) => r.id === versionId);
   const comparableRuns = runs.filter((v) => v.id !== versionId && (!currentRun || lineageOf(v) === lineageOf(currentRun)));
+  // Runs that share a label are told apart by date and time.
+  const compareLabels = runOptionLabels(comparableRuns);
   const cmp = compare === NONE ? undefined : compare;
   const mod = module === NONE ? undefined : module;
 
@@ -107,7 +109,7 @@ export default function ReportsPage() {
       }}
       controls={
         <>
-          <Select label="Compare with" value={compare} onValueChange={setCompare} options={[{ value: NONE, label: "No comparison" }, ...comparableRuns.map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))]} />
+          <Select label="Compare with" value={compare} onValueChange={setCompare} options={[{ value: NONE, label: "No comparison" }, ...comparableRuns.map((v) => ({ value: v.id, label: compareLabels.get(v.id) ?? formatDate(v.run_at, "datetime") }))]} />
           <Select label="Object" value={module} onValueChange={setModule} options={[{ value: NONE, label: "All objects" }, ...(heat.data?.rows ?? []).map((r) => ({ value: r.module, label: formatModuleName(r.module) }))]} />
         </>
       }

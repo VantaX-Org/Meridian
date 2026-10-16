@@ -92,6 +92,35 @@ describe("ProgressPage", () => {
     expect(screen.getByText(/1 record fixed, 5 new failures, 9 still failing; 1 rule not in both runs/)).toBeInTheDocument();
   });
 
+  it("knows a run older than the run list: labels, lineage and Compare with never fall back to the previous run", async () => {
+    const summary = { business_partner: { composite_score: 70 } };
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({
+      v1: { id: "bp1a", label: "business_partner_1k", run_at: "2026-10-02T05:17:01Z", dqs_summary: summary },
+      v2: { id: "bp2", label: "business_partner_100k", run_at: "2026-10-16T05:00:00Z", dqs_summary: summary },
+      delta: { business_partner: { v1_score: 70, v2_score: 70, dqs_change: 0 } }, checks: { newly_failing: [], fixed: [], persisting: [] },
+    } as never);
+    vi.spyOn(versionsApi, "compareRecords").mockResolvedValue({ v1: "bp1a", v2: "bp2", totals: { new: 0, resolved: 10521, persisting: 0 }, checks: [] });
+    // bp2 is not in the newest runs the list holds: it is read by id.
+    const getVersion = vi.spyOn(versionsApi, "getVersion").mockResolvedValue(upload("bp2", "business_partner_100k", "2026-10-16T05:00:00Z", ["business_partner"]));
+    mount([
+      upload("co1", "controlling_1k", "2026-10-17T05:00:00Z", ["controlling"]),
+      upload("bp1b", "business_partner_1k", "2026-10-02T05:17:02Z", ["business_partner"]),
+      upload("bp1a", "business_partner_1k", "2026-10-02T05:17:01Z", ["business_partner"]),
+    ]);
+    expect(await screen.findByText("business_partner_100k compared with business_partner_1k")).toBeInTheDocument();
+    expect(getVersion).toHaveBeenCalledWith("bp2");
+    expect(screen.queryByText(/the previous run/)).toBeNull();
+    expect(await screen.findByText("DQS unchanged since business_partner_1k")).toBeInTheDocument();
+    expect(screen.getByText("Unchanged since baseline")).toBeInTheDocument();
+    // Hero numbers carry thousands separators, as the sentences do.
+    expect(screen.getByLabelText("10,521")).toBeInTheDocument();
+    expect(screen.getByText("1 object")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("combobox", { name: "Compare with" }));
+    expect(await screen.findByRole("option", { name: "business_partner_1k, 2 Oct 2026, 05:17:01" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "business_partner_1k, 2 Oct 2026, 05:17:02" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /controlling_1k/ })).toBeNull();
+  });
+
   it("shows a real error with Retry when the comparison fails for another reason", async () => {
     vi.spyOn(versionsApi, "compareVersions").mockRejectedValue(new Error("network error"));
     vi.spyOn(versionsApi, "compareRecords").mockRejectedValue(new Error("network error"));

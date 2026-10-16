@@ -13,14 +13,13 @@ import { getExec, submitInsightFeedback } from "@/lib/api/insights";
 import { getWaves } from "@/lib/api/migration";
 import { getMetrics } from "@/lib/api/stewardship";
 import { getCostModel } from "@/lib/api/settings";
-import { compareVersions, getVersions } from "@/lib/api/versions";
+import { compareVersions } from "@/lib/api/versions";
+import { useRunListWith } from "@/hooks/use-run-list";
 import { formatModuleName } from "@/lib/format";
-import { lineageOf, overallDqs } from "@/lib/runs";
+import { isFinished, lineageOf, overallDqs } from "@/lib/runs";
 import { queryKeys } from "@/lib/query-keys";
 import { buildInsight, sectionOf, type InsightFacts } from "@/lib/route-insight";
 
-const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
-const FAILED = new Set(["failed", "agents_failed"]);
 
 /** The insight header above every (app) page. Layout-level, so no page needs to opt in. */
 export function RouteInsight() {
@@ -29,12 +28,13 @@ export function RouteInsight() {
   const section = sectionOf(pathname);
   const dayOne = useDayOne();
   const { isAdmin } = useRole();
-  const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions(), enabled: !!section });
+  // The shared run list, plus a ?run= older than it read by id, so the previous run of its lineage is found.
+  const { list: versionsQ, versions: allVersions } = useRunListWith(section ? run : undefined);
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, enabled: !!section });
-  const hasRun = (versionsQ.data?.versions ?? []).some((v) => FINISHED.has(v.status));
-  const runId = run ?? (versionsQ.data?.versions ?? []).find((v) => FINISHED.has(v.status))?.id;
+  const hasRun = allVersions.some(isFinished);
+  const runId = run ?? allVersions.find(isFinished)?.id;
   const aggQ = useQuery({ queryKey: ["insight", "aggregate", runId], queryFn: () => getFindingsAggregate(runId), enabled: !!section && hasRun && !!runId });
-  const finished = (versionsQ.data?.versions ?? []).filter((v) => FINISHED.has(v.status));
+  const finished = allVersions.filter(isFinished);
   // Changed cell: per-object movement between this run and the finished run before it in the same lineage
   // (same system, or the same uploaded objects; the list is newest first). Another object's run is never "previous".
   const current = finished.find((v) => v.id === runId);
@@ -92,7 +92,7 @@ export function RouteInsight() {
     systems: (systemsQ.data ?? []).length,
     waves: (wavesQ.data ?? []).length,
     backlog: backlogQ.data?.backlog_total ?? null,
-    running: (versionsQ.data?.versions ?? []).filter((v) => !FINISHED.has(v.status) && !FAILED.has(v.status)).length,
+    running: allVersions.filter((v) => !isFinished(v) && v.status !== "failed").length,
     dayOne: dayOne.step ? { label: dayOne.step.label, href: dayOne.step.href, status: dayOne.step.key === "running" } : undefined,
   };
   const cells = buildInsight(section, facts);

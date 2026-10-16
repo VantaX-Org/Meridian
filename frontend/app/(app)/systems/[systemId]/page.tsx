@@ -34,6 +34,7 @@ import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
+import { runPageHref } from "@/lib/runs";
 import type { SystemModule, SystemType } from "@/types/api";
 import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
 import { PilotTab } from "./pilot-tab";
@@ -316,7 +317,7 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
             <Line
               data={scored.map((v) => ({ x: v.id, label: tickOf.get(v.id), y: Number((meanDqs(v) ?? 0).toFixed(1)), runId: v.id }))}
               label="Score per run"
-              onPointClick={(p) => { if (p.runId) router.push(findingsHref(p.runId)); }}
+              onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }}
             />
           )}
         </Card>

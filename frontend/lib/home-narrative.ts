@@ -25,9 +25,10 @@ function worstFirst(objects: ObjectSummary[]): ObjectSummary[] {
 /** Sentence 1 alone: the overall state, used as the home verdict. */
 export function verdictSentence(objects: ObjectSummary[]): string {
   const failing = objects.filter((o) => o.readiness === "fail");
-  return objects.length === 0
-    ? "No objects have been analysed yet."
-    : `${failing.length} of ${objects.length} objects are not ready for go-live.`;
+  if (objects.length === 0) return "No objects have been analysed yet.";
+  if (failing.length === 0) return objects.length === 1 ? "The one object is ready for go-live." : `All ${objects.length.toLocaleString("en-US")} objects are ready for go-live.`;
+  const total = `${objects.length.toLocaleString("en-US")} ${objects.length === 1 ? "object" : "objects"}`;
+  return `${failing.length.toLocaleString("en-US")} of ${total} ${failing.length === 1 ? "is" : "are"} not ready for go-live.`;
 }
 
 export function buildNarrative({ role, objects }: NarrativeInput): string {

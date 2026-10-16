@@ -62,6 +62,24 @@ describe("OperationsPage", () => {
     expect(screen.getByText("1 stage is holding work")).toBeInTheDocument();
   });
 
+  it("shows the parts that loaded while the slow operational query is still on its way, never the whole-page timeout", async () => {
+    vi.spyOn(analyticsApi, "getOperational").mockReturnValue(new Promise(() => {}));
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
+    vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({
+      sprints: [{ sprint_number: 1, name: "Sprint 1", total_effort_hours: 12, records_fixed: 40, critical_cleared: 2, dqs_now: 70, dqs_projected: 74, estimated_cost: null, currency: "ZAR" }],
+      total_actions: 3,
+    } as never);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><OperationsPage /></QueryClientProvider>);
+    expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
+    expect(screen.getAllByText("Team member").length).toBeGreaterThan(0);
+    // The cards fed by the slow query hold a skeleton of their own; the page frame is not in its loading or error state.
+    expect(screen.getByText("Throughput and capacity")).toBeInTheDocument();
+    expect(screen.queryByText("This is taking longer than expected.")).toBeNull();
+    expect(screen.queryByText("Processed")).toBeNull();
+  });
+
   it("says stewards are short when the queue outgrows the team, and hides the top rule until something is processed", async () => {
     vi.spyOn(analyticsApi, "getOperational").mockResolvedValue({
       kpis: {

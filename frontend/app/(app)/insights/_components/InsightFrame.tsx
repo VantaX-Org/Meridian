@@ -4,21 +4,18 @@
 // tabs), the four-sentence InsightHeader, then the cards. The spine is owned here so no page can
 // drop a piece of it.
 import type { ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
-import { getVersions } from "@/lib/api/versions";
+import { useRunListWith } from "@/hooks/use-run-list";
 import { formatDate } from "@/lib/format";
-import { queryKeys } from "@/lib/query-keys";
 import { InsightActions } from "./InsightActions";
 import { InsightTabs } from "./InsightViews";
 
 export { formatMoney } from "@/lib/format";
 
-/** Human label for a run id from the run list the shell already loads, never the raw id. */
+/** Human label for a run id from the run list the shell already loads (or the run read by id), never the raw id. */
 export function useRunLabel(versionId?: string | null): string | undefined {
-  const { data } = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
-  const v = data?.versions.find((x) => x.id === versionId);
+  const { run: v } = useRunListWith(versionId);
   return v ? v.label || formatDate(v.run_at, "datetime") : undefined;
 }
 

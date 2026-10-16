@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Button, Card, Skeleton } from "@/design";
+import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { apiErrorMessage } from "@/lib/error";
 
 /**
@@ -19,9 +20,16 @@ export function Section({
   query: { isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown };
   children: ReactNode;
 }) {
+  // A card whose query never answers offers Retry after the shared timeout, like the page frame does.
+  const stuck = useLoadingTimeout(query.isLoading);
   return (
     <Card title={title} meta={meta} actions={actions}>
-      {query.isLoading ? (
+      {query.isLoading && stuck ? (
+        <div role="alert" className="flex items-center gap-3 m-text-body">
+          <span>{`${title} is taking longer than expected.`}</span>
+          <Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button>
+        </div>
+      ) : query.isLoading ? (
         <div aria-busy="true"><Skeleton height={height} /></div>
       ) : query.isError ? (
         <div role="alert" className="flex items-center gap-3 m-text-body">

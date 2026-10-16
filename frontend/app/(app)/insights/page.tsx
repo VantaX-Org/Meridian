@@ -17,7 +17,7 @@ import {
 import { getS4Readiness } from "@/lib/api/migration";
 import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { deltaSentence, formatDate, formatModuleName, labelOf, plural, trendSentence } from "@/lib/format";
+import { deltaSentence, formatDate, formatModuleName, labelOf, plural, shortCapReason, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
@@ -105,7 +105,7 @@ export default function InsightsOverviewPage() {
         hero: true,
         loading,
         lead: (
-          <div className="grid items-end gap-x-8 gap-y-4 sm:grid-cols-[auto_1fr]">
+          <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
             <div style={{ minWidth: 200, width: "max-content", maxWidth: 360 }}>
               <Stat
                 hero
@@ -117,11 +117,11 @@ export default function InsightsOverviewPage() {
                 versionId={run}
                 href={withScope("/insights/trends", { run })}
                 tone={o?.dqs.tier === "go" ? "go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "no_go" ? "no-go" : undefined}
-                hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ?? "critical failures"}` : undefined}
+                hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
                 delta={o?.dqs.delta != null ? <Delta hero value={o.dqs.delta} /> : undefined}
               />
             </div>
-            <div className="flex min-w-0 flex-col gap-1" style={{ maxWidth: "48ch" }}>
+            <div className="flex min-w-0 flex-1 flex-col gap-1" style={{ minWidth: "min(100%, 16rem)", maxWidth: "48ch" }}>
               <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : loading ? "Scoring" : "Not scored yet"}
               </span>
@@ -132,7 +132,7 @@ export default function InsightsOverviewPage() {
           </div>
         ),
         stats: [
-          { label: "Blockers", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
+          { label: "Blocking gaps", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
           { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ source: "rule", confidence: "high" }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
             label: "Value at risk, worst L1",
