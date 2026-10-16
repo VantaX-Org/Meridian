@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, Stat, toneOfTier, type ChartPoint,
+  Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, Skeleton, Stat, toneOfTier, type ChartPoint,
   type ExportOption, type HeatmapCell,
 } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -117,14 +117,21 @@ export default function InsightsOverviewPage() {
                 delta={o?.dqs.delta != null ? <Delta hero value={o.dqs.delta} /> : undefined}
               />
             </div>
+            {loading && !o ? (
+              <div aria-hidden className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "48ch" }}>
+                <Skeleton hero width="70%" height={28} />
+                <Skeleton hero width="50%" height={14} />
+              </div>
+            ) : (
             <div className="flex min-w-0 flex-col gap-1" style={{ maxWidth: "48ch" }}>
               <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
-                {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : loading ? "Scoring" : "Not scored yet"}
+                {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : "Not scored yet"}
               </span>
               <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
                 {o ? `${o.blockers.count} blocking ${o.blockers.count === 1 ? "gap" : "gaps"} across ${o.blockers.waves} ${o.blockers.waves === 1 ? "wave" : "waves"}` : " "}
               </span>
             </div>
+            )}
           </div>
         ),
         stats: [
