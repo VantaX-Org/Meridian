@@ -43,3 +43,20 @@ def test_no_shipped_sidecar_repeats_a_hand_written_predicate():
             if rule.get("fail_when") and _predicate(rule) in hand.get(home, set()):
                 clashes.append(f"{path.name}: {rule.get('id')}")
     assert clashes == []
+
+
+def test_a_null_guard_on_the_compared_field_is_the_same_predicate():
+    guarded = {"check_class": "cross_field_check",
+               "fail_when": "`T.AMT`.notna() & (`T.AMT` < 0)"}
+    bare = {"check_class": "cross_field_check", "fail_when": "`T.AMT` < 0"}
+    assert _predicate(guarded) == _predicate(bare)
+    both = {"check_class": "cross_field_check",
+            "fail_when": "`T.S`.notna() & `T.E`.notna() & (`T.S` > `T.E`)"}
+    assert _predicate(both) == _predicate({"check_class": "cross_field_check", "fail_when": "`T.S` > `T.E`"})
+
+
+def test_a_guard_on_another_field_changes_the_predicate():
+    other = {"check_class": "cross_field_check", "fail_when": "`T.A`.notna() & (`T.B` < 0)"}
+    assert _predicate(other) != _predicate({"check_class": "cross_field_check", "fail_when": "`T.B` < 0"})
+    split = {"check_class": "cross_field_check", "fail_when": "(`T.A` < 0) | (`T.B` < 0)"}
+    assert _predicate(split)[1] == "(`T.A` < 0) | (`T.B` < 0)"

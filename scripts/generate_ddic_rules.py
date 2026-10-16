@@ -232,9 +232,36 @@ def existing_coverage() -> dict[str, set[str]]:
     return covered
 
 
+_NOTNA_GUARD = re.compile(r"(`[^`]+`)\.notna\(\)\s*&\s*")
+
+
+def _strip_outer_parens(expr: str) -> str:
+    """Drop parentheses that wrap the whole expression, and only those."""
+    while expr.startswith("(") and expr.endswith(")"):
+        depth = 0
+        for i, ch in enumerate(expr):
+            depth += ch == "("
+            depth -= ch == ")"
+            if depth == 0 and i < len(expr) - 1:
+                return expr  # the opening paren closes before the end: not a wrapper
+        expr = expr[1:-1].strip()
+    return expr
+
+
 def _predicate(rule: dict) -> tuple[str, str]:
-    """A rule's predicate for duplicate detection: check class plus whitespace-normalised fail_when."""
-    return str(rule.get("check_class") or ""), " ".join(str(rule.get("fail_when") or "").split())
+    """A rule's predicate for duplicate detection: check class plus a normalised fail_when.
+
+    Whitespace is collapsed, and a ``.notna() &`` guard is dropped when its field is compared
+    in the rest of the expression: a comparison with a null never fails a row in
+    cross_field_check, so ``A.notna() & (A < 0)`` selects exactly what ``A < 0`` selects."""
+    expr = " ".join(str(rule.get("fail_when") or "").split())
+    while True:
+        m = _NOTNA_GUARD.match(expr)
+        rest = expr[m.end():] if m else ""
+        if not m or m.group(1) not in rest:
+            break
+        expr = rest
+    return str(rule.get("check_class") or ""), _strip_outer_parens(expr)
 
 
 def existing_predicates() -> dict[tuple[str, str], set[tuple[str, str]]]:
