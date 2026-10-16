@@ -276,19 +276,50 @@ async def upload_file(
     )
 
     # Step 9: Enqueue Celery task
-    from workers.tasks.run_checks import run_checks
-
-    job = run_checks.delay(str(version.id), str(tenant.id), parquet_path)
-    logger.info(f"Enqueued run_checks: job_id={job.id}")
-
+    job_id = await _enqueue_checks(db, tenant.id, version.id, parquet_path, total_rows=len(df))
     logger.info(f"Upload complete: version={version.id}")
 
     # Step 10: Return immediately — all heavy lifting happens in the Celery task.
     return UploadResponse(
         version_id=str(version.id),
-        job_id=job.id,
+        job_id=job_id,
         status="pending",
     )
+
+
+async def _enqueue_checks(db: AsyncSession, tenant_id: uuid.UUID, version_id: uuid.UUID,
+                          parquet_path: str, *, total_rows: int = 0) -> str:
+    """Queue ``run_checks`` for a freshly created version and return the Celery task id.
+
+    The version row is already committed, so a broker failure here must not leave it
+    ``pending`` forever with no job behind it: it is marked ``failed`` with the reason, the
+    progress stream is told, and the caller gets a 503 to retry the upload."""
+    from db.queries.versions import mark_version_failed
+    from workers.tasks.run_checks import run_checks
+
+    try:
+        job = run_checks.delay(str(version_id), str(tenant_id), parquet_path)
+    except Exception as e:
+        logger.exception(f"Failed to enqueue run_checks for version {version_id}: {e}")
+        reason = f"Could not queue the analysis: {type(e).__name__}"
+        try:
+            await mark_version_failed(db, tenant_id, version_id, reason)
+        except Exception:
+            logger.exception(f"Could not mark version {version_id} failed after enqueue failure")
+        try:
+            update_task_progress(str(version_id), status="failed", current_step=reason,
+                                 step_number=STEP_PARSE[0], total_steps=TOTAL_STEPS,
+                                 total_rows=total_rows, error=reason)
+            jobs.finish_job(str(tenant_id), str(version_id), "failed", error=reason)
+        except Exception:
+            logger.exception(f"Could not publish enqueue failure for version {version_id}")
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "queue_unavailable",
+                    "detail": "The analysis queue is unavailable. The upload was stored; please try again shortly."},
+        )
+    logger.info(f"Enqueued run_checks: job_id={job.id}")
+    return job.id
 
 
 # ── Security helpers ──────────────────────────────────────────────────────────
