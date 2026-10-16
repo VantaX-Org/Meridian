@@ -1518,22 +1518,6 @@ rules:
     record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
       total hours {LEARNINGCOMPLETION.TOTAL_HOURS}.'
 
-  - field: LEARNINGASSIGNMENT.CLASS_END_DATE
-    check_class: cross_field_check
-    fail_when: '`LEARNINGASSIGNMENT.CLASS_END_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.CLASS_START_DATE`.dt.normalize()'
-    require_populated: true
-    severity: high
-    dimension: consistency
-    message: Class ends before it starts
-    why_it_matters: 'A class end date before the start date is a scheduling data error: the learner''s calendar shows
-      a negative duration, completion tracking counts wrong attendance, and instructor/session reports are unreliable.'
-    rule_authority: best_practice
-    sap_impact: Session duration and attendance reports wrong; completion tracking unreliable.
-    fix_map:
-      __blank__: Correct the class start/end dates in Learning Administration > Classes.
-    record_fix_template: 'Assignment {LEARNINGASSIGNMENT.COURSE_ID}: class ends {LEARNINGASSIGNMENT.CLASS_END_DATE}
-      before it starts ({LEARNINGASSIGNMENT.CLASS_START_DATE}).'
-    id: LMS086
   - field: LEARNINGASSIGNMENT.ITEM_ACTIVE
     check_class: domain_value_check
     severity: medium
