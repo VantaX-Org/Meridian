@@ -326,6 +326,42 @@ ensure_started() {
     fi
 }
 
+# `verify_health` talks to the api, so it passed while nginx was stopped and the site was
+# unreachable. This checks the entry point end to end, from wherever the script is running:
+# the updater container is on the same docker network (alias `nginx`) and the host reaches it
+# on loopback. It reports rather than fails on a deployment whose network layout differs.
+verify_entrypoint() {
+    # Checked by container state, not `dc ps`: compose needs to read .env for `ps`, and this
+    # runs in contexts where it cannot (measured: `open /opt/meridian/docker/.env: permission
+    # denied`), which made `dc ps nginx` print nothing and look like a stopped container.
+    if [[ "$(docker inspect --format '{{.State.Status}}' docker-nginx-1 2>/dev/null)" != "running" ]]; then
+        error "nginx is not running after the update — the site is unreachable even if the api is healthy"
+        return 1
+    fi
+    local code=""
+    for url in http://nginx/health http://127.0.0.1/health; do
+        if command -v curl >/dev/null 2>&1; then
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$url" 2>/dev/null || true)
+        elif command -v python3 >/dev/null 2>&1; then
+            code=$(python3 - "$url" <<'PYEOF' 2>/dev/null || true
+import sys, urllib.request
+try:
+    with urllib.request.urlopen(sys.argv[1], timeout=8) as r:
+        print(r.status)
+except Exception:
+    print("")
+PYEOF
+)
+        fi
+        if [[ "$code" == "200" ]]; then
+            info "Entry point reachable at $url (200) ✓"
+            return 0
+        fi
+    done
+    warn "Could not confirm the entry point over HTTP (last code: '${code:-none}'). nginx reports Up; check it from your network."
+    return 0
+}
+
 verify_health() {
     ensure_started
     # 120s was too tight. The api runs `alembic upgrade head` before it serves, which on this
@@ -336,6 +372,7 @@ verify_health() {
     while [[ $elapsed -lt $timeout ]]; do
         if dc exec -T api curl -sf http://localhost:8000/health 2>/dev/null | grep -q '"status":"ok"'; then
             info "API healthy ✓"
+            verify_entrypoint
             return 0
         fi
         sleep "$interval"
