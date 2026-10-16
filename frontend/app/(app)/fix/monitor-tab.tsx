@@ -45,7 +45,7 @@ export function MonitorTab() {
       />
     );
   }
-  return <div className="flex flex-col gap-4">{items.map((m) => <MonitorCard key={m.scope} item={m} />)}</div>;
+  return <div className="flex flex-col gap-4">{items.map((m) => <MonitorCard key={m.lineage ?? m.scope} item={m} />)}</div>;
 }
 
 function MonitorCard({ item: m }: { item: MonitorItem }) {
