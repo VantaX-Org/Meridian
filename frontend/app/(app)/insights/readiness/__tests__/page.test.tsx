@@ -69,7 +69,7 @@ describe("ReadinessPage", () => {
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: null, threshold: 70, cells: [], configured: false });
     renderWithQuery(<ReadinessPage />);
     await waitFor(() => expect(screen.getByText(/readiness waves not set/i)).toBeInTheDocument());
-    expect(screen.getByText(/settings > alert thresholds/i)).toBeInTheDocument();
+    expect(screen.getByText(/set the migration waves in scoring and alerts/i)).toBeInTheDocument();
   });
 
   it("shows an error state when the request fails", async () => {

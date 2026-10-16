@@ -40,8 +40,10 @@ export default function ProgressPage() {
   const baseline = search.get("baseline") ?? undefined;
   const finding = useFindingOpener(run);
 
-  const cmp = useQuery({ queryKey: ["versions", "compare", run, baseline, module], queryFn: () => compareVersions(baseline, run ?? "", module), enabled: !!run });
   const recs = useQuery({ queryKey: ["versions", "compare-records", run, baseline, module], queryFn: () => compareRecords(run ?? "", baseline, module), enabled: !!run });
+  // /versions/compare needs v1; the records diff resolves the pinned baseline or previous run for us.
+  const v1Id = baseline ?? recs.data?.v1;
+  const cmp = useQuery({ queryKey: ["versions", "compare", run, v1Id, module], queryFn: () => compareVersions(v1Id, run ?? "", module), enabled: !!run && !!v1Id });
   const history = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: 24 }) });
 
   const pin = useMutation({
@@ -89,11 +91,12 @@ export default function ProgressPage() {
   ], []);
 
   const t = recs.data?.totals;
-  const noEarlier = cmp.isError && /earlier run|different systems/i.test(apiErrorMessage(cmp.error));
-  const state: "loading" | "empty" | "error" | undefined = resolving || cmp.isLoading || dayOne.status === "loading"
+  const cmpError = recs.isError ? recs.error : cmp.error;
+  const noEarlier = !!cmpError && /earlier run|different systems/i.test(apiErrorMessage(cmpError));
+  const state: "loading" | "empty" | "error" | undefined = resolving || recs.isLoading || (!!v1Id && cmp.isLoading) || dayOne.status === "loading"
     ? "loading"
     : noEarlier || !run ? "empty"
-      : isListFailure(cmp) ? "error" : undefined;
+      : isListFailure(recs) || isListFailure(cmp) ? "error" : undefined;
 
   const improved = rows.filter((r) => r.change > 0).length;
   const slipped = rows.filter((r) => r.change < 0).length;
@@ -141,11 +144,11 @@ export default function ProgressPage() {
       skeleton={<><CardSkeleton height={240} /><CardSkeleton height={240} /></>}
       emptyProps={{
         title: "Nothing to compare yet",
-        detail: noEarlier ? apiErrorMessage(cmp.error) : dayOne.step?.detail ?? "Progress appears after the second finished run of a system.",
+        detail: noEarlier ? apiErrorMessage(cmpError) : dayOne.step?.detail ?? "Progress appears after the second finished run of a system.",
         ghost: "chart",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
-      errorProps={{ message: apiErrorMessage(cmp.error), onRetry: () => { void cmp.refetch(); void recs.refetch(); } }}
+      errorProps={{ message: apiErrorMessage(cmpError), onRetry: () => { void cmp.refetch(); void recs.refetch(); } }}
     >
       <Card title="Objects since baseline" meta={rows.length ? `${rows.length} objects` : undefined} actions={<Link href={withScope("/objects", { run })} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}>
         {rows.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No object is scored in both runs.</p>

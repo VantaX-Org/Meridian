@@ -110,10 +110,10 @@ export default function OwnersPage() {
       skeleton={<CardSkeleton height={220} />}
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : owners.length === 0 ? "empty" : undefined}
       emptyProps={{
-        title: "No owners scored yet",
-        detail: "Owners appear after the first analysis.",
+        title: "No issues are assigned yet",
+        detail: "Owners are scored on the issues assigned to them, so they appear once issues in the fix queue have an owner.",
         ghost: "list",
-        action: <Button render={<Link href="/inbox">Open inbox</Link>} />,
+        action: <Button render={<Link href="/fix">Open fix queue</Link>} />,
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >

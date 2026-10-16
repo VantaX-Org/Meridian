@@ -69,10 +69,12 @@ describe("InsightsOverviewPage", () => {
     expect(screen.getByText("Four blocking gaps remain.")).toBeInTheDocument();
   });
 
-  it("shows the page error when the overview fails", async () => {
+  it("keeps the other sections when the overview fails", async () => {
     mockAll();
     vi.spyOn(insightsApi, "getOverview").mockRejectedValue(new Error("network error"));
     mount();
-    expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(await screen.findByText(/The score did not load/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(await screen.findByText("No failing fields in this run.")).toBeInTheDocument();
   });
 });
