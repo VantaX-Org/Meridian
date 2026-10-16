@@ -65,10 +65,18 @@ def test_every_field_exists_in_ddic():
 
 
 def test_referential_rules_have_a_check_table():
+    """A referential rule must say what it checks against, from the DDIC or from the rule.
+
+    The point is that the reference is real, not that the DDIC carries it: BSIK.ZTERM has no
+    check table while LFB1.ZTERM carries T052, so a rule on the open item has to declare
+    `reference_table` itself. Both ways satisfy the intent.
+    """
     for r in NEW:
         if r["check_class"] == "referential_check":
             table, name = r["field"].split(".")
-            assert _fields(table)[name].get("check_table") not in (None, "", "*"), r["id"]
+            ddic = _fields(table)[name].get("check_table")
+            declared = r.get("reference_table")
+            assert ddic not in (None, "", "*") or declared, r["id"]
 
 
 def test_templates_never_echo_personal_values():

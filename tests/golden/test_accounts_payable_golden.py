@@ -133,7 +133,11 @@ def _frames() -> TableFrames:
 
 def _live_config(rules) -> dict[str, set[str]]:
     """The system's own check tables, as discovery would read them."""
-    values = {"KTOKK": {"KRED", "CPD"}, "ZTERM": {"0001"}, "ZWELS": {"C", "T"}, "MAHNA": {"0001"},
+    values = {# One key serves the vendor master terms (AP036), the purchasing terms (AP042) and the terms
+              # on the open item itself (AP288), so it must be the union of every term the fixture
+              # posts with. V5's purchasing "9999" stays out on purpose - AP042's seeded defect.
+              "KTOKK": {"KRED", "CPD"}, "ZTERM": {"0001", "ZB10", "ZB14"},
+              "ZWELS": {"C", "T"}, "MAHNA": {"0001"},
               "WAERS": {"ZAR", "EUR", "USD"}, "INCO1": {"EXW", "FCA", "CIP", "DAP"}, "EKORG": {"1000"},
               "EKGRP": {"001", "002"}, "KALSK": {"01"}, "BUKRS": {"1000"}, "LAND1": {"ZA", "DE"},
               "BANKS": {"ZA", "DE"}, "ZAHLS": {"*", "A", "B", "R", "V"}, "ZLSPR": {"*", "A", "B", "R", "V"},  # T008
@@ -147,6 +151,10 @@ def _live_config(rules) -> dict[str, set[str]]:
             key = _with_reference(r, D, {}).get("_reference_key")
             if key:
                 out[key] = values[r["field"].split(".")[1]]
+    # AP288 checks BSIK.ZTERM against T052. The DDIC gives BSIK.ZTERM no check table (LFB1.ZTERM
+    # carries T052, BSIK.ZTERM does not), so the loop above cannot infer it and the rule states
+    # its reference explicitly - the key has to be supplied here by hand.
+    out.setdefault("T052.ZTERM", {"0001", "ZB10", "ZB14"})
     return out
 
 
