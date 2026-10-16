@@ -70,3 +70,50 @@ things that can actually be measured and delivered:
 
 That is a criterion the deployment manager can sign off, and it does not require inventing 600
 rules to match a table count.
+
+## Correction: a per-dimension floor does not work either
+
+The first version of this document recommended "no dimension below a floor". Measuring the
+floor across the 14 in-scope objects kills that proposal too:
+
+| dimension | minimum across the 14 | which object |
+|---|---|---|
+| completeness | 16 | benefits |
+| accuracy | **0** | succession_planning |
+| consistency | 20 | time_attendance |
+| validity | 9 | recruiting_onboarding |
+| uniqueness | **2** | learning_management, time_attendance |
+| timeliness | **1** | compensation |
+| lifecycle | **0** | business_partner, accounts_payable, accounts_receivable |
+| freshness | **0** | business_partner, accounts_payable, accounts_receivable |
+
+**Every one of the 14 objects fails a floor of 5, and every one fails a floor of 3** - including
+material_master, whose own timeliness is 3 and freshness 2. A criterion the baseline cannot meet
+is not a criterion.
+
+Two of those rows are not gaps at all:
+
+- `lifecycle` and `freshness` are not DQS scoring dimensions. `api/services/scoring.py` scores
+  six (completeness, accuracy, consistency, timeliness, uniqueness, validity); lifecycle and
+  freshness are tags a few rules carry. material_master has 25 lifecycle rules and
+  accounts_payable none, yet both score the same dimensions. An empty lifecycle column is
+  invisible to the client's score.
+- `accuracy` is 0 for succession_planning because the 403 on `Successor` blocks the entity its
+  accuracy rules would read. That is the permission, not the rule set.
+
+What is left, once those are excluded, is a small and specific list - and it is the *scored*
+dimensions on the objects the tenant actually serves:
+
+| object | scored dimension below 5 | can it be closed? |
+|---|---|---|
+| business_partner | accuracy 6 | yes |
+| accounts_payable | accuracy 4 | yes |
+| accounts_receivable | accuracy 4 | yes |
+| fi_gl | accuracy 4, uniqueness 3, timeliness 4 | partly (uniqueness on a journal is only meaningful at document grain) |
+| compensation | timeliness 1 | yes |
+| the five unserved SF objects | several | no - the tenant serves no data |
+
+So the honest criterion is narrower than either "rule count parity" or "a floor in every
+dimension": **every scored dimension of every served object carries rules the tenant can
+evaluate.** That is measurable against a real run, and `docs/successfactors-parity.md` already
+records which canonical sources each SF object cannot resolve.
