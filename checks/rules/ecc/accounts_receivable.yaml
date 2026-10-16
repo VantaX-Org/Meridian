@@ -2811,3 +2811,29 @@ rules:
         reverse the original and re-post correctly.
     record_fix_template: Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}
       - zero in both document and local currency.
+  - id: AR270
+    field: BSID.BLART
+    check_class: referential_check
+    severity: high
+    dimension: validity
+    message: Open customer item's document type is not a defined FI document type (T003)
+    why_it_matters: BLART decides the number range, which account types a document may post to,
+      and the reversal behaviour. fi_gl checks it on the document header and accounts_payable on
+      the open vendor item; an open customer item carries the same field and had no rule, so a
+      value loaded from outside the system would leave an item whose document type does not
+      exist. FBL5N then cannot resolve its label and the item has no defined reversal path.
+    rule_authority: sap_hard_constraint
+    sap_impact: The item cannot be reversed or cleared through the standard transaction and its
+      document type does not resolve in FBL5N. Programs that branch on BLART fall back to
+      defaults for it.
+    fix_map:
+      __blank__: BLART is mandatory at posting. A blank value means a corrupt item - raise it with
+        functional support rather than editing the secondary index.
+      __other__: Document type '{invalid_value}' is not in T003. Correct it in the source document,
+        or configure it in SPRO > Financial Accounting > Financial Accounting Global Settings >
+        Document > Document Types (OBA7).
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR}
+      item {BSID.BUZEI}: document type ''{actual_value}'' is not in T003.'
+    s4_area: credit_management
+    s4_impact: warning
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR

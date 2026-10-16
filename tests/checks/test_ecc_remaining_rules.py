@@ -13,7 +13,7 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "ecc"
 # Expected rule counts per module
 EXPECTED_COUNTS = {
     "accounts_payable": 184,
-    "accounts_receivable": 148,
+    "accounts_receivable": 149,
     "asset_accounting": 100,
     "hcm": 117,
     "controlling": 102,
