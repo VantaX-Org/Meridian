@@ -153,7 +153,17 @@ class Dictionary:
                     check_field=fk.get((f["name"], check_table)) or (bundle_f.check_field if bundle_f else None),
                     conversion_exit=f.get("conversion_exit"), lowercase=bool(f.get("lowercase")),
                     fixed_values=fixed, provenance=provenance,
-                    source=f.get("source") or (bundle_f.source if bundle_f else None),
+                    # ``source`` is the field's location in an external system's own API
+                    # ("Entity.property" for SuccessFactors/Ariba/Concur). A canonical table has
+                    # no DDIC to read it from, so a saved snapshot of one carries whatever the
+                    # canonical file said when it was taken — and preferring it here froze that
+                    # mapping for the life of the system. A corrected canonical source then never
+                    # reached extraction: the stale snapshot kept selecting an entity the tenant
+                    # does not serve, and the module's rules silently went unevaluated. The
+                    # canonical file is the authority for a canonical table; the snapshot is the
+                    # authority only for the DDIC of an ABAP one (where this is null anyway).
+                    source=(bundle_f.source if bundle_f is not None and bundle_f.source
+                            else f.get("source")),
                     picklist=f.get("picklist") or (bundle_f.picklist if bundle_f else None),
                 )
             tables[name] = Table(

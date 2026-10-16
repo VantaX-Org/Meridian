@@ -113,6 +113,38 @@ def _row_to_dict(row) -> dict:
     return dict(row._mapping) if row else {}
 
 
+# ── the worklist total ────────────────────────────────────────────────────────
+
+# Exact COUNT(*) per filter, held briefly. Keyed by the SQL predicate plus the filter
+# values, so each distinct filter the UI offers caches independently.
+_TOTAL_TTL_S = 30.0
+_TOTAL_CACHE: dict[tuple, tuple[float, int]] = {}
+_TOTAL_CACHE_MAX = 64
+
+
+def _total_key(where: str, params: dict) -> tuple:
+    return (where, tuple(sorted((k, str(v)) for k, v in params.items() if k != "tid")))
+
+
+def _cached_queue_total(where: str, params: dict) -> Optional[int]:
+    import time
+    hit = _TOTAL_CACHE.get(_total_key(where, params))
+    if hit is None:
+        return None
+    stored_at, value = hit
+    if time.monotonic() - stored_at > _TOTAL_TTL_S:
+        _TOTAL_CACHE.pop(_total_key(where, params), None)
+        return None
+    return value
+
+
+def _store_queue_total(where: str, params: dict, total: int) -> None:
+    import time
+    if len(_TOTAL_CACHE) >= _TOTAL_CACHE_MAX:  # bounded: never a per-filter memory leak
+        _TOTAL_CACHE.clear()
+    _TOTAL_CACHE[_total_key(where, params)] = (time.monotonic(), int(total or 0))
+
+
 # ── GET /api/v1/cleaning/queue ────────────────────────────────────────────────
 
 
@@ -151,10 +183,21 @@ async def list_cleaning_queue(
 
     where = " AND ".join(where_clauses)
 
-    count_result = await db.execute(
-        text(f"SELECT COUNT(*) FROM cleaning_queue WHERE {where}"), params
-    )
-    total = count_result.scalar()
+    # The list itself is an index scan that stops after one page; an exact COUNT(*) of the
+    # same predicate is not — it walks every matching index entry. On the Komatsu
+    # deployment that is 1.59 M rows and ~380 ms, paid on every request for a screen the
+    # user pages through, purely to render "N of total". Exact counts are cached for
+    # _TOTAL_TTL_S per distinct filter (a paging session reuses one), which keeps the
+    # displayed total honest while removing the repeated scan; the count is not held
+    # across a write, so a mutation is visible on the next request at worst _TOTAL_TTL_S
+    # later. Empty/absent filters are the common case and share one key.
+    total = _cached_queue_total(where, params)
+    if total is None:
+        count_result = await db.execute(
+            text(f"SELECT COUNT(*) FROM cleaning_queue WHERE {where}"), params
+        )
+        total = count_result.scalar()
+        _store_queue_total(where, params, total)
 
     params["limit"] = per_page
     params["offset"] = (page - 1) * per_page

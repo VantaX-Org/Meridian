@@ -106,10 +106,24 @@ async def list_learned(status: Literal["pending", "approved", "rejected"] = Quer
 
 
 @router.post("/learned-rules/mine", status_code=202, dependencies=[Depends(require_permission("manage_rules"))])
-async def mine(body: Mine, tenant: Tenant = Depends(get_tenant)) -> dict:
-    from workers.tasks.mining.orchestrator import run_mining_for_version
-    run_mining_for_version.delay(str(tenant.id), str(body.version_id), include=["house_rules"])
-    return {"queued": True}
+async def mine(body: Mine, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Queue house-rule mining over the version's own module datasets. 409 when the version
+    has nothing to mine from (no dataset stored, or no modules), rather than a 202 for a
+    job that would dispatch nothing."""
+    from workers.tasks.mining.orchestrator import mining_targets, run_mining_for_version
+
+    await _rls(db, tenant)
+    row = (await db.execute(text("SELECT metadata FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+                            {"v": body.version_id, "t": tenant.id})).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    targets = mining_targets(row[0])
+    if not targets:
+        raise HTTPException(status_code=409, detail="This version has no stored module dataset to mine; "
+                                                    "run an analysis of an upload or extraction first.")
+    modules = sorted({m for m, _ in targets})
+    run_mining_for_version.delay(str(tenant.id), str(body.version_id), modules=modules, include=["house_rules"])
+    return {"queued": True, "modules": modules}
 
 
 @router.post("/learned-rules/{pid}/approve", dependencies=[Depends(require_permission("approve"))])

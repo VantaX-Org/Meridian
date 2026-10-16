@@ -96,6 +96,8 @@ async def stream_events(version_id: str, tenant: Tenant = Depends(get_tenant)):
     automatically when a ``complete``, ``error``, or ``cancelled`` event
     is received.
     """
+    # No DB dependency here, on purpose: a stream must hold a Redis subscription only, never
+    # a pooled Postgres connection (see api/routes/jobs.py:stream_jobs).
     channel = f"events:{tenant.id}:{version_id}"
 
     return StreamingResponse(

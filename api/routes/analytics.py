@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import has_permission
+from api.services.version_status import FINISHED, finished_sql
 from api.services.analytics_engine import (
     planner_config,
     BusinessImpactAnalytics,
@@ -86,6 +87,33 @@ async def _dqs_history_daily(db: AsyncSession, tenant_id, module_id: Optional[st
     return [_agg_row_to_dict(r) for r in result.mappings().all()]
 
 
+DQS_HISTORY_EXTENT_SQL = """
+    SELECT (SELECT COUNT(*) FROM analysis_versions v
+             WHERE v.tenant_id = :tid AND {finished} {version_filter}) AS runs_seen,
+           COUNT(DISTINCT (recorded_at AT TIME ZONE 'UTC')::date) AS days_seen
+    FROM dqs_history
+    WHERE tenant_id = :tid
+    {module_filter}
+"""
+
+
+async def _dqs_history_extent(db: AsyncSession, tenant_id, module_id: Optional[str] = None) -> tuple[int, int]:
+    """How many finished runs exist and how many distinct UTC days the DQS history holds.
+
+    ``dqs_history`` keeps one row per system, module and day, so runs are counted on
+    ``analysis_versions`` (a run lists its modules in ``metadata.modules``)."""
+    params = {"tid": str(tenant_id)}
+    module_filter = version_filter = ""
+    if module_id:
+        module_filter = "AND module_id = :module_id"
+        version_filter = "AND jsonb_exists(COALESCE(v.metadata -> 'modules', '[]'::jsonb), :module_id)"
+        params["module_id"] = module_id
+    sql = DQS_HISTORY_EXTENT_SQL.format(finished=finished_sql("v.status"), module_filter=module_filter,
+                                        version_filter=version_filter)
+    row = (await db.execute(text(sql), params)).fetchone()
+    return (int(row[0] or 0), int(row[1] or 0)) if row else (0, 0)
+
+
 # ── 1. GET /analytics/predictive ─────────────────────────────────────────────
 
 
@@ -95,20 +123,31 @@ async def get_predictive_analytics(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """DQS forecasting with early warnings."""
+    """DQS forecasting with early warnings.
+
+    A module is forecast once it has scores on three different days (one point per
+    module and UTC day; same-day runs collapse into one). With fewer, ``forecasts`` is
+    empty and ``reason`` says why: ``no_history`` (no run has scored yet) or
+    ``needs_three_days``. ``runs_seen`` and ``days_seen`` count the whole history
+    (or the one module when ``module_id`` is given) so the page can show them."""
     await _set_tenant(db, tenant)
 
     history = await _dqs_history_daily(db, tenant.id, module_id)
+    runs_seen, days_seen = await _dqs_history_extent(db, tenant.id, module_id)
 
     if not history:
         logger.warning("No DQS history for tenant %s — returning empty forecasts", tenant.id)
-        return {"forecasts": [], "early_warnings": []}
+        return {"forecasts": [], "early_warnings": [], "reason": "no_history",
+                "runs_seen": runs_seen, "days_seen": days_seen}
 
     forecasts = predictive.forecast_dqs(history)
     thresholds = {}  # Could load from tenant.alert_thresholds
     warnings = predictive.generate_early_warnings(forecasts, thresholds)
 
-    return {"forecasts": forecasts, "early_warnings": warnings}
+    out = {"forecasts": forecasts, "early_warnings": warnings, "runs_seen": runs_seen, "days_seen": days_seen}
+    if not forecasts:
+        out["reason"] = "needs_three_days"
+    return out
 
 
 # ── 2. GET /analytics/prescriptive ───────────────────────────────────────────
@@ -127,7 +166,7 @@ async def get_prescriptive_analytics(
     # Load latest version findings
     latest_version = await db.execute(
         select(AnalysisVersion)
-        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status == "complete")
+        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
         .order_by(AnalysisVersion.run_at.desc())
         .limit(1)
     )
@@ -209,7 +248,7 @@ async def get_impact_analytics(
     else:
         latest = await db.execute(
             select(AnalysisVersion)
-            .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status == "complete")
+            .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
             .order_by(AnalysisVersion.run_at.desc())
             .limit(1)
         )
@@ -454,7 +493,7 @@ async def get_sprints(
     # Reuse prescriptive logic
     latest = await db.execute(
         select(AnalysisVersion)
-        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status == "complete")
+        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
         .order_by(AnalysisVersion.run_at.desc())
         .limit(1)
     )

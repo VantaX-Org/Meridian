@@ -38,3 +38,13 @@ def test_volume_and_schema():
     v = evaluate_schema({"version": 2, "BU_TYPE": {"mandatory": True, "allowed_values": ["1", "2"]}},
                         [("P1", {"BU_TYPE": "1"}), ("P2", {"BU_TYPE": ""}), ("P3", {"BU_TYPE": "9"})])
     assert [(x["record"], x["reason"]) for x in v] == [("P2", "mandatory field empty"), ("P3", "value '9' not allowed")]
+
+
+def test_partial_run_only_counts_the_modules_it_scored():
+    from api.services.contract_compliance import _scored_modules
+
+    meta = {"modules": ["material_master", "accounts_payable"],
+            "checks_partial": {"completed": ["material_master"], "missing": ["accounts_payable"]}}
+    assert _scored_modules(meta) == ["material_master"]
+    assert _scored_modules({"modules": ["fi_gl"]}) == ["fi_gl"]
+    assert _scored_modules({}) == []
