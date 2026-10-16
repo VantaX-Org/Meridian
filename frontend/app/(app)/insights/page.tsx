@@ -78,10 +78,12 @@ export default function InsightsOverviewPage() {
   const fixHref = (extra: Record<string, string>) => withScope("/fix", { run, ...extra });
 
   const fixColumns: ColumnDef<RuleRow>[] = ruleColumns(run, true);
+  // Only the run scope gates the page; each section follows its own query, so a slow or failed overview
+  // leaves the hero blank with a retry and the other sections still render.
+  const ovFailed = isListFailure(ov);
   const state: "loading" | "empty" | "error" | undefined =
-    resolving || ov.isLoading || dayOne.status === "loading" ? "loading"
-    : isListFailure(ov) ? "error"
-    : !run || !o ? "empty" : undefined;
+    resolving || dayOne.status === "loading" ? "loading"
+    : !run || (ov.isSuccess && !o) ? "empty" : undefined;
   const loading = ov.isLoading;
   const fallback = (s: string) => (loading ? "Loading" : s);
   const nl = o?.narrative ?? [];
@@ -156,9 +158,14 @@ export default function InsightsOverviewPage() {
         ghost: "table",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
-      errorProps={{ message: apiErrorMessage(ov.error), onRetry: () => { void ov.refetch(); void versions.refetch(); } }}
     >
       <div className="grid gap-4 @5xl:grid-cols-12" data-testid="insights-overview">
+        {ovFailed && (
+          <div role="alert" className="@5xl:col-span-12 flex items-center gap-3 m-text-body">
+            <span>{`The score did not load. ${apiErrorMessage(ov.error)}`}</span>
+            <Button variant="secondary" onClick={() => { void ov.refetch(); void versions.refetch(); }}>Retry</Button>
+          </div>
+        )}
         {nl.length > 0 && (
           <div className="@5xl:col-span-12">
             <Card title="Summary">
