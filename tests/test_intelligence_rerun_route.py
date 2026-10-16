@@ -94,7 +94,7 @@ def test_only_completed_versions_are_considered(queued):
     client, db = _client(("v1", "/data/v1.parquet"))
     client.post("/api/v1/config/discover/latest", headers={"X-User-Role": "admin"})
     sql = str(db.stmts[-1])
-    assert "status IN ('complete', 'agents_complete', 'ai_enriched', 'partial')" in sql  # api/services/version_status.py
+    assert "status IN ('complete', 'agents_complete', 'ai_enriched', 'agents_failed', 'partial')" in sql  # api/services/version_status.py
     assert "status = 'completed'" not in sql  # 'completed' is not a real analysis status (they are 'complete', 'agents_complete', ...)
 
 

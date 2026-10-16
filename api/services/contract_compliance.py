@@ -156,6 +156,12 @@ def evaluate_run(session, tenant_id: str, version_id: str) -> list[dict]:
     return results
 
 
+def _scored_modules(meta: dict) -> list[str]:
+    """Modules a run actually scored: a ``partial`` run's ``checks_partial.missing`` never ran."""
+    missing = set((meta.get("checks_partial") or {}).get("missing") or [])
+    return [m for m in meta.get("modules") or [] if m not in missing]
+
+
 def evaluate_freshness(session, tenant_id: str, now: datetime | None = None) -> list[dict]:
     """Violation when the newest complete analysis of a contract's modules is older than max_age_hours."""
     now = now or datetime.now(timezone.utc)
@@ -166,7 +172,7 @@ def evaluate_freshness(session, tenant_id: str, now: datetime | None = None) -> 
         max_age = (c.get("freshness_contract") or {}).get("max_age_hours")
         if max_age is None:
             continue
-        match = next((v for v in latest if scope_modules(c, list((v.metadata or {}).get("modules") or []))), None)
+        match = next((v for v in latest if scope_modules(c, _scored_modules(v.metadata or {}))), None)
         age = (now - match.run_at).total_seconds() / 3600 if match else None
         violations = [] if age is not None and age <= float(max_age) else [{
             "type": "freshness", "max_age_hours": float(max_age),

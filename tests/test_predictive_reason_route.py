@@ -31,7 +31,7 @@ class _Db:
 
     async def execute(self, stmt, params=None):
         sql = str(stmt)
-        if "COUNT(DISTINCT recorded_at)" in sql:
+        if "AS runs_seen" in sql:
             return _Res([self.extent])
         if "GROUP BY module_id" in sql:
             return _Res(self.history)

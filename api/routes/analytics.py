@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import has_permission
-from api.services.version_status import FINISHED
+from api.services.version_status import FINISHED, finished_sql
 from api.services.analytics_engine import (
     planner_config,
     BusinessImpactAnalytics,
@@ -88,7 +88,8 @@ async def _dqs_history_daily(db: AsyncSession, tenant_id, module_id: Optional[st
 
 
 DQS_HISTORY_EXTENT_SQL = """
-    SELECT COUNT(DISTINCT recorded_at) AS runs_seen,
+    SELECT (SELECT COUNT(*) FROM analysis_versions v
+             WHERE v.tenant_id = :tid AND {finished} {version_filter}) AS runs_seen,
            COUNT(DISTINCT (recorded_at AT TIME ZONE 'UTC')::date) AS days_seen
     FROM dqs_history
     WHERE tenant_id = :tid
@@ -97,13 +98,19 @@ DQS_HISTORY_EXTENT_SQL = """
 
 
 async def _dqs_history_extent(db: AsyncSession, tenant_id, module_id: Optional[str] = None) -> tuple[int, int]:
-    """How many runs (distinct recording times) and distinct UTC days the DQS history holds."""
+    """How many finished runs exist and how many distinct UTC days the DQS history holds.
+
+    ``dqs_history`` keeps one row per system, module and day, so runs are counted on
+    ``analysis_versions`` (a run lists its modules in ``metadata.modules``)."""
     params = {"tid": str(tenant_id)}
-    module_filter = ""
+    module_filter = version_filter = ""
     if module_id:
         module_filter = "AND module_id = :module_id"
+        version_filter = "AND jsonb_exists(COALESCE(v.metadata -> 'modules', '[]'::jsonb), :module_id)"
         params["module_id"] = module_id
-    row = (await db.execute(text(DQS_HISTORY_EXTENT_SQL.format(module_filter=module_filter)), params)).fetchone()
+    sql = DQS_HISTORY_EXTENT_SQL.format(finished=finished_sql("v.status"), module_filter=module_filter,
+                                        version_filter=version_filter)
+    row = (await db.execute(text(sql), params)).fetchone()
     return (int(row[0] or 0), int(row[1] or 0)) if row else (0, 0)
 
 

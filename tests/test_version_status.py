@@ -1,4 +1,4 @@
-"""Finished runs are ``complete``, ``agents_complete``, ``ai_enriched`` or ``partial``:
+"""Finished runs are ``complete``, ``agents_complete``, ``ai_enriched``, ``agents_failed`` or ``partial``:
 one shared predicate (api/services/version_status.py) in every reader, and
 /versions/compare resolves ``v1`` itself, answering 404 ``no_baseline`` when the
 system has no earlier finished run."""
@@ -16,7 +16,7 @@ from api.services import contract_compliance
 from api.services.version_status import ENDED, FINISHED, finished_sql
 
 ROOT = Path(__file__).resolve().parent.parent
-PREDICATE = "IN ('complete', 'agents_complete', 'ai_enriched', 'partial')"
+PREDICATE = "IN ('complete', 'agents_complete', 'ai_enriched', 'agents_failed', 'partial')"
 
 
 class _Res:
@@ -83,8 +83,8 @@ H = {"X-User-Role": "admin"}
 
 
 def test_predicate_shape():
-    assert FINISHED == ("complete", "agents_complete", "ai_enriched", "partial")
-    assert set(ENDED) == set(FINISHED) | {"failed", "agents_failed"}
+    assert FINISHED == ("complete", "agents_complete", "ai_enriched", "agents_failed", "partial")
+    assert set(ENDED) == set(FINISHED) | {"failed"}
     assert finished_sql() == "status " + PREDICATE
     assert finished_sql("v.status") == "v.status " + PREDICATE
 
