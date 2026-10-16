@@ -16,11 +16,11 @@ EXPECTED_COUNTS = {
     # tests/test_sf_ec_depth_rules2.py DELETED), dropping the live count by 3.
     "employee_central": 460,
     "compensation": 222,  # COMP137 deleted; tombstoned, see tests/test_sf_comp_depth_rules.py DELETED
-    "recruiting_onboarding": 80,
-    "learning_management": 80,
-    "performance_goals": 80,
+    "recruiting_onboarding": 81,
+    "learning_management": 82,
+    "performance_goals": 82,
     "succession_planning": 81,
-    "time_attendance": 80,
+    "time_attendance": 82,
     "benefits": 98,
     "payroll_integration": 265,
 }
@@ -141,12 +141,12 @@ def test_ec_null_check_finds_failures_with_enrichment():
 # ---- Test 5: Total rule count across all SF modules ----
 
 def test_total_sf_rule_count():
-    """Total across all 9 SF modules should be 1446 rules."""
+    """Total across all 9 SF modules should be 1453 rules."""
     total = 0
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 1446, f"Expected 1446 total SF rules, got {total}"
+    assert total == 1453, f"Expected 1453 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----
