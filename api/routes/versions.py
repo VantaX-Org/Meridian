@@ -404,7 +404,9 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
 
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
-    row = (await db.execute(text("SELECT status, metadata->>'dataset_path', metadata->>'system_id', label, metadata->>'purpose' "
+    # Extractions store the data under ``dataset_path``; uploads under ``parquet_path`` (api/routes/upload.py).
+    row = (await db.execute(text("SELECT status, COALESCE(metadata->>'dataset_path', metadata->>'parquet_path'), "
+                                 "metadata->>'system_id', label, metadata->>'purpose' "
                                  "FROM analysis_versions WHERE id = :v"), {"v": vid})).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Version not found")
