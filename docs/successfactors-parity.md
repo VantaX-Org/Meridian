@@ -1,137 +1,92 @@
-# SuccessFactors parity: why coverage is 0–70% (measured, 2026-10-15)
+# SuccessFactors coverage: measured against the tenant (2026-10-16)
 
-The SuccessFactors objects do not reach parity with the ECC ones, and the cause is
-not the rules. Their rule packs hold 80–473 proved rules each, but only 0–227
-evaluate, because the **extraction mapping does not match the tenant's OData API**.
+The SuccessFactors objects do not reach parity with the ECC ones. The cause is in the
+**canonical source map**, not in the rules: their packs are deep and every rule is
+proved, but 126 of the 472 field sources that
+`sap/dictionaries/canonical/successfactors.yaml` declares cannot be resolved against
+this tenant's OData API.
 
-This records the measurement so the next pass does not have to rediscover it.
+## How this was measured
 
-## The measurement
+`sap/dictionaries/canonical/successfactors.yaml` states each field's intended OData
+source as `Entity.property`. `api/services/connectivity_manager.py::_extract_successfactors`
+resolves those sources **against the tenant's own `$metadata`** at extraction time and
+only selects properties the tenant has — it already supports `nav/prop` paths through
+`$expand`, drops a property the API user cannot view, and records what it could not
+read as `unavailable_fields` in the run's coverage metadata. So the extraction path is
+tenant-aware; what is wrong is the map it resolves.
 
-`§ SuccessFactors extractions` in `sap/extraction_registry.py` was validated against
-the tenant's own `$metadata` (`https://api2.successfactors.eu/odata/v2/$metadata`,
-9.7 MB, 818 entity sets):
+Measured by comparing every declared source with the tenant's `$metadata`
+(818 entity sets, captured 2026-10-15) and counting both properties and navigation
+properties:
 
-| | count |
+| | sources |
 |---|---|
-| extraction targets shipped | **37** |
-| fully valid against the tenant | **16** |
-| targets selecting a property the tenant does not expose | **17** |
-| targets naming an entity set the tenant does not serve | **4** |
+| declared in the canonical SF map | 472 |
+| resolvable against this tenant | **346** |
+| unresolvable | **126** |
 
-The four missing entity sets are `BenefitEnrollment`, `EmpPayrollRunResults`,
-`SuccessionNominee` and `LearningHistoryV1` — which is why `benefits`,
-`payroll_integration`, `succession_planning` and `learning_management` cannot
-evaluate at all.
+Reproduce with `scripts/successfactors_parity.py --metadata <captured $metadata>`.
 
-`coverage` in the run metadata already reports this per table
-(`unavailable_fields`, `not_in_system`, `failed`); the run is not silent about it.
+## Where the unresolvable 126 sit
 
-## The three distinct causes
-
-**1. Wrong property names (fixable, mechanical).** The registry guesses camelCase
-names that the canonical dictionary already states exactly. Examples where the
-canonical `source:` is right and the target is wrong:
-
-| target | registry asks for | tenant exposes |
+| table | unresolvable | cause |
 |---|---|---|
-| `JobRequisition` | `requisitionId`, `department`, `location`, `createdDate` | `id`, `department`, `location`, `createdDateTime` |
-| `GoalPlanTemplate` | `goalPlanId`, `goalPlanName`, `category`, `status` | `id`, `name`, `dueDate`, `defaultTemplate` |
-| `JobApplication` | `requisitionId`, `appliedDate`, `lastModifiedDate` | `applicationId`, `candidateId`, `lastModifiedDateTime` |
-| `TimeType` | `name`, `status` | `externalCode`, `name_*`, … |
-| `EmpEmployment` | `employmentStatus`, `hireDate`, `seniorityDate` | not selectable on this entity |
+| `SUCCESSIONCANDIDATE` | 21 | `Successor` is a child entity (403 at top level) and lacks `approvalStatus`, `calibrationDate`, `eligibilityFlag`, …; `NominationTarget` has only `nominationId`/`nominationType`, no `positionCode` |
+| `LEARNINGASSIGNMENT` | 18 | Learning is a separate SF module; `learning.*` is not served as OData |
+| `LEARNINGCOMPLETION` | 13 | same — `learningHistory.*` is not served |
+| `PAYRESULT` | 13 | `payroll_export.*` is not an OData entity; EC Payroll results need the export/upload path |
+| `BENEFITENROLLMENT` | 10 | `BenefitEnrollment` has no entity set in `$metadata` |
+| `JOBOFFER` | 8 | `JobOffer` has no `salary`, `offerId`, `offerDate`, `candidateId`, `jobReqId`, `startDate` |
+| `JOBREQUISITION` | 7 | `department`/`location`/`hiringManager`/`recruiter`/`status`/`title` are navigation or locale paths the entity does not carry |
+| `GOALPLAN` | 5 | `ACTUAL_ACHIEVEMENT`, `CASCADED_FROM`, `COMPLETION_PERCENT`, `GOAL_START_DATE`, `TARGET_DATE` |
+| `COMPINFO`, `PERINFO`, `JOBAPPLICATION`, `EMPEMPLOYMENT`, `TIMESHEET`, `ONBOARDINGCANDIDATEINFO`, … | 3–5 each | one or two properties the tenant does not expose |
 
-**2. Child entities cannot be read at the top level (capability gap).** Some
-canonical sources name a *child* or *dynamic* entity, which OData only serves under
-a parent or per-instance:
+## What was corrected (13 sources, validated)
 
-- `Successor` — the entity type exists with 11 properties (`nomineeUserId`, `rank`,
-  `readiness`, `status`, …), but a top-level read returns **403**, not 404: it is
-  reached under a nomination.
-- `Goal` — not an entity set at all; the entity is `Goal_<planId>` per plan (hence
-  the `Goal_1` entry, which the tenant serves but with 0 rows).
-- `TimeAccountBalance`, `DevelopmentGoal`, `Item` — **404**.
+Only corrections that cannot change a rule's meaning were applied — an entity rename
+with the property name unchanged, or a property differing only by case or punctuation:
 
-**3. Rules read fields no OData property carries (design gap).** Several canonical
-fields map to something that is not a selectable property, so no mapping can fix
-them:
+- **`GOALPLAN`: `Goal.*` → `Goal_1.*`** (11 fields). `Goal` is not an entity set on
+  this tenant; the goals live in `Goal_1`, which does carry `id`, `userId`, `name`,
+  `metric`, `state`, `weight`, `flag`, `lastModified`, `modifier`, `currentOwner`,
+  `category`. This is the substantive win: `performance_goals`' goal-level rules can
+  now resolve 11 of the 16 fields they were missing.
+- **`EMPEMPLOYMENT`/`EMPJOBHIST` `WORK_SCHEDULE`**: `EmpJob.workScheduleCode` →
+  `EmpJob.workscheduleCode` (the tenant's spelling).
+- `EmpJob.workScheduleCode` in `SF_EXTRACTIONS` was synced to match — the registry and
+  the dictionary are deliberately kept in step (see
+  `tests/sap/test_sf_ec_depth_extraction.py`), because this list also drives config
+  sync and a `$select` of a non-existent property returns HTTP 400.
 
-- `Successor.approvalStatus`, `.emergencySuccessor`, `.calibrationDate`,
-  `.eligibilityFlag` do not exist on this tenant's `Successor` (it has `status`,
-  `readiness`, `rank`, `isEmergencyCover`, `nomineeUserId`, …).
-- `JobRequisition.hiringManager.userId`, `.jobReqLocale.jobTitle`,
-  `.recruiter.userId` are navigation paths, not properties.
-- `JobOffer` has no `salary`; `PerPerson` no `placeOfBirth`; `EmpCompensation` no
-  `payGrade`; `EmpJob` no `workScheduleCode`.
-- `NominationTarget` exposes only `nominationId`, `nominationType` — no
-  `positionCode`.
+Deliberately **not** guessed: where a property is genuinely absent (e.g.
+`SUCCESSIONCANDIDATE.NOMINEE_ID ← Successor.userId`, where `Successor` has
+`nomineeUserId`), the source was left alone. A tempting fuzzy match
+(`COMPLETION_PERCENT` → `metric`, `HIRING_MANAGER` → `age`) would have silently
+changed what the rule reads, which is worse than an unevaluated rule.
 
-## How much is actually recoverable (resolved field by field)
+## What this means for handover
 
-Resolving every field the SF rules read to the `Entity.property` the canonical
-dictionary declares, then testing that property against the tenant's `$metadata`
-(`scripts/successfactors_parity.py`), gives the size of the prize:
+ECC objects are at parity and can be baselined. SuccessFactors coverage is **bounded by
+what the tenant serves**, and four objects are bounded hard:
 
-| object | rule fields the tenant can serve | fields no property carries | recoverable |
-|---|---|---|---|
-| `employee_central` | 181 | 9 | **95%** |
-| `compensation` | 73 | 9 | **89%** |
-| `time_attendance` | 33 | 4 | **89%** |
-| `payroll_integration` | 36 | 14 | 72% |
-| `benefits` | 19 | 12 | 61% |
-| `recruiting_onboarding` | 30 | 19 | 61% |
-| `performance_goals` | 18 | 20 | 47% |
-| `succession_planning` | 13 | 21 | 38% |
-| `learning_management` | 3 | 29 | **9%** |
-| **total** | **406** | **137** | **75%** |
-
-So **three quarters of the gap is a mapping correction**, not missing data: the
-tenant serves 406 of the 543 rule-referenced fields, and today's registry reads only
-a fraction of them. `employee_central`, `compensation` and `time_attendance` can
-reach near-parity by mapping alone.
-
-The remaining quarter is concentrated in four tables and cannot be mapped at all:
-
-| table | readable | why |
-|---|---|---|
-| `SUCCESSIONCANDIDATE` | 5 of 26 | `Successor` is a child entity (403 at top level) and lacks `approvalStatus`, `calibrationDate`, `eligibilityFlag`, `emergencySuccessor` |
-| `LEARNINGASSIGNMENT` | 0 of 18 | Learning is a separate SF module; `LearningHistoryV1` is not served |
-| `GOALPLAN` | 3 of 18 | the entity is `Goal_<planId>`, not a fixed set — these fields *are* readable via `Goal_1` (`userId`, `goalId`, `name`, `metric`, `category`, `status`, `weight`, `start`, `due`, …), so this one is a wiring gap rather than missing data |
-| `BENEFITENROLLMENT` | 0 of 10 | `BenefitEnrollment` has no entity set |
-| `PAYRESULT` | 0 of 13 | EC Payroll results need the export/upload path |
-
-Note `GOALPLAN`: all 15 "unusable" fields exist on the tenant's `Goal_1` entity
-(`name`, `metric`, `category`, `status`, `weight`, `userId`, `start`, `due`, `id`,
-`currentOwner`, `modifier`, `lastModified`, …). They are unusable only because the
-canonical dictionary declares them against `Goal`, and the resolver therefore looks
-in the wrong place. That is the clearest single illustration of the drift.
-
-## What this means for the handover
-
-The ECC objects are at parity and can be baselined. **The SuccessFactors objects
-cannot reach ECC-level coverage until the extraction mapping is redesigned against
-the tenant's real API**, and three modules additionally need data the tenant does
-not serve through OData at all:
-
-| module | blocker |
+| object | status |
 |---|---|
-| `learning_management` | Learning is a separate SAP SuccessFactors module (`LearningHistoryV1` not served); needs the Learning OData API or an upload |
-| `time_attendance` | `EmployeeTime` is served (100,826 rows) but `EmployeeTimeSheet`/`EmployeeTimeSheetEntry` return 0; `TimeAccountBalance` is 404 |
-| `benefits` | `BenefitEnrollment` not served; `BenefitEnrollment` has no entity set in `$metadata` |
-| `payroll_integration` | `EmpPayrollRunResults` not served; EC Payroll results need the export/upload path |
-| `performance_goals`, `succession_planning`, `recruiting_onboarding` | child/dynamic entities (`Goal_<planId>`, `Successor`) and navigation-only fields |
+| `learning_management` | 0 of 29 sources resolvable — this tenant does not serve Learning over OData |
+| `benefits` | `BenefitEnrollment` has no entity set |
+| `payroll_integration` | `PAYRESULT` needs the EC Payroll export path |
+| `succession_planning` | `Successor` is a child entity and lacks the fields the rules read |
+| `performance_goals` | improved by the `Goal_1` correction; still bounded by 5 goal fields plus the `FormHeader`/`FormSummarySection` ratings |
+| `employee_central`, `compensation`, `time_attendance` | near-parity — 89–95% of their sources resolve |
 
-## The right next step
+Two of these are decisions for the client, not code: whether their Learning/Benefits/
+Payroll data arrives by export (the upload path exists and is wired), and whether the
+succession rules should be scoped to the fields `Successor` actually carries.
 
-**Derive the extraction targets from the tenant's `$metadata` instead of
-hand-maintaining a second list.** The canonical dictionary already states each
-field's intended `Entity.property` (`sap/dictionaries/canonical/successfactors.yaml`);
-the registry duplicates that by hand and the two have drifted. A generator that
-intersects the canonical map with the tenant's `$metadata`, validated the way the
-audit above was (a property that is not selectable either vanishes silently or, if
-it is not a property at all, fails the whole `$select`), would make this class of
-drift impossible and would make "what can this tenant actually validate" a computed
-answer rather than a guess.
+## The next step, if more parity is wanted
 
-Until then, treat SuccessFactors coverage as **bounded by the mapping, not by the
-rules**, and do not read a low coverage there as a data-quality result.
+Extend the correction beyond case/punctuation to **semantic** renames validated against
+the tenant — `Successor.userId` → `Successor.nomineeUserId`, `Successor.approvalStatus`
+→ `Successor.status`, `NominationTarget.positionCode` → the parent nomination's
+position. Each needs a judgement about whether the tenant property means the same
+thing; that is consultant work, not a script, which is why it is not done here.

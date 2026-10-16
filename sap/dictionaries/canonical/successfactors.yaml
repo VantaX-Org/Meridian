@@ -69,7 +69,7 @@ tables:
       IS_PRIMARY:      {source: EmpEmployment.isPrimary, type: BOOLEAN, verify: true, description: Primary employment (concurrent employment); not in the standard property list}
       ASSIGNMENT_CLASS: {source: EmpEmployment.assignmentClass, type: STRING, length: 128, verify: true, description: 'ST standard, GA global assignment, PH higher duty, ...'}
       PAY_GRADE:       {source: EmpJob.payGrade, type: STRING, length: 128, verify: true, check_table: FOPayGrade, description: Pay grade}
-      WORK_SCHEDULE:   {source: EmpJob.workScheduleCode, type: STRING, length: 128, verify: true, description: Work schedule code}
+      WORK_SCHEDULE:   {source: EmpJob.workscheduleCode, type: STRING, length: 128, verify: true, description: Work schedule code}
       HOLIDAY_CALENDAR: {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true, description: Holiday calendar code}
       TIME_TYPE_PROFILE: {source: EmpJob.timeTypeProfileCode, type: STRING, length: 128, verify: true, description: Time type profile code}
       JOB_END_DATE:    {source: EmpJob.endDate, type: DATE, verify: true, description: Effective end date of the current job record}
@@ -292,25 +292,25 @@ tables:
     source: Goal_<planId>
     keys: [GOAL_ID]
     fields:
-      GOAL_ID:     {source: Goal.id, type: STRING, length: 38}
-      USERID:      {source: Goal.userId, type: STRING, length: 100}
-      GOAL_NAME:   {source: Goal.name, type: STRING, length: 4000}
-      GOAL_METRIC: {source: Goal.metric, type: STRING, length: 4000}
-      GOAL_STATUS: {source: Goal.state, type: STRING, length: 128, verify: true}
-      GOAL_WEIGHT: {source: Goal.weight, type: DECIMAL}
+      GOAL_ID:     {source: Goal_1.id, type: STRING, length: 38}
+      USERID:      {source: Goal_1.userId, type: STRING, length: 100}
+      GOAL_NAME:   {source: Goal_1.name, type: STRING, length: 4000}
+      GOAL_METRIC: {source: Goal_1.metric, type: STRING, length: 4000}
+      GOAL_STATUS: {source: Goal_1.state, type: STRING, length: 128, verify: true}
+      GOAL_WEIGHT: {source: Goal_1.weight, type: DECIMAL}
       TARGET_DATE: {source: Goal.dueDate, type: DATE}
       GOAL_START_DATE:     {source: Goal.startDate, type: DATE, verify: true, description: Goal start date}
-      GOAL_CATEGORY:       {source: Goal.category, type: STRING, length: 128, picklist: goalCategory, verify: true, description: Goal category (individual/team/organizational/development)}
+      GOAL_CATEGORY:       {source: Goal_1.category, type: STRING, length: 128, picklist: goalCategory, verify: true, description: Goal category (individual/team/organizational/development)}
       CASCADED_FROM:       {source: Goal.cascadeParentId, type: STRING, length: 38, verify: true, description: Parent goal this goal was cascaded/aligned from}
       COMPLETION_PERCENT:  {source: Goal.metricAchievement, type: DECIMAL, verify: true, description: Percent of goal achievement recorded against its metric}
       GOAL_PLAN_ID:        {source: GoalPlanTemplate.id, type: INTEGER, verify: true, description: Goal plan (template) the goal belongs to}
       PLAN_START_DATE:     {source: GoalPlanTemplate.startDate, type: DATE, verify: true, description: Goal plan period start}
       PLAN_END_DATE:       {source: GoalPlanTemplate.dueDate, type: DATE, verify: true, description: Goal plan period end (plan due date)}
-      LAST_MODIFIED:       {source: Goal.lastModified, type: DATETIME, verify: true, description: Goal last modified}
-      VISIBILITY_FLAG:     {source: Goal.flag, type: INTEGER, verify: true, description: 0 public / 1 private goal}
+      LAST_MODIFIED:       {source: Goal_1.lastModified, type: DATETIME, verify: true, description: Goal last modified}
+      VISIBILITY_FLAG:     {source: Goal_1.flag, type: INTEGER, verify: true, description: 0 public / 1 private goal}
       ACTUAL_ACHIEVEMENT:  {source: Goal.actualAchievement, type: DECIMAL, verify: true, description: Actual achievement recorded against the metric}
-      CURRENT_OWNER:       {source: Goal.currentOwner, type: STRING, length: 100, verify: true, description: User currently owning the goal}
-      MODIFIER:            {source: Goal.modifier, type: STRING, length: 100, verify: true, description: User who last modified the goal}
+      CURRENT_OWNER:       {source: Goal_1.currentOwner, type: STRING, length: 100, verify: true, description: User currently owning the goal}
+      MODIFIER:            {source: Goal_1.modifier, type: STRING, length: 100, verify: true, description: User who last modified the goal}
 
   PMREVIEWRESULT:
     description: Performance review forms
@@ -577,7 +577,7 @@ tables:
       TIMEZONE:     {source: EmpJob.timezone, type: STRING, length: 128, verify: true}
       COUNTRY_OF_COMPANY: {source: EmpJob.countryOfCompany, type: STRING, length: 128, verify: true}
       IS_FULLTIME:  {source: EmpJob.isFulltimeEmployee, type: BOOLEAN, verify: true}
-      WORK_SCHEDULE: {source: EmpJob.workScheduleCode, type: STRING, length: 128, verify: true}
+      WORK_SCHEDULE: {source: EmpJob.workscheduleCode, type: STRING, length: 128, verify: true}
       HOLIDAY_CALENDAR: {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true}
       TIME_TYPE_PROFILE: {source: EmpJob.timeTypeProfileCode, type: STRING, length: 128, verify: true}
 
