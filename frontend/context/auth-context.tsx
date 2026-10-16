@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { isAxiosError } from "axios";
 import apiClient from "@/lib/api/client";
 import { clearLocalPreferences } from "@/lib/preferences";
 
@@ -18,6 +19,13 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   mustChangePassword: boolean;
+  /**
+   * Set when the stored session could not be checked for a reason other than being signed out (a 5xx or
+   * a network failure). The token is kept so a retry can succeed; only a 401 signs the user out.
+   */
+  error: string | null;
+  /** Re-checks the stored session after an `error`. */
+  retry: () => void;
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
   /** Rotate the signed-in user's password and clear the
@@ -57,24 +65,42 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
-  // On mount, check for stored token and validate it
+  // On mount (and on retry), check for a stored token and validate it. A 401 means the session is over
+  // and the token goes; any other failure keeps it, since the server, not the session, is the problem.
   useEffect(() => {
+    let cancelled = false;
     const stored = localStorage.getItem(TOKEN_KEY);
     const validate = stored
       ? apiClient
           .get("/api/v1/auth/me", { headers: { Authorization: `Bearer ${stored}` } })
           .then((res) => {
+            if (cancelled) return;
             setToken(stored);
             setUser(res.data.user);
             setMustChangePassword(Boolean(res.data.must_change_password));
           })
-          .catch(() => {
-            localStorage.removeItem(TOKEN_KEY);
-            setSessionCookie(false);
+          .catch((e: unknown) => {
+            if (cancelled) return;
+            if (isAxiosError(e) && e.response?.status === 401) {
+              localStorage.removeItem(TOKEN_KEY);
+              setSessionCookie(false);
+              return;
+            }
+            const status = isAxiosError(e) ? e.response?.status : undefined;
+            setError(status ? `The server answered ${status} while checking your session.` : "Could not reach the server to check your session.");
           })
       : Promise.resolve();
-    validate.finally(() => setIsLoading(false));
+    validate.finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [attempt]);
+
+  const retry = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+    setAttempt((n) => n + 1);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -112,7 +138,7 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isLoading, mustChangePassword, login, logout, changePassword }}
+      value={{ user, token, isLoading, mustChangePassword, error, retry, login, logout, changePassword }}
     >
       {children}
     </AuthContext.Provider>
