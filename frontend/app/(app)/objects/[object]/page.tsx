@@ -438,7 +438,8 @@ export default function ObjectDetailPage() {
   const object = params.object;
   const run = search.get("run") ?? "";
   const tab = search.get("tab") ?? "overview";
-  const checkId = search.get("check_id") ?? "";
+  // `check` is the shared drill parameter (rule tables link with it); `check_id` is the older spelling.
+  const checkId = search.get("check") ?? search.get("check_id") ?? "";
 
   const setTab = (next: string) => {
     const params = new URLSearchParams(search.toString());

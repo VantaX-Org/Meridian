@@ -77,6 +77,20 @@ describe("system detail page", () => {
     expect(box).not.toBeChecked();
   });
 
+  it("writes the system type as its product name and says runs come from uploads when nothing was extracted", async () => {
+    mockHappyPath();
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText(/ECC, PRD/)).toBeInTheDocument());
+    expect(screen.queryByText(/Ecc/)).toBeNull();
+    expect(screen.getAllByText("Runs come from uploads").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Nothing extracted yet")).toBeNull();
+    expect(screen.queryByText(/0 of /)).toBeNull();
+  });
+
   it("shows the system role in the header", async () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);
