@@ -155,3 +155,45 @@ tenant override layer — a `source:` remap keyed by system id, applied in
 `_extract_successfactors` alongside the existing `field_status` overlay — so the canonical
 map stays generic and each customer's quirks stay theirs. Until that exists, treat a new
 SF customer as requiring a mapping review, not just a connection.
+
+## Measured: what the remaining gaps actually are
+
+Every declared entity was read directly with the tenant's own credentials (Oct 2026). The
+result decides what is worth fixing: **22 entities serve data, 10 are not in the tenant's
+OData catalogue, and 1 exists but the API user may not read it.** None of the remaining
+gaps is a mapping wish — they are permissions and modules the tenant does not have.
+
+| entity | result | rows | what it blocks |
+|---|---|---|---|
+| `Successor` | **403 — no permission** | — | `succession_planning`: 78 of its 81 checks |
+| `Goal_1` | serves, **0 rows** | 0 | `performance_goals`: this tenant has no goal records |
+| `Goal`, `DevelopmentGoal` | not in catalogue | — | the tables that alias onto them |
+| `LearningAssignment`, `LearningCompletion`, `LearningActivity` | not in catalogue | — | `learning_management`: all 29 sources |
+| `BenefitEnrollment`, `EmployeeBenefit` | not in catalogue | — | `benefits` |
+| `PAYRESULT` | not in catalogue | — | `payroll_integration`: needs the EC Payroll export |
+| `TimeAccountBalance`, `EmployeeTimeSheet` | not in catalogue / 0 rows | 0 | `time_attendance` |
+| `PMReviewResult` | not in catalogue | — | `PMREVIEWRESULT` (its `FormHeader` parent does serve 5,905) |
+| **`JobApplication`** | serves | 342,297 | recruiting — `rating` now reads correctly |
+| **`FormHeader`** | serves | 5,905 | `formTemplateId` reads correctly |
+| `NominationTarget`, `JobRequisition`, `JobOffer`, `ONB2Process`, `FODepartment`, `FOCostCenter`, `PerPersonal`, `PerPerson`, `PerPhone`, `EmpCompensation`, `EmpJob`, `EmpEmployment`, `Position`, `TalentPool`, `User`, `EmpPayCompRecurring`, `EmpPayCompNonRecurring`, `GoalPlanTemplate` | serve | 8 – 6,252 | — |
+
+So the honest answer to "why is SuccessFactors coverage still short" is, in order:
+
+1. **One permission.** `Successor` returns
+   `[COE0020] You don't have permission to view the Successor entity`. That single grant
+   is worth 78 checks in `succession_planning`. No code change substitutes for it — either
+   the integration user gets the permission, or those rules are scoped out of acceptance.
+2. **Four modules this tenant does not license** (Learning, Benefits, EC Payroll, and the
+   `TimeAccountBalance` half of Time & Attendance). These raise the honest question of why
+   those rule packs are in scope at all rather than being a defect.
+3. **One empty entity.** `Goal_1` resolves and returns zero rows, so `performance_goals`
+   cannot evaluate goal-level rules on this tenant's data. That is a data fact, not a
+   mapping one — and it is why run 3 raised `performance_goals` coverage to 0.63 (the
+   rules that read the *user* rather than the goal now have their fields).
+
+### The extraction now selects the corrected fields
+
+Verified in run 3's coverage metadata, after the `Dictionary.overlay` fix
+(see "Portability", below): `GOALPLAN` unavailable fields fell 16 → 3, `SUCCESSIONCANDIDATE`
+21 → 18, `JOBAPPLICATION` 4 → 3 and `PMREVIEWRESULT` 5 → 4. `JOBAPPLICATION.rating` and
+`FORM_TEMPLATE_ID` were confirmed to read the right property from the live API.
