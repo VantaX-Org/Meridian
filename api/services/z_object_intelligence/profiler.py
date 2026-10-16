@@ -401,10 +401,10 @@ class ZProfiler:
         dates: list = []
         for rec in records:
             for df in date_fields:
-                val = rec.get(df)
-                if val is not None and str(val).strip():
-                    if (d := parse_sap_date(val)) is not None:
-                        dates.append(d)
+                # The first field that holds a real date wins; an initial or unparsable
+                # value (00000000, blank, float noise) falls through to the next field.
+                if (d := parse_sap_date(rec.get(df))) is not None:
+                    dates.append(d)
                     break
         if not dates:
             return None, None
