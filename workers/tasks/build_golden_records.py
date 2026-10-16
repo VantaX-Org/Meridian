@@ -94,7 +94,7 @@ async def _build_for_module(
     key_col: str,
 ) -> int:
     """Feed each object key's rows to the survivorship engine. Returns count."""
-    from api.services.golden_record_engine import process_sync_batch
+    from api.services.golden_record_engine import ai_survivorship_enabled, process_sync_batch
 
     url = os.getenv("DATABASE_URL") or os.getenv("DATABASE_URL_SYNC", "")
     if not url:
@@ -106,6 +106,7 @@ async def _build_for_module(
     engine = create_async_engine(url, pool_pre_ping=True)
     maker = async_sessionmaker(engine, expire_on_commit=False)
     source_system = f"upload:{str(version_id)[:8]}"
+    use_ai = ai_survivorship_enabled(context=f"golden records {module}")  # decided once per module run
     built = 0
     try:
         async with maker() as db:
@@ -125,7 +126,7 @@ async def _build_for_module(
                 # process_sync_batch swallows its own errors and returns None,
                 # so one bad object never aborts the rest of the module.
                 record_id = await process_sync_batch(
-                    db, str(tenant_id), module, key_str, incoming
+                    db, str(tenant_id), module, key_str, incoming, use_ai=use_ai
                 )
                 if record_id:
                     built += 1
