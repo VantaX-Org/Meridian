@@ -1399,3 +1399,34 @@ rules:
     __blank__: Correct the goal in the employee's goal plan (Performance & Goals > Goals) or via Goal Plan import. Record
       the actual achievement.
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} of user {GOALPLAN.USERID}: completed with no actual achievement recorded.'
+
+- field: GOALPLAN.COMPLETION_PERCENT
+  check_class: cross_field_check
+  fail_when: '`GOALPLAN.COMPLETION_PERCENT` < 0 | `GOALPLAN.COMPLETION_PERCENT` > 100'
+  require_populated: true
+  severity: high
+  dimension: accuracy
+  message: "Goal completion percentage outside 0\u2013100"
+  why_it_matters: Completion percent drives progress dashboards and review scoring. A value below 0 or above 100
+    is impossible and distorts goal attainment averages.
+  rule_authority: best_practice
+  sap_impact: Progress and attainment reporting distorted.
+  fix_map:
+    __blank__: Correct the completion percentage to a value between 0 and 100.
+  record_fix_template: "Goal {GOALPLAN.GOAL_ID}: completion {GOALPLAN.COMPLETION_PERCENT} outside 0\u2013100."
+  id: PERF084
+- field: GOALPLAN.PLAN_END_DATE
+  check_class: cross_field_check
+  fail_when: '`GOALPLAN.PLAN_END_DATE`.dt.normalize() < `GOALPLAN.PLAN_START_DATE`.dt.normalize()'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Plan ends before it starts
+  why_it_matters: A plan window that ends before it starts makes every goal in the plan fall outside its review
+    period, breaking period-to-period comparison.
+  rule_authority: best_practice
+  sap_impact: Plan period comparisons wrong.
+  fix_map:
+    __blank__: Correct the plan start/end dates.
+  record_fix_template: 'Plan {GOALPLAN.GOAL_PLAN_ID}: ends {GOALPLAN.PLAN_END_DATE} before it starts ({GOALPLAN.PLAN_START_DATE}).'
+  id: PERF085

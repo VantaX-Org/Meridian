@@ -1290,3 +1290,34 @@ rules:
       __other__: Merge or remove the duplicate quant (LS24/LX02 in ECC; /SCWM/MON in S/4HANA EWM),
         then re-run the warehouse stock comparison.
     record_fix_template: 'Warehouse {LQUA.LGNUM}: quant {LQUA.LQNUM} is held more than once.'
+
+  - field: /SCWM/AQUA.QUAN
+    check_class: cross_field_check
+    fail_when: '`/SCWM/AQUA.QUAN` < 0'
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Warehouse stock quantity is negative
+    why_it_matters: A negative available quantity in the activity area means more stock is issued than physically
+      exists, so replenishment and picking plan against impossible inventory.
+    rule_authority: best_practice
+    sap_impact: Stock availability and replenishment wrong.
+    fix_map:
+      __blank__: Correct the stock quantity and reconcile the underlying posting.
+    record_fix_template: 'Quant {LQUA.LQNUM}: stock quantity {/SCWM/AQUA.QUAN} is negative.'
+    id: EWMS131
+  - field: LQUA.GESME
+    check_class: cross_field_check
+    fail_when: '`LQUA.GESME` < 0'
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Storage bin total stock is negative
+    why_it_matters: Negative total stock in a quant means issued quantities exceed receipts for that bin; inventory
+      reconciliation and bin-level reporting are wrong.
+    rule_authority: best_practice
+    sap_impact: Bin-level inventory and physical-inventory results wrong.
+    fix_map:
+      __blank__: Correct the quant stock and reconcile receipts/issues.
+    record_fix_template: 'Storage bin {LQUA.LGNUM}/{LQUA.LGPLA}: total stock {LQUA.GESME} is negative.'
+    id: EWMS132

@@ -1432,3 +1432,35 @@ rules:
   record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): currency ''{actual_value}'' is not
     ISO 4217.'
   auto_fix: *id003
+
+- field: JOBREQUISITION.CLOSE_DATE
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.CLOSE_DATE`.dt.normalize() < `JOBREQUISITION.OPEN_DATE`.dt.normalize()'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Requisition closes before it opens
+  why_it_matters: A close date before the open date is a data error that breaks time-to-fill reporting and requisition
+    lifecycle analytics.
+  rule_authority: best_practice
+  sap_impact: Time-to-fill and requisition lifecycle reporting wrong.
+  fix_map:
+    __blank__: Correct the requisition open/close dates.
+  record_fix_template: 'Requisition {JOBREQUISITION.POSITION_NUMBER}: closes {JOBREQUISITION.CLOSE_DATE} before
+    it opens ({JOBREQUISITION.OPEN_DATE}).'
+  id: REC085
+- field: JOBREQUISITION.SALARY_MAX
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.SALARY_MAX` < `JOBREQUISITION.SALARY_MIN`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Salary maximum below salary minimum
+  why_it_matters: A range where the maximum is below the minimum is impossible and misleads compensation approval.
+  rule_authority: best_practice
+  sap_impact: Compensation range and approval guidance wrong.
+  fix_map:
+    __blank__: Correct the salary min/max range.
+  record_fix_template: 'Requisition {JOBREQUISITION.POSITION_NUMBER}: salary max {JOBREQUISITION.SALARY_MAX} below
+    min {JOBREQUISITION.SALARY_MIN}.'
+  id: REC086

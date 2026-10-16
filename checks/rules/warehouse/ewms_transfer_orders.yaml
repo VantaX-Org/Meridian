@@ -971,3 +971,19 @@ rules:
       __other__: Compare the two orders in LT23/LT22 (ECC) or the warehouse monitor (S/4HANA EWM),
         cancel the redundant one and reverse any confirmation posted against it.
     record_fix_template: 'Warehouse {LTAK.LGNUM}: transfer order {LTAK.TANUM} is held more than once.'
+
+  - field: LTAP.VSOLM
+    check_class: cross_field_check
+    fail_when: '`LTAP.VSOLM` < `LTAP.NISTM`'
+    require_populated: true
+    severity: medium
+    dimension: accuracy
+    message: Target quantity below picked quantity on the transfer order item
+    why_it_matters: The target (putaway) quantity should not be less than the picked quantity; a mismatch means stock
+      is picked but not put away, leaving it in limbo.
+    rule_authority: best_practice
+    sap_impact: Transfer order completion and stock-in-transit wrong.
+    fix_map:
+      __blank__: Correct the target/picked quantities on the TO item.
+    record_fix_template: 'Transfer order {LTAP.TANUM} item {LTAP.TAPOS}: target quantity {LTAP.VSOLM} is below the picked quantity {LTAP.VSQUA}.'
+    id: EWTO120

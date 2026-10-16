@@ -884,3 +884,19 @@ rules:
         and close it if the stock has gone.
     record_fix_template: 'Storage unit {LEIN.LENUM} in warehouse {LEIN.LGNUM}: created more than a year
       ago and unchanged.'
+
+  - field: MLGT.LPMAX
+    check_class: cross_field_check
+    fail_when: '`MLGT.LPMAX` < `MLGT.LPMIN`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Bin maximum quantity below its minimum
+    why_it_matters: A storage-bin capacity where the maximum is below the minimum is impossible and breaks bin-optimisation
+      and putaway rules.
+    rule_authority: best_practice
+    sap_impact: Putaway and bin-optimisation decisions wrong.
+    fix_map:
+      __blank__: Correct the bin min/max capacity.
+    record_fix_template: 'Storage bin type {MLGT.LGTYP} at {MLGT.LGNUM}: maximum quantity {MLGT.LPMAX} is below the minimum {MLGT.LPMIN}.'
+    id: WMI045
