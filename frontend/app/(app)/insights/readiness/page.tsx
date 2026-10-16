@@ -93,7 +93,7 @@ export default function ReadinessPage() {
     ? "Readiness waves not set"
     : "No readiness data yet";
   const emptyDetail = data && !data.configured
-    ? "Set readiness waves under Settings > Alert Thresholds."
+    ? "Set the migration waves in Scoring and alerts, and each wave is graded on the next run."
     : dayOne.step?.detail;
   const emptyAction = data && !data.configured
     ? <Button render={<Link href="/rules/scoring">Scoring and alerts</Link>} />
