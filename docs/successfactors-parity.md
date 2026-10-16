@@ -2,7 +2,7 @@
 
 The SuccessFactors objects do not reach parity with the ECC ones. The cause is in the
 **canonical source map**, not in the rules: their packs are deep and every rule is
-proved, but 126 of the 472 field sources that
+proved, but 119 of the 472 field sources that
 `sap/dictionaries/canonical/successfactors.yaml` declares cannot be resolved against
 this tenant's OData API.
 
@@ -23,8 +23,8 @@ properties:
 | | sources |
 |---|---|
 | declared in the canonical SF map | 472 |
-| resolvable against this tenant | **346** |
-| unresolvable | **126** |
+| resolvable against this tenant | **353** |
+| unresolvable | **119** |
 
 Reproduce with `scripts/successfactors_parity.py --metadata <captured $metadata>`.
 
@@ -32,38 +32,53 @@ Reproduce with `scripts/successfactors_parity.py --metadata <captured $metadata>
 
 | table | unresolvable | cause |
 |---|---|---|
-| `SUCCESSIONCANDIDATE` | 21 | `Successor` is a child entity (403 at top level) and lacks `approvalStatus`, `calibrationDate`, `eligibilityFlag`, …; `NominationTarget` has only `nominationId`/`nominationType`, no `positionCode` |
+| `SUCCESSIONCANDIDATE` | 18 | `Successor` is a child entity (403 at top level) and lacks `approvalStatus`, `calibrationDate`, `eligibilityFlag`, …; `NominationTarget` has only `nominationId`/`nominationType`, no `positionCode` |
 | `LEARNINGASSIGNMENT` | 18 | Learning is a separate SF module; `learning.*` is not served as OData |
 | `LEARNINGCOMPLETION` | 13 | same — `learningHistory.*` is not served |
 | `PAYRESULT` | 13 | `payroll_export.*` is not an OData entity; EC Payroll results need the export/upload path |
 | `BENEFITENROLLMENT` | 10 | `BenefitEnrollment` has no entity set in `$metadata` |
 | `JOBOFFER` | 8 | `JobOffer` has no `salary`, `offerId`, `offerDate`, `candidateId`, `jobReqId`, `startDate` |
 | `JOBREQUISITION` | 7 | `department`/`location`/`hiringManager`/`recruiter`/`status`/`title` are navigation or locale paths the entity does not carry |
-| `GOALPLAN` | 5 | `ACTUAL_ACHIEVEMENT`, `CASCADED_FROM`, `COMPLETION_PERCENT`, `GOAL_START_DATE`, `TARGET_DATE` |
+| `GOALPLAN` | 3 | `ACTUAL_ACHIEVEMENT`, `CASCADED_FROM`, `COMPLETION_PERCENT` |
 | `COMPINFO`, `PERINFO`, `JOBAPPLICATION`, `EMPEMPLOYMENT`, `TIMESHEET`, `ONBOARDINGCANDIDATEINFO`, … | 3–5 each | one or two properties the tenant does not expose |
 
-## What was corrected (13 sources, validated)
+## What was corrected (20 sources, validated)
 
-Only corrections that cannot change a rule's meaning were applied — an entity rename
-with the property name unchanged, or a property differing only by case or punctuation:
+Two passes, both restricted to corrections that cannot change what a rule means.
 
-- **`GOALPLAN`: `Goal.*` → `Goal_1.*`** (11 fields). `Goal` is not an entity set on
-  this tenant; the goals live in `Goal_1`, which does carry `id`, `userId`, `name`,
-  `metric`, `state`, `weight`, `flag`, `lastModified`, `modifier`, `currentOwner`,
-  `category`. This is the substantive win: `performance_goals`' goal-level rules can
-  now resolve 11 of the 16 fields they were missing.
-- **`EMPEMPLOYMENT`/`EMPJOBHIST` `WORK_SCHEDULE`**: `EmpJob.workScheduleCode` →
-  `EmpJob.workscheduleCode` (the tenant's spelling).
-- `EmpJob.workScheduleCode` in `SF_EXTRACTIONS` was synced to match — the registry and
-  the dictionary are deliberately kept in step (see
-  `tests/sap/test_sf_ec_depth_extraction.py`), because this list also drives config
-  sync and a `$select` of a non-existent property returns HTTP 400.
+**Pass 1 — name-level (13 sources).** Entity rename with the property name unchanged,
+or a name differing only by case or punctuation. **`GOALPLAN`: `Goal.*` → `Goal_1.*`**
+(11 fields): `Goal` is not an entity set on this tenant, and `Goal_1` carries `id`,
+`userId`, `name`, `metric`, `state`, `weight`, `flag`, `lastModified`, `modifier`,
+`currentOwner`, `category`. Plus `EmpJob.workScheduleCode` → `workscheduleCode` in
+`EMPEMPLOYMENT`/`EMPJOBHIST`, with `SF_EXTRACTIONS` synced (that list also drives
+config sync, and a `$select` of a missing property returns HTTP 400 — a test pins the
+two in step).
 
-Deliberately **not** guessed: where a property is genuinely absent (e.g.
-`SUCCESSIONCANDIDATE.NOMINEE_ID ← Successor.userId`, where `Successor` has
-`nomineeUserId`), the source was left alone. A tempting fuzzy match
-(`COMPLETION_PERCENT` → `metric`, `HIRING_MANAGER` → `age`) would have silently
-changed what the rule reads, which is worse than an unevaluated rule.
+**Pass 2 — semantic 1:1 (7 sources).** Each verified against the canonical
+description, and each rejected if it would make two different canonical fields read one
+property:
+
+| field | was | now | why it is the same thing |
+|---|---|---|---|
+| `SUCCESSIONCANDIDATE.NOMINEE_ID` | `Successor.userId` | `Successor.nomineeUserId` | `Successor` has no plain `userId`; the nominee *is* `nomineeUserId` |
+| `SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG` | `Successor.emergencySuccessor` | `Successor.isEmergencyCover` | the entity's only emergency-cover flag |
+| `SUCCESSIONCANDIDATE.TALENT_POOL_ID` | `TalentPool.id` | `TalentPool.code` | `TalentPool` exposes `code` as its identifier, not `id` |
+| `GOALPLAN.TARGET_DATE` | `Goal.dueDate` | `Goal_1.due` | same concept, entity rename |
+| `GOALPLAN.GOAL_START_DATE` | `Goal.startDate` | `Goal_1.start` | same concept, entity rename |
+| `PMREVIEWRESULT.FORM_TEMPLATE_ID` | `FormHeader.templateId` | `FormHeader.formTemplateId` | same concept, tenant spelling |
+| `JOBAPPLICATION.RATING` | `JobApplication.averageRating` | `JobApplication.rating` | the entity exposes `rating`; there is no `averageRating` |
+
+`SUCCESSIONCANDIDATE.NOMINATED_BY` was **rejected**: the canonical says "user ID of the
+nominating manager", and the only candidate (`Successor.lastModifiedBy`) is a proxy,
+not the same fact.
+
+Deliberately not guessed: where a property is genuinely absent the source is left
+alone. A fuzzy pass paired `COMPLETION_PERCENT` with `metric` and `HIRING_MANAGER`
+with `age` — silently changing what a rule reads, which is worse than an unevaluated
+rule.
+
+## Where the remaining 119 sit
 
 ## What this means for handover
 

@@ -298,8 +298,8 @@ tables:
       GOAL_METRIC: {source: Goal_1.metric, type: STRING, length: 4000}
       GOAL_STATUS: {source: Goal_1.state, type: STRING, length: 128, verify: true}
       GOAL_WEIGHT: {source: Goal_1.weight, type: DECIMAL}
-      TARGET_DATE: {source: Goal.dueDate, type: DATE}
-      GOAL_START_DATE:     {source: Goal.startDate, type: DATE, verify: true, description: Goal start date}
+      TARGET_DATE: {source: Goal_1.due, type: DATE}
+      GOAL_START_DATE:     {source: Goal_1.start, type: DATE, verify: true, description: Goal start date}
       GOAL_CATEGORY:       {source: Goal_1.category, type: STRING, length: 128, picklist: goalCategory, verify: true, description: Goal category (individual/team/organizational/development)}
       CASCADED_FROM:       {source: Goal.cascadeParentId, type: STRING, length: 38, verify: true, description: Parent goal this goal was cascaded/aligned from}
       COMPLETION_PERCENT:  {source: Goal.metricAchievement, type: DECIMAL, verify: true, description: Percent of goal achievement recorded against its metric}
@@ -324,7 +324,7 @@ tables:
       OVERALL_RATING: {source: FormSummarySection.overallFormRating, type: DECIMAL, verify: true}
       MANAGER_RATING: {source: FormSummarySection.overallFormRating (manager step), type: DECIMAL, verify: true}
       SELF_RATING:    {source: FormSummarySection.overallFormRating (self step), type: DECIMAL, verify: true}
-      FORM_TEMPLATE_ID: {source: FormHeader.templateId, type: STRING, length: 38, verify: true, description: Review form template}
+      FORM_TEMPLATE_ID: {source: FormHeader.formTemplateId, type: STRING, length: 38, verify: true, description: Review form template}
       SIGNOFF_DATE:     {source: FormHeader.signOffDate, type: DATE, verify: true, description: Employee sign-off date}
       FORM_DATA_ID:       {source: FormHeader.formDataId, type: INTEGER, verify: true, description: Form instance ID}
       FORM_TEMPLATE_TYPE: {source: FormHeader.formTemplateType, type: STRING, length: 32, verify: true, description: Template type such as Review or 360}
@@ -342,14 +342,14 @@ tables:
     source: NominationTarget / Successor
     keys: [NOMINEE_ID, POSITION_ID]
     fields:
-      NOMINEE_ID:     {source: Successor.userId, type: STRING, length: 100, verify: true}
+      NOMINEE_ID:     {source: Successor.nomineeUserId, type: STRING, length: 100, verify: true}
       POSITION_ID:    {source: NominationTarget.positionCode, type: STRING, length: 128, verify: true}
       NOMINATED_DATE: {source: Successor.lastModifiedDateTime, type: DATETIME, verify: true}
       READINESS:      {source: Successor.readiness, type: STRING, verify: true}
       RANKING:        {source: Successor.rank, type: INTEGER, verify: true}
       RISK_OF_LOSS:   {source: User.riskOfLoss, type: STRING, verify: true}
       IMPACT_OF_LOSS: {source: User.impactOfLoss, type: STRING, verify: true}
-      TALENT_POOL_ID:            {source: TalentPool.id, type: STRING, length: 128, verify: true, description: Talent pool the candidate is assigned to}
+      TALENT_POOL_ID:            {source: TalentPool.code, type: STRING, length: 128, verify: true, description: Talent pool the candidate is assigned to}
       DEVELOPMENT_PLAN_ID:       {source: DevelopmentGoal.planId, type: STRING, length: 128, verify: true, description: Linked development plan}
       NINE_BOX_RATING:           {source: Successor.nineBoxRating, type: STRING, verify: true, description: Performance/potential grid position (1-9)}
       PERFORMANCE_RATING:        {source: User.performanceRating, type: STRING, verify: true, description: Latest performance rating (1-5)}
@@ -359,7 +359,7 @@ tables:
       APPROVAL_STATUS:           {source: Successor.approvalStatus, type: STRING, verify: true, description: Approval status of the nomination}
       NOMINATED_BY:               {source: Successor.nominatedBy, type: STRING, length: 100, verify: true, description: User ID of the nominating manager}
       SUCCESSOR_TYPE:             {source: Successor.successorType, type: STRING, verify: true, description: INTERNAL or EXTERNAL candidate}
-      EMERGENCY_SUCCESSOR_FLAG:   {source: Successor.emergencySuccessor, type: BOOLEAN, verify: true, description: Flagged as an emergency (interim) successor}
+      EMERGENCY_SUCCESSOR_FLAG:   {source: Successor.isEmergencyCover, type: BOOLEAN, verify: true, description: Flagged as an emergency (interim) successor}
       BACKUP_SUCCESSOR_FLAG:      {source: Successor.backupSuccessor, type: BOOLEAN, verify: true, description: Flagged as a backup (non-primary) successor}
       MOBILITY_FLAG:              {source: User.mobilityFlag, type: BOOLEAN, verify: true, description: Candidate is willing to relocate/transfer}
       DIVERSITY_CANDIDATE_FLAG:   {source: User.diversityCandidate, type: BOOLEAN, verify: true, description: Flagged as a diverse-slate candidate for the plan}
@@ -405,7 +405,7 @@ tables:
       STATUS:           {source: JobApplication.status, type: STRING}
       SOURCE:           {source: JobApplication.source, type: STRING, verify: true}
       APPLICATION_DATE: {source: JobApplication.applicationDate, type: DATETIME, verify: true}
-      RATING:           {source: JobApplication.averageRating, type: DECIMAL, verify: true}
+      RATING:           {source: JobApplication.rating, type: DECIMAL, verify: true}
       REJECT_REASON:    {source: JobApplication.rejectReason, type: STRING, verify: true}
       APPLICATION_ID:   {source: JobApplication.applicationId, type: INTEGER, verify: true, description: Application ID}
       EMAIL:            {source: JobApplication.contactEmail, type: STRING, length: 255, verify: true, description: Candidate contact e-mail}
