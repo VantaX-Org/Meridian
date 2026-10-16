@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy import text
 
+from api.services.version_status import finished_sql
+
 DIMENSIONS = ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity")
 
 
@@ -157,7 +159,7 @@ def evaluate_run(session, tenant_id: str, version_id: str) -> list[dict]:
 def evaluate_freshness(session, tenant_id: str, now: datetime | None = None) -> list[dict]:
     """Violation when the newest complete analysis of a contract's modules is older than max_age_hours."""
     now = now or datetime.now(timezone.utc)
-    latest = session.execute(text("SELECT id, run_at, metadata FROM analysis_versions WHERE status = 'complete' "
+    latest = session.execute(text(f"SELECT id, run_at, metadata FROM analysis_versions WHERE {finished_sql()} "
                                   "ORDER BY run_at DESC LIMIT 500")).fetchall()
     results = []
     for c in _active(session):

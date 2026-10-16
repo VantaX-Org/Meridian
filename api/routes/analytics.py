@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import has_permission
+from api.services.version_status import FINISHED
 from api.services.analytics_engine import (
     planner_config,
     BusinessImpactAnalytics,
@@ -127,7 +128,7 @@ async def get_prescriptive_analytics(
     # Load latest version findings
     latest_version = await db.execute(
         select(AnalysisVersion)
-        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status == "complete")
+        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
         .order_by(AnalysisVersion.run_at.desc())
         .limit(1)
     )
@@ -209,7 +210,7 @@ async def get_impact_analytics(
     else:
         latest = await db.execute(
             select(AnalysisVersion)
-            .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status == "complete")
+            .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
             .order_by(AnalysisVersion.run_at.desc())
             .limit(1)
         )
@@ -454,7 +455,7 @@ async def get_sprints(
     # Reuse prescriptive logic
     latest = await db.execute(
         select(AnalysisVersion)
-        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status == "complete")
+        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
         .order_by(AnalysisVersion.run_at.desc())
         .limit(1)
     )
