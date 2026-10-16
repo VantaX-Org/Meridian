@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getFindings } from "@/lib/api/findings";
@@ -33,8 +33,8 @@ export function useFindingHref(versionId: string | undefined) {
     for (const f of q.data?.findings ?? []) if (!m.has(`${f.module}:${f.check_id}`)) m.set(`${f.module}:${f.check_id}`, f.id);
     return m;
   }, [q.data]);
-  return (module: string, checkId: string) => {
+  return useCallback((module: string, checkId: string) => {
     const id = byCheck.get(`${module}:${checkId}`);
     return id ? `/analyse/finding/${id}?v=${versionId}` : undefined;
-  };
+  }, [byCheck, versionId]);
 }

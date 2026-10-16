@@ -26,9 +26,13 @@ describe("scopeTrendRuns", () => {
     const sys: Version = { ...upload("bp2"), metadata: { modules: [], file_name: "f", row_count: 1, system_id: "sys-1" } };
     expect(scopeTrendRuns(runs, sys, "bp2")).toBe(runs);
   });
-  it("keeps the series when the current run is unknown or absent from it", () => {
+  it("keeps the series only while the current run is unknown", () => {
     expect(scopeTrendRuns(runs, undefined, "bp2")).toBe(runs);
-    expect(scopeTrendRuns(runs, upload("zzz"), "zzz")).toBe(runs);
+  });
+  it("scopes by the current upload's own objects when it fell outside the endpoint's window, never the mixed series", () => {
+    const older: Version = { ...upload("bp0"), metadata: { modules: ["business_partner"], file_name: "f", row_count: 1 } };
+    expect(scopeTrendRuns(runs, older, "bp0").map((r) => r.version_id)).toEqual(["bp1", "bp2"]);
+    expect(scopeTrendRuns(runs, upload("zzz"), "zzz")).toEqual([]);
   });
 });
 

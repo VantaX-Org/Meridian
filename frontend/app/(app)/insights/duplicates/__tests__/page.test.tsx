@@ -100,12 +100,14 @@ describe("DuplicatesPage mined tabs", () => {
     expect(await screen.findByText("BKLAS")).toBeInTheDocument();
     view.unmount();
     get.mockResolvedValue([]);
-    const mine = vi.spyOn(learnedRulesApi, "mineLearnedRules").mockResolvedValue({ queued: true });
+    const houseRules = vi.spyOn(learnedRulesApi, "mineLearnedRules").mockResolvedValue({ queued: true });
+    const mine = vi.spyOn(miningApi, "runMining").mockResolvedValue({ task_id: "t1", version_id: "v1", include: ["relationship"] });
     renderWithQuery(<DuplicatesPage />);
     expect(await screen.findByText("No relationships mined")).toBeInTheDocument();
-    // With a run in scope the empty state starts the miner instead of sending the reader away.
+    // With a run in scope the empty state starts the miner that fills this feed, not the learned-rules miner.
     fireEvent.click(screen.getByRole("button", { name: "Mine now" }));
-    await waitFor(() => expect(mine).toHaveBeenCalledWith("v1"));
+    await waitFor(() => expect(mine).toHaveBeenCalledWith("v1", ["relationship"]));
+    expect(houseRules).not.toHaveBeenCalled();
     expect(screen.queryByRole("link", { name: "Open runs" })).toBeNull();
   });
 });

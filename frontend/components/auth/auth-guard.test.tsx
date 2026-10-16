@@ -54,6 +54,13 @@ describe("AuthGuard session check", () => {
     expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
   });
 
+  it("signs out on a 403 as well: the server has judged the token", async () => {
+    vi.spyOn(apiClient, "get").mockRejectedValue(httpError(403));
+    mount();
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/sign-in"));
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+  });
+
   it("keeps the token and shows an error with Retry on a 5xx, then recovers on retry", async () => {
     const get = vi.spyOn(apiClient, "get")
       .mockRejectedValueOnce(httpError(503))

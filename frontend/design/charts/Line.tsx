@@ -20,6 +20,11 @@ type LineRow = { x: string | number } & Record<string, string | number>;
 /** Room for the first tick label so it never sits on the y-axis "0", and for the last dot. */
 const X_PADDING = { left: 16, right: 16 } as const;
 
+/** The series point drawn on a chart row: rows span the shared x domain, so a sparse series is looked up by x, never by row index. */
+export function pointAtRow<P extends { x: string | number }>(points: P[], x: string | number | undefined): P | undefined {
+  return x === undefined ? undefined : points.find((p) => p.x === x);
+}
+
 export function Line({
   data,
   onPointClick,
@@ -126,7 +131,11 @@ export function Line({
                   stroke={chartTheme.sheet}
                   strokeWidth={2}
                   style={{ cursor: onPointClick ? "pointer" : "default" }}
-                  onClick={() => onPointClick?.((multi ? sr.data : data)[dotProps.index])}
+                  // Rows span the shared x domain; a sparse series is shorter, so find the point by its x key.
+                  onClick={() => {
+                    const point = pointAtRow(multi ? sr.data : data, (dotProps.payload as LineRow | undefined)?.x ?? rows[dotProps.index ?? -1]?.x);
+                    if (point) onPointClick?.(point);
+                  }}
                 />
               )}
             />

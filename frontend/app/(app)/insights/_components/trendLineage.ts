@@ -8,13 +8,20 @@ const objectKey = (r: TrendRun) => Object.keys(r.modules ?? {}).sort().join("+")
 
 /**
  * The trends endpoint already follows one system's lineage. Uploads all share the "upload" lineage, so for an
- * upload the series is narrowed to runs that carry the same objects as the current run.
+ * upload the series is narrowed to runs that carry the same objects as the current run. The key comes from the
+ * current run's own metadata, so an upload that fell outside the endpoint's window still scopes correctly; an
+ * upload whose objects are unknown gets an empty series, never the mixed one.
  */
 export function scopeTrendRuns(runs: TrendRun[], current: Version | undefined, runId: string | undefined): TrendRun[] {
-  if (!current || current.metadata?.system_id) return runs;
+  if (!current) return runs;
+  if (current.metadata?.system_id) return runs;
   const here = runs.find((r) => r.version_id === runId);
-  const key = here ? objectKey(here) : "";
-  return key ? runs.filter((r) => objectKey(r) === key) : runs;
+  if (here) {
+    const key = objectKey(here);
+    return key ? runs.filter((r) => objectKey(r) === key) : runs; // no object info anywhere: nothing to scope on
+  }
+  const key = [...(current.metadata?.modules ?? [])].sort().join("+");
+  return key ? runs.filter((r) => objectKey(r) === key) : [];
 }
 
 /** Points keyed by run id with the date (or date and time) as the display label; run labels are never ticks. */

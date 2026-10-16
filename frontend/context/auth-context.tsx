@@ -84,7 +84,8 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
           })
           .catch((e: unknown) => {
             if (cancelled) return;
-            if (isAxiosError(e) && e.response?.status === 401) {
+            // 401 and 403 are the server's verdict on the token; anything else is the server's problem, so keep the token and offer Retry.
+            if (isAxiosError(e) && (e.response?.status === 401 || e.response?.status === 403)) {
               localStorage.removeItem(TOKEN_KEY);
               setSessionCookie(false);
               return;

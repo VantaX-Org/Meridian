@@ -58,6 +58,14 @@ export const EMPTY_MINING_SUMMARY: MiningSummary = {
  * route renders cleanly on clusters where the mining service has not yet been
  * rolled out.
  */
+export type MiningTask = "dedup" | "anomaly" | "relationship";
+
+/** Queue the dedup, anomaly and relationship miners (or a subset) on an analysis version. */
+export async function runMining(versionId: string, include?: MiningTask[]): Promise<{ task_id: string; version_id: string; include: string[] }> {
+  const { data } = await apiClient.post<{ task_id: string; version_id: string; include: string[] }>("/api/v1/mining/run", { version_id: versionId, include });
+  return data;
+}
+
 export async function getMiningSummary(windowDays = 30): Promise<MiningSummary> {
   try {
     const { data } = await apiClient.get<MiningSummary>("/api/v1/mining/summary", {

@@ -30,7 +30,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("TrendsPage", () => {
   it("renders the narrative and labelled charts under one header", async () => {
-    vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("r1", 60), run("r2", 70)], annotations: [] });
+    vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("v1", 60), run("v2", 70)], annotations: [] });
     mount();
     // The sentence is the header's situation and the composite card's meta.
     expect((await screen.findAllByText(/rose from 60 to 70 over 2 runs/)).length).toBeGreaterThan(0);
@@ -41,8 +41,8 @@ describe("TrendsPage", () => {
   });
 
   it("says a dimension the API omits is not measured, holds the x domain across cards and writes held at for a flat line", async () => {
-    const r1 = { ...run("r1", 70), run_at: "2026-10-16T05:00:00Z", label: "business_partner_1k" };
-    const r2 = { ...run("r2", 70), run_at: "2026-10-16T17:30:00Z", label: "business_partner_100k" };
+    const r1 = { ...run("v1", 70), run_at: "2026-10-16T05:00:00Z", label: "business_partner_1k" };
+    const r2 = { ...run("v2", 70), run_at: "2026-10-16T17:30:00Z", label: "business_partner_100k" };
     vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [r1, r2], annotations: [] });
     mount();
     expect((await screen.findAllByText("Composite score held at 70 over 2 runs.")).length).toBeGreaterThan(0);
@@ -70,7 +70,7 @@ describe("TrendsPage", () => {
   });
 
   it("refetches trends scoped to the chosen system", async () => {
-    const spy = vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("r1", 60), run("r2", 70)], annotations: [] });
+    const spy = vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("v1", 60), run("v2", 70)], annotations: [] });
     mount();
     await screen.findAllByText(/rose from 60 to 70/);
     expect(spy).toHaveBeenLastCalledWith({ version_id: "v2", system_id: undefined, limit: 12 });
