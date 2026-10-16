@@ -3353,3 +3353,44 @@ rules:
   fix_map:
     __other__: Archive and delete the company code data (SARA, FI_ACCPAYB).
   record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: flagged for deletion, no open items.'
+
+- id: AP285
+  field: BSIK.WRBTR
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: (`BSIK.WRBTR` == 0) & (`BSIK.DMBTR` != 0)
+  severity: high
+  dimension: accuracy
+  message: Open vendor item has a company-code amount but zero in document currency
+  why_it_matters: The document currency amount is what the invoice actually says; the local amount is that
+    amount translated. A zero document amount against a non-zero local amount is the mirror of AP073 and means
+    the translation ran without its source - a rate applied to nothing, or a field cleared during load. The item
+    reconciles in local currency while carrying no original invoice value, so foreign-currency revaluation and
+    the payment proposal have no document figure to work from.
+  rule_authority: sap_hard_constraint
+  sap_impact: Foreign-currency valuation (FAGL_FCV) and the payment proposal compute from a missing document
+    amount; the vendor statement cannot be reconciled against the item.
+  fix_map:
+    __other__: Check the document currency and rate on the posting date (OB08 / FB03); reverse and re-post the
+      document with the invoice amount in document currency.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}:
+    document amount {BSIK.WRBTR} is zero but the local amount is {BSIK.DMBTR}.'
+
+- id: AP286
+  field: BSIK.WAERS
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: '`BSIK.WAERS`.isna() | (`BSIK.WAERS` == "")'
+  severity: high
+  dimension: accuracy
+  message: Open vendor item has no document currency
+  why_it_matters: Every open item carries the currency of the document it came from; it is what the amounts are
+    denominated in and what revaluation, the payment proposal and the vendor statement read. An item with no
+    currency has amounts that cannot be interpreted - they may be read as local currency when they are not.
+  rule_authority: sap_hard_constraint
+  sap_impact: Foreign-currency valuation (FAGL_FCV) skips or misvalues the item; the payment run cannot decide
+    whether the item needs a currency translation.
+  fix_map:
+    __other__: Read the document in FB03 and set the document currency, or reverse and re-post it.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}:
+    no document currency.'
