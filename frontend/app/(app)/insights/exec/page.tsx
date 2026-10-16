@@ -82,6 +82,7 @@ export default function ExecPage() {
     : isListFailure({ isError, error })
       ? "error"
       : data && data.readiness_cells.length === 0 && data.impact_rows.length === 0 && data.owner_rows.length === 0
+          && !overview.isLoading && dqs?.composite == null && !rules.data?.rows.length
         ? "empty"
         : undefined;
 
@@ -135,13 +136,13 @@ export default function ExecPage() {
             </div>
           </div>
         ) : undefined,
-        stats: data ? [
+        stats: data && cells.length + owners.length > 0 ? [
           { label: "No-go cells", value: noGo, tone: noGo ? "no-go" : "go", to: "/insights/readiness" },
           { label: "Largest L1 at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", to: "/insights/impact" },
           { label: "Owners improved", value: up, to: "/insights/owners" },
           { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: "/insights/owners" },
         ] : undefined,
-        situation: { sentence: data?.narrative || `${noGo} no-go cells across the waves` , tone: noGo ? "no-go" : "go" },
+        situation: { sentence: data?.narrative || (cells.length ? `${noGo} no-go cells across the waves` : "No migration waves set yet"), tone: noGo ? "no-go" : cells.length ? "go" : undefined },
         changed: { sentence: up + down === 0 ? "—" : `${up} owners improved, ${down} slipped since the last run` },
         why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "No value at risk", href: "/insights/impact" },
         next: noGo
@@ -165,7 +166,7 @@ export default function ExecPage() {
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
-          <Card title="Readiness by wave" meta={`${noGo} no-go, ${cells.length - noGo} ready`} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open readiness</Link>}>
+          <Card title="Readiness by wave" meta={cells.length ? `${noGo} no-go, ${cells.length - noGo} ready` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open readiness</Link>}>
             {cells.length > 0 && (
               <div role="region" aria-label="Readiness by object and wave" tabIndex={0} className="mb-3 overflow-x-auto">
                 <Heatmap
@@ -176,7 +177,9 @@ export default function ExecPage() {
                 />
               </div>
             )}
-            {blocked.length === 0 ? (
+            {cells.length === 0 ? (
+              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>No migration waves are set for this run, so readiness has nothing to grade yet.</p>
+            ) : blocked.length === 0 ? (
               <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Every object and wave can load.</p>
             ) : (
               <DataTable columns={readinessColumns} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
