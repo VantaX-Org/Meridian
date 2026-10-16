@@ -196,8 +196,8 @@ export default function ImpactPage() {
   const currency = provenCostQuery.data?.currency;
   const byFeature = rows.map((r) => ({ x: labelOf(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
 
-  const loading = impactQuery.isLoading || dayOne.status === "loading";
-  const state: "loading" | undefined = loading ? "loading" : undefined;
+  // Each card follows its own query, so proven cost shows while a large impact query is still running.
+  const state: "loading" | undefined = dayOne.status === "loading" ? "loading" : undefined;
 
   return (
     <InsightFrame
@@ -213,6 +213,7 @@ export default function ImpactPage() {
         </>
       }
       insight={impactQuery.isError ? undefined : {
+        loading: impactQuery.isLoading,
         situation: {
           sentence: top ? `${formatMoney(top.value_at_risk, currency)} at risk in ${labelOf(top.feature)}, the largest of ${rows.length} blocked features` : "No feature carries value at risk",
           tone: rows.length ? "at-risk" : "go",
