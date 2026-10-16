@@ -26,6 +26,21 @@ by ``tenant_id`` has no index to scan, so it walks the table. Three indexes fix 
 These are additive and read-only: no data changes, so the migration is safe to run on a
 live database, and the ``IF NOT EXISTS`` guards make it idempotent if a deployment has
 already been indexed by hand.
+
+Building the worklist index exposed the other half of why this table is slow. A single
+``INSERT INTO cleaning_queue`` transaction was open for **14 minutes**, holding a
+``RowExclusiveLock`` while three other statements queued behind it (two ``DELETE``s and a
+``CREATE INDEX``, one of them waiting 11 minutes). Every write to the table pays to
+maintain its existing indexes inside one long transaction, so the cleaning task's writes
+serialise the table for minutes at a time. The index here does not create that problem —
+it is the reason the read side was already pathological — but the write side wants its own
+look: batch sizes and commit boundaries in the cleaning write path, not another index.
+
+Note for deploying this: build it while the cleaning task is idle. A plain ``CREATE INDEX``
+takes a ``ShareLock`` and will block behind any open write transaction on the table (a
+``CONCURRENTLY`` build does not block writers, but it cannot run inside alembic's
+transaction and will itself wait minutes for a snapshot when a long writer is open — both
+were tried on the Komatsu deployment).
 """
 from typing import Sequence, Union
 
