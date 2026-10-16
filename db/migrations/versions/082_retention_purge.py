@@ -9,6 +9,8 @@ tenants.retention holds the tenant's data retention policy as one JSONB document
 alert_thresholds and cost_model are stored. purge_log records every purge,
 dry run or real, with the rows removed per table and the storage bytes freed,
 so the tenant can prove what was deleted and when (docs/legal/DPA.md section 11).
+``source`` says who wrote the row: the nightly task, a preview, a manual delete or
+the whole-tenant purge; only nightly dry runs count towards the dry-run gate.
 """
 from typing import Sequence, Union
 
@@ -41,6 +43,8 @@ def upgrade() -> None:
         sa.Column("kind", sa.Text(), nullable=False),
         sa.Column("target_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("dry_run", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        # nightly | preview | manual | tenant
+        sa.Column("source", sa.Text(), nullable=False, server_default="manual"),
         sa.Column("rows_by_table", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
         sa.Column("bytes_freed", sa.BigInteger(), nullable=False, server_default="0"),
         sa.Column("blocked_reason", sa.Text(), nullable=True),
@@ -48,6 +52,7 @@ def upgrade() -> None:
         sa.Column("actor_email", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.CheckConstraint("kind IN ('version', 'reports', 'audit', 'tenant')", name="ck_purge_log_kind"),
+        sa.CheckConstraint("source IN ('nightly', 'preview', 'manual', 'tenant')", name="ck_purge_log_source"),
     )
     op.create_index("ix_purge_log_tenant_created", "purge_log", ["tenant_id", "created_at"])
     _rls("purge_log")

@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from api.services.retention import (
-    DRY_RUN_DAYS, RetentionPolicy, enforcement, load_policy, select_expired_versions,
+    DRY_RUN_DAYS, OLDEST_NIGHTLY_DRY_RUN_SQL, RetentionPolicy, enforcement, load_policy, oldest_dry_run,
+    select_expired_versions,
 )
 
 NOW = datetime(2026, 10, 15, 2, 30, tzinfo=timezone.utc)
@@ -42,6 +43,8 @@ class _Session:
         self.sql.append(sql)
         if sql.startswith("SELECT retention"):
             return _Result([(self.retention,)])
+        if sql.strip().startswith("SELECT min(created_at) FROM purge_log"):
+            return _Result([(None,)])
         if sql.startswith("SELECT id, label, run_at, metadata, status"):
             rows = sorted(self.versions, key=lambda r: r[2], reverse=True)
             return _Result(rows)
@@ -63,6 +66,18 @@ def test_load_policy_defaults_and_ignores_unknown_keys():
     assert load_policy(_Session([], None), TENANT) == RetentionPolicy()
     p = load_policy(_Session([], {"versions_days": 90, "keep_latest_per_system": 2, "stale": 1}), TENANT)
     assert p.versions_days == 90 and p.keep_latest_per_system == 2 and p.reports_days is None
+    # the PUT stamp lives in the same document and is not a policy field
+    p = load_policy(_Session([], {"versions_days": 30, "updated_at": "2026-10-15T00:00:00+00:00"}), TENANT)
+    assert p.versions_days == 30 and "updated_at" not in p.model_dump()
+
+
+def test_oldest_dry_run_counts_nightly_rows_under_the_current_policy_only():
+    s = _Session([])
+    assert oldest_dry_run(s, TENANT) is None
+    sql = " ".join(s.sql[-1].split())
+    assert "source = 'nightly'" in sql and "dry_run = true" in sql
+    assert "created_at > COALESCE( (SELECT NULLIF(retention->>'updated_at', '')::timestamptz FROM tenants" in sql
+    assert sql == " ".join(OLDEST_NIGHTLY_DRY_RUN_SQL.split())
 
 
 def test_no_versions_days_selects_nothing():

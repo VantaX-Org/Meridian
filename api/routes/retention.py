@@ -7,7 +7,10 @@
   repeat the version's label (its id when it has none).
 * ``POST /api/v1/admin/purge-tenant``: two-step. The first call issues a token that
   becomes usable 24 hours later; the second call with that token purges every
-  version, report and audit row and returns a one-page certificate PDF.
+  version, report and audit row, sweeps the tenant's storage prefixes and returns a
+  one-page certificate PDF. The audit middleware writes its row for that POST after
+  the handler returns; that row and the purge_log row are the record of deletion and
+  are kept on purpose.
 
 All writes need ``manage_settings`` (admin only). The database work runs on the sync
 engine in a worker thread (api/services/purge.py), the same way report PDFs do.
@@ -16,6 +19,7 @@ engine in a worker thread (api/services/purge.py), the same way report PDFs do.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import secrets
 import uuid
@@ -30,11 +34,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import get_redis
-from api.services.purge import Actor, VersionNotFound, purge_version, write_purge_log
+from api.services.purge import Actor, VersionNotFound, _trusted_key, purge_version, write_purge_log
 from api.services.rate_limiter import rate_limit
 from api.services.rbac import current_user_id, current_user_label, require_permission, write_audit
 from api.services.retention import (
-    RetentionPolicy, enforcement, load_policy, oldest_dry_run, select_expired_versions,
+    OLDEST_NIGHTLY_DRY_RUN_SQL, POLICY_UPDATED_KEY, RetentionPolicy, enforcement, load_policy,
+    select_expired_versions,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["retention"])
@@ -66,7 +71,7 @@ def _preview(tenant_id: str) -> list[dict[str, Any]]:
     with _sync_session(tenant_id) as session:
         policy = load_policy(session, tenant_id)
         for v in select_expired_versions(session, tenant_id, policy, _now()):
-            r = purge_version(session, tenant_id, v.id, dry_run=True, actor=None)
+            r = purge_version(session, tenant_id, v.id, dry_run=True, actor=None, source="preview")
             out.append({"version_id": v.id, "label": v.label, "run_at": v.run_at, "system_id": v.system_id,
                         "blocked_reason": r["blocked_reason"], "rows_by_table": r["rows_by_table"],
                         "bytes_freed": r["bytes_freed"]})
@@ -83,17 +88,30 @@ def _version_label(tenant_id: str, version_id: str) -> Optional[tuple[Optional[s
 
 def _delete_version(tenant_id: str, version_id: str, actor: Actor) -> dict[str, Any]:
     with _sync_session(tenant_id) as session:
-        return purge_version(session, tenant_id, version_id, dry_run=False, actor=actor)
+        return purge_version(session, tenant_id, version_id, dry_run=False, actor=actor, source="manual")
+
+
+def _tenant_storage_prefixes(tenant_id: str) -> list[tuple[str, str]]:
+    """Every object-storage prefix keyed by this tenant (api/routes/upload.py, run_extraction,
+    report_pdf, the findings archive)."""
+    from api.config import settings
+
+    return [(settings.minio_bucket_uploads, f"uploads/{tenant_id}/"),
+            (settings.minio_bucket_uploads, f"staging/{tenant_id}/"),
+            (settings.minio_bucket_reports, f"reports/{tenant_id}/"),
+            (settings.minio_bucket_reports, f"archive/{tenant_id}/")]
 
 
 def _purge_tenant(tenant_id: str, actor: Actor) -> dict[str, Any]:
-    """Every version (open work included), then the remaining reports and audit rows."""
+    """Every version (open work included), then the remaining reports and audit rows,
+    then a sweep of the tenant's whole storage prefixes (uploads, staging, reports)."""
     from api.config import settings
     from api.services import storage
 
     totals: dict[str, int] = {}
     bytes_freed = 0
     errors: list[str] = []
+    skipped: list[str] = []
 
     def add(rows: dict[str, Any]) -> None:
         for k, n in rows.items():
@@ -105,13 +123,16 @@ def _purge_tenant(tenant_id: str, actor: Actor) -> dict[str, Any]:
             "SELECT id FROM analysis_versions WHERE tenant_id = :t ORDER BY run_at"), {"t": tenant_id}).fetchall()]
     for vid in ids:
         with _sync_session(tenant_id) as session:
-            r = purge_version(session, tenant_id, vid, dry_run=False, actor=actor, force=True)
+            r = purge_version(session, tenant_id, vid, dry_run=False, actor=actor, force=True, source="tenant")
         add(r["rows_by_table"])
         bytes_freed += r["bytes_freed"]
         errors.extend(r["storage_errors"])
     with _sync_session(tenant_id) as session:
         for (path,) in session.execute(text(
                 "SELECT pdf_path FROM reports WHERE tenant_id = :t AND pdf_path IS NOT NULL"), {"t": tenant_id}):
+            if _trusted_key(path, f"reports/{tenant_id}/") is None:
+                skipped.append(str(path))
+                continue
             try:
                 size = storage.object_size(settings.minio_bucket_reports, path)
                 if size is not None:
@@ -129,10 +150,24 @@ def _purge_tenant(tenant_id: str, actor: Actor) -> dict[str, Any]:
                             {"t": tenant_id}).rowcount or 0
         if n:
             totals["purge_log"] = n
+        # whatever the per-version purges did not know about: raw uploads of versions that
+        # predate upload_path, staged datasets of failed runs, orphaned reports
+        for bucket, prefix in _tenant_storage_prefixes(tenant_id):
+            try:
+                count, freed = storage.delete_prefix(bucket, prefix)
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"delete prefix {prefix}: {e}")
+                continue
+            if count:
+                totals[f"storage objects {prefix}"] = count
+                bytes_freed += freed
         rows: dict[str, Any] = dict(totals)
         if errors:
             rows["storage_errors"] = errors
-        log_id = write_purge_log(session, tenant_id, "tenant", None, False, rows, bytes_freed, None, actor)
+        if skipped:
+            rows["skipped_untrusted_key"] = skipped
+        log_id = write_purge_log(session, tenant_id, "tenant", None, False, rows, bytes_freed, None, actor,
+                                 source="tenant")
         session.commit()
     return {"rows_by_table": totals, "bytes_freed": bytes_freed, "versions": len(ids),
             "storage_errors": errors, "purge_log_id": log_id, "purged_at": _now()}
@@ -186,9 +221,7 @@ class TenantPurgeBody(BaseModel):
 # ── settings ─────────────────────────────────────────────────────────────────
 
 async def _status(db: AsyncSession, tenant_id: uuid.UUID) -> EnforcementStatus:
-    oldest = (await db.execute(text(
-        "SELECT min(created_at) FROM purge_log WHERE tenant_id = :t AND dry_run = true"),
-        {"t": str(tenant_id)})).scalar()
+    oldest = (await db.execute(text(OLDEST_NIGHTLY_DRY_RUN_SQL), {"t": str(tenant_id)})).scalar()
     return EnforcementStatus(**enforcement(oldest, _now()))
 
 
@@ -218,8 +251,10 @@ async def put_retention(
     if before_row is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
     after = body.model_dump()
+    # the dry-run window restarts from this moment (api/services/retention.py)
+    stored = {**json.loads(body.model_dump_json()), POLICY_UPDATED_KEY: _now().isoformat()}
     await db.execute(text("UPDATE tenants SET retention = CAST(:r AS jsonb) WHERE id = :t"),
-                     {"r": body.model_dump_json(), "t": str(tenant.id)})
+                     {"r": json.dumps(stored), "t": str(tenant.id)})
     await write_audit(db, tenant.id, request, "update", "retention_policy", str(tenant.id),
                       before_row[0] if isinstance(before_row[0], dict) else {}, after)
     await db.commit()

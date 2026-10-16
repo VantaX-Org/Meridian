@@ -2227,6 +2227,7 @@ class PurgeLog(Base):
     kind = Column(Text, nullable=False)  # version | reports | audit | tenant
     target_id = Column(UUID(as_uuid=True), nullable=True)
     dry_run = Column(Boolean, nullable=False, server_default=text("false"))
+    source = Column(Text, nullable=False, server_default="manual")  # nightly | preview | manual | tenant
     rows_by_table = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     bytes_freed = Column(BigInteger, nullable=False, server_default="0")
     blocked_reason = Column(Text, nullable=True)
@@ -2236,5 +2237,6 @@ class PurgeLog(Base):
 
     __table_args__ = (
         CheckConstraint("kind IN ('version', 'reports', 'audit', 'tenant')", name="ck_purge_log_kind"),
+        CheckConstraint("source IN ('nightly', 'preview', 'manual', 'tenant')", name="ck_purge_log_source"),
         Index("ix_purge_log_tenant_created", "tenant_id", "created_at"),
     )
