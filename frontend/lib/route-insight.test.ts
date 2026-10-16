@@ -47,3 +47,15 @@ describe("route insight", () => {
     expect(h.changed.sentence).toBe("Score fell 4 points since the previous run.");
   });
 });
+
+describe("route insight lineage and money", () => {
+  it("says this is the first run for the object instead of comparing with another object", () => {
+    const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: null, firstRun: true, critical: 0, total: 5, affected: 9 });
+    expect(h.changed.sentence).toBe("First run for this object. Change appears after the next run.");
+  });
+  it("writes the value at risk through formatMoney with the tenant currency", () => {
+    const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: 70, critical: 0, total: 5, affected: 9, costAtRisk: 5672930, currency: "ZAR" });
+    expect(h.why.sentence).toMatch(/About ZAR[  ]?5[,.  ]672[,.  ]930 is at risk\./);
+    expect(h.why.sentence).not.toMatch(/About 5672930/);
+  });
+});

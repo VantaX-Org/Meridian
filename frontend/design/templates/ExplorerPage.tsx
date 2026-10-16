@@ -1,9 +1,14 @@
+"use client";
+
 // frontend/design/templates/ExplorerPage.tsx
 import type { ReactNode } from "react";
 import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
 import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { PageFrame } from "./PageFrame";
+import { useLoadingTimeout } from "../hooks/useLoadingTimeout";
+
+const SLOW = "This is taking longer than expected.";
 
 export function ExplorerPage({
   header,
@@ -40,9 +45,13 @@ export function ExplorerPage({
   /** Right column beside the table: 8/4 at the 5xl container width, stacked below it. */
   aside?: ReactNode;
 }) {
+  const stuck = useLoadingTimeout(state === "loading");
   let body = table;
   let summarySlot = summary;
-  if (state === "loading") {
+  if (state === "loading" && stuck) {
+    // A skeleton that never resolves gives way to an error with Retry.
+    body = <ErrorState title={SLOW} message="The server has not answered. Retry, or check the job tray." onRetry={errorProps?.onRetry ?? (() => window.location.reload())} />;
+  } else if (state === "loading") {
     // Stat row (84), toolbar, table header (28) and twelve rows (30), so loading does not shift the layout.
     const rowH = dense ? "var(--m-row-h-dense)" : "var(--m-row-h)";
     body = (

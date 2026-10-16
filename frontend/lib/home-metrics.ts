@@ -1,7 +1,8 @@
 // frontend/lib/home-metrics.ts
 import type { Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
-import { round1, formatDate, formatModuleName } from "@/lib/format";
+import { round1, formatDate, formatModuleName, runAxisLabels } from "@/lib/format";
+import { lineageOf } from "@/lib/runs";
 import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
 
 export const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
@@ -44,18 +45,26 @@ export function unmeasuredDimensions(v: Version): string[] {
 }
 
 export interface TrendPoint {
+  /** The run id: the chart's key, never a tick. */
   x: string;
+  /** The tick: the run's date, or date and time when two runs share a day. */
+  label: string;
   y: number;
   runId: string;
 }
 
-/** Finished runs (those with at least one measured module), oldest first, as chart points. */
-export function trend(versions: Version[]): TrendPoint[] {
-  return versions
-    .filter((v) => runDqs(v) != null)
+/**
+ * Finished runs (those with at least one measured module), oldest first, as chart points. With `current`, only
+ * the runs of its lineage (same system, or uploads of the same objects) are kept, so the line never mixes objects.
+ */
+export function trend(versions: Version[], current?: Version): TrendPoint[] {
+  const lineage = current ? lineageOf(current) : null;
+  const runs = versions
+    .filter((v) => runDqs(v) != null && (lineage === null || lineageOf(v) === lineage))
     .slice()
-    .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime())
-    .map((v) => ({ x: formatDate(v.run_at, "date"), y: runDqs(v)!, runId: v.id }));
+    .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime());
+  const ticks = runAxisLabels(runs);
+  return runs.map((v) => ({ x: v.id, label: ticks.get(v.id) ?? formatDate(v.run_at, "date"), y: runDqs(v)!, runId: v.id }));
 }
 
 /** Change from the previous finished run to the latest one, or null with fewer than two finished runs. */
@@ -118,7 +127,9 @@ export function dimensionBarPoints(v: Version, weights: Readonly<Record<Dimensio
 export interface HeatmapCell {
   row: string;
   col: string;
-  value: Readiness;
+  /** The dimension score, printed in the cell so colour is never the only signal. */
+  value: number;
+  tone: Readiness;
 }
 
 /** One cell per object x dimension, from this run's `dqs_summary` (spec 7.1 "Object readiness grid"). */
@@ -129,7 +140,8 @@ export function dimensionHeatmapCells(objects: ObjectSummary[], v: Version, band
     if (!summary) continue;
     for (const dim of DIMENSIONS) {
       if (summary.dimension_coverage?.[dim] === 0) continue; // not measured: the grid shows an empty cell
-      cells.push({ row: obj.label, col: formatModuleName(dim), value: readinessOf(summary.dimension_scores[dim], bands) });
+      const score = summary.dimension_scores[dim];
+      cells.push({ row: obj.label, col: formatModuleName(dim), value: round1(score), tone: readinessOf(score, bands) });
     }
   }
   return cells;

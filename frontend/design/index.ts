@@ -34,6 +34,7 @@ export * from "./primitives/Radio";
 export * from "./primitives/Switch";
 export * from "./primitives/Textarea";
 export * from "./hooks/usePrefetch";
+export * from "./hooks/useLoadingTimeout";
 export * from "./primitives/SeverityDot";
 export * from "./primitives/ScoreRing";
 export * from "./primitives/AiSummary";

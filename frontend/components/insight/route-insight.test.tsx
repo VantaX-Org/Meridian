@@ -69,3 +69,30 @@ describe("RouteInsight gating", () => {
     expect(m.compare).not.toHaveBeenCalled();
   });
 });
+
+describe("RouteInsight lineage", () => {
+  beforeEach(() => { m.llm.mockReset(); m.exec.mockReset(); m.admin.v = true; m.compare.mockReset(); });
+
+  it("never compares an upload with an upload of other objects, and says it is the first run", async () => {
+    m.llm.mockResolvedValue({ llm_available: false });
+    m.versions.v = [
+      { id: "bp", status: "complete", metadata: { modules: ["business_partner"] } } as never,
+      { id: "co", status: "complete", metadata: { modules: ["controlling"] } } as never,
+    ];
+    mount();
+    expect(await screen.findByText(/First run for this object/)).toBeTruthy();
+    expect(m.compare).not.toHaveBeenCalled();
+  });
+
+  it("compares uploads of the same objects", async () => {
+    m.llm.mockResolvedValue({ llm_available: false });
+    m.versions.v = [
+      { id: "bp2", status: "complete", metadata: { modules: ["business_partner"] } } as never,
+      { id: "co", status: "complete", metadata: { modules: ["controlling"] } } as never,
+      { id: "bp1", status: "complete", metadata: { modules: ["business_partner"] } } as never,
+    ];
+    m.compare.mockResolvedValue({ v1: { id: "bp1" }, v2: { id: "bp2" }, delta: {}, checks: {} });
+    mount();
+    await waitFor(() => expect(m.compare).toHaveBeenCalledWith("bp1", "bp2"));
+  });
+});

@@ -23,6 +23,8 @@ export interface HomeVerdict {
   delta?: number | null;
   /** "vs {previous label}" next to the delta. */
   previousLabel?: string;
+  /** No earlier run in this run's lineage: the hint says so instead of comparing with another object. */
+  firstRun?: boolean;
   /** The narrative's first sentence: the verdict with the number that caused it. */
   sentence: string;
   /** "Capped at 70 by 3 critical rules ...", with DrillLinks; omitted when not capped. */
@@ -127,7 +129,8 @@ export function HomePage({
 
       {state === "data" && verdict && (
         <section className="m-hero grid items-end gap-x-10 gap-y-6 md:grid-cols-[auto_1fr]" data-testid="home-verdict-row" data-tour="home-verdict">
-          <div data-testid="home-dqs" data-tour="home-score" style={{ width: 220 }}>
+          {/* Wide enough for the numeral and its delta chip; the column grows with the content rather than clipping it. */}
+          <div data-testid="home-dqs" data-tour="home-score" style={{ minWidth: 220, width: "max-content", maxWidth: 360 }}>
             <Stat
               hero
               label="Data quality score"
@@ -135,7 +138,7 @@ export function HomePage({
               value={verdict.dqs ?? "—"}
               decimals={1}
               versionId={run?.label}
-              hint={verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
+              hint={verdict.firstRun ? "First run for this object" : verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
               delta={verdict.delta != null ? <Delta hero value={verdict.delta} /> : undefined}
             />
           </div>

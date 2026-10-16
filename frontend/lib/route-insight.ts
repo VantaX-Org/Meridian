@@ -1,6 +1,7 @@
 // Builds the four InsightHeader cells for a route from facts the API already returns.
 // Pure: no fetching here, so every sentence is testable and every number traces to a field.
 import type { InsightHeaderProps } from "@/design";
+import { formatMoney } from "@/lib/format";
 
 export interface InsightFacts {
   hasRun: boolean;
@@ -13,6 +14,10 @@ export interface InsightFacts {
   affected: number;
   /** findings/aggregate cost_at_risk, when the tenant has a cost rate configured */
   costAtRisk?: number;
+  /** Tenant currency code for `costAtRisk`; plain digits when unknown. */
+  currency?: string;
+  /** True when no earlier run exists in this run's lineage (same system, or same upload objects): there is nothing to compare with. */
+  firstRun?: boolean;
   /** versions/compare delta between the latest run and its baseline: objects whose score moved */
   moved?: { count: number; biggest?: { label: string; change: number }; href: string };
   worst?: { module: string; label: string; findings: number; critical: number };
@@ -107,7 +112,9 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   const mv = f.moved;
   const moves = mv && mv.count > 0 ? `${n(mv.count)} object${mv.count === 1 ? "" : "s"} moved${mv.biggest ? `; biggest: ${mv.biggest.label} ${mv.biggest.change > 0 ? "+" : "-"}${Math.abs(mv.biggest.change)}` : ""}.` : null;
   const scoreChanged =
-    delta === null
+    f.firstRun
+      ? "First run for this object. Change appears after the next run."
+      : delta === null
       ? "No earlier run to compare against yet."
       : delta === 0
         ? "Score is unchanged since the previous run."
@@ -122,7 +129,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
         ? "No critical findings, so the score is not capped."
         : "No findings in this run.";
 
-  const risk = f.costAtRisk != null && f.costAtRisk > 0 ? ` About ${n(Math.round(f.costAtRisk))} is at risk.` : "";
+  const risk = f.costAtRisk != null && f.costAtRisk > 0 ? ` About ${formatMoney(Math.round(f.costAtRisk), f.currency)} is at risk.` : "";
   const next =
     worst && f.total > 0
       ? {

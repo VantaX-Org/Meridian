@@ -1,3 +1,5 @@
+"use client";
+
 // frontend/design/templates/ReportPage.tsx
 import { PageFrame } from "./PageFrame";
 import type { ReactNode } from "react";
@@ -7,6 +9,9 @@ import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
 import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
 import { ReportPrintContext } from "../primitives/ExportMenu";
+import { useLoadingTimeout } from "../hooks/useLoadingTimeout";
+
+const SLOW = "This is taking longer than expected.";
 
 export function ReportPage({
   title,
@@ -42,13 +47,16 @@ export function ReportPage({
   emptyProps?: { title: string; detail?: string; action?: ReactNode; ghost?: EmptyStateGhost };
   errorProps?: { message: string; onRetry?: () => void };
 }) {
+  const stuck = useLoadingTimeout(state === "loading");
   let body: ReactNode = (
     <>
       {charts}
       {tables}
     </>
   );
-  if (state === "loading") {
+  if (state === "loading" && stuck) {
+    body = <ErrorState title={SLOW} message="The server has not answered. Retry, or check the job tray." onRetry={errorProps?.onRetry ?? (() => window.location.reload())} />;
+  } else if (state === "loading") {
     body = loading ?? (
       <div className="m-motion-stagger flex flex-col gap-2" data-state="loading">
         <Skeleton height={240} />

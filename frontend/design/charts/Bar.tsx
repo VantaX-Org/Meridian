@@ -6,6 +6,15 @@ import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { ChartTooltip } from "./Tooltip";
 import { hoverBar } from "./HoverBar";
 import { mMotion, reducedMotion } from "../tokens";
+import { formatNumber } from "../../lib/format";
+
+/** Category axis width from the longest label (about 6.5px per character at 12px), so no label is clipped. */
+export function categoryAxisWidth(labels: readonly (string | number)[], min = 60, max = 180): number {
+  const longest = labels.reduce<number>((n, l) => Math.max(n, String(l).length), 0);
+  return Math.min(max, Math.max(min, Math.ceil(longest * 6.5) + 12));
+}
+
+const tick = (v: number) => formatNumber(v, { maximumFractionDigits: 1 });
 
 export function Bar({
   data,
@@ -28,10 +37,11 @@ export function Bar({
   return (
     <div role="img" aria-label={chartSummary(data, label)}>
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" barCategoryGap="40%" accessibilityLayer={false}>
+      {/* The right margin keeps the value label of a full-width bar inside the chart. */}
+      <BarChart data={data} layout="vertical" barCategoryGap="40%" accessibilityLayer={false} margin={{ top: 4, right: 40, bottom: 4, left: 0 }}>
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" horizontal={false} />
-        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
-        <YAxis type="category" dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={tick} />
+        <YAxis type="category" dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} width={categoryAxisWidth(data.map((p) => p.label ?? p.x))} tickFormatter={(x) => data.find((p) => p.x === x)?.label ?? String(x)} />
         <Tooltip content={<ChartTooltip />} cursor={false} />
         <RBar
           dataKey="y"
@@ -43,7 +53,7 @@ export function Bar({
           animationDuration={mMotion.draw}
           animationEasing="ease-out"
         >
-          <LabelList dataKey="y" position="right" fontSize={12} fill={chartTheme.axis} />
+          <LabelList dataKey="y" position="right" fontSize={12} fill={chartTheme.axis} formatter={(v: unknown) => (typeof v === "number" ? tick(v) : String(v ?? ""))} />
           {data.map((point) => (
             <Cell
               key={point.x}

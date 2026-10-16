@@ -8,12 +8,110 @@ export function roundedDelta(before: number, after: number): number {
   return round1(after) - round1(before);
 }
 
-/** "business_partner" -> "Business Partner" */
+/**
+ * Display names for module ids whose words are not plain title case (acronyms, slashes). Mirrors the
+ * labels in api/routes/sync_trigger.py MODULE_REGISTRY; anything missing here is title-cased.
+ */
+export const MODULE_LABELS: Record<string, string> = {
+  fi_gl: "FI general ledger",
+  hcm: "HCM personnel administration",
+  mm_purchasing: "MM purchasing",
+  sd_customer_master: "SD customer master",
+  sd_sales_orders: "SD sales orders",
+  interface_health: "Interface health (IDoc)",
+  s4_readiness: "S/4HANA readiness",
+  banking_tax: "Banking and tax master data",
+  ewms_stock: "eWMS stock",
+  ewms_transfer_orders: "eWMS transfer orders",
+  mdg_master_data: "MDG master data",
+  grc_compliance: "GRC compliance",
+  wm_interface: "WM interface",
+  s4hc_master_data: "BP roles, CVI and product valuation",
+  pii: "PII",
+};
+
+/** "business_partner" -> "Business Partner"; ids in `MODULE_LABELS` ("fi_gl", "pii") use their display name. */
 export function formatModuleName(name: string): string {
+  if (Object.hasOwn(MODULE_LABELS, name)) return MODULE_LABELS[name];
   return name
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+/** "1 record", "2,310 records": a count with its noun agreed. `pluralForm` defaults to `singular + "s"`. */
+export function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${formatNumber(n)} ${n === 1 ? singular : pluralForm}`;
+}
+
+/** "GL024, GL003 and 3 more": the first `max` items, then how many are left. */
+export function shortList(items: readonly string[], max = 2): string {
+  if (items.length <= max) return items.join(", ");
+  return `${items.slice(0, max).join(", ")} and ${items.length - max} more`;
+}
+
+/** Currency amounts use the code the API sends ("ZAR 5,672,930"), in the viewer's locale; no code, no symbol. */
+export function formatMoney(n: number, currency?: string | null): string {
+  const base = { maximumFractionDigits: 0 };
+  try {
+    return currency
+      ? new Intl.NumberFormat(formatPrefs.locale, { ...base, style: "currency", currency, currencyDisplay: "code" }).format(n)
+      : new Intl.NumberFormat(formatPrefs.locale, base).format(n);
+  } catch {
+    return `${currency ?? ""} ${new Intl.NumberFormat(undefined, base).format(n)}`.trim();
+  }
+}
+
+const SYSTEM_TYPE_LABELS: Record<string, string> = {
+  ecc: "ECC",
+  s4hana_onprem: "S/4HANA on premise",
+  s4hana_cloud: "S/4HANA Cloud",
+  successfactors: "SuccessFactors",
+  concur: "Concur",
+  ariba: "Ariba",
+  btp: "BTP",
+  ewm: "EWM",
+};
+
+/** "ecc" -> "ECC", "s4hana_cloud" -> "S/4HANA Cloud"; unknown types are humanized. */
+export function systemTypeLabel(type: string | null | undefined): string {
+  if (!type) return "—";
+  return SYSTEM_TYPE_LABELS[type] ?? labelOf(type);
+}
+
+/**
+ * Axis labels for a run series keyed by run id: the date, or date and time when two runs share a day.
+ * Run labels are user-supplied upload names, so they never become ticks; this is the one tick formatter.
+ */
+export function runAxisLabels(runs: readonly { id: string; run_at: string | null | undefined }[]): Map<string, string> {
+  const days = new Map<string, number>();
+  for (const r of runs) {
+    const d = formatDate(r.run_at, "date");
+    days.set(d, (days.get(d) ?? 0) + 1);
+  }
+  const out = new Map<string, string>();
+  for (const r of runs) {
+    const d = formatDate(r.run_at, "date");
+    out.set(r.id, (days.get(d) ?? 0) > 1 ? formatDate(r.run_at, "datetime") : d);
+  }
+  return out;
+}
+
+/** "Up 2.1 since the last run", "Down 0.8 since the last run", "Unchanged since the last run"; null means no earlier run. */
+export function deltaSentence(delta: number | null | undefined, since = "since the last run"): string {
+  if (!isNum(delta)) return "First scored run";
+  const r = round1(delta);
+  if (r === 0) return `Unchanged ${since}`;
+  return `${r > 0 ? "Up" : "Down"} ${Math.abs(r)} ${since}`;
+}
+
+/** "Composite score rose from 60 to 70 over 3 runs.", or "held at 70 over 2 runs." when first and last are equal. */
+export function trendSentence(first: number, last: number, runs: number, subject = "Composite score"): string {
+  const a = round1(first);
+  const b = round1(last);
+  const over = `over ${plural(runs, "run")}`;
+  if (a === b) return `${subject} held at ${a} ${over}.`;
+  return `${subject} ${b > a ? "rose" : "fell"} from ${a} to ${b} ${over}.`;
 }
 
 /** Relative time: "2 hours ago", "3 days ago" */

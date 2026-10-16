@@ -12,6 +12,35 @@ export function scopeOf(version: Version): string {
   return version.metadata?.system_id ?? "upload";
 }
 
+/** "business_partner_100k" -> "business_partner": an upload label without its size or count suffix. */
+export function labelFamily(label: string | null | undefined): string {
+  return (label ?? "").trim().toLowerCase().replace(/[\s_-]*\d+(?:[.,]\d+)?\s*[km]?\s*(?:records?|rows?)?$/i, "").trim();
+}
+
+/**
+ * The lineage a run belongs to, so trends and deltas never mix objects: runs of one system share a lineage;
+ * uploads share one when they carry the same objects, else when their labels differ only by a size suffix.
+ */
+export function lineageOf(version: Version): string {
+  const system = version.metadata?.system_id;
+  if (system) return `system:${system}`;
+  const modules = version.metadata?.modules?.length ? version.metadata.modules : Object.keys(version.dqs_summary ?? {});
+  if (modules.length) return `upload:${[...modules].sort().join("+")}`;
+  const family = labelFamily(version.label);
+  return family ? `upload:${family}` : "upload";
+}
+
+/** The runs of `current`'s lineage (itself included), newest first. */
+export function sameLineage(current: Version, runs: Version[]): Version[] {
+  const lineage = lineageOf(current);
+  return runs.filter((r) => lineageOf(r) === lineage).sort((a, b) => (a.run_at < b.run_at ? 1 : -1));
+}
+
+/** The newest run in `current`'s lineage that ran before it, or null when `current` is the first of its lineage. */
+export function previousInLineage(current: Version, runs: Version[]): Version | null {
+  return sameLineage(current, runs).find((r) => r.id !== current.id && r.run_at < current.run_at) ?? null;
+}
+
 function sameScopeComplete(current: Version, runs: Version[]): Version[] {
   const scope = scopeOf(current);
   return runs.filter((r) => r.id !== current.id && r.status === "complete" && scopeOf(r) === scope);

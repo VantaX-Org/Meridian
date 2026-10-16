@@ -62,7 +62,7 @@ describe("compareNarrative", () => {
       null,
     );
     expect(out[0]).toBe("DQS moved from 70.0 to 68.0 (-2.0) across 1 module.");
-    expect(out[1]).toBe("Fi Gl declined most (-2.0), driven by accuracy (-4.0).");
+    expect(out[1]).toBe("FI general ledger declined most (-2.0), driven by accuracy (-4.0).");
     expect(out[2]).toBe("5 checks newly fail: C0 (low, 10 records), C1 (low, 9 records), C2 (low, 8 records), and 2 more.");
     expect(out).toHaveLength(3);
   });

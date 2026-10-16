@@ -12,8 +12,10 @@ import { getFindingsAggregate } from "@/lib/api/findings";
 import { getExec, submitInsightFeedback } from "@/lib/api/insights";
 import { getWaves } from "@/lib/api/migration";
 import { getMetrics } from "@/lib/api/stewardship";
+import { getCostModel } from "@/lib/api/settings";
 import { compareVersions, getVersions } from "@/lib/api/versions";
 import { formatModuleName } from "@/lib/format";
+import { lineageOf, overallDqs } from "@/lib/runs";
 import { queryKeys } from "@/lib/query-keys";
 import { buildInsight, sectionOf, type InsightFacts } from "@/lib/route-insight";
 
@@ -33,11 +35,14 @@ export function RouteInsight() {
   const runId = run ?? (versionsQ.data?.versions ?? []).find((v) => FINISHED.has(v.status))?.id;
   const aggQ = useQuery({ queryKey: ["insight", "aggregate", runId], queryFn: () => getFindingsAggregate(runId), enabled: !!section && hasRun && !!runId });
   const finished = (versionsQ.data?.versions ?? []).filter((v) => FINISHED.has(v.status));
-  // Changed cell: per-object movement between this run and the finished run before it (list is newest first); falls back to the score delta.
+  // Changed cell: per-object movement between this run and the finished run before it in the same lineage
+  // (same system, or the same uploaded objects; the list is newest first). Another object's run is never "previous".
   const current = finished.find((v) => v.id === runId);
-  const sameSystem = finished.filter((v) => v.metadata?.system_id === current?.metadata?.system_id);
-  const at = sameSystem.findIndex((v) => v.id === runId);
-  const prevId = at >= 0 ? sameSystem[at + 1]?.id : undefined;
+  const lineage = current ? finished.filter((v) => lineageOf(v) === lineageOf(current)) : [];
+  const at = lineage.findIndex((v) => v.id === runId);
+  const prev = at >= 0 ? lineage[at + 1] : undefined;
+  const prevId = prev?.id;
+  const firstRun = !!current && !prev;
   const cmpQ = useQuery({
     queryKey: ["insight", "compare", prevId, runId],
     queryFn: () => compareVersions(prevId as string, runId as string),
@@ -49,11 +54,16 @@ export function RouteInsight() {
   const llmQ = useQuery({ queryKey: ["health", "llm"], queryFn: getLlmHealth, enabled: !!section && hasRun, staleTime: 60_000 });
   const llmOn = llmQ.data?.llm_available === true;
   const execQ = useQuery({ queryKey: queryKeys.insights("exec", runId), queryFn: () => getExec({ version_id: runId }), enabled: !!section && hasRun && !!runId && llmOn });
+  const costAtRisk = aggQ.data?.cost_at_risk;
+  const costModelQ = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: !!section && costAtRisk != null && costAtRisk > 0, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
 
   // Insight pages carry their own four-sentence header (InsightFrame); the shell strip would repeat it.
   if (!section || pathname.startsWith("/insights")) return null;
 
   const agg = aggQ.data;
+  const loading = versionsQ.isLoading || (hasRun && aggQ.isLoading);
+  // No sentences yet: show nothing rather than four empty cells.
+  if (loading) return null;
   const worst = [...(agg?.by_module ?? [])].sort((a, b) => b.critical - a.critical || b.findings - a.findings)[0];
   const cmp = cmpQ.data;
   const movers = Object.entries(cmp?.delta ?? {})
@@ -63,7 +73,10 @@ export function RouteInsight() {
     hasRun,
     runId,
     dqs: agg?.dqs.composite ?? null,
-    prevDqs: agg?.previous_dqs ?? null,
+    // The previous score comes from the lineage's own earlier run; the aggregate's previous_dqs may belong to another object.
+    prevDqs: firstRun ? null : prev ? overallDqs(prev) ?? agg?.previous_dqs ?? null : agg?.previous_dqs ?? null,
+    firstRun,
+    currency: costModelQ.data?.currency,
     critical: agg?.severity.critical ?? 0,
     total: agg?.total ?? 0,
     affected: agg?.affected_records ?? 0,
@@ -83,13 +96,11 @@ export function RouteInsight() {
     dayOne: dayOne.step ? { label: dayOne.step.label, href: dayOne.step.href, status: dayOne.step.key === "running" } : undefined,
   };
   const cells = buildInsight(section, facts);
-  const loading = versionsQ.isLoading || (hasRun && aggQ.isLoading);
 
   return (
     <div className="@container mx-auto w-full" style={{ padding: "16px var(--m-page-pad) 0", maxWidth: "var(--m-page-max)" }}>
       <InsightHeader
         {...cells}
-        loading={loading}
         aiSummary={hasRun ? {
           llmOk: llmQ.data?.llm_available,
           text: execQ.data?.narrative,

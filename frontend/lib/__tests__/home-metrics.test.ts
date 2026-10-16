@@ -100,14 +100,24 @@ describe("home-metrics", () => {
     const first = version("v1", "2026-01-02", { material_master: 70 });
     const second = version("v2", "2026-01-03", { material_master: 80 });
     expect(trend([second, pending, first])).toEqual([
-      { x: "2 Jan 2026", y: 70, runId: "v1" },
-      { x: "3 Jan 2026", y: 80, runId: "v2" },
+      { x: "v1", label: "2 Jan 2026", y: 70, runId: "v1" },
+      { x: "v2", label: "3 Jan 2026", y: 80, runId: "v2" },
     ]);
   });
 
+  it("trend labels two runs of one day with their time, and follows only the current run's lineage", () => {
+    const morning = version("v1", "2026-01-02T05:00:00Z", { material_master: 70 });
+    const evening = version("v2", "2026-01-02T17:30:00Z", { material_master: 80 });
+    const other = version("v3", "2026-01-03T09:00:00Z", { fi_gl: 95 });
+    const all = trend([other, evening, morning], evening);
+    expect(all.map((p) => p.runId)).toEqual(["v1", "v2"]);
+    expect(all.map((p) => p.label)).toEqual(["2 Jan 2026, 05:00", "2 Jan 2026, 17:30"]);
+    expect(trend([other, evening, morning]).map((p) => p.runId)).toEqual(["v1", "v2", "v3"]);
+  });
+
   it("delta is the change from the previous finished run, or null with fewer than two", () => {
-    expect(delta([{ x: "a", y: 70, runId: "v1" }])).toBeNull();
-    expect(delta([{ x: "a", y: 70, runId: "v1" }, { x: "b", y: 85.4, runId: "v2" }])).toBe(15.4);
+    expect(delta([{ x: "a", label: "a", y: 70, runId: "v1" }])).toBeNull();
+    expect(delta([{ x: "a", label: "a", y: 70, runId: "v1" }, { x: "b", label: "b", y: 85.4, runId: "v2" }])).toBe(15.4);
   });
 
   it("severityTotals sums every module's counts", () => {
@@ -139,7 +149,7 @@ describe("home-metrics", () => {
       v,
     );
     expect(cells).toHaveLength(6);
-    expect(cells[0]).toEqual({ row: "Material Master", col: "Completeness", value: "go" });
+    expect(cells[0]).toEqual({ row: "Material Master", col: "Completeness", value: 90, tone: "go" });
   });
 
   it("worstObjectsFirst sorts ascending by composite_score and drops unscored objects", () => {

@@ -17,6 +17,9 @@ export interface LineSeries {
 
 type LineRow = { x: string | number } & Record<string, string | number>;
 
+/** Room for the first tick label so it never sits on the y-axis "0", and for the last dot. */
+const X_PADDING = { left: 16, right: 16 } as const;
+
 export function Line({
   data,
   onPointClick,
@@ -26,6 +29,7 @@ export function Line({
   label,
   annotations,
   series,
+  xDomain,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
@@ -39,26 +43,36 @@ export function Line({
   annotations?: { x: string | number; label: string; kind?: "change" | "event" }[];
   /** Multi-series mode: up to ten series on the viz palette, with a legend that isolates a series on click. `data` is ignored for the lines. */
   series?: LineSeries[];
+  /** Every x the axis must show, so sibling charts share one domain even where this series has no value. */
+  xDomain?: { x: string | number; label?: string }[];
 }) {
   const animate = draw && !reducedMotion();
   const [isolated, setIsolated] = useState<string | null>(null);
   const multi = series && series.length > 0 ? series : null;
   const lines = multi ?? [{ name: label ?? "Value", data }];
   const rows = useMemo<LineRow[]>(() => {
-    if (!multi) return data.map((p) => ({ x: p.x, s0: p.y }));
     const byX = new Map<string | number, LineRow>();
-    multi.forEach((sr, i) => sr.data.forEach((p) => byX.set(p.x, { ...(byX.get(p.x) ?? { x: p.x }), [`s${i}`]: p.y })));
+    for (const d of xDomain ?? []) byX.set(d.x, { x: d.x });
+    if (!multi) data.forEach((p) => byX.set(p.x, { ...(byX.get(p.x) ?? { x: p.x }), s0: p.y }));
+    else multi.forEach((sr, i) => sr.data.forEach((p) => byX.set(p.x, { ...(byX.get(p.x) ?? { x: p.x }), [`s${i}`]: p.y })));
     return [...byX.values()];
-  }, [multi, data]);
-  const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.x}` }))) : data;
+  }, [multi, data, xDomain]);
+  // A point keyed by an id (a run id) carries its display text in `label`; ticks and the tooltip show that, never the key.
+  const labelOf = useMemo(() => {
+    const m = new Map<string | number, string>();
+    for (const d of xDomain ?? []) if (d.label) m.set(d.x, d.label);
+    for (const p of multi ? multi.flatMap((sr) => sr.data) : data) if (p.label) m.set(p.x, p.label);
+    return (x: string | number) => m.get(x) ?? String(x);
+  }, [multi, data, xDomain]);
+  const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
   return (
     <div role="img" aria-label={chartSummary(summaryData, label)}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows} accessibilityLayer={false}>
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" vertical={false} />
-        <XAxis dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+        <XAxis dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={labelOf} minTickGap={24} padding={X_PADDING} interval="preserveStartEnd" />
         <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} domain={[0, 100]} />
-        <Tooltip content={<ChartTooltip />} cursor={false} />
+        <Tooltip content={<ChartTooltip />} cursor={false} labelFormatter={(x) => labelOf(x as string | number)} />
         {dqsThreshold !== undefined && (
           <ReferenceLine
             y={dqsThreshold}
