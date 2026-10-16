@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 from api.config import settings
 from api.middleware.licence import get_cached_licence
+from api.services.user_notifications import email_backend_name
 from api.services.version import APP_VERSION
 
 logger = logging.getLogger("meridian.health")
@@ -49,6 +50,8 @@ async def health() -> dict:
         "llm_source": llm_source,
         "llm_connected": llm_connected,
         "licence": get_cached_licence(),
+        # graph | smtp | resend, or null when per-user email cannot be sent on this deployment
+        "email_backend": email_backend_name(),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

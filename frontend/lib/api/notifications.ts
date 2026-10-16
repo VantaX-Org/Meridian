@@ -32,6 +32,44 @@ export async function getUnreadCount(): Promise<number> {
   return data.count;
 }
 
+/* ─── The signed-in user's own delivery (api/routes/me_notifications.py) ─── */
+
+/** sent_unrecorded: the email went out but the delivery log could not be updated. */
+export type TestEmailStatus = "sent" | "no_backend" | "failed" | "sent_unrecorded";
+
+export interface TestNotificationResult {
+  email: TestEmailStatus;
+  /** Always true: an in-app notification addressed to the caller is written either way. */
+  in_app: boolean;
+}
+
+export type DeliveryChannel = "email" | "in_app";
+export type DeliveryKind = "critical" | "digest" | "test";
+export type DeliveryStatus = "sent" | "failed" | "no_backend" | "skipped";
+
+export interface NotificationDelivery {
+  id: string;
+  channel: DeliveryChannel;
+  kind: DeliveryKind;
+  status: DeliveryStatus;
+  error: string | null;
+  created_at: string;
+}
+
+/** POST /api/v1/me/notifications/test: a test to the caller; 3 per hour per user (429 beyond). */
+export async function sendTestNotification(): Promise<TestNotificationResult> {
+  const { data } = await apiClient.post<TestNotificationResult>("/api/v1/me/notifications/test");
+  return data;
+}
+
+/** GET /api/v1/me/notifications/deliveries: the caller's own delivery log, newest first. */
+export async function getMyDeliveries(limit = 20): Promise<NotificationDelivery[]> {
+  const { data } = await apiClient.get<{ items: NotificationDelivery[] }>("/api/v1/me/notifications/deliveries", {
+    params: { limit },
+  });
+  return data.items;
+}
+
 /* ─── Alert channels (outbound webhook / Slack / Teams / email) ─── */
 
 export type AlertChannelKind = "webhook" | "slack" | "teams" | "email";

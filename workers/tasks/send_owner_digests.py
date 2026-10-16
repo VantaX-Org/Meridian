@@ -1,6 +1,13 @@
 """Weekly per-owner digest email, spec 8.3. Reuses the existing Notification
 table's type='digest' convention (db/schema.py) for both delivery and the
-"last sent" timestamp read back by GET /api/v1/insights/owners."""
+"last sent" timestamp read back by GET /api/v1/insights/owners.
+
+Users who set a digest preference (users.preferences.notifications.digest:
+off, daily or weekly) are served by the personal digest in
+workers/tasks/send_notifications.py, so the weekly beat task skips the owner
+whose display name matches such a user; owners with no matching user, or a
+user with no preference, keep this legacy owner digest. The on-demand route
+(POST /api/v1/owners/digests/send) is explicit and always sends."""
 import logging
 import uuid
 
@@ -14,11 +21,31 @@ from workers.db import get_sync_engine, tenant_session
 logger = logging.getLogger("meridian.workers.owner_digests")
 
 
-def send_digests_for_tenant(engine, tenant_id, owner: str | None = None) -> int:
+_PREFERENCE_SQL = """
+    SELECT lower(name) FROM users
+     WHERE tenant_id = CAST(:tid AS uuid) AND is_active
+       AND preferences->'notifications'->>'digest' IN ('off', 'daily', 'weekly')
+"""
+
+
+def _owners_with_preference(session: Session, tenant_id) -> set[str]:
+    """Lower-cased display names of active users who chose a digest cadence (or off). A
+    deployment behind migration 081 has no preferences column: nobody is skipped."""
+    try:
+        return {r[0] for r in session.execute(text(_PREFERENCE_SQL), {"tid": str(tenant_id)}).fetchall() if r[0]}
+    except Exception as e:
+        logger.warning(f"owner digests: digest preferences unavailable for tenant={tenant_id}: {type(e).__name__}")
+        session.rollback()
+        return set()
+
+
+def send_digests_for_tenant(engine, tenant_id, owner: str | None = None, honour_preference: bool = False) -> int:
     """Write one digest notification per owner with open items in one tenant (only ``owner`` when given).
 
-    Returns how many digests were written. Shared by the weekly beat task and the
-    on-demand ``POST /api/v1/owners/digests/send`` route.
+    With ``honour_preference`` (the weekly beat task) an owner whose display name matches an
+    active user with an explicit digest preference is skipped: the personal digest serves
+    them. Returns how many digests were written. Shared by the weekly beat task and the
+    on-demand ``POST /api/v1/owners/digests/send`` route, which always sends.
     """
     written = 0
     with tenant_session(engine, tenant_id) as session:
@@ -27,8 +54,11 @@ def send_digests_for_tenant(engine, tenant_id, owner: str | None = None) -> int:
         ).fetchall()
         issue_rows = [dict(r._mapping) for r in rows]
         aggregates = load_owner_aggregates(issue_rows)
+        served_personally = _owners_with_preference(session, tenant_id) if honour_preference else set()
         for name, agg in aggregates.items():
             if owner is not None and name != owner:
+                continue
+            if name.lower() in served_personally:  # the personal digest covers this user
                 continue
             if not agg["open_by_severity"]:  # everything assigned is resolved: nothing to digest
                 continue
@@ -58,7 +88,7 @@ def send_owner_digests():
     sent = 0
     for tenant_id in tenant_ids:
         try:
-            send_digests_for_tenant(engine, tenant_id)
+            send_digests_for_tenant(engine, tenant_id, honour_preference=True)
             sent += 1
         except Exception:
             logger.exception(f"owner digests: failed for tenant={tenant_id}, continuing with remaining tenants")

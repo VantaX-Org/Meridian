@@ -5,6 +5,7 @@ must match render_digest's output exactly."""
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 from api.services.insights_owners import build_owner_card, load_owner_aggregates, render_digest
 
@@ -139,3 +140,94 @@ def test_owner_with_only_resolved_items_gets_no_digest(monkeypatch):
     assert digests_module.send_digests_for_tenant(object(), "t1", owner="Ana") == 0
     assert digests_module.send_digests_for_tenant(object(), "t1") == 1
     assert calls.count(("insert", "t1")) == 1
+
+
+# ── the beat task defers to the personal digest ───────────────────────────────
+
+def _owner_rows(*names):
+    return [SimpleNamespace(_mapping={
+        "user_id": str(uuid.uuid4()), "owner": n, "severity": "high", "open_count": 1,
+        "baseline_open_count": 1, "fixed_since_baseline": 0,
+        "oldest_open_first_seen": datetime.now(timezone.utc)}) for n in names]
+
+
+class _PreferenceSession(_FakeSession):
+    """Owners Ana, Ben and Cy have open items; the users table answers the digest-preference
+    query with the names of those who set one."""
+
+    def __init__(self, calls, tenant_id=None, with_preference=()):
+        super().__init__(calls, tenant_id)
+        self.with_preference = [n.lower() for n in with_preference]
+        self.inserted_for: list[str] = []
+
+    def execute(self, stmt, params=None):
+        sql = str(stmt)
+        if "FROM tenants" in sql:
+            return _FakeResult([("t1",)])
+        if "record_issues" in sql:
+            self.calls.append(("query", self.tenant_id))
+            return _FakeResult(_owner_rows("Ana", "Ben", "Cy"))
+        if "FROM users" in sql and "'digest'" in sql:
+            assert "is_active" in sql and "lower(name)" in sql and "'off'" in sql
+            self.calls.append(("preferences", self.tenant_id))
+            return _FakeResult([(n,) for n in self.with_preference])
+        if "INSERT INTO notifications" in sql:
+            self.inserted_for.append(params["body"].split("'")[0])
+        return super().execute(stmt, params)
+
+
+def _beat(monkeypatch, session):
+    import workers.tasks.send_owner_digests as digests_module
+
+    monkeypatch.setattr(digests_module, "get_sync_engine", lambda: object())
+    monkeypatch.setattr(digests_module, "Session", lambda engine: session)
+    monkeypatch.setattr(digests_module, "tenant_session", lambda engine, tid: session)
+    digests_module.send_owner_digests()
+
+
+def test_beat_skips_owner_whose_user_turned_the_digest_off(monkeypatch):
+    s = _PreferenceSession([], "t1", with_preference=["ana"])
+    _beat(monkeypatch, s)
+    assert s.inserted_for == ["Ben", "Cy"], "off: nothing from the owner digest either"
+
+
+def test_beat_skips_owner_whose_user_chose_weekly_so_only_the_personal_digest_arrives(monkeypatch):
+    s = _PreferenceSession([], "t1", with_preference=["BEN"])  # matched case-insensitively
+    _beat(monkeypatch, s)
+    assert s.inserted_for == ["Ana", "Cy"], "weekly: the personal digest serves Ben, the owner task skips him"
+
+
+def test_beat_keeps_the_legacy_digest_for_owners_without_a_preference(monkeypatch):
+    s = _PreferenceSession([], "t1", with_preference=[])
+    _beat(monkeypatch, s)
+    assert s.inserted_for == ["Ana", "Ben", "Cy"]
+    assert ("preferences", "t1") in s.calls
+
+
+def test_on_demand_route_sends_regardless_of_preference(monkeypatch):
+    import workers.tasks.send_owner_digests as digests_module
+
+    s = _PreferenceSession([], "t1", with_preference=["ana", "ben", "cy"])
+    monkeypatch.setattr(digests_module, "tenant_session", lambda engine, tid: s)
+    assert digests_module.send_digests_for_tenant(object(), "t1") == 3
+    assert digests_module.send_digests_for_tenant(object(), "t1", owner="Ana") == 1
+    assert ("preferences", "t1") not in s.calls, "the explicit route does not consult the preference"
+
+
+def test_preference_lookup_failure_keeps_every_legacy_digest(monkeypatch, caplog):
+    import workers.tasks.send_owner_digests as digests_module
+
+    class _Broken(_PreferenceSession):
+        def execute(self, stmt, params=None):
+            if "FROM users" in str(stmt) and "'digest'" in str(stmt):
+                raise RuntimeError("column preferences does not exist")
+            return super().execute(stmt, params)
+
+        def rollback(self):
+            self.calls.append(("rollback", self.tenant_id))
+
+    s = _Broken([], "t1")
+    monkeypatch.setattr(digests_module, "tenant_session", lambda engine, tid: s)
+    with caplog.at_level(logging.WARNING):
+        assert digests_module.send_digests_for_tenant(object(), "t1", honour_preference=True) == 3
+    assert ("rollback", "t1") in s.calls

@@ -1277,6 +1277,28 @@ class AlertChannel(Base):
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
 
+class NotificationDelivery(Base):
+    """One outbound attempt of a per-user notification (migration 083): email or in-app, for a
+    critical alert, a digest or a test. user_id is NULL for the tenant-level "no email backend" row."""
+    __tablename__ = "notification_deliveries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    channel = Column(Text, nullable=False)  # email | in_app
+    kind = Column(Text, nullable=False)  # critical | digest | test
+    status = Column(Text, nullable=False)  # pending | sent | failed | no_backend | skipped
+    error = Column(Text, nullable=True)
+    #: idempotency key claimed before sending: version id, daily:<date>, weekly:<year>-W<week>, test:<uuid>
+    delivery_key = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_notification_deliveries_tenant_user_created", "tenant_id", "user_id", "created_at"),
+        Index("uq_notification_deliveries_key", "tenant_id", "user_id", "channel", "delivery_key", unique=True),
+    )
+
+
 class FieldDependency(Base):
     """Candidate hidden rule A → B (≥ 99 %, < 100 % of records) — see migration 051."""
     __tablename__ = "field_dependencies"

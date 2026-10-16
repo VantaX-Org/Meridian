@@ -14,6 +14,7 @@ _UNGUARDED_OK = {
     ("notifications.py", "/notifications/{notification_id}/read"),
     ("notifications.py", "/notifications/read-all"),
     ("preferences.py", "/me/preferences"),
+    ("me_notifications.py", "/me/notifications/test"),
 }
 
 
