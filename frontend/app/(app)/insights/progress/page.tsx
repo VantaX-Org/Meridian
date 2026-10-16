@@ -16,9 +16,9 @@ import { getScoreHistory } from "@/lib/api/findings";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getComparisonReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, apiErrorReason, isListFailure, isNotFound } from "@/lib/error";
-import { formatDate, formatModuleName, labelOf, plural } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, plural, runOptionLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { lineageOf } from "@/lib/runs";
+import { lineageOf, SCORE_HISTORY_LIMIT } from "@/lib/runs";
 import { InsightActions } from "../_components/InsightActions";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
@@ -45,7 +45,7 @@ export default function ProgressPage() {
   // 404 {"detail": {"reason": "no_baseline"}} when this is the first run.
   const cmp = useQuery({ queryKey: ["versions", "compare", run, baseline, module], queryFn: () => compareVersions(baseline, run ?? "", module), enabled: !!run, retry: false });
   const recs = useQuery({ queryKey: ["versions", "compare-records", run, baseline, module], queryFn: () => compareRecords(run ?? "", baseline, module), enabled: !!run });
-  const history = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: 24 }) });
+  const history = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: SCORE_HISTORY_LIMIT }) });
 
   const pin = useMutation({
     mutationFn: () => pinBaseline(run ?? ""),
@@ -53,9 +53,10 @@ export default function ProgressPage() {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
-  const label = (id?: string | null) => { const v = runs.find((r) => r.id === id); return v ? v.label || formatDate(v.run_at, "datetime") : "the previous run"; };
   const v1 = cmp.data?.v1;
   const v2 = cmp.data?.v2;
+  // The compare response carries both runs, so their labels never depend on the run list.
+  const label = (v?: { label: string | null; run_at: string } | null) => (v ? v.label || formatDate(v.run_at, "datetime") : "the baseline");
   const composite = (v?: { dqs_summary: Record<string, { composite_score: number | null }> | null } | null) => {
     const s = v?.dqs_summary;
     const scores = s ? Object.values(s).map((d) => d.composite_score).filter((x): x is number => typeof x === "number") : [];
@@ -98,6 +99,8 @@ export default function ProgressPage() {
   // "Compare with" offers runs of the current run's own lineage: the same system, or uploads of the same objects.
   const current = runs.find((r) => r.id === run);
   const comparableRuns = current ? runs.filter((r) => r.id !== run && lineageOf(r) === lineageOf(current)) : runs.filter((r) => r.id !== run);
+  // Runs that share a label ("controlling_1k" ten times) are told apart by date and time.
+  const optionLabels = runOptionLabels(comparableRuns);
   const state: "loading" | "empty" | "error" | undefined = resolving || cmp.isLoading || dayOne.status === "loading"
     ? "loading"
     : noEarlier || !run ? "empty"
@@ -110,14 +113,14 @@ export default function ProgressPage() {
   return (
     <InsightFrame
       title="Progress"
-      meta={v1 && v2 ? `${label(v2.id)} compared with ${label(v1.id)}` : undefined}
+      meta={v1 && v2 ? `${label(v2)} compared with ${label(v1)}` : undefined}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Select
             label="Compare with"
             value={baseline ?? ""}
             onValueChange={(id) => router.replace(withScope(path, { run, module, baseline: id || undefined }))}
-            options={[{ value: "", label: "Pinned baseline or previous run" }, ...comparableRuns.map((r) => ({ value: r.id, label: `${r.label || formatDate(r.run_at, "datetime")}${r.metadata?.baseline ? " (baseline)" : ""}` }))]}
+            options={[{ value: "", label: "Pinned baseline or previous run" }, ...comparableRuns.map((r) => ({ value: r.id, label: `${optionLabels.get(r.id) ?? formatDate(r.run_at, "datetime")}${r.metadata?.baseline ? " (baseline)" : ""}` }))]}
           />
           {can("analyse") && run ? <Button variant="secondary" onClick={() => pin.mutate()} pending={pin.isPending}>Pin as baseline</Button> : null}
           <InsightActions
@@ -133,12 +136,12 @@ export default function ProgressPage() {
       insight={{
         hero: true,
         stats: [
-          { label: "DQS now", value: now ?? "—", decimals: 1, tone: dqsDelta == null ? undefined : dqsDelta >= 0 ? "go" : "at-risk", hint: dqsDelta == null ? undefined : `${dqsDelta > 0 ? "+" : ""}${dqsDelta} since baseline`, to: withScope("/insights/trends", { run }) },
+          { label: "DQS now", value: now ?? "—", decimals: 1, tone: dqsDelta == null ? undefined : dqsDelta >= 0 ? "go" : "at-risk", hint: dqsDelta == null ? undefined : dqsDelta === 0 ? "Unchanged since baseline" : `${dqsDelta > 0 ? "+" : ""}${dqsDelta} since baseline`, to: withScope("/insights/trends", { run }) },
           { label: "Records fixed", value: t?.resolved ?? "—", tone: t?.resolved ? "go" : undefined, to: withScope("/fix", { run }) },
           { label: "New failures", value: t?.new ?? "—", tone: t?.new ? "no-go" : "go", to: withScope("/insights/rules", { run }) },
           { label: "Still failing", value: t?.persisting ?? "—", to: withScope("/insights/rules", { run }) },
         ],
-        situation: { sentence: dqsDelta == null ? "Not enough scored runs to compare" : `DQS ${dqsDelta >= 0 ? "up" : "down"} ${Math.abs(dqsDelta)} since ${label(v1?.id)}`, tone: dqsDelta == null ? undefined : dqsDelta >= 0 ? "go" : "at-risk" },
+        situation: { sentence: dqsDelta == null ? "Not enough scored runs to compare" : dqsDelta === 0 ? `DQS unchanged since ${label(v1)}` : `DQS ${dqsDelta > 0 ? "up" : "down"} ${Math.abs(dqsDelta)} since ${label(v1)}`, tone: dqsDelta == null ? undefined : dqsDelta >= 0 ? "go" : "at-risk" },
         changed: { sentence: t ? `${plural(t.resolved, "record")} fixed, ${plural(t.new, "new failure")}, ${t.persisting.toLocaleString()} still failing${notInBoth ? `; ${plural(notInBoth, "rule")} not in both runs` : ""}` : "—" },
         why: { sentence: rows.length ? `${plural(improved, "object")} improved, ${slipped} slipped` : "—", href: withScope("/objects", { run }) },
         next: worst && worst.change < 0
@@ -155,7 +158,7 @@ export default function ProgressPage() {
       }}
       errorProps={{ message: apiErrorMessage(cmp.error), onRetry: () => { void cmp.refetch(); void recs.refetch(); } }}
     >
-      <Card title="Objects since baseline" meta={rows.length ? `${rows.length} objects` : undefined} actions={<Link href={withScope("/objects", { run })} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}>
+      <Card title="Objects since baseline" meta={rows.length ? plural(rows.length, "object") : undefined} actions={<Link href={withScope("/objects", { run })} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}>
         {rows.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No object is scored in both runs.</p>
           : <DataTable columns={objectColumns} data={rows} getRowId={(r) => r.module} hideToolbar dense height="auto" />}
       </Card>

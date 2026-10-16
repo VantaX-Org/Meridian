@@ -14,6 +14,7 @@ import {
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf, plural } from "@/lib/format";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { Section } from "../_components/Section";
 import { useInsightScope } from "../_components/useInsightScope";
 
 /** Queue stage ids as the steward sees them. */
@@ -87,9 +88,12 @@ export default function OperationsPage() {
   const bottlenecks = ops.data?.bottlenecks ?? [];
   const plans = sprints.data?.sprints ?? [];
   const cap = ops.data?.capacity;
-  const loading = ops.isLoading || sprints.isLoading;
-  const failed = isListFailure(ops) ? ops : isListFailure(sprints) ? sprints : null;
-  const empty = !loading && !failed && bottlenecks.length === 0 && plans.length === 0 && !k?.items_in_flight;
+  // The page frame waits only while nothing has answered, and errors only when both queries failed: a slow or
+  // failed query holds its own cards (skeleton, then inline error with Retry), the rest of the page renders.
+  const loading = ops.isLoading && sprints.isLoading;
+  const failed = isListFailure(ops) && isListFailure(sprints) ? ops : null;
+  const settled = !ops.isLoading && !sprints.isLoading && !ops.isError && !sprints.isError;
+  const empty = settled && bottlenecks.length === 0 && plans.length === 0 && !k?.items_in_flight;
 
   const worst = [...bottlenecks].sort((x, y) => y.avg_age_hours - x.avg_age_hours)[0];
   // Capacity: the gap is the one number that cannot contradict itself ("needed 0, 1 now" would).
@@ -102,6 +106,7 @@ export default function OperationsPage() {
       title="Operations"
       run={run}
       insight={{
+        loading: ops.isLoading,
         situation: { sentence: `${plural(k?.items_in_flight ?? 0, "item")} in flight, ${k ? pct(k.sla_compliance_pct) : "—"} within SLA` },
         changed: { sentence: bottlenecks.length ? `${plural(bottlenecks.length, "stage is", "stages are")} holding work` : "No stage is holding work" },
         why: { sentence: cap?.recommendation || "—" },
@@ -118,7 +123,7 @@ export default function OperationsPage() {
       emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href="/inbox">Open inbox</Link>} /> }}
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
     >
-      <Card title="Throughput and capacity">
+      <Section title="Throughput and capacity" height={160} query={ops}>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat label="Processed" href="/inbox" value={k?.total_processed ?? "—"} hint={k?.total_detected != null ? `of ${k.total_detected.toLocaleString()} detected` : undefined} />
           <Stat label="Throughput" href="/inbox" value={k?.throughput ?? "—"} hint="Items per day" />
@@ -132,8 +137,8 @@ export default function OperationsPage() {
           <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
           <Stat label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} />
         </div>
-      </Card>
-      <Card title="Queue age by stage">
+      </Section>
+      <Section title="Queue age by stage" height={160} query={ops}>
         {bottlenecks.length === 0 ? (
           <EmptyState title="No stage is holding work" detail="Queue age shows here once items wait in a stage." action={<Button render={<Link href="/inbox">Open inbox</Link>} />} />
         ) : (
@@ -142,14 +147,14 @@ export default function OperationsPage() {
             {worst && <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>{`${stageLabel(worst.stage)} holds work longest, at ${hours(worst.avg_age_hours)} on average.`}</p>}
           </>
         )}
-      </Card>
+      </Section>
       <TeamCard />
-      <Card title="Bottlenecks">
+      <Section title="Bottlenecks" height={120} query={ops}>
         <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar dense height="auto" />
-      </Card>
-      <Card title="Sprint plans">
+      </Section>
+      <Section title="Sprint plans" height={120} query={sprints}>
         <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar dense height="auto" />
-      </Card>
+      </Section>
     </InsightFrame>
   );
 }

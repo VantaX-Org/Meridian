@@ -25,6 +25,18 @@ const item: MonitorItem = {
 };
 
 describe("MonitorTab", () => {
+  it("renders one card per upload lineage even when they share the upload scope", async () => {
+    const a = { ...item, scope: "upload", lineage: "upload:accounts_payable", system_name: null };
+    const b = { ...item, scope: "upload", lineage: "upload:controlling", system_name: null };
+    vi.spyOn(remediationApi, "getMonitor").mockResolvedValue({ items: [a, b] });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([] as never);
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    renderWithQuery(<MonitorTab />);
+    expect(await screen.findAllByRole("link", { name: "AP001" })).toHaveLength(2);
+    expect(err.mock.calls.some((c) => String(c[0]).includes("same key"))).toBe(false);
+    err.mockRestore();
+  });
+
   it("shows the regressed rule, the drafted batch and the schedule for a monitored system", async () => {
     vi.spyOn(remediationApi, "getMonitor").mockResolvedValue({ items: [item] });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([

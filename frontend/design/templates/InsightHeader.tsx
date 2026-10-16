@@ -38,6 +38,12 @@ const HERO_TONE: Record<PillTone, string> = {
   info: "var(--m-hero-ink-2)",
 };
 
+/** Stat columns beside a lead: a row of their own while stacked, three abreast once the lead sits beside them. */
+const HERO_STAT_COLS: Record<number, string> = {
+  3: "@3xl:grid-cols-3",
+  4: "@3xl:grid-cols-4 @7xl:grid-cols-3",
+};
+
 const TONE: Record<PillTone, string> = {
   neutral: "var(--m-ink-3)",
   go: "var(--m-go)",
@@ -71,10 +77,13 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
       style={hero ? undefined : { background: "var(--m-sheet)", borderTop: "1px solid var(--m-line-strong)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-3) 0" }}
     >
       {hero && (lead || (stats && stats.length > 0)) && (
-        <div className={lead ? "mb-6 grid gap-8 @5xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @5xl:items-end" : "mb-6"}>
-          {lead && <div data-testid="insight-hero-lead">{lead}</div>}
+        // Lead and stats sit side by side only where both fit (a wide container); below it they stack, the lead
+        // on its own row, so the verdict never paints over a stat or wraps into a narrow column.
+        <div className={lead ? "mb-6 grid gap-8 @7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @7xl:items-end" : "mb-6"}>
+          {lead && <div data-testid="insight-hero-lead" className="min-w-0">{lead}</div>}
           {stats && stats.length > 0 && (
-            <div className={`m-motion-stagger grid grid-cols-2 gap-x-6 gap-y-4 ${lead ? (stats.length >= 3 ? "@5xl:grid-cols-3" : "") : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
+            <div className={`m-motion-stagger grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 ${lead ? HERO_STAT_COLS[Math.min(stats.length, 4)] ?? "" : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
+              {/* Hero numbers carry thousands separators, as the sentences under them do. */}
               {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
             </div>
           )}

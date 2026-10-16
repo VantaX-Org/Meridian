@@ -1,5 +1,26 @@
 import type { Version } from "@/types/api";
 
+/**
+ * Statuses of a run that has finished scoring: the one set every "finished run" filter uses. Agents and AI
+ * enrichment run after scoring, so a run whose agents failed, or that finished partially, still has scores.
+ */
+export const FINISHED: ReadonlySet<string> = new Set(["complete", "agents_complete", "ai_enriched", "agents_failed", "partial"]);
+
+/** The API's cap on `scores/history` (`limit le=500`): every finished run, so an older lineage keeps its history. */
+export const SCORE_HISTORY_LIMIT = 500;
+
+export const isFinished =(v: Pick<Version, "status">): boolean => FINISHED.has(v.status);
+
+/**
+ * A run page link whose `?run=` scope names the same run, so the page and the shell's run selector agree
+ * (the shell would otherwise keep the previous page's run, or write the default run, onto the URL).
+ */
+export function runPageHref(id: string, params?: Record<string, string | undefined>): string {
+  const q = new URLSearchParams({ run: id });
+  for (const [k, v] of Object.entries(params ?? {})) if (v) q.set(k, v);
+  return `/runs/${encodeURIComponent(id)}?${q.toString()}`;
+}
+
 /** Mean of the module composite scores, or null when the run carries no scores. */
 export function overallDqs(version: Version): number | null {
   const scores = Object.values(version.dqs_summary ?? {}).flatMap((s) => (s.composite_score == null ? [] : [s.composite_score]));
@@ -43,10 +64,10 @@ export function previousInLineage(current: Version, runs: Version[]): Version | 
 
 function sameScopeComplete(current: Version, runs: Version[]): Version[] {
   const scope = scopeOf(current);
-  return runs.filter((r) => r.id !== current.id && r.status === "complete" && scopeOf(r) === scope);
+  return runs.filter((r) => r.id !== current.id && isFinished(r) && scopeOf(r) === scope);
 }
 
-/** The latest complete run in the same scope that started before `current`. */
+/** The latest finished run in the same scope that started before `current`. */
 export function previousRunId(current: Version, runs: Version[]): string | null {
   const earlier = sameScopeComplete(current, runs)
     .filter((r) => r.run_at < current.run_at)
@@ -54,7 +75,7 @@ export function previousRunId(current: Version, runs: Version[]): string | null 
   return earlier[0]?.id ?? null;
 }
 
-/** The pinned baseline of `current`'s scope, if it is a different complete run. */
+/** The pinned baseline of `current`'s scope, if it is a different finished run. */
 export function baselineRunId(current: Version, runs: Version[]): string | null {
   return sameScopeComplete(current, runs).find((r) => r.metadata?.baseline === true)?.id ?? null;
 }
@@ -64,11 +85,11 @@ export interface RunSeries {
   points: { x: string; y: number }[];
 }
 
-/** One ascending DQS series per scope from complete, scored runs; scopes ordered by their latest run. */
+/** One ascending DQS series per scope from finished, scored runs; scopes ordered by their latest run. */
 export function runSeries(runs: Version[], max = 6): RunSeries[] {
   const byScope = new Map<string, { x: string; y: number }[]>();
   for (const r of runs) {
-    if (r.status !== "complete") continue;
+    if (!isFinished(r)) continue;
     const y = overallDqs(r);
     if (y === null) continue;
     const scope = scopeOf(r);

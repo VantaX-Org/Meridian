@@ -3,7 +3,8 @@
 // run-axis ticks that never show a user-supplied label, and the delta and trend sentences.
 import { describe, expect, it } from "vitest";
 import {
-  deltaSentence, formatModuleName, formatMoney, MODULE_LABELS, plural, runAxisLabels, shortList, systemTypeLabel, trendSentence,
+  capRuleIds, deltaSentence, formatModuleName, formatMoney, MODULE_LABELS, plural, runAxisLabels, runOptionLabels, shortCapReason, shortList,
+  systemTypeLabel, trendSentence,
 } from "../format";
 
 describe("plural", () => {
@@ -79,6 +80,53 @@ describe("runAxisLabels", () => {
   });
   it("gives a dash for a missing date", () => {
     expect(runAxisLabels([{ id: "x", run_at: null }]).get("x")).toBe("—");
+  });
+  it("adds seconds when two runs share a minute, and an ordinal in run order when they share a second", () => {
+    const labels = runAxisLabels([
+      { id: "d", run_at: "2026-10-16T05:17:03.900Z" },
+      { id: "a", run_at: "2026-10-16T05:17:01Z" },
+      { id: "b", run_at: "2026-10-16T05:17:02Z" },
+      { id: "c", run_at: "2026-10-16T05:17:03.100Z" },
+      { id: "e", run_at: "2026-10-16T09:00:00Z" },
+    ]);
+    expect(labels.get("a")).toBe("16 Oct 2026, 05:17:01");
+    expect(labels.get("b")).toBe("16 Oct 2026, 05:17:02");
+    expect(labels.get("c")).toBe("16 Oct 2026, 05:17:03 #1");
+    expect(labels.get("d")).toBe("16 Oct 2026, 05:17:03 #2");
+    expect(labels.get("e")).toBe("16 Oct 2026, 09:00");
+    // Ten runs inside one minute never share a tick.
+    expect(new Set(labels.values()).size).toBe(5);
+  });
+});
+
+describe("runOptionLabels", () => {
+  it("keeps a unique label, and tells runs that share a label apart by date and time", () => {
+    const labels = runOptionLabels([
+      { id: "a", label: "controlling_1k", run_at: "2026-10-16T05:17:01Z" },
+      { id: "b", label: "controlling_1k", run_at: "2026-10-16T05:17:02Z" },
+      { id: "c", label: "controlling_1k", run_at: "2026-10-15T08:00:00Z" },
+      { id: "d", label: "fi_gl_1k", run_at: "2026-10-16T05:17:01Z" },
+      { id: "e", label: null, run_at: "2026-10-14T10:00:00Z" },
+    ]);
+    expect(labels.get("a")).toBe("controlling_1k, 16 Oct 2026, 05:17:01");
+    expect(labels.get("b")).toBe("controlling_1k, 16 Oct 2026, 05:17:02");
+    expect(labels.get("c")).toBe("controlling_1k, 15 Oct 2026");
+    expect(labels.get("d")).toBe("fi_gl_1k");
+    expect(labels.get("e")).toBe("14 Oct 2026, 10:00");
+  });
+});
+
+describe("cap reasons", () => {
+  const reason = "6 critical failures over tolerance (CO003: 6.3% of CSKS rows; CO020: 6.1% of CSKB rows; CO021: 5.1% of CSKB rows; CO028: 5.5% of CEPC rows; CO043: 6.4% of CSKS rows; CO126: 5.0% of CSKS rows) — score capped at 70";
+  it("reads the rule ids out of the scoring engine's cap reason", () => {
+    expect(capRuleIds(reason)).toEqual(["CO003", "CO020", "CO021", "CO028", "CO043", "CO126"]);
+    expect(capRuleIds("MM140: 3.2% of MARA rows — score capped at 85")).toEqual(["MM140"]);
+    expect(capRuleIds(null)).toEqual([]);
+  });
+  it("shortens a long reason to two named rules and a count that adds up", () => {
+    expect(shortCapReason(reason)).toBe("6 critical rules over tolerance: CO003, CO020 and 4 more");
+    expect(shortCapReason("2 critical failures over tolerance (A1: 1% of T rows; B2: 2% of T rows) — score capped at 70")).toBe("2 critical rules over tolerance: A1, B2");
+    expect(shortCapReason("MM140: 3.2% of MARA rows — score capped at 85")).toBe("MM140: 3.2% of MARA rows");
   });
 });
 

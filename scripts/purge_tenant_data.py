@@ -159,13 +159,16 @@ def main() -> int:
         if not tables:
             raise SystemExit("no table carries a tenant_id — wrong database?")
 
-        # safety: a kept table with tenant_id would be emptied, which is never intended
-        clash = sorted(set(tables) & KEEP)
-        if clash:
-            raise SystemExit(f"refusing to run: KEEP tables carry tenant_id and would be "
-                             f"emptied: {clash}")
-
+        # Safety: every KEEP table must be one this script never touches. Kept tables
+        # legitimately carry a tenant_id (sap_systems, users, ...), so "has a tenant_id" is
+        # what makes a table a *candidate*, not what disqualifies it - the first version of
+        # this guard asserted the opposite and refused every run.
         purge = [t for t in tables if t not in KEEP]
+        leaked = sorted(set(purge) & KEEP)
+        if leaked:
+            raise SystemExit(f"refusing to run: KEEP tables reached the purge set: {leaked}")
+        emptiable = sorted(t for t in purge
+                           if t not in {"analysis_versions", "tenants"} and not t.startswith("alembic"))
         edges = _fk_edges(conn)
         # version-keyed tables first, in the reviewed order from the purge service; the
         # rest by foreign key (children before parents)
@@ -179,7 +182,9 @@ def main() -> int:
         restricted = _kept_dependents(conn, set(purge))
 
         print(f"tenant: {tenant}")
-        print(f"tables with tenant_id: {len(tables)}  (keeping {len(KEEP & set(tables))})")
+        kept_with_tid = sorted(KEEP & set(tables))
+        print(f"tables with tenant_id: {len(tables)}")
+        print(f"kept (skipped) even though they carry tenant_id: {kept_with_tid}")
         print(f"tables to purge: {len(ordered)}")
         print(f"purged tables that reference a kept table: {len(restricted)}")
         for child, parent in sorted(set(restricted)):

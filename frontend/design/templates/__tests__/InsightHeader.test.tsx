@@ -24,4 +24,22 @@ describe("InsightHeader", () => {
     expect(screen.getByTestId("insight-hero-stats").children).toHaveLength(4);
     expect(screen.queryByText("E")).toBeNull();
   });
+
+  it("stacks the lead above the stats until the container is wide enough for both side by side", () => {
+    const stats = ["A", "B", "C"].map((label, i) => ({ label, value: i }));
+    render(<InsightHeader {...cells} hero lead={<p>Fail</p>} stats={stats} />);
+    const lead = screen.getByTestId("insight-hero-lead");
+    const band = lead.parentElement!;
+    // Side by side only from the 7xl container size; below it one column, so the verdict never paints over a stat.
+    expect(band.className).toContain("@7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]");
+    expect(band.className).not.toMatch(/(^|\s)@5xl:grid-cols/);
+    expect(lead).toHaveClass("min-w-0");
+    expect(screen.getByTestId("insight-hero-stats").className).toContain("@3xl:grid-cols-3");
+  });
+
+  it("prints hero numbers with thousands separators", () => {
+    render(<InsightHeader {...cells} hero stats={[{ label: "Records fixed", value: 10521 }, { label: "DQS", value: 70, decimals: 1 }]} />);
+    expect(screen.getByLabelText("10,521")).toBeInTheDocument();
+    expect(screen.getByLabelText("70.0")).toBeInTheDocument();
+  });
 });

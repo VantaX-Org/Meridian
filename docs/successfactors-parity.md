@@ -148,8 +148,14 @@ Step 2 is the real answer to "will this work for another customer": it reports, 
 which declared sources their API does not serve — before an analysis rather than as
 mysteriously low coverage afterwards.
 
-**What is still missing for true multi-tenant support**: those per-tenant corrections have
-nowhere to live yet. Today a tenant-specific spelling has to be written into the shared
+**Resolved.** Those per-tenant corrections now live in a per-system override layer:
+`api/services/source_overrides.py` (built-in defaults for SuccessFactors' own quirks) plus
+`sap/dictionaries/overrides/<system_type>.yaml` for a specific system id, applied in
+`_extract_successfactors` before the source is parsed. Precedence is system-file, then
+built-in default, then canonical. See `sap/dictionaries/overrides/README.md`.
+
+The original problem is kept here for the record: **those per-tenant corrections had
+nowhere to live**. Today a tenant-specific spelling has to be written into the shared
 canonical file, which is what this document had to do for Komatsu. The next step is a
 tenant override layer — a `source:` remap keyed by system id, applied in
 `_extract_successfactors` alongside the existing `field_status` overlay — so the canonical

@@ -49,6 +49,29 @@ The dry run is the default. It prints every table it will empty and how many row
 holds, so the list can be eyeballed against the customer's expectation before anything is
 deleted.
 
+**Validated against the live deployment (2026-10-16, version 0.0.407).** The dry run reports:
+
+```
+tables with tenant_id: 114
+kept (skipped) even though they carry tenant_id: ['sap_systems', 'sync_profiles', 'system_module_map', 'users']
+tables to purge: 110   (43 non-empty)
+rows to delete: 12,810,206
+   cleaning_queue 4,099,205   finding_records 3,170,755   record_issues 3,000,585
+   dedup_candidates 1,591,382  config_drift_log 638,450   config_items 158,218
+   ... 37 more tables
+purged tables that reference a kept table: 0
+```
+
+So the purge removes ~12.8 M rows and keeps the four connection- and identity-bearing tables
+plus `tenants` and `alembic_version`. Run it before the baselines, not after.
+
+**A note on how this was found:** the first version of the script's safety guard asserted that a
+KEEP table must not carry a `tenant_id`, and *every* kept table does — so it refused every run
+with "KEEP tables carry tenant_id and would be emptied". The guard was checking the wrong
+thing: carrying a `tenant_id` is what makes a table a *candidate*, not what disqualifies it.
+The check now asserts that no KEEP table reaches the purge set, and the dry run above is the
+first time the script has actually run end to end.
+
 **Also purge the object store.** The staged parquet for every analysed version lives
 outside Postgres, under the uploads bucket:
 

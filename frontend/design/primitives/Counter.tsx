@@ -4,6 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { mMotion, reducedMotion } from "../tokens";
 
+const FORMATS = [0, 1].map((d) => new Intl.NumberFormat("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }));
+
+/** "10,521" or "70.0": grouped, at a fixed number of decimals, so a headline number reads like the sentence under it. */
+export function formatCount(value: number, decimals: 0 | 1 = 0): string {
+  return FORMATS[decimals].format(value);
+}
+
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
@@ -78,7 +85,7 @@ export function Counter({
     fontWeight: 600,
     display: "inline-block",
     // Reserve the final width so digits arriving never shift the layout.
-    minWidth: value === null ? undefined : `${Math.max(1, Math.round(Math.abs(value)).toString().length + (decimals ? 2 : 0) + (value < 0 ? 1 : 0))}ch`,
+    minWidth: value === null ? undefined : `${Math.max(1, formatCount(value, decimals).length)}ch`,
   };
 
   if (value === null) {
@@ -91,11 +98,11 @@ export function Counter({
 
   return (
     <span
-      aria-label={value.toFixed(decimals)}
+      aria-label={formatCount(value, decimals)}
       className={clsx("m-numeric", settled && "m-count-settle")}
       style={{ ...type, color: onHero ? "var(--m-hero-ink)" : "var(--m-ink)" }}
     >
-      {display.toFixed(decimals)}
+      {formatCount(display, decimals)}
     </span>
   );
 }

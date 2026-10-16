@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Version, DQSSummary } from "@/types/api";
-import { baselineRunId, overallDqs, previousRunId, runSeries, scopeOf } from "../runs";
+import { baselineRunId, FINISHED, isFinished, overallDqs, previousRunId, runPageHref, runSeries, scopeOf } from "../runs";
 
 function dqs(composite_score: number): DQSSummary {
   return {
@@ -61,6 +61,34 @@ describe("previousRunId", () => {
   });
   it("returns null when nothing is earlier", () => {
     expect(previousRunId(runs[4], runs)).toBeNull();
+  });
+  it("counts every finished status, not only complete (agents and enrichment run after scoring)", () => {
+    const finished = [
+      run({ id: "new", run_at: "2026-10-08T00:00:00Z", status: "agents_complete" }),
+      run({ id: "enriched", run_at: "2026-10-07T00:00:00Z", status: "ai_enriched" }),
+      run({ id: "agents-failed", run_at: "2026-10-06T00:00:00Z", status: "agents_failed" }),
+      run({ id: "partial", run_at: "2026-10-05T00:00:00Z", status: "partial" }),
+      run({ id: "running", run_at: "2026-10-04T00:00:00Z", status: "running" }),
+    ];
+    expect(previousRunId(finished[0], finished)).toBe("enriched");
+    expect(previousRunId(finished[1], finished)).toBe("agents-failed");
+    expect(previousRunId(finished[2], finished)).toBe("partial");
+    expect(previousRunId(finished[3], finished)).toBeNull();
+  });
+});
+
+describe("FINISHED", () => {
+  it("is the one finished-run set: scored runs whatever happened after scoring", () => {
+    for (const s of ["complete", "agents_complete", "ai_enriched", "agents_failed", "partial"]) expect(isFinished({ status: s as Version["status"] })).toBe(true);
+    for (const s of ["pending", "running", "failed", "agents_running", "agents_enqueued"]) expect(isFinished({ status: s as Version["status"] })).toBe(false);
+    expect(FINISHED.size).toBe(5);
+  });
+});
+
+describe("runPageHref", () => {
+  it("names the run itself as the ?run= scope, so a stale scope never rides along", () => {
+    expect(runPageHref("abc")).toBe("/runs/abc?run=abc");
+    expect(runPageHref("abc", { module: "fi_gl", tab: undefined })).toBe("/runs/abc?run=abc&module=fi_gl");
   });
 });
 
