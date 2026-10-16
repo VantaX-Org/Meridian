@@ -11,11 +11,12 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
 import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName, plural } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
-import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
+import { lineageOf } from "@/lib/runs";
+import { CardSkeleton, InsightFrame, formatMoney, useRunLabel } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
 
 const NONE = "none";
@@ -28,7 +29,12 @@ export default function ReportsPage() {
   const [module, setModule] = useState(NONE);
   const [recordKey, setRecordKey] = useState("");
   const [selected, setSelected] = useState("board");
+  const [building, setBuilding] = useState<string | null>(null);
   const versionId = scopedRun || "";
+  const scopedLabel = useRunLabel(versionId);
+  // Only runs of the same lineage (same system, or uploads of the same objects) can be compared.
+  const currentRun = runs.find((r) => r.id === versionId);
+  const comparableRuns = runs.filter((v) => v.id !== versionId && (!currentRun || lineageOf(v) === lineageOf(currentRun)));
   const cmp = compare === NONE ? undefined : compare;
   const mod = module === NONE ? undefined : module;
 
@@ -51,7 +57,8 @@ export default function ReportsPage() {
   const key = recordKey.trim();
   const urlOf = (e: CatalogueEntry): string | null => (e.id === "record" ? (key && versionId ? getRecordReportUrl(versionId, key) : null) : e.url);
   const href = current ? urlOf(current) : null;
-  const runLabel = (id: string) => { const v = runs.find((r) => r.id === id); return v?.label || (v ? formatDate(v.run_at, "datetime") : id); };
+  // The shared run label formatter: the run's name, else its date and time; never a raw id.
+  const runLabel = (id: string) => { const v = runs.find((r) => r.id === id); return v?.label || (v ? formatDate(v.run_at, "datetime") : id === versionId && scopedLabel ? scopedLabel : "this run"); };
 
   const onKeys = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -63,33 +70,46 @@ export default function ReportsPage() {
     e.currentTarget.querySelector<HTMLElement>(`[data-id="${next.id}"]`)?.focus();
   };
 
-  const download = () => { if (current && href) void downloadAuthenticated(href, `${current.id}_${versionId}.${EXT[current.format]}`); };
+  // A PDF renders server-side before it downloads; the button shows that while it does.
+  const download = async () => {
+    if (!current || !href) return;
+    setBuilding(current.id);
+    try {
+      await downloadAuthenticated(href, `${current.id}_${versionId}.${EXT[current.format]}`);
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    } finally {
+      setBuilding(null);
+    }
+  };
   const copy = async () => {
     if (!href) return;
     try { await navigator.clipboard.writeText(new URL(href, window.location.origin).toString()); toast.success("Link copied"); } catch { toast.error("Could not copy the link"); }
   };
 
   const o = overview.data;
-  const scopeLine = [runLabel(versionId), cmp ? `compared with ${runLabel(cmp)}` : "no comparison run", mod ? formatModuleName(mod) : "all objects"].join(", ");
+  const scopeLine = [versionId ? runLabel(versionId) : "no run", cmp ? `compared with ${runLabel(cmp)}` : "no comparison run", mod ? formatModuleName(mod) : "all objects"].join(", ");
 
   return (
     <InsightFrame
       title="Reports"
       meta={versionId ? `Scope: ${scopeLine}` : "Latest completed runs"}
+      run={versionId || undefined}
+      module={mod}
       skeleton={<CardSkeleton height={300} />}
       insight={{
-        situation: { sentence: `${runs.length} completed ${runs.length === 1 ? "run is" : "runs are"} available. Reports are rendered from the run you choose.`, tone: runs.length ? "go" : "at-risk" },
-        changed: { sentence: "—" },
-        why: { sentence: can("export") ? `${entries.length} reports in the library.` : "Export needs the auditor or analyst role." },
+        situation: { sentence: `${plural(runs.length, "completed run is", "completed runs are")} available. Reports are rendered from the run you choose.`, tone: runs.length ? "go" : "at-risk" },
+        changed: { sentence: cmp ? `Comparing with ${runLabel(cmp)}.` : comparableRuns.length ? `${plural(comparableRuns.length, "earlier run")} of the same lineage can be compared.` : "No earlier run of the same lineage to compare with." },
+        why: { sentence: can("export") ? `${plural(entries.length, "report")} in the library.` : "Export needs the auditor or analyst role." },
         next: can("export") && href
-          ? { sentence: "Download the selected report.", action: { label: `Download ${current?.name ?? "report"}`, onClick: download } }
+          ? { sentence: "Download the selected report.", action: { label: building ? "Rendering" : `Download ${current?.name ?? "report"}`, onClick: () => void download() } }
           : { sentence: can("export") ? "Choose a run." : "Export needs the auditor or analyst role.", action: { label: "Open runs", href: "/runs" } },
       }}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <Select label="Compare with" value={compare} onValueChange={setCompare} options={[{ value: NONE, label: "No comparison" }, ...runs.filter((v) => v.id !== versionId).map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))]} />
+      controls={
+        <>
+          <Select label="Compare with" value={compare} onValueChange={setCompare} options={[{ value: NONE, label: "No comparison" }, ...comparableRuns.map((v) => ({ value: v.id, label: v.label || formatDate(v.run_at, "datetime") }))]} />
           <Select label="Object" value={module} onValueChange={setModule} options={[{ value: NONE, label: "All objects" }, ...(heat.data?.rows ?? []).map((r) => ({ value: r.module, label: formatModuleName(r.module) }))]} />
-        </div>
+        </>
       }
       state={versions.isLoading ? "loading" : isListFailure(versions) ? "error" : runs.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No completed run yet", detail: "Reports are rendered from a finished run.", ghost: "table", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
@@ -149,7 +169,7 @@ export default function ReportsPage() {
                   )}
                   {current.last_built_at && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`Last built ${formatDate(current.last_built_at, "datetime")}.`}</p>}
                   <div className="flex gap-2">
-                    <Button variant="primary" disabled={!href} onClick={download}>Download</Button>
+                    <Button variant="primary" disabled={!href} pending={building === current.id} onClick={() => void download()}>{building === current.id ? "Rendering" : "Download"}</Button>
                     <Button variant="secondary" disabled={!href} onClick={() => void copy()}>Copy link</Button>
                   </div>
                 </div>

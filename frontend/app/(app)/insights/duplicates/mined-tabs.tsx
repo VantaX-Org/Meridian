@@ -4,9 +4,11 @@
 
 import { useMemo, type ReactNode } from "react";
 import Link from "next/link";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
 import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, Pill, Skeleton, type PillTone } from "@/design";
+import { mineLearnedRules } from "@/lib/api/learnedRules";
 import {
   getMiningAnomalies, getMiningDuplicates, getMiningRelationships,
   type MinedAnomaly, type MinedDuplicate, type MinedRelationship,
@@ -18,12 +20,23 @@ const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-g
 const pct = (v: number) => `${(v * (v <= 1 ? 100 : 1)).toFixed(0)}%`;
 const LIMIT = 500;
 
-function Feed<T>({ q, empty, children }: { q: UseQueryResult<T[]>; empty: { title: string; detail: string }; children: (rows: T[]) => ReactNode }) {
+/** "Mine now" queues the miner on the current run (progress shows in the job tray; the API checks the right to run it); without a run it opens the runs list. */
+export function MineNow({ run }: { run?: string }) {
+  const mine = useMutation({
+    mutationFn: () => mineLearnedRules(run as string),
+    onSuccess: () => toast.success("Mining started. Results appear here when it finishes; progress shows in the job tray."),
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  if (!run) return <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />;
+  return <Button onClick={() => mine.mutate()} pending={mine.isPending}>Mine now</Button>;
+}
+
+function Feed<T>({ q, run, empty, children }: { q: UseQueryResult<T[]>; run?: string; empty: { title: string; detail: string }; children: (rows: T[]) => ReactNode }) {
   if (q.isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />;
   const rows = q.data ?? [];
   if (rows.length === 0) {
-    return <EmptyState title={empty.title} detail={empty.detail} ghost="table" action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />;
+    return <EmptyState title={empty.title} detail={empty.detail} ghost="table" action={<MineNow run={run} />} />;
   }
   return <>{children(rows)}</>;
 }
@@ -41,7 +54,7 @@ export function MinedDuplicates({ run }: { run: string }) {
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
   ], []);
   return (
-    <Feed q={q} empty={{ title: "No duplicate pairs mined", detail: "Mining finds likely duplicates after an analysis" }}>
+    <Feed q={q} run={run} empty={{ title: "No duplicate pairs mined", detail: "Mining finds likely duplicates after an analysis" }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(d) => d.id} tableId="mined-duplicates" exportName="mined-duplicates" height={480} />}
     </Feed>
   );
@@ -59,7 +72,7 @@ export function MinedAnomalies({ run }: { run: string }) {
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
   ], []);
   return (
-    <Feed q={q} empty={{ title: "No anomalies mined", detail: "Mining flags statistical outliers after an analysis" }}>
+    <Feed q={q} run={run} empty={{ title: "No anomalies mined", detail: "Mining flags statistical outliers after an analysis" }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(a) => a.id} tableId="mined-anomalies" exportName="mined-anomalies" height={480} />}
     </Feed>
   );
@@ -76,7 +89,7 @@ export function MinedRelationships({ run }: { run: string }) {
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
   ], []);
   return (
-    <Feed q={q} empty={{ title: "No relationships mined", detail: "Mining finds fields that move together after an analysis" }}>
+    <Feed q={q} run={run} empty={{ title: "No relationships mined", detail: "Mining finds fields that move together after an analysis" }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(r) => r.id} tableId="mined-relationships" exportName="mined-relationships" height={480} />}
     </Feed>
   );

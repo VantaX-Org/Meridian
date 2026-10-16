@@ -59,10 +59,32 @@ describe("ReadinessPage", () => {
     expect(container.querySelector("table")).not.toBeInTheDocument();
   });
 
-  it("shows an empty state when the run has no readiness cells", async () => {
+  it("with a run but no wave, the grid offers Create wave into the migration cockpit and the S/4 strip still renders", async () => {
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 70, cells: [], configured: true });
+    vi.spyOn(migrationApi, "getS4Readiness").mockResolvedValue({
+      version_id: "v1", status: "ok", ready: false, rules: 5, evaluated: 5, failing: 3, failing_records: 9, blocking_failing: 2, warning_failing: 1,
+      areas: [{ area: "bp", label: "Business Partner / CVI", simplification_item: null, rules: 5, evaluated: 5, failing: 3, failing_records: 9, blocking_failing: 2, warning_failing: 1, status: "x", checks: [] }],
+    });
     renderWithQuery(<ReadinessPage />);
-    await waitFor(() => expect(screen.getByText(/no readiness data/i)).toBeInTheDocument());
+    expect(await screen.findByText("No readiness waves yet")).toBeInTheDocument();
+    // The grid's empty state and the header's next step both lead to the migration cockpit.
+    const links = screen.getAllByRole("link", { name: "Create wave" });
+    expect(links.length).toBeGreaterThan(0);
+    for (const l of links) expect(l).toHaveAttribute("href", "/migration");
+    expect(screen.queryByText(/no readiness data/i)).toBeNull();
+    const strip = await screen.findByTestId("s4-strip");
+    await waitFor(() => expect(strip).toHaveTextContent("Blockers2"));
+    // Without waves the blockers table lists the failing S/4 areas instead of an empty line.
+    expect(await screen.findByRole("columnheader", { name: "S/4 area" })).toBeInTheDocument();
+    expect(screen.getByText("Business Partner / CVI")).toBeInTheDocument();
+    expect(screen.getByText(/2 rules would block an S\/4 load; no wave is defined yet/)).toBeInTheDocument();
+  });
+
+  it("shows the no-data empty state only when there is no run at all", async () => {
+    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: null, threshold: 70, cells: [], configured: true });
+    renderWithQuery(<ReadinessPage />);
+    // The route carries run=v1, so the S/4 strip is scoped to it and the page is not empty; the grid carries the wave empty state.
+    expect(await screen.findByText("No readiness waves yet")).toBeInTheDocument();
   });
 
   it("shows a not-configured empty state when readiness waves aren't set", async () => {
@@ -88,7 +110,7 @@ describe("ReadinessPage", () => {
     const retry = await screen.findByRole("button", { name: /retry/i });
     fireEvent.click(retry);
 
-    await waitFor(() => expect(screen.getByText(/no readiness data/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("No readiness waves yet")).toBeInTheDocument());
     expect(getReadiness).toHaveBeenCalledTimes(2);
   });
 

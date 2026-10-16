@@ -22,6 +22,7 @@ import {
   type ImpactRow, type LineageDirection, type LineageNode, type Severity,
 } from "@/lib/api/lineage";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
@@ -189,7 +190,8 @@ export default function LineagePage() {
     <>
       <InsightFrame
         title="Lineage"
-        meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} links`}
+        meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} links${latest ? `, ${latest.label || formatDate(latest.run_at, "datetime")}` : ""}`}
+        run={latest?.id}
         insight={{
           situation: { sentence: impact ? `${kpis.toLocaleString()} KPIs and ${features.toLocaleString()} features are at risk` : "Impact needs a completed analysis", tone: kpis ? "at-risk" : "neutral" },
           changed: { sentence: focus ? `Tracing ${label(focus)}: ${nodes.length.toLocaleString()} nodes within ${depth} hops` : "Nothing traced yet" },
@@ -245,7 +247,7 @@ export default function LineagePage() {
             {sel.definition ? <p className="m-text-body">{sel.definition}</p> : null}
             <div><Button onClick={() => trace(sel.id)}>Trace from here</Button></div>
             {sel.type === "object" ? (
-              <p className="m-text-body"><Link className="underline" href={`/analyse/object/${encodeURIComponent(sel.label)}`}>Open the object</Link></p>
+              <p className="m-text-body"><Link className="underline" href={`/objects/${encodeURIComponent(sel.id.replace(/^object:/, ""))}${latest ? `?run=${latest.id}` : ""}`}>Open the object</Link></p>
             ) : null}
             {sel.type === "kpi" || sel.type === "feature" || sel.type === "process" || sel.type === "step"
               ? <GuardsPanel node={sel.id} versionId={latest?.id} /> : null}

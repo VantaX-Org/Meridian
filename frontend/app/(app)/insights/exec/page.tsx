@@ -4,12 +4,12 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, Delta, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { deltaSentence, formatModuleName, labelOf, plural } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -81,7 +81,9 @@ export default function ExecPage() {
     ? "loading"
     : isListFailure({ isError, error })
       ? "error"
-      : data && data.readiness_cells.length === 0 && data.impact_rows.length === 0 && data.owner_rows.length === 0
+      // Only a missing run is empty: a scored run with no waves, features or owners still shows the score,
+      // Fix first and ROI, each section carrying its own empty line.
+      : !run || (data && !data.version_id)
         ? "empty"
         : undefined;
 
@@ -113,7 +115,7 @@ export default function ExecPage() {
         hero: true,
         lead: dqs && typeof dqs.composite === "number" ? (
           <div className="grid items-end gap-x-8 gap-y-4 sm:grid-cols-[auto_1fr]">
-            <div style={{ width: 200 }}>
+            <div style={{ minWidth: 200, width: "max-content", maxWidth: 360 }}>
               <Stat
                 hero
                 label="Data quality score"
@@ -130,7 +132,7 @@ export default function ExecPage() {
                 {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
               </span>
               <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
-                {dqs.capped && dqs.cap_reason ? `Capped: ${dqs.cap_reason}` : dqs.delta != null ? `${dqs.delta > 0 ? "Up" : dqs.delta < 0 ? "Down" : "Level"} ${Math.abs(Math.round(dqs.delta * 10) / 10)} since the last run` : "First scored run"}
+                {dqs.capped && dqs.cap_reason ? `Capped: ${dqs.cap_reason}` : deltaSentence(dqs.delta)}
               </span>
             </div>
           </div>
@@ -141,8 +143,8 @@ export default function ExecPage() {
           { label: "Owners improved", value: up, to: "/insights/owners" },
           { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: "/insights/owners" },
         ] : undefined,
-        situation: { sentence: data?.narrative || `${noGo} no-go cells across the waves` , tone: noGo ? "no-go" : "go" },
-        changed: { sentence: up + down === 0 ? "—" : `${up} owners improved, ${down} slipped since the last run` },
+        situation: { sentence: data?.narrative || (cells.length ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go` : "No readiness waves are defined yet"), tone: noGo ? "no-go" : "go" },
+        changed: { sentence: owners.length === 0 ? "No owner is scored yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
         why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "No value at risk", href: "/insights/impact" },
         next: noGo
           ? { sentence: "Clear the no-go cells first", action: { label: "Open readiness", href: withScope("/insights/readiness", { run }) } }
@@ -165,7 +167,10 @@ export default function ExecPage() {
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
-          <Card title="Readiness by wave" meta={`${noGo} no-go, ${cells.length - noGo} ready`} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open readiness</Link>}>
+          <Card title="Readiness by wave" meta={cells.length ? `${noGo} no-go, ${cells.length - noGo} ready` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open readiness</Link>}>
+            {cells.length === 0 && (
+              <EmptyState variant="inline" title="No readiness waves yet" detail="Create a wave in the migration cockpit to score objects per wave." action={<Link href="/migration" className="underline-offset-2 hover:underline">Open migration cockpit</Link>} />
+            )}
             {cells.length > 0 && (
               <div role="region" aria-label="Readiness by object and wave" tabIndex={0} className="mb-3 overflow-x-auto">
                 <Heatmap
@@ -176,7 +181,7 @@ export default function ExecPage() {
                 />
               </div>
             )}
-            {blocked.length === 0 ? (
+            {cells.length === 0 ? null : blocked.length === 0 ? (
               <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Every object and wave can load.</p>
             ) : (
               <DataTable columns={readinessColumns} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
@@ -208,7 +213,11 @@ export default function ExecPage() {
         </div>
         <div className="@5xl:col-span-12">
           <Card title="Owners" actions={<Link href={withScope("/insights/owners", { run })} className="m-text-body underline-offset-2 hover:underline">Open owners</Link>}>
-            <DataTable columns={ownerColumns} data={data?.owner_rows ?? []} getRowId={(row) => row.owner} hideToolbar dense height="auto" />
+            {owners.length === 0 ? (
+              <EmptyState variant="inline" title="No owner is scored yet" detail="Owners appear once findings are assigned." action={<Link href="/inbox" className="underline-offset-2 hover:underline">Open inbox</Link>} />
+            ) : (
+              <DataTable columns={ownerColumns} data={owners} getRowId={(row) => row.owner} hideToolbar dense height="auto" />
+            )}
           </Card>
         </div>
         <div className="@5xl:col-span-12">
@@ -223,10 +232,16 @@ export default function ExecPage() {
                   Return on investment appears once the subscription and cost per record are set.{" "}
                   <Link href="/admin/settings" className="underline-offset-2 hover:underline">Open settings</Link>
                 </p>
+              ) : roi.data && !roi.data.roi.risk_mitigated ? (
+                // No multiple or payback can be stated before any cost is avoided; "0x" and "0 months" would read as a verdict.
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <Stat label="Cost avoided" value="No cost avoided yet" hint="Appears once approved fixes are applied" href={withScope("/fix", { run })} />
+                  <Stat label="Annual subscription" value={plain(roi.data.roi.subscription_annual)} />
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.roi_multiple}x` : "—"} />
-                  <Stat label="Payback" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.payback_months} months` : "—"} />
+                  <Stat label="Payback" loading={roi.isLoading} value={roi.data ? `${plural(roi.data.roi.payback_months, "month")}` : "—"} />
                   <Stat label="Risk mitigated" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.risk_mitigated) : "—"} />
                   <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.subscription_annual) : "—"} />
                 </div>

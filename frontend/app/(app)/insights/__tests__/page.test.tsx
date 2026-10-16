@@ -61,6 +61,21 @@ describe("InsightsOverviewPage", () => {
     expect(await screen.findByText(/Procure to pay, 3 features blocked/i)).toBeInTheDocument();
   });
 
+  it("links Open records to the object's records tab pre-filtered by the rule, and omits a zero wave count", async () => {
+    mockAll();
+    vi.spyOn(insightsApi, "getOverview").mockResolvedValue({ ...overview, blockers: { count: 1, previous: null, waves: 0 } });
+    vi.spyOn(insightsApi, "getRootCauses").mockResolvedValue({
+      version_id: "v1",
+      clusters: [{ key: "ap:LIFNR", kind: "field", module: "accounts_payable", table: "LFA1", field: "LIFNR", rules: ["AP083", "AP001"], dimension: "completeness", severity: "high", records: 12, records_estimated: false, impact: 40, auto_fix_pct: null }],
+    } as never);
+    mount();
+    const link = await screen.findByRole("link", { name: "Open records" });
+    expect(link).toHaveAttribute("href", "/objects/accounts_payable?tab=records&run=v1&check=AP083");
+    expect(screen.getAllByText("1 blocking gap").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/across 0 waves/)).toBeNull();
+    expect(screen.getByText("No wave defined")).toBeInTheDocument();
+  });
+
   it("shows a section error with retry when one query fails", async () => {
     mockAll();
     vi.spyOn(insightsApi, "getRootCauses").mockRejectedValue(new Error("network error"));

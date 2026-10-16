@@ -1,14 +1,19 @@
 "use client";
 
-// Page frame for every insight page: header (title, run label, actions), the four-sentence
-// InsightHeader, then the cards.
+// Page frame for every insight page: header (title, run label, the shared action bar and the view
+// tabs), the four-sentence InsightHeader, then the cards. The spine is owned here so no page can
+// drop a piece of it.
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type EmptyStateGhost, type PillTone, type InsightHeaderProps } from "@/design";
+import { Card, EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
+import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { getVersions } from "@/lib/api/versions";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { InsightActions } from "./InsightActions";
 import { InsightTabs } from "./InsightViews";
+
+export { formatMoney } from "@/lib/format";
 
 /** Human label for a run id from the run list the shell already loads, never the raw id. */
 export function useRunLabel(versionId?: string | null): string | undefined {
@@ -21,7 +26,16 @@ export interface InsightFrameProps {
   title: string;
   /** Run label or one line of context. */
   meta?: ReactNode;
+  /**
+   * The whole action slot. Leave it out and the frame renders the standard `InsightActions` bar for
+   * `run` and `module`, with `controls` (page-specific selects or buttons) in front of it.
+   */
   actions?: ReactNode;
+  controls?: ReactNode;
+  run?: string;
+  module?: string;
+  /** Extra export formats added before the failing-records list. */
+  exportOptions?: ExportOption[];
   insight?: InsightHeaderProps;
   state?: "loading" | "empty" | "error";
   emptyProps?: { title: string; detail?: string; action: ReactNode; ghost?: EmptyStateGhost };
@@ -49,21 +63,18 @@ export function CardSkeleton({ height }: { height: number }) {
   );
 }
 
-/** Currency amounts use the code the API sends, in the viewer's locale. */
-export function formatMoney(n: number, currency?: string | null): string {
-  const base = { maximumFractionDigits: 0 };
-  try {
-    return currency
-      ? new Intl.NumberFormat(undefined, { ...base, style: "currency", currency, currencyDisplay: "code" }).format(n)
-      : new Intl.NumberFormat(undefined, base).format(n);
-  } catch {
-    return `${new Intl.NumberFormat(undefined, base).format(n)} ${currency ?? ""}`.trim();
-  }
-}
+export const SLOW_LOAD_MESSAGE = "This is taking longer than expected.";
 
-export function InsightFrame({ title, meta, actions, insight, state, emptyProps, errorProps, skeleton, children }: InsightFrameProps) {
+export function InsightFrame({
+  title, meta, actions, controls, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
+}: InsightFrameProps) {
+  // A skeleton that never resolves becomes an error with Retry after the shared timeout.
+  const stuck = useLoadingTimeout(state === "loading");
+  const retry = errorProps?.onRetry ?? (() => window.location.reload());
   let body: ReactNode = children;
-  if (state === "loading") {
+  if (state === "loading" && stuck) {
+    body = <ErrorState title={SLOW_LOAD_MESSAGE} message="The server has not answered. Retry, or check the job tray." onRetry={retry} />;
+  } else if (state === "loading") {
     body = (
       <div aria-busy="true" className="flex flex-col gap-4">
         {skeleton ?? <CardSkeleton height={240} />}
@@ -74,10 +85,16 @@ export function InsightFrame({ title, meta, actions, insight, state, emptyProps,
   } else if (state === "error") {
     body = <ErrorState message={errorProps?.message ?? "Something went wrong"} onRetry={errorProps?.onRetry} />;
   }
+  const actionBar = actions ?? (
+    <div className="flex flex-wrap items-center gap-2">
+      {controls}
+      <InsightActions run={run} module={module} options={exportOptions} />
+    </div>
+  );
   return (
     <div className="mx-auto flex w-full flex-col" style={{ gap: "var(--m-section-gap)", padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
-      <PageHeader title={title} meta={meta} actions={actions} tabs={<InsightTabs />} />
-      {insight && state !== "empty" && state !== "error" && (
+      <PageHeader title={title} meta={meta} actions={actionBar} tabs={<InsightTabs />} />
+      {insight && state !== "empty" && state !== "error" && !(state === "loading" && stuck) && (
         <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />
       )}
       {body}
