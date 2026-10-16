@@ -27,11 +27,27 @@ from workers.tasks.mining.relationship import run_relationship
 logger = logging.getLogger("meridian.worker.mining.orchestrator")
 
 
-def _get_version_modules(session: Session, tenant_id: str, version_id: str) -> list[tuple[str, str]]:
-    """Return [(module_id, parquet_path), ...] for a version.
+def mining_targets(meta: dict | None) -> list[tuple[str, str]]:
+    """[(module_id, parquet_path), ...] a version's metadata offers for mining.
 
-    Each module's parquet_path is taken from `analysis_versions.metadata.module_paths`
-    (the ORM column is ``metadata_`` mapped to the DB column ``metadata``).
+    An extraction lists one dataset per module under ``module_paths``; an upload
+    (api/routes/upload.py) stores a single ``parquet_path`` (a re-analysable extraction a
+    ``dataset_path``) for the modules in ``modules``.
+    """
+    meta = meta or {}
+    module_paths = meta.get("module_paths") or {}
+    pairs = [(m, p) for m, p in module_paths.items() if p]
+    if pairs:
+        return pairs
+    path = meta.get("dataset_path") or meta.get("parquet_path")
+    if not path:
+        return []
+    return [(m, path) for m in dict.fromkeys(meta.get("modules") or []) if m]
+
+
+def _get_version_modules(session: Session, tenant_id: str, version_id: str) -> list[tuple[str, str]]:
+    """Return [(module_id, parquet_path), ...] for a version (see ``mining_targets``;
+    the ORM column is ``metadata_`` mapped to the DB column ``metadata``).
     """
     result = session.execute(
         text(
@@ -46,9 +62,7 @@ def _get_version_modules(session: Session, tenant_id: str, version_id: str) -> l
     row = result.fetchone()
     if not row:
         return []
-    meta = row[0] or {}
-    module_paths = (meta or {}).get("module_paths") or {}
-    return [(m, p) for m, p in module_paths.items() if p]
+    return mining_targets(row[0])
 
 
 @celery_app.task(
@@ -94,6 +108,9 @@ def run_mining_for_version(
     if modules:
         allowed = set(modules)
         module_pairs = [(m, p) for m, p in module_pairs if m in allowed]
+        if not module_pairs:
+            logger.info("run_mining_for_version: none of %s in tenant=%s version=%s", modules, tenant_id, version_id)
+            return {"dispatched": 0, "skipped": 0, "errors": 0, "reason": "no_modules"}
 
     tasks = []
     for module_id, parquet_path in module_pairs:

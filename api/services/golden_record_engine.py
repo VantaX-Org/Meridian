@@ -27,7 +27,7 @@ from api.services.survivorship import (
     apply_most_recent,
     evaluate_field,
 )
-from api.services.ai_survivorship import propose_field_winner
+from api.services.ai_survivorship import ai_survivorship_available, propose_field_winner
 from sap.deterministic import classify_field
 
 logger = logging.getLogger("meridian.golden_record_engine")
@@ -40,6 +40,19 @@ def _llm_survivorship_enabled() -> bool:
     """Feature flag — default ON; set MERIDIAN_SURVIVORSHIP_LLM=off for bulk runs."""
     val = os.getenv("MERIDIAN_SURVIVORSHIP_LLM", "on").strip().lower()
     return val not in ("off", "false", "0", "no")
+
+
+def ai_survivorship_enabled(context: str = "") -> bool:
+    """Whether undecided fields may go to the LLM: the feature flag is on and an LLM is
+    configured. Call once per run and pass the answer to ``process_sync_batch`` as
+    ``use_ai``, so a deployment without an LLM logs this once, not once per field."""
+    if not _llm_survivorship_enabled():
+        return False
+    if not ai_survivorship_available():
+        logger.info("AI survivorship off%s: no LLM configured; deterministic survivorship only",
+                    f" ({context})" if context else "")
+        return False
+    return True
 
 
 async def _load_survivorship_rules(
@@ -133,6 +146,7 @@ async def process_sync_batch(
     domain: str,
     sap_object_key: str,
     incoming_records: list[dict],
+    use_ai: Optional[bool] = None,
 ) -> Optional[str]:
     """Process a batch of incoming records for a single SAP object key.
 
@@ -142,10 +156,13 @@ async def process_sync_batch(
         domain: SAP domain (e.g. 'business_partner')
         sap_object_key: The SAP object key to match
         incoming_records: List of source records, each with source_system, extracted_at, fields
+        use_ai: ``ai_survivorship_enabled()`` decided once by the caller; resolved here when None
 
     Returns:
         master_record_id on success, None on failure
     """
+    if use_ai is None:
+        use_ai = ai_survivorship_enabled()
     try:
         # Load survivorship rules for this domain
         rules = await _load_survivorship_rules(db, tenant_id, domain)
@@ -193,9 +210,9 @@ async def process_sync_batch(
                 result = chain.evaluate(contributions)
 
             # LLM fallback (only for genuinely undecided fields, and only when
-            # the feature flag is on)
+            # the feature flag is on and an LLM is configured)
             ai_recommendation = None
-            if result is None and len(contributions) >= 2 and _llm_survivorship_enabled():
+            if result is None and len(contributions) >= 2 and use_ai:
                 ai_result = propose_field_winner(
                     tenant_id=tenant_id,
                     field_name=field_name,

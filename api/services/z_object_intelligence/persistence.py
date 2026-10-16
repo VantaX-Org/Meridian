@@ -15,6 +15,8 @@ from typing import Optional
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from checks.sap_dates import sap_date_to_timestamp
+
 from api.models.z_object_intelligence import (
     ZBaseline,
     ZObjectCategory,
@@ -300,8 +302,9 @@ class ZObjectPersistence:
                     "rsfield": p.related_standard_field,
                     "txn": p.transaction_count,
                     "ucnt": p.user_count,
-                    "fseen": p.first_seen,
-                    "lseen": p.last_seen,
+                    # timestamptz columns: asyncpg takes a date, never the profile's text
+                    "fseen": sap_date_to_timestamp(p.first_seen),
+                    "lseen": sap_date_to_timestamp(p.last_seen),
                     "trend": p.trend_direction.value if p.trend_direction else None,
                 },
             )
