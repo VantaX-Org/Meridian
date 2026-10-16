@@ -11,6 +11,8 @@ from api.deps import Tenant, get_db, get_tenant
 router = APIRouter(prefix="/api/v1/business-process", tags=["business_process"])
 logger = logging.getLogger("meridian.business_process")
 
+NO_PROCESS_DEFINITION = "no_process_definition"
+
 
 @router.get("/{version_id}/{module}")
 async def get_business_process(
@@ -47,7 +49,11 @@ async def get_business_process(
     from api.services.source_design import live_config_for_version
     system_type, live_cfg = await live_config_for_version(db, version_id)
     reader = SPROReader(system_type, None, snapshot_loader=live_cfg.get)
-    spro_config_dfs = reader.read_config(module)
+    try:
+        spro_config_dfs = reader.read_config(module)
+    except ValueError:
+        # no SPRO/FO tables registered for this object: its process steps still read, without config notes
+        spro_config_dfs = {}
     spro_config = {
         t: df.to_dict(orient="records") if not df.empty else []
         for t, df in spro_config_dfs.items()
@@ -72,4 +78,7 @@ async def get_business_process(
 
     doc = generate_process_document(module, findings_by_check, spro_config,
                                     config_impact)
+    if not doc:
+        # the process page reads an empty list as "this object has no process definition"
+        return {"version_id": version_id, "module": module, "processes": [], "reason": NO_PROCESS_DEFINITION}
     return {"version_id": version_id, "module": module, "processes": doc}
