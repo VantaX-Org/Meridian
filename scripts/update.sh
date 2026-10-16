@@ -307,9 +307,32 @@ pull_dependencies() {
         || warn "Could not pull db/redis images — the running ones are kept."
 }
 
+# `docker compose up -d` recreates a container whose configuration changed; it does NOT
+# start one left merely in the `Created` state, which is what an interrupted update leaves
+# behind. Observed on this deployment (2026-10-16): api, worker, beat and frontend came up
+# while nginx stayed `Created` through both the roll-forward and the rollback, so the site was
+# down even though the API itself was healthy - and verify_health, which polls only the API,
+# could not see it. Start anything left behind before judging health.
+ensure_started() {
+    local stuck
+    stuck=$(docker ps -a --filter "status=created" --format "{{.Names}}" \
+        | grep -E "^docker-(api|worker|beat|frontend|nginx)-1$" || true)
+    if [[ -n "$stuck" ]]; then
+        warn "Containers left in 'created' by an earlier attempt, starting them:"
+        for c in $stuck; do
+            warn "  $c"
+            docker start "$c" >/dev/null 2>&1 || true
+        done
+    fi
+}
+
 verify_health() {
-    info "Verifying /health for up to 120s..."
-    local timeout=120 interval=5 elapsed=0
+    ensure_started
+    # 120s was too tight. The api runs `alembic upgrade head` before it serves, which on this
+    # 8-core box took ~90s on its own, leaving almost no room for the container to be
+    # recreated and nginx to come up behind it.
+    info "Verifying /health for up to 300s..."
+    local timeout=300 interval=5 elapsed=0
     while [[ $elapsed -lt $timeout ]]; do
         if dc exec -T api curl -sf http://localhost:8000/health 2>/dev/null | grep -q '"status":"ok"'; then
             info "API healthy ✓"
