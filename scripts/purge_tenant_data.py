@@ -7,6 +7,13 @@ keeps only what re-connecting and re-analysing needs:
   tenants, users, sap_systems, system_credentials, system_module_map,
   sync_profiles, schema_migrations (alembic_version)
 
+Scope, and how it relates to ``api/services/purge.py``: that service deletes ONE version
+and its rows, with the ordering and the record-issue lifecycle worked out in detail
+(``DELETE_ORDER``, ``UNLINK``, ``open_work``). This script is for handover, where the
+whole tenant goes at once -- it empties every tenant-keyed table and keeps the
+connections. Where the version-keyed tables are concerned it reuses that service's own
+ordering rather than a second opinion.
+
 The table list is not hand-written. It is derived from the live schema:
 
   * every table with a ``tenant_id`` column is a purge candidate;
@@ -91,6 +98,20 @@ def _fk_edges(conn) -> list[tuple[str, str]]:
     return [(r[0], r[1]) for r in rows]
 
 
+def _service_order() -> list[str] | None:
+    """``DELETE_ORDER`` from api/services/purge.py, when that module can be imported.
+
+    That list is the reviewed order for the version-keyed tables; using it here keeps one
+    answer to the ordering question. Returns None when the app package is unavailable, in
+    which case the foreign keys decide.
+    """
+    try:
+        from api.services.purge import DELETE_ORDER  # type: ignore
+    except Exception:
+        return None
+    return [t for t, _ in DELETE_ORDER]
+
+
 def _order(children: list[str], edges: list[tuple[str, str]]) -> list[str]:
     """Delete order: a child (which points at its parent) is emptied before its parent.
 
@@ -146,7 +167,15 @@ def main() -> int:
 
         purge = [t for t in tables if t not in KEEP]
         edges = _fk_edges(conn)
-        ordered = _order(purge, edges)
+        # version-keyed tables first, in the reviewed order from the purge service; the
+        # rest by foreign key (children before parents)
+        service = _service_order()
+        if service:
+            head = [t for t in service if t in purge]
+        else:
+            head = []
+        tail = [t for t in _order(purge, edges) if t not in head]
+        ordered = head + tail
         restricted = _kept_dependents(conn, set(purge))
 
         print(f"tenant: {tenant}")
