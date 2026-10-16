@@ -232,13 +232,35 @@ def existing_coverage() -> dict[str, set[str]]:
     return covered
 
 
+def _predicate(rule: dict) -> tuple[str, str]:
+    """A rule's predicate for duplicate detection: check class plus whitespace-normalised fail_when."""
+    return str(rule.get("check_class") or ""), " ".join(str(rule.get("fail_when") or "").split())
+
+
+def existing_predicates() -> dict[tuple[str, str], set[tuple[str, str]]]:
+    """``(category, module)`` -> the predicates its hand-written pack already tests.
+
+    An invariant from the canonical dictionaries is skipped when its module's pack already
+    carries the same predicate, so retiring a duplicate by hand is never undone here."""
+    out: dict[tuple[str, str], set[tuple[str, str]]] = defaultdict(set)
+    for category in CATEGORIES:
+        for path in pack_files(category):
+            doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            module = str(doc.get("module") or path.stem)
+            for rule in doc.get("rules") or []:
+                if rule.get("fail_when"):
+                    out[(category, module)].add(_predicate(rule))
+    return out
+
+
 def _sensitive(field: Field) -> bool:
     return field.name in _SENSITIVE and field.table not in _PUBLIC_TABLES
 
 
 
 def derive(dictionary, exposed: dict[str, tuple[str, str]],
-           covered: dict[str, set[str]]) -> list[tuple[str, str, str, dict]]:
+           covered: dict[str, set[str]],
+           predicates: dict[tuple[str, str], set[tuple[str, str]]] | None = None) -> list[tuple[str, str, str, dict]]:
     """Every missing rule as ``(category, module, kind, rule)``."""
     out: list[tuple[str, str, str, dict]] = []
     for table_name in sorted(dictionary.tables):
@@ -274,7 +296,9 @@ def derive(dictionary, exposed: dict[str, tuple[str, str]],
             if values and len(values) > 1:
                 out.append((category, module, "domain", _domain_rule(field, desc, values)))
 
-    # Invariants declared in the canonical dictionaries (see canonical_invariants).
+    # Invariants declared in the canonical dictionaries (see canonical_invariants), unless the
+    # module's hand-written pack already tests the same predicate.
+    predicates = predicates if predicates is not None else existing_predicates()
     for table_name, invariant in canonical_invariants():
         home = exposed.get(table_name)
         if home is None:
@@ -282,9 +306,14 @@ def derive(dictionary, exposed: dict[str, tuple[str, str]],
         category, module = home
         kind = invariant.get("kind")
         if kind == "date_order":
-            out.append((category, module, "invariant", _date_order_rule(table_name, invariant)))
+            rule = _date_order_rule(table_name, invariant)
         elif kind == "non_negative":
-            out.append((category, module, "invariant", _non_negative_rule(table_name, invariant)))
+            rule = _non_negative_rule(table_name, invariant)
+        else:
+            continue
+        if _predicate(rule) in predicates.get((category, module), set()):
+            continue
+        out.append((category, module, "invariant", rule))
     return out
 
 
