@@ -1,6 +1,6 @@
 # Meridian — SAP Data Quality & Master Data Management Platform
 
-Meridian is a customer-deployed SAP Data Quality and Master Data Management platform. It analyses data quality across **45 modules** with **8,000+ validation rules**, connects to **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP), and provides a full MDM governance layer — all running entirely inside the customer's own environment.
+Meridian is a customer-deployed SAP Data Quality and Master Data Management platform. It analyses data quality across **45 modules** with **8,114 validation rules**, each proved against fixtures, connects to **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP), and provides a full MDM governance layer — all running entirely inside the customer's own environment.
 
 SAP data, findings, and reports **never leave the customer boundary**.
 
@@ -97,15 +97,20 @@ Access: Dashboard at `http://localhost:3000`, API at `http://localhost:8000`
 
 | Category | Modules | Rules |
 |---|---|---|
-| **ECC / S/4HANA** (19) | Business Partner, Material Master, GL Accounts, AP, AR, Asset Accounting, MM Purchasing, Plant Maintenance, Production Planning, SD Customer, SD Sales Orders, Controlling, HCM, Project System, Quality Management, Banking & Tax, Interface Health, S/4HANA Readiness, S/4HANA Master Data | 5,727 |
-| **SuccessFactors** (9) | Employee Central, Compensation, Benefits, Payroll, Performance Goals, Succession Planning, Recruiting & Onboarding, Learning Management, Time & Attendance | 1,554 |
-| **Warehouse** (9) | eWMS Stock, eWMS Transfer Orders, Batch Management, MDG, GRC Compliance, Fleet Management, Transport Management, WM Interface, Cross-System Integration | 568 |
-| **Ariba** (4) | Supplier, Procurement, Contracts, Spend | 137 |
-| **Concur** (3) | Users, Expense, Travel | 96 |
+| **ECC / S/4HANA** (19) | Business Partner, Material Master, GL Accounts, AP, AR, Asset Accounting, MM Purchasing, Plant Maintenance, Production Planning, SD Customer, SD Sales Orders, Controlling, HCM, Project System, Quality Management, Banking & Tax, Interface Health, S/4HANA Readiness, S/4HANA Master Data | 5,740 |
+| **SuccessFactors** (9) | Employee Central, Compensation, Benefits, Payroll, Performance Goals, Succession Planning, Recruiting & Onboarding, Learning Management, Time & Attendance | 1,555 |
+| **Warehouse** (9) | eWMS Stock, eWMS Transfer Orders, Batch Management, MDG, GRC Compliance, Fleet Management, Transport Management, WM Interface, Cross-System Integration | 577 |
+| **Ariba** (4) | Supplier, Procurement, Contracts, Spend | 142 |
+| **Concur** (3) | Users, Expense, Travel | 99 |
 
 Rule counts include both hand-authored packs and the derived rules in each module's `<module>.generated.yaml` sidecar. Derived rules ship with `enabled: false` and are seeded off.
 
-**Total: 45 modules, 8,083 validation rules, 52 config impact rules**
+**Total: 45 modules, 8,114 validation rules, 52 config impact rules**
+
+Every rule is proved against fixtures (fails at least one record, passes at least one) and
+every field it reads is resolved in the SAP dictionary, both enforced by
+`tests/checks/`. For how these numbers compare with what other vendors publish, and which
+claims are defensible, see [docs/market-positioning.md](docs/market-positioning.md).
 
 ## Technology Stack
 
