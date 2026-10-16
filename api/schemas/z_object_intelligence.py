@@ -1,7 +1,7 @@
 """Pydantic v2 schemas for Z-Object Intelligence API endpoints."""
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Any, Optional
 
 
 # --- Request Models ---
@@ -76,20 +76,23 @@ class ZProfileResponse(BaseModel):
 
 
 class ZRegistryEntryResponse(BaseModel):
+    """One z_object_registry row. Every column the worker may leave empty is optional with a
+    default, so one odd row never turns the whole registry into a 500."""
+
     id: str
-    category: str
-    module: str
+    category: Optional[str] = None
+    module: Optional[str] = None
     object_name: str
     standard_equivalent: Optional[str] = None
     description: Optional[str] = None
     owner: Optional[str] = None
     created_date: Optional[str] = None
     last_active_date: Optional[str] = None
-    status: str
+    status: str = "under_review"
     transaction_count_total: int = 0
     profile_snapshot: Optional[dict] = None
     baseline_snapshot: Optional[dict] = None
-    rules_applied: list[str] = []
+    rules_applied: list[Any] = []
     notes: Optional[str] = None
 
 
