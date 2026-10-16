@@ -2758,6 +2758,9 @@ rules:
       source. This is the mirror of AR057 and the blind spot it leaves - the item reconciles in local currency while
       carrying no original invoice value.
     rule_authority: sap_hard_constraint
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
     sap_impact: Foreign-currency valuation (FAGL_FCV) and the dunning run compute from a missing document amount;
       the customer statement cannot be reconciled against the item.
     fix_map:
@@ -2777,6 +2780,9 @@ rules:
       denominated in and what revaluation, dunning and the customer statement read. An item with no currency has amounts
       that cannot be interpreted - they may be read as local currency when they are not.
     rule_authority: sap_hard_constraint
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
     sap_impact: Foreign-currency valuation (FAGL_FCV) skips or misvalues the item; the dunning run cannot decide whether
       the item needs a currency translation.
     fix_map:
@@ -2795,6 +2801,9 @@ rules:
       or copied document, and it stays open forever because clearing it changes no balance. The mirror check exists
       for vendors as AP206; this is its customer-side counterpart.
     rule_authority: best_practice
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
     sap_impact: Zero-value items inflate the open-item count in FBL5N and the dunning run; they never clear, so they
       distort ageing and the receivables turnover figures.
     fix_map:

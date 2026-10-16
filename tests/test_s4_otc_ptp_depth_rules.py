@@ -11,7 +11,7 @@ from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
 PACKS = {"sd_sales_orders": ("SDSO", 312, 29), "sd_customer_master": ("SDCM", 243, 7),
-         "accounts_receivable": ("AR", 255, 12), "accounts_payable": ("AP", 277, 8)}
+         "accounts_receivable": ("AR", 255, 15), "accounts_payable": ("AP", 277, 10)}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template", "s4_area", "s4_impact", "simplification_item"]
 DDIC = get_dictionary("ecc6")
