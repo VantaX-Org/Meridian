@@ -2236,40 +2236,6 @@ rules:
   fix_map:
     __other__: Assign the cost centre to the unit in PPOME.
   record_fix_template: Organisational unit {HRP1000.OBJID} has no cost centre assignment. Assign in PPOME.
-- id: PA113
-  field: HRP1000.OBJID
-  check_class: exists_check
-  grain: HRP1000
-  target_table: HRP1001
-  target_fields:
-  - OBJID
-  target_when:
-    OTYPE:
-    - S
-    RELAT:
-    - '003'
-    RSIGN:
-    - A
-    ENDDA:
-    - '99991231'
-  applies_when:
-    HRP1000.OTYPE:
-    - S
-    HRP1000.ENDDA:
-    - '99991231'
-    HRP1000.ISTAT:
-    - '1'
-    HRP1000.PLVAR:
-    - '01'
-  severity: medium
-  dimension: completeness
-  message: Active position is not assigned to an organisational unit
-  why_it_matters: A position belongs to one organisational unit through relationship A 003. A position outside the structure is not part of any reporting line.
-  rule_authority: best_practice
-  sap_impact: The position and its holder are missing from the organisation chart and from structural authorisations.
-  fix_map:
-    __other__: Assign the position to its organisational unit in PPOME.
-  record_fix_template: Position {HRP1000.OBJID} has no organisational unit. Assign in PPOME.
 - id: PA114
   field: HRP1000.OBJID
   check_class: exists_check

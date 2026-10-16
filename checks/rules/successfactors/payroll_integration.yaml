@@ -3414,24 +3414,6 @@ rules:
     fix_map:
       __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
     record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid ZA routing code.'
-  - id: PAY127
-    field: PAYMENTINFO.BIC
-    check_class: regex_check
-    pattern: ^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$
-    severity: high
-    dimension: validity
-    message: BIC/SWIFT code is not a valid 8 or 11-character BIC
-    why_it_matters: A BIC/SWIFT code is 8 or 11 characters — a 4-letter bank code, a 2-letter ISO country code, a 2-character location code and an optional 3-character branch code. A value of the wrong shape is rejected by the clearing network or routed to the wrong bank.
-    rule_authority: best_practice
-    sap_impact: Bank transfer is rejected by the clearing network or misrouted.
-    fix_map:
-      __other__: Obtain the correct BIC/SWIFT code from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: BIC ''{PAYMENTINFO.BIC}'' is not a valid BIC/SWIFT code.'
-    auto_fix:
-      steps:
-      - op: strip
-      - op: upper
-      confidence: low
   - id: PAY128
     field: PAYMENTINFO.ACCOUNT_OWNER
     check_class: null_check
@@ -4653,46 +4635,6 @@ rules:
       Payment record {PAYMENTINFO.USERID}: duplicate EFFECTIVE_DATE for pay type
       {PAYMENTINFO.PAY_TYPE}. Correct or remove the superseded record.
 
-  - id: PAY208
-    field: PAYMENTINFO.PERCENT
-    check_class: cross_field_check
-    fail_when: "(`PAYMENTINFO.PERCENT` < 0) | (`PAYMENTINFO.PERCENT` > 100)"
-    require_populated: true
-    severity: critical
-    dimension: validity
-    message: Payment split percent must be between 0 and 100
-    why_it_matters: >-
-      PERCENT expresses the share of net pay routed to this account. A value outside
-      0-100 is not a valid proportion and causes the bank payment split calculation to
-      produce a nonsensical disbursement amount.
-    rule_authority: best_practice
-    sap_impact: >-
-      Bank payment file split calculation fails or produces an incorrect disbursement
-      amount for this account.
-    fix_map:
-      __other__: >-
-        Payment split percent {actual_value} is outside the valid 0-100 range. Correct
-        via Employee Central Payment Information.
-    record_fix_template: >-
-      Payment record {PAYMENTINFO.USERID}: PERCENT {actual_value} is outside 0-100.
-      Correct via Employee Central Payment Information.
-
-  # PAY209 deleted (Round 2): exact duplicate of PAY127 (same field, same BIC format
-  # regex) — every malformed BIC was reported twice. See PAY216 for the restored
-  # BIC-country cross-check.
-  # PAY210 deleted (Round 2): hard-coded 30-code "ISO 4217" allowlist omitted dozens
-  # of real active currencies (CZK, HUF, RON, TRY, ILS, QAR, KWD, BHD, OMR, PKR, BDT,
-  # TWD, CLP, COP, PEN, ARS, GHS, ZMW, BWP, NAD, MUR, ...), producing false findings on
-  # every valid currency outside the subset. No ISO 4217 code list exists elsewhere in
-  # this repo and pycountry is not an installed dependency, so per the fix-round-2
-  # ruling this rule is deleted rather than kept as a subset that falsely claims to be
-  # the full ISO 4217 standard.
-  # PAY211 deleted (Round 2): compared PAYMENTINFO.PAYMENT_METHOD against the English
-  # label 'bank transfer', but PAYMENT_METHOD is a picklist/foundation-object external
-  # code (PaymentInformationDetailV3.paymentMethod) on real data, not free text, so the
-  # comparison never fires. No rule or dictionary in this repo records the real picklist
-  # code, so the value could not be verified — deleted per the fix-round-2 ruling rather
-  # than shipped with an unverifiable literal.
 
   - id: PAY212
     field: PAYRESULT.USERID

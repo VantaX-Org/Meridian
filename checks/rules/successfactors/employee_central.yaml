@@ -3458,27 +3458,6 @@ rules:
     - op: strip
     - op: upper
     confidence: medium
-- id: EC160
-  field: PERADDRESS.STATE
-  check_class: null_check
-  applies_when:
-    PERADDRESS.COUNTRY:
-    - USA
-    - CAN
-    - AUS
-    - BRA
-    - IND
-    - MEX
-  severity: medium
-  dimension: completeness
-  message: State or province is missing for a country that requires it
-  why_it_matters: In the US, Canada, Australia, Brazil, India and Mexico the state is part of the postal address
-    and determines state or provincial tax.
-  rule_authority: best_practice
-  sap_impact: State tax withholding and payroll tax cannot be determined; mail is undeliverable.
-  fix_map:
-    __blank__: Enter the state or province of the address.
-  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: state is missing on the {PERADDRESS.COUNTRY} address.'
 - id: EC161
   field: PERADDRESS.ZIPCODE
   check_class: regex_check

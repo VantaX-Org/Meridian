@@ -128,14 +128,7 @@ def test_the_gate_actually_loaded_the_rule_library():
 # deletion has to come with that gate's range updated, and where the pair sits mid-range the
 # freed id wants a genuinely different check rather than a gap. Listed explicitly so the
 # assertion below fails on any NEW duplicate - a regression gate rather than a blocker.
-KNOWN_DUPLICATES = {
-    "compensation": {"COMP004", "COMP228", "COMP083", "COMP229", "COMP058", "COMP239"},
-    "concur_expense": {"CNE021", "DXIc3a1c82c"},
-    "employee_central": {"EC032", "EC160"},
-    "hcm": {"PA057", "PA113"},
-    "payroll_integration": {"PAY040", "PAY208", "PAY043", "PAY127"},
-    "plant_maintenance": {"PM039", "PM243"},
-}
+KNOWN_DUPLICATES: dict[str, set[str]] = {}
 
 
 
