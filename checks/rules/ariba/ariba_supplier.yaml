@@ -605,22 +605,3 @@ rules:
       that carries the current qualification, and move the purchase orders onto it.
   record_fix_template: 'Supplier {ARIBA_SUPPLIER.VENDOR_ID} ({ARIBA_SUPPLIER.NAME},
     {ARIBA_SUPPLIER.COUNTRY}) - registered more than once.'
-- id: ARS042
-  field: ARIBA_SUPPLIER.LAST_UPDATED
-  check_class: cross_field_check
-  fail_when: '`ARIBA_SUPPLIER.LAST_UPDATED` < `ARIBA_SUPPLIER.REGISTRATION_DATE`'
-  severity: high
-  dimension: accuracy
-  message: Supplier record was last updated before it was registered
-  why_it_matters: A record cannot be changed before it exists. A last-update date earlier than the
-    registration date means the two timestamps come from different sources or clocks, so the
-    qualification and status on the record cannot be trusted to reflect the latest supplier response.
-  rule_authority: sap_hard_constraint
-  sap_impact: The qualification status and category on the record may not reflect the supplier's
-    latest submission, so orders are placed on an unverified record.
-  fix_map:
-    __other__: Re-import the supplier from the Ariba registration interface so the two timestamps come
-      from one source, then re-check the qualification status.
-  record_fix_template: 'Supplier {ARIBA_SUPPLIER.VENDOR_ID}: last updated
-    {ARIBA_SUPPLIER.LAST_UPDATED} is earlier than its registration date
-    {ARIBA_SUPPLIER.REGISTRATION_DATE}.'

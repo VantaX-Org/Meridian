@@ -31,7 +31,7 @@ PACKS = {
     "warehouse/cross_system_integration": ("XSYS", 28, 5),
     "ariba/ariba_procurement": ("ARP", 17, 24),
     "ariba/ariba_contracts": ("ARC", 10, 33),
-    "ariba/ariba_supplier": ("ARS", 8, 33),
+    "ariba/ariba_supplier": ("ARS", 8, 32),
     "concur/concur_expense": ("CNE", 21, 20),
     "concur/concur_users": ("CNU", 10, 32),
 }
@@ -89,7 +89,7 @@ def test_ids_unique_and_contiguous(pack):
 
 
 def test_total_new_rules():
-    assert sum(len(v) for v in NEW.values()) == 271
+    assert sum(len(v) for v in NEW.values()) == 270
     assert len(S4_NEW) == len(S4R_WM)
 
 

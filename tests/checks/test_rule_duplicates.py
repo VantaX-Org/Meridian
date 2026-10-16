@@ -51,14 +51,24 @@ def _rules_dir() -> Path:
 PREDICATE_KEYS = (
     "check_class", "field", "fields", "fail_when", "applies_when",
     "target_table", "target_fields", "target_when", "negate",
-    "allowed", "allowed_values", "reference_table", "reference_field", "reference_values",
+    "allowed", "allowed_values", "reference", "reference_table", "reference_field",
+    "reference_values", "left_values", "right_values", "valid_values_with_labels",
     "pattern", "format", "normalize", "case_insensitive", "multi_value", "ranges",
     "countries", "country_field", "street_field", "scope_field",
     "group_by", "group_field", "groups", "amount", "group_keys", "sign_field", "child_when",
-    "id_field", "unique_across", "block_by", "block_fields", "determinant", "evidence_key",
-    "config_table", "kind", "family", "condition", "max_age_hours", "time_field", "max_depth",
-    "grain", "require_populated", "tolerance", "as_of",
+    "id_field", "keys", "unique_across", "block_by", "block_fields", "max_block", "determinant",
+    "evidence_key", "exact_rule", "specs", "split_field", "compare", "condition", "kind", "family",
+    "config_table", "baseline", "fauna", "no_children",
+    "max_age_hours", "time_field", "max_depth", "threshold",
+    # interval_check: `mode` and `open_ended` decide overlap vs gap vs open-ended, so two
+    # interval rules on the same field are different checks (this is what made an earlier
+    # version of this gate report PA043/PA051 as duplicates when one is overlap and the
+    # other is gap).
+    "start", "end", "mode", "open_ended",
+    "grain", "require_populated", "tolerance", "tolerance_field", "tolerance_pct",
+    "zero_is_blank", "as_of",
 )
+
 
 
 def _load() -> list[tuple[str, dict]]:
@@ -74,7 +84,24 @@ def _load() -> list[tuple[str, dict]]:
 
 
 def _key(rule: dict) -> tuple:
-    return tuple(json.dumps(rule.get(k), sort_keys=True, default=str) for k in PREDICATE_KEYS)
+    """The predicate, with two normalisations that are about meaning, not presentation.
+
+    * ``valid_values_with_labels``: the label is display text ("Amount" vs "Monetary
+      amount"), so only the codes select records. Two rules differing only in a label are
+      the same check.
+    * ``interval_check.mode``: absent means "no_overlap" (checks/types/interval_check.py
+      reads ``r.get("mode") == "continuous"``), so absent and "no_overlap" are the same
+      check, while "continuous" adds gap detection and is genuinely different.
+    """
+    parts = []
+    for k in PREDICATE_KEYS:
+        v = rule.get(k)
+        if k == "valid_values_with_labels" and isinstance(v, dict):
+            v = sorted(v.keys())
+        elif k == "mode" and rule.get("check_class") == "interval_check":
+            v = v or "no_overlap"
+        parts.append(json.dumps(v, sort_keys=True, default=str))
+    return tuple(parts)
 
 
 def same_module_duplicates(rules: list[tuple[str, dict]]) -> dict[str, list[str]]:
@@ -102,16 +129,14 @@ def test_the_gate_actually_loaded_the_rule_library():
 # freed id wants a genuinely different check rather than a gap. Listed explicitly so the
 # assertion below fails on any NEW duplicate - a regression gate rather than a blocker.
 KNOWN_DUPLICATES = {
-    "ariba_supplier": {"ARS011", "ARS042"},
-    "compensation": {"COMP004", "COMP228", "COMP058", "COMP239", "COMP083", "COMP229",
-                     "COMP168", "COMP249"},
+    "compensation": {"COMP004", "COMP228", "COMP083", "COMP229", "COMP058", "COMP239"},
     "concur_expense": {"CNE021", "DXIc3a1c82c"},
-    "employee_central": {"EC032", "EC160", "EC271", "EC379"},
-    "hcm": {"PA043", "PA051", "PA044", "PA052", "PA045", "PA053", "PA046", "PA054",
-            "PA047", "PA055", "PA057", "PA113"},
+    "employee_central": {"EC032", "EC160"},
+    "hcm": {"PA057", "PA113"},
     "payroll_integration": {"PAY040", "PAY208", "PAY043", "PAY127"},
     "plant_maintenance": {"PM039", "PM243"},
 }
+
 
 
 def test_no_new_rule_is_duplicated_within_its_pack():
