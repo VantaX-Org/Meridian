@@ -14,6 +14,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes import analytics, record_issues, reports, rule_authoring, systems, versions
 from api.services import contract_compliance
 from api.services.version_status import ENDED, FINISHED, finished_sql
+from api.services.run_lineage import lineage_sql
 
 ROOT = Path(__file__).resolve().parent.parent
 PREDICATE = "IN ('complete', 'agents_complete', 'ai_enriched', 'agents_failed', 'partial')"
@@ -99,7 +100,8 @@ def test_no_reader_still_requires_status_complete():
     assert rule_authoring._DONE == finished_sql()
 
 
-SCOPE_NEEDLE = "SELECT COALESCE(metadata->>'system_id', 'upload') FROM analysis_versions"
+# the run's lineage key (its system, or upload:<sorted modules>), as versions._scope_of reads it
+SCOPE_NEEDLE = f"SELECT {lineage_sql()} FROM analysis_versions"
 
 
 @pytest.mark.anyio

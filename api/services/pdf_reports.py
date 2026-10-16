@@ -949,12 +949,13 @@ def load_scoring(s: Session, tid: str) -> dict:
 
 def load_previous_dqs(s: Session, tid: str, version: dict, scoring: dict) -> Optional[float]:
     """Composite DQS of the prior run in the same lineage (same system, or the
-    'upload' lineage for uploads without a system_id), for the Summary section's
+    uploads of the same objects for uploads without a system_id), for the Summary section's
     change-since-previous-run figure. None when there is no prior scored run."""
-    lineage = (version.get("metadata") or {}).get("system_id") or "upload"
-    row = _one(s, """
+    from api.services.run_lineage import lineage_key, lineage_sql
+    lineage = lineage_key(version.get("metadata"), version.get("dqs_summary"), version.get("label"))
+    row = _one(s, f"""
         SELECT dqs_summary FROM analysis_versions
-         WHERE tenant_id = :t AND COALESCE(metadata->>'system_id', 'upload') = :lineage
+         WHERE tenant_id = :t AND {lineage_sql()} = :lineage
            AND run_at < :run_at AND dqs_summary IS NOT NULL
          ORDER BY run_at DESC LIMIT 1""",
         t=tid, lineage=lineage, run_at=version["run_at"])

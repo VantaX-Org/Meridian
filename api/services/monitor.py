@@ -18,13 +18,15 @@ from typing import Optional
 from sqlalchemy import text
 
 from api.services.record_issues import DIFF_SQL
+from api.services.run_lineage import lineage_sql, same_lineage_as
 
 MONITOR_LABEL = "Meridian monitor"
 MAX_ITEMS = 50_000
 
-_BASELINE_SQL = """
+# the pinned baseline in the run's own lineage: its system, or uploads of the same objects
+_BASELINE_SQL = f"""
     SELECT id, run_at FROM analysis_versions
-     WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND id <> :v
+     WHERE {same_lineage_as("v")} AND id <> :v
        AND metadata->>'baseline' = 'true' AND status IN ('complete', 'agents_complete')
        AND run_at <= (SELECT run_at FROM analysis_versions WHERE id = :v)
      ORDER BY run_at DESC LIMIT 1
@@ -114,31 +116,32 @@ def notify(session, tenant_id: str, version_id: str, summary: dict) -> None:
 
 
 def status(session) -> list[dict]:
-    """Per monitored system: its baseline and the newest run's comparison (RLS scopes the tenant)."""
-    rows = session.execute(text("""
+    """Per monitored lineage (a system, or uploads of the same objects): its baseline and the newest
+    run's comparison (RLS scopes the tenant). ``scope`` stays the system id or 'upload'."""
+    rows = session.execute(text(f"""
         WITH base AS (
-            SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload'))
-                   COALESCE(metadata->>'system_id', 'upload') AS scope, id, run_at, dqs_summary
-              FROM analysis_versions
-             WHERE metadata->>'baseline' = 'true' AND status IN ('complete', 'agents_complete')
-             ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC
+            SELECT DISTINCT ON (lineage) * FROM (
+                SELECT {lineage_sql()} AS lineage, COALESCE(metadata->>'system_id', 'upload') AS scope,
+                       id, run_at, dqs_summary
+                  FROM analysis_versions
+                 WHERE metadata->>'baseline' = 'true' AND status IN ('complete', 'agents_complete')) b
+             ORDER BY lineage, run_at DESC
         ), latest AS (
-            SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload'))
-                   COALESCE(metadata->>'system_id', 'upload') AS scope, id, run_at, dqs_summary,
-                   metadata->'monitor' AS monitor
-              FROM analysis_versions WHERE status IN ('complete', 'agents_complete')
-             ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC
+            SELECT DISTINCT ON (lineage) * FROM (
+                SELECT {lineage_sql()} AS lineage, id, run_at, dqs_summary, metadata->'monitor' AS monitor
+                  FROM analysis_versions WHERE status IN ('complete', 'agents_complete')) l
+             ORDER BY lineage, run_at DESC
         )
-        SELECT base.scope, s.name AS system_name, base.id AS baseline_id, base.run_at AS baseline_run_at,
+        SELECT base.scope, base.lineage, s.name AS system_name, base.id AS baseline_id, base.run_at AS baseline_run_at,
                base.dqs_summary AS baseline_dqs, latest.id AS latest_id, latest.run_at AS latest_run_at,
                latest.dqs_summary AS latest_dqs, latest.monitor
-          FROM base JOIN latest USING (scope)
+          FROM base JOIN latest USING (lineage)
           LEFT JOIN sap_systems s ON s.id::text = base.scope
-         ORDER BY system_name NULLS LAST, base.scope
+         ORDER BY system_name NULLS LAST, base.scope, base.lineage
     """)).mappings().all()
     from workers.tasks.send_notifications import _overall
     return [{
-        "scope": r["scope"], "system_name": r["system_name"] or ("Imported files" if r["scope"] == "upload" else None),
+        "scope": r["scope"], "lineage": r["lineage"], "system_name": r["system_name"] or ("Imported files" if r["scope"] == "upload" else None),
         "baseline": {"id": str(r["baseline_id"]), "run_at": r["baseline_run_at"], "dqs": _overall(r["baseline_dqs"])},
         "latest": {"id": str(r["latest_id"]), "run_at": r["latest_run_at"], "dqs": _overall(r["latest_dqs"])},
         "monitor": r["monitor"] if r["latest_id"] != r["baseline_id"] else None,

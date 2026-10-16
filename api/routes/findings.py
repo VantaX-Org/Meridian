@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import case, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from api.services.run_lineage import lineage_sql
 
 from api.deps import Tenant, get_db, get_tenant
 from api.models.config_score import ConfigAwareScore, RuleApplicability
@@ -262,10 +263,10 @@ async def aggregate_findings(
     # the run before each of these in its own lineage, for the delta
     previous = (await db.execute(text(f"""
         SELECT DISTINCT ON (lineage) dqs_summary FROM (
-            SELECT av.dqs_summary, av.run_at, COALESCE(av.metadata->>'system_id', 'upload') AS lineage
+            SELECT av.dqs_summary, av.run_at, {lineage_sql('av')} AS lineage
               FROM analysis_versions av
               JOIN analysis_versions cur ON cur.id = ANY(CAST(:ids AS uuid[]))
-               AND COALESCE(cur.metadata->>'system_id', 'upload') = COALESCE(av.metadata->>'system_id', 'upload')
+               AND {lineage_sql('cur')} = {lineage_sql('av')}
              WHERE av.tenant_id = :tid AND av.{_COMPLETE} AND av.run_at < cur.run_at AND av.id <> cur.id
         ) x ORDER BY lineage, run_at DESC
     """), {**p, "tid": str(tenant.id)})).scalars().all()
