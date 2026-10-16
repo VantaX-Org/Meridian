@@ -12,9 +12,10 @@ const DONE = new Set(["complete", "agents_complete", "ai_enriched"]);
  * because the aggregate endpoints need a version id.
  */
 export function useInsightScope() {
+  // The hook returns null outside the App Router (unit tests, static export).
   const search = useSearchParams();
-  const explicit = search.get("run") ?? undefined;
-  const mod = search.get("module") ?? undefined;
+  const explicit = search?.get("run") ?? undefined;
+  const mod = search?.get("module") ?? undefined;
   const versions = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
   const runs = (versions.data?.versions ?? []).filter((v) => DONE.has(v.status));
   const run = explicit ?? runs[0]?.id;

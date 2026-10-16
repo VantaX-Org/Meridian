@@ -41,8 +41,15 @@ describe("OwnersPage", () => {
     expect((await screen.findAllByText("jane.doe")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("82.5").length).toBeGreaterThan(0);
     expect(screen.getByRole("columnheader", { name: /Score/ })).toBeInTheDocument();
-    expect(screen.getByText(/critical: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Critical: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/High: 4/)).toBeInTheDocument();
+    expect(screen.queryByText(/critical: 1/)).toBeNull();
     expect(screen.getByText(/3 new critical findings/)).toBeInTheDocument();
+    // last_sent is relative, never the raw ISO string; the schedule reads as a word.
+    expect(screen.getByText(/Weekly digest, last sent .* ago/)).toBeInTheDocument();
+    expect(screen.queryByText(/2026-10-01T06:00:00Z/)).toBeNull();
+    expect(screen.getByText(/oldest open item 40 days/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send digests to everyone" })).toBeInTheDocument();
   });
 
   it("shows a loading skeleton while the request is in flight", () => {
@@ -51,10 +58,11 @@ describe("OwnersPage", () => {
     expect(screen.queryByTestId("owner-card")).not.toBeInTheDocument();
   });
 
-  it("shows an empty state when there are no owners", async () => {
+  it("shows an empty state when there are no owners, without a Send digests to everyone button", async () => {
     vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [] });
     renderWithQuery(<OwnersPage />);
     await waitFor(() => expect(screen.getByText(/no owners scored yet/i)).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Send digests to everyone" })).toBeNull();
   });
 
   it("shows an error state when the request fails", async () => {

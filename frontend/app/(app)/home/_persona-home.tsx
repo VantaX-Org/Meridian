@@ -30,7 +30,8 @@ import {
   runCap, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, delta as runDelta, trend, readinessOf,
   severityTotals, worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName, plural } from "@/lib/format";
+import { previousInLineage } from "@/lib/runs";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
@@ -142,9 +143,11 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   // dayOne says a finished run exists but it hasn't landed in this cache yet: treat as loading rather than crash.
   if (!latest) return <HomePage persona={role} state="loading" />;
 
-  const previous = finished[1];
+  // The previous run is the one before this run in its own lineage (same system, or uploads of the same objects),
+  // so the delta never compares one object with another; the trend follows the same lineage.
+  const previous = previousInLineage(latest, finished);
   const bands = objectsQ.data?.thresholds;
-  const trendPoints = trend(versions);
+  const trendPoints = trend(versions, latest);
   const dqs = runDqs(latest);
   const cap = runCap(latest);
   const findings = (findingsQ.data?.findings ?? []).filter((f) => !scopeFilter.modules || scopeFilter.modules.has(f.module));
@@ -165,13 +168,15 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           })();
 
   const capReason = cappedReason(latest);
-  // Up to two distinct critical rules from the loaded findings; none until they load.
-  const capRules = [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, f])).values()].slice(0, 2);
+  // Distinct critical rules from the loaded findings: two are named, the rest counted; none until they load.
+  const criticalRules = [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, f])).values()];
+  const capRules = criticalRules.slice(0, 2);
+  const moreRules = Math.max(cap ? cap.criticals : criticalRules.length, criticalRules.length) - capRules.length;
   const capLine = cap || capReason ? (
     <>
       {cap ? (
         <>
-          Capped at {cap.cap} by {cap.criticals} critical {cap.criticals === 1 ? "rule" : "rules"}
+          Capped at {cap.cap} by {plural(cap.criticals, "critical rule")}
           {capRules.length > 0 && (
             <>
               {": "}
@@ -181,6 +186,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
                   <DrillLink href={buildDrillHref({ object: f.module, ruleId: f.check_id, run: latest.id })}><Mono>{f.check_id}</Mono></DrillLink>
                 </span>
               ))}
+              {moreRules > 0 && ` and ${moreRules} more`}
             </>
           )}
         </>
@@ -262,6 +268,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
 
   const heatRows = scored.slice(0, TABLE_ROWS);
   const heatCells = dimensionHeatmapCells(heatRows, latest, bands);
+  // The grid prints each score and tints it by readiness: the number carries the meaning, the hue repeats it.
+  const heatTone = new Map(heatCells.map((c) => [`${c.row}:${c.col}`, c.tone]));
   const trendCard = (
       <Card title="Score over runs">
         {trendPoints.length < 2 ? (
@@ -282,8 +290,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           <Heatmap
             rows={heatRows.map((o) => o.label)}
             cols={DIMENSIONS.map(formatModuleName)}
-            cells={heatCells}
-            cellSize={28}
+            cells={heatCells.map((c) => ({ row: c.row, col: c.col, value: c.value }))}
+            tone={(c) => heatTone.get(`${c.row}:${c.col}`)}
+            cellSize={32}
             onPointClick={(cell: HeatmapCell) => {
               const object = heatRows.find((o) => o.label === cell.row);
               const dimension = DIMENSIONS.find((d) => formatModuleName(d) === cell.col);
@@ -332,8 +341,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       state="data"
       verdict={{
         dqs,
-        delta: runDelta(trendPoints),
+        delta: previous ? runDelta(trendPoints) : null,
         previousLabel: previous ? runLabel(previous) : undefined,
+        firstRun: !previous,
         sentence,
         capLine,
         action,

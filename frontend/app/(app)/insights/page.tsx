@@ -17,10 +17,11 @@ import {
 import { getS4Readiness } from "@/lib/api/migration";
 import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { deltaSentence, formatDate, formatModuleName, labelOf, plural, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
+import { scopeTrendRuns, trendPoints } from "./_components/trendLineage";
 import { Section } from "./_components/Section";
 import { InsightActions } from "./_components/InsightActions";
 import { useFindingOpener } from "./_components/FindingOpener";
@@ -35,7 +36,7 @@ const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));
 export default function InsightsOverviewPage() {
   const router = useRouter();
   const dayOne = useDayOne();
-  const { run, module, versions, resolving } = useInsightScope();
+  const { run, module, runs, versions, resolving } = useInsightScope();
   const finding = useFindingOpener(run);
   const on = !!run;
   const scope = { version_id: run, module };
@@ -49,12 +50,15 @@ export default function InsightsOverviewPage() {
   const s4 = useQuery({ queryKey: queryKeys.insights("s4-readiness", run), queryFn: () => getS4Readiness(run ?? ""), enabled: on });
 
   const o = ov.data;
-  const trendRuns = useMemo(() => trends.data?.runs ?? [], [trends.data]);
-  const trendX = (r: { label: string | null; run_at: string | null; version_id: string }) => r.label || (r.run_at ? formatDate(r.run_at) : r.version_id.slice(0, 8));
-  const trendPoints = useMemo<ChartPoint[]>(() => trendRuns.filter((r) => r.composite !== null).map((r) => ({ x: trendX(r), y: r.composite ?? 0 })), [trendRuns]);
-  const xOf = new Map(trendRuns.map((r) => [r.version_id, trendX(r)]));
-  const annotations = (trends.data?.annotations ?? []).flatMap((a) => (xOf.has(a.version_id) ? [{ x: xOf.get(a.version_id) as string, label: a.label, kind: a.kind }] : []));
+  // The trend follows this run's lineage only (its system, or uploads of the same objects), keyed by run id with
+  // the date as the tick, so a user-supplied run label never becomes an axis label.
+  const current = runs.find((r) => r.id === run);
+  const trendRuns = useMemo(() => scopeTrendRuns(trends.data?.runs ?? [], current, run), [trends.data, current, run]);
+  const trendLine = useMemo<ChartPoint[]>(() => trendPoints(trendRuns, (r) => r.composite), [trendRuns]);
+  const inTrend = new Set(trendRuns.map((r) => r.version_id));
+  const annotations = (trends.data?.annotations ?? []).flatMap((a) => (inTrend.has(a.version_id) ? [{ x: a.version_id, label: a.label, kind: a.kind }] : []));
   const thisRun = trendRuns.find((r) => r.version_id === run) ?? trendRuns[trendRuns.length - 1];
+  const trendNote = trendLine.length > 1 ? trendSentence(trendLine[0].y, trendLine[trendLine.length - 1].y, trendLine.length) : undefined;
   const dims = Object.entries(thisRun?.dimensions ?? {}).map(([d, y]) => ({ x: dimLabel(d), y, dimension: d }));
 
   const areas = s4.data?.areas ?? [];
@@ -102,7 +106,7 @@ export default function InsightsOverviewPage() {
         loading,
         lead: (
           <div className="grid items-end gap-x-8 gap-y-4 sm:grid-cols-[auto_1fr]">
-            <div style={{ width: 200 }}>
+            <div style={{ minWidth: 200, width: "max-content", maxWidth: 360 }}>
               <Stat
                 hero
                 label="Data quality score"
@@ -122,13 +126,13 @@ export default function InsightsOverviewPage() {
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : loading ? "Scoring" : "Not scored yet"}
               </span>
               <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
-                {o ? `${o.blockers.count} blocking ${o.blockers.count === 1 ? "gap" : "gaps"} across ${o.blockers.waves} ${o.blockers.waves === 1 ? "wave" : "waves"}` : " "}
+                {o ? `${plural(o.blockers.count, "blocking gap")}${o.blockers.waves ? ` across ${plural(o.blockers.waves, "wave")}` : ""}` : " "}
               </span>
             </div>
           </div>
         ),
         stats: [
-          { label: "Blockers", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? `${o.blockers.waves} ${o.blockers.waves === 1 ? "wave" : "waves"}` : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
+          { label: "Blockers", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
           { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ source: "rule", confidence: "high" }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
             label: "Value at risk, worst L1",
@@ -138,8 +142,8 @@ export default function InsightsOverviewPage() {
           },
         ],
         situation: { sentence: o ? `DQS ${o.dqs.composite ?? "not scored"}${o.dqs.tier ? `, ${labelOf(o.dqs.tier).toLowerCase()}` : ""}` : fallback("—"), tone: o?.dqs.tier === "no_go" ? "no-go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "go" ? "go" : undefined, href: withScope("/insights/trends", { run }) },
-        changed: { sentence: o?.dqs.delta != null ? `${o.dqs.delta > 0 ? "Up" : o.dqs.delta < 0 ? "Down" : "Level"} ${Math.abs(Math.round(o.dqs.delta * 10) / 10)} since the last run` : fallback("No earlier run") },
-        why: { sentence: o ? `${o.blockers.count} blocking ${o.blockers.count === 1 ? "gap" : "gaps"}` : fallback("—"), href: withScope("/insights/readiness", { run }) },
+        changed: { sentence: o?.dqs.delta != null ? deltaSentence(o.dqs.delta) : fallback("No earlier run") },
+        why: { sentence: o ? plural(o.blockers.count, "blocking gap") : fallback("—"), href: withScope("/insights/readiness", { run }) },
         next: { sentence: "Fix the highest-impact rules first", action: { label: "Open failing rules", href: withScope("/insights/rules", { run, module }) } },
       }}
       state={state}
@@ -187,7 +191,7 @@ export default function InsightsOverviewPage() {
                       </span>
                       <span className="flex gap-3 m-text-body">
                         <Link href={withScope("/insights/rules", { run, module: c.module, field: c.field ?? undefined })} className="underline-offset-2 hover:underline">Open rules</Link>
-                        <Link href={withScope(`/objects/${c.module}/records`, { run, check_id: c.rules[0] })} className="underline-offset-2 hover:underline">Open records</Link>
+                        <Link href={withScope(`/objects/${c.module}`, { tab: "records", run, check: c.rules[0] })} className="underline-offset-2 hover:underline">Open records</Link>
                       </span>
                     </li>
                   );
@@ -207,9 +211,9 @@ export default function InsightsOverviewPage() {
         </div>
 
         <div className="@5xl:col-span-8">
-          <Section title="Trend" height={240} query={trends}>
-            {trendPoints.length < 2 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>A trend needs at least two scored runs.</p> : (
-              <Line data={trendPoints} label="Composite score per run" annotations={annotations} />
+          <Section title="Trend" height={240} query={trends} meta={trendNote}>
+            {trendLine.length < 2 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>A trend needs at least two scored runs of this object.</p> : (
+              <Line data={trendLine} label="Composite score per run" annotations={annotations} />
             )}
           </Section>
         </div>

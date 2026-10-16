@@ -20,6 +20,7 @@ import {
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
 import { apiErrorMessage } from "@/lib/error";
+import { plural } from "@/lib/format";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
@@ -105,7 +106,7 @@ export default function DuplicatesPage() {
     if (pairs.length === 0) return;
     const result = await createMergeProposals(pairs);
     toast(`Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`, {
-      action: { label: "Review in stewardship", onClick: () => router.push("/workbench?tab=queue") },
+      action: { label: "Review in the inbox", onClick: () => router.push("/inbox?tab=queue") },
     });
   }
 
@@ -116,10 +117,11 @@ export default function DuplicatesPage() {
   return (
     <InsightFrame
       title="Duplicates"
+      run={run || undefined}
       insight={{
-        situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${nodes.length} records are in this cluster` },
-        changed: { sentence: "—" },
-        why: { sentence: picked && !cluster.isLoading ? `${edges.length} matched pairs link these records` : "—" },
+        situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${plural(nodes.length, "record is", "records are")} in this cluster` },
+        changed: { sentence: "Mined pairs, anomalies and relationships follow the run you choose" },
+        why: { sentence: picked && !cluster.isLoading ? `${plural(edges.length, "matched pair links", "matched pairs link")} these records` : "A cluster shows which records would merge into one" },
         next: { sentence: nodes.length ? "Choose the surviving record, then propose the merge" : "Pick an object and a record" },
         loading: picked && cluster.isLoading,
       }}
@@ -218,7 +220,7 @@ function ClusterPanel({
         </label>
       ))}
       <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
-        Merge impact: {mergeImpactCount} document{mergeImpactCount === 1 ? "" : "s"} would move
+        Merge impact: {plural(mergeImpactCount, "document")} would move
       </p>
     </fieldset>
   );

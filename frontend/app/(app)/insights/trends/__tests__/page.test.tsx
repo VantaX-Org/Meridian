@@ -6,6 +6,9 @@ import * as insightsApi from "@/lib/api/insights";
 import * as versionsApi from "@/lib/api/versions";
 import TrendsPage from "../page";
 
+// The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/insights",
   useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }), useSearchParams: () => new URLSearchParams("run=v2") }));
@@ -27,13 +30,31 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("TrendsPage", () => {
   it("renders the narrative and labelled charts under one header", async () => {
-    vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("r1", 60), run("r2", 70)], annotations: [] });
+    vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("v1", 60), run("v2", 70)], annotations: [] });
     mount();
-    expect(await screen.findByText(/rose from 60 to 70 over 2 runs/)).toBeInTheDocument();
+    // The sentence is the header's situation and the composite card's meta.
+    expect((await screen.findAllByText(/rose from 60 to 70 over 2 runs/)).length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Trends" })).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /score per run/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole("grid")).toBeInTheDocument();
+  });
+
+  it("says a dimension the API omits is not measured, holds the x domain across cards and writes held at for a flat line", async () => {
+    const r1 = { ...run("v1", 70), run_at: "2026-10-16T05:00:00Z", label: "business_partner_1k" };
+    const r2 = { ...run("v2", 70), run_at: "2026-10-16T17:30:00Z", label: "business_partner_100k" };
+    vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [r1, r2], annotations: [] });
+    mount();
+    expect((await screen.findAllByText("Composite score held at 70 over 2 runs.")).length).toBeGreaterThan(0);
+    // Four dimensions (timeliness among them) are absent from both runs: an inline note each, never a blank chart.
+    expect(screen.getAllByText("Not measured in these runs")).toHaveLength(4);
+    expect(screen.queryByRole("img", { name: /Timeliness score per run/ })).toBeNull();
+    // Ticks are the date and time (two runs on one day), never the upload labels.
+    expect(screen.getByRole("img", { name: "Composite score per run: 16 Oct 2026, 05:00 70, 16 Oct 2026, 17:30 70" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /business_partner_100k/ })).toBeNull();
+    // The change heatmap is keyed the same way.
+    expect(screen.getByLabelText("Completeness 16 Oct 2026, 17:30: 0")).toBeInTheDocument();
+    expect(screen.getByText("The score has not moved across these runs.")).toBeInTheDocument();
   });
 
   it("shows the empty state", async () => {
@@ -49,9 +70,9 @@ describe("TrendsPage", () => {
   });
 
   it("refetches trends scoped to the chosen system", async () => {
-    const spy = vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("r1", 60), run("r2", 70)], annotations: [] });
+    const spy = vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("v1", 60), run("v2", 70)], annotations: [] });
     mount();
-    await screen.findByText(/rose from 60 to 70/);
+    await screen.findAllByText(/rose from 60 to 70/);
     expect(spy).toHaveBeenLastCalledWith({ version_id: "v2", system_id: undefined, limit: 12 });
     fireEvent.click(await screen.findByRole("combobox", { name: "System" }));
     const option = await screen.findByRole("option", { name: "S4" });

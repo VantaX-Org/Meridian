@@ -6,14 +6,13 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Pill, Stat, type PillTone } from "@/design";
-import { getS4Readiness } from "@/lib/api/migration";
+import { getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, plural } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { Section } from "../_components/Section";
-import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame, useRunLabel } from "../_components/InsightFrame";
 
@@ -57,6 +56,14 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
   },
 ];
 
+/** Without waves, the blockers table lists the S/4 simplification areas whose rules fail. */
+const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
+  { accessorKey: "label", header: "S/4 area" },
+  { accessorKey: "blocking_failing", header: "Blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "yes" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
+  { accessorKey: "warning_failing", header: "Warning rules", meta: { numeric: true }, cell: ({ row }) => row.original.warning_failing.toLocaleString() },
+  { accessorKey: "failing_records", header: "Records failing", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
+];
+
 export default function ReadinessPage() {
   const router = useRouter();
   const { run } = useInsightScope();
@@ -67,10 +74,12 @@ export default function ReadinessPage() {
     queryFn: () => getReadiness({ version_id: run }),
   });
 
+  // The S/4 strip follows the run even when no wave is defined yet.
+  const s4Run = data?.version_id ?? run;
   const s4 = useQuery({
-    queryKey: queryKeys.insights("s4-readiness", data?.version_id ?? undefined),
-    queryFn: () => getS4Readiness(data?.version_id ?? ""),
-    enabled: !!data?.version_id,
+    queryKey: queryKeys.insights("s4-readiness", s4Run),
+    queryFn: () => getS4Readiness(s4Run ?? ""),
+    enabled: !!s4Run,
   });
   const areas = s4.data?.areas ?? [];
   let blockingGaps = 0;
@@ -79,47 +88,64 @@ export default function ReadinessPage() {
     blockingGaps += a.blocking_failing;
     warningGaps += Math.max(0, a.failing - a.blocking_failing);
   }
+  const failingAreas = areas.filter((a) => a.failing > 0).sort((a, b) => b.blocking_failing - a.blocking_failing || b.failing_records - a.failing_records);
 
   let state: "loading" | "empty" | "error" | undefined;
   if (isLoading || dayOne.status === "loading") {
     state = "loading";
   } else if (isListFailure({ isError, error })) {
     state = "error";
-  } else if (data && data.cells.length === 0) {
+  } else if (data && data.cells.length === 0 && !s4Run) {
+    // Nothing to score at all: no run and no waves. With a run, the S/4 strip still renders below.
     state = "empty";
   }
 
-  const emptyTitle = data && !data.configured
-    ? "Readiness waves not set"
-    : "No readiness data yet";
-  const emptyDetail = data && !data.configured
-    ? "Set readiness waves under Settings > Alert Thresholds."
-    : dayOne.step?.detail;
-  const emptyAction = data && !data.configured
-    ? <Button render={<Link href="/rules/scoring">Scoring and alerts</Link>} />
-    : <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />;
+  const configured = data?.configured ?? true;
+  const cells = data?.cells ?? [];
+  const modules = Array.from(new Set(cells.map((c) => c.module)));
+  const waves = Array.from(new Set(cells.map((c) => c.wave)));
 
-  const modules = Array.from(new Set(data?.cells.map((c) => c.module) ?? []));
-  const waves = Array.from(new Set(data?.cells.map((c) => c.wave) ?? []));
-
-  const blockers = (data?.cells ?? []).filter((c) => c.records_blocked > 0 || c.blocker_count > 0).sort((a, b) => b.records_blocked - a.records_blocked);
+  const blockers = cells.filter((c) => c.records_blocked > 0 || c.blocker_count > 0).sort((a, b) => b.records_blocked - a.records_blocked);
   const runLabel = useRunLabel(data?.version_id);
   const worst = blockers[0];
-  const noGo = data?.cells.filter((c) => c.verdict === "no_go").length ?? 0;
-  const blocked = data?.cells.reduce((n, c) => n + c.records_blocked, 0) ?? 0;
+  const noGo = cells.filter((c) => c.verdict === "no_go").length;
+  const blocked = cells.reduce((n, c) => n + c.records_blocked, 0);
+
+  const waveEmpty = !configured ? (
+    <EmptyState
+      title="Readiness waves not set"
+      detail="Set readiness waves under Rules, Scoring and alerts (Settings > Alert Thresholds), then create a wave in the migration cockpit."
+      action={<Button render={<Link href="/rules/scoring">Scoring and alerts</Link>} />}
+      ghost="grid"
+    />
+  ) : (
+    <EmptyState
+      title="No readiness waves yet"
+      detail="A wave groups the objects you move together; create one in the migration cockpit and the grid scores each object per wave."
+      action={<Button render={<Link href="/migration">Create wave</Link>} />}
+      ghost="grid"
+    />
+  );
 
   return (
     <InsightFrame
       title="Readiness"
       meta={runLabel}
-      actions={<InsightActions run={run} />}
+      run={run}
       insight={{
-        situation: { sentence: `${noGo} of ${data?.cells.length ?? 0} readiness ${data?.cells.length === 1 ? "cell is" : "cells are"} no-go`, tone: noGo ? "no-go" : "go" },
+        situation: {
+          sentence: cells.length
+            ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go`
+            : s4.data ? `${plural(blockingGaps, "rule")} would block an S/4 load; no wave is defined yet` : "No readiness waves are defined yet",
+          tone: noGo || blockingGaps ? "no-go" : "go",
+        },
         changed: { sentence: s4.data ? `${blockingGaps.toLocaleString()} blocking and ${warningGaps.toLocaleString()} warning rules fail` : "Blocking rules are being counted", href: withScope("/insights/rules", { run, s4: "yes" }) },
-        why: { sentence: `${blocked.toLocaleString()} records are blocked from loading${typeof data?.threshold === "number" ? `, against a threshold of ${data.threshold}%` : ""}` },
+        why: { sentence: cells.length ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `, against a threshold of ${data.threshold}%` : ""}` : "Without a wave, no object has a go or no-go verdict" },
         next: worst
           ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: withScope(`/objects/${worst.module}`, { run, tab: "rules", blocking: "true" }) } }
-          : { sentence: "Nothing blocks loading", action: { label: "Open objects", href: "/objects" } },
+          : cells.length
+            ? { sentence: "Nothing blocks loading", action: { label: "Open objects", href: "/objects" } }
+            : { sentence: "Create the first wave in the migration cockpit", action: { label: "Create wave", href: "/migration" } },
       }}
       state={state}
       skeleton={
@@ -128,31 +154,33 @@ export default function ReadinessPage() {
           <CardSkeleton height={200} />
         </>
       }
-      emptyProps={{ title: emptyTitle, detail: emptyDetail, action: emptyAction, ghost: "grid" }}
+      emptyProps={{ title: "No readiness data yet", detail: dayOne.step?.detail ?? "Readiness needs a finished run.", action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />, ghost: "grid" }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
       <Card title="Which waves are blocked">
-        <Heatmap
-          rows={modules.map(formatModuleName)}
-          cols={waves}
-          cells={(data?.cells ?? []).map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: HEAT[c.verdict] }))}
-          onPointClick={(cell) => {
-            const mod = modules.find((m) => formatModuleName(m) === cell.row);
-            if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: cell.col })}`);
-          }}
-        />
-        <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>Each cell is a wave and object pair. Select one to open its records.</p>
+        {cells.length === 0 ? waveEmpty : (
+          <>
+            <Heatmap
+              rows={modules.map(formatModuleName)}
+              cols={waves}
+              cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: HEAT[c.verdict] }))}
+              onPointClick={(cell) => {
+                const mod = modules.find((m) => formatModuleName(m) === cell.row);
+                if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: cell.col })}`);
+              }}
+            />
+            <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>Each cell is a wave and object pair. Select one to open its records.</p>
+          </>
+        )}
       </Card>
-      <Section title="Blockers and warnings" height={96} query={s4}>
+      <Section title="Blockers and warnings" height={96} query={s4} meta="Failing rules by their S/4 load effect in this run">
         <div className="grid grid-cols-2 gap-3" data-testid="s4-strip">
           <Stat label="Blockers" value={blockingGaps} tone={blockingGaps ? "no-go" : "go"} hint="Failing rules that stop an S/4 load" href={withScope("/insights/rules", { run, s4: "yes" })} />
           <Stat label="Warnings" value={warningGaps} tone={warningGaps ? "at-risk" : undefined} hint="Failing rules that do not stop a load" href={withScope("/insights/rules", { run })} />
         </div>
       </Section>
-      <Card title="Blockers">
-        {blockers.length === 0 ? (
-          <EmptyState title="No blockers in this run" detail="Every wave and object cell can load." action={<Button render={<Link href="/objects">Open objects</Link>} />} ghost="grid" />
-        ) : (
+      <Card title="Blockers" meta={cells.length ? undefined : failingAreas.length ? "By S/4 simplification area, since no wave is defined" : undefined}>
+        {blockers.length > 0 ? (
           <div role="region" aria-label="Blockers by wave and object" tabIndex={0} className="overflow-x-auto">
             <DataTable
               columns={blockerColumns(run)}
@@ -163,6 +191,12 @@ export default function ReadinessPage() {
               height="auto"
             />
           </div>
+        ) : cells.length === 0 && failingAreas.length > 0 ? (
+          <div role="region" aria-label="Blockers by S/4 area" tabIndex={0} className="overflow-x-auto">
+            <DataTable columns={areaColumns(run)} data={failingAreas} getRowId={(a) => a.area} hideToolbar dense height="auto" />
+          </div>
+        ) : (
+          <EmptyState title="No blockers in this run" detail={cells.length ? "Every wave and object cell can load." : "No failing rule would stop an S/4 load."} action={<Button render={<Link href="/objects">Open objects</Link>} />} ghost="grid" />
         )}
       </Card>
     </InsightFrame>

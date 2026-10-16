@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
-import { DrillLink, Button, DataTable, ExplorerPage, Pill, Sparkline, Stat } from "@/design";
+import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
@@ -104,6 +104,7 @@ export default function MigrationPage() {
   return (
     <>
       <ExplorerPage
+        header={<PageHeader title="Migration" meta={waves.isPending ? "\u00a0" : `${data.length} ${data.length === 1 ? "wave" : "waves"}`} actions={createButton} />}
         summary={data.length > 0 ? (
           <div className="m-stat-grid">
             <Stat label="Waves" help="wave" value={data.length} />
@@ -120,7 +121,6 @@ export default function MigrationPage() {
                 <Button variant="secondary" onClick={() => setVerdict("")}>Show all waves</Button>
               </span>
             ) : <span />}
-            {createButton}
           </div>
         }
         table={<DataTable columns={columns} data={shownWaves} getRowId={(w) => w.id}

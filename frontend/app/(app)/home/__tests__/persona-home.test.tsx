@@ -89,6 +89,32 @@ describe("PersonaHomePage data layout", () => {
   });
 });
 
+describe("PersonaHomePage lineage and heatmap", () => {
+  it("prints each dimension score in the heatmap cell with the readiness as its tone", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    renderWithQuery(<LeadHomePage />);
+    const cell = await screen.findByLabelText("Material Master Uniqueness: 95, go");
+    expect(cell).toHaveTextContent("95");
+    expect(screen.getByLabelText("Material Master Completeness: 80, at risk")).toHaveTextContent("80");
+    expect(screen.getByLabelText(/Material Master Timeliness: 60, /)).toHaveTextContent("60");
+  });
+
+  it("calls the only run of its lineage the first run instead of comparing with another object's run", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    const other: Version = {
+      ...LATEST, id: "v0", label: "Controlling", run_at: "2026-10-01T00:00:00Z",
+      dqs_summary: { controlling: { ...LATEST.dqs_summary!.material_master, composite_score: 95 } },
+      metadata: { modules: ["controlling"], file_name: "c.csv", row_count: 1 },
+    };
+    const upload: Version = { ...LATEST, metadata: { modules: ["material_master"], file_name: "f.csv", row_count: 1 } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [upload, other] });
+    renderWithQuery(<LeadHomePage />);
+    const dqs = await screen.findByTestId("home-dqs");
+    expect(dqs).toHaveTextContent("First run for this object");
+    expect(dqs).not.toHaveTextContent("vs Controlling");
+  });
+});
+
 describe("PersonaHomePage blocking and loading states", () => {
   const CAPPED: Version = {
     ...LATEST,
@@ -110,6 +136,19 @@ describe("PersonaHomePage blocking and loading states", () => {
     expect(screen.getByRole("link", { name: "MM-002" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "MM-003" })).toBeNull();
     expect(container.querySelector("a[href^='/findings']")).toBeNull();
+  });
+
+  it("counts the critical rules it does not name", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [finding("MM-001"), finding("MM-002"), finding("MM-003")],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+
+    renderWithQuery(<LeadHomePage />);
+
+    await screen.findAllByRole("link", { name: "MM-001" });
+    expect(screen.getByText(/Capped at 60 by 3 critical rules/)).toHaveTextContent(/and 1 more/);
   });
 
   it("shows plain cap text while findings load", async () => {

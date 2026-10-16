@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
   emptyExportOptions, type PillTone,
-  entityTabs,
+  entityTabs, useBreadcrumbTitle,
 } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
@@ -29,7 +29,7 @@ import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
-import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -116,6 +116,8 @@ export default function SystemPage() {
     [versionsQ.data],
   );
   const { dqs, version: latest } = latestDqs(versions);
+  // The page's h1 is the system's name, with Systems as the crumb before it.
+  useBreadcrumbTitle(system ? { label: system.name, parent: { label: "Systems", href: "/systems" } } : null);
   const aggQ = useQuery({
     queryKey: queryKeys.systemAgg(systemId, latest?.id),
     queryFn: () => getFindingsAggregate(latest!.id),
@@ -172,7 +174,7 @@ export default function SystemPage() {
       <PageHeader
         title={system.name}
         status={<Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>}
-        meta={[labelOf(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}
+        meta={[systemTypeLabel(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}
         actions={
         <>
           {can("manage_systems") ? <Button variant="secondary" onClick={() => setEditOpen(true)}>Edit</Button> : null}
@@ -210,8 +212,15 @@ export default function SystemPage() {
       ) : null}
 
       <div className="grid grid-cols-4 gap-4">
-        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
-        <Stat label="Objects loaded" loading={modulesQ.isLoading} value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
+        {/* Runs can exist without an extraction (uploads); "nothing extracted" must not sit beside their score. */}
+        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : versions.length ? "Runs come from uploads" : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
+        <Stat
+          label="Objects loaded"
+          loading={modulesQ.isLoading}
+          value={loaded > 0 ? `${loaded} of ${modules.length}` : "—"}
+          hint={loaded > 0 ? undefined : versions.length ? "Runs come from uploads" : modules.length ? `${modules.length} objects not extracted yet` : undefined}
+          href={`/systems/${systemId}?tab=objects`}
+        />
         <Stat
           label="DQS"
           help="dqs"
@@ -289,6 +298,8 @@ export default function SystemPage() {
 function Overview({ systemId, modules, versions }: { systemId: string; modules: SystemModule[]; versions: SystemVersion[] }) {
   const router = useRouter();
   const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
+  // Ticks are dates (with the time when two runs share a day); the run id is the key so a click opens the right run.
+  const tickOf = runAxisLabels(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
   const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
   const runCols = useMemo(() => runColumns(), []);
   return (
@@ -303,11 +314,9 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
             />
           ) : (
             <Line
-              data={scored.map((v) => ({ x: formatDate(v.run_at), y: Number((meanDqs(v) ?? 0).toFixed(1)) }))}
-              onPointClick={(p) => {
-                const v = scored.find((s) => formatDate(s.run_at) === p.x);
-                if (v) router.push(findingsHref(v.id));
-              }}
+              data={scored.map((v) => ({ x: v.id, label: tickOf.get(v.id), y: Number((meanDqs(v) ?? 0).toFixed(1)), runId: v.id }))}
+              label="Score per run"
+              onPointClick={(p) => { if (p.runId) router.push(findingsHref(p.runId)); }}
             />
           )}
         </Card>

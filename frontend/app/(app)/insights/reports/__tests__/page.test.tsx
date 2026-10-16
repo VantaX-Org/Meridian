@@ -9,6 +9,9 @@ import * as reportsApi from "@/lib/api/reports";
 import * as versionsApi from "@/lib/api/versions";
 import ReportsPage from "../page";
 
+// The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+
 const perm = vi.hoisted(() => ({ allowed: true, only: "" }));
 vi.mock("@/lib/permissions", async (orig) => ({
   ...(await orig<typeof import("@/lib/permissions")>()),
@@ -24,7 +27,11 @@ const entry = (id: string, name: string, url: string | null) => ({
 });
 
 function mount() {
-  vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v2", label: "Run 2", status: "complete" }] } as never);
+  vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+    { id: "v2", label: "Run 2", status: "complete", run_at: "2026-10-16T05:00:00Z", metadata: { modules: ["business_partner"] } },
+    { id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-02T05:00:00Z", metadata: { modules: ["business_partner"] } },
+    { id: "co", label: "controlling_1k", status: "complete", run_at: "2026-10-03T05:00:00Z", metadata: { modules: ["controlling"] } },
+  ] } as never);
   vi.spyOn(reportsApi, "getReportCatalogue").mockResolvedValue([entry("board", "Board pack", "/api/v1/reports/board/v2.pdf"), entry("compare", "Run comparison", "/api/v1/reports/compare/v2.pdf"), entry("record", "Record fix sheet", null)]);
   vi.spyOn(insightsApi, "getOverview").mockResolvedValue({
     version_id: "v2", run_label: "Run 2", run_at: null, previous_version_id: null,
@@ -99,5 +106,33 @@ describe("ReportsPage", () => {
     mount();
     expect((await screen.findAllByText(/needs the auditor or analyst role/i)).length).toBeGreaterThan(0);
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+});
+
+describe("ReportsPage scope and rendering", () => {
+  it("offers only runs of the same lineage under Compare with and writes the scope line from the run label", async () => {
+    perm.allowed = true;
+    mount();
+    expect(await screen.findByText(/Scope: Run 2, no comparison run, all objects/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("combobox", { name: "Compare with" }));
+    expect(await screen.findByRole("option", { name: "Run 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "controlling_1k" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Run 2" })).toBeNull();
+    expect(screen.getByText("1 earlier run of the same lineage can be compared.")).toBeInTheDocument();
+  });
+
+  it("shows a pending Rendering state on Download while the PDF builds", async () => {
+    perm.allowed = true;
+    let finish: () => void = () => {};
+    const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockReturnValue(new Promise<void>((r) => { finish = r; }));
+    mount();
+    await screen.findByRole("listbox", { name: "Reports" });
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    expect(dl).toHaveBeenCalledWith("/api/v1/reports/board/v2.pdf", "board_v2.pdf");
+    // The preview's Download button and the header's next step both say what is happening.
+    const pending = await screen.findAllByRole("button", { name: /Rendering/ });
+    expect(pending.some((b) => (b as HTMLButtonElement).disabled)).toBe(true);
+    finish();
+    expect(await screen.findByRole("button", { name: "Download" })).toBeEnabled();
   });
 });

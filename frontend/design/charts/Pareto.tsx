@@ -4,7 +4,9 @@
 import { Bar as RBar, Cell, CartesianGrid, ComposedChart, Line as RLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { hoverBar } from "./HoverBar";
+import { categoryAxisWidth } from "./Bar";
 import { mMotion, reducedMotion } from "../tokens";
+import { formatInt } from "../../lib/format";
 
 /** Sorts descending and adds a cumulative-share line, so the few causes behind most defects stand out. */
 export function Pareto({
@@ -33,8 +35,8 @@ export function Pareto({
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows}>
         <CartesianGrid stroke={chartTheme.grid} vertical={false} />
-        <XAxis dataKey="x" stroke={chartTheme.axis} fontSize={12} />
-        <YAxis yAxisId="n" stroke={chartTheme.axis} fontSize={12} />
+        <XAxis dataKey="x" stroke={chartTheme.axis} fontSize={12} minTickGap={16} />
+        <YAxis yAxisId="n" stroke={chartTheme.axis} fontSize={12} tickFormatter={(v: number) => formatInt(v)} width={categoryAxisWidth(rows.map((r) => formatInt(r.y)), 36, 72)} />
         <YAxis yAxisId="c" orientation="right" domain={[0, 100]} unit="%" stroke={chartTheme.axis} fontSize={12} />
         <Tooltip />
         <RBar

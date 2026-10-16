@@ -5,6 +5,8 @@ import { mColor, type DomainKey } from "../tokens";
 export interface ChartPoint {
   x: string | number;
   y: number;
+  /** Display text for `x` on ticks and tooltips when `x` is a key (a run id); `x` itself is shown otherwise. */
+  label?: string;
   /** Optional drill target fields — charts pass these through untouched. */
   object?: string;
   dimension?: string;
@@ -45,5 +47,5 @@ export const chartTheme = {
 
 /** Text alternative for a chart: caller's label (or a default) plus every point as "x y". */
 export function chartSummary(data: ChartPoint[], label = "Chart"): string {
-  return `${label}: ${data.map((p) => `${p.x} ${p.y}`).join(", ") || "no data"}`;
+  return `${label}: ${data.map((p) => `${p.label ?? p.x} ${p.y}`).join(", ") || "no data"}`;
 }

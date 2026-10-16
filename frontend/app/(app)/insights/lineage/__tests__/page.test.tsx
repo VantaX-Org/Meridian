@@ -5,6 +5,9 @@ import * as lineageApi from "@/lib/api/lineage";
 import * as versionsApi from "@/lib/api/versions";
 import LineagePage from "../page";
 
+// The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
 // mock it wholesale so the page renders without an auth provider.
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(""), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/" }));
@@ -60,5 +63,52 @@ describe("LineagePage", () => {
     const calls = (lineageApi.getLineageModel as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((lineageApi.getLineageModel as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+  });
+});
+
+describe("LineagePage trace graph", () => {
+  it("draws the trace as a group of focusable nodes and links an object node to /objects/<object>", async () => {
+    // The chart measures its box with ResizeObserver, which jsdom lacks.
+    class StubRO { observe() {} disconnect() {} unobserve() {} }
+    vi.stubGlobal("ResizeObserver", StubRO);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    vi.spyOn(lineageApi, "getLineageModel").mockResolvedValue({ model_version: 3, node_counts: {}, edge_count: 10, kpis: [], processes: [], features: [], warnings: [] });
+    vi.spyOn(lineageApi, "getLineageImpact").mockResolvedValue({
+      version_id: "v1", model_version: 3, cost_available: false,
+      kpis: [{ id: "kpi:dpo", type: "kpi", label: "DPO", findings: 2, check_ids: ["AP017"], records_affected: 40, max_records: 30, worst_severity: "high", worst_impact: "degraded", min_hops: 2 }],
+      processes: [], features: [], unmapped_checks: [],
+    });
+    vi.spyOn(lineageApi, "getLineage").mockResolvedValue({
+      start: "kpi:dpo", model_version: 3,
+      nodes: [
+        { id: "kpi:dpo", type: "kpi", label: "DPO" },
+        { id: "object:business_partner", type: "object", label: "Business partner" },
+      ],
+      edges: [{ source: "object:business_partner", target: "kpi:dpo", rel: "feeds_into" }],
+      paths_to_kpis: [],
+    } as never);
+    const { container } = renderWithQuery(<LineagePage />);
+    const svg = await waitFor(() => {
+      const el = container.querySelector("svg[aria-label='Lineage trace']");
+      expect(el).not.toBeNull();
+      return el as SVGSVGElement;
+    });
+    // Focusable nodes inside an svg make role=img invalid (axe nested-interactive); the svg is a group.
+    expect(svg).toHaveAttribute("role", "group");
+    // Each node is a focusable button whose <title> names it (the hover tooltip and the accessible name).
+    const node = await waitFor(() => {
+      const g = Array.from(container.querySelectorAll("g.m-graph-node")).find((el) => el.querySelector("title")?.textContent === "Business partner");
+      expect(g).toBeTruthy();
+      return g as SVGGElement;
+    });
+    expect(node).toHaveAttribute("role", "button");
+    expect(node).toHaveAttribute("tabindex", "0");
+    // The frame carries the shared action bar for the run (checked before the drawer, a modal, hides the page).
+    expect(screen.getByRole("link", { name: "Report library" })).toHaveAttribute("href", "/insights/reports?run=v1");
+    fireEvent.click(node);
+    const open = await screen.findByRole("link", { name: "Open the object" });
+    expect(open).toHaveAttribute("href", "/objects/business_partner?run=v1");
+    expect(open.getAttribute("href")).not.toContain("/analyse/");
+    vi.unstubAllGlobals();
   });
 });

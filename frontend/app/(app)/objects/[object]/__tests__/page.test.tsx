@@ -181,6 +181,18 @@ describe("ObjectDetailPage", () => {
     expect(replace).toHaveBeenCalledWith("/objects/material_master?run=v1&tab=rules", { scroll: false });
   });
 
+  it("reads the shared `check` parameter that rule tables link with, as well as the older check_id", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=records&check=mm_missing_desc");
+    const records = vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
+      version_id: "v1", check_id: "mm_missing_desc", total: 1,
+      records: [{ record_key: "MATNR=100001", grain: "MATNR", module: "material_master", field_values: null }],
+    });
+    renderWithQuery(<ObjectDetailPage />);
+    await waitFor(() => expect(screen.getByText("MATNR=100001")).toBeInTheDocument());
+    expect(records).toHaveBeenCalledWith("v1", "mm_missing_desc", expect.anything());
+    expect(screen.queryByText(/choose a rule to see its failing records/i)).toBeNull();
+  });
+
   it("preserves check_id when switching tabs away from and back to records", async () => {
     searchParams = new URLSearchParams("run=v1&tab=records&check_id=mm_missing_desc");
     renderWithQuery(<ObjectDetailPage />);

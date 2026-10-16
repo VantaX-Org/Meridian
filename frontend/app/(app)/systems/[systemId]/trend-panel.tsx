@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button, Card, DrillLink, EmptyState, ErrorState, Pill, Skeleton, Sparkline } from "@/design";
 import { getTrends, type TrendFlag } from "@/lib/api/system-objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 const th = "px-3 py-2 text-left font-medium";
@@ -48,7 +48,10 @@ export function TrendPanel({ systemId }: { systemId: string }) {
           </thead>
           <tbody>
             {summary.map((s) => {
-              const pts = (series[s.object] ?? []).flatMap((p) => (p.dqs === null ? [] : [{ x: p.run_at, y: p.dqs }]));
+              // Keyed by run id with the date as the label, so the sparkline's title names dates, never raw timestamps or upload labels.
+              const scored = (series[s.object] ?? []).filter((p) => p.dqs !== null);
+              const ticks = runAxisLabels(scored.map((p) => ({ id: p.version_id, run_at: p.run_at })));
+              const pts = scored.map((p) => ({ x: p.version_id, label: ticks.get(p.version_id), y: p.dqs as number }));
               return (
                 <tr key={s.object}>
                   <td className={td} style={tdStyle}>{formatModuleName(s.object)}</td>
@@ -58,7 +61,7 @@ export function TrendPanel({ systemId }: { systemId: string }) {
                   </td>
                   <td className={td} style={tdStyle}>
                     {pts.length >= 2 ? (
-                      <span title={`DQS from ${pts[0].x} to ${pts[pts.length - 1].x}: ${pts.map((p) => p.y).join(" → ")}`}>
+                      <span title={`DQS from ${pts[0].label} to ${pts[pts.length - 1].label}: ${pts.map((p) => p.y).join(" → ")}`}>
                         <Sparkline data={pts} />
                       </span>
                     ) : (

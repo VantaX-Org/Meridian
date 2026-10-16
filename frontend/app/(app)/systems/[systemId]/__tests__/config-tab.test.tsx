@@ -48,7 +48,7 @@ describe("ConfigurationTab", () => {
     renderWithQuery(<ConfigurationTab systemId="s1" canPropose={false} />);
     await userEvent.click(await screen.findByRole("tab", { name: "Inventory" }));
     const card = (await screen.findByText("By module")).closest("section") as HTMLElement;
-    await userEvent.click(await within(card).findByText("Fi Gl"));
+    await userEvent.click(await within(card).findByText("FI general ledger"));
     await waitFor(() => expect(byModule).toHaveBeenCalledWith("fi_gl"));
     expect(await screen.findByTestId("inventory-counts")).toBeInTheDocument();
   });
@@ -60,7 +60,7 @@ describe("ConfigurationTab", () => {
     renderWithQuery(<ConfigurationTab systemId="s1" canPropose={false} />);
     await userEvent.click(await screen.findByRole("tab", { name: "Alignment" }));
     const card = (await screen.findByText("By module")).closest("section") as HTMLElement;
-    await userEvent.click(await within(card).findByText("Fi Gl"));
+    await userEvent.click(await within(card).findByText("FI general ledger"));
     await waitFor(() => expect(byModule).toHaveBeenCalledWith("fi_gl"));
     expect((await screen.findAllByText("Company code 2000 unused")).length).toBeGreaterThan(0);
   });

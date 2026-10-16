@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
-import ImpactPage from "../page";
+import * as settingsApi from "@/lib/api/settings";
+import ImpactPage, { impactRows } from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({
@@ -32,6 +33,8 @@ function mockEmptyProvenCost() {
     value_at_risk_by_l1: [],
   });
 }
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("ImpactPage", () => {
   it("renders one row per feature with its value at risk", async () => {
@@ -94,6 +97,43 @@ describe("ImpactPage", () => {
     await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
     expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument();
     expect(screen.getByText("MM-003").closest("a")?.getAttribute("href")).toBe("/rules/MM-003");
+  });
+
+  it("drops rows with nothing blocked, prints a dash for an unpriced value and names the currency in the header", async () => {
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR", features: { MIGO: 150 } } as never);
+    vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ version_id: "v1", currency: "ZAR", cost_by_l1: [], rows: [], value_at_risk_by_l1: [] });
+    vi.spyOn(insightsApi, "getImpact").mockResolvedValue({
+      version_id: "v1",
+      rows: [
+        { feature: "MIGO", status: "Blocked", record_count: 42, value_per_record: 150, value_at_risk: 6300, causing_rules: [] },
+        { feature: "ME21N", status: "Blocked", record_count: 7, value_per_record: 0, value_at_risk: 0, causing_rules: [] },
+        { feature: "VA01", status: "OK", record_count: 0, value_per_record: 0, value_at_risk: 0, causing_rules: [] },
+      ],
+    });
+    renderWithQuery(<ImpactPage />);
+    await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
+    expect(screen.getByText("ME21N")).toBeInTheDocument();
+    expect(screen.queryByText("VA01")).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "Value at risk (ZAR)" })).toBeInTheDocument();
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/ZAR\s?0$/)).toBeNull();
+    expect(screen.getAllByText(/ZAR[\u00a0 ]?6[,. \u00a0]300/).length).toBeGreaterThan(0);
+  });
+
+  it("points at Admin, Settings when no feature is priced", async () => {
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR", features: {} } as never);
+    mockEmptyProvenCost();
+    vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
+    renderWithQuery(<ImpactPage />);
+    expect(await screen.findByText("No feature is priced yet")).toBeInTheDocument();
+    expect(screen.getByText(/under Admin, Settings/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Open settings" })[0]).toHaveAttribute("href", "/admin/settings");
+    expect(screen.queryByText(/no impact results yet/i)).toBeNull();
+  });
+
+  it("impactRows keeps a feature only when it blocks records or carries value", () => {
+    const row = (feature: string, record_count: number, value_at_risk: number) => ({ feature, status: "x", record_count, value_per_record: 0, value_at_risk, causing_rules: [] });
+    expect(impactRows([row("a", 0, 0), row("b", 1, 0), row("c", 0, 5)]).map((r) => r.feature)).toEqual(["b", "c"]);
   });
 
   it("shows a loading skeleton while the request is in flight", () => {

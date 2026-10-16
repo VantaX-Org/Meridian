@@ -42,13 +42,28 @@ import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
-import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
+import { MineNow } from "../duplicates/mined-tabs";
+import { useInsightScope } from "../_components/useInsightScope";
 import { queryKeys } from "@/lib/query-keys";
 import type { RecordRelationship } from "@/types/api";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
-const pct = (share: number, digits = 1) => `${(share * 100).toFixed(digits)} %`;
+const pct = (share: number, digits = 1) => `${(share * 100).toFixed(digits)}%`;
+
+/** Mined pattern types as the steward reads them; never a module-style title case. */
+export const PATTERN_TYPE_LABEL: Record<string, string> = {
+  anomaly: "Anomaly",
+  drift: "Drift",
+  duplicate: "Duplicate",
+  pii: "PII",
+  dependency: "Field dependency",
+  value_set: "Value set",
+  format: "Format",
+  range: "Numeric range",
+};
+export const patternTypeLabel = (t: string) => PATTERN_TYPE_LABEL[t] ?? labelOf(t);
 // ponytail: carried from the legacy component — past ~80 edges the force layout is unreadable, the table lists all.
 const MAX_EDGES = 80;
 
@@ -172,7 +187,7 @@ function Dependencies() {
   });
   const obj = profile.data?.object ?? object;
   const deps = useMemo(() => profile.data?.dependencies ?? [], [profile.data]);
-  const profileHref = `/data/runs/${vid}?tab=profile${obj ? `&object=${encodeURIComponent(obj)}` : ""}`;
+  const profileHref = `/runs/${vid}?tab=profile${obj ? `&object=${encodeURIComponent(obj)}` : ""}`;
 
   const { nodes, edges } = useMemo(() => {
     const top = [...deps].sort((a, b) => b.violations - a.violations).slice(0, MAX_EDGES);
@@ -240,7 +255,7 @@ function Dependencies() {
 
 /* ---------------------------------------------------------------- Patterns */
 
-function Patterns() {
+function Patterns({ run }: { run?: string }) {
   const [type, setType] = useState("");
   const summary = useQuery({ queryKey: queryKeys.miningSummary(30), queryFn: () => getMiningSummary(30) });
   const patterns = useQuery({
@@ -251,7 +266,7 @@ function Patterns() {
 
   const columns = useMemo<ColumnDef<MiningPattern>[]>(() => [
     { id: "name", header: "Pattern", cell: ({ row }) => row.original.name },
-    { id: "type", header: "Type", cell: ({ row }) => <Pill>{row.original.pattern_type}</Pill> },
+    { id: "type", header: "Type", cell: ({ row }) => <Pill>{patternTypeLabel(row.original.pattern_type)}</Pill> },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity]}>{SEVERITY_LABEL[row.original.severity]}</Pill> },
     { id: "confidence", header: "Confidence", accessorFn: (p) => p.confidence, meta: { numeric: true, heat: "seq", heatRange: [0, 1] }, cell: ({ row }) => pct(row.original.confidence, 0) },
@@ -274,8 +289,8 @@ function Patterns() {
       <Select
         label="Pattern type"
         placeholder="All types" value={type} onValueChange={setType}
-        options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: formatModuleName(t) }))} />
-      <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet." action={<Button render={<Link href="/runs">Open runs</Link>} />} />
+        options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: patternTypeLabel(t) }))} />
+      <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet" detail={run ? "Mining runs over a finished analysis; start it on the current run." : "Patterns are mined from a finished analysis."} action={<MineNow run={run} />} />
     </div>
   );
 }
@@ -283,15 +298,16 @@ function Patterns() {
 /* ---------------------------------------------------------------------- Table helper */
 
 /** `@/design`'s DataTable has no `empty` prop; this wraps it with the legacy loading/empty text. */
-function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty, action }: {
-  columns: ColumnDef<T>[]; data: T[]; getRowId: (row: T) => string; loading: boolean; empty: string; action: ReactNode;
+function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty, detail, action }: {
+  columns: ColumnDef<T>[]; data: T[]; getRowId: (row: T) => string; loading: boolean; empty: string; detail?: string; action: ReactNode;
 }) {
   if (loading) return <Skeleton height={200} />;
-  if (!data.length) return <EmptyState title={empty} action={action} />;
+  if (!data.length) return <EmptyState title={empty} detail={detail} action={action} />;
   return <DataTable<T> columns={columns} data={data} getRowId={getRowId} />;
 }
 
 export default function MiningPage() {
+  const { run } = useInsightScope();
   const [tabRaw, setTab] = useUrlState("tab", "");
   const TABS = ["links", "dependencies", "patterns"] as const;
   // Legacy bookmarks used ?lens=; honour it only when ?tab= is absent, through the same whitelist.
@@ -309,6 +325,7 @@ export default function MiningPage() {
     <InsightFrame
       title="Mining"
       meta="Entity links, mined dependencies and mined patterns"
+      run={run}
       insight={{
         loading: rel.isLoading || sum.isLoading,
         situation: { sentence: `${links.toLocaleString()} links across ${domains.toLocaleString()} entities`, tone: anomalies ? "at-risk" : "go" },
@@ -323,7 +340,7 @@ export default function MiningPage() {
       <Tabs value={tab} onValueChange={setTab} items={[
         { value: "links", label: "Entity links", content: <EntityLinks /> },
         { value: "dependencies", label: "Mined dependencies", content: <Dependencies /> },
-        { value: "patterns", label: "Patterns", content: <Patterns /> },
+        { value: "patterns", label: "Patterns", content: <Patterns run={run} /> },
       ]} />
     </InsightFrame>
   );

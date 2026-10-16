@@ -226,6 +226,35 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(document.querySelector(".recharts-wrapper")).toBeInTheDocument());
   });
 
+  it("prints the finding count in every heatmap cell with the severity as its tone", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+      ...EMPTY_AGGREGATE, total: 7,
+      by_module: [{ module: "material_master", findings: 7, critical: 2, high: 0, medium: 5, low: 0, affected_records: 9 }] as never,
+    });
+    renderWithQuery(<RunDetailPage />);
+    const critical = await screen.findByLabelText("Material Master Critical: 2, no go");
+    expect(critical).toHaveTextContent("2");
+    expect(screen.getByLabelText("Material Master High: 0, go")).toHaveTextContent("0");
+    expect(screen.getByLabelText("Material Master Medium: 5, at risk")).toHaveTextContent("5");
+  });
+
+  it("draws the composite line for an upload from the scored runs of the same objects, keyed by run id", async () => {
+    const dqs = (composite_score: number) => ({
+      composite_score, dimension_scores: { completeness: 0, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 },
+      critical_count: 0, high_count: 0, medium_count: 0, low_count: 0, total_checks: 1, passing_checks: 1, capped: false, cap_reason: null,
+    });
+    const up = (id: string, run_at: string, score: number) => version({ id, run_at, dqs_summary: { material_master: dqs(score) }, metadata: { modules: ["material_master"], file_name: "f.csv", row_count: 1 } });
+    const other = version({ id: "co", run_at: "2026-10-05T00:00:00Z", dqs_summary: { controlling: dqs(95) }, metadata: { modules: ["controlling"], file_name: "g.csv", row_count: 1 } });
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(up("v2", "2026-10-08T00:00:00Z", 80));
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [up("v2", "2026-10-08T00:00:00Z", 80), other, up("v1", "2026-10-01T00:00:00Z", 70)] });
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    renderWithQuery(<RunDetailPage />);
+    // Two runs of the same objects make a line; the controlling upload is not on it, and the ticks are dates.
+    expect(await screen.findByRole("img", { name: "Composite over runs: 1 Oct 2026 70, 8 Oct 2026 80" })).toBeInTheDocument();
+    expect(screen.queryByText("Only one run so far")).toBeNull();
+  });
+
   it("downloads the narrative report from the Narrative report (PDF) export option, distinct from the Analysis report URL", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(version({ id: "v2", label: "Oct 8", status: "ai_enriched" }));
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);

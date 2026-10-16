@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { Heatmap, toneOfTier } from "./Heatmap";
 import { Pareto } from "./Pareto";
-import { Bar } from "./Bar";
+import { Bar, categoryAxisWidth } from "./Bar";
 import { Graph, GraphLegend } from "./Graph";
 import { ChartLegend, isolatedOpacity } from "./Legend";
-import { Line } from "./Line";
-import { Radar } from "./Radar";
+import { Line, pointAtRow } from "./Line";
+import { Radar, RADAR_MIN_WIDTH } from "./Radar";
 import { Sparkline } from "./Sparkline";
 import { Waterfall } from "./Waterfall";
 
@@ -31,6 +31,13 @@ describe("charts onPointClick contract", () => {
     fireEvent.click(screen.getByLabelText("material_master MM: no-go"));
     expect(onPointClick).toHaveBeenCalledTimes(1);
     expect(onPointClick).toHaveBeenCalledWith(cells[1]);
+  });
+
+  it("Line resolves a clicked dot by the row's x key, so a sparse series never opens a neighbouring run", () => {
+    const sparse = [{ x: "A", y: 1 }, { x: "C", y: 3 }]; // measured in A and C only; domain is A, B, C
+    expect(pointAtRow(sparse, "C")).toEqual({ x: "C", y: 3 });
+    expect(pointAtRow(sparse, "B")).toBeUndefined();
+    expect(pointAtRow(sparse, undefined)).toBeUndefined();
   });
 
   it("Line renders an svg with the shared theme", () => {
@@ -232,5 +239,71 @@ describe("Heatmap tone callback and Pareto label", () => {
   it("Pareto exposes its label as the accessible name", () => {
     render(<Pareto data={[{ x: "A", y: 5 }, { x: "B", y: 1 }]} label="Rules by impact" />);
     expect(screen.getByRole("img", { name: /Rules by impact/ })).toBeInTheDocument();
+  });
+});
+
+describe("run-keyed line charts and axis sizing", () => {
+  it("Line keyed by run id uses the point label, never the key, in its text alternative", () => {
+    render(
+      <Line
+        data={[{ x: "64afe257", label: "2 Oct 2026", y: 70 }, { x: "c1f752b7", label: "16 Oct 2026, 05:00", y: 81.8 }]}
+        label="DQS over runs"
+      />,
+    );
+    expect(screen.getByRole("img", { name: "DQS over runs: 2 Oct 2026 70, 16 Oct 2026, 05:00 81.8" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /64afe257/ })).toBeNull();
+  });
+
+  it("Line in multi-series mode prefixes each labelled point with its series name", () => {
+    render(<Line data={[]} series={[{ name: "Completeness", data: [{ x: "r1", label: "2 Oct 2026", y: 90 }] }]} label="Dimensions" />);
+    expect(screen.getByRole("img", { name: "Dimensions: Completeness 2 Oct 2026 90" })).toBeInTheDocument();
+  });
+
+  it("Line accepts a shared x domain so sibling charts line up", () => {
+    const { container } = render(<Line data={[{ x: "r2", label: "b", y: 1 }]} xDomain={[{ x: "r1", label: "a" }, { x: "r2", label: "b" }, { x: "r3", label: "c" }]} />);
+    expect(container.querySelector(".recharts-responsive-container") ?? container.querySelector("svg")).toBeTruthy();
+  });
+
+  it("categoryAxisWidth grows with the longest label within its bounds", () => {
+    expect(categoryAxisWidth(["Go"])).toBe(60);
+    expect(categoryAxisWidth(["Business Partner / CVI", "Go"])).toBe(Math.ceil(22 * 6.5) + 12);
+    expect(categoryAxisWidth(["x".repeat(80)])).toBe(180);
+    expect(categoryAxisWidth([1234, 5], 36, 72)).toBe(Math.ceil(4 * 6.5) + 12);
+    expect(categoryAxisWidth([5], 36, 72)).toBe(36);
+  });
+
+  it("Bar labels a point by its label and formats values with separators", () => {
+    render(<Bar data={[{ x: "detected", label: "Detected", y: 1234 }]} label="Average age by stage in hours" />);
+    expect(screen.getByRole("img", { name: "Average age by stage in hours: Detected 1234" })).toBeInTheDocument();
+  });
+});
+
+describe("Radar below the minimum width", () => {
+  it("yields to the Bar fallback so the angle labels are never clipped, and keeps the text alternative", () => {
+    class NarrowRO {
+      cb: ResizeObserverCallback;
+      constructor(cb: ResizeObserverCallback) { this.cb = cb; }
+      observe(el: Element) { this.cb([{ contentRect: { width: 240 } } as ResizeObserverEntry], this as unknown as ResizeObserver); void el; }
+      disconnect() {}
+      unobserve() {}
+    }
+    const originalRO = globalThis.ResizeObserver;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only global stub
+    (globalThis as any).ResizeObserver = NarrowRO;
+    try {
+      const { container } = render(<Radar data={[{ x: "Accuracy", y: 91 }, { x: "Validity", y: 88 }]} label="Dimensions" />);
+      expect(container.querySelector("[data-radar='bars']")).not.toBeNull();
+      expect(container.querySelector(".recharts-polar-grid")).toBeNull();
+      expect(screen.getByRole("img", { name: "Dimensions: Accuracy 91, Validity 88" })).toBeInTheDocument();
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only global stub
+      (globalThis as any).ResizeObserver = originalRO;
+    }
+  });
+
+  it("stays a radar at a comfortable width", () => {
+    expect(RADAR_MIN_WIDTH).toBe(300);
+    const { container } = render(<Radar data={[{ x: "Accuracy", y: 91 }]} label="Dimensions" />);
+    expect(container.querySelector("[data-radar='radar']")).not.toBeNull();
   });
 });

@@ -26,6 +26,11 @@ export interface EarlyWarning {
 export interface PredictiveResponse {
   forecasts: DqsForecast[];
   early_warnings: EarlyWarning[];
+  /** Why `forecasts` is empty: "needs_three_days" until runs span three different days. */
+  reason?: string | null;
+  /** Finished runs the forecaster saw, and how many distinct days they cover. */
+  runs_seen?: number;
+  days_seen?: number;
 }
 
 /** The tenant's own assumptions behind every planner figure (Admin → Scoring & alerts). */
@@ -171,6 +176,11 @@ export interface OperationalKpis {
   rollback_rate: number;
   items_in_flight: number;
   avg_queue_age_hours: number;
+  /** "N/A" when nothing has been processed yet. */
+  top_rule_by_volume?: string;
+  top_object_type?: string;
+  total_processed?: number;
+  total_detected?: number;
 }
 
 export interface Bottleneck {

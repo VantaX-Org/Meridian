@@ -29,10 +29,10 @@ import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/a
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, labelOf, runAxisLabels } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
-import { baselineRunId, previousRunId } from "@/lib/runs";
+import { baselineRunId, lineageOf, overallDqs, previousRunId } from "@/lib/runs";
 import type { Finding, Version } from "@/types/api";
 
 const STATUS_TONE: Record<string, PillTone> = {
@@ -148,8 +148,12 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
 }
 
 function SummaryTab({
-  versionId, aggregate, history, systemId, versionLoading,
-}: { versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string; versionLoading: boolean }) {
+  versionId, aggregate, history, systemId, versionLoading, lineage,
+}: {
+  versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string; versionLoading: boolean;
+  /** Scored runs of this run's lineage (uploads of the same objects), used for the composite line when there is no system history. */
+  lineage: Version[];
+}) {
   const router = useRouter();
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
 
@@ -194,11 +198,13 @@ function SummaryTab({
     dimension,
   }));
 
-  const historyRows = [...(history.data?.history ?? [])].reverse();
-  const points = historyRows.flatMap((h) => {
-    const y = h.at_the_time.composite;
-    return y == null ? [] : [{ x: formatDate(h.run_at, "date"), y, runId: h.version_id }];
-  });
+  // The line is keyed by run id with the date as the tick (date and time when two runs share a day): a system's
+  // score history, or for an upload the scored runs of the same objects.
+  const historyRows = systemId != null
+    ? [...(history.data?.history ?? [])].reverse().map((h) => ({ id: h.version_id, run_at: h.run_at, composite: h.at_the_time.composite }))
+    : [...lineage].sort((a, b) => (a.run_at < b.run_at ? -1 : 1)).map((v) => ({ id: v.id, run_at: v.run_at, composite: overallDqs(v) }));
+  const ticks = runAxisLabels(historyRows);
+  const points = historyRows.flatMap((h) => (h.composite == null ? [] : [{ x: h.id, label: ticks.get(h.id), y: Math.round(h.composite * 10) / 10, runId: h.id }]));
   // Mark this run, and any run whose composite fell 5 points or more from the one before it.
   const annotations = points.flatMap((p, i): { x: string; label: string; kind: "event" | "change" }[] => {
     if (p.runId === versionId) return [{ x: p.x, label: "This run", kind: "event" as const }];
@@ -207,13 +213,14 @@ function SummaryTab({
 
   const severities = ["critical", "high", "medium", "low"] as const;
   const moduleByLabel = new Map(a.by_module.map((m) => [formatModuleName(m.module), m.module]));
+  // Each cell prints its finding count; the tint repeats the severity so colour is never the only signal.
   const heatCells: HeatmapCell[] = a.by_module.flatMap((m) =>
-    severities.map((sev): HeatmapCell => ({
-      row: formatModuleName(m.module),
-      col: labelOf(sev),
-      value: m[sev] === 0 ? "go" : sev === "critical" ? "no-go" : "at-risk",
-    })),
+    severities.map((sev): HeatmapCell => ({ row: formatModuleName(m.module), col: labelOf(sev), value: m[sev] })),
   );
+  const heatTone = (cell: HeatmapCell) => {
+    const sev = severities.find((s) => labelOf(s) === cell.col);
+    return cell.value === 0 ? "go" as const : sev === "critical" || sev === "high" ? "no-go" as const : "at-risk" as const;
+  };
 
   const presentModules = new Set(a.by_module.map((m) => m.module));
   const next = (prescriptive.data?.actions ?? []).filter((act) => !act.module || presentModules.has(act.module)).slice(0, 5).map((act) => ({
@@ -247,6 +254,8 @@ function SummaryTab({
             rows={a.by_module.map((m) => formatModuleName(m.module))}
             cols={severities.map(labelOf)}
             cells={heatCells}
+            tone={heatTone}
+            cellSize={40}
             onPointClick={(c) => router.push(`/runs/${versionId}?tab=findings&module=${moduleByLabel.get(c.row) ?? ""}&severity=${c.col.toLowerCase()}`)}
           />
         </Card>
@@ -264,14 +273,14 @@ function SummaryTab({
       <Card title="Composite over runs">
         {versionLoading || (systemId != null && history.isLoading) ? (
           <Skeleton height={240} />
-        ) : systemId == null || historyRows.length <= 1 ? (
+        ) : points.length <= 1 ? (
           <EmptyState
             title="Only one run so far"
-            detail="Scores over time appear after a second run."
-            action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Run analysis</Link>} />}
+            detail={systemId ? "Scores over time appear after a second run of this system." : "Scores over time appear after a second upload of the same objects."}
+            action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />}
           />
         ) : (
-          <Line data={points} annotations={annotations} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
+          <Line data={points} label="Composite over runs" annotations={annotations} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
         )}
       </Card>
     </div>
@@ -641,7 +650,7 @@ export default function RunDetailPage() {
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && r.status === "complete") : []} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {

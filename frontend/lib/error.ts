@@ -21,6 +21,17 @@ export function apiErrorDetail(error: unknown): string | null {
   return null;
 }
 
+/** The machine `reason` inside a structured `detail` object ({"detail": {"reason": "no_baseline"}}), or null. */
+export function apiErrorReason(error: unknown): string | null {
+  if (!isAxiosError<{ detail?: unknown }>(error)) return null;
+  const detail = error.response?.data?.detail;
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    const reason = (detail as { reason?: unknown }).reason;
+    return typeof reason === "string" ? reason : null;
+  }
+  return null;
+}
+
 /** `apiErrorDetail(error) ?? "Could not reach the server."` as one call. */
 export function apiErrorMessage(error: unknown): string {
   return apiErrorDetail(error) ?? "Could not reach the server.";

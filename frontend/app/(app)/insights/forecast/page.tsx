@@ -5,11 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, DataTable, EmptyState, Line, Pill, Select, type PillTone } from "@/design";
-import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning } from "@/lib/api/analytics";
+import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning, type PredictiveResponse } from "@/lib/api/analytics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame, useRunLabel } from "../_components/InsightFrame";
+import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
   red: "no-go",
@@ -30,7 +31,21 @@ const warningColumns: ColumnDef<EarlyWarning>[] = [
   { accessorKey: "recommended_action", header: "Recommended action" },
 ];
 
+/** Why there is no forecast yet, from the API's `reason`, `runs_seen` and `days_seen`. */
+export function forecastEmptyDetail(d: Pick<PredictiveResponse, "reason" | "runs_seen" | "days_seen"> | undefined): string {
+  const runs = d?.runs_seen;
+  const days = d?.days_seen;
+  if (d?.reason === "needs_three_days" || (typeof days === "number" && days < 3)) {
+    const cover = typeof days === "number" ? `; ${typeof runs === "number" ? `these ${plural(runs, "run")} cover` : "the runs cover"} ${plural(days, "day")}` : "";
+    return `A forecast needs runs on three different days${cover}.`;
+  }
+  if (typeof runs === "number" && runs === 0) return "A forecast needs finished runs, and none exists yet.";
+  return "A forecast needs runs on three different days.";
+}
+
 export default function ForecastPage() {
+  const { run } = useInsightScope();
+  const runLabel = useRunLabel(run);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.analyticsPredictive(),
     queryFn: () => getPredictiveAnalytics(),
@@ -76,18 +91,21 @@ export default function ForecastPage() {
 
   const declining = forecasts.filter((f) => f.trend === "declining" || f.trend === "critical");
   const worst = [...forecasts].sort((x, y) => x.forecast_30d - y.forecast_30d)[0];
+  const seen = data && typeof data.runs_seen === "number" ? `${plural(data.runs_seen, "run")} on ${plural(data.days_seen ?? 0, "day")}` : undefined;
 
   return (
     <InsightFrame
       title="Forecast"
+      meta={[runLabel ? `As of ${runLabel}` : undefined, seen].filter(Boolean).join(", ") || undefined}
+      run={run}
       insight={{
         situation: {
           sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d}% DQS in 30 days` : "Not enough runs to forecast",
           tone: declining.length ? "at-risk" : "go",
         },
-        changed: { sentence: `${declining.length} modules are declining` },
-        why: { sentence: warnings.length ? `${warnings.length} early warnings are open` : "—" },
-        next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: "Open runs", href: "/runs" } },
+        changed: { sentence: `${plural(declining.length, "module is", "modules are")} declining` },
+        why: { sentence: warnings.length ? `${plural(warnings.length, "early warning is", "early warnings are")} open` : "No early warning is open" },
+        next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: worst ? "Open failing rules" : "Open runs", href: worst ? withScope("/insights/rules", { run, module: worst.module_id }) : "/runs" } },
       }}
       state={state}
       skeleton={
@@ -98,7 +116,7 @@ export default function ForecastPage() {
       }
       emptyProps={{
         title: "Not enough runs to forecast",
-        detail: "A forecast needs at least two analyses.",
+        detail: forecastEmptyDetail(data),
         ghost: "chart",
         action: <Button render={<Link href="/runs">Open runs</Link>} />,
       }}
@@ -120,7 +138,7 @@ export default function ForecastPage() {
           )}
           {selected && (
             <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
-              {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${selected.points} runs across ${selected.span_days} days`}
+              {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
             </p>
           )}
         </div>

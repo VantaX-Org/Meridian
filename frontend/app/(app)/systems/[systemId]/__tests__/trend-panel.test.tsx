@@ -29,6 +29,8 @@ describe("TrendPanel", () => {
     expect(screen.getByText("+2.5")).toBeInTheDocument();
     expect(screen.getByText("-1.3")).toBeInTheDocument();
     expect(screen.getByText("Rules changed")).toBeInTheDocument();
+    // The sparkline's title names the runs by date, never by raw timestamp.
+    expect(screen.getByTitle("DQS from 1 Oct 2026 to 8 Oct 2026: 80 → 82.5")).toBeInTheDocument();
     expect(screen.getByText("Incomplete extract")).toBeInTheDocument();
     expect(systemObjectsApi.getTrends).toHaveBeenCalledWith("s1", undefined, true);
   });

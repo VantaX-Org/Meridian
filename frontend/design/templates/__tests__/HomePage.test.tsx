@@ -49,6 +49,14 @@ describe("HomePage data state", () => {
     expect(screen.getByRole("link", { name: "Open objects" })).toHaveAttribute("href", "/objects");
   });
 
+  it("says it is the first run for the object instead of comparing with another object", () => {
+    render(<HomePage persona="lead" state="data" verdict={{ dqs: 70, sentence: "x", firstRun: true, delta: null }} run={run} />);
+    expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
+    expect(screen.getByTestId("home-dqs")).not.toHaveTextContent(/^vs /);
+    // The column grows with the numeral and its delta chip instead of clipping them.
+    expect((screen.getByTestId("home-dqs") as HTMLElement).style.width).toBe("max-content");
+  });
+
   it("shows a dash when no module is scored, and no ring", () => {
     const { container } = render(<HomePage persona="lead" state="data" verdict={{ dqs: null, sentence: "x" }} run={run} />);
     expect(screen.getByTestId("home-dqs")).toHaveTextContent("—");

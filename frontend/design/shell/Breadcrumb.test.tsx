@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
 }));
 
-import { Breadcrumb, useBreadcrumbScope } from "./Breadcrumb";
+import { Breadcrumb, useBreadcrumbScope, useBreadcrumbTitle } from "./Breadcrumb";
 
 describe("Breadcrumb", () => {
   it("renders exactly one h1 for a page with no drill trail, using the nav title", () => {
@@ -29,5 +29,22 @@ describe("Breadcrumb scope", () => {
     const parts = screen.getAllByTestId("crumb-scope");
     expect(parts.map((p) => p.textContent)).toEqual(["14 objects", "run 2026-10-11"]);
     expect(document.body.textContent).not.toContain("\u00B7");
+  });
+});
+
+function Detail({ name }: { name: string | null }) {
+  useBreadcrumbTitle(name ? { label: name, parent: { label: "Systems", href: "/systems" } } : null);
+  return null;
+}
+
+describe("Breadcrumb detail title", () => {
+  it("uses the entity's name as the one h1 with its list page as the crumb before it, and clears on unmount", () => {
+    const view = render(<><Breadcrumb /><Detail name="ECC Prod" /></>);
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent("ECC Prod");
+    expect(screen.getByRole("link", { name: "Systems" })).toHaveAttribute("href", "/systems");
+    view.rerender(<><Breadcrumb /><Detail name={null} /></>);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Import file");
   });
 });

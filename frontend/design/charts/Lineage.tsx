@@ -102,7 +102,7 @@ export function LineageChart({
   return (
     <figure ref={box} className="m-0 flex flex-col gap-2">
       <ChartLegend items={cols.map((t) => ({ key: t, name: TYPE_LABEL[t], color: TYPE_COLOR[t] }))} />
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Lineage trace" style={{ display: "block", maxWidth: "100%", height: "auto", overflow: "visible" }}>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label="Lineage trace" style={{ display: "block", maxWidth: "100%", height: "auto", overflow: "visible" }}>
         {cols.map((t, i) => (
           <text key={t} x={i * COL_W + PAD} y={14} fill="var(--m-ink-3)" style={{ fontSize: "var(--m-text-meta)" }}>{TYPE_LABEL[t]}</text>
         ))}

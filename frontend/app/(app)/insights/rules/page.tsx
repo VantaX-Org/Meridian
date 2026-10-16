@@ -7,17 +7,17 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, ExplorerPage, Mono, PageHeader, Pareto, Pill, Select, type PillTone } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pareto, Pill, Select, Skeleton, type PillTone } from "@/design";
 import { FilterChips } from "@/app/(app)/objects/_header";
 import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
+import { getCostModel } from "@/lib/api/settings";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { formatModuleName, labelOf, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { rulesFor80 } from "../_components/rulesFor80";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { ruleColumns } from "../_components/RuleColumns";
-import { InsightActions } from "../_components/InsightActions";
-import { InsightTabs } from "../_components/InsightViews";
+import { InsightFrame, formatMoney } from "../_components/InsightFrame";
 import { SavedViews } from "../_components/SavedViews";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
@@ -104,22 +104,53 @@ export default function RulesPage() {
     { accessorKey: "worst", header: "Worst severity", cell: ({ row }) => (row.original.worst ? <Pill tone={SEVERITY_TONE[row.original.worst] ?? "neutral"} variant="solid">{labelOf(row.original.worst)}</Pill> : "—") },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [axis]);
+  // Cost at risk is in the tenant currency (cost model); the column appears once any rule carries a cost.
+  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
+  const currency = costModel.data?.currency;
+  const hasCost = rows.some((r) => r.cost_at_risk != null && r.cost_at_risk > 0);
   const columns = useMemo<ColumnDef<RuleRow>[]>(() => [
     ...ruleColumns(run),
+    { id: "field", header: "Field", accessorFn: (r) => r.field ?? "", cell: ({ row }) => (row.original.field ? <Mono>{row.original.field}</Mono> : "—") },
+    ...(hasCost ? [{
+      id: "cost", header: currency ? `Cost at risk (${currency})` : "Cost at risk", meta: { numeric: true }, accessorFn: (r: RuleRow) => r.cost_at_risk ?? 0,
+      cell: ({ row }: { row: { original: RuleRow } }) => (row.original.cost_at_risk ? formatMoney(row.original.cost_at_risk, currency) : "—"),
+    } satisfies ColumnDef<RuleRow>] : []),
     {
       id: "records", header: "Records", enableSorting: false,
-      cell: ({ row }) => <Link href={withScope(`/objects/${row.original.module}/records`, { run, check_id: row.original.check_id })} className="underline-offset-2 hover:underline">Open records</Link>,
+      // The records tab of the object, pre-filtered to this rule.
+      cell: ({ row }) => <Link href={withScope(`/objects/${row.original.module}`, { tab: "records", run, check: row.original.check_id })} onClick={(e) => e.stopPropagation()} className="underline-offset-2 hover:underline">Open records</Link>,
     },
-  ], [run]);
+  ], [run, hasCost, currency]);
 
   const opts = (xs: string[], any: string) => [{ value: ANY, label: any }, ...xs.map((x) => ({ value: x, label: labelOf(x) }))];
   const yesNo = (any: string) => [{ value: ANY, label: any }, { value: "yes", label: "Only these" }];
+  const axisLabel = AXES.find((a) => a.value === axis)?.label ?? "Rule";
+  // "Impact by S/4 status" keeps the product name's case; every other axis reads in lower case.
+  const axisInTitle = axis === "s4" ? axisLabel : axisLabel.toLowerCase();
+  const state = resolving || q.isLoading || versions.isLoading ? "loading" : isListFailure(q) ? "error" : undefined;
+  const top = rows[0];
+  const totalAffected = rows.reduce((n, r) => n + r.affected, 0);
+  const blocking = rows.filter((r) => r.s4 === "blocking").length;
 
   return (
-    <ExplorerPage
-      header={<PageHeader title="Explore" meta={`${module ? formatModuleName(module) : "All objects"}${field ? `, field ${field}` : ""}`} actions={<InsightActions run={run} module={module} />} tabs={<InsightTabs />} />}
-      filterBar={
-        <div className="flex flex-col gap-2">
+    <InsightFrame
+      title="Explore"
+      meta={`${module ? formatModuleName(module) : "All objects"}${field ? `, field ${field}` : ""}`}
+      run={run}
+      module={module}
+      insight={{
+        situation: { sentence: rows.length ? `${plural(rows.length, "rule fails", "rules fail")} on ${plural(totalAffected, "record")} in this scope` : "No rule fails in this scope", tone: blocking ? "no-go" : rows.length ? "at-risk" : "go" },
+        changed: { sentence: `${plural(n80, "rule accounts", "rules account")} for 80% of the impact` },
+        why: { sentence: blocking ? `${plural(blocking, "rule")} would block an S/4 load` : "No failing rule blocks an S/4 load", href: withScope("/insights/readiness", { run }) },
+        next: top
+          ? { sentence: `Start with ${top.check_id}, the highest impact`, action: { label: "Open the rule", onClick: () => void finding.open(top) } }
+          : { sentence: "Widen the filters or pick another run", action: { label: "Open runs", href: "/runs" } },
+      }}
+      state={state}
+      skeleton={<><Skeleton height={220} /><Skeleton height={320} /></>}
+      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+    >
+      <div className="flex flex-col gap-2">
         <FilterChips label="Group by" value={axis} options={AXES} onChange={setAxis} />
         <div className="flex flex-wrap items-center gap-2">
           <Select label="Severity" value={severity} onValueChange={setSeverity} options={opts(SEVERITIES, "Any severity")} />
@@ -130,22 +161,23 @@ export default function RulesPage() {
           {module && <Button variant="secondary" onClick={() => go({ module: undefined })}>All objects</Button>}
           <SavedViews route="/insights/rules" current={filters} onApply={(f) => router.replace(withScope(path, { run, ...f }))} />
         </div>
-        </div>
-      }
-      summary={
-        pareto.length > 0 ? (
-          <Card title={`Impact by ${(AXES.find((a) => a.value === axis)?.label ?? "rule").toLowerCase()}`} meta={axis === "rule" ? `${n80} ${n80 === 1 ? "rule accounts" : "rules account"} for 80 % of impact` : `${n80} of ${groups.length} account for 80 % of impact`}>
-            <Pareto data={pareto} label={`Impact by ${axis}, top 20`} height={220} />
-          </Card>
-        ) : undefined
-      }
-      table={axis === "rule"
-        ? <DataTable columns={columns} data={rows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} dense />
-        : <DataTable columns={groupColumns} data={groups} getRowId={(g) => g.key} onRowClick={drill} dense />}
-      state={resolving || q.isLoading || versions.isLoading ? "loading" : isListFailure(q) ? "error" : !run || rows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No failing rules", detail: "Nothing matches these filters in this run.", ghost: "table" }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
-      drawer={finding.drawer}
-    />
+      </div>
+      {!run || rows.length === 0 ? (
+        q.isError ? <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />
+          : <EmptyState title="No failing rules" detail="Nothing matches these filters in this run." ghost="table" action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run })}>Clear filters</Link>} />} />
+      ) : (
+        <>
+          {pareto.length > 0 && (
+            <Card title={`Impact by ${axisInTitle}`} meta={axis === "rule" ? `${plural(n80, "rule accounts", "rules account")} for 80% of impact` : `${n80} of ${groups.length} account for 80% of impact`}>
+              <Pareto data={pareto} label={`Impact by ${axisInTitle}, top 20`} height={220} />
+            </Card>
+          )}
+          {axis === "rule"
+            ? <DataTable columns={columns} data={rows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} dense />
+            : <DataTable columns={groupColumns} data={groups} getRowId={(g) => g.key} onRowClick={drill} dense />}
+        </>
+      )}
+      {finding.drawer}
+    </InsightFrame>
   );
 }
