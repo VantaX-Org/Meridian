@@ -2770,3 +2770,41 @@ rules:
     fix_map:
       __other__: Delete the company code (OX02) or create its accounts (FS00).
     record_fix_template: 'Company code {T001.BUKRS}: no G/L accounts created.'
+
+  - id: GL260
+    field: BKPF.BELNR
+    check_class: uniqueness_check
+    fields:
+    - BKPF.BUKRS
+    - BKPF.BELNR
+    - BKPF.GJAHR
+    normalize: alnum
+    grain: BKPF
+    applies_when:
+      BKPF.BSTAT:
+        not_in:
+        - D
+        - M
+        - S
+        - V
+        - W
+        - Z
+      BKPF.STBLG:
+        blank: true
+    severity: critical
+    dimension: uniqueness
+    message: Duplicate accounting document number within the same company code and fiscal year
+    why_it_matters: BUKRS + BELNR + GJAHR is the key SAP uses to identify one accounting document, so two rows
+      sharing it are the same document loaded twice, not two documents. GL069 looks for the same source
+      reference re-posted on the same date, which is a duplicate detector; this looks for the key itself
+      repeating, which is what a migration load does when a file is loaded twice or a re-run is appended
+      instead of replacing. Every figure in the duplicated document is counted twice in the trial balance.
+    rule_authority: sap_hard_constraint
+    sap_impact: The duplicated document double-counts its expense, revenue or balance sheet line in FAGLL03 and
+      in the financial statements until it is reversed. For a vendor or customer line it also creates a second
+      open item, so a payment run can pay the same invoice twice.
+    fix_map:
+      __other__: Read the duplicate in FB03 (S/4 F0717). Reverse the extra copy with FB08, or remove it in the
+        migration if the load has not been reconciled. Correct the load to replace rather than append.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} in company code {BKPF.BUKRS} appears on more than
+      one row - the same accounting document key was loaded twice.'
