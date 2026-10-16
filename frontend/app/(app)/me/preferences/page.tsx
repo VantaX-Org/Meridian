@@ -65,6 +65,7 @@ export default function PreferencesPage() {
       const result = await sendTestNotification();
       if (result.email === "sent") toast.success("Test sent to your email and your inbox");
       else if (result.email === "no_backend") toast.success("Test sent to your inbox; email is not configured here");
+      else if (result.email === "sent_unrecorded") toast.success("Email sent; the delivery log could not be updated");
       else toast.error("The email could not be sent; the test is in your inbox");
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 429) toast.error("You can send three tests an hour; try again later");

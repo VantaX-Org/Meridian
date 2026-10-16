@@ -6,9 +6,15 @@ GET  /api/v1/me/notifications/deliveries  — the caller's own notification_deli
 
 Both are self-service (any signed-in user, no role guard); the test send is limited to
 three per hour per user.
+
+The test send commits the in-app notification and a pending delivery row (key
+``test:<uuid>``) first, then emails, then records the outcome in a second transaction;
+when that second write fails the email has still gone out, so the response says
+``sent_unrecorded`` instead of failing.
 """
 
 import asyncio
+import logging
 import uuid
 from typing import Any, Literal
 
@@ -21,7 +27,11 @@ from api.deps import Tenant, get_db, get_tenant
 from api.services.notifications import create_notification
 from api.services.rate_limiter import rate_limit
 from api.services.rbac import current_user_id
-from api.services.user_notifications import email_backend_name, record_delivery_async
+from api.services.user_notifications import (
+    claim_delivery_async, email_backend_name, finish_delivery_async, record_delivery_async, test_key,
+)
+
+logger = logging.getLogger("meridian.api.me_notifications")
 
 router = APIRouter(prefix="/api/v1", tags=["notifications"])
 
@@ -29,8 +39,12 @@ TEST_TITLE = "Test notification"
 TEST_BODY = "This is a test from Me > Preferences. Notifications reach you here."
 
 
+EmailStatus = Literal["sent", "no_backend", "failed", "sent_unrecorded"]
+
+
 class TestResult(BaseModel):
-    email: Literal["sent", "no_backend", "failed"]
+    #: sent_unrecorded: the email went out but the delivery log could not be updated
+    email: EmailStatus
     in_app: bool
 
 
@@ -75,24 +89,43 @@ async def send_test_notification(
     if row is None:
         raise HTTPException(status_code=404, detail="User not found")
     email = (row[0] or "").strip()
+    key = test_key()
 
+    # First transaction: the in-app notification and the claimed (pending) email row.
     await create_notification(str(tenant.id), str(uid), "info", TEST_TITLE, TEST_BODY, "/me/preferences", db)
     await record_delivery_async(db, str(tenant.id), str(uid), "in_app", "test", "sent")
-
-    email_status: Literal["sent", "no_backend", "failed"]
+    email_row = None
     if email_backend_name() is None or not email:
-        email_status = "no_backend"
         await record_delivery_async(db, str(tenant.id), str(uid), "email", "test", "no_backend",
                                     "no email backend configured" if email else "user has no email address")
     else:
-        error = None
-        try:
-            ok = await asyncio.to_thread(_send_test_email, email)
-        except Exception as e:  # a raise inside a backend; never the address or the message
-            ok, error = False, type(e).__name__
-        email_status = "sent" if ok else "failed"
-        await record_delivery_async(db, str(tenant.id), str(uid), "email", "test", email_status, error)
+        email_row = await claim_delivery_async(db, str(tenant.id), str(uid), "email", "test", key)
     await db.commit()
+    if email_row is None:
+        return TestResult(email="no_backend", in_app=True)
+
+    # Then the send, outside any transaction.
+    error = None
+    try:
+        ok = await asyncio.to_thread(_send_test_email, email)
+    except Exception as e:  # a raise inside a backend; never the address or the message
+        ok, error = False, type(e).__name__
+    email_status: EmailStatus = "sent" if ok else "failed"
+
+    # Second transaction: the outcome. The email has gone out either way, so a failure here
+    # is reported, not raised.
+    try:
+        await _set_rls(db, tenant)
+        await finish_delivery_async(db, email_row, email_status, error)
+        await db.commit()
+    except Exception as e:
+        logger.error(f"test notification for user {uid}: delivery outcome not recorded: {type(e).__name__}")
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        if ok:
+            email_status = "sent_unrecorded"
     return TestResult(email=email_status, in_app=True)
 
 

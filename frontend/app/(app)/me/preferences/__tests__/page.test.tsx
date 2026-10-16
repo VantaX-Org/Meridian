@@ -98,6 +98,15 @@ describe("Send me a test", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Test sent to your inbox; email is not configured here"));
   });
 
+  it("says the email went out when only the delivery log failed", async () => {
+    stubHealth("smtp");
+    vi.spyOn(notifications, "sendTestNotification").mockResolvedValue({ email: "sent_unrecorded", in_app: true });
+    renderWithQuery(<PreferencesPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Send me a test" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Email sent; the delivery log could not be updated"));
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
   it("reports a failed email send as an error", async () => {
     stubHealth("resend");
     vi.spyOn(notifications, "sendTestNotification").mockResolvedValue({ email: "failed", in_app: true });

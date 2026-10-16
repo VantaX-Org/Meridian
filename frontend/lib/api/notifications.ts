@@ -34,7 +34,8 @@ export async function getUnreadCount(): Promise<number> {
 
 /* ─── The signed-in user's own delivery (api/routes/me_notifications.py) ─── */
 
-export type TestEmailStatus = "sent" | "no_backend" | "failed";
+/** sent_unrecorded: the email went out but the delivery log could not be updated. */
+export type TestEmailStatus = "sent" | "no_backend" | "failed" | "sent_unrecorded";
 
 export interface TestNotificationResult {
   email: TestEmailStatus;

@@ -32,28 +32,47 @@ class _Row:
 
 
 class _DB:
-    """One user row, a delivery log, and a record of every statement."""
+    """One user row, a delivery log (claims honour the key, updates mutate the claimed row),
+    and a record of every statement. ``fail_update`` breaks the second transaction."""
 
-    def __init__(self, email="me@example.com", exists=True, deliveries=()):
+    def __init__(self, email="me@example.com", exists=True, deliveries=(), fail_update=False):
         self.email = email
         self.exists = exists
         self.rows = list(deliveries)
+        self.fail_update = fail_update
         self.calls = []
+        self.log: dict[str, dict] = {}  # notification_deliveries rows written, by id
         self.commits = 0
+        self.rollbacks = 0
 
     async def execute(self, stmt, params=None):
         sql = " ".join(str(stmt).split())
         if sql.startswith("SET "):
             return _Result([])
-        self.calls.append((sql, dict(params or {})))
+        p = dict(params or {})
+        self.calls.append((sql, p))
         if sql.startswith("SELECT email FROM users"):
             return _Result([(self.email,)] if self.exists else [])
         if "FROM notification_deliveries" in sql:
             return _Result([_Row(**r) for r in self.rows])
+        if sql.startswith("INSERT INTO notification_deliveries") and "ON CONFLICT" in sql:
+            assert "'pending'" in sql and "RETURNING id" in sql
+            self.log[p["id"]] = dict(p, status="pending", error=None)
+            return _Result([(p["id"],)])
+        if sql.startswith("INSERT INTO notification_deliveries"):
+            self.log[p["id"]] = dict(p)
+        if sql.startswith("UPDATE notification_deliveries"):
+            if self.fail_update:
+                raise RuntimeError("connection lost")
+            assert self.log[p["id"]]["status"] == "pending"
+            self.log[p["id"]].update(status=p["status"], error=p["error"])
         return _Result([])
 
     async def commit(self):
         self.commits += 1
+
+    async def rollback(self):
+        self.rollbacks += 1
 
 
 class _FakeRedis:
@@ -81,7 +100,7 @@ def _client(db: _DB, monkeypatch, uid=str(UID), backend="smtp", send=True) -> Te
     sent = []
 
     def _send(recipient):
-        sent.append(recipient)
+        sent.append((recipient, db.commits))  # how many commits had happened when the send ran
         if isinstance(send, Exception):
             raise send
         return send
@@ -106,7 +125,11 @@ def _client(db: _DB, monkeypatch, uid=str(UID), backend="smtp", send=True) -> Te
 
 
 def _deliveries(db):
-    return [p for sql, p in db.calls if sql.startswith("INSERT INTO notification_deliveries")]
+    return list(db.log.values())
+
+
+def _sent_to(c):
+    return [recipient for recipient, _ in c.sent]
 
 
 def _notifications(db):
@@ -118,13 +141,41 @@ def test_test_send_emails_the_caller_and_writes_addressed_in_app(monkeypatch, re
     c = _client(db, monkeypatch)
     r = c.post("/api/v1/me/notifications/test")
     assert r.status_code == 200 and r.json() == {"email": "sent", "in_app": True}
-    assert c.sent == ["me@example.com"]
+    assert _sent_to(c) == ["me@example.com"]
     n = _notifications(db)
     assert len(n) == 1 and n[0]["uid"] == str(UID) and n[0]["tid"] == str(TENANT.id)
     d = {p["channel"]: p for p in _deliveries(db)}
     assert d["in_app"]["status"] == "sent" and d["email"]["status"] == "sent"
     assert all(p["uid"] == str(UID) and p["kind"] == "test" for p in d.values())
-    assert db.commits == 1
+    assert d["email"]["key"].startswith("test:")
+    assert db.commits == 2
+
+
+def test_in_app_and_pending_claim_are_committed_before_the_email_goes_out(monkeypatch, redis):
+    db = _DB()
+    c = _client(db, monkeypatch)
+    c.post("/api/v1/me/notifications/test")
+    assert c.sent == [("me@example.com", 1)], "one commit before the send"
+    first_commit = next(i for i, (sql, _) in enumerate(db.calls) if sql.startswith("UPDATE notification_deliveries"))
+    before = [sql.split()[0] + " " + sql.split()[2] for sql, _ in db.calls[:first_commit]]
+    assert "INSERT notifications" in before and before.count("INSERT notification_deliveries") == 2
+    assert db.commits == 2, "the outcome lands in a second transaction"
+
+
+def test_email_sent_but_outcome_not_recorded_is_reported_not_raised(monkeypatch, redis):
+    db = _DB(fail_update=True)
+    c = _client(db, monkeypatch)
+    r = c.post("/api/v1/me/notifications/test")
+    assert r.status_code == 200 and r.json() == {"email": "sent_unrecorded", "in_app": True}
+    assert _sent_to(c) == ["me@example.com"]
+    assert db.commits == 1 and db.rollbacks == 1
+    assert len(_notifications(db)) == 1
+    assert {p["channel"]: p["status"] for p in _deliveries(db)} == {"in_app": "sent", "email": "pending"}
+
+
+def test_failed_send_with_unrecorded_outcome_stays_failed(monkeypatch, redis):
+    c = _client(_DB(fail_update=True), monkeypatch, send=False)
+    assert c.post("/api/v1/me/notifications/test").json()["email"] == "failed"
 
 
 def test_test_send_without_backend_is_in_app_only(monkeypatch, redis):
@@ -135,6 +186,7 @@ def test_test_send_without_backend_is_in_app_only(monkeypatch, redis):
     assert len(_notifications(db)) == 1
     d = {p["channel"]: p for p in _deliveries(db)}
     assert d["email"]["status"] == "no_backend" and d["in_app"]["status"] == "sent"
+    assert db.commits == 1
 
 
 def test_test_send_without_an_address_is_no_backend(monkeypatch, redis):
