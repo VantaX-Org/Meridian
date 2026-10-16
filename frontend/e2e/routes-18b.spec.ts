@@ -1,37 +1,32 @@
 /** Wave 18b: every gap route renders its page (heading or designed empty state) with the signed-in `app` fixture. */
 import { expect, test } from "./fixtures";
 
-/** Valid empty bodies for endpoints neither the recording nor mockGapRoutes covers, per route. */
-const EMPTY: Record<string, [RegExp, unknown][]> = {
-  "/insights/reports": [[/\/api\/v1\/versions(\?.*)?$/, { versions: [] }]],
-  "/mdm": [[/\/api\/v1\/mdm-metrics(\?.*)?$/, { latest: null, trend: [], active_systems_count: 0 }]],
-  "/admin/audit": [[/\/api\/v1\/audit(\?.*)?$/, { entries: [], total: 0, limit: 100, offset: 0 }]],
-  "/admin/reference": [[/\/api\/v1\/systems\/s1\/reference(\?.*)?$/, []]],
-  "/fix/what-if": [[/\/api\/v1\/versions(\?.*)?$/, { versions: [] }]],
-};
+/** Valid empty bodies for endpoints the recording does not cover, per route (none today: every route below is recorded). */
+const EMPTY: Record<string, [RegExp, unknown][]> = {};
 
 /** The one endpoint whose failure puts the page in its error state. */
 const FAILING: Record<string, RegExp> = {
   "/insights/reports": /\/api\/v1\/versions(\?.*)?$/,
   "/mdm": /\/api\/v1\/mdm-metrics(\?.*)?$/,
   "/admin/audit": /\/api\/v1\/audit(\?.*)?$/,
-  "/admin/reference": /\/api\/v1\/systems\/s1\/reference(\?.*)?$/,
+  "/admin/reference": /\/api\/v1\/systems\/[^/]+\/reference(\?.*)?$/,
   "/fix/what-if": /\/api\/v1\/versions(\?.*)?$/,
 };
 
+/** Text each route shows on the recording (31 runs, jobs, audit entries, reference lists; no drafts, channels or survivorship rules). */
 const NEW_ROUTES: [string, string][] = [
-  ["/insights/operations", "No queue activity to analyse yet."],
-  ["/insights/reports", "No completed run to report on."],
-  ["/insights/exec", "No executive summary data for this run yet."],
-  ["/mdm", "No MDM health snapshot yet."],
-  ["/mdm/survivorship", "No survivorship rules."],
-  ["/admin/audit", "No audit activity recorded yet."],
-  ["/admin/notifications", "No alert channels."],
-  ["/admin/jobs", "No jobs have run yet."],
-  ["/admin/reference", "No reference data loaded."],
-  ["/fix/what-if", "No finished run to simulate."],
-  ["/rules/drafts", "No drafts."],
-  ["/rules/dictionary", "No data dictionary snapshot yet. It is captured during extraction."],
+  ["/insights/operations", "Operations"],
+  ["/insights/reports", "Latest completed runs"],
+  ["/insights/exec", "Executive summary"],
+  ["/mdm", "MDM overview"],
+  ["/mdm/survivorship", "0 rules"],
+  ["/admin/audit", "Who did what, AI calls and role changes"],
+  ["/admin/notifications", "Outbound alert channels"],
+  ["/admin/jobs", "Extractions, analyses, uploads and simulations"],
+  ["/admin/reference", "Postal code and BIC lists held per system"],
+  ["/fix/what-if", "Run simulation"],
+  ["/rules/drafts", "No drafts"],
+  ["/rules/dictionary", "SAP dictionary entries for TABLE.FIELD names"],
   ["/rules/scoring", "Cost model (ZAR)"],
 ];
 

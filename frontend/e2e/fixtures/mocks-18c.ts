@@ -1,5 +1,5 @@
 /**
- * Wave 18c endpoints that are not in the recording: config intelligence, custom (Z) objects,
+ * Wave 18c endpoints that are not in the recording: config intelligence, custom (Z) object profiles,
  * config matches, write-back approvals, SAP monitor, remediation monitor, dedup candidates,
  * rule suppressions and rule feedback. Seeded-looking data, no customer names. GET only;
  * anything else falls through to the next handler.
@@ -54,15 +54,8 @@ export async function mockRoutes18c(page: Page) {
   await get(/\/api\/v1\/config\/licence-utilisation(\?.*)?$/, { run_id: RUN, modules: [
     { module: "material_master", total_config_elements: 14, total_transactions: 4200, utilisation_pct: 72, status: "partial" },
   ] });
-  await get(/\/api\/v1\/config\/health-score(\?.*)?$/, { run_id: RUN, scores: [
-    { module: "material_master", chs: 78, critical_count: 0, high_count: 1, medium_count: 2, low_count: 1 },
-  ] });
 
-  // Custom (Z) objects
-  await get(/\/api\/v1\/z-objects\/registry(\?.*)?$/, { total: 1, entries: [{
-    id: "z1", category: "table", module: "material_master", object_name: "ZMM_GRADE", standard_equivalent: "MARA", description: "Material grade",
-    owner: "BASIS", created_date: AT, last_active_date: AT, status: "active", transaction_count_total: 310, rules_applied: ["ZRULE1"], notes: null,
-  }] });
+  // Custom (Z) objects: the registry itself is in the recording (63 entries)
   await get(/\/api\/v1\/z-objects\/profile\/z1(\?.*)?$/, {
     object_name: "ZMM_GRADE", data_type: "CHAR", cardinality: 12, null_rate: 0.03, transaction_count: 310, user_count: 4,
     first_seen: AT, last_seen: AT, trend_direction: "up", related_standard_field: "MARA.MATKL",

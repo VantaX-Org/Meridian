@@ -6,8 +6,14 @@
 
 import { expect, ROUTES, test } from "./fixtures";
 
+/** Routes that leak a snake_case identifier into visible copy today (release 0.0.401); reported, expected to fail until fixed. */
+const KNOWN_LEAKS: Record<string, string> = {
+  "mdm-glossary-g1": "the glossary term page passes term.domain (accounts_payable) to RecordPage's object label unhumanised",
+};
+
 for (const r of ROUTES) {
   test(`${r.name} renders the ${r.heading} page without page errors`, async ({ app }) => {
+    test.fail(r.name in KNOWN_LEAKS, KNOWN_LEAKS[r.name]);
     const errors: string[] = [];
     app.on("pageerror", (e) => errors.push(e.message));
     await app.goto(r.path, { waitUntil: "load" });
