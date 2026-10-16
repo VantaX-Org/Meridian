@@ -80,21 +80,74 @@ export function systemTypeLabel(type: string | null | undefined): string {
 }
 
 /**
- * Axis labels for a run series keyed by run id: the date, or date and time when two runs share a day.
+ * Axis labels for a run series keyed by run id: the date, or date and time when two runs share a day, with seconds
+ * when two share a minute, and an ordinal ("#2", in run order) when even the second is shared.
  * Run labels are user-supplied upload names, so they never become ticks; this is the one tick formatter.
  */
 export function runAxisLabels(runs: readonly { id: string; run_at: string | null | undefined }[]): Map<string, string> {
-  const days = new Map<string, number>();
-  for (const r of runs) {
-    const d = formatDate(r.run_at, "date");
-    days.set(d, (days.get(d) ?? 0) + 1);
-  }
+  const kinds = ["date", "datetime", "seconds"] as const;
+  const tally = kinds.map((k) => {
+    const m = new Map<string, number>();
+    for (const r of runs) {
+      const key = formatDate(r.run_at, k);
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return m;
+  });
   const out = new Map<string, string>();
-  for (const r of runs) {
-    const d = formatDate(r.run_at, "date");
-    out.set(r.id, (days.get(d) ?? 0) > 1 ? formatDate(r.run_at, "datetime") : d);
+  const ordinal = new Map<string, number>();
+  const ordered = [...runs].sort((a, b) => (a.run_at ?? "").localeCompare(b.run_at ?? ""));
+  for (const r of ordered) {
+    const level = kinds.findIndex((k, i) => (tally[i].get(formatDate(r.run_at, k)) ?? 0) <= 1);
+    if (level >= 0) {
+      out.set(r.id, formatDate(r.run_at, kinds[level]));
+      continue;
+    }
+    const key = formatDate(r.run_at, "seconds");
+    const n = (ordinal.get(key) ?? 0) + 1;
+    ordinal.set(key, n);
+    out.set(r.id, key === "—" ? key : `${key} #${n}`);
   }
   return out;
+}
+
+/**
+ * Option labels for a run picker: the run's label, and where two runs share a label, the label with the run's
+ * date (disambiguated as on the axis), so 19 runs of "controlling_1k" read as 19 different options.
+ */
+export function runOptionLabels(runs: readonly { id: string; label?: string | null; run_at: string | null | undefined }[]): Map<string, string> {
+  const base = (r: (typeof runs)[number]) => r.label || formatDate(r.run_at, "datetime");
+  const groups = new Map<string, (typeof runs)[number][]>();
+  for (const r of runs) groups.set(base(r), [...(groups.get(base(r)) ?? []), r]);
+  const out = new Map<string, string>();
+  for (const [name, group] of groups) {
+    if (group.length === 1) { out.set(group[0].id, name); continue; }
+    const when = runAxisLabels(group);
+    // A label that already is the date is replaced by the finer date, never repeated beside it.
+    for (const r of group) out.set(r.id, r.label ? `${name}, ${when.get(r.id)}` : when.get(r.id) ?? name);
+  }
+  return out;
+}
+
+/** Rule ids named in a DQS cap reason ("2 critical failures over tolerance (MM140: 3.2% of MARA rows; ...)"). */
+export function capRuleIds(reason: string | null | undefined): string[] {
+  if (!reason) return [];
+  const inner = /\((.*)\)/.exec(reason)?.[1] ?? reason;
+  const ids = inner.split(";").flatMap((part) => {
+    const m = /^\s*([A-Za-z][A-Za-z0-9_.-]*):/.exec(part);
+    return m ? [m[1]] : [];
+  });
+  return [...new Set(ids)];
+}
+
+/** "6 critical rules over tolerance: CO003, CO020 and 4 more": a cap reason short enough for a hero, two rules named. */
+export function shortCapReason(reason: string | null | undefined, named = 2): string {
+  if (!reason) return "";
+  const ids = capRuleIds(reason);
+  if (ids.length <= 1) return reason.replace(/\s*[—-]\s*score capped at \d+$/, "");
+  const shown = ids.slice(0, named).join(", ");
+  const more = ids.length - Math.min(named, ids.length);
+  return `${plural(ids.length, "critical rule")} over tolerance: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
 /** "Up 2.1 since the last run", "Down 0.8 since the last run", "Unchanged since the last run"; null means no earlier run. */
@@ -183,16 +236,17 @@ export function formatNumber(n: number, options?: Intl.NumberFormatOptions): str
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
 const DATETIME_OPTS: Intl.DateTimeFormatOptions = { ...DATE_OPTS, hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+const SECONDS_OPTS: Intl.DateTimeFormatOptions = { ...DATETIME_OPTS, second: "2-digit" };
 
 /** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09" (UTC unless the user chose a time zone), or with
  * `tz: "SAST"` (UTC+2, the zone the scheduler's cron runs in, used only for schedule and next-run times),
  * "2 Oct 2026, 07:09 SAST". An unparseable value is an em dash. */
-export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" = "date", tz: "UTC" | "SAST" = "UTC"): string {
+export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz: "UTC" | "SAST" = "UTC"): string {
   if (iso === null || iso === undefined || iso === "") return "—";
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
   if (tz === "SAST" && kind === "datetime") return `${intl(DATETIME_OPTS, "Africa/Johannesburg").format(d)} SAST`;
-  return intl(kind === "date" ? DATE_OPTS : DATETIME_OPTS, formatPrefs.timezone ?? "UTC").format(d);
+  return intl(kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : DATETIME_OPTS, formatPrefs.timezone ?? "UTC").format(d);
 }
 
 const LABEL_OVERRIDES: Record<string, string> = {

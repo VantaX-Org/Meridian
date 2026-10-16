@@ -17,9 +17,9 @@ import { exportRuns } from "@/lib/api/v1/runs";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatDate, labelOf } from "@/lib/format";
+import { formatDate, labelOf, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { overallDqs, previousRunId, scopeOf } from "@/lib/runs";
+import { isFinished, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 
@@ -220,14 +220,14 @@ export default function RunsPage() {
 
   // Chart scope: the chosen system, else the system of the latest run.
   const chartScope = system || (latest ? scopeOf(latest) : "");
-  const points = useMemo(
-    () =>
-      headScoped
-        .filter((v) => v.status === "complete" && scopeOf(v) === chartScope)
-        .flatMap((v) => { const y = overallDqs(v); return y === null ? [] : [{ x: formatDate(v.run_at, "date"), y: Math.round(y * 10) / 10, runId: v.id }]; })
-        .reverse(),
-    [headScoped, chartScope],
-  );
+  const points = useMemo(() => {
+    // Keyed by run id with a disambiguated date as the tick, so two runs on one day never merge into one point.
+    const scoped = headScoped.filter((v) => isFinished(v) && scopeOf(v) === chartScope);
+    const ticks = runAxisLabels(scoped);
+    return scoped
+      .flatMap((v) => { const y = overallDqs(v); return y === null ? [] : [{ x: v.id, label: ticks.get(v.id), y: Math.round(y * 10) / 10, runId: v.id }]; })
+      .reverse();
+  }, [headScoped, chartScope]);
 
   const exportOptions = [{ format: "xlsx" as const, run: () => exportRuns("xlsx", { system_id: system || undefined, limit: 100 }) }];
   const refreshLists = () => {
@@ -320,7 +320,7 @@ export default function RunsPage() {
           {`Score per run, ${systemName.get(chartScope) ?? "latest system"}`}
         </h2>
         {points.length > 1 ? (
-          <Line data={points} height={160} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
+          <Line data={points} height={160} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
         ) : (
           <div className="flex items-center justify-center text-sm" style={{ height: 160, background: "var(--m-sheet-sunken)", color: "var(--m-ink-muted)" }}>
             Trend appears after two runs

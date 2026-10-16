@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button, Card, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall } from "@/design";
 import { createSimulation, getSimulation, isSimulationResult } from "@/lib/api/simulation";
 import { getVersions } from "@/lib/api/versions";
+import { isFinished } from "@/lib/runs";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { useSearchParams } from "next/navigation";
 import { usePermissions } from "@/lib/permissions";
@@ -18,7 +19,7 @@ export default function WhatIfPage() {
   const [picked, setPicked] = useState("");
   const [simId, setSimId] = useState<string | null>(null);
   const versions = useQuery({ queryKey: ["versions", "what-if"], queryFn: () => getVersions({ limit: 25 }) });
-  const runs = (versions.data?.versions ?? []).filter((v) => v.status === "complete" || v.status === "agents_complete" || v.status === "ai_enriched");
+  const runs = (versions.data?.versions ?? []).filter(isFinished);
   const fromUrl = useSearchParams().get("run");
   const versionId = picked || runs.find((v) => v.id === fromUrl)?.id || runs[0]?.id || "";
   const run = useMutation({

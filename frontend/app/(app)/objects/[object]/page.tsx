@@ -19,6 +19,7 @@ import { exportObject, getObject, type ObjectRule, type ObjectSummary } from "@/
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
 import { exportFindingRecords, getScoreHistory } from "@/lib/api/findings";
+import { SCORE_HISTORY_LIMIT } from "@/lib/runs";
 import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
 import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
 import { apiErrorMessage } from "@/lib/error";
@@ -180,7 +181,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
 
 /** This object's composite score across every scored run, oldest first: improvement over time, per object. */
 function HistoryTab({ object, run }: { object: string; run: string }) {
-  const q = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: 24 }) });
+  const q = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: SCORE_HISTORY_LIMIT }) });
   const series = q.data?.modules[object] ?? [];
   const runs = new Map((q.data?.history ?? []).map((h) => [h.version_id, h]));
   const points = series.map((p, i) => {
