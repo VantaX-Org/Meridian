@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.branded_xlsx import ROW_CAP, ColumnSpec, SheetSpec, build_workbook, csv_response, xlsx_filename, xlsx_response
 from api.services.rbac import current_user_id, current_user_label, has_permission, require_permission
+from api.services.version_status import finished_sql
 
 router = APIRouter(prefix="/api/v1/issues", tags=["issues"])
 
@@ -175,11 +176,11 @@ async def get_issue(
     events = await db.execute(text(
         "SELECT action, from_value, to_value, note, user_label, version_id, created_at "
         "FROM record_issue_events WHERE issue_id = :id ORDER BY created_at"), {"id": issue_id})
-    history = await db.execute(text("""
+    history = await db.execute(text(f"""
         SELECT v.id AS version_id, v.run_at, (fr.record_key IS NOT NULL) AS failing
           FROM analysis_versions v
           LEFT JOIN finding_records fr ON fr.version_id = v.id AND fr.check_id = :cid AND fr.record_key = :rk
-         WHERE COALESCE(v.metadata->>'system_id', 'upload') = :scope AND v.status = 'complete'
+         WHERE COALESCE(v.metadata->>'system_id', 'upload') = :scope AND {finished_sql('v.status')}
            AND EXISTS (SELECT 1 FROM findings f WHERE f.version_id = v.id AND f.check_id = :cid)
          ORDER BY v.run_at DESC LIMIT 20
     """), {"cid": row.check_id, "rk": row.record_key, "scope": row.scope})

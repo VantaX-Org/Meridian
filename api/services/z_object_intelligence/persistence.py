@@ -24,6 +24,19 @@ from api.models.z_object_intelligence import (
 )
 
 
+def _jsonb(value, default):
+    """A JSONB column as a Python value. asyncpg hands JSONB back already decoded (dict or
+    list); only a text fallback still needs json.loads. None (and a bad string) -> default."""
+    if value is None:
+        return default
+    if isinstance(value, (str, bytes, bytearray)):
+        try:
+            return json.loads(value)
+        except ValueError:
+            return default
+    return value
+
+
 class ZObjectPersistence:
     """Save and load Z-Object Intelligence data."""
 
@@ -172,9 +185,9 @@ class ZObjectPersistence:
                 "last_active_date": str(r[8]) if r[8] else None,
                 "status": r[9] or "under_review",
                 "transaction_count_total": r[10] or 0,
-                "profile_snapshot": json.loads(r[11]) if r[11] else None,
-                "baseline_snapshot": json.loads(r[12]) if r[12] else None,
-                "rules_applied": json.loads(r[13]) if r[13] else [],
+                "profile_snapshot": _jsonb(r[11], None),
+                "baseline_snapshot": _jsonb(r[12], None),
+                "rules_applied": _jsonb(r[13], []),
                 "notes": r[14],
             }
             for r in rows
@@ -211,9 +224,9 @@ class ZObjectPersistence:
             "last_active_date": str(r[8]) if r[8] else None,
             "status": r[9] or "under_review",
             "transaction_count_total": r[10] or 0,
-            "profile_snapshot": json.loads(r[11]) if r[11] else None,
-            "baseline_snapshot": json.loads(r[12]) if r[12] else None,
-            "rules_applied": json.loads(r[13]) if r[13] else [],
+            "profile_snapshot": _jsonb(r[11], None),
+            "baseline_snapshot": _jsonb(r[12], None),
+            "rules_applied": _jsonb(r[13], []),
             "notes": r[14],
         }
 

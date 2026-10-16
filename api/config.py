@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://meridian:password@db:5432/meridian"
     database_url_sync: str = "postgresql://meridian:password@db:5432/meridian"
+    # Async pool of the API process (api/deps.py). Every request holds one connection while it
+    # runs; SSE streams must not hold one at all (api/routes/jobs.py). Size for the request
+    # concurrency of one API container; pool_timeout is how long a request waits for a free
+    # connection before failing with "QueuePool limit reached".
+    db_pool_size: int = Field(default=20, validation_alias="MERIDIAN_DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=20, validation_alias="MERIDIAN_DB_MAX_OVERFLOW")
+    db_pool_timeout: int = Field(default=30, validation_alias="MERIDIAN_DB_POOL_TIMEOUT")
 
     # Redis
     redis_url: str = "redis://redis:6379/0"

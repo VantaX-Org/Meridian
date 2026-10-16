@@ -18,10 +18,11 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls
 from api.services import rule_authoring as ra
 from api.services.rbac import current_user_label, require_permission
+from api.services.version_status import finished_sql
 
 router = APIRouter(prefix="/api/v1/rule-authoring", tags=["rule-authoring"])
 
-_DONE = "status NOT IN ('pending', 'queued', 'running', 'failed')"
+_DONE = finished_sql()
 
 
 class Describe(BaseModel):

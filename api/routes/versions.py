@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
+from api.services.version_status import ENDED, finished_sql
 from api.services.branded_xlsx import (
     ROW_CAP,
     ColumnSpec,
@@ -112,7 +113,7 @@ ARCHIVE_SQL = """
 """
 RESTORE_SQL = ("UPDATE analysis_versions SET metadata = metadata - 'archived' "
                "WHERE tenant_id = :tid AND metadata->>'archived' = 'true'")
-_DONE = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched", "failed")
+_DONE = ENDED  # finished or failed: both may be archived
 
 
 @router.post("/versions/archive", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
@@ -154,14 +155,15 @@ _CHECK_CHANGES_SQL = """
 
 @router.get("/versions/compare")
 async def compare_versions(
-    v1: str = Query(...),
     v2: str = Query(...),
+    v1: Optional[str] = Query(None, description="Default: pinned baseline, else the previous finished run"),
     module: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Per-object DQS and dimension deltas (v2 − v1), and the checks that started
-    or stopped failing between the two versions."""
+    or stopped failing between the two versions. 404 ``{"reason": "no_baseline"}``
+    when ``v1`` is omitted and the system has no earlier finished run."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid1, vid2 = await _resolve_pair(db, v1, v2)
     found = {v.id: v for v in (await db.execute(
@@ -198,8 +200,12 @@ async def _scope_of(db: AsyncSession, vid: uuid.UUID) -> Optional[str]:
     return row[0] if row else None
 
 
+NO_BASELINE = {"reason": "no_baseline", "message": "No earlier run of this system to compare with."}
+
+
 async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[uuid.UUID, uuid.UUID]:
-    """v1 defaults to the pinned baseline of v2's lineage, else the previous complete run."""
+    """v1 defaults to the pinned baseline of v2's lineage, else the newest earlier finished run.
+    Raises 404 ``NO_BASELINE`` when there is none."""
     vid2 = uuid.UUID(v2)
     scope = await _scope_of(db, vid2)
     if scope is None:
@@ -212,14 +218,14 @@ async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[u
         if "upload" not in (scope1, scope) and scope1 != scope:
             raise HTTPException(status_code=400, detail="The versions belong to different systems.")
         return vid1, vid2
-    row = (await db.execute(text("""
+    row = (await db.execute(text(f"""
         SELECT id FROM analysis_versions
-         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND id <> :v2 AND status = 'complete'
+         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND id <> :v2 AND {finished_sql()}
            AND run_at <= (SELECT run_at FROM analysis_versions WHERE id = :v2)
          ORDER BY (metadata->>'baseline') = 'true' DESC NULLS LAST, run_at DESC LIMIT 1
     """), {"scope": scope, "v2": vid2})).fetchone()
     if not row:
-        raise HTTPException(status_code=404, detail="No earlier run of this system to compare with.")
+        raise HTTPException(status_code=404, detail=NO_BASELINE)
     return row[0], vid2
 
 

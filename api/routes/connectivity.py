@@ -227,7 +227,8 @@ async def get_config_load(
 ):
     """Latest config load of the system: per-object state (loaded, empty, failed, not_available), the customizing
     change history (last change date and change count per table; ``table_logging_off`` when DBTABLOG is empty)
-    and whether flows were derived."""
+    and whether flows were derived. ``status: "never_loaded"`` (200) when the system exists but has no
+    load yet; 404 only for an unknown system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     r = (await db.execute(
         text("SELECT id::text, system_type, role, origin, status, objects, history, error, created_at::text, "
@@ -236,7 +237,20 @@ async def get_config_load(
              "ORDER BY created_at DESC LIMIT 1"),
         {"tid": str(tenant.id), "sid": system_id, "role": role})).fetchone()
     if not r:
-        raise HTTPException(404, "No configuration load for this system")
+        sys_row = (await db.execute(
+            text("SELECT system_type FROM sap_systems WHERE tenant_id = :tid AND id = :sid"),
+            {"tid": str(tenant.id), "sid": system_id})).fetchone()
+        if not sys_row:
+            raise HTTPException(404, "System not found")
+        # A system that exists but never loaded its configuration is a state, not an error.
+        from api.services.config_areas import system_status
+
+        cfg = system_status(sys_row[0], None)
+        return {"load_id": None, "system_id": system_id, "system_type": sys_row[0], "role": role, "origin": None,
+                "status": "never_loaded", "error": None, "created_at": None, "finished_at": None,
+                "flows_derived": False, "config_status": cfg["status"], "areas": cfg["areas"],
+                "areas_loaded": cfg["areas_loaded"], "areas_total": cfg["areas_total"],
+                "current_area": cfg["current_area"], "summary": {}, "objects": [], "history": {}}
     objects = r[5] or []
     history = r[6] or {}
     per_table = history.get("tables") or {}

@@ -3,8 +3,9 @@ live stream. See api/services/jobs.py for the shape."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import Tenant, get_tenant
+from api.deps import Tenant, get_db, get_tenant
 from api.routes.events import _subscribe_redis
 from api.services import jobs
 from api.services.rbac import require_permission
@@ -19,8 +20,14 @@ async def list_jobs(active: bool = Query(False, description="Only queued and run
 
 
 @router.get("/events")
-async def stream_jobs(tenant: Tenant = Depends(get_tenant)):
-    """SSE: one ``job`` event per registry write (full job object). Never closes on its own."""
+async def stream_jobs(tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db)):
+    """SSE: one ``job`` event per registry write (full job object). Never closes on its own.
+
+    The router's permission check borrowed a DB session from ``get_db``; FastAPI would keep it
+    (and its pooled connection) until the stream ends, and a few open tabs then exhaust the
+    pool. ``db`` here is that same per-request session: close it before streaming, so the
+    stream holds Redis only."""
+    await db.close()
     return StreamingResponse(_subscribe_redis(f"events:{tenant.id}:jobs"), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "Connection": "keep-alive",
                                       "X-Accel-Buffering": "no"})

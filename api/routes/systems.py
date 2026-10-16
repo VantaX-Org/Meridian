@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.config_pairing import enqueue_config_load, pair_error
 from api.services.rbac import Scope, _as_uuid, require_permission, require_scope, scope_from_path
+from api.services.version_status import finished_sql
 from api.services.connectivity_manager import (
     RFC_SYSTEM_TYPES,
     CLOUD_SYSTEM_TYPES,
@@ -281,7 +282,7 @@ async def list_systems(
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     result = await db.execute(
-        text("""
+        text(f"""
             SELECT s.id, s.name, s.host, s.client, s.sysnr, s.description,
                    s.environment, s.is_active, s.created_at::text, s.updated_at::text,
                    s.system_type, s.base_url, s.company_id, s.auth_type, s.username,
@@ -297,7 +298,7 @@ async def list_systems(
                     ORDER BY sr.started_at DESC LIMIT 1) as last_sync_status,
                    s.discovery_status, s.discovered_at::text, s.sap_release,
                    (SELECT max(v.run_at)::text FROM analysis_versions v
-                    WHERE v.metadata->>'system_id' = s.id::text AND v.status = 'complete') AS last_analysis_at,
+                    WHERE v.metadata->>'system_id' = s.id::text AND {finished_sql('v.status')}) AS last_analysis_at,
                    s.role, s.target_system_id::text
             FROM sap_systems s
             WHERE s.tenant_id = :tid
