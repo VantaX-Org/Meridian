@@ -3400,3 +3400,27 @@ rules:
     __other__: Read the document in FB03 and set the document currency, or reverse and re-post it.
   record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}:
     no document currency.'
+- id: AP287
+  field: BSIK.BLART
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Open vendor item's document type is not a defined FI document type (T003)
+  why_it_matters: BLART drives number ranges, the account types a document may post to, reversal behaviour, and
+    whether the document touches the sub-ledger. fi_gl checks this on the document header; an open item in BSIK
+    carries the same field, and a value that is not in T003 means the item was loaded with a document type the system
+    does not have. The open-item reports then cannot resolve its label and the reversal path for the item is undefined,
+    so it cannot be cleared or reversed through the normal transaction.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item cannot be reversed or cleared through the standard transaction, and FBL1N shows an unresolved
+    document type for it. Payment and clearing programs that branch on BLART fall back to defaults.
+  fix_map:
+    __blank__: BLART is mandatory at posting. A blank value means a corrupt item - raise it with functional support
+      rather than editing the secondary index.
+    __other__: Document type '{invalid_value}' is not in T003. Correct it in the source document, or configure it
+      in SPRO > Financial Accounting > Financial Accounting Global Settings > Document > Document Types (OBA7).
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}:
+    document type ''{actual_value}'' is not in T003.'
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)

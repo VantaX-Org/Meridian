@@ -137,7 +137,10 @@ def _live_config(rules) -> dict[str, set[str]]:
               "WAERS": {"ZAR", "EUR", "USD"}, "INCO1": {"EXW", "FCA", "CIP", "DAP"}, "EKORG": {"1000"},
               "EKGRP": {"001", "002"}, "KALSK": {"01"}, "BUKRS": {"1000"}, "LAND1": {"ZA", "DE"},
               "BANKS": {"ZA", "DE"}, "ZAHLS": {"*", "A", "B", "R", "V"}, "ZLSPR": {"*", "A", "B", "R", "V"},  # T008
-              "UMSKZ": {"A", "F", "I", "P", "W"}, "REGIO": {"GP", "WC"}}                         # T074U (vendors)
+              "UMSKZ": {"A", "F", "I", "P", "W"}, "REGIO": {"GP", "WC"},                        # T074U (vendors)
+              # T003: the FI document types this fixture posts with (RE invoice, KG credit memo,
+              # KA vendor down payment). AP287 checks BSIK.BLART against it.
+              "BLART": {"RE", "KG", "KA"}}
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
