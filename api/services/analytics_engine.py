@@ -582,11 +582,15 @@ class OperationalAnalytics:
                 stages[stage] = {"count": 0, "total_age": 0.0}
             stages[stage]["count"] += 1
             stages[stage]["total_age"] += float(item.get("age_hours", 0) or 0)
+        return self.bottlenecks_from_stages(stages)
 
+    def bottlenecks_from_stages(self, stages: dict[str, dict]) -> list[dict]:
+        """``identify_bottlenecks`` over per-stage totals ``{stage: {count, total_age}}``, so a caller
+        can aggregate the queue in SQL instead of loading every row."""
         bottlenecks: list[dict] = []
         for stage, data in stages.items():
-            count = data["count"]
-            avg_age = data["total_age"] / max(1, count)
+            count = int(data["count"])
+            avg_age = float(data["total_age"] or 0) / max(1, count)
             if count > 50 or avg_age > 72:
                 if count > 50 and avg_age > 72:
                     recommendation = f"Critical bottleneck: {count} items averaging {avg_age:.0f}h. Add stewards and review automation rules."
