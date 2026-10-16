@@ -331,14 +331,12 @@ ensure_started() {
 # the updater container is on the same docker network (alias `nginx`) and the host reaches it
 # on loopback. It reports rather than fails on a deployment whose network layout differs.
 verify_entrypoint() {
-    # Checked by container state, not `dc ps`: compose needs to read .env for `ps`, and this
-    # runs in contexts where it cannot (measured: `open /opt/meridian/docker/.env: permission
-    # denied`), which made `dc ps nginx` print nothing and look like a stopped container.
-    if [[ "$(docker inspect --format '{{.State.Status}}' docker-nginx-1 2>/dev/null)" != "running" ]]; then
-        error "nginx is not running after the update — the site is unreachable even if the api is healthy"
-        return 1
-    fi
-    local code=""
+    # An HTTP 200 from the front door is the only conclusive evidence, so it is tried first and
+    # decides on its own. Container state is a tiebreaker for the case where HTTP cannot be
+    # reached: stopped is a real failure, anything else (unknown, or a docker the caller cannot
+    # query) is reported rather than failed - the script must not call an update broken because
+    # it could not ask the question.
+    local code="" url
     for url in http://nginx/health http://127.0.0.1/health; do
         if command -v curl >/dev/null 2>&1; then
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$url" 2>/dev/null || true)
@@ -358,7 +356,17 @@ PYEOF
             return 0
         fi
     done
-    warn "Could not confirm the entry point over HTTP (last code: '${code:-none}'). nginx reports Up; check it from your network."
+
+    # Checked by container state, not `dc ps`: compose reads .env for `ps` and this runs in
+    # contexts where it cannot (measured: "open /opt/meridian/docker/.env: permission denied"),
+    # which made `dc ps nginx` print nothing and look like a stopped container.
+    local state
+    state=$(docker inspect --format '{{.State.Status}}' docker-nginx-1 2>/dev/null || true)
+    if [[ "$state" == "exited" || "$state" == "dead" || "$state" == "created" ]]; then
+        error "nginx is $state after the update — the site is unreachable even if the api is healthy"
+        return 1
+    fi
+    warn "Could not confirm the entry point over HTTP (last code: '${code:-none}', nginx state: '${state:-unknown}'). Check it from your network."
     return 0
 }
 
