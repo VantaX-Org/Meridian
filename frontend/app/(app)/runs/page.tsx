@@ -177,7 +177,9 @@ export default function RunsPage() {
 
   const [page, setPage] = useState(1);
   const all = useQuery({
-    queryKey: page === 1 && !showArchived ? queryKeys.run("list") : queryKeys.run(`list-page-${page}${showArchived ? "-archived" : ""}`),
+    // Nested under the shared list's key so invalidating it refreshes this page too, but never the same key:
+    // the shared list holds the paginated newest runs (hooks/use-run-list) and must not be replaced by one page.
+    queryKey: [...queryKeys.run("list"), "page", page, showArchived] as const,
     queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, ...(showArchived ? { include_archived: true } : {}) }),
     placeholderData: keepPreviousData,
     // Keep the list fresh while any run on this page is still being analysed.
@@ -185,7 +187,7 @@ export default function RunsPage() {
   });
   // Summary stats and the trend use the newest page only, whichever table page is showing. Page 1 shares the cache key above.
   const head = useQuery({
-    queryKey: queryKeys.run("list"),
+    queryKey: [...queryKeys.run("list"), "page", 1, false] as const,
     queryFn: () => getVersions({ limit: PAGE_SIZE, offset: 0 }),
     placeholderData: keepPreviousData,
   });

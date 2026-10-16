@@ -165,6 +165,21 @@ describe("PersonaHomePage blocking and loading states", () => {
     expect(screen.getByRole("link", { name: "BP019" })).toHaveAttribute("href", "/objects/material_master/rules/BP019?run=v1");
   });
 
+  it("counts an object whose cap reason names no rule by its critical count", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    const mm = LATEST.dqs_summary!.material_master;
+    const two: Version = { ...LATEST, dqs_summary: {
+      material_master: { ...mm, composite_score: 85, critical_count: 1, capped: true, cap_reason: "1 critical failure over tolerance (BP019: 4% of BUT000 rows) — score capped at 85" },
+      business_partner: { ...mm, composite_score: 85, critical_count: 1, capped: true, cap_reason: "1 critical failure — score capped at 85" },
+    } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [two] });
+    vi.spyOn(findingsApi, "getFindings").mockReturnValue(new Promise(() => {}));
+
+    renderWithQuery(<LeadHomePage />);
+
+    expect(await screen.findByText(/Capped at 85 by 2 critical rules/)).toHaveTextContent("Capped at 85 by 2 critical rules: BP019 and 1 more");
+  });
+
   it("shows plain cap text while findings load", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });

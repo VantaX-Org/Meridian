@@ -27,7 +27,7 @@ import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, capRules, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, delta as runDelta, trend, readinessOf,
+  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, delta as runDelta, trend, readinessOf,
   severityTotals, worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import { formatDate, formatModuleName, plural, shortCapReason } from "@/lib/format";
@@ -174,7 +174,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const criticalRules = reasonRules.length
     ? reasonRules
     : [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, { check_id: f.check_id, module: f.module }])).values()];
-  const capTotal = reasonRules.length ? reasonRules.length : Math.max(cap?.criticals ?? 0, criticalRules.length);
+  // Each capped object counts the rules its reason names, or its critical count when the reason names none, so an
+  // unparsable reason never drops rules; "M more" is derived from this one total, so the line always adds up.
+  const reasonTotal = capRuleCount(latest);
+  const capTotal = reasonTotal || Math.max(cap?.criticals ?? 0, criticalRules.length);
   const namedRules = criticalRules.slice(0, 2);
   const moreRules = capTotal - namedRules.length;
   const capLine = cap || capReason ? (

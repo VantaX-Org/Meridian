@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ChecklistItem } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
-import { getVersions } from "@/lib/api/versions";
+import { runListQuery } from "@/hooks/use-run-list";
 import { listBatches } from "@/lib/api/remediation";
 import { getUsers } from "@/lib/api/users";
 import { getAlertChannels } from "@/lib/api/notifications";
@@ -20,7 +20,7 @@ const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 export function useFirstRunChecklist(): { items: ChecklistItem[]; loading: boolean } {
   const { can } = useRole();
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
-  const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
+  const versionsQ = useQuery(runListQuery());
   const batchesQ = useQuery({ queryKey: queryKeys.remediationBatches(), queryFn: listBatches, retry: false });
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users"), retry: false });
   const channelsQ = useQuery({ queryKey: queryKeys.alertChannels(), queryFn: getAlertChannels, enabled: can("manage_settings"), retry: false });

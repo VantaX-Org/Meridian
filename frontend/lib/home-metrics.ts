@@ -104,6 +104,22 @@ export function capRules(v: Version): { check_id: string; module: string }[] {
   return [...out.values()];
 }
 
+/**
+ * How many critical rules capped this run: per capped object, the rules its reason names, or its critical count
+ * when the reason names none (an older or unparsable reason). Rules named by several objects count once.
+ */
+export function capRuleCount(v: Version): number {
+  const named = new Set<string>();
+  let unnamed = 0;
+  for (const m of Object.values(v.dqs_summary ?? {})) {
+    if (!m.capped) continue;
+    const ids = capRuleIds(m.cap_reason);
+    if (ids.length) ids.forEach((id) => named.add(id));
+    else unnamed += m.critical_count ?? 0;
+  }
+  return named.size + unnamed;
+}
+
 export function cappedReason(v: Version): string | null {
   for (const m of Object.values(v.dqs_summary ?? {})) {
     if (m.capped) return m.cap_reason ?? "A severity cap applied.";
