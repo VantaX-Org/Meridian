@@ -63,7 +63,7 @@ _GAPS = {"controlling": set(range(100, 126))}
 
 
 def test_new_rule_count_and_contiguous_ids_per_pack():
-    assert len(NEW) == 137
+    assert len(NEW) == 140
     for module, (prefix, start) in PACKS.items():
         nums = sorted(int(r["id"][len(prefix):]) for m, r in NEW
                       if m == module and r["id"][len(prefix):].isdigit())

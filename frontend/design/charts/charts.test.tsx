@@ -6,7 +6,7 @@ import { Pareto } from "./Pareto";
 import { Bar, categoryAxisWidth } from "./Bar";
 import { Graph, GraphLegend } from "./Graph";
 import { ChartLegend, isolatedOpacity } from "./Legend";
-import { Line, pointAtRow } from "./Line";
+import { Line, lastTickMargin, pointAtRow } from "./Line";
 import { Radar, RADAR_MIN_WIDTH } from "./Radar";
 import { Sparkline } from "./Sparkline";
 import { Waterfall } from "./Waterfall";
@@ -38,6 +38,13 @@ describe("charts onPointClick contract", () => {
     expect(pointAtRow(sparse, "C")).toEqual({ x: "C", y: 3 });
     expect(pointAtRow(sparse, "B")).toBeUndefined();
     expect(pointAtRow(sparse, undefined)).toBeUndefined();
+  });
+
+  it("Line leaves room on the right for half of a long last tick, beyond the axis padding", () => {
+    expect(lastTickMargin("16 Oct 2026, 05:17:46")).toBe(56); // 21 chars: 72 px half-width less 16 px padding
+    expect(lastTickMargin("r2")).toBe(5);                     // short labels keep the default margin
+    expect(lastTickMargin(undefined)).toBe(5);
+    expect(lastTickMargin("x".repeat(80))).toBe(96);          // capped
   });
 
   it("Line renders an svg with the shared theme", () => {

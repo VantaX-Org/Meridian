@@ -30,10 +30,10 @@ import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
-import { formatModuleName, formatDate, plural } from "@/lib/format";
+import { formatModuleName, formatDate, plural, runOptionLabels } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { getVersions } from "@/lib/api/versions";
+import { useRunList } from "@/hooks/use-run-list";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 /** Objects with an L1 to L5 definition (sap/process_definitions.py: procure to pay and order to cash). */
@@ -65,10 +65,12 @@ function RunsWithProcess({ exclude }: { exclude?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
-  const q = useQuery({ queryKey: ["versions.list", { limit: 20 }], queryFn: () => getVersions({ limit: 20 }) });
-  const options = (q.data?.versions ?? [])
-    .filter((v) => v.id !== exclude && isCompleteVersion(v) && Object.keys(v.dqs_summary ?? {}).some((m) => PROCESS_MODULES.has(m)))
-    .map((v) => ({ value: v.id, label: `${v.label || formatDate(v.run_at, "datetime")}, ${Object.keys(v.dqs_summary ?? {}).filter((m) => PROCESS_MODULES.has(m)).map(formatModuleName).join(", ")}` }));
+  const q = useRunList();
+  const withProcess = (q.data?.versions ?? [])
+    .filter((v) => v.id !== exclude && isCompleteVersion(v) && Object.keys(v.dqs_summary ?? {}).some((m) => PROCESS_MODULES.has(m)));
+  const names = runOptionLabels(withProcess);
+  const options = withProcess
+    .map((v) => ({ value: v.id, label: `${names.get(v.id) ?? formatDate(v.run_at, "datetime")}, ${Object.keys(v.dqs_summary ?? {}).filter((m) => PROCESS_MODULES.has(m)).map(formatModuleName).join(", ")}` }));
   if (q.isLoading) return <Skeleton height={32} width={280} />;
   if (!options.length) return <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>No finished run covers a procure to pay or order to cash object yet.</p>;
   return (

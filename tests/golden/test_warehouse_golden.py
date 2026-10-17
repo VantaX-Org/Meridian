@@ -127,6 +127,7 @@ def test_ewms_stock_golden():
         "EWMS034": {"LGNUM=100|LGTYP=005|LGPLA=05-01-01"},   # flagged empty, holds a quant
         "EWMS035": {"LGNUM=100|LGTYP=001|LGPLA=01-02-02"},   # flagged empty and full
         "EWMS042": {"LGNUM=100|LQNUM=0000000013"},           # batch on a non-batch material
+        "EWMS132": {"LGNUM=100|LQNUM=0000000006"},   # negative total stock on the inventory-difference quant
     }, found
 
 
@@ -612,6 +613,7 @@ def test_wm_interface_golden():
         "WMI012": {"MATNR=BOLT-M12|LGNUM=100|LGTYP=005"},   # minimum bin quantity above maximum
         "WMI013": {"MATNR=BOLT-M12|LGNUM=100"},             # palletization quantity without unit
         "WMI044": {"MATNR=GASKET-50|LGNUM=100"},            # WM view survives flagged central deletion
+        "WMI045": {"MATNR=BOLT-M12|LGNUM=100|LGTYP=005"},   # bin max below min (the fixture seeds it; no rule claimed it before)
     }, found
     # GASKET-50 is flagged for deletion at client level: out of the population, counted
     lgnum = next(r for r in results if r.check_id == "WMI001")

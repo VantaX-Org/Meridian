@@ -146,7 +146,7 @@ areas:
     simplification_item: Business Partner Approach (SAP Note 2265093)
     related:
       blocking: [PA015, PA036, PA060, PA084, PA111, EC046, EC108, EC109, EC110, EC111, EC112, EC113, EC114]
-      warning: [PA035, PA057, PA106, PA110, PA112, PA113, EC118]
+      warning: [PA035, PA057, PA106, PA110, PA112, EC118]
 rules:
 - id: S4R-BP-KNA1-ADRNR
   field: KNA1.ADRNR

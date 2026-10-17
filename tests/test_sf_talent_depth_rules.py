@@ -147,14 +147,22 @@ def test_enough_fixtures():
     assert len(FIXTURES) >= 40
 
 
+# An id deliberately retired rather than reused: LMS086 was an exact duplicate of LMS041
+# (same field, same fail_when, different severity), so it was removed and the gap left. Reusing
+# the number for an unrelated rule would hide that the duplicate ever existed, and the
+# duplicate gate (tests/checks/test_rule_duplicates.py) is what stops a new one being added.
+_RETIRED_IDS = {"learning_management": {86}}
+
+
 @pytest.mark.parametrize("module", PACKS)
 def test_ids_contiguous_and_80_plus(module):
     ids = [r["id"] for r in RULES[module]]
     pre = re.match(r"[A-Z]+", ids[0]).group()
     nums = [int(i[len(pre):]) for i in ids]
     assert len(ids) >= 80 and len(set(ids)) == len(ids)
+    retired = _RETIRED_IDS.get(module, set())
     new = sorted(n for n in nums if n > 40)
-    assert new == list(range(new[0], new[-1] + 1)), module
+    assert new == [n for n in range(new[0], new[-1] + 1) if n not in retired], module
 
 
 @pytest.mark.parametrize("module", PACKS)

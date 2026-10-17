@@ -17,11 +17,12 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { flattenNav, resolveNavHref } from "@/lib/nav";
-import { getVersions } from "@/lib/api/versions";
+import { useRunListWith } from "@/hooks/use-run-list";
+import { isFinished } from "@/lib/runs";
 import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
 import { isNotFound } from "@/lib/error";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName, runOptionLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne } from "@/hooks/use-day-one";
 import { PermissionsProvider, usePermissions } from "@/lib/permissions";
@@ -30,7 +31,6 @@ import { RouteInsight } from "@/components/insight/route-insight";
 import { HelpSlot } from "@/components/help/help-slot";
 import { reportClientError } from "@/lib/client-errors";
 
-const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
@@ -66,19 +66,18 @@ function RunSelectorSlot() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data, error, isLoading, isError, refetch } = useQuery({
-    queryKey: queryKeys.run("list"),
-    queryFn: () => getVersions(),
-  });
+  // A run page's own id is its scope; otherwise the URL's ?run=. A run older than the shared list is read by id.
+  const routeRun = /^\/runs\/([0-9a-f-]{36})(?:\/|$)/i.exec(pathname ?? "")?.[1];
+  const { list, versions } = useRunListWith(searchParams.get("run") ?? routeRun);
+  const { error, isLoading, isError, refetch } = list;
   const dayOne = useDayOne();
   const { scopeFilter } = usePermissions();
 
-  const versions = data?.versions ?? [];
   // A scoped user's default run is one from a system in scope (ruling 7).
   const pickable = scopeFilter.systems
     ? versions.filter((v) => v.metadata?.system_id !== undefined && scopeFilter.systems?.has(v.metadata.system_id))
     : versions;
-  const defaultId = pickable.find((v) => FINISHED.has(v.status))?.id ?? pickable[0]?.id;
+  const defaultId = routeRun ?? pickable.find(isFinished)?.id ?? pickable[0]?.id;
   const hasRunParam = searchParams.has("run");
 
   // Write the default run onto the URL once, so every page under this
@@ -118,11 +117,17 @@ function RunSelectorSlot() {
     );
   }
 
+  // Runs that share a label (ten uploads of one file) are told apart by their date and time.
+  const names = runOptionLabels(versions.map((v) => ({
+    id: v.id,
+    run_at: v.run_at,
+    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"}, ${formatDate(v.run_at, "date")}`,
+  })));
   const runs: RunOption[] = versions.map((v) => ({
     id: v.id,
     systemId: v.metadata?.system_id,
     at: v.run_at,
-    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"}, ${formatDate(v.run_at, "date")}`,
+    label: names.get(v.id) ?? v.label ?? v.id,
   }));
   return <RunSelector runs={runs} systems={scopeFilter.systems} />;
 }

@@ -32,7 +32,7 @@ import { RunProgressBanner } from "@/components/run-progress-banner";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf, runAxisLabels } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
-import { baselineRunId, lineageOf, overallDqs, previousRunId } from "@/lib/runs";
+import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
 import type { Finding, Version } from "@/types/api";
 
 const STATUS_TONE: Record<string, PillTone> = {
@@ -280,7 +280,7 @@ function SummaryTab({
             action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />}
           />
         ) : (
-          <Line data={points} label="Composite over runs" annotations={annotations} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
+          <Line data={points} label="Composite over runs" annotations={annotations} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
         )}
       </Card>
     </div>
@@ -650,7 +650,7 @@ export default function RunDetailPage() {
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && r.status === "complete") : []} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && isFinished(r)) : []} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {

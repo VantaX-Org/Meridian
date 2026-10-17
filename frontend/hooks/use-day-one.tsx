@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigLandscape } from "@/lib/api/config-load";
-import { getVersions } from "@/lib/api/versions";
+import { runListQuery } from "@/hooks/use-run-list";
 import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "./use-role";
@@ -31,7 +31,7 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
   const { can } = useRole();
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
-  const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
+  const versionsQ = useQuery(runListQuery());
 
   if (systemsQ.isLoading || landscapeQ.isLoading || versionsQ.isLoading) {
     return { status: "loading", step: null };

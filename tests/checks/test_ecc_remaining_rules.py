@@ -12,17 +12,17 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "ecc"
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "accounts_payable": 181,
-    "accounts_receivable": 145,
+    "accounts_payable": 185,
+    "accounts_receivable": 150,
     "asset_accounting": 100,
-    "hcm": 118,
+    "hcm": 117,
     "controlling": 102,
     "mm_purchasing": 264,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 100,
     "sd_sales_orders": 208,
     "production_planning": 278,
     "project_system": 165,
-    "plant_maintenance": 239,
+    "plant_maintenance": 238,
     "quality_management": 133,
     "s4_readiness": 110,
     "banking_tax": 91,

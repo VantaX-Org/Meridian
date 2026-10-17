@@ -1432,3 +1432,38 @@ rules:
   record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): currency ''{actual_value}'' is not
     ISO 4217.'
   auto_fix: *id003
+
+- field: JOBREQUISITION.SALARY_MAX
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.SALARY_MAX` < `JOBREQUISITION.SALARY_MIN`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Salary maximum below salary minimum
+  why_it_matters: A range where the maximum is below the minimum is impossible and misleads compensation approval.
+  rule_authority: best_practice
+  sap_impact: Compensation range and approval guidance wrong.
+  fix_map:
+    __blank__: Correct the salary min/max range.
+  record_fix_template: 'Requisition {JOBREQUISITION.POSITION_NUMBER}: salary max {JOBREQUISITION.SALARY_MAX} below
+    min {JOBREQUISITION.SALARY_MIN}.'
+  id: REC086
+- id: REC085
+  field: JOBREQUISITION.CLOSE_DATE
+  check_class: cross_field_check
+  fail_when: (~`JOBREQUISITION.STATUS`.isin(['Closed','Cancelled'])) & `JOBREQUISITION.CLOSE_DATE`.notna()
+  severity: medium
+  dimension: consistency
+  message: Requisition carries a close date but is not closed
+  why_it_matters: A close date is the record of when the requisition stopped accepting candidates. On an Open or
+    Draft requisition it means the close happened without the status being moved - the requisition still appears
+    in the recruiter's open pipeline and in open-requisition counts, while the date says it is finished. Time-to-fill
+    for it is then measured against a date the workflow never acknowledged.
+  rule_authority: best_practice
+  sap_impact: Open-requisition counts and pipeline reports include a requisition that is finished, and time-to-fill
+    uses a close date the status disagrees with.
+  fix_map:
+    __blank__: Set the requisition status to Closed if it is finished, or clear the close date if it is still open.
+      Update via Recruiting > Requisition Management.
+  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: status is {JOBREQUISITION.STATUS} but close date {JOBREQUISITION.CLOSE_DATE}
+    is set.'

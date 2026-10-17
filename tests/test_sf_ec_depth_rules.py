@@ -171,11 +171,16 @@ def test_fixture_coverage():
 
 # ---- integrity -----------------------------------------------------------------------------------------------------
 
+# EC160 was an exact duplicate of EC032 (same PERADDRESS.STATE predicate), found by
+# tests/checks/test_rule_duplicates.py. Retired rather than reused.
+_RETIRED = {160}
+
+
 def test_new_ids_unique_and_contiguous():
     ids = [r["id"] for r in RULES]
     assert len(ids) == len(set(ids))
     nums = [int(r["id"][2:]) for r in NEW]
-    assert nums == list(range(121, 121 + len(nums)))
+    assert nums == [n for n in range(121, 121 + len(nums) + len(_RETIRED)) if n not in _RETIRED]
     assert 80 <= len(NEW) <= 120
 
 

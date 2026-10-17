@@ -89,6 +89,13 @@ jobs:
       - name: Generated sidecars up to date
         run: python scripts/generate_ddic_rules.py --check
 
+      # The update path cannot be exercised by pytest - it needs a docker host, a registry and
+      # a real deployment - so the two defects that took a deployment down on 2026-10-16 were
+      # invisible to every test. This pins the fixes structurally; it cannot prove the script
+      # works, only that the specific known failures have not come back.
+      - name: Update script structure
+        run: bash tests/test_update_script.sh
+
       # Fast fail on collection errors (import breaks) before running anything.
       - name: Collect tests
         run: pytest tests/ --collect-only -q

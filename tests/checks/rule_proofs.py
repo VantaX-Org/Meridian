@@ -511,6 +511,9 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         return _verify(rule, dictionary, rows, (3, 1), live)
     if rule.get("check_class") == "aggregate_check":
         return _prove_aggregate(rule, dictionary, cand, live)
+
+    if rule.get("check_class") == "reconciliation_check":
+        return _prove_reconciliation(rule, dictionary, cand, live)
     if rule.get("check_class") == "exists_check":
         return _prove_exists(rule, dictionary, cand, live)
     if rule.get("check_class") == "hierarchy_check":
@@ -654,6 +657,41 @@ def _prove_aggregate(rule, dictionary, cand, live) -> tuple[str, str]:
         return "error", r.error
     got = (r.total_count, r.affected_count)
     return ("proven", f"groups={rows}") if got == (2, 1) else ("unproven", f"{got} != (2, 1)")
+
+
+def _prove_reconciliation(rule, dictionary, cand, live) -> tuple[str, str]:
+    """The source total must agree with the target's. One run agrees, one does not (expected:
+    2 rows in scope, 1 failing - the whole population is one group, so every row carries it).
+
+    The target total is supplied the way the runner supplies it (`_target_total`), because the
+    proof runs the rule without a real target table. Without this the check correctly refuses -
+    no target total, nothing judged - and every reconciliation rule would be reported
+    `never_fails` and could never ship (which is exactly what happened before this existed).
+    """
+    aw = rule.get("applies_when") or {}
+    row = {c: cand[c][0] for c in cand if c in aw}
+    field = rule["field"]
+    rows = [{**row, field: "10"}, {**row, field: "10"}]
+    df = _rows(rule, dictionary, rows)
+    tol = float(rule.get("tolerance", 0.01))
+
+    def _run(target_total):
+        resolved = {**rule, "_target_total": target_total}
+        _, r = run_rule(resolved, TableFrames.from_flat(df, dictionary, module=rule.get("module")),
+                        live or {})
+        return r
+
+    agree = _run(20.0)                      # 10 + 10 == 20
+    differ = _run(20.0 + max(tol * 100, 50))  # comfortably outside tolerance
+    if agree is None or differ is None:
+        return "not_applicable", "no result on the proof records"
+    if agree.error or differ.error:
+        return "error", agree.error or differ.error
+    if not (agree.affected_count == 0 and agree.total_count == 2):
+        return "unproven", f"agreeing totals condemned rows: {agree.affected_count}/{agree.total_count}"
+    if not (differ.affected_count == 2 and differ.total_count == 2):
+        return "unproven", f"differing totals did not fail every row: {differ.affected_count}/{differ.total_count}"
+    return "proven", "source 20 vs target 20 passes; source 20 vs target >tolerance fails"
 
 
 def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:

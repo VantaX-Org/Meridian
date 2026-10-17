@@ -7,6 +7,7 @@ import { getTrends, type TrendFlag } from "@/lib/api/system-objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { runPageHref } from "@/lib/runs";
 
 const th = "px-3 py-2 text-left font-medium";
 const thStyle = { color: "var(--m-ink-3)" };
@@ -61,9 +62,15 @@ export function TrendPanel({ systemId }: { systemId: string }) {
                   </td>
                   <td className={td} style={tdStyle}>
                     {pts.length >= 2 ? (
-                      <span title={`DQS from ${pts[0].label} to ${pts[pts.length - 1].label}: ${pts.map((p) => p.y).join(" → ")}`}>
+                      // The trend opens the latest run of this object, scoped to that run and object.
+                      <Link
+                        href={runPageHref(pts[pts.length - 1].x, { module: s.object })}
+                        aria-label={`Open the latest run of ${formatModuleName(s.object)}, ${pts[pts.length - 1].label}`}
+                        title={`DQS from ${pts[0].label} to ${pts[pts.length - 1].label}: ${pts.map((p) => p.y).join(" → ")}`}
+                        className="inline-block"
+                      >
                         <Sparkline data={pts} />
-                      </span>
+                      </Link>
                     ) : (
                       "—"
                     )}

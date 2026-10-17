@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import case, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from api.services.run_lineage import lineage_sql
 
 from api.deps import Tenant, get_db, get_tenant
 from api.models.config_score import ConfigAwareScore, RuleApplicability
@@ -44,12 +45,13 @@ _COMPLETE = "status IN ('complete', 'agents_running', 'agents_complete', 'agents
 
 
 async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUID]:
-    """Current state: the latest complete run of each system (uploads count as one
-    lineage) — never the same check counted once per historical run."""
+    """Current state: the latest complete run of each lineage (a system, or one uploaded
+    object set; see run_lineage) — never the same check counted once per historical run,
+    and never one upload standing in for every uploaded object."""
     return list((await db.execute(text(f"""
-        SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload')) id FROM analysis_versions
+        SELECT DISTINCT ON ({lineage_sql()}) id FROM analysis_versions
          WHERE tenant_id = :tid AND {_COMPLETE}
-         ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC
+         ORDER BY {lineage_sql()}, run_at DESC
     """), {"tid": str(tenant.id)})).scalars().all())
 
 
@@ -262,10 +264,10 @@ async def aggregate_findings(
     # the run before each of these in its own lineage, for the delta
     previous = (await db.execute(text(f"""
         SELECT DISTINCT ON (lineage) dqs_summary FROM (
-            SELECT av.dqs_summary, av.run_at, COALESCE(av.metadata->>'system_id', 'upload') AS lineage
+            SELECT av.dqs_summary, av.run_at, {lineage_sql('av')} AS lineage
               FROM analysis_versions av
               JOIN analysis_versions cur ON cur.id = ANY(CAST(:ids AS uuid[]))
-               AND COALESCE(cur.metadata->>'system_id', 'upload') = COALESCE(av.metadata->>'system_id', 'upload')
+               AND {lineage_sql('cur')} = {lineage_sql('av')}
              WHERE av.tenant_id = :tid AND av.{_COMPLETE} AND av.run_at < cur.run_at AND av.id <> cur.id
         ) x ORDER BY lineage, run_at DESC
     """), {**p, "tid": str(tenant.id)})).scalars().all()

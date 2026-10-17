@@ -2,11 +2,12 @@
 // A failed session check signs the user out only on a 401; a 5xx or a network failure keeps the token
 // and shows an error with Retry, so a server hiccup never throws everyone back to the sign-in page.
 import { AxiosError, AxiosHeaders } from "axios";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import apiClient from "@/lib/api/client";
 import { LocalAuthProvider } from "@/context/auth-context";
+import { LOADING_TIMEOUT_MS } from "@/design/hooks/useLoadingTimeout";
 import { AuthGuard } from "./auth-guard";
 
 const push = vi.fn();
@@ -81,6 +82,29 @@ describe("AuthGuard session check", () => {
     expect(await screen.findByText("Could not reach the server to check your session.")).toBeInTheDocument();
     expect(localStorage.getItem(TOKEN_KEY)).toBe("tok");
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("marks the loading screen busy, and turns a session check that never answers into an error with Retry", async () => {
+    vi.useFakeTimers();
+    try {
+      const get = vi.spyOn(apiClient, "get")
+        .mockReturnValueOnce(new Promise(() => {}))
+        .mockResolvedValueOnce({ data: { user: USER, must_change_password: false } });
+      mount();
+      const loading = screen.getByRole("status", { name: "Loading Meridian" });
+      expect(loading).toHaveAttribute("aria-busy", "true");
+      await act(async () => { vi.advanceTimersByTime(LOADING_TIMEOUT_MS); });
+      expect(screen.getByText("This is taking longer than expected.")).toBeInTheDocument();
+      expect(localStorage.getItem(TOKEN_KEY)).toBe("tok");
+      fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+      // The retry starts a fresh check with a fresh timeout, and recovers.
+      await act(async () => { await Promise.resolve(); });
+      vi.useRealTimers();
+      expect(await screen.findByText("the app")).toBeInTheDocument();
+      expect(get).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("goes to sign-in when there is no stored token", async () => {

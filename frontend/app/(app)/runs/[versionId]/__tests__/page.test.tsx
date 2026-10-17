@@ -255,6 +255,20 @@ describe("RunDetailPage", () => {
     expect(screen.queryByText("Only one run so far")).toBeNull();
   });
 
+  it("draws the composite line from runs whose agents finished or failed, not only status complete", async () => {
+    const dqs = (composite_score: number) => ({
+      composite_score, dimension_scores: { completeness: 0, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 },
+      critical_count: 0, high_count: 0, medium_count: 0, low_count: 0, total_checks: 1, passing_checks: 1, capped: false, cap_reason: null,
+    });
+    const up = (id: string, run_at: string, score: number, status: Version["status"]) => version({ id, run_at, status, dqs_summary: { controlling: dqs(score) }, metadata: { modules: ["controlling"], file_name: "f.csv", row_count: 1 } });
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(up("v2", "2026-10-08T00:00:00Z", 80, "agents_complete"));
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [up("v2", "2026-10-08T00:00:00Z", 80, "agents_complete"), up("v1", "2026-10-01T00:00:00Z", 70, "agents_failed")] });
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    renderWithQuery(<RunDetailPage />);
+    expect(await screen.findByRole("img", { name: "Composite over runs: 1 Oct 2026 70, 8 Oct 2026 80" })).toBeInTheDocument();
+    expect(screen.queryByText("Only one run so far")).toBeNull();
+  });
+
   it("downloads the narrative report from the Narrative report (PDF) export option, distinct from the Analysis report URL", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(version({ id: "v2", label: "Oct 8", status: "ai_enriched" }));
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);

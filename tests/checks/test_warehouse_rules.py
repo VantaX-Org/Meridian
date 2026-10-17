@@ -12,13 +12,13 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "warehous
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "ewms_stock": 72,
-    "ewms_transfer_orders": 52,
+    "ewms_stock": 74,
+    "ewms_transfer_orders": 53,
     "fleet_management": 49,
     "cross_system_integration": 40,
     "transport_management": 48,
     "batch_management": 37,
-    "wm_interface": 43,
+    "wm_interface": 44,
     "grc_compliance": 41,
     "mdg_master_data": 41,
 }
@@ -97,7 +97,7 @@ def test_runner_discovers_warehouse_modules():
 # ---- Test 5: Total rule count across all 9 warehouse modules ----
 
 def test_total_warehouse_rule_count():
-    """Total across all 9 warehouse modules should be 423 rules.
+    """Total across all 9 warehouse modules should be 427 rules.
 
     Two freshness rules (EWMS023 on LGPLA, WM014 on MLGN) were removed: their
     tables carry no change-date column, so freshness parsed a warehouse-number
@@ -107,7 +107,7 @@ def test_total_warehouse_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 423, f"Expected 423 total warehouse rules, got {total}"
+    assert total == 427, f"Expected 427 total warehouse rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

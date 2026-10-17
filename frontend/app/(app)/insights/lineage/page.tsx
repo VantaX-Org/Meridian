@@ -17,6 +17,7 @@ import {
   Card, Mono, Pill, type PillTone, Select, Skeleton,
 } from "@/design";
 import { useLatestVersion } from "@/components/process/shared";
+import { getFindings } from "@/lib/api/findings";
 import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
   type ImpactRow, type LineageDirection, type LineageNode, type Severity,
@@ -26,8 +27,8 @@ import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { atRiskSentence, findingsHref, pct } from "./links";
 
-const pct = (v: number | null | undefined) => (v == null ? "" : `${(v * 100).toFixed(1)}%`);
 // ponytail: the layered chart past this many nodes gets taller than a screen. Narrow the trace depth to see the rest.
 const MAX_NODES = 150;
 
@@ -130,6 +131,20 @@ export default function LineagePage() {
     enabled: !!focus,
   });
   const worst = useMemo(() => new Map(rows.map((r) => [r.id, r.worst_impact])), [rows]);
+  // The object of each failing rule in this run, so a single-rule row can open that rule's failing records.
+  const singleChecks = useMemo(() => [...new Set(rows.flatMap((r) => (r.check_ids.length === 1 ? r.check_ids : [])))], [rows]);
+  const findingsQ = useQuery({
+    queryKey: ["lineage", "check-modules", latest?.id],
+    queryFn: () => getFindings({ version_id: latest!.id, sort: "impact", limit: 200 }),
+    enabled: !!latest && singleChecks.length > 0,
+    retry: false,
+    meta: { ignoreError: true },
+  });
+  const moduleByCheck = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of findingsQ.data?.findings ?? []) if (!m.has(f.check_id)) m.set(f.check_id, f.module);
+    return m;
+  }, [findingsQ.data]);
 
   const { nodes, edges, capped } = useMemo(() => {
     const g = graphQ.data;
@@ -151,7 +166,7 @@ export default function LineagePage() {
       id: "findings", header: "Findings", accessorFn: (r) => r.findings, size: 96, meta: { numeric: true },
       cell: ({ row }) => {
         const ids = row.original.check_ids;
-        const href = ids.length === 1 ? `/rules/${encodeURIComponent(ids[0])}` : `/insights/rules${latest ? `?run=${latest.id}` : ""}`;
+        const href = findingsHref(ids, latest?.id, (id) => moduleByCheck.get(id));
         return <Link className="underline underline-offset-2" href={href} title={ids.join(", ")} onClick={(e) => e.stopPropagation()}>{row.original.findings.toLocaleString()}</Link>;
       },
     },
@@ -169,7 +184,7 @@ export default function LineagePage() {
       id: "worst", header: "Severity", accessorFn: (r) => r.worst_severity ?? "", size: 110,
       cell: ({ row }) => row.original.worst_severity ? <Pill tone={SEV_TONE[row.original.worst_severity]}>{SEV_LABEL[row.original.worst_severity]}</Pill> : null,
     },
-  ], [latest]);
+  ], [latest, moduleByCheck]);
 
   const trace = (id: string) => { setDraft(id); setFocus(id); setSelId(id); };
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (draft.trim()) { setFocus(draft.trim()); setSelId(null); } };
@@ -193,7 +208,7 @@ export default function LineagePage() {
         meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} links${latest ? `, ${latest.label || formatDate(latest.run_at, "datetime")}` : ""}`}
         run={latest?.id}
         insight={{
-          situation: { sentence: impact ? `${kpis.toLocaleString()} KPIs and ${features.toLocaleString()} features are at risk` : "Impact needs a completed analysis", tone: kpis ? "at-risk" : "neutral" },
+          situation: { sentence: impact ? atRiskSentence(kpis, features) : "Impact needs a completed analysis", tone: kpis ? "at-risk" : "neutral" },
           changed: { sentence: focus ? `Tracing ${label(focus)}: ${nodes.length.toLocaleString()} nodes within ${depth} hops` : "Nothing traced yet" },
           why: { sentence: impact ? `${rows.length.toLocaleString()} KPIs, processes and features are reached by failing rules` : "—" },
           next: { sentence: rows[0] ? `Trace ${rows[0].label}` : "Run an analysis", action: rows[0] ? { label: "Trace it", onClick: () => trace(rows[0].id) } : undefined },

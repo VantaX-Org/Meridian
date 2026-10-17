@@ -3200,42 +3200,6 @@ rules:
     fix_map:
       __other__: Pay component is flagged recurring but is also flagged as an earning that can be overridden with no default value set
     record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} is a recurring, overridable earning with no default value. Load a default value.'
-  - id: COMP228
-    field: COMPINFO.CURRENCY
-    check_class: regex_check
-    pattern: ^[A-Z]{3}$
-    severity: medium
-    dimension: validity
-    message: Compensation currency code is not a 3-letter ISO currency code
-    why_it_matters: SAP compensation currency fields hold a 3-letter ISO 4217 code; anything else is a typo or an unmapped currency value.
-    rule_authority: sap_hard_constraint
-    sap_impact: Payroll replication rejects a currency code that is not a valid 3-letter ISO code.
-    fix_map:
-      __other__: Correct the currency code.
-    record_fix_template: 'Employee {COMPINFO.USERID}: compensation currency code is not a 3-letter ISO code. Correct the currency code.'
-    auto_fix:
-      confidence: medium
-      steps:
-        - op: strip
-        - op: upper
-  - id: COMP229
-    field: PAYCOMPNONREC.CURRENCY
-    check_class: regex_check
-    pattern: ^[A-Z]{3}$
-    severity: medium
-    dimension: validity
-    message: One-time payment currency code is not a 3-letter ISO currency code
-    why_it_matters: SAP compensation currency fields hold a 3-letter ISO 4217 code; anything else is a typo or an unmapped currency value.
-    rule_authority: sap_hard_constraint
-    sap_impact: Payroll replication rejects a currency code that is not a valid 3-letter ISO code.
-    fix_map:
-      __other__: Correct the currency code.
-    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: one-time payment currency code is not a 3-letter ISO code. Correct the currency code.'
-    auto_fix:
-      confidence: medium
-      steps:
-        - op: strip
-        - op: upper
   - id: COMP230
     field: COMPINFO.PAY_GRADE
     check_class: regex_check
@@ -3314,26 +3278,6 @@ rules:
     fix_map:
       __other__: Assign the correct currency.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: one-time payment value is recorded but no currency is set. Assign the correct currency.'
-  - id: COMP239
-    field: COMPINFO.PAY_COMPONENT_TYPE
-    check_class: domain_value_check
-    allowed_values:
-    - AMOUNT
-    - PERCENTAGE
-    - NUMBER
-    valid_values_with_labels:
-      AMOUNT: Amount
-      PERCENTAGE: Percentage
-      NUMBER: Number
-    severity: low
-    dimension: validity
-    message: Pay component type is not one of the supported classifications
-    why_it_matters: The pay component type classifies how a component's value should be interpreted; a value outside the supported set is not a type the engine or SAP payroll can process.
-    rule_authority: sap_hard_constraint
-    sap_impact: SAP payroll replication rejects a pay component type outside its supported set.
-    fix_map:
-      __other__: Correct it.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay component type is not AMOUNT, PERCENTAGE or NUMBER. Correct it.'
   - id: COMP242
     field: COMPINFO.SALARY
     check_class: cross_field_check

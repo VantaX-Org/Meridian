@@ -2102,19 +2102,6 @@ rules:
   target_table: MARA
   target_fields:
   - MATNR
-- id: PM243
-  field: IFLOT.BAUJJ
-  check_class: regex_check
-  severity: medium
-  dimension: validity
-  message: Construction year of the functional location is not a plausible year
-  why_it_matters: The year must be 4 digits between 1900 and 2099.
-  rule_authority: best_practice
-  sap_impact: Age reports and replacement planning use a wrong year.
-  fix_map:
-    __other__: Correct the construction year in IL02.
-  record_fix_template: 'Functional location {IFLOT.TPLNR}: construction year {IFLOT.BAUJJ} is not valid.'
-  pattern: ^(19|20)\d{2}$
 - id: PM244
   field: IFLOT.ANSWT
   check_class: cross_field_check

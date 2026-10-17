@@ -1393,3 +1393,32 @@ rules:
       __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
     record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} bookable from
       {TIMESHEET.BOOKING_START_DATE}, ended {TIMESHEET.ACCOUNT_END_DATE}.'
+
+  - field: TIMESHEET.ENTRY_END_TIME
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ENTRY_END_TIME` < `TIMESHEET.ENTRY_START_TIME`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Time entry ends before it starts
+    why_it_matters: A negative-duration time entry corrupts hours totals and pay calculations for the sheet.
+    rule_authority: best_practice
+    sap_impact: Hours totals and pay/absence processing wrong.
+    fix_map:
+      __blank__: Correct the entry start/end times on the timesheet.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: entry ends {TIMESHEET.ENTRY_END_TIME} before it starts ({TIMESHEET.ENTRY_START_TIME}).'
+    id: TIME087
+  - field: TIMESHEET.HOURS
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.HOURS` < 0'
+    require_populated: true
+    severity: medium
+    dimension: accuracy
+    message: Timesheet hours are negative
+    why_it_matters: Negative hours reduce the sheet total and can push balances below zero incorrectly.
+    rule_authority: best_practice
+    sap_impact: Hours totals and accruals wrong.
+    fix_map:
+      __blank__: Correct the hours to a non-negative value.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: hours {TIMESHEET.HOURS} are negative.'
+    id: TIME088

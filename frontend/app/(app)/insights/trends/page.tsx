@@ -3,16 +3,18 @@
 /** Insights > Trends: how the composite and each dimension moved across the runs of one lineage. */
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, EmptyState, Heatmap, Line, Select, type HeatmapCell } from "@/design";
+import { Button, Card, DataTable, EmptyState, Heatmap, Line, Select, type ChartPoint, type HeatmapCell } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { useSystemScope } from "@/lib/permissions";
 import { getRuleRanking, getTrends, type RuleRow } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf, plural, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { runPageHref } from "@/lib/runs";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -33,6 +35,9 @@ export default function TrendsPage() {
   const q = useQuery({ queryKey: queryKeys.insights("trends", run, win, systemId ?? "all"), queryFn: () => getTrends({ version_id: run, system_id: systemId, limit: Number(win) }), enabled: !!run });
   const moved = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "moved"), queryFn: () => getRuleRanking({ version_id: run, limit: 200 }), enabled: !!run });
   const runLabel = useRunLabel(run);
+  const router = useRouter();
+  // A dot opens its own run, with ?run= naming that run so the page and the shell agree.
+  const openRun = (p: ChartPoint) => { if (p.runId) router.push(runPageHref(p.runId)); };
 
   const current = runs.find((r) => r.id === run);
   const trend = useMemo(() => scopeTrendRuns(q.data?.runs ?? [], current, run), [q.data, current, run]);
@@ -86,7 +91,7 @@ export default function TrendsPage() {
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
           <Card title="Composite score" meta={narrative}>
-            <Line data={composite} xDomain={domain} label="Composite score per run" annotations={annotations} />
+            <Line data={composite} xDomain={domain} label="Composite score per run" annotations={annotations} onPointClick={openRun} />
           </Card>
         </div>
         {DIMENSIONS.map((d) => {
@@ -96,7 +101,7 @@ export default function TrendsPage() {
               <Card title={labelOf(d)}>
                 {points.length === 0
                   ? <EmptyState variant="inline" title="Not measured in these runs" />
-                  : <Line data={points} xDomain={domain} label={`${labelOf(d)} score per run`} height={140} />}
+                  : <Line data={points} xDomain={domain} label={`${labelOf(d)} score per run`} height={140} onPointClick={openRun} />}
               </Card>
             </div>
           );

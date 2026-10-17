@@ -39,10 +39,16 @@ def _fields(table):
     return {x["name"]: x for x in json.load(open(f"sap/dictionaries/ecc6/tables/{table}.json"))["fields"]}
 
 
+# PM243 was an exact duplicate of PM039 (same IFLOT.BAUJJ predicate), found by
+# tests/checks/test_rule_duplicates.py. Retired rather than reused.
+_RETIRED = {243}
+
+
 def test_ids_unique_and_contiguous():
     ids = [r["id"] for r in ALL]
     assert len(ids) == len(set(ids))
-    assert sorted(int(r["id"][2:]) for r in NEW) == list(range(START, START + COUNT))
+    nums = sorted(int(r["id"][2:]) for r in NEW)
+    assert nums == [n for n in range(START, START + COUNT) if n not in _RETIRED]
 
 
 def test_metadata_complete():

@@ -1517,3 +1517,31 @@ rules:
       __blank__: Correct the record in Learning Administration > Learning History (Record Learning). Correct the total hours.
     record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID} for {LEARNINGCOMPLETION.USERID} ({LEARNINGCOMPLETION.COMPLETION_DATE}):
       total hours {LEARNINGCOMPLETION.TOTAL_HOURS}.'
+
+  - field: LEARNINGASSIGNMENT.ITEM_ACTIVE
+    check_class: domain_value_check
+    severity: medium
+    dimension: validity
+    message: Item-active flag is not Y or N
+    why_it_matters: ITEM_ACTIVE gates whether an assigned course is launchable. A value outside Y/N leaves the flag
+      uninterpretable, so the learner may not see a course that should be live.
+    rule_authority: best_practice
+    sap_impact: Course visibility/launch state indeterminate.
+    fix_map:
+      __blank__: Set the item-active flag to Y or N.
+    record_fix_template: 'Learning assignment {LEARNINGASSIGNMENT.ASSIGNMENT_ID}: item-active flag is {LEARNINGASSIGNMENT.ITEM_ACTIVE}, not Y or N.'
+    id: LMS087
+    allowed_values:
+    - Y
+    - N
+    - 'true'
+    - 'false'
+    - 'True'
+    - 'False'
+    valid_values_with_labels:
+      Y: Active
+      N: Inactive
+      'true': Active
+      'false': Inactive
+      'True': Active
+      'False': Inactive

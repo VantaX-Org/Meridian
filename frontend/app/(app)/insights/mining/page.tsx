@@ -42,7 +42,8 @@ import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
-import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
+import { formatModuleName, labelOf, plural, relativeTime, formatDate } from "@/lib/format";
+import { miningWhy } from "./sentences";
 import { apiErrorMessage } from "@/lib/error";
 import { MineNow } from "../duplicates/mined-tabs";
 import { useInsightScope } from "../_components/useInsightScope";
@@ -328,12 +329,14 @@ export default function MiningPage() {
       run={run}
       insight={{
         loading: rel.isLoading || sum.isLoading,
-        situation: { sentence: `${links.toLocaleString()} links across ${domains.toLocaleString()} entities`, tone: anomalies ? "at-risk" : "go" },
-        changed: { sentence: `${anomalies.toLocaleString()} new anomalies in the last 30 days` },
-        why: { sentence: `${inferred.toLocaleString()} of the links are inferred and ${patternsTotal.toLocaleString()} patterns are mined` },
+        situation: { sentence: links ? `${plural(links, "link")} across ${plural(domains, "entity", "entities")}` : "No links found yet", tone: anomalies ? "at-risk" : "go" },
+        changed: { sentence: anomalies ? `${plural(anomalies, "new anomaly", "new anomalies")} in the last 30 days` : "No new anomalies in the last 30 days" },
+        why: { sentence: miningWhy(links, inferred, patternsTotal) },
         next: anomalies
           ? { sentence: "Review the new anomalies", action: { label: "Open patterns", onClick: () => setTab("patterns") } }
-          : { sentence: "Review the entity links", action: { label: "Open links", onClick: () => setTab("links") } },
+          : links
+            ? { sentence: "Review the entity links", action: { label: "Open links", onClick: () => setTab("links") } }
+            : { sentence: "Mine the run to find links", action: { label: "Open links", onClick: () => setTab("links") } },
       }}
     >
       <GraphTally />

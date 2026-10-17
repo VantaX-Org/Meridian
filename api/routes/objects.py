@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from api.services.run_lineage import lineage_sql
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
@@ -140,11 +141,11 @@ async def _enrichments(db: AsyncSession, tenant: Tenant, run_id: str) -> tuple[d
     owners = {r[0]: r[1] for r in (await db.execute(text(
         "SELECT d.ref, u.name FROM data_owners d JOIN users u ON u.id = d.owner_user_id "
         "WHERE d.tenant_id = :t AND d.kind = 'object'"), {"t": t["t"]})).fetchall()}
-    # same system = same metadata.system_id ('upload' when absent), as api/routes/versions.py scopes runs
+    # same lineage (the system, or uploads of the same objects), as api/routes/versions.py scopes runs
     trend_rows = (await db.execute(text(
         "SELECT dqs_summary FROM analysis_versions v WHERE v.tenant_id = :t AND v.status = ANY(:done) "
-        "AND COALESCE(v.metadata->>'system_id', 'upload') = "
-        "(SELECT COALESCE(c.metadata->>'system_id', 'upload') FROM analysis_versions c WHERE c.id = :v AND c.tenant_id = :t) "
+        f"AND {lineage_sql('v')} = "
+        f"(SELECT {lineage_sql('c')} FROM analysis_versions c WHERE c.id = :v AND c.tenant_id = :t) "
         "AND v.run_at <= (SELECT c.run_at FROM analysis_versions c WHERE c.id = :v AND c.tenant_id = :t) "
         "ORDER BY v.run_at DESC LIMIT :n"), {**t, "done": list(FINISHED), "n": _TREND_RUNS})).fetchall()
     return blocking, owners, [r[0] or {} for r in reversed(trend_rows)], blocking_total

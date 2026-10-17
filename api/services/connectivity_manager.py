@@ -673,8 +673,15 @@ class ConnectivityManager:
                 continue
             unavailable = {f["name"] for f in (live.get(table) or {}).get("fields", []) if f.get("available") is False}
             by_entity: dict[str, dict[str, list[str]]] = {}
+            from api.services.source_overrides import resolve_source
             for f in t.fields.values():
-                ent, _, prop = (f.source or "").partition(".")
+                # A tenant's API surface differs from the canonical map: entity sets can be
+                # suffixed per tenant and spellings vary. The override for this system wins,
+                # so a correction belongs to the customer it was found on instead of to the
+                # shared dictionary. Without this the rule reading the field is silently not
+                # evaluated.
+                src = resolve_source("successfactors", system_id, table, f.name, f.source)
+                ent, _, prop = (src or "").partition(".")
                 prop = prop.split(" ")[0]
                 if not ent[:1].isupper() or not prop or "<" in ent or f.name in unavailable:
                     continue
