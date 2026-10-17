@@ -1,10 +1,10 @@
 /** Wave 18c: every screens.md §4 route and tab renders without a page error, a crash screen or "coming soon". */
-import { expect, test } from "./fixtures";
+import { expect, RECORDED, test } from "./fixtures";
 
 const ROUTES = [
-  "/systems/s1?tab=config",
-  "/systems/s1?tab=custom",
-  "/systems/s1?tab=pilot",
+  `/systems/${RECORDED.systemId}?tab=config`,
+  `/systems/${RECORDED.systemId}?tab=custom`,
+  `/systems/${RECORDED.systemId}?tab=pilot`,
   "/runs/v1?tab=config",
   "/runs/v1?tab=findings",
   "/inbox",
@@ -30,10 +30,12 @@ const ROUTES = [
   "/rules/scoring",
 ];
 
-/** Routes backed by the 18c mocks: the seeded text must appear, proving real content, not an error state. */
+/** Routes backed by the 18c mocks or the recording: the seeded text must appear, proving real content, not an error state. */
 const CONTENT: Record<string, RegExp> = {
-  "/systems/s1?tab=config": /material.master/i,
-  "/systems/s1?tab=custom": /ZMM_GRADE/,
+  // the recorded configuration health table (one row per SAP module)
+  [`/systems/${RECORDED.systemId}?tab=config`]: /Config health/,
+  // the recorded custom-object registry (63 entries); KTEXT and KURZTEXT are two of its field names
+  [`/systems/${RECORDED.systemId}?tab=custom`]: /KTEXT|KURZTEXT/,
   "/runs/v1?tab=config": /MM101|MM102|config_driven|data_error/i,
   "/inbox?kind=issues": /MATNR=100|MM101/,
   "/inbox?kind=sap": /Nightly extract job failed/,

@@ -6,6 +6,7 @@
 
 import { expect, ROUTES, test } from "./fixtures";
 
+
 for (const r of ROUTES) {
   test(`${r.name} renders the ${r.heading} page without page errors`, async ({ app }) => {
     const errors: string[] = [];

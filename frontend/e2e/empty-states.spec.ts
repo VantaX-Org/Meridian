@@ -8,11 +8,11 @@
 import { expect, test } from "./fixtures";
 
 const ROUTES: ReadonlyArray<readonly [string, RegExp]> = [
-  ["/systems", /No systems yet\. Connect your first SAP system/],
-  ["/objects", /No objects measured yet\./],
-  ["/runs", /No runs yet\. Run the first extraction from Systems\./],
+  ["/systems", /^No systems yet$/],
+  ["/objects", /^No objects measured yet$/],
+  ["/runs", /^No runs yet$/],
   ["/search", /Search objects, records, checks and rules\./],
-  ["/import", /No imports yet\./],
+  ["/import", /^No imports yet$/],
   ["/migration", /No migration waves yet\. Create one to track readiness\./],
 ];
 
@@ -29,5 +29,6 @@ for (const [path, sentence] of ROUTES) {
 
 test("/rules lists the shipped built-in rules", async ({ app }) => {
   await app.goto("/rules", { waitUntil: "load" });
-  await expect(app.getByRole("table")).toBeVisible();
+  // the rule library is a DataTable (role=grid); the recording holds the full catalogue
+  await expect(app.getByRole("grid").first()).toBeVisible();
 });

@@ -17,11 +17,14 @@ test("Export on /objects downloads a meridian-objects- file", async ({ app }) =>
   );
 
   await app.goto("/objects", { waitUntil: "load" });
-  await expect(app.getByRole("button", { name: "Export" })).toBeVisible();
+  // exact: the DataTable toolbar has its own "Export table" button
+  await expect(app.getByRole("button", { name: "Export", exact: true })).toBeVisible();
 
+  // Export is a menu (design/primitives/ExportMenu.tsx); the download starts from its Excel item
+  await app.getByRole("button", { name: "Export", exact: true }).click();
   const [download] = await Promise.all([
     app.waitForEvent("download"),
-    app.getByRole("button", { name: "Export" }).click(),
+    app.getByRole("menuitem", { name: "Objects (.xlsx)" }).click(),
   ]);
 
   expect(download.suggestedFilename()).toMatch(/^meridian-objects-/);

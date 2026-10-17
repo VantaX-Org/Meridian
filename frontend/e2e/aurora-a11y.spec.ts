@@ -12,8 +12,10 @@ for (const r of ROUTES) {
     await app.goto(r.path, { waitUntil: "load" });
     await expect(app.getByRole("heading", { level: 1, name: r.heading })).toBeVisible();
     await expect(app.getByRole("heading", { level: 1 })).toHaveCount(1);
-    // The layout-level insight header can mount after the h1 and fade in; axe
-    // reads mid-fade opacity as low contrast, so wait for finite animations to end.
+    // The layout-level insight header mounts once its queries have answered (later on a
+    // 31-run recording than on an empty one) and fades in; axe reads mid-fade opacity as low
+    // contrast, so wait for the network to go quiet and then for finite animations to end.
+    await app.waitForLoadState("networkidle");
     await app.waitForFunction(() =>
       document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity));
 

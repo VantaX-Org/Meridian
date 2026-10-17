@@ -5,6 +5,7 @@ import { DomainChip } from "../primitives/DomainChip";
 import { Mono } from "../primitives/Mono";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { Stat, type StatProps } from "../primitives/Stat";
+import { formatModuleName } from "../../lib/format";
 import { PageFrame } from "./PageFrame";
 
 export interface RecordStatus {
@@ -39,7 +40,7 @@ export function RecordPage({
         <span style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", fontWeight: 600 }}>
           <Mono>{recordKey}</Mono>
         </span>
-        <span style={{ color: "var(--m-ink-3)" }}>{object}</span>
+        <span style={{ color: "var(--m-ink-3)" }}>{formatModuleName(object)}</span>
         <DomainChip moduleId={object} />
         <Pill tone={status.tone}>{status.label}</Pill>
       </header>
