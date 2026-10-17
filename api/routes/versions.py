@@ -208,7 +208,7 @@ def _is_upload(scope: str) -> bool:
     return scope == "upload" or scope.startswith("upload:")
 
 
-NO_BASELINE = {"reason": "no_baseline", "message": "No earlier run of this system to compare with."}
+NO_BASELINE = {"reason": "no_baseline", "message": "No earlier run of this system or uploaded object to compare with."}
 
 
 async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[uuid.UUID, uuid.UUID]:
