@@ -325,9 +325,19 @@ def _with_child_sums(rule: dict, frames: TableFrames) -> dict | None:
     return {**rule, "_child_sums": child_sums(rule, apply_context(child, rule.get("child_when")))}
 
 
-def get_required_columns(module_name: str) -> set[str]:
-    """Return every column referenced by the rules of a module (for column pruning)."""
-    cols = {c for rule in module_rules(module_name)
+def get_required_columns(module_name: str, include_disabled: bool = False) -> set[str]:
+    """Every column the rules of a module read, for column pruning at extraction.
+
+    Only rules that will actually run are counted. A disabled rule (the DDIC-derived ones ship
+    ``enabled: false``) never evaluates, so reading its fields costs extraction time and memory
+    for nothing - on ``material_master`` that was 42 of MARC's 140 columns and most of MARA's
+    124, on tables of millions of rows. ``include_disabled`` is for callers that need the full
+    rule set regardless (rule editing, coverage reporting).
+    """
+    rules = module_rules(module_name)
+    if not include_disabled:
+        rules = [r for r in rules if r.get("enabled", True)]
+    cols = {c for rule in rules
             for c in rule_columns(rule) + target_columns(rule) + auto_fix.columns(rule) + auto_fix.reference_columns(rule)}
     return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
