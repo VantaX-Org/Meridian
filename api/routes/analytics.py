@@ -606,10 +606,11 @@ async def get_mdm_health(
                ai_projected_score, ai_narrative, ai_risk_flags
         FROM mdm_metrics
         WHERE tenant_id = :tid
-          -- make_interval, not (:days || ' days')::interval: the API runs on asyncpg, which
-          -- refuses an int where the concatenation needs text ("invalid input for query
-          -- argument $2: 56 (expected str, got int)"). It worked under psycopg2, so only the
-          -- async path broke - this endpoint returned 500 on every call.
+          -- make_interval(days => :days), not the old string concatenation of the bound days
+          -- parameter with a literal: the API runs on asyncpg, which type-checks parameters and
+          -- refused an int where the concatenation needs text ("expected str, got int"). It
+          -- worked under psycopg2, so only the async path broke - this endpoint returned 500 on
+          -- every call until the bind was fixed.
           AND snapshot_date > now() - make_interval(days => :days)
         ORDER BY snapshot_date ASC
     """), {'tid': str(tenant.id), 'days': days})
