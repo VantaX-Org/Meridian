@@ -7,7 +7,7 @@ import { Bell } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useJobs } from "../../hooks/use-jobs";
 import { getNotifications, getUnreadCount, markAllNotificationsRead, markNotificationRead } from "../../lib/api/notifications";
-import { relativeTime } from "../../lib/format";
+import { humanizeIds, relativeTime } from "../../lib/format";
 import { queryKeys } from "../../lib/query-keys";
 import type { Notification, NotificationType } from "../../types/api";
 import { Badge } from "../primitives/Badge";
@@ -25,6 +25,13 @@ const TONE: Record<NotificationType, PillTone> = {
   digest: "neutral",
   warning: "at-risk",
   monitor: "at-risk",
+  daily_digest: "neutral",
+  dq_alert: "at-risk",
+  rule_proposal: "info",
+  info: "neutral",
+  sla_at_risk: "at-risk",
+  sla_ack_breached: "no-go",
+  sla_breached: "no-go",
 };
 
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
@@ -35,6 +42,13 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   digest: "Digest",
   warning: "Warning",
   monitor: "Monitor",
+  daily_digest: "Daily digest",
+  dq_alert: "Quality alert",
+  rule_proposal: "Rule proposal",
+  info: "Info",
+  sla_at_risk: "SLA at risk",
+  sla_ack_breached: "SLA not acknowledged",
+  sla_breached: "SLA breached",
 };
 
 /** Only in-app paths are followed: a notification never sends the user off the customer's own host. */
@@ -58,7 +72,7 @@ export function useNotificationMutations() {
 export function NotificationRow({ n, showBody, onOpen }: { n: Notification; showBody?: boolean; onOpen: (n: Notification) => void }) {
   const href = internalHref(n.link);
   const title = (
-    <span className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>{n.title}</span>
+    <span className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>{humanizeIds(n.title)}</span>
   );
   return (
     <li className="flex items-start gap-3 px-3 py-2" data-unread={n.is_read ? undefined : "true"}>
@@ -69,7 +83,7 @@ export function NotificationRow({ n, showBody, onOpen }: { n: Notification; show
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-2">
-          <Pill tone={TONE[n.type] ?? "neutral"}>{NOTIFICATION_TYPE_LABEL[n.type] ?? n.type}</Pill>
+          <Pill tone={TONE[n.type] ?? "neutral"}>{NOTIFICATION_TYPE_LABEL[n.type] ?? humanizeIds(n.type)}</Pill>
           {!n.is_read && <span className="sr-only">Unread</span>}
           <time className="m-text-meta" dateTime={n.created_at} style={{ color: "var(--m-ink-3)" }}>{relativeTime(n.created_at)}</time>
         </div>
@@ -78,7 +92,7 @@ export function NotificationRow({ n, showBody, onOpen }: { n: Notification; show
         ) : (
           <button type="button" onClick={() => onOpen(n)} className="text-left">{title}</button>
         )}
-        {showBody && <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{n.body}</p>}
+        {showBody && <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{humanizeIds(n.body)}</p>}
       </div>
     </li>
   );

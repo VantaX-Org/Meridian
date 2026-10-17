@@ -30,7 +30,6 @@ const PRIMARY = /^(approve|write back|sign off|extract( now)?)\b/i;
  * the pages hide them for viewers (the test then flips to an unexpected pass).
  */
 const KNOWN_GAPS: Record<string, string> = {
-  "/home": "first-run checklist item \"Create a first fix batch\" and the tour's \"Dismiss\" show for a viewer",
   "/runs": "\"Run analysis\" link to the system page is not gated by can(\"analyse\")",
   "/insights": "\"Create remediation batch\" link shows for a viewer",
   "/insights/readiness": "\"Create wave\" link shows for a viewer",

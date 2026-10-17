@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, type PillTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
+import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { isListFailure } from "@/lib/error";
 import { labelOf, relativeTime } from "@/lib/format";
@@ -48,6 +49,7 @@ const link = (href: string, label: string) => <Button variant="secondary" render
 export function LiveSection() {
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const { active } = useJobs();
+  const { can } = useRole();
   const systems = systemsQ.data ?? [];
 
   return (
@@ -60,7 +62,7 @@ export function LiveSection() {
         ) : systems.length ? (
           <DataTable columns={systemColumns} data={systems} getRowId={(s) => s.id} height="auto" dense hideToolbar tableId="home-systems" />
         ) : (
-          <EmptyState title="No systems connected" action={link("/systems?new=1", "Connect a system")} />
+          <EmptyState title="No systems connected" action={can("manage_systems") ? link("/systems?new=1", "Connect a system") : undefined} />
         )}
       </Card>
 
@@ -68,7 +70,7 @@ export function LiveSection() {
         {active.length ? (
           <DataTable columns={jobColumns} data={active} getRowId={(j) => j.id} height="auto" dense hideToolbar tableId="home-jobs" />
         ) : (
-          <EmptyState title="Nothing is running" action={link("/systems", "Run extraction")} />
+          <EmptyState title="Nothing is running" action={can("trigger_sync") ? link("/systems", "Run extraction") : undefined} />
         )}
       </Card>
     </div>

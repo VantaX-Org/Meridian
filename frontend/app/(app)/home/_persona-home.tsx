@@ -281,7 +281,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const trendCard = (
       <Card title="Score over runs">
         {trendPoints.length < 2 ? (
-          <div style={{ minHeight: 160 }}><EmptyState title="The trend starts with the second run" action={<Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button>} /></div>
+          <div style={{ minHeight: 160 }}><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
         ) : (
           <Line
             data={trendPoints}

@@ -41,7 +41,7 @@ export function ScoreExplainer({ score, band, dimensions, cap, rules, historyHre
         <ScoreRing score={score} size={48} cap={cap?.value} />
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner sideOffset={8}>
+        <Popover.Positioner sideOffset={8} className="z-50">
           <Popover.Popup
             className="m-motion-scale-in rounded p-4 m-text-body"
             style={{ background: "var(--m-sheet)", color: "var(--m-ink)", boxShadow: "var(--m-elev-2)", width: 360 }}

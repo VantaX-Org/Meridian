@@ -24,7 +24,7 @@ test("Export on /objects downloads a meridian-objects- file", async ({ app }) =>
   await app.getByRole("button", { name: "Export", exact: true }).click();
   const [download] = await Promise.all([
     app.waitForEvent("download"),
-    app.getByRole("menuitem", { name: "Excel (.xlsx)" }).click(),
+    app.getByRole("menuitem", { name: "Objects (.xlsx)" }).click(),
   ]);
 
   expect(download.suggestedFilename()).toMatch(/^meridian-objects-/);

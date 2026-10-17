@@ -7,6 +7,9 @@ import * as jobsApi from "@/lib/api/jobs";
 import type { SAPSystemExtended } from "@/types/api";
 import { LiveSection } from "../_live";
 
+let allowed = true;
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => allowed }) }));
+
 const system: SAPSystemExtended = {
   id: "sys-1",
   name: "ECC Prod",
@@ -46,5 +49,20 @@ describe("LiveSection", () => {
     expect(await screen.findByText("ECC Prod")).toBeInTheDocument();
     expect(await screen.findByText("Healthy")).toBeInTheDocument();
     expect(await screen.findByText("Nothing is running")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Run extraction" })).toBeInTheDocument();
+  });
+
+  it("offers a viewer no extraction or connect action", async () => {
+    allowed = false;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+
+    renderWithQuery(<LiveSection />);
+
+    expect(await screen.findByText("No systems connected")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing is running")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Run extraction" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Connect a system" })).toBeNull();
+    allowed = true;
   });
 });

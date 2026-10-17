@@ -30,7 +30,7 @@ export function Tooltip({
       <BaseTooltip.Root>
         <BaseTooltip.Trigger render={render}>{children}</BaseTooltip.Trigger>
         <BaseTooltip.Portal>
-          <BaseTooltip.Positioner side={side} sideOffset={sideOffset}>
+          <BaseTooltip.Positioner side={side} sideOffset={sideOffset} className="z-50">
             <BaseTooltip.Popup
               className="m-tooltip-pop rounded px-2 py-1 m-text-meta"
               style={{

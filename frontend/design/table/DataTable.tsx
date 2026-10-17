@@ -347,7 +347,7 @@ export function DataTable<T>({
           <Popover.Root>
             <Popover.Trigger className="m-btn m-btn-secondary m-btn-sm">Views{views.length > 0 ? ` (${views.length})` : ""}</Popover.Trigger>
             <Popover.Portal>
-              <Popover.Positioner sideOffset={4}>
+              <Popover.Positioner sideOffset={4} className="z-50">
                 <Popover.Popup className="m-popup min-w-56 p-2">
                   {views.length === 0 && <p className="py-1" style={{ color: "var(--m-ink-3)" }}>No saved views yet.</p>}
                   {views.map((v) => (
