@@ -106,3 +106,42 @@ def test_the_documented_full_read_facts_still_hold():
             f"{t} is now read in full - the sub-ledger/GL reconciliation documented as "
             f"unwritable in docs/reconciliation-check.md has become writable"
         )
+
+
+# ── the proof harness must be able to prove one ─────────────────────────────────────────────────
+# Every shipped rule is required to be `proven` by tests/checks/test_rule_proofs.py. Before this
+# was added, prove() ran a reconciliation rule with no target total - so the check correctly
+# condemned nothing - and returned "never_fails". Any reconciliation rule would therefore have
+# been unprovable and could never have shipped.
+
+def test_the_proof_harness_can_prove_a_reconciliation_rule():
+    from tests.checks.rule_proofs import prove
+
+    rule = {**BASE_RULE, "id": "ZX1", "module": "accounts_payable"}
+    verdict, detail = prove(rule, D)
+    assert verdict == "proven", f"{verdict} - {detail}"
+    assert "passes" in detail and "fails" in detail
+
+
+def test_the_proof_rejects_a_check_that_never_condemns(monkeypatch):
+    """The failure mode that made every reconciliation rule unprovable, reproduced deliberately.
+
+    With no target total the check condemns nothing. prove() used to accept that as the rule's
+    behaviour and report "never_fails"; it must instead refuse to call such a rule proven. Broken
+    here by suppressing the runner's target so the check can only ever pass.
+    """
+    from checks.types import reconciliation_check as rc
+    from tests.checks.rule_proofs import prove
+
+    original = rc.ReconciliationCheck.evaluate
+
+    def never_fails(self, df):
+        import pandas as pd
+        none = pd.Series(False, index=df.index)
+        return rc.Evaluation(pd.Series(True, index=df.index), none, {})
+
+    monkeypatch.setattr(rc.ReconciliationCheck, "evaluate", never_fails)
+    rule = {**BASE_RULE, "id": "ZX2", "module": "accounts_payable"}
+    verdict, _ = prove(rule, D)
+    assert verdict != "proven", "a check that cannot fail must never be reported as proven"
+    monkeypatch.setattr(rc.ReconciliationCheck, "evaluate", original)
