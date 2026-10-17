@@ -151,3 +151,13 @@ def test_trends_and_previous_run_stay_in_the_upload_objects(seeded):
         assert len(co["runs"]) == 12 and ids["bp"] not in {r["version_id"] for r in co["runs"]}
         assert agg.previous_version(s, tid, agg.resolve_version(s, tid, ids["co1"])) is None
         assert str(agg.previous_version(s, tid, agg.resolve_version(s, tid, ids["ap2"]))["id"]) == ids["ap1"]
+
+
+@pytest.mark.asyncio
+async def test_current_state_holds_the_latest_run_of_every_uploaded_object(seeded, adb):
+    """Default findings and the DQS aggregate read one run per lineage: each uploaded object's
+    newest upload, not the single newest upload standing in for all of them."""
+    from api.routes.findings import _latest_version_ids
+    _, tid, ids = seeded
+    got = {str(v) for v in await _latest_version_ids(adb, SimpleNamespace(id=tid))}
+    assert got == {ids["bp"], ids["ap2"], ids["co_extra12"], ids["mm"], ids["sys2"]}

@@ -45,12 +45,13 @@ _COMPLETE = "status IN ('complete', 'agents_running', 'agents_complete', 'agents
 
 
 async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUID]:
-    """Current state: the latest complete run of each system (uploads count as one
-    lineage) — never the same check counted once per historical run."""
+    """Current state: the latest complete run of each lineage (a system, or one uploaded
+    object set; see run_lineage) — never the same check counted once per historical run,
+    and never one upload standing in for every uploaded object."""
     return list((await db.execute(text(f"""
-        SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload')) id FROM analysis_versions
+        SELECT DISTINCT ON ({lineage_sql()}) id FROM analysis_versions
          WHERE tenant_id = :tid AND {_COMPLETE}
-         ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC
+         ORDER BY {lineage_sql()}, run_at DESC
     """), {"tid": str(tenant.id)})).scalars().all())
 
 

@@ -62,6 +62,17 @@ describe("previousRunId", () => {
   it("returns null when nothing is earlier", () => {
     expect(previousRunId(runs[4], runs)).toBeNull();
   });
+  it("never offers another uploaded object as the previous run", () => {
+    const upload = (id: string, at: string, modules: string[]): Version =>
+      run({ id, run_at: at, metadata: { modules, file_name: "f.csv", row_count: 1 } });
+    const uploads = [
+      upload("co2", "2026-10-09T00:00:00Z", ["controlling"]),
+      upload("co1", "2026-10-07T00:00:00Z", ["controlling"]),
+      upload("bp", "2026-10-06T00:00:00Z", ["business_partner"]),
+    ];
+    expect(previousRunId(uploads[0], uploads)).toBe("co1");
+    expect(previousRunId(uploads[1], uploads)).toBeNull(); // the first controlling upload: bp is another object
+  });
   it("counts every finished status, not only complete (agents and enrichment run after scoring)", () => {
     const finished = [
       run({ id: "new", run_at: "2026-10-08T00:00:00Z", status: "agents_complete" }),
