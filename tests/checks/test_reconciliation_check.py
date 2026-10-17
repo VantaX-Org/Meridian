@@ -93,9 +93,13 @@ def test_without_a_target_total_nothing_is_condemned():
 # finance reconciliation becomes writable - which is the moment worth noticing.
 
 def test_the_documented_full_read_facts_still_hold():
-    from sap.extraction_plan import plan_modules, MODULES_BY_SYSTEM
+    from sap.extraction_plan import plan_modules
 
-    modules = [m for ms in MODULES_BY_SYSTEM.values() for m in ms]
+    # Only the modules that actually read these tables. Planning *every* module takes minutes
+    # (plan_modules is 14-31s per module: it resolves the join graph), which made this one test
+    # dominate the suite and look like a hang. The fact under test is about these tables, and
+    # these modules are what read them.
+    modules = ["accounts_payable", "accounts_receivable", "fi_gl"]
     plans = plan_modules(modules, D)
     full = {t: not getattr(p, "partial", True) for t, p in plans.items()}
 
