@@ -11,9 +11,11 @@ at all, so every one of them would have returned 401.
 """
 
 import re
+from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
+from starlette.routing import BaseRoute
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNBOOKS = [
@@ -47,7 +49,7 @@ def _curl_blocks(text: str) -> list[str]:
     return blocks
 
 
-def _route_paths(routes) -> set[str]:
+def _route_paths(routes: Iterable[BaseRoute]) -> set[str]:
     """Every route path, descending into included routers.
 
     Newer FastAPI keeps an included router as one entry whose own routes sit on
