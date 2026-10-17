@@ -2837,3 +2837,30 @@ rules:
     s4_area: credit_management
     s4_impact: warning
     simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+  - id: AR271
+    field: BSID.ZTERM
+    check_class: referential_check
+    reference_table: T052
+    reference_field: ZTERM
+    severity: medium
+    dimension: validity
+    message: Open customer item's payment terms are not defined in T052
+    why_it_matters: ZTERM on an open customer item sets its baseline date, its cash-discount windows and its net due
+      date, so it is what the dunning run and the receipt forecast read. The customer master's terms are checked,
+      but the terms carried on the item were not, and the item is what those programs use. An undefined value leaves
+      the due date uncomputable, so the item is dunned late or the discount is miscalculated. As with AP288, the DDIC
+      gives BSID.ZTERM no check table while KNB1.ZTERM carries T052, so this rule states its reference explicitly.
+    rule_authority: sap_hard_constraint
+    sap_impact: The dunning run cannot compute a due date for the item and the receipt forecast mis-dates it, so the
+      customer is dunned on the wrong day or the discount is wrong.
+    fix_map:
+      __blank__: A blank ZTERM inherits the customer master's terms and is legitimate - only a populated value is
+        judged here.
+      __other__: Payment terms '{invalid_value}' are not in T052. Correct the item's terms, or create them in SPRO
+        > Financial Accounting > Accounts Receivable and Accounts Payable > Business Transactions > Outgoing Invoices/Credit
+        Memos > Maintain Terms of Payment (OBB8).
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}:
+      payment terms ''{actual_value}'' are not in T052.'
+    s4_area: credit_management
+    s4_impact: warning
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
