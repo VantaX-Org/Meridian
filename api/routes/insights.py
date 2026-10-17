@@ -310,6 +310,27 @@ async def create_merge_proposals(
     return {"created": created}
 
 
+def exec_narrative(no_go: int, cells: int, priced: int, worst_name: Optional[str], worst_amount: float,
+                   owners: int, top_cost: Optional[dict], currency: Optional[str]) -> str:
+    """The exec Situation text: one sentence per fact that has something to say and none for a
+    zero, so a quiet run reads "" and the page shows its own fallback. Deterministic, no LLM."""
+    out: list[str] = []
+    if no_go:
+        out.append(f"{no_go} of {cells} readiness cells {'is' if no_go == 1 else 'are'} no-go.")
+    if priced:
+        noun = "feature is" if priced == 1 else "features are"
+        where = f" in {worst_name.replace('_', ' ')}" if worst_name else ""
+        tail = f"; the largest exposure is {worst_amount:,.2f}{where}." if worst_amount else "."
+        out.append(f"{priced} priced {noun} affected{tail}")
+    if owners:
+        out.append(f"{owners} {'owner has' if owners == 1 else 'owners have'} open digests.")
+    if top_cost and (top_cost.get("amount") or 0) > 0:
+        unit = f" {currency}" if currency else ""
+        l1 = str(top_cost.get("l1") or "").replace("_", " ")
+        out.append(f"The largest proven cost is {top_cost['amount']:,.2f}{unit} lost or held in transactions in {l1}.")
+    return " ".join(out)
+
+
 @router.get("/exec", dependencies=[Depends(require_permission("view"))])
 async def get_exec(
     version_id: Optional[uuid.UUID] = None,
@@ -358,14 +379,8 @@ async def get_exec(
     waterfall = [{"x": r["feature"], "y": r["value_at_risk"], "l1": r["l1"]} for r in rows]
     top_cost = max(proven_cost["cost_by_l1"], key=lambda c: c["amount"], default=None)
 
-    exposure = (f"{len(rows)} priced features are affected; the largest exposure is {worst_amount:,.2f} in {(worst_name or '').replace('_', ' ')}."
-                if rows else "No priced features are affected.")
-    narrative = f"{no_go} of {len(cells)} readiness cells are no-go. {exposure} {len(owner_rows)} owners have open digests."
-    # Only append the proven-cost sentence when there's something to report —
-    # otherwise an empty tenant would read "0.00 ZAR proven lost or held".
-    if top_cost:
-        narrative += (f" The largest proven cost is {top_cost['amount']:,.2f} {proven_cost['currency']}"
-                      f" lost or held in transactions in {top_cost['l1'].replace('_', ' ')}.")
+    narrative = exec_narrative(no_go, len(cells), len(rows), worst_name, worst_amount, len(owner_rows),
+                               top_cost, proven_cost["currency"])
 
     return {
         "version_id": str(version_id),

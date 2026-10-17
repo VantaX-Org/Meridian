@@ -3,7 +3,7 @@ impact, and operational analytics."""
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -308,6 +308,21 @@ async def get_finding_impact(
     }
 
 
+# Per-stage count and summed age (hours) of the tenant's cleaning queue, aggregated in Postgres:
+# loading every queue row as an ORM object only to count it took seconds on a 60k-row queue.
+_QUEUE_STAGES_SQL = """
+    SELECT status, count(*) AS n,
+           COALESCE(sum(extract(epoch FROM now() - COALESCE(detected_at, created_at))), 0) / 3600.0 AS total_age
+      FROM cleaning_queue WHERE tenant_id = :tid
+     GROUP BY status ORDER BY status
+"""
+
+
+async def _queue_stages(db: AsyncSession, tenant: Tenant) -> dict[str, dict]:
+    rows = (await db.execute(text(_QUEUE_STAGES_SQL), {"tid": str(tenant.id)})).fetchall()
+    return {r[0]: {"count": int(r[1]), "total_age": float(r[2] or 0)} for r in rows}
+
+
 # ── 5. GET /analytics/operational ────────────────────────────────────────────
 
 
@@ -336,19 +351,8 @@ async def get_operational_analytics(
     kpis = operational.calculate_kpis(cleaning_data, steward_data)
 
     # Bottleneck analysis from queue
-    queue_result = await db.execute(
-        select(CleaningQueue).where(CleaningQueue.tenant_id == tenant.id)
-    )
-    queue_rows = queue_result.all()
-    queue_items: list[dict] = []
-    now = datetime.now(timezone.utc)
-    for r in queue_rows:
-        d = _row_to_dict(r)
-        detected = r[0].detected_at or r[0].created_at
-        d["age_hours"] = (now - detected).total_seconds() / 3600 if detected else 0
-        queue_items.append(d)
-
-    bottlenecks = operational.identify_bottlenecks(queue_items)
+    stages = await _queue_stages(db, tenant)
+    bottlenecks = operational.bottlenecks_from_stages(stages)
 
     # Capacity planning
     daily_inflow = kpis.get("throughput", 10) * 1.2
@@ -528,22 +532,12 @@ async def get_bottlenecks(
     """Current queue bottleneck analysis."""
     await _set_tenant(db, tenant)
 
-    queue_result = await db.execute(
-        select(CleaningQueue).where(CleaningQueue.tenant_id == tenant.id)
-    )
-    now = datetime.now(timezone.utc)
-    queue_items: list[dict] = []
-    for r in queue_result.all():
-        d = _row_to_dict(r)
-        detected = r[0].detected_at or r[0].created_at
-        d["age_hours"] = (now - detected).total_seconds() / 3600 if detected else 0
-        queue_items.append(d)
-
-    bottlenecks = operational.identify_bottlenecks(queue_items)
+    stages = await _queue_stages(db, tenant)
+    bottlenecks = operational.bottlenecks_from_stages(stages)
 
     return {
         "bottlenecks": bottlenecks,
-        "total_queue_size": len(queue_items),
+        "total_queue_size": sum(s["count"] for s in stages.values()),
     }
 
 
@@ -612,7 +606,7 @@ async def get_mdm_health(
                ai_projected_score, ai_narrative, ai_risk_flags
         FROM mdm_metrics
         WHERE tenant_id = :tid
-          AND snapshot_date > now() - (:days || ' days')::interval
+          AND snapshot_date > now() - make_interval(days => :days)
         ORDER BY snapshot_date ASC
     """), {'tid': str(tenant.id), 'days': days})
     rows = result.fetchall()

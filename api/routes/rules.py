@@ -27,6 +27,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+from api.services.run_lineage import lineage_sql
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
@@ -228,14 +229,14 @@ async def rules_history_batch(
     ``limit_runs`` runs of the same system lineage as ``version_id``. One windowed
     query for the whole module, not one query per check_id."""
     await _set_rls(db, tenant.id)
-    rows = (await db.execute(text("""
+    rows = (await db.execute(text(f"""
         WITH lineage AS (
-            SELECT COALESCE(metadata->>'system_id', 'upload') AS key, run_at
+            SELECT {lineage_sql()} AS key, run_at
               FROM analysis_versions WHERE id = CAST(:vid AS uuid) AND tenant_id = :tid
         ), runs AS (
             SELECT av.id AS version_id, av.run_at
               FROM analysis_versions av, lineage l
-             WHERE av.tenant_id = :tid AND COALESCE(av.metadata->>'system_id', 'upload') = l.key
+             WHERE av.tenant_id = :tid AND {lineage_sql('av')} = l.key
                AND av.run_at <= l.run_at
              ORDER BY av.run_at DESC LIMIT :n
         )

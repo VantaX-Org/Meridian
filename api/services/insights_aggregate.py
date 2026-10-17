@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from api.routes.findings import _COMPLETE, composite_dqs
 from api.services import s4_readiness
+from api.services.run_lineage import lineage_key, lineage_sql
 from api.services.insights_impact import feature_l1, tenant_currency, value_at_risk, worst_l1
 from api.services.pdf_reports import (
     _SEV_RANK, DIMENSIONS, _all, _one, _rule, failing, fmt_module, load_scoring, module_deltas,
@@ -325,14 +326,15 @@ def resolve_version(s: Session, tid: str, vid: Optional[str]) -> Optional[dict]:
 
 
 def lineage_of(version: dict) -> str:
-    return (version.get("metadata") or {}).get("system_id") or "upload"
+    """The run's lineage key: its system id, or ``upload:<sorted modules>`` (api/services/run_lineage.py)."""
+    return lineage_key(version.get("metadata"), version.get("dqs_summary"), version.get("label"))
 
 
 def previous_version(s: Session, tid: str, version: dict) -> Optional[dict]:
-    """The prior complete run of the same lineage (same system, or uploads)."""
+    """The prior complete run of the same lineage (same system, or uploads of the same objects)."""
     return _one(s, f"""
         SELECT id, label, run_at, status, dqs_summary, metadata FROM analysis_versions
-         WHERE tenant_id = :t AND COALESCE(metadata->>'system_id', 'upload') = :l
+         WHERE tenant_id = :t AND {lineage_sql()} = :l
            AND run_at < :r AND dqs_summary IS NOT NULL AND {_COMPLETE}
          ORDER BY run_at DESC LIMIT 1""", t=tid, l=lineage_of(version), r=version["run_at"])
 
@@ -496,7 +498,7 @@ def trends(s: Session, tid: str, vid: Optional[str], system_id: Optional[str], l
     lineage = system_id or lineage_of(v)
     versions = list(reversed(_all(s, f"""
         SELECT id, label, run_at, dqs_summary, metadata FROM analysis_versions
-         WHERE tenant_id = :t AND COALESCE(metadata->>'system_id', 'upload') = :l
+         WHERE tenant_id = :t AND {lineage_sql()} = :l
            AND dqs_summary IS NOT NULL AND {_COMPLETE}
          ORDER BY run_at DESC LIMIT :n""", t=tid, l=lineage, n=limit)))
     ids = [str(x["id"]) for x in versions]

@@ -123,6 +123,16 @@ def test_guards_and_coverage_gaps(g: svc.Graph):
         assert set(s["unguarded_fields"]) == {f["field"] for f in s["fields"] if not f["checks"]}
 
 
+def test_min_pass_rate_keeps_the_findings_scale(g: svc.Graph):
+    """findings.pass_rate is stored 0-100; a step's min_pass_rate is the lowest of its checks' pass_rate
+    on that same 0-100 scale (90.81 means 90.81 %), never a 0-1 fraction."""
+    cid = _zterm_check(g)
+    r = svc.guards(g, "kpi:dpo", {cid: {"pass_rate": 90.81, "affected_count": 1, "severity": "high"}})
+    step = next(s for s in r["steps"] if any(c["check_id"] == cid for f in s["fields"] for c in f["checks"]))
+    rates = [c["pass_rate"] for f in step["fields"] for c in f["checks"] if c.get("pass_rate") is not None]
+    assert step["min_pass_rate"] == 90.81 == min(rates)
+
+
 def test_parse_record_key():
     assert svc.parse_record_key("BUKRS=1000|LIFNR=0000100001") == {"BUKRS": "1000", "LIFNR": "0000100001"}
     assert svc.parse_record_key("row:17") is None

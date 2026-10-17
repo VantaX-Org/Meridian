@@ -62,22 +62,23 @@ export function previousInLineage(current: Version, runs: Version[]): Version | 
   return sameLineage(current, runs).find((r) => r.id !== current.id && r.run_at < current.run_at) ?? null;
 }
 
-function sameScopeComplete(current: Version, runs: Version[]): Version[] {
-  const scope = scopeOf(current);
-  return runs.filter((r) => r.id !== current.id && isFinished(r) && scopeOf(r) === scope);
+/** Finished runs in `current`'s lineage (same system, or uploads of the same objects), itself excluded. */
+function sameLineageFinished(current: Version, runs: Version[]): Version[] {
+  const lineage = lineageOf(current);
+  return runs.filter((r) => r.id !== current.id && isFinished(r) && lineageOf(r) === lineage);
 }
 
-/** The latest finished run in the same scope that started before `current`. */
+/** The latest finished run in the same lineage that started before `current`. */
 export function previousRunId(current: Version, runs: Version[]): string | null {
-  const earlier = sameScopeComplete(current, runs)
+  const earlier = sameLineageFinished(current, runs)
     .filter((r) => r.run_at < current.run_at)
     .sort((a, b) => (a.run_at < b.run_at ? 1 : -1));
   return earlier[0]?.id ?? null;
 }
 
-/** The pinned baseline of `current`'s scope, if it is a different finished run. */
+/** The pinned baseline of `current`'s lineage (the API pins one per lineage), if it is a different finished run. */
 export function baselineRunId(current: Version, runs: Version[]): string | null {
-  return sameScopeComplete(current, runs).find((r) => r.metadata?.baseline === true)?.id ?? null;
+  return sameLineageFinished(current, runs).find((r) => r.metadata?.baseline === true)?.id ?? null;
 }
 
 export interface RunSeries {
