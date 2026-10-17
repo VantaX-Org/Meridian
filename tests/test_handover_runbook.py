@@ -11,9 +11,11 @@ at all, so every one of them would have returned 401.
 """
 
 import re
+from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
+from starlette.routing import BaseRoute
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNBOOKS = [
@@ -47,11 +49,25 @@ def _curl_blocks(text: str) -> list[str]:
     return blocks
 
 
+def _route_paths(routes: Iterable[BaseRoute]) -> set[str]:
+    """Every route path, descending into included routers.
+
+    Newer FastAPI keeps an included router as one entry whose own routes sit on
+    ``original_router`` instead of flattening them into ``app.routes``."""
+    out: set[str] = set()
+    for r in routes:
+        if hasattr(r, "path") and r.path:
+            out.add(r.path)
+        if hasattr(r, "original_router"):
+            out |= _route_paths(r.original_router.routes)
+    return out
+
+
 @pytest.mark.parametrize("runbook", RUNBOOKS, ids=lambda p: p.name)
 def test_documented_paths_exist(runbook: Path) -> None:
     from api.main import app
 
-    known = {r.path for r in app.routes if hasattr(r, "path")}
+    known = _route_paths(app.routes)
     missing = sorted(p for p in _paths(runbook.read_text(encoding="utf-8")) if p not in known)
     assert not missing, (
         f"{runbook.name} tells the operator to call paths that do not exist: {missing}. "
