@@ -107,9 +107,19 @@ Start from the UI (Admin → analyse), or:
 
 ```bash
 # the extract, then the checks, exactly as the UI does
-curl -sS -X POST http://127.0.0.1/api/v1/extract \
+# Every call needs a token. POST /api/v1/auth/login returns {"token": "..."}; send it as a
+# bearer. (The API also accepts the mn_auth_token cookie, which is what the browser uses for
+# downloads.)
+TOKEN=$(curl -sS -X POST http://127.0.0.1/api/v1/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"system_id":"<ecc-system-uuid>","modules":["material_master"],"sync_type":"full"}'
+  -d '{"email":"<admin-email>","password":"<admin-password>"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+
+# The real path is /api/v1/connectivity/extract - there is no /api/v1/extract. Body fields:
+# system_id, modules, include_config (default true), sync_type in {data, config, both}.
+# A baseline re-reads data; set include_config=false unless the SPRO read is wanted too.
+curl -sS -X POST http://127.0.0.1/api/v1/connectivity/extract \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"system_id":"<ecc-system-uuid>","modules":["material_master"],"include_config":false,"sync_type":"data"}'
 ```
 
 Expect: the ECC checks phase takes tens of minutes, then the cross-run issue lifecycle,
@@ -137,9 +147,9 @@ Same again with the SF system id and its nine modules. This one is fast (the che
 ~4 minutes at the last measurement; the lifecycle ~2 minutes).
 
 ```bash
-curl -sS -X POST http://127.0.0.1/api/v1/extract \
-  -H 'Content-Type: application/json' \
-  -d '{"system_id":"<sf-system-uuid>","modules":["benefits","compensation","employee_central","learning_management","payroll_integration","performance_goals","recruiting_onboarding","succession_planning","time_attendance"],"sync_type":"full"}'
+curl -sS -X POST http://127.0.0.1/api/v1/connectivity/extract \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"system_id":"<sf-system-uuid>","modules":["benefits","compensation","employee_central","learning_management","payroll_integration","performance_goals","recruiting_onboarding","succession_planning","time_attendance"],"include_config":false,"sync_type":"data"}'
 ```
 
 Expect coverage to be **bounded by what the tenant serves**, not uniform: `employee_central`

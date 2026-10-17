@@ -117,3 +117,29 @@ So the honest criterion is narrower than either "rule count parity" or "a floor 
 dimension": **every scored dimension of every served object carries rules the tenant can
 evaluate.** That is measurable against a real run, and `docs/successfactors-parity.md` already
 records which canonical sources each SF object cannot resolve.
+
+## Why the thinnest cells cannot be filled with more field checks
+
+`accounts_payable` accuracy sat at 4 while material_master has 47, and I spent three rounds
+looking for rules to close it. Seven candidates were examined and each turned out to be either
+already covered, a duplicate, or not an accuracy check at all. The conclusion is not that the
+search was lazy - it is that the cell is already at the limit of what a single-record check can
+express:
+
+* **A wrong amount is wrong relative to something else.** An open item whose value is overstated
+  is only detectable against the G/L balance for the same reconciliation account, or against the
+  purchase order it was posted from. `AP073`/`AP206`/`AP285` already cover the internal
+  arithmetic (both amounts zero, one zero, or a negative sign); what remains needs a second
+  table, which is a different kind of check from `cross_field_check` on one row.
+* **Reference checks are `validity`, not accuracy.** `BSIK.BLART` against T003 and
+  `BSIK.WAERS` against TCURC check that a code exists, so they land in validity (that is what
+  the new `AP287` does, and what `GL029` does for the same field on the header). Adding them
+  does not move the accuracy count.
+* **The obvious candidates were taken.** Payment terms against T052, special G/L indicator
+  against T074U, clearing data on an open item, the discount-day ordering and the translation
+  directions all already have rules (`AP036`/`AP042`/`AP079`/`AP080`/`AP072`/`AP078`).
+
+So the honest statement is that the accuracy cell for the finance objects is bounded by the
+check classes the library has, and closing it would need a class that compares an object
+against an outside total - a reconciliation check. That is a real piece of work with its own
+design, not a matter of writing more rules of the kinds that exist.

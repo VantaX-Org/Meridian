@@ -3400,3 +3400,55 @@ rules:
     __other__: Read the document in FB03 and set the document currency, or reverse and re-post it.
   record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}:
     no document currency.'
+- id: AP287
+  field: BSIK.BLART
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Open vendor item's document type is not a defined FI document type (T003)
+  why_it_matters: BLART drives number ranges, the account types a document may post to, reversal behaviour, and
+    whether the document touches the sub-ledger. fi_gl checks this on the document header; an open item in BSIK
+    carries the same field, and a value that is not in T003 means the item was loaded with a document type the system
+    does not have. The open-item reports then cannot resolve its label and the reversal path for the item is undefined,
+    so it cannot be cleared or reversed through the normal transaction.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item cannot be reversed or cleared through the standard transaction, and FBL1N shows an unresolved
+    document type for it. Payment and clearing programs that branch on BLART fall back to defaults.
+  fix_map:
+    __blank__: BLART is mandatory at posting. A blank value means a corrupt item - raise it with functional support
+      rather than editing the secondary index.
+    __other__: Document type '{invalid_value}' is not in T003. Correct it in the source document, or configure it
+      in SPRO > Financial Accounting > Financial Accounting Global Settings > Document > Document Types (OBA7).
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}:
+    document type ''{actual_value}'' is not in T003.'
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+- id: AP288
+  field: BSIK.ZTERM
+  check_class: referential_check
+  reference_table: T052
+  reference_field: ZTERM
+  severity: high
+  dimension: validity
+  message: Open vendor item's payment terms are not defined in T052
+  why_it_matters: ZTERM on an open item decides its baseline date, its cash-discount windows and its net due date,
+    so it drives the payment proposal and the discount the company takes. The vendor master's terms are checked
+    (AP036/AP042) but the terms carried on the item itself were not, and the item's value is what F110 reads. A
+    value that is not in T052 means the program cannot calculate a due date and falls back, so the item is either
+    paid early, losing the discount, or late, incurring interest. Note the DDIC gives BSIK.ZTERM no check table
+    while LFB1.ZTERM carries T052, which is why this rule states its reference explicitly.
+  rule_authority: sap_hard_constraint
+  sap_impact: The payment run cannot compute a due date or discount for the item and falls back to its defaults,
+    so the item is paid on the wrong date and the discount is lost or interest accrues.
+  fix_map:
+    __blank__: A blank ZTERM inherits the vendor master's terms and is legitimate - only a populated value is judged
+      here.
+    __other__: Payment terms '{invalid_value}' are not in T052. Correct the item's terms, or create them in SPRO
+      > Financial Accounting > Accounts Receivable and Accounts Payable > Business Transactions > Outgoing Invoices/Credit
+      Memos > Maintain Terms of Payment (OBB8).
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}:
+    payment terms ''{actual_value}'' are not in T052.'
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)

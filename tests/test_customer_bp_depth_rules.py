@@ -10,7 +10,7 @@ from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
-PACKS = {"accounts_receivable": ("AR", 210, 60), "sd_customer_master": ("SDCM", 208, 42),
+PACKS = {"accounts_receivable": ("AR", 210, 62), "sd_customer_master": ("SDCM", 208, 42),
          "business_partner": ("BP", 201, 96)}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
@@ -80,10 +80,18 @@ def test_every_field_exists_in_ddic():
 
 
 def test_referential_rules_have_a_check_table():
+    """A referential rule must say what it checks against, from the DDIC or from the rule.
+
+    BSID.ZTERM carries no check table while KNB1.ZTERM carries T052, so a rule on the open item
+    has to declare `reference_table` itself (AR271). Both ways satisfy the intent, which is that
+    the reference is real.
+    """
     for r in NEW:
         if r["check_class"] == "referential_check":
             table, name = r["field"].split(".")
-            assert _fields(table)[name].get("check_table"), r["id"]
+            ddic = _fields(table)[name].get("check_table")
+            declared = r.get("reference_table")
+            assert ddic not in (None, "", "*") or declared, r["id"]
 
 
 def test_templates_and_messages_never_echo_personal_values():

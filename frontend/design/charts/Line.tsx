@@ -25,6 +25,14 @@ export function pointAtRow<P extends { x: string | number }>(points: P[], x: str
   return x === undefined ? undefined : points.find((p) => p.x === x);
 }
 
+/**
+ * Right margin that keeps the last x tick inside the chart: the tick is centred on the last point, so half its
+ * width hangs past the plot. Estimated from the label length at the 12 px axis font (about 6.8 px a character).
+ */
+export function lastTickMargin(lastLabel: string | undefined): number {
+  return Math.max(5, Math.min(96, Math.ceil(((lastLabel ?? "").length * 6.8) / 2) - 16));
+}
+
 export function Line({
   data,
   onPointClick,
@@ -69,11 +77,12 @@ export function Line({
     for (const p of multi ? multi.flatMap((sr) => sr.data) : data) if (p.label) m.set(p.x, p.label);
     return (x: string | number) => m.get(x) ?? String(x);
   }, [multi, data, xDomain]);
+  const rightMargin = lastTickMargin(rows.length ? labelOf(rows[rows.length - 1].x) : undefined);
   const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
   return (
     <div role="img" aria-label={chartSummary(summaryData, label)}>
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={rows} accessibilityLayer={false}>
+      <ComposedChart data={rows} accessibilityLayer={false} margin={{ top: 5, right: rightMargin, bottom: 5, left: 5 }}>
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" vertical={false} />
         <XAxis dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={labelOf} minTickGap={24} padding={X_PADDING} interval="preserveStartEnd" />
         <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} domain={[0, 100]} />
