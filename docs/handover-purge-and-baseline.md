@@ -72,6 +72,18 @@ thing: carrying a `tenant_id` is what makes a table a *candidate*, not what disq
 The check now asserts that no KEEP table reaches the purge set, and the dry run above is the
 first time the script has actually run end to end.
 
+**Also clear the work queue.** Purging the database does not stop work already queued against
+it. On this deployment two extraction tasks queued before the purge survived it, kept reading the
+whole SAP system against analysis versions that no longer existed, and — running alongside the
+intended single-module baseline — held 24 GB of the 30 GB worker and stretched that baseline from
+minutes to nine hours. `purge_tenant_data.py` now discards the queue after the database purge (see
+`--keep-queue` to skip that); **if an extraction was already running, restart the worker**:
+
+```bash
+docker restart docker-worker-1          # drops any task still executing
+docker exec docker-redis-1 redis-cli LLEN celery   # must be 0
+```
+
 **Also purge the object store.** The staged parquet for every analysed version lives
 outside Postgres, under the uploads bucket:
 

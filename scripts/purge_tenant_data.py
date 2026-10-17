@@ -68,6 +68,30 @@ def _db_url() -> str:
     return url.replace("postgresql+asyncpg://", "postgresql://")
 
 
+def _clear_queue() -> str:
+    """Drop queued Celery tasks and report running ones, so a purge is not followed by work
+    that writes into the versions it just removed.
+
+    A task already executing cannot be revoked reliably from here (it runs in a prefork child
+    that may hold gigabytes of frames), so this reports those and the caller decides whether to
+    restart the worker. Queued ones are simply discarded.
+    """
+    url = os.getenv("REDIS_URL") or os.getenv("CELERY_BROKER_URL") or ""
+    if not url:
+        return "not attempted (no REDIS_URL)"
+    try:
+        import redis  # type: ignore
+    except Exception:
+        return "not attempted (redis client unavailable)"
+    try:
+        client = redis.from_url(url)
+        queued = client.llen("celery")
+        client.delete("celery")
+        return f"discarded {queued} queued task(s)"
+    except Exception as e:
+        return f"failed: {type(e).__name__}: {e}"
+
+
 def _tenant_id() -> str:
     return os.getenv("MERIDIAN_TENANT_ID", "00000000-0000-0000-0000-000000000001")
 
@@ -86,14 +110,23 @@ def _tenant_tables(conn) -> list[str]:
 
 
 def _fk_edges(conn) -> list[tuple[str, str]]:
-    """(child, parent) for every foreign key among public tables."""
+    """(child, parent) for every foreign key among public tables.
+
+    Read from ``pg_constraint``, not ``information_schema.table_constraints``: the app connects
+    as ``meridian_app`` and information_schema shows that role no constraints at all (the tables
+    are owned by ``meridian``), so the earlier version returned zero edges. Zero edges made every
+    table look independent, the delete order fell back to alphabetical, and the purge died on the
+    first parent it reached - ``analysis_versions`` before ``cleaning_queue``, a foreign key that
+    does exist. A silent empty result that produces a plausible-looking order is the worst
+    possible failure here, which is why main() refuses to run when this comes back empty.
+    """
     rows = conn.execute(text("""
-        SELECT tc.table_name AS child, ccu.table_name AS parent
-          FROM information_schema.table_constraints tc
-          JOIN information_schema.constraint_column_usage ccu
-            ON ccu.constraint_name = tc.constraint_name
-           AND ccu.table_schema = tc.table_schema
-         WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'
+        SELECT con.conrelid::regclass::text AS child,
+               con.confrelid::regclass::text AS parent
+          FROM pg_constraint con
+          JOIN pg_class cl ON cl.oid = con.conrelid
+          JOIN pg_namespace ns ON ns.oid = cl.relnamespace
+         WHERE con.contype = 'f' AND ns.nspname = 'public'
     """)).fetchall()
     return [(r[0], r[1]) for r in rows]
 
@@ -149,12 +182,29 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="report only (the default)")
     ap.add_argument("--keep-uploads", action="store_true",
                     help="leave the staged parquet in the object store")
+    ap.add_argument("--keep-queue", action="store_true",
+                    help="leave queued Celery tasks alone (they will run against purged data)")
+    ap.add_argument("--disable-triggers", action="store_true",
+                    help="set session_replication_role=replica for the transaction so append-only "
+                         "audit tables (master_record_history) can be cleared. Needs a superuser "
+                         "connection; without it the purge stops at the first append-only table.")
     args = ap.parse_args()
 
     tenant = _tenant_id()
     engine = create_engine(_db_url())
     with engine.begin() as conn:
         conn.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tenant})
+        if args.disable_triggers:
+            # Append-only audit tables have a BEFORE DELETE trigger (see
+            # db/migrations/versions/012_golden_records.py). A whole-tenant purge is the one
+            # operation that legitimately removes them, so the trigger is bypassed for this
+            # transaction only - never for a normal delete path. Requires a superuser: the app
+            # role (meridian_app) is refused, which is why this is opt-in.
+            try:
+                conn.execute(text("SET LOCAL session_replication_role = 'replica'"))
+            except Exception as e:
+                raise SystemExit(
+                    f"--disable-triggers needs a superuser connection; this role was refused: {e}")
         tables = _tenant_tables(conn)
         if not tables:
             raise SystemExit("no table carries a tenant_id — wrong database?")
@@ -164,12 +214,17 @@ def main() -> int:
         # what makes a table a *candidate*, not what disqualifies it - the first version of
         # this guard asserted the opposite and refused every run.
         purge = [t for t in tables if t not in KEEP]
+        edges = _fk_edges(conn)
+        if not edges:
+            raise SystemExit(
+                "refusing to run: no foreign keys were read, so there is no safe delete order. "
+                "Every table would look independent and the purge would fail part-way through. "
+                "Check that the connection role can see pg_constraint.")
         leaked = sorted(set(purge) & KEEP)
         if leaked:
             raise SystemExit(f"refusing to run: KEEP tables reached the purge set: {leaked}")
         emptiable = sorted(t for t in purge
                            if t not in {"analysis_versions", "tenants"} and not t.startswith("alembic"))
-        edges = _fk_edges(conn)
         # version-keyed tables first, in the reviewed order from the purge service; the
         # rest by foreign key (children before parents)
         service = _service_order()
@@ -220,6 +275,12 @@ def main() -> int:
         if remaining:
             raise SystemExit(f"purge incomplete, rolling back: {remaining}")
         print("verified: no tenant rows remain in any purged table.")
+
+        # Work already queued against the purged data must not run afterwards.
+        if not args.keep_queue:
+            print(f"celery queue: {_clear_queue()}")
+            print("  if any extraction task was already running, restart the worker so it stops:")
+            print("    docker restart docker-worker-1")
     return 0
 
 
