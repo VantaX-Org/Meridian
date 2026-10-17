@@ -78,3 +78,57 @@ def test_the_login_example_names_the_field_the_api_returns() -> None:
     from api.routes.auth import LoginResponse
 
     assert "token" in LoginResponse.model_fields
+
+
+# ── the SQL the operator runs must name tables and columns that exist ───────────────────────────
+# Same reasoning as the paths: a psql statement that references a column this release renamed fails
+# at the customer, after the purge, in front of the client.
+
+_SQL_NOISE = {
+    "select", "from", "where", "count", "as", "is", "not", "null", "order", "by", "desc", "asc",
+    "and", "or", "distinct", "limit", "versions", "creds", "scored", "true", "false",
+}
+
+
+def _sql_statements(text: str) -> list[str]:
+    return re.findall(r'"\s*(SELECT .*?)"', text, re.S)
+
+
+@pytest.mark.parametrize("runbook", RUNBOOKS, ids=lambda p: p.name)
+def test_documented_sql_names_real_tables_and_columns(runbook: Path) -> None:
+    from db.schema import Base
+
+    tables = Base.metadata.tables
+    problems = []
+    for stmt in _sql_statements(runbook.read_text(encoding="utf-8")):
+        flat = stmt.replace("\n", " ")
+        m = re.search(r"\bFROM\s+([a-z_][a-z_0-9]*)", flat)
+        if not m:
+            continue
+        table = m.group(1)
+        # judge only the select list and the where clause, not the table name itself
+        stmt = flat[:m.start()] + " " + flat[m.end():]
+        if table not in tables:
+            problems.append(f"no such table: {table}")
+            continue
+        have = {c.name for c in tables[table].columns}
+        for ident in re.findall(r"\b([a-z_][a-z_0-9]*)\b", stmt):
+            if ident in have or ident in _SQL_NOISE or ident.isdigit():
+                continue
+            # a column alias or a function name is fine; only flag things that look like columns
+            if "." in ident:
+                continue
+            problems.append(f"{table}.{ident}?")
+    assert not problems, (
+        f"{runbook.name} runs SQL against columns this release does not have: {sorted(set(problems))}. "
+        f"A rename makes the operator's verification step fail at the customer."
+    )
+
+
+# ── every script the handover tells the operator to run must be in the release ──────────────────
+@pytest.mark.parametrize("runbook", RUNBOOKS, ids=lambda p: p.name)
+def test_documented_scripts_exist(runbook: Path) -> None:
+    text = runbook.read_text(encoding="utf-8")
+    refs = set(re.findall(r"\b(scripts/[A-Za-z0-9_.\-]+\.(?:sh|py))", text))
+    missing = sorted(r for r in refs if not (ROOT / r).exists())
+    assert not missing, f"{runbook.name} tells the operator to run files that are not shipped: {missing}"
