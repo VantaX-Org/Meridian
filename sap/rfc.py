@@ -35,6 +35,21 @@ PAYROLL_TABLE = "ZMERIDIAN_PAYRT"
 PAYROLL_FIELDS = ["PERNR", "SEQNR", "FPPER", "INPER", "PAYDT", "LGART", "BETRG", "ANZHL", "WAERS"]
 
 
+# SAP's reply to a locked or expired user. Nothing here should retry on these: every further
+# attempt extends SAP's lock, and the operator has to act (SU01) rather than wait.
+_LOGON_LOCKED = ("too many failed attempts", "password logon no longer possible",
+                 "user is locked", "logon currently not possible")
+
+
+def _logon_advice(message: str) -> str:
+    """Append what the operator must do, so a locked user is not mistaken for a wrong password."""
+    if any(k in message.lower() for k in _LOGON_LOCKED):
+        return (message + " - the SAP user is locked or its password has expired. An SAP basis "
+                          "administrator must unlock it (transaction SU01) or reset the password. "
+                          "Meridian does not retry, because each failed attempt extends the lock.")
+    return message
+
+
 class RFCConnector(SAPConnector):
     """SAP connector backed by pyrfc / SAP NW RFC SDK."""
 
@@ -74,7 +89,7 @@ class RFCConnector(SAPConnector):
         except Exception as e:
             safe = self._mask_password(str(e), params.password)
             self._password = ""
-            raise SAPConnectorError(safe) from e
+            raise SAPConnectorError(_logon_advice(safe)) from e
         self._open_extra = lambda: pyrfc.Connection(ashost=params.host, client=params.client, user=params.user,
                                                     passwd=params.password, sysnr=params.sysnr)
 
