@@ -14,6 +14,8 @@ import { compareVersions } from "@/lib/api/versions";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { formatModuleName } from "@/lib/format";
 import { isFinished, lineageOf, overallDqs } from "@/lib/runs";
+import { latestPerLineage, stateDqs, stateObjects } from "@/lib/current-state";
+import { usePermissions } from "@/lib/permissions";
 import { queryKeys } from "@/lib/query-keys";
 import { buildInsight, sectionOf, showsRouteInsight, type InsightFacts } from "@/lib/route-insight";
 
@@ -24,12 +26,16 @@ export function RouteInsight() {
   const run = useSearchParams().get("run") ?? undefined;
   const section = showsRouteInsight(pathname) ? sectionOf(pathname) : null;
   const dayOne = useDayOne();
+  const { scopeFilter } = usePermissions();
   // The shared run list, plus a ?run= older than it read by id, so the previous run of its lineage is found.
   const { list: versionsQ, versions: allVersions } = useRunListWith(section ? run : undefined);
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, enabled: !!section });
   const hasRun = allVersions.some(isFinished);
-  const runId = run ?? allVersions.find(isFinished)?.id;
-  const aggQ = useQuery({ queryKey: ["insight", "aggregate", runId], queryFn: () => getFindingsAggregate(runId), enabled: !!section && hasRun && !!runId });
+  // No ?run=: the current state, every object at the latest run of its lineage, as the home below it shows;
+  // the "changed" cell is the newest run's change. ?run= pins one run.
+  const stateRuns = run ? [] : latestPerLineage(allVersions);
+  const runId = run ?? stateRuns[0]?.id ?? allVersions.find(isFinished)?.id;
+  const aggQ = useQuery({ queryKey: ["insight", "aggregate", run ?? "current"], queryFn: () => getFindingsAggregate(run), enabled: !!section && hasRun && !!runId });
   const finished = allVersions.filter(isFinished);
   // Changed cell: per-object movement between this run and the finished run before it in the same lineage
   // (same system, or the same uploaded objects; the list is newest first). Another object's run is never "previous".
@@ -62,12 +68,18 @@ export function RouteInsight() {
   const movers = Object.entries(cmp?.delta ?? {})
     .filter(([, d]) => d.dqs_change !== 0)
     .sort((a, b) => Math.abs(b[1].dqs_change) - Math.abs(a[1].dqs_change));
+  // The current state's score as the home's hero computes it, and the same state with the newest run swapped for
+  // the one before it in its lineage.
+  const state = stateRuns.length ? stateObjects(stateRuns, scopeFilter.modules) : null;
   const facts: InsightFacts = {
     hasRun,
-    runId,
-    dqs: agg?.dqs.composite ?? null,
+    // Links follow the scope: a pinned run, or (current state) none.
+    runId: run,
+    dqs: state ? stateDqs(state) : agg?.dqs.composite ?? null,
     // The previous score comes from the lineage's own earlier run; the aggregate's previous_dqs may belong to another object.
-    prevDqs: firstRun ? null : prev ? overallDqs(prev) ?? agg?.previous_dqs ?? null : agg?.previous_dqs ?? null,
+    prevDqs: firstRun ? null
+      : state ? (prev ? stateDqs(stateObjects(stateRuns.map((r) => (r.id === runId ? prev : r)), scopeFilter.modules)) : null)
+      : prev ? overallDqs(prev) ?? agg?.previous_dqs ?? null : agg?.previous_dqs ?? null,
     firstRun,
     currency: costModelQ.data?.currency,
     critical: agg?.severity.critical ?? 0,

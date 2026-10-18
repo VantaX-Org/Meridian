@@ -91,6 +91,21 @@ describe("RouteInsight lineage", () => {
     expect(m.compare).not.toHaveBeenCalled();
   });
 
+  it("scores the current state of every object, as the home below it does, not the newest run alone", async () => {
+    m.llm.mockResolvedValue({ llm_available: false });
+    const scored = (id: string, run_at: string, module: string, composite_score: number) => ({
+      id, run_at, status: "complete", metadata: { modules: [module] },
+      dqs_summary: { [module]: { composite_score, dimension_scores: {}, critical_count: 0, high_count: 0, medium_count: 0, low_count: 0, total_checks: 1, passing_checks: 1, capped: false, cap_reason: null } },
+    }) as never;
+    m.versions.v = [scored("co2", "2026-10-16T05:00:00Z", "controlling", 60), scored("co1", "2026-10-16T04:00:00Z", "controlling", 50), scored("mm", "2026-10-15T00:00:00Z", "material_master", 90)];
+    m.compare.mockResolvedValue({ v1: { id: "co1" }, v2: { id: "co2" }, delta: {}, checks: {} });
+    mount();
+    // (60 + 90) / 2 = 75 against (50 + 90) / 2 = 70; the aggregate's own composite (70) is not used
+    expect(await screen.findByText(/Data quality score is 75/)).toBeTruthy();
+    expect(screen.getByText(/Score rose 5 points since the previous run/)).toBeTruthy();
+    await waitFor(() => expect(m.compare).toHaveBeenCalledWith("co1", "co2"));
+  });
+
   it("compares uploads of the same objects", async () => {
     m.llm.mockResolvedValue({ llm_available: false });
     m.versions.v = [
