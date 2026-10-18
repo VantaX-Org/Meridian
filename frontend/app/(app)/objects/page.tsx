@@ -16,23 +16,31 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { barFill } from "@/design/table/columns";
 import { DIMENSIONS } from "@/lib/home-metrics";
+import { stateScopeLine } from "@/lib/current-state";
 import { formatModuleName } from "@/lib/format";
 import { bySeverity } from "../_severity-sort";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
 import { FilterChips } from "./_header";
+import { useCurrentObjects } from "./_current";
 import { clsx } from "clsx";
 
+/**
+ * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
+ * at its own latest run, and links to the object without `?run=` (the object page opens that run itself).
+ * `affected_records` is null only when a current-state row's run could not be read and its records not attributed.
+ */
+type ObjectRow = Omit<ObjectSummary, "affected_records"> & { affected_records: number | null; run_id?: string };
 
-/** Number cells drill to the object's rules tab. */
-const drill = (o: ObjectSummary, run: string, n: number | string) => (
+/** Number cells drill to the object's rules tab; `run` undefined drills to the object's own latest run. */
+const drill = (o: ObjectRow, run: string | undefined, n: number | string) => (
   <DrillLink object={o.module} run={run === "latest" ? undefined : run} filters={{ tab: "rules" }}>{n}</DrillLink>
 );
 
 const RANK: Record<string, number> = { fail: 0, warn: 1, pass: 2 };
 /** Worst readiness first, then DQS ascending; unscored objects last. */
-const worstFirst = (a: ObjectSummary, b: ObjectSummary) =>
+const worstFirst = (a: ObjectRow, b: ObjectRow) =>
   (RANK[a.readiness ?? ""] ?? 3) - (RANK[b.readiness ?? ""] ?? 3) || (a.composite_score ?? 101) - (b.composite_score ?? 101);
 
 const READINESS_FILTER = [
@@ -45,7 +53,7 @@ type ReadinessFilter = (typeof READINESS_FILTER)[number]["value"];
 const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 
 /** Optional enrichment columns appear only when some row carries the field (older backends omit them). */
-const makeColumns = (run: string, bands: ScoreBands | undefined, objects: ObjectSummary[]): ColumnDef<ObjectSummary>[] => {
+const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[]): ColumnDef<ObjectRow>[] => {
   const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 2);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
   const hasSev = objects.some((o) => o.critical_checks != null);
@@ -53,7 +61,7 @@ const makeColumns = (run: string, bands: ScoreBands | undefined, objects: Object
   return allColumns(run, bands).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (c.id !== "dimensions" || hasDims) && ((c.id !== "critical" && c.id !== "high") || hasSev));
 };
 
-const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<ObjectSummary>[] => [
+const allColumns = (run: string | undefined, bands: ScoreBands | undefined): ColumnDef<ObjectRow>[] => [
   { accessorKey: "label", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={row.original.label} /> },
   {
     accessorKey: "composite_score",
@@ -113,7 +121,7 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
       const id = row.original.blocking_rule_id;
       if (!id) return "—";
       return (
-        <DrillLink href={`/objects/${row.original.module}?run=${run}&tab=records&check_id=${encodeURIComponent(id)}`}>
+        <DrillLink href={`/objects/${row.original.module}?${run ? `run=${run}&` : ""}tab=records&check_id=${encodeURIComponent(id)}`}>
           <Mono>{id}</Mono>
         </DrillLink>
       );
@@ -122,22 +130,37 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
   { id: "critical", accessorFn: (o) => o.critical_checks ?? -1, header: "Critical", size: 90, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.critical_checks == null ? "—" : drill(row.original, run, row.original.critical_checks)) },
   { id: "high", accessorFn: (o) => o.high_checks ?? -1, header: "High", size: 80, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.high_checks == null ? "—" : drill(row.original, run, row.original.high_checks)) },
   { accessorKey: "failing_checks", header: "Failing checks", size: 120, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => drill(row.original, run, row.original.failing_checks) },
-  { accessorKey: "affected_records", header: "Affected records", size: 130, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => drill(row.original, run, row.original.affected_records.toLocaleString()) },
+  {
+    id: "affected_records",
+    accessorFn: (o) => o.affected_records ?? -1,
+    header: "Affected records",
+    size: 130,
+    meta: { numeric: true } satisfies CellMeta,
+    cell: ({ row }) => (row.original.affected_records == null ? "—" : drill(row.original, run, row.original.affected_records.toLocaleString())),
+  },
 ];
 
 export default function ObjectsPage() {
   const search = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const run = search.get("run") ?? "latest";
+  // With ?run= the list is that one run; without it, the current state: every object at its own latest run.
+  const explicitRun = search.get("run");
+  const run = explicitRun ?? "latest";
+  const current = explicitRun == null;
   const dayOne = useDayOne();
+  // Ruling 7: objects outside a module-scoped user's grants are hidden (UI filter; the API enforces scope).
+  const { scopeFilter } = usePermissions();
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const single = useQuery({
     queryKey: queryKeys.objects(run),
     queryFn: () => getObjects(run),
+    enabled: !current,
   });
+  const currentQ = useCurrentObjects(current, scopeFilter.modules);
+  const data = single.data;
   // Detail links carry the resolved run id so list and detail share one cache key.
-  const runId = data?.run_id ?? (run === "latest" ? undefined : run);
+  const runId = current ? undefined : data?.run_id ?? (run === "latest" ? undefined : run);
 
   const { data: version } = useQuery({
     queryKey: queryKeys.run(runId ?? ""),
@@ -145,11 +168,16 @@ export default function ObjectsPage() {
     enabled: !!runId,
   });
 
-  // Ruling 7: objects outside a module-scoped user's grants are hidden (UI filter; the API enforces scope).
-  const { scopeFilter } = usePermissions();
-  const objects = (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
+  const objects: ObjectRow[] = current
+    ? currentQ.rows
+    : (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
+  const isLoading = current ? currentQ.isLoading : single.isLoading;
+  const query = current ? { isError: currentQ.isError, error: currentQ.error } : { isError: single.isError, error: single.error };
+  const refetch = current ? currentQ.refetch : () => void single.refetch();
+  const loaded = current ? !currentQ.isLoading && !currentQ.isError : !!data;
+  const newest = currentQ.runs[0];
 
-  useBreadcrumbScope(data ? [`${objects.length} ${objects.length === 1 ? "object" : "objects"}`] : []);
+  useBreadcrumbScope(loaded ? [`${objects.length} ${objects.length === 1 ? "object" : "objects"}`] : []);
   // The header names the run the list belongs to; a ?run= other than the newest finished run offers "Back to latest".
   const { latestId } = useRunScope();
   const runScope = { run: version, choices: [], latestId, pinned: run !== "latest" && !!latestId && run !== latestId };
@@ -158,25 +186,27 @@ export default function ObjectsPage() {
   let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = { title: "No objects in this run", ghost: "table" };
   if (isLoading || dayOne.status === "loading") {
     state = "loading";
-  } else if (isListFailure({ isError, error })) {
+  } else if (isListFailure(query)) {
     state = "error";
-  } else if (data && objects.length === 0) {
+  } else if (loaded && objects.length === 0) {
     state = "empty";
+    const anyRun = current ? !!newest : !!data?.run_id;
     emptyProps = {
-      title: data.run_id ? "No objects in this run" : "No objects measured yet",
-      detail: data.run_id ? "Run an analysis on a connected system." : dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
+      title: anyRun ? (current ? "No objects measured" : "No objects in this run") : "No objects measured yet",
+      detail: anyRun ? "Run an analysis on a connected system." : dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
       action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       ghost: "table",
     };
   }
 
-  const reportRun = data?.run_id; // no run yet: there is no report to download
+  // The export and the report are per run: without ?run= they are the newest finished run's, and say so.
+  const reportRun = current ? newest?.id : data?.run_id; // no run yet: there is no report to download
   const exportOptions = [
-    { format: "xlsx" as const, label: "Objects (.xlsx)", run: () => exportObjects(run) },
+    { format: "xlsx" as const, label: current ? "Newest run's objects (.xlsx)" : "Objects (.xlsx)", run: () => exportObjects(run) },
     ...(reportRun
       ? [{
           format: "pdf" as const,
-          label: "Analysis report (PDF)",
+          label: current ? "Newest run's analysis report (PDF)" : "Analysis report (PDF)",
           run: () => downloadAuthenticated(getAnalysisReportUrl(reportRun), `meridian-analysis-${reportRun}.pdf`),
         }]
       : []),
@@ -191,7 +221,7 @@ export default function ObjectsPage() {
     .filter((o) => !dimension || o.worst_dimension === dimension)
     .filter((o) => !owner || o.owner === owner)
     .sort(worstFirst);
-  const distinct = (pick: (o: ObjectSummary) => string | null | undefined) =>
+  const distinct = (pick: (o: ObjectRow) => string | null | undefined) =>
     [...new Set(objects.map(pick).filter((v): v is string => !!v))].sort().map((v) => ({ value: v, label: v }));
   const dimensionOptions = distinct((o) => o.worst_dimension);
   const ownerOptions = distinct((o) => o.owner);
@@ -201,23 +231,34 @@ export default function ObjectsPage() {
     if (next) params.set(key, next); else params.delete(key);
     router.replace(`/objects?${params.toString()}`);
   };
-  const columns = makeColumns(runId ?? run, data?.thresholds, objects); // React Compiler memoizes on run and thresholds
+  const listHref = (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams({ ...(current ? {} : { run }), ...params }).toString();
+    return q ? `/objects?${q}` : "/objects";
+  };
+  const bands = current ? currentQ.bands : data?.thresholds;
+  const columns = makeColumns(current ? undefined : runId, bands, objects); // React Compiler memoizes on run and thresholds
 
   const notReady = objects.filter((o) => o.readiness === "fail").length; // matches the ?readiness=fail drill
-  const blockingFindings = data?.blocking_findings_total;
+  // Per run, the API's count; across the current state, each object's failing critical and high checks at its run
+  // (the same definition, summed over the objects instead of one run).
+  const blockingFindings = current
+    ? objects.length > 0 && objects.every((o) => o.critical_checks != null && o.high_checks != null)
+      ? objects.reduce((n, o) => n + (o.critical_checks ?? 0) + (o.high_checks ?? 0), 0)
+      : undefined
+    : data?.blocking_findings_total;
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
-  const worst = objects.reduce<(typeof objects)[number] | null>((w, o) => (w === null || o.affected_records > w.affected_records ? o : w), null);
+  const worst = objects.reduce<ObjectRow | null>((w, o) => (o.affected_records != null && (w === null || o.affected_records > (w.affected_records ?? -1)) ? o : w), null);
   const atRisk = objects.filter((o) => o.readiness === "warn").length;
   const go = objects.filter((o) => o.readiness === "pass").length;
   const summary = objects.length > 0 && (
     <div className="flex flex-col gap-3">
       <div className="m-stat-grid m-motion-stagger">
-        <Stat label="Objects" value={objects.length} hint="in this run" href={`/objects?run=${run}`} />
-        <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={`/objects?run=${run}&readiness=pass`} />
-        <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={`/objects?run=${run}&readiness=warn`} />
-        <Stat label="Not ready" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={`/objects?run=${run}&readiness=fail`} />
+        <Stat label="Objects" value={objects.length} hint={current ? "each at its latest run" : "in this run"} href={listHref()} />
+        <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
+        <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
+        <Stat label="Not ready" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
         <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" />
-        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Most affected" value={worst ? worst.affected_records.toLocaleString() : "—"} hint={worst ? `records in ${worst.label}` : undefined} />}
+        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Most affected" value={worst?.affected_records != null ? worst.affected_records.toLocaleString() : "—"} hint={worst ? `records in ${worst.label}` : undefined} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />
@@ -227,12 +268,17 @@ export default function ObjectsPage() {
     </div>
   );
 
+  // Current state: the object page without ?run= opens the object's own latest run.
+  const objectHref = (row: ObjectRow) => `/objects/${row.module}?${current ? "" : `run=${runId ?? run}&`}tab=rules`;
+
   return (
     <ExplorerPage
       header={
         <PageHeader
           title="Objects"
-          meta={<RunScope scope={runScope} hrefFor={(id) => hrefWithRun("/objects", search, id)} />}
+          meta={current
+            ? (newest && objects.length > 0 ? <span data-testid="run-scope">{stateScopeLine(objects.length, newest.run_at)}</span> : undefined)
+            : <RunScope scope={runScope} hrefFor={(id) => hrefWithRun("/objects", search, id)} />}
           actions={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
         />
       }
@@ -242,19 +288,20 @@ export default function ObjectsPage() {
           columns={columns}
           data={shownObjs}
           getRowId={(row) => row.module}
-          rowHref={(row) => `/objects/${row.module}?run=${runId ?? run}&tab=rules`}
+          rowHref={objectHref}
           onRowClick={(row) => {
-            const target = runId ?? run;
-            queryClient.setQueryData(queryKeys.objectSummary(row.module, target), row);
-            router.push(`/objects/${row.module}?run=${target}&tab=rules`);
+            // Seed the object's summary under the run its numbers come from, so the detail opens without a refetch.
+            const target = current ? row.run_id : runId ?? run;
+            if (target && row.affected_records != null) queryClient.setQueryData(queryKeys.objectSummary(row.module, target), row);
+            router.push(objectHref(row));
           }}
         />
       }
       state={state}
       emptyProps={emptyProps}
       errorProps={{
-        message: apiErrorMessage(error),
-        onRetry: () => refetch(),
+        message: apiErrorMessage(query.error),
+        onRetry: refetch,
       }}
     />
   );

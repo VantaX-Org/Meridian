@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { DQSSummary, Version } from "@/types/api";
+import type { ObjectSummary } from "@/lib/api/v1/objects";
 import {
-  blockingTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary, tierOf,
+  blockingTotal, currentObjectRows, isScored, latestPerLineage, measuredDimensions, runObjectsName, stateDqs, stateObjects, stateRows,
+  stateScopeLine, stateSeries, stateSummary, tierOf, worstDimension,
 } from "../current-state";
 import { runDimensions } from "../home-metrics";
 
@@ -135,5 +137,61 @@ describe("copy", () => {
   it("names a run's objects", () => {
     expect(runObjectsName(MM)).toBe("Material Master");
     expect(runObjectsName(AP_SYSTEM)).toBe("these 2 objects");
+  });
+});
+
+describe("worstDimension and measuredDimensions", () => {
+  it("skip unmeasured dimensions (coverage 0) as the API does", () => {
+    const s = summary(70, {
+      dimension_scores: { completeness: 40, accuracy: 90, consistency: 30, timeliness: 80, uniqueness: 100, validity: 60 },
+      dimension_coverage: { consistency: 0 },
+    });
+    expect(measuredDimensions(s)).toEqual({ completeness: 40, accuracy: 90, timeliness: 80, uniqueness: 100, validity: 60 });
+    expect(worstDimension(s)).toBe("completeness");
+    const none = { completeness: 0, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 };
+    expect(worstDimension(summary(70, { dimension_coverage: none }))).toBeNull();
+  });
+});
+
+describe("currentObjectRows", () => {
+  const runs = latestPerLineage(ALL);
+  const listed = (module: string, over: Partial<ObjectSummary> = {}): ObjectSummary => ({
+    module, label: module, composite_score: 50, readiness: "fail", failing_checks: 4, affected_records: 7, critical_checks: 1, high_checks: 1,
+    worst_dimension: "accuracy", ...over,
+  });
+
+  it("lists every object at its own latest run, each row from that run's objects list", () => {
+    const lists = new Map<string, ObjectSummary[]>([
+      ["co9", [listed("controlling", { composite_score: 69, affected_records: 120 })]],
+      ["mm", [listed("material_master", { composite_score: 95, readiness: "pass", affected_records: 0 })]],
+      ["ap-up", [listed("accounts_payable", { composite_score: 80, readiness: "warn", affected_records: 900 })]],
+      // the system run also measured accounts payable before the upload: its row is not the current one
+      ["ap-sys", [listed("accounts_payable", { composite_score: 50, affected_records: 5 }), listed("business_partner", { composite_score: 70, affected_records: 33 })]],
+    ]);
+    const rows = currentObjectRows(runs, lists, { versions: ALL });
+    expect(rows.map((r) => [r.module, r.run_id, r.composite_score, r.readiness, r.affected_records])).toEqual([
+      ["accounts_payable", "ap-up", 80, "warn", 900],
+      ["business_partner", "ap-sys", 70, "fail", 33],
+      ["controlling", "co9", 69, "fail", 120],
+      ["material_master", "mm", 95, "pass", 0],
+    ]);
+  });
+
+  it("lists a run's objects from its summary when its list could not be read", () => {
+    const lists = new Map<string, ObjectSummary[] | undefined>([["co9", [listed("controlling")]], ["mm", undefined]]);
+    const aggregate = {
+      version_ids: ["co9", "mm", "ap-up", "ap-sys"],
+      by_module: [{ module: "material_master", findings: 1, affected: 12, critical: 0, high: 0, medium: 0, low: 0, avg_pass_rate: null }],
+    };
+    const rows = new Map(currentObjectRows(runs, lists, { aggregate, versions: ALL }).map((r) => [r.module, r]));
+    expect(rows.size).toBe(4);
+    expect(rows.get("material_master")).toMatchObject({ run_id: "mm", composite_score: 95, readiness: "pass", affected_records: 12, worst_dimension: "completeness" });
+    expect(rows.get("accounts_payable")?.affected_records).toBeNull(); // the aggregate sums the upload and the system run
+  });
+
+  it("keeps an object a run lists without a score, and follows the module scope", () => {
+    const lists = new Map([["co9", [listed("controlling"), listed("fi_gl", { composite_score: null, readiness: null })]]]);
+    expect(currentObjectRows(runs, lists).map((r) => r.module)).toContain("fi_gl");
+    expect(currentObjectRows(runs, lists, { modules: new Set(["controlling"]) }).map((r) => r.module)).toEqual(["controlling"]);
   });
 });
