@@ -87,7 +87,7 @@ export function Async<T>({ query, state, isEmpty, notFoundIsEmpty, skeleton, emp
   if (s === "loading" && stuck) {
     return <ErrorState title={SLOW_LOAD_MESSAGE} message="The server has not answered. Retry, or check the job tray." onRetry={retry ?? (() => window.location.reload())} />;
   }
-  if (s === "loading") return <div aria-busy="true" data-state="loading">{skeletonFor(skeleton)}</div>;
+  if (s === "loading") return <div data-state="loading">{skeletonFor(skeleton)}</div>;
   if (s === "error") {
     const e = error ?? (query ? apiErrorState(query.error) : { message: "Something went wrong" });
     return <ErrorState title={e.title} message={e.message} onRetry={retry} />;

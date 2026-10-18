@@ -91,7 +91,7 @@ export function InsightFrame({
   const body = (
     <Async
       state={state === "empty" && !emptyProps ? "ready" : state}
-      skeleton={<div className="flex flex-col gap-4">{skeleton ?? <CardSkeleton height={240} />}</div>}
+      skeleton={<div aria-busy="true" className="flex flex-col gap-4">{skeleton ?? <CardSkeleton height={240} />}</div>}
       empty={emptyProps && { ...emptyProps, ghost: emptyProps.ghost ?? "chart" }}
       error={errorProps ?? { message: "Something went wrong" }}
     >
