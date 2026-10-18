@@ -23,6 +23,8 @@ export interface HomeVerdict {
   previousLabel?: string;
   /** No earlier run in this run's lineage: the hint says so instead of comparing with another object. */
   firstRun?: boolean;
+  /** The hint with `firstRun`; defaults to "First run for this object". */
+  firstRunLabel?: string;
   /** The narrative's first sentence: the verdict with the number that caused it. */
   sentence: string;
   /** "Capped at 70 by 3 critical rules ...", with DrillLinks; omitted when not capped. */
@@ -76,7 +78,7 @@ export function HomePage({
   state: AsyncState;
   verdict?: HomeVerdict;
   run?: HomeRunInfo | null;
-  /** Header meta in the data state: the run the page's numbers belong to ("As of ..."). */
+  /** Header meta in the data state: what the page's numbers belong to ("As of ..." or "Current state of ..."). */
   scope?: ReactNode;
   journey?: HomeJourney;
   error?: { message: string; onRetry: () => void };
@@ -139,7 +141,7 @@ export function HomePage({
               size="hero"
               value={verdict.dqs}
               versionId={run?.label}
-              hint={verdict.firstRun ? "First run for this object" : verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
+              hint={verdict.firstRun ? verdict.firstRunLabel ?? "First run for this object" : verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
               delta={verdict.delta != null ? <Delta value={verdict.delta} /> : undefined}
             />
           </div>
