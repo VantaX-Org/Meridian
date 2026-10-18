@@ -107,6 +107,65 @@ export function stateRows(
   });
 }
 
+/** Measured dimension scores, as the API's `_measured_dimensions`: a coverage of 0 means the dimension was not measured. */
+export function measuredDimensions(s: DQSSummary): Record<string, number> {
+  const coverage: Partial<Record<string, number>> = s.dimension_coverage ?? {};
+  const scores: Partial<Record<string, number | null>> = { ...s.dimension_scores };
+  return Object.fromEntries(
+    Object.entries(scores).filter((e): e is [string, number] => e[1] != null && coverage[e[0]] !== 0),
+  );
+}
+
+/** The lowest measured dimension, as the API's `_worst_dimension` (ties: the first in the summary). */
+export function worstDimension(s: DQSSummary): string | null {
+  let worst: [string, number] | null = null;
+  for (const e of Object.entries(measuredDimensions(s))) if (!worst || e[1] < worst[1]) worst = e;
+  return worst?.[0] ?? null;
+}
+
+/** An objects-list row of the current state: the object's row at its own latest run, and that run. */
+export type CurrentObjectRow = Omit<ObjectSummary, "affected_records"> & {
+  /** Null only when the object's run could not be read and the aggregate cannot attribute its records. */
+  affected_records: number | null;
+  run_id: string;
+};
+
+/**
+ * The objects list of the current state: every object at the latest finished run of its lineage (`stateObjects`
+ * over `runs`, the result of `latestPerLineage`). Each row is the object's row from `GET /objects?run=<its run>`
+ * (`lists`, keyed by run id), so score, readiness, failing checks, affected records, worst dimension and trend are
+ * that run's. A run whose list could not be read still lists its objects from the run's `dqs_summary`
+ * (`stateRows`: affected records from the aggregate where attributable, dimensions derived as the API derives
+ * them). An object a run's list holds without a summary (findings, no score) is kept from the newest run listing it.
+ */
+export function currentObjectRows(
+  runs: readonly Version[],
+  lists: ReadonlyMap<string, readonly ObjectSummary[] | undefined>,
+  opts: {
+    bands?: ScoreBands;
+    aggregate?: Pick<FindingsAggregate, "version_ids" | "by_module"> | null;
+    versions?: readonly Version[];
+    modules?: ReadonlySet<string> | null;
+  } = {},
+): CurrentObjectRow[] {
+  const objects = stateObjects(runs, opts.modules);
+  const fallback = new Map(stateRows(objects, opts.bands, opts.aggregate, opts.versions).map((r) => [r.module, r]));
+  const out = new Map<string, CurrentObjectRow>();
+  for (const { module, summary, run } of objects) {
+    const listed = lists.get(run.id)?.find((o) => o.module === module);
+    const base = fallback.get(module);
+    if (listed) out.set(module, { ...listed, run_id: run.id });
+    else if (base) out.set(module, { ...base, worst_dimension: worstDimension(summary), dimension_scores: measuredDimensions(summary) });
+  }
+  for (const run of [...runs].sort(newestFirst)) {
+    for (const o of lists.get(run.id) ?? []) {
+      if (out.has(o.module) || (opts.modules && !opts.modules.has(o.module))) continue;
+      out.set(o.module, { ...o, run_id: run.id });
+    }
+  }
+  return [...out.values()].sort((a, b) => a.module.localeCompare(b.module));
+}
+
 /** Failing critical and high checks across the objects: the "blocking findings" of the current state. */
 export function blockingTotal(objects: readonly StateObject[]): number {
   return objects.reduce((n, o) => n + o.summary.critical_count + o.summary.high_count, 0);
