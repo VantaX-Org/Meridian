@@ -142,6 +142,58 @@ def check_connections(results: list[dict]) -> None:
                               f"{[m.split('|')[0] for m in missing] or 'none'}"})
 
 
+def check_systems_reachable(results: list[dict]) -> None:
+    """Log on to every configured system, the way an extraction will.
+
+    Credentials present is not the same as credentials that work. The expensive failures are the
+    silent ones: an SAP user whose password expired, or one already locked by an earlier attempt,
+    passes every static check and then fails the baseline at the first logon - or, worse, after
+    hours when the lock is hit mid-read. Meridian's connector refuses to retry a locked user and
+    says so (SU01), so surfacing it here turns a wasted night into one line of output.
+    """
+    code = r"""
+from sqlalchemy import text
+from workers.db import get_sync_engine
+from api.services.connectivity_manager import connect_sap_system
+from api.services.credential_store import decrypt_password
+T = "00000000-0000-0000-0000-000000000001"
+bad, ok = [], []
+e = get_sync_engine()
+with e.connect() as c:
+    c.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": T})
+    rows = c.execute(text(
+        "SELECT id, name, system_type, host, sysnr, client, username, base_url, company_id "
+        "FROM sap_systems ORDER BY name")).mappings().all()
+    for r in rows:
+        enc = c.execute(text("SELECT encrypted_password FROM system_credentials WHERE system_id=:s"),
+                        {"s": str(r["id"])}).scalar()
+        try:
+            if r["system_type"] == "successfactors":
+                conn = connect_sap_system("successfactors", {
+                    "base_url": r["base_url"] or "", "company_id": r["company_id"] or "",
+                    "auth_type": "basic", "username": r["username"] or "",
+                    "password": decrypt_password(T, enc) if enc else ""})
+                conn.read_entity_set("User", select=["userId"])
+            else:
+                conn = connect_sap_system("ecc", {
+                    "host": r["host"], "client": r["client"], "sysnr": r["sysnr"],
+                    "user": r["username"], "password": decrypt_password(T, enc) if enc else ""})
+                conn.read_table("T000", fields=["MANDT"], max_rows=1)
+            ok.append(r["name"])
+        except Exception as ex:
+            bad.append(r["name"] + ": " + str(ex)[:160])
+print("OK " + ", ".join(ok) if not bad else "BAD " + " || ".join(bad))
+"""
+    rc, out = _py(API, code)
+    if rc != 0 or not out:
+        results.append({"name": "systems reachable", "status": "WARN",
+                        "detail": (out or "could not run the logon test")[:200]})
+        return
+    results.append({"name": "systems reachable",
+                    "status": "PASS" if out.startswith("OK") else "FAIL",
+                    "detail": out[3:][:220]})
+
+
 def check_rules_load(results: list[dict]) -> None:
     rc, out = _py(API, "from checks.runner import module_rules; "
                        "n=[len(module_rules(m)) for m in ('material_master','employee_central')]; "
@@ -176,7 +228,7 @@ def main() -> int:
 
     results: list[dict] = []
     for fn in (check_checks_time_limit, check_release_match, check_no_stuck_runs,
-               check_connections, check_rules_load, check_disk):
+               check_connections, check_systems_reachable, check_rules_load, check_disk):
         try:
             fn(results)
         except Exception as e:  # a check must never take the preflight down
