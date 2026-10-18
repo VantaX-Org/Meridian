@@ -224,13 +224,13 @@ def _legacy(findings: list[CheckResult], weights: dict, thresholds: dict, critic
         coverage[dim] = len(rows)
         n = sum(f.total_count for f in rows)
         dims[dim] = (sum(f.pass_rate * f.total_count for f in rows) / n if n
-                     else sum(f.pass_rate for f in rows) / len(rows) if rows else 100.0)
+                     else sum(f.pass_rate for f in rows) / len(rows) if rows else None)
     composite, capped, cap_reason, _ = _composite(dims, coverage, ["critical failure"] * critical, weights)
     # "Nothing measured" stays None, as it is for raw_score/composite_score above. It used to be
     # coerced to 100.0 here, which is how a module whose rules all skipped read 100/100 with
     # coverage 0.0 in the UI: nothing checked is not a pass.
     return {"composite_score": None if composite is None else round(composite, 2),
-            "dimension_scores": {k: round(v, 2) for k, v in dims.items()},
+            "dimension_scores": {k: (None if v is None else round(v, 2)) for k, v in dims.items()},
             "capped": capped, "cap_reason": cap_reason, "tier": tier(composite, thresholds)}
 
 
@@ -256,16 +256,19 @@ def score_module(findings: list[CheckResult], tenant_config: dict, *, module: st
     breaches = [b for f in findings if (b := breach(f, cfg["critical_tolerance"]))]
 
     # C1 + C2: severity-weighted mean of severity-scaled rule scores per dimension
-    dimension_scores: dict[str, float] = {}
+    dimension_scores: dict[str, float | None] = {}
     dimension_coverage: dict[str, int] = {}
     rule_scores: dict[str, float] = {}
     for dim in DEFAULT_WEIGHTS:
         dim_list = [f for f in findings if f.dimension == dim]
         dimension_coverage[dim] = len(dim_list)
         if not dim_list:
-            # No checks for this dimension — shown as 100 with coverage 0, but
-            # excluded from the composite: absence of evidence is not a pass.
-            dimension_scores[dim] = 100.0
+            # No checks measured this dimension. This used to be 100.0 "with coverage 0", relying
+            # on every consumer to check the coverage before using it. The object API does; the
+            # PDF report does not - `dimension_scores()` falls back to max(1, total_checks or 1)
+            # as the weight, so an object with no checks at all contributed a 100 to the report's
+            # average. None says "not measured" in the data itself, which cannot be misread.
+            dimension_scores[dim] = None
             continue
         num = den = 0.0
         for f in dim_list:
@@ -283,7 +286,7 @@ def score_module(findings: list[CheckResult], tenant_config: dict, *, module: st
         module=module,
         composite_score=_round(composite),
         raw_score=_round(raw),
-        dimension_scores={k: round(v, 2) for k, v in dimension_scores.items()},
+        dimension_scores={k: (None if v is None else round(v, 2)) for k, v in dimension_scores.items()},
         dimension_coverage=dimension_coverage,
         critical_count=severity_counts["critical"],
         high_count=severity_counts["high"],
