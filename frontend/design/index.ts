@@ -62,7 +62,6 @@ export * from "./charts/Pareto";
 
 export * from "./templates/HomePage";
 export * from "./templates/JourneyStepper";
-export * from "./templates/GhostPanel";
 export * from "./templates/ExplorerPage";
 export * from "./templates/RecordPage";
 export * from "./templates/ReportPage";
