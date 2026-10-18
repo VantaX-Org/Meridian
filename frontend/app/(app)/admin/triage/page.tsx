@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createRule, createTeam, deleteRule, deleteSlaPolicy, deleteTeam, getRules, getSlaPolicies, getTeams, getTriageSettings,
@@ -13,7 +13,7 @@ import {
 } from "@/lib/api/triage";
 import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorMessage } from "@/lib/error";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 type User = { id: string; name: string; email: string };
@@ -45,12 +45,7 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className="px-2 py-0.5 m-text-meta rounded-full border"
-      style={{
-        color: active ? "var(--m-pass)" : "var(--m-ink-3)",
-        borderColor: active ? "var(--m-pass)" : "var(--m-line)",
-        background: active ? "var(--m-sheet-raised)" : "var(--m-sheet)",
-      }}
+      className="px-2 py-0.5 m-text-meta rounded-full border m-ink-3 [border-color:var(--m-line)] [background:var(--m-sheet)] aria-pressed:[color:var(--m-pass)] aria-pressed:[border-color:var(--m-pass)] aria-pressed:[background:var(--m-sheet-raised)]"
     >
       {children}
     </button>
@@ -257,7 +252,7 @@ function RulesSection({ write }: { write: boolean }) {
   const ruleCols: ColumnDef<AssignmentRule, unknown>[] = [
     { id: "n", header: "#", cell: ({ row }) => <span className="font-mono m-text-meta">{row.index + 1}</span> },
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
-    { id: "match", header: "Matches", cell: ({ row }) => <span style={{ color: "var(--m-ink-3)" }}>{matchText(row.original.match)}</span> },
+    { id: "match", header: "Matches", cell: ({ row }) => <span className="m-ink-3">{matchText(row.original.match)}</span> },
     { id: "to", header: "Assigns to", cell: ({ row }) => target(row.original) },
     { id: "on", header: "Enabled", cell: ({ row }) => <input type="checkbox" checked={row.original.enabled} disabled={!write} onChange={() => toggle.mutate(row.original)} aria-label={`${row.original.name} enabled`} /> },
     {
@@ -381,7 +376,7 @@ function PoliciesSection({ write }: { write: boolean }) {
   });
 
   const slaCols: ColumnDef<SlaPolicy, unknown>[] = [
-    { id: "sev", header: "Severity", cell: ({ row }) => <Pill tone={row.original.severity === "critical" ? "no-go" : row.original.severity === "high" ? "at-risk" : "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "sev", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "mod", header: "Module", cell: ({ row }) => (row.original.module ? formatModuleName(row.original.module) : "All modules") },
     { id: "ack", header: "Acknowledge", cell: ({ row }) => mins(row.original.ack_minutes) },
     { id: "res", header: "Resolve", cell: ({ row }) => mins(row.original.resolve_minutes) },
@@ -533,7 +528,7 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
         <Select value={fallback} onValueChange={setFallback} options={[{ value: "", label: "None" }, ...users.map((u) => ({ value: u.id, label: u.name }))]} />
       </Field>
       <Field label="Holidays (YYYY-MM-DD, one per line)" error={badDates.length ? `Not a date: ${badDates.join(", ")}` : undefined}>
-        <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
+        <textarea className="m-input [height:auto] [padding:6px_10px]" rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
       </Field>
       {write ? (
         <div>

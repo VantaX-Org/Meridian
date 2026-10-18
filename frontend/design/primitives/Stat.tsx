@@ -10,8 +10,9 @@ import type { GlossaryKey } from "@/lib/help/glossary";
 import { Sparkline } from "../charts/Sparkline";
 import { usePrefetch } from "../hooks/usePrefetch";
 import { dqsBand, type DomainKey } from "../tokens";
+import type { Verdict } from "./Status";
 
-export type StatTone = "go" | "at-risk" | "no-go";
+export type StatTone = Verdict;
 
 /** Tone to the hero tone token (aliases of the status scale; the hero is a white sheet). */
 const HERO_TONE: Record<StatTone, string> = {

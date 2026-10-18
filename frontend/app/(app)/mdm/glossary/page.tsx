@@ -6,10 +6,10 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Select } from "@/design";
+import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Select, asyncStateOf } from "@/design";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getGlossaryTerms } from "@/lib/api/glossary";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { GlossaryTermSummary } from "@/types/api";
 
@@ -62,7 +62,7 @@ export default function GlossaryPage() {
     return [{ value: "all", label: "All domains" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: d }))];
   }, [terms]);
 
-  const state = query.isLoading ? "loading" : isListFailure(query) ? "error" : terms.length === 0 ? "empty" : undefined;
+  const state = asyncStateOf(query, () => terms.length === 0, true);
   const filtered = domain !== "all" || status !== "all" || !!search;
 
   return (

@@ -15,20 +15,19 @@ export type FilterChip = { key: string; label: string; clear: () => void };
 export function FilterChips({ chips, onClearAll }: { chips: FilterChip[]; onClearAll: () => void }) {
   // Fixed-height slot so the first chip does not shift the page.
   return (
-    <div role="group" className="flex flex-wrap items-center gap-2" style={{ minHeight: 24 }} aria-label="Active filters">
+    <div role="group" className="flex flex-wrap items-center gap-2 [min-height:24px]" aria-label="Active filters">
       {chips.length ? chips.map((c) => (
         <button
           key={c.key}
           type="button"
           onClick={c.clear}
           aria-label={`Remove filter ${c.label}`}
-          className="m-text-meta m-motion-colors inline-flex items-center gap-1 px-2"
-          style={{ height: 24, borderRadius: "var(--m-radius-control)", background: "var(--m-accent-soft)", color: "var(--m-ink)" }}
+          className="m-text-meta m-motion-colors inline-flex items-center gap-1 px-2 [height:24px]! [border-radius:var(--m-radius-control)]! [background:var(--m-accent-soft)]! m-ink"
         >
           {c.label}<X size={12} aria-hidden />
         </button>
       )) : null}
-      {chips.length ? <button type="button" onClick={onClearAll} className="m-text-meta px-1" style={{ color: "var(--m-accent)" }}>Clear all</button> : null}
+      {chips.length ? <button type="button" onClick={onClearAll} className="m-text-meta px-1 m-ink-accent">Clear all</button> : null}
     </div>
   );
 }
@@ -39,7 +38,7 @@ export function Rows({ items }: { items: [string, ReactNode][] }) {
     <dl className="m-text-body flex flex-col gap-1">
       {items.map(([k, v]) => (
         <div key={k} className="flex justify-between gap-4">
-          <dt style={{ color: "var(--m-ink-3)" }}>{k}</dt>
+          <dt className="m-ink-3">{k}</dt>
           <dd className="text-right">{v}</dd>
         </div>
       ))}
@@ -63,7 +62,7 @@ export function ConditionList({ conditions }: { conditions: Record<string, unkno
               {typeof field === "string" ? <> on <Mono>{field}</Mono></> : null}
             </span>
             {params.length ? (
-              <pre className="m-text-meta overflow-auto p-2" style={{ fontFamily: "var(--m-font-mono)", background: "var(--m-sheet-raised)", borderRadius: "var(--m-radius-control)" }}>
+              <pre className="m-text-meta overflow-auto p-2 [font-family:var(--m-font-mono)]! [background:var(--m-sheet-raised)]! [border-radius:var(--m-radius-control)]!">
                 {params.map(([k, v]) => `${k} = ${scalar(v)}`).join("\n")}
               </pre>
             ) : null}
@@ -80,11 +79,11 @@ export function ThresholdTable({ thresholds }: { thresholds: object }) {
   return (
     <table className="m-text-body w-full">
       <thead>
-        <tr className="m-text-label text-left" style={{ color: "var(--m-ink-3)" }}><th className="py-1 font-medium">Threshold</th><th className="py-1 font-medium">Value</th></tr>
+        <tr className="m-text-label text-left m-ink-3"><th className="py-1 font-medium">Threshold</th><th className="py-1 font-medium">Value</th></tr>
       </thead>
       <tbody>
         {rows.map(([k, v]) => (
-          <tr key={k} style={{ borderTop: "1px solid var(--m-line)" }}>
+          <tr key={k} className="[border-top:1px_solid_var(--m-line)]">
             <td className="py-1">{k.replace(/_/g, " ")}</td>
             <td className="py-1"><Mono>{scalar(v)}</Mono></td>
           </tr>

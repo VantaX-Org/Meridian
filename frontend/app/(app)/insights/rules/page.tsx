@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pareto, Pill, Select, Skeleton, type PillTone } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pareto, Select, Skeleton, Status } from "@/design";
 import { FilterChips } from "@/app/(app)/objects/_header";
 import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
 import { getCostModel } from "@/lib/api/settings";
@@ -28,7 +28,6 @@ const AXES: { value: Axis; label: string }[] = [
   { value: "rule", label: "Rule" }, { value: "module", label: "Object" }, { value: "field", label: "Field" },
   { value: "dimension", label: "Dimension" }, { value: "severity", label: "Severity" }, { value: "s4", label: "S/4 status" },
 ];
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "at-risk", medium: "at-risk" };
 const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 interface Group { key: string; rules: number; affected: number; impact: number; autoFix: number; worst: string | null }
 function groupBy(rows: RuleRow[], axis: Axis): Group[] {
@@ -101,7 +100,7 @@ export default function RulesPage() {
     { accessorKey: "affected", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
     { accessorKey: "impact", header: "Impact", meta: { numeric: true }, cell: ({ row }) => row.original.impact.toLocaleString() },
     { accessorKey: "autoFix", header: "Auto-fix", meta: { numeric: true }, cell: ({ row }) => `${Math.round(row.original.autoFix)}%` },
-    { accessorKey: "worst", header: "Worst severity", cell: ({ row }) => (row.original.worst ? <Pill tone={SEVERITY_TONE[row.original.worst] ?? "neutral"} variant="solid">{labelOf(row.original.worst)}</Pill> : "—") },
+    { accessorKey: "worst", header: "Worst severity", cell: ({ row }) => (row.original.worst ? <Status kind="severity" value={row.original.worst} variant="solid" /> : "—") },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [axis]);
   // Cost at risk is in the tenant currency (cost model); the column appears once any rule carries a cost.

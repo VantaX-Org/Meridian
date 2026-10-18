@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 import { clsx } from "clsx";
+import type { Verdict } from "./Status";
 
-export type PillTone = "neutral" | "go" | "at-risk" | "no-go" | "info";
+/**
+ * Tone of a free label (a tag, a count, a state outside the status vocabulary). When the label IS a verdict,
+ * a severity or a lifecycle stage, render `<Status>` instead: it owns the label.
+ */
+export type PillTone = "neutral" | "info" | Verdict;
 export type PillVariant = "soft" | "solid";
 
 const DOT: ReadonlySet<PillTone> = new Set(["go", "at-risk", "no-go"]);

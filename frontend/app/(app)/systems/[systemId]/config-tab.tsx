@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   discoverConfigNow, getConfigAlignment, getConfigDrift, getConfigGhost, getConfigHealth, getConfigInventory, getConfigLicence,
@@ -17,11 +17,9 @@ import { ConfigComparePanel } from "./config-compare-panel";
 import { AlignmentModuleDrawer, InventoryModuleDrawer } from "./config-module-drawers";
 import { useRerun } from "./use-rerun";
 
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
 const STATUS_TONE: Record<string, PillTone> = { active: "go", partial: "at-risk", dormant: "at-risk", inactive: "no-go", ghost: "no-go" };
 const n = (v: number) => v.toLocaleString();
 const dash = (v: string | null | undefined) => v ?? "—";
-const note = { color: "var(--m-ink-2)" };
 const analyseAction = <Button render={<Link href="/analyse">Run an analysis</Link>} />;
 
 /** One config-intelligence list: loading, 404 (no analysis yet) as an honest empty state, error, then the body. */
@@ -138,7 +136,7 @@ function findingCols(): ColumnDef<AlignmentFinding, unknown>[] {
     { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
-    { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "title", header: "Finding", cell: ({ row }) => row.original.title },
     { id: "impact", header: "Impact (ZAR)", cell: ({ row }) => n(Math.round(row.original.estimated_impact_zar)) },
   ];
@@ -152,8 +150,8 @@ function FindingsTable({ rows, name }: { rows: AlignmentFinding[]; name: string 
       renderDrawer={(f) => (
         <div className="flex flex-col gap-2 m-text-body">
           <p>{f.description}</p>
-          {f.remediation ? <p style={note}>Remediation: {f.remediation}</p> : null}
-          {f.affected_elements.length ? <p style={note}>Affected: {f.affected_elements.join(", ")}</p> : null}
+          {f.remediation ? <p className="m-ink-2">Remediation: {f.remediation}</p> : null}
+          {f.affected_elements.length ? <p className="m-ink-2">Affected: {f.affected_elements.join(", ")}</p> : null}
         </div>
       )} />
   );
@@ -168,7 +166,7 @@ function AlignmentSection() {
   const moduleCols = useMemo<ColumnDef<ModuleFindings, unknown>[]>(() => [
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "total", header: "Findings", cell: ({ row }) => n(row.original.total) },
-    { id: "worst", header: "Worst severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.worst] ?? "neutral"}>{labelOf(row.original.worst)}</Pill> },
+    { id: "worst", header: "Worst severity", cell: ({ row }) => <Status kind="severity" value={row.original.worst} /> },
   ], []);
   return (
     <Feed q={q} empty="Alignment compares configuration with how it is used.">
@@ -225,10 +223,10 @@ function DriftSection() {
         <DataTable columns={cols} data={d.drift_entries} getRowId={(e) => `${e.module}/${e.element_type}/${e.element_value}`} height={380} exportName="config-drift"
           renderDrawer={(e) => (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 m-text-body">
-              <dt style={note}>Previous run</dt><dd><Mono>{d.previous_run_id}</Mono></dd>
-              <dt style={note}>Current run</dt><dd><Mono>{d.current_run_id}</Mono></dd>
-              <dt style={note}>Previous value</dt><dd><Mono>{dash(e.previous_value)}</Mono></dd>
-              <dt style={note}>Current value</dt><dd><Mono>{dash(e.current_value)}</Mono></dd>
+              <dt className="m-ink-2">Previous run</dt><dd><Mono>{d.previous_run_id}</Mono></dd>
+              <dt className="m-ink-2">Current run</dt><dd><Mono>{d.current_run_id}</Mono></dd>
+              <dt className="m-ink-2">Previous value</dt><dd><Mono>{dash(e.previous_value)}</Mono></dd>
+              <dt className="m-ink-2">Current value</dt><dd><Mono>{dash(e.current_value)}</Mono></dd>
             </dl>
           )} />
       )}
@@ -272,7 +270,7 @@ export function ConfigurationTab({ systemId, canPropose }: { systemId: string; c
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="m-text-body" style={note}>Configuration analysis covers every connected system in this workspace, from the latest run.</p>
+        <p className="m-text-body m-ink-2">Configuration analysis covers every connected system in this workspace, from the latest run.</p>
         {can("analyse") ? <Button variant="secondary" onClick={() => discover.mutate()} pending={discover.isPending}>Discover now</Button> : null}
       </div>
       <Tabs

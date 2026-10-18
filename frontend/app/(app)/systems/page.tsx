@@ -131,7 +131,7 @@ export default function SystemsPage() {
         <span className="inline-flex flex-wrap items-center gap-x-2">
           <Pill tone={HEALTH_TONE[row.original.health_status]}>{HEALTH_LABEL[row.original.health_status]}</Pill>
           {row.original.last_health_check ? (
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>checked {relativeTime(row.original.last_health_check)}</span>
+            <span className="m-text-meta m-ink-3">checked {relativeTime(row.original.last_health_check)}</span>
           ) : null}
         </span>
       ),
@@ -173,7 +173,7 @@ export default function SystemsPage() {
         return (
           <Link href={`/systems/${row.original.id}?tab=health&part=config`} className="flex flex-col" onClick={(e) => e.stopPropagation()}>
             <Pill tone={CONFIG_TONE[c.status]}>{CONFIG_LABEL[c.status]}</Pill>
-            <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>{configSub(c)}</span>
+            <span className="m-text-meta m-ink-2">{configSub(c)}</span>
           </Link>
         );
       },

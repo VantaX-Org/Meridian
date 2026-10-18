@@ -19,20 +19,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  Button, Card, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs,
-  type InsightHeaderProps, type PillTone,
-} from "@/design";
+import { Button, Card, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
+import { apiErrorState } from "@/lib/error";
 import { isCompleteVersion, useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
-import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
+import { getMiningGraph } from "@/lib/api/process-mining";
 import { formatModuleName, formatDate, plural, runOptionLabels } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
-import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRunList } from "@/hooks/use-run-list";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -73,7 +70,7 @@ function RunsWithProcess({ exclude }: { exclude?: string }) {
   const options = withProcess
     .map((v) => ({ value: v.id, label: `${names.get(v.id) ?? formatDate(v.run_at, "datetime")}, ${Object.keys(v.dqs_summary ?? {}).filter((m) => PROCESS_MODULES.has(m)).map(formatModuleName).join(", ")}` }));
   if (q.isLoading) return <Skeleton height={32} width={280} />;
-  if (!options.length) return <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>No finished run covers a procure to pay or order to cash object yet.</p>;
+  if (!options.length) return <p className="m-text-body m-ink-2">No finished run covers a procure to pay or order to cash object yet.</p>;
   return (
     <Select
       label="Runs with a process definition"
@@ -98,22 +95,13 @@ const score = (fs: BusinessProcessL5Field[]) =>
 const red = (fs: BusinessProcessL5Field[]) => fs.filter((f) => f.dq_status === "red").length;
 const sev = (f: BusinessProcessL5Field): "critical" | "high" | "medium" =>
   f.mandatory ? "critical" : (f.pass_rate ?? 100) < 50 ? "high" : "medium";
-const SEV_TONE: Record<"critical" | "high" | "medium", PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk" };
-const SEV_LABEL: Record<"critical" | "high" | "medium", string> = { critical: "Critical", high: "High", medium: "Medium" };
 
-const STATE: Record<ConfigImpactResult["status"], { tone: PillTone; label: string }> = {
-  blocked: { tone: "no-go", label: "Blocked" },
-  degraded: { tone: "at-risk", label: "Degraded" },
-  ok: { tone: "go", label: "Unaffected" },
-};
 const ORDER = { blocked: 0, degraded: 1, ok: 2 } as const;
 
 /* ---------- Readiness ---------- */
 
 const fmt1 = (n: number) => n.toFixed(1);
 const records = (n: number) => plural(n, "record");
-const AWARE_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", warning: "at-risk", low: "go" };
-const AWARE_LABEL: Record<string, string> = { critical: "Critical", high: "High", medium: "Medium", warning: "Warning", low: "Low" };
 
 function ConfiguredInText({ items }: { items: ConfiguredIn[] }) {
   return (
@@ -155,7 +143,7 @@ function NotApplicableList({ title, t, findingHref }: {
   const expanded = expandedTitles.has(title);
   if (!t.not_applicable_rules.length) {
     return t.not_applicable ? (
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body m-ink-2">
         Does not apply ({t.not_applicable.toLocaleString()}): {t.not_applicable_reasons.map((x) => `${x.reason} (${x.count})`).join("; ")}.
       </p>
     ) : null;
@@ -163,15 +151,15 @@ function NotApplicableList({ title, t, findingHref }: {
   const shown = expanded ? t.not_applicable_rules : t.not_applicable_rules.slice(0, NOT_APPLICABLE_PREVIEW);
   return (
     <div className="flex flex-col gap-1">
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Does not apply ({t.not_applicable.toLocaleString()}):</p>
+      <p className="m-text-body m-ink-2">Does not apply ({t.not_applicable.toLocaleString()}):</p>
       <ul className="flex flex-col gap-1">
         {shown.map((na) => (
           <li key={na.check_id} className="flex items-center gap-3">
-            <Pill tone={AWARE_TONE[na.severity ?? ""] ?? "neutral"}>{AWARE_LABEL[na.severity ?? ""] ?? na.severity ?? "Unrated"}</Pill>
+            {na.severity ? <Status kind="severity" value={na.severity} /> : <Pill>Unrated</Pill>}
             <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? "/analyse"}>
               <Mono>{na.check_id}</Mono>
             </Link>
-            <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+            <span className="m-text-body m-ink-2">
               {na.reason ?? "Not used by the loaded configuration"}
             </span>
           </li>
@@ -194,11 +182,11 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
   return (
     <div className="flex flex-col gap-1">
       <h4 className="font-medium">{title}</h4>
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body m-ink-2">
         {t.score === null ? "No rules apply" : `${fmt1(t.score)}%, ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} apply`}, {failing.toLocaleString()} failing
       </p>
       {configuredIn?.length ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           Where this is configured: <ConfiguredInText items={configuredIn} />
         </p>
       ) : null}
@@ -206,7 +194,7 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
         <ul className="flex flex-col gap-1" aria-label={`Top failing rules, ${title}`}>
           {t.top_failing.slice(0, 5).map((f) => (
             <li key={f.check_id} className="flex items-center gap-3">
-              <Pill tone={AWARE_TONE[f.severity ?? ""] ?? "neutral"}>{AWARE_LABEL[f.severity ?? ""] ?? f.severity ?? "Unrated"}</Pill>
+              {f.severity ? <Status kind="severity" value={f.severity} /> : <Pill>Unrated</Pill>}
               <Link className="flex-1 underline" href={findingHref(f.module, f.check_id) ?? "/analyse"}>
                 <Mono>{f.check_id}</Mono>
               </Link>
@@ -230,10 +218,10 @@ function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
     <Card title="SAP features at risk">
       <ul className="flex flex-col gap-2">
         {sorted.slice(0, 20).map((r) => (
-          <li key={`${r.system}:${r.feature}`} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
-            <Pill tone={STATE[r.status].tone}>{STATE[r.status].label}</Pill>
+          <li key={`${r.system}:${r.feature}`} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
+            <Status kind="verdict" value={r.status} />
             <span className="flex-1">{r.feature}</span>
-            <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{r.system}</span>
+            <span className="m-text-body m-ink-2">{r.system}</span>
             <span className="m-text-body">{records(r.total_affected_records)}</span>
           </li>
         ))}
@@ -381,7 +369,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
             options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
             onValueChange={setSystem} />
         ) : null}
-        <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+        <span className="m-text-meta m-ink-3">
           Version {latest.label ?? latest.id.slice(0, 8)}, run {formatDate(latest.run_at, "datetime")}
         </span>
       </div>
@@ -396,7 +384,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
       <Card title="Gates" meta={l1.l1_name}>
         <ul className="flex flex-col gap-2">
           {gates.map((g) => (
-            <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+            <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
               <Pill tone={g.blocking ? "no-go" : g.score >= 90 ? "go" : "at-risk"}>
                 {g.blocking ? "Blocked" : g.score >= 90 ? "Ready" : "At risk"}
               </Pill>
@@ -412,10 +400,10 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
           {blockingFindings.length ? (
             <ul className="flex flex-col gap-2">
               {blockingFindings.slice(0, 10).map((b) => (
-                <li key={b.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
-                  <Pill tone={SEV_TONE[b.severity]}>{SEV_LABEL[b.severity]}</Pill>
+                <li key={b.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
+                  <Status kind="severity" value={b.severity} />
                   <span className="flex-1">{b.href ? <Link className="underline" href={b.href}>{b.title}</Link> : b.title}</span>
-                  <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{b.gate}</span>
+                  <span className="m-text-body m-ink-2">{b.gate}</span>
                   <span className="m-text-body">{records(b.affected)}</span>
                 </li>
               ))}
@@ -426,9 +414,9 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
           {recommendations.length ? (
             <ul className="flex flex-col gap-2">
               {recommendations.map((r) => (
-                <li key={r.id} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+                <li key={r.id} className="border-b py-2 [border-color:var(--m-line)]">
                   <div>{r.label}</div>
-                  <div className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{r.rationale}</div>
+                  <div className="m-text-body m-ink-2">{r.rationale}</div>
                 </li>
               ))}
             </ul>
@@ -440,7 +428,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         <Card title="Rules by step">
           <div id="applicability" className="flex flex-col gap-3">
             {!aware.data?.config_load ? (
-              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+              <p className="m-text-body m-ink-2">
                 All {awareL1.applicable.toLocaleString()} rules apply by default. Load configuration to narrow this.
               </p>
             ) : null}
@@ -459,9 +447,6 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
 
 /* ---------- Map ---------- */
 
-const STEP_TONE: Record<MiningActivity["step_status"], PillTone> = { green: "go", amber: "at-risk", red: "no-go" };
-const STEP_LABEL: Record<MiningActivity["step_status"], string> = { green: "Passing", amber: "Some fields failing", red: "Blocking failures" };
-const READINESS_LABEL: Record<MiningVariant["readiness"], string> = { green: "Ready", amber: "At risk", red: "Blocked" };
 const MAPPED = new Set(["accounts_payable", "accounts_receivable", "fi_gl", "material_master", "mm_purchasing", "sd_customer_master", "sd_sales_orders"]);
 
 function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) {
@@ -568,8 +553,8 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
               {bottlenecks.length ? (
                 <ol className="flex flex-col gap-2">
                   {bottlenecks.slice(0, 8).map((b) => (
-                    <li key={b.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
-                      <Pill tone={STEP_TONE[b.step_status]}>{b.step_status === "red" ? "Blocking" : "Failing"}</Pill>
+                    <li key={b.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
+                      <Status kind="verdict" value={b.step_status} />
                       <span className="flex-1">{b.label}</span>
                       <span className="m-text-body">{records(b.affected_records)}</span>
                     </li>
@@ -581,8 +566,8 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
               {variants.length ? (
                 <ul className="flex flex-col gap-2">
                   {variants.slice(0, 8).map((v) => (
-                    <li key={v.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
-                      <Pill tone={STEP_TONE[v.readiness] ?? "neutral"}>{READINESS_LABEL[v.readiness] ?? v.readiness}</Pill>
+                    <li key={v.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
+                      <Status kind="verdict" value={v.readiness} />
                       <span className="flex-1">{v.label}</span>
                       <span className="m-text-body">{plural(v.activity_count, "step")}</span>
                     </li>
@@ -597,7 +582,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
       <Drawer open={!!picked} onOpenChange={(o) => { if (!o) setNode(null); }} title={picked?.label ?? "Step"}>
         {picked ? (
           <div className="flex flex-col gap-2">
-            <Pill tone={STEP_TONE[picked.step_status]}>{STEP_LABEL[picked.step_status]}</Pill>
+            <Status kind="verdict" value={picked.step_status} />
             <p>
               {picked.tcode ? <><Mono>{picked.tcode}</Mono>, </> : null}{picked.affected_records.toLocaleString()} affected records, {picked.finding_count.toLocaleString()} findings
               {picked.avg_pass_rate != null ? `, ${Math.round(picked.avg_pass_rate)}% pass rate` : ""}.

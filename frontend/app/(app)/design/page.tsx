@@ -1,6 +1,4 @@
-import {
-  Button, Card, IconButton, Pill, Badge, PageHeader, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono,
-} from "@/design";
+import { Button, Card, IconButton, Pill, Status, Badge, PageHeader, SeverityDot, Delta, Stat, Skeleton, Mono, Score } from "@/design";
 
 import { ExportDemo } from "./export-demo";
 import { GalleryMore } from "./gallery-more";
@@ -14,7 +12,7 @@ export default function DesignGalleryPage() {
       <PageHeader title="Design gallery" meta="Light and dark side by side" />
       <div className="grid gap-4 xl:grid-cols-2">
       {(["light", "dark"] as const).map((theme) => (
-        <div key={theme} data-theme={theme} className="rounded p-2" style={{ background: "var(--m-canvas)", color: "var(--m-ink)" }}>
+        <div key={theme} data-theme={theme} className="rounded p-2 [background:var(--m-canvas)] m-ink">
         <Card title={theme === "light" ? "Light" : "Dark"}>
         <div className="flex flex-col gap-4">
           <div className="flex gap-2 items-center">
@@ -24,10 +22,21 @@ export default function DesignGalleryPage() {
             <IconButton aria-label="Example icon button">{"•"}</IconButton>
           </div>
           <div className="flex gap-2 items-center">
-            <Pill tone="go">Go</Pill>
-            <Pill tone="at-risk">At risk</Pill>
-            <Pill tone="no-go">No-go</Pill>
+            <Status kind="verdict" value="go" />
+            <Status kind="verdict" value="at-risk" />
+            <Status kind="verdict" value="no-go" />
             <Badge count={3} />
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <Status kind="severity" value="critical" />
+            <Status kind="severity" value="high" />
+            <Status kind="severity" value="medium" />
+            <Status kind="severity" value="low" />
+            <Status kind="lifecycle" value="queued" />
+            <Status kind="lifecycle" value="running" />
+            <Status kind="lifecycle" value="done" />
+            <Status kind="lifecycle" value="failed" />
+            <Pill>Free label</Pill>
           </div>
           <div className="flex gap-4 items-center">
             <SeverityDot severity="critical" />
@@ -39,8 +48,9 @@ export default function DesignGalleryPage() {
           <div className="flex gap-4 items-center">
             <Delta value={5} />
             <Delta value={-5} />
-            <Stat label="DQS" help="dqs" value={92} delta={<Delta value={2} />} />
-            <ScoreRing score={78} />
+            <Stat label="Failing records" value={1204} delta={<Delta value={2} />} />
+            <Score size="sm" value={78} />
+            <Score value={78} cap={70} criticals={1} />
           </div>
           <div className="flex gap-4 items-center">
             <Skeleton width={120} />

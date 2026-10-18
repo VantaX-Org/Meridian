@@ -14,7 +14,6 @@ import { queryKeys } from "@/lib/query-keys";
 const pct = (v: number | null) => (v === null ? "—" : `${(v * 100).toFixed(1)}%`);
 const n = (v: number) => v.toLocaleString();
 const note = "m-text-body";
-const noteStyle = { color: "var(--m-ink-2)" };
 
 /** Pilot scorecard: how right Meridian is on this system, judged by the stewards' own decisions. */
 export function PilotTab({ id }: { id: string }) {
@@ -38,8 +37,8 @@ export function PilotTab({ id }: { id: string }) {
   const ruleCols = useMemo<ColumnDef<RuleScore, unknown>[]>(() => [
     { id: "rule", header: "Rule", cell: ({ row }) => (
       <span className="flex flex-col">
-        <Link href={`/findings?${new URLSearchParams({ check_id: row.original.check_id, module: row.original.module })}`} style={{ color: "var(--m-accent)" }}><Mono>{row.original.check_id}</Mono></Link>
-        <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{formatModuleName(row.original.module)}{row.original.message ? `. ${row.original.message}` : ""}</span>
+        <Link href={`/findings?${new URLSearchParams({ check_id: row.original.check_id, module: row.original.module })}`} className="m-ink-accent"><Mono>{row.original.check_id}</Mono></Link>
+        <span className="m-text-meta m-ink-3">{formatModuleName(row.original.module)}{row.original.message ? `. ${row.original.message}` : ""}</span>
       </span>) },
     { id: "flagged", header: "Flagged", cell: ({ row }) => n(row.original.flagged) },
     { id: "reviewed", header: "Reviewed", cell: ({ row }) => n(row.original.reviewed) },
@@ -76,7 +75,7 @@ export function PilotTab({ id }: { id: string }) {
       </Card>
 
       <Card title="Precision per rule" meta={`${data?.rules.length ?? 0} rules`}>
-        <p className={`${note} mt-1`} style={noteStyle} id="rules">
+        <p className={`${note} mt-1 m-ink-2`} id="rules">
           A reviewed issue is one closed as false positive, accepted risk or fixed. A rule is rated once {p?.min_reviewed_per_rule ?? 10} of its
           issues are reviewed, and needs tuning below {pct(p?.target ?? 0.9)}.
         </p>
@@ -101,7 +100,7 @@ export function PilotTab({ id }: { id: string }) {
               </>
         ) : undefined}
       >
-        <p className={`${note} mt-1`} style={noteStyle} id="missed">
+        <p className={`${note} mt-1 m-ink-2`} id="missed">
           Upload the records your stewards know are wrong as CSV with columns object, record and note. Object is the Meridian object, for example
           accounts_payable, or blank for any. Record is the SAP key with parts separated by a pipe, for example 1000|100001. Leading zeros do not matter.
         </p>
@@ -118,7 +117,7 @@ export function PilotTab({ id }: { id: string }) {
         ) : (
           <>
             <DataTable columns={missedCols} data={rec.missed} getRowId={(m) => `${m.module}/${m.record_ref}`} height={340} />
-            {rec.missed_total > rec.missed.length ? <p className="m-text-meta mt-1" style={{ color: "var(--m-ink-3)" }}>{n(rec.missed_total - rec.missed.length)} more not shown.</p> : null}
+            {rec.missed_total > rec.missed.length ? <p className="m-text-meta mt-1 m-ink-3">{n(rec.missed_total - rec.missed.length)} more not shown.</p> : null}
           </>
         )}
       </Card>

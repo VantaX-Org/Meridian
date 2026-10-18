@@ -73,7 +73,7 @@ function TeamCard() {
             <Stat label="Hours per item" value={s.avg_review_hours} />
           </div>
         ) : (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Pick someone to see their throughput and approval rate.</p>
+          <p className="m-text-body m-ink-3">Pick someone to see their throughput and approval rate.</p>
         )}
       </div>
     </Card>
@@ -144,7 +144,7 @@ export default function OperationsPage() {
         ) : (
           <>
             <Bar data={bottlenecks.map((b) => ({ x: b.stage, label: stageLabel(b.stage), y: Math.round(b.avg_age_hours) }))} label="Average age by stage in hours" height={Math.max(120, bottlenecks.length * 40)} />
-            {worst && <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>{`${stageLabel(worst.stage)} holds work longest, at ${hours(worst.avg_age_hours)} on average.`}</p>}
+            {worst && <p className="mt-2 m-text-body m-ink-2">{`${stageLabel(worst.stage)} holds work longest, at ${hours(worst.avg_age_hours)} on average.`}</p>}
           </>
         )}
       </Section>

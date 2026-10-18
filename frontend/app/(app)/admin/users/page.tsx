@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
+import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
@@ -95,7 +95,7 @@ function UsersView() {
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     {
       id: "user", header: "User",
-      cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{row.original.email}</div></span>,
+      cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="m-text-meta m-ink-3">{row.original.email}</div></span>,
     },
     { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original.role]?.label ?? row.original.role}</span> },
     { id: "active", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
@@ -131,13 +131,11 @@ function UsersView() {
         <Stat label="Never signed in" value={usersQ.isLoading ? undefined : neverSignedIn} />
       </div>
 
-      {usersQ.isError ? (
-        <ErrorState {...apiErrorState(usersQ.error)} onRetry={() => usersQ.refetch()} />
-      ) : usersQ.isLoading ? <Skeleton height={240} /> : users.length ? (
+      <Async query={usersQ} skeleton={240}>{users.length ? (
         <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowClick={(u) => setEditing(u)} />
       ) : (
         <EmptyState title="No users yet" detail="Invite the first steward or analyst." action={<Button onClick={() => setInvite(true)}>Invite user</Button>}/>
-      )}
+      )}</Async>
 
       <Drawer open={invite} onOpenChange={setInvite} title="Invite a user">
         {invite ? <InviteForm onDone={() => { setInvite(false); refresh(); }} /> : null}
@@ -165,7 +163,7 @@ function RolesView() {
   const actions = useMemo(() => Array.from(new Set(Object.values(matrix ?? {}).flat())).sort(), [matrix]);
 
   const matrixCols = useMemo<ColumnDef<UserRole, unknown>[]>(() => [
-    { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original].label}<div className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[row.original].desc}</div></span> },
+    { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original].label}<div className="m-text-label m-ink-3">{ROLE_META[row.original].desc}</div></span> },
     ...actions.map((a): ColumnDef<UserRole, unknown> => ({
       id: a, header: a,
       cell: ({ row }) => (matrix?.[row.original]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="sr-only">Not allowed</span>),
@@ -179,7 +177,7 @@ function RolesView() {
 
   return (
     <div className="flex flex-col gap-6 pt-4">
-      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Permissions come from the API role matrix, the frontend keeps no copy.</p>
+      <p className="m-text-body m-ink-3">Permissions come from the API role matrix, the frontend keeps no copy.</p>
       {matrixQ.isError ? (
         <ErrorState {...apiErrorState(matrixQ.error)} onRetry={() => matrixQ.refetch()} />
       ) : matrix ? (
@@ -214,11 +212,9 @@ function AuditView() {
           ]}
         />
       </div>
-      {auditQ.isError ? (
-        <ErrorState {...apiErrorState(auditQ.error)} onRetry={() => auditQ.refetch()} />
-      ) : auditQ.isLoading ? <Skeleton height={240} /> : entries.length ? (
+      <Async query={auditQ} skeleton={240}>{entries.length ? (
         <DataTable columns={auditCols} data={entries} getRowId={(e) => e.id} />
-      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}
+      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}</Async>
     </div>
   );
 }
@@ -236,11 +232,11 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
 
   return (
     <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
-      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{user.email}</p>
+      <p className="m-text-body m-ink-3">{user.email}</p>
       <Field label="Role">
         <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
       </Field>
-      <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[role].desc}</p>
+      <p className="m-text-meta m-ink-3">{ROLE_META[role].desc}</p>
       <label className="flex items-center gap-2 m-text-body">
         <input type="checkbox" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
         <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>
@@ -253,12 +249,12 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen} title={`Remove ${user.name}?`}>
         <div className="flex flex-col gap-3">
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-body m-ink-3">
             Why remove {user.name}? Their stewardship history stays attributed to them
           </p>
           {/* ponytail: this reason is a client-side confirmation gate only, same as the
               legacy ReasonButton it replaces — deleteUser() takes no reason parameter. */}
-          <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
+          <textarea className="m-input [height:auto] [padding:6px_10px]" aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
           <div className="flex gap-2">
             <Button
               variant="secondary"

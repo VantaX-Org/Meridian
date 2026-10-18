@@ -47,7 +47,7 @@ describe("ImpactPage", () => {
     });
     renderWithQuery(<ImpactPage />);
     await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
-    expect(screen.getByText("Blocked")).toBeInTheDocument();
+    expect(screen.getByText("No-go")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getAllByText(/6[,. ]?300/).length).toBeGreaterThan(0);
     expect(screen.getByRole("img", { name: /value at risk by feature/i })).toBeInTheDocument();

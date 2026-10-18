@@ -5,13 +5,9 @@ import { PageFrame } from "./PageFrame";
 import type { ReactNode } from "react";
 import { Button } from "../primitives/Button";
 import { PageHeader } from "../primitives/PageHeader";
-import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
-import { ErrorState } from "../primitives/ErrorState";
+import { Async, type AsyncEmpty, type AsyncError, type AsyncState } from "../primitives/Async";
 import { Skeleton } from "../primitives/Skeleton";
 import { ReportPrintContext } from "../primitives/ExportMenu";
-import { useLoadingTimeout } from "../hooks/useLoadingTimeout";
-
-const SLOW = "This is taking longer than expected.";
 
 export function ReportPage({
   title,
@@ -42,39 +38,27 @@ export function ReportPage({
   onExport?: () => void;
   /** Rendered in the page header row, right-aligned. Suppresses the legacy bottom `onExport` button. */
   exportMenu?: ReactNode;
-  /** Swaps the charts/tables region for a skeleton, empty or error state. */
-  state?: "loading" | "empty" | "error";
-  emptyProps?: { title: string; detail?: string; action?: ReactNode; ghost?: EmptyStateGhost };
-  errorProps?: { message: string; onRetry?: () => void };
+  /** Swaps the charts/tables region for a skeleton, empty or error state (`Async`); default "ready". */
+  state?: AsyncState;
+  emptyProps?: AsyncEmpty;
+  errorProps?: AsyncError;
 }) {
-  const stuck = useLoadingTimeout(state === "loading");
-  let body: ReactNode = (
-    <>
+  const body = (
+    <Async
+      state={state}
+      skeleton={loading ?? (
+        <div className="m-motion-stagger flex flex-col gap-2">
+          <Skeleton height={240} />
+          <Skeleton height={120} />
+        </div>
+      )}
+      empty={{ ...emptyProps, title: emptyProps?.title ?? "Nothing to show", ghost: emptyProps?.ghost ?? "chart" }}
+      error={errorProps ?? { message: "Something went wrong" }}
+    >
       {charts}
       {tables}
-    </>
+    </Async>
   );
-  if (state === "loading" && stuck) {
-    body = <ErrorState title={SLOW} message="The server has not answered. Retry, or check the job tray." onRetry={errorProps?.onRetry ?? (() => window.location.reload())} />;
-  } else if (state === "loading") {
-    body = loading ?? (
-      <div className="m-motion-stagger flex flex-col gap-2" data-state="loading">
-        <Skeleton height={240} />
-        <Skeleton height={120} />
-      </div>
-    );
-  } else if (state === "empty") {
-    body = (
-      <EmptyState
-        title={emptyProps?.title ?? "Nothing to show"}
-        detail={emptyProps?.detail}
-        action={emptyProps?.action}
-        ghost={emptyProps?.ghost ?? "chart"}
-      />
-    );
-  } else if (state === "error") {
-    body = <ErrorState message={errorProps?.message ?? "Something went wrong"} onRetry={errorProps?.onRetry} />;
-  }
 
   return (
     <ReportPrintContext.Provider value>

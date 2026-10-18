@@ -12,17 +12,14 @@ import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Button, DataTable, Drawer, EmptyState, ErrorState, Input, LineageChart, type LineageChartEdge, type LineageChartNode,
-  Card, Mono, Pill, type PillTone, Select, Skeleton,
-} from "@/design";
+import { Button, DataTable, Drawer, EmptyState, ErrorState, Input, LineageChart, type LineageChartEdge, type LineageChartNode, Card, Mono, Select, Skeleton, Status, Async } from "@/design";
 import { useLatestVersion } from "@/components/process/shared";
 import { getFindings } from "@/lib/api/findings";
 import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
-  type ImpactRow, type LineageDirection, type LineageNode, type Severity,
+  type ImpactRow, type LineageDirection, type LineageNode,
 } from "@/lib/api/lineage";
-import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -32,8 +29,6 @@ import { atRiskSentence, findingsHref, pct } from "./links";
 // ponytail: the layered chart past this many nodes gets taller than a screen. Narrow the trace depth to see the rest.
 const MAX_NODES = 150;
 
-const SEV_TONE: Record<Severity, PillTone> = { low: "neutral", medium: "at-risk", high: "no-go", critical: "no-go" };
-const SEV_LABEL: Record<Severity, string> = { low: "Low", medium: "Medium", high: "High", critical: "Critical" };
 const TYPE_LABEL: Record<ImpactRow["type"], string> = { kpi: "KPI", process: "Process", feature: "Feature" };
 
 function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) {
@@ -46,18 +41,18 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
   const d = q.data;
   return (
     <div className="flex flex-col gap-2">
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body m-ink-2">
         {d.steps.length.toLocaleString()} {d.steps.length === 1 ? "step feeds" : "steps feed"} this node.{" "}
         {d.coverage_gaps.length ? `${d.coverage_gaps.length.toLocaleString()} have no guarding rule.` : "Every step has a guarding rule."}
       </p>
       <ul className="flex flex-col gap-2">
         {d.steps.map((s) => (
-          <li key={s.id} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+          <li key={s.id} className="border-b py-2 [border-color:var(--m-line)]">
             <div className="flex items-center gap-3">
               <span className="flex-1">{s.label}</span>
               <span className="m-text-body">{s.guard_count} {s.guard_count === 1 ? "rule" : "rules"}</span>
             </div>
-            <div className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+            <div className="m-text-body m-ink-2">
               {s.tcode ? <><Mono>{s.tcode}</Mono>, </> : null}
               {s.min_pass_rate != null ? `lowest pass rate ${pct(s.min_pass_rate)}` : "no pass rate"}
               {s.unguarded_fields.length ? `. Unguarded: ${s.unguarded_fields.join(", ")}` : ""}
@@ -80,19 +75,19 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
   if (!d.failing_records) return <EmptyState title={`No failing records are stored for ${checkId} in this version.`} />;
   return (
     <div className="flex flex-col gap-2">
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body m-ink-2">
         {d.failing_records.toLocaleString()} failing {d.grain ?? ""} {d.failing_records === 1 ? "record" : "records"}{d.keys_truncated ? " (capped)" : ""} on{" "}
         {d.object ?? "an unmapped object"} touch {d.processes_touched.length.toLocaleString()} {d.processes_touched.length === 1 ? "process" : "processes"}.
       </p>
       {d.targets.length ? (
         <ul className="flex flex-col gap-2">
           {d.targets.map((t) => (
-            <li key={t.table} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+            <li key={t.table} className="border-b py-2 [border-color:var(--m-line)]">
               <div className="flex items-center gap-3">
                 <span className="flex-1">{t.label}</span>
                 <span className="m-text-body">{t.status === "ok" ? `${t.documents.toLocaleString()} documents` : ""}</span>
               </div>
-              <div className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+              <div className="m-text-body m-ink-2">
                 <Mono>{t.table}</Mono>
                 {t.status === "ok" ? `, ${t.objects_touched.toLocaleString()} master records, joined on ${t.joined_on.join(", ")}`
                   : t.status === "not_extracted" ? ", not extracted" : ", record key lacks the join field"}
@@ -182,7 +177,7 @@ export default function LineagePage() {
     },
     {
       id: "worst", header: "Severity", accessorFn: (r) => r.worst_severity ?? "", size: 110,
-      cell: ({ row }) => row.original.worst_severity ? <Pill tone={SEV_TONE[row.original.worst_severity]}>{SEV_LABEL[row.original.worst_severity]}</Pill> : null,
+      cell: ({ row }) => row.original.worst_severity ? <Status kind="severity" value={row.original.worst_severity} /> : null,
     },
   ], [latest, moduleByCheck]);
 
@@ -234,7 +229,7 @@ export default function LineagePage() {
               : nodes.length ? (
                 <>
                   <LineageChart nodes={nodes} edges={edges} focusId={focus} selectedId={selId} onNodeClick={(id) => setSelId(id)} />
-                  <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                  <p className="m-text-body m-ink-2">
                     {nodes.length.toLocaleString()} nodes and {edges.length.toLocaleString()} links {direction === "both" ? "up and downstream of" : direction === "up" ? "upstream of" : "downstream of"} {label(focus)}.
                     {capped ? ` Nearest ${MAX_NODES} of ${graphQ.data?.nodes.length.toLocaleString()} nodes shown; narrow the depth to see the rest.` : ""}
                     {" "}Red squares are reached by a failing rule. Red and orange links block or degrade their target.
@@ -244,14 +239,12 @@ export default function LineagePage() {
           </div>
         </Card>
         <Card title="KPIs, processes and features at risk">
-          {impactQ.isLoading ? <Skeleton height={160} />
-            : isListFailure(impactQ) ? <ErrorState {...apiErrorState(impactQ.error)} onRetry={() => void impactQ.refetch()} />
-            : rows.length === 0 ? (
+          <Async query={impactQ} skeleton={160} notFoundIsEmpty>{rows.length === 0 ? (
               latest
                 ? <EmptyState title="No failing rule reaches a KPI, process or feature" action={<Button render={<Link href="/rules">Open rules</Link>} />} />
                 : <EmptyState title="No lineage yet" detail={dayOne.step?.detail ?? "Impact needs a completed analysis."} action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
             )
-            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />}
+            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />}</Async>
         </Card>
       </InsightFrame>
 
@@ -272,10 +265,10 @@ export default function LineagePage() {
             {neighbours.length ? (
               <ul className="flex flex-col gap-2">
                 {neighbours.slice(0, 20).map((e, i) => (
-                  <li key={i} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+                  <li key={i} className="border-b py-2 [border-color:var(--m-line)]">
                     <div className="flex items-center gap-3">
                       <span className="flex-1">{label(e.source === sel.id ? e.target : e.source)}</span>
-                      <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{e.source === sel.id ? "Downstream" : "Upstream"}, {e.rel.replaceAll("_", " ")}</span>
+                      <span className="m-text-body m-ink-2">{e.source === sel.id ? "Downstream" : "Upstream"}, {e.rel.replaceAll("_", " ")}</span>
                     </div>
                   </li>
                 ))}

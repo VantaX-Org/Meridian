@@ -6,13 +6,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
-import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat } from "@/design";
+import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat, Status, asyncStateOf } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { VERDICT_LABEL, VERDICT_TONE } from "@/lib/migration-verdict";
 import type { MigrationWave, TransferVerdict, WaveVerdict } from "@/types/api";
 import { CreateWaveDialog, STAGE_LABEL } from "./create-wave-dialog";
 
@@ -59,7 +58,7 @@ export default function MigrationPage() {
       id: "verdict", header: "Verdict",
       cell: ({ row }) => {
         const v = row.original.last_verdict ? FROM_ENGINE[row.original.last_verdict] : null;
-        return v ? <Pill tone={VERDICT_TONE[v]}>{VERDICT_LABEL[v]}</Pill> : <Pill>Not run</Pill>;
+        return v ? <Status kind="verdict" value={v} /> : <Pill>Not run</Pill>;
       },
     },
     {
@@ -117,7 +116,7 @@ export default function MigrationPage() {
           <div className="flex items-center justify-between gap-2 m-text-body">
             {verdict ? (
               <span className="flex items-center gap-2">
-                <span style={{ color: "var(--m-ink-2)" }}>Showing {verdict.replace("_", " ")} waves.</span>
+                <span className="m-ink-2">Showing {verdict.replace("_", " ")} waves.</span>
                 <Button variant="secondary" onClick={() => setVerdict("")}>Show all waves</Button>
               </span>
             ) : <span />}
@@ -125,7 +124,7 @@ export default function MigrationPage() {
         }
         table={<DataTable columns={columns} data={shownWaves} getRowId={(w) => w.id}
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}
-        state={waves.isPending ? "loading" : isListFailure(waves) ? "error" : data.length === 0 ? "empty" : undefined}
+        state={asyncStateOf(waves, () => data.length === 0, true)}
         emptyProps={{ title: "No migration waves yet. Create one to track readiness.", action: createButton }}
         errorProps={{ message: apiErrorMessage(waves.error), onRetry: () => void waves.refetch() }}
       />

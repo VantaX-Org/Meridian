@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Pill, Stat, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Stat, Status, statusLabel } from "@/design";
 import { getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -16,27 +16,17 @@ import { Section } from "../_components/Section";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
-const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
-  go: "go",
-  at_risk: "at-risk",
-  no_go: "no-go",
-};
 
 const HEAT: Record<ReadinessCell["verdict"], "go" | "at-risk" | "no-go"> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
 
-const VERDICT_LABEL: Record<ReadinessCell["verdict"], string> = {
-  go: "Go",
-  at_risk: "At risk",
-  no_go: "No-go",
-};
 
 const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
   { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
   { accessorKey: "wave", header: "Wave" },
-  { id: "verdict", header: "Readiness", accessorFn: (c) => VERDICT_LABEL[c.verdict], cell: ({ row }) => (
+  { id: "verdict", header: "Readiness", accessorFn: (c) => statusLabel("verdict", c.verdict), cell: ({ row }) => (
       <DrillLink href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`}>
-        <span aria-label={`${formatModuleName(row.original.module)}, wave ${row.original.wave}: ${VERDICT_LABEL[row.original.verdict]}`}>
-          <Pill tone={VERDICT_TONE[row.original.verdict]}>{VERDICT_LABEL[row.original.verdict]}</Pill>
+        <span aria-label={`${formatModuleName(row.original.module)}, wave ${row.original.wave}: ${statusLabel("verdict", row.original.verdict)}`}>
+          <Status kind="verdict" value={row.original.verdict} />
         </span>
       </DrillLink>
     ) },
@@ -168,7 +158,7 @@ export default function ReadinessPage() {
                 if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: cell.col })}`);
               }}
             />
-            <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>Each cell is a wave and object pair. Select one to open its records.</p>
+            <p className="mt-2 m-text-body m-ink-2">Each cell is a wave and object pair. Select one to open its records.</p>
           </>
         )}
       </Card>

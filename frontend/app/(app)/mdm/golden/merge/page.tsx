@@ -29,7 +29,7 @@ export default function GoldenRecordMergePage() {
       <EmptyState
         title="Choose a master record"
         detail="Pick a record from merge candidates to compare its sources."
-        action={<Link href="/insights/duplicates" style={{ color: "var(--m-accent)" }}>Review merge candidates</Link>}
+        action={<Link href="/insights/duplicates" className="m-ink-accent">Review merge candidates</Link>}
       />
     );
   }
@@ -57,7 +57,7 @@ export default function GoldenRecordMergePage() {
       <EmptyState
         title="Record not found"
         detail="It may have been removed or merged already."
-        action={<Link href="/mdm/golden" style={{ color: "var(--m-accent)" }}>All golden records</Link>}
+        action={<Link href="/mdm/golden" className="m-ink-accent">All golden records</Link>}
       />
     );
   }
@@ -76,7 +76,7 @@ export default function GoldenRecordMergePage() {
         const c = s as { value: unknown; confidence: number };
         const conflicts = c.value !== row.original.value;
         return (
-          <span style={conflicts ? { color: "var(--m-critical)" } : undefined}>
+          <span className={conflicts ? "m-ink-critical" : undefined}>
             {c.value == null ? "None" : String(c.value)} ({Math.round(c.confidence * 100)}%)
           </span>
         );
@@ -89,16 +89,16 @@ export default function GoldenRecordMergePage() {
       <PageHeader
         title={`Merge conflicts for ${record.sap_object_key}`}
         meta="Field-by-field comparison of the golden value against every contributing source"
-        actions={<Link href={`/mdm/golden/${record.id}`} className="m-text-body" style={{ color: "var(--m-accent)" }}>Back to record</Link>}
+        actions={<Link href={`/mdm/golden/${record.id}`} className="m-text-body m-ink-accent">Back to record</Link>}
       />
       <Card title="Field comparison" meta={String(fields.length)}>
         {fields.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No golden fields to compare</p>
+          <p className="m-text-body m-ink-3">No golden fields to compare</p>
         ) : (
           <DataTable columns={cols} getRowId={(r) => r.field} data={rows} height="auto" />
         )}
       </Card>
-      <Link href="/insights/duplicates" className="m-text-body" style={{ color: "var(--m-accent)" }}>
+      <Link href="/insights/duplicates" className="m-text-body m-ink-accent">
         Review other merge candidates in duplicates
       </Link>
     </div>

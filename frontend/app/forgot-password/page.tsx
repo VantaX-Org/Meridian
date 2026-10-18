@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/lib/api/auth";
-import { AuthFrame, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { AuthFrame, authFormClass, authLinkClass } from "@/components/auth/auth-frame";
 import { Button, Field, Notice } from "@/design";
 
 export default function ForgotPasswordPage() {
@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
           <Notice tone="info" title="Check your email">
             If an account uses {email.trim()}, a reset link is on its way. The link is valid for one hour.
           </Notice>
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>No email after a few minutes? Check spam, or ask your administrator to reset the password for you.</p>
+          <p className="m-text-body m-ink-2">No email after a few minutes? Check spam, or ask your administrator to reset the password for you.</p>
         </>
       ) : (
         <form className={authFormClass} onSubmit={onSubmit} noValidate>
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           <Button type="submit" pending={submitting} className="w-full">Send link</Button>
         </form>
       )}
-      <Link className={authLinkClass} style={authLinkStyle} href="/sign-in">Back to sign in</Link>
+      <Link className={authLinkClass} href="/sign-in">Back to sign in</Link>
     </AuthFrame>
   );
 }

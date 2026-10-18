@@ -6,13 +6,13 @@ import { useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, Field, Input, Pill, Select } from "@/design";
+import { Button, Card, Field, Input, Pill, Select, asyncStateOf } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
 import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
 import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
 import { lineageOf } from "@/lib/runs";
@@ -113,13 +113,13 @@ export default function ReportsPage() {
           <Select label="Object" value={module} onValueChange={setModule} options={[{ value: NONE, label: "All objects" }, ...(heat.data?.rows ?? []).map((r) => ({ value: r.module, label: formatModuleName(r.module) }))]} />
         </>
       }
-      state={versions.isLoading ? "loading" : isListFailure(versions) ? "error" : runs.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(versions, () => runs.length === 0, true)}
       emptyProps={{ title: "No completed run yet", detail: "Reports are rendered from a finished run.", ghost: "table", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
     >
       <>
       {!can("export") ? (
-        <Card title="Reports"><p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Export needs the auditor or analyst role.</p></Card>
+        <Card title="Reports"><p className="m-text-body m-ink-2">Export needs the auditor or analyst role.</p></Card>
       ) : catalogue.isError ? (
         <Card title="Reports">
           <div className="flex items-center gap-3 m-text-body" role="alert">
@@ -137,11 +137,10 @@ export default function ReportsPage() {
                     <button
                       key={e.id} type="button" role="option" data-id={e.id} aria-selected={e.id === current?.id}
                       tabIndex={e.id === current?.id ? 0 : -1} onClick={() => setSelected(e.id)}
-                      className="m-lift flex flex-col gap-1 rounded p-3 text-left"
-                      style={{ background: e.id === current?.id ? "var(--m-surface-2)" : "var(--m-surface)", color: "var(--m-ink)" }}
+                      className="m-lift flex flex-col gap-1 rounded p-3 text-left m-ink [background:var(--m-surface)]! aria-selected:[background:var(--m-surface-2)]!"
                     >
                       <span className="flex items-center gap-2 font-medium">{e.name}<Pill tone="neutral">{e.format}</Pill></span>
-                      <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{e.about}</span>
+                      <span className="m-text-meta m-ink-3">{e.about}</span>
                     </button>
                   ))}
                 </div>
@@ -153,23 +152,23 @@ export default function ReportsPage() {
               {current && (
                 <div className="flex flex-col gap-3">
                   <p className="m-text-body">{current.about}</p>
-                  <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`About ${current.page_estimate} pages. Scope: ${scopeLine}.`}</p>
+                  <p className="m-text-meta m-ink-3">{`About ${current.page_estimate} pages. Scope: ${scopeLine}.`}</p>
                   {current.sections.length > 0 && (
                     <ul className="list-disc pl-5 m-text-body">{current.sections.map((s) => <li key={s}>{s}</li>)}</ul>
                   )}
                   {o && (
-                    <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                    <p className="m-text-body m-ink-2">
                       {`Key figures: DQS ${o.dqs.composite ?? "not scored"}, ${o.blockers.count} blockers`}
                       {o.value_at_risk.worst_l1 ? `, largest L1 at risk ${l1Label(o.value_at_risk.worst_l1)} ${formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency)}` : ""}.
                     </p>
                   )}
-                  {current.requires.length > 0 && !href && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`Needs: ${current.requires.join(", ")}.`}</p>}
+                  {current.requires.length > 0 && !href && <p className="m-text-meta m-ink-3">{`Needs: ${current.requires.join(", ")}.`}</p>}
                   {current.id === "record" && (
                     <Field label="Record key">
                       <Input value={recordKey} onChange={(e) => setRecordKey(e.target.value)} placeholder="For example a material number" />
                     </Field>
                   )}
-                  {current.last_built_at && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`Last built ${formatDate(current.last_built_at, "datetime")}.`}</p>}
+                  {current.last_built_at && <p className="m-text-meta m-ink-3">{`Last built ${formatDate(current.last_built_at, "datetime")}.`}</p>}
                   <div className="flex gap-2">
                     <Button variant="primary" disabled={!href} pending={building === current.id} onClick={() => void download()}>{building === current.id ? "Rendering" : "Download"}</Button>
                     <Button variant="secondary" disabled={!href} onClick={() => void copy()}>Copy link</Button>
@@ -186,7 +185,7 @@ export default function ReportsPage() {
             {recent.isError ? (
               <p className="m-text-body" role="alert">{`Recent exports did not load. ${apiErrorMessage(recent.error)}`}</p>
             ) : (recent.data?.entries ?? []).length === 0 ? (
-              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{recent.isLoading ? "Loading" : "No exports yet."}</p>
+              <p className="m-text-body m-ink-2">{recent.isLoading ? "Loading" : "No exports yet."}</p>
             ) : (
               <ul className="flex flex-col gap-1 m-text-body">
                 {recent.data?.entries.map((e) => {

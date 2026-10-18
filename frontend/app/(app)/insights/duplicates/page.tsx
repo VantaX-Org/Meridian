@@ -205,8 +205,8 @@ function ClusterPanel({
   mergeImpactCount: number;
 }) {
   return (
-    <fieldset className="flex flex-col gap-2 p-3 rounded border" style={{ borderColor: "var(--m-line)" }}>
-      <legend className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+    <fieldset className="flex flex-col gap-2 p-3 rounded border [border-color:var(--m-line)]">
+      <legend className="m-text-meta m-ink-2">
         Pick the surviving (master) record
       </legend>
       {nodes.map((node) => (
@@ -221,7 +221,7 @@ function ClusterPanel({
           {node.label ?? node.id}
         </label>
       ))}
-      <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-meta m-ink-3">
         Merge impact: {plural(mergeImpactCount, "document")} would move
       </p>
     </fieldset>

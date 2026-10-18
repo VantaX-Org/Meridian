@@ -4,12 +4,12 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Notice, Pill, Select, Skeleton } from "@/design";
+import { Button, Card, DataTable, EmptyState, Field, Input, Notice, Pill, Select, Async } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest,
 } from "@/lib/api/notifications";
-import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const KIND_LABEL: Record<AlertChannelKind, string> = {
@@ -89,13 +89,11 @@ export function AlertChannelsPanel() {
   return (
     <Card title="Alert channels" meta="Each system is compared with its own previous run. Alerts carry counts, rule ids and links, never record values">
       <div className="flex flex-col gap-3">
-        {q.isLoading ? <Skeleton height={64} /> : isListFailure(q) ? (
-          <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
-        ) : !q.data?.length ? (
+        <Async query={q} skeleton={64} notFoundIsEmpty>{!q.data?.length ? (
           <EmptyState title="No alert channel yet" detail="Add Slack, Teams, email or a signed webhook below" action={<Button onClick={() => targetRef.current?.querySelector("input")?.focus()}>Add channel</Button>} />
         ) : (
           <DataTable columns={columns} data={q.data} getRowId={(c) => c.id} />
-        )}
+        )}</Async>
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Kind">
             <Select options={KIND_OPTIONS} value={kind} onValueChange={(v) => { if (isKind(v)) setKind(v); }} />

@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict, Score } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
@@ -20,13 +20,7 @@ import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 
-const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
-  go: "go",
-  at_risk: "at-risk",
-  no_go: "no-go",
-};
 
-const VERDICT_LABEL: Record<ReadinessCell["verdict"], string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
 
 const plain = (n: number) => formatMoney(n);
 
@@ -36,7 +30,7 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
   {
     accessorKey: "verdict",
     header: "Verdict",
-    cell: ({ row }) => <Pill tone={VERDICT_TONE[row.original.verdict]}>{VERDICT_LABEL[row.original.verdict]}</Pill>,
+    cell: ({ row }) => <Status kind="verdict" value={row.original.verdict} />,
   },
   {
     accessorKey: "blocker_count",
@@ -114,24 +108,18 @@ export default function ExecPage() {
         hero: true,
         lead: dqs && typeof dqs.composite === "number" ? (
           <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-            <div style={{ minWidth: 260, width: "max-content", maxWidth: 360 }}>
-              <Stat
-                hero
-                label="Data quality score"
-                help="dqs"
+            <Score
+                size="hero"
                 value={dqs.composite}
-                bar={dqs.composite}
-                decimals={1}
                 versionId={vid}
                 hint={dqs.capped ? `Capped at ${dqs.composite <= 70 ? 70 : 85}` : undefined}
                 delta={dqs.delta != null ? <Delta value={dqs.delta} /> : undefined}
               />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1" style={{ minWidth: "min(100%, 16rem)", maxWidth: "48ch" }}>
-              <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
+            <div className="flex min-w-0 flex-1 flex-col gap-1 [min-width:min(100%,16rem)] [max-width:48ch]">
+              <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
                 {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
               </span>
-              <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
+              <span className="m-text-body m-ink-2">
                 {dqs.capped && dqs.cap_reason ? `Capped: ${shortCapReason(dqs.cap_reason)}` : deltaSentence(dqs.delta)}
               </span>
             </div>
@@ -176,13 +164,13 @@ export default function ExecPage() {
                 <Heatmap
                   rows={heatRows}
                   cols={heatCols}
-                  cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: VERDICT_TONE[c.verdict] as "go" | "at-risk" | "no-go" }))}
+                  cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: toVerdict(c.verdict) ?? "at-risk" }))}
                   rowHref={(row) => withScope(`/objects/${cells.find((c) => formatModuleName(c.module) === row)?.module ?? ""}`, { run })}
                 />
               </div>
             )}
             {cells.length === 0 ? null : blocked.length === 0 ? (
-              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Every object and wave can load.</p>
+              <p className="m-text-body m-ink-2">Every object and wave can load.</p>
             ) : (
               <DataTable columns={readinessColumns} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
             )}
@@ -198,7 +186,7 @@ export default function ExecPage() {
                   content: (
                     <>
                       <Waterfall data={points} label={`Score movement, ${l1Label(l1)}`} />
-                      <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>{`${l1Label(l1)}: from ${points[0].x} to ${points[points.length - 1].x}.`}</p>
+                      <p className="mt-2 m-text-body m-ink-2">{`${l1Label(l1)}: from ${points[0].x} to ${points[points.length - 1].x}.`}</p>
                     </>
                   ),
                 }))}
@@ -228,7 +216,7 @@ export default function ExecPage() {
                   <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
                 </div>
               ) : roi.data && !roi.data.roi.subscription_annual ? (
-                <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                <p className="m-text-body m-ink-2">
                   Return on investment appears once the subscription and cost per record are set.{" "}
                   <Link href="/admin/settings" className="underline-offset-2 hover:underline">Open settings</Link>
                 </p>

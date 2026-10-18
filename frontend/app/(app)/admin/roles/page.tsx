@@ -27,7 +27,6 @@ import { queryKeys } from "@/lib/query-keys";
 import type { User } from "@/types/api";
 
 const TABS = ["roles", "users", "invite", "requests", "history"] as const;
-const dim = { color: "var(--m-ink-3)" } as const;
 
 export default function AdminRolesPage() {
   const { can, loading } = useRole();
@@ -109,7 +108,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
       <EditDialog role={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); refresh(); }} />
       <Dialog open={!!deleting} onOpenChange={(o) => { if (!o) setDeleting(null); }} title={`Delete ${deleting?.name ?? "role"}?`}>
         <div className="flex flex-col gap-3">
-          <p className="m-text-body" style={dim}>Users holding it lose its grants.</p>
+          <p className="m-text-body m-ink-3">Users holding it lose its grants.</p>
           <div className="flex gap-2">
             <Button disabled={del.isPending} onClick={() => deleting && del.mutate(deleting)}>Delete role</Button>
             <Button variant="secondary" onClick={() => setDeleting(null)}>Keep role</Button>
@@ -136,7 +135,7 @@ function RoleDrawer({ role, onClone, onSaved }: { role: Role; onClone: () => voi
   const diff = baseQ.data ? matrixDiff(baseQ.data.matrix, matrix) : null;
   return (
     <div className="flex flex-col gap-3">
-      {role.description ? <p className="m-text-body" style={dim}>{role.description}</p> : null}
+      {role.description ? <p className="m-text-body m-ink-3">{role.description}</p> : null}
       {role.built_in ? (
         <div className="flex items-center gap-2">
           <Pill>Read-only</Pill>
@@ -248,7 +247,7 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
   const legacy = !converted && user.permissions && Object.keys(user.permissions).length > 0;
   return (
     <div className="flex flex-col gap-4">
-      <p className="m-text-body" style={dim}>{user.email}</p>
+      <p className="m-text-body m-ink-3">{user.email}</p>
       <Card title="Grants">
         <GrantsPicker
           grants={grantsQ.data ?? []} roles={roles} systems={systems} busy={add.isPending || rem.isPending}
@@ -278,7 +277,7 @@ function InviteTab() {
   const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col gap-3">
-      <p className="m-text-body" style={dim}>Invite someone and choose what they can reach before they sign in.</p>
+      <p className="m-text-body m-ink-3">Invite someone and choose what they can reach before they sign in.</p>
       <div><Button onClick={() => setOpen(true)}>Invite user</Button></div>
       <Drawer open={open} onOpenChange={setOpen} title="Invite a user">
         {open ? <InviteForm onDone={() => setOpen(false)} /> : null}
@@ -313,7 +312,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-3 m-text-body">
             <span>{who(r.user_id)} wants <Mono>{r.resource} {r.action}</Mono> at {where(r) === "all" ? "all systems" : where(r)}</span>
-            <span style={dim}>{r.reason}, {relativeTime(r.created_at)}</span>
+            <span className="m-ink-3">{r.reason}, {relativeTime(r.created_at)}</span>
             <Button onClick={() => { setRole(""); setGranting(r); }}>Grant</Button>
             <Button variant="secondary" onClick={() => setDeclining(r)}>Decline</Button>
           </li>
@@ -331,7 +330,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       </Dialog>
       <Dialog open={!!declining} onOpenChange={(o) => { if (!o) setDeclining(null); }} title="Decline request">
         <div className="flex flex-col gap-3">
-          <Field label="Reason"><textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} value={reason} onChange={(e) => setReason(e.target.value)} rows={3} /></Field>
+          <Field label="Reason"><textarea className="m-input [height:auto] [padding:6px_10px]" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} /></Field>
           <div className="flex gap-2">
             <Button disabled={!reason.trim() || decide.isPending} onClick={() => declining && decide.mutate({ id: declining.id, body: { decision: "declined", reason } })}>Decline request</Button>
             <Button variant="secondary" onClick={() => setDeclining(null)}>Close</Button>

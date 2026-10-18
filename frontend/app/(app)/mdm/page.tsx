@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, EmptyState, ExplorerPage, Line, PageHeader, ScoreExplainer, Stat } from "@/design";
+import { Button, Card, EmptyState, ExplorerPage, Line, PageHeader, Stat, Score } from "@/design";
 import { getMdmHealth } from "@/lib/api/analytics";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { getQueueItems } from "@/lib/api/stewardship";
@@ -17,21 +17,21 @@ const itemLabel = (t: string) => t.replace(/_/g, " ");
 /** A short list of open stewardship items; a region-empty line, never a card, when there are none. */
 function QueuePanel({ title, items, total, empty }: { title: string; items: StewardshipQueueItem[] | undefined; total: number; empty: string }) {
   return (
-    <Card title={title} actions={<Link href="/inbox" className="m-text-meta" style={{ color: "var(--m-accent-ink)" }}>{total > (items?.length ?? 0) ? `Open all ${total.toLocaleString()}` : "Open inbox"}</Link>}>
+    <Card title={title} actions={<Link href="/inbox" className="m-text-meta m-ink-accent-ink">{total > (items?.length ?? 0) ? `Open all ${total.toLocaleString()}` : "Open inbox"}</Link>}>
       {items && items.length > 0 ? (
         <ul className="flex flex-col">
           {items.map((i) => (
-            <li key={i.id} className="flex items-baseline justify-between gap-3 py-1 m-text-body" style={{ borderTop: "1px solid var(--m-line)" }}>
+            <li key={i.id} className="flex items-baseline justify-between gap-3 py-1 m-text-body [border-top:1px_solid_var(--m-line)]!">
               <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <span>{formatModuleName(i.domain)}</span>
-                <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{itemLabel(i.item_type)}</span>
+                <span className="m-text-meta m-ink-3">{itemLabel(i.item_type)}</span>
               </span>
-              <span className="m-text-meta shrink-0" style={{ color: "var(--m-ink-3)" }}>{i.due_at ? `due ${relativeTime(i.due_at)}` : `opened ${relativeTime(i.created_at)}`}</span>
+              <span className="m-text-meta shrink-0 m-ink-3">{i.due_at ? `due ${relativeTime(i.due_at)}` : `opened ${relativeTime(i.created_at)}`}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{empty}</p>
+        <p className="m-text-body m-ink-3">{empty}</p>
       )}
     </Card>
   );
@@ -64,18 +64,20 @@ export default function MdmOverviewPage() {
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 @5xl:grid-cols-12">
             <div className="@5xl:col-span-3">
-              <Card title="MDM health">{m ? <ScoreExplainer
-                score={m.mdm_health_score}
-                band={m.mdm_health_score >= 85 ? { label: "Healthy", tone: "go" } : m.mdm_health_score >= 60 ? { label: "Needs attention", tone: "at-risk" } : { label: "Unhealthy", tone: "no-go" }}
-                // Fixed weights from api/services/mdm_scoring.py; the snapshot carries the four inputs.
-                dimensions={[
-                  { name: "Golden record coverage", weight: 0.4, score: m.golden_record_coverage_pct },
-                  { name: "Match confidence", weight: 0.3, score: m.avg_match_confidence * 100 },
-                  { name: "Steward SLA", weight: 0.2, score: m.steward_sla_compliance_pct },
-                  { name: "Source consistency", weight: 0.1, score: m.source_consistency_pct },
-                ]}
-                rules={[]}
-                historyHref="/mdm"
+              <Card title="MDM health">{m ? <Score
+                value={m.mdm_health_score}
+                explain={{
+                  band: m.mdm_health_score >= 85 ? { label: "Healthy", tone: "go" } : m.mdm_health_score >= 60 ? { label: "Needs attention", tone: "at-risk" } : { label: "Unhealthy", tone: "no-go" },
+                  // Fixed weights from api/services/mdm_scoring.py; the snapshot carries the four inputs.
+                  dimensions: [
+                    { name: "Golden record coverage", weight: 0.4, score: m.golden_record_coverage_pct },
+                    { name: "Match confidence", weight: 0.3, score: m.avg_match_confidence * 100 },
+                    { name: "Steward SLA", weight: 0.2, score: m.steward_sla_compliance_pct },
+                    { name: "Source consistency", weight: 0.1, score: m.source_consistency_pct },
+                  ],
+                  rules: [],
+                  historyHref: "/mdm",
+                }}
               /> : <EmptyState title="No current snapshot" detail="The first snapshot is taken after golden records are built." action={<Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} />} />}</Card>
             </div>
             <div className="@5xl:col-span-5">

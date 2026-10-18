@@ -54,6 +54,12 @@ const eslintConfig = defineConfig([
       "**/*.spec.{ts,tsx}",
     ],
   },
+  // DESIGN.md "No inline style": no `style` prop anywhere under app/ (design/ owns every style).
+  {
+    files: ["app/**/*.{ts,tsx}"],
+    plugins: { "aurora-structure": auroraStructure },
+    rules: { "aurora-structure/no-inline-style": "error" },
+  },
   // TanStack Table's hook returns functions React Compiler cannot memoize.
   // DataTable is the single wrapper around it and opts out with "use no memo",
   // which this lint rule does not recognise.

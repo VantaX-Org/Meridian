@@ -78,7 +78,7 @@ describe("RunDetailPage", () => {
       vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockReturnValue(new Promise(() => {}));
       renderWithQuery(<RunDetailPage />);
       const slot = await screen.findByTestId("next-actions-slot");
-      expect(slot.style.minHeight).not.toBe("");
+      expect(slot).toHaveClass("[min-height:124px]");
     });
 
     it("shows a muted line when there are no actions", async () => {

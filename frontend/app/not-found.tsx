@@ -6,8 +6,7 @@ export default function NotFound() {
   return (
     <main
       id="main"
-      className="flex min-h-screen items-center justify-center"
-      style={{ background: "var(--m-canvas)", padding: "var(--m-space-6)" }}
+      className="flex min-h-screen items-center justify-center [background:var(--m-canvas)] [padding:var(--m-space-6)]"
     >
       <h1 className="sr-only">Page not found</h1>
       <EmptyState

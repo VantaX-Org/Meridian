@@ -31,10 +31,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs,
-  type GraphEdge, type GraphNode, type PillTone,
-} from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs, type GraphEdge, type GraphNode, Status } from "@/design";
+import { apiErrorState } from "@/lib/error";
 import { domainOf } from "@/design/tokens";
 import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
 import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
@@ -44,7 +42,6 @@ import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { formatModuleName, labelOf, plural, relativeTime, formatDate } from "@/lib/format";
 import { miningWhy } from "./sentences";
-import { apiErrorState } from "@/lib/error";
 import { MineNow } from "../duplicates/mined-tabs";
 import { useInsightScope } from "../_components/useInsightScope";
 import { queryKeys } from "@/lib/query-keys";
@@ -68,12 +65,6 @@ export const patternTypeLabel = (t: string) => PATTERN_TYPE_LABEL[t] ?? labelOf(
 // ponytail: carried from the legacy component — past ~80 edges the force layout is unreadable, the table lists all.
 const MAX_EDGES = 80;
 
-const SEVERITY_TONE: Record<MiningPattern["severity"], PillTone> = {
-  critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral",
-};
-const SEVERITY_LABEL: Record<MiningPattern["severity"], string> = {
-  critical: "Critical", high: "High", medium: "Medium", low: "Low",
-};
 
 function GraphTally() {
   const rel = useQuery({ queryKey: queryKeys.relationships({ include_inactive: true }), queryFn: () => getRelationships({ include_inactive: true }) });
@@ -146,7 +137,7 @@ function EntityLinks() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}.
         </p>
         {q.isLoading || dayOne.status === "loading" ? <Skeleton height={440} />
@@ -242,7 +233,7 @@ function Dependencies() {
         />
       ) : null}
       <div>
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           One field decides another in at least 99 % of records. Click a field to open its profile.
         </p>
         {profile.isLoading || systems.isLoading || versions.isLoading ? <Skeleton height={480} />
@@ -269,7 +260,7 @@ function Patterns({ run }: { run?: string }) {
     { id: "name", header: "Pattern", cell: ({ row }) => row.original.name },
     { id: "type", header: "Type", cell: ({ row }) => <Pill>{patternTypeLabel(row.original.pattern_type)}</Pill> },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity]}>{SEVERITY_LABEL[row.original.severity]}</Pill> },
+    { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "confidence", header: "Confidence", accessorFn: (p) => p.confidence, meta: { numeric: true, heat: "seq", heatRange: [0, 1] }, cell: ({ row }) => pct(row.original.confidence, 0) },
     { id: "occurrences", header: "Occurrences", cell: ({ row }) => row.original.occurrences.toLocaleString() },
     { id: "seen", header: "Last seen", cell: ({ row }) => relativeTime(row.original.last_seen) },

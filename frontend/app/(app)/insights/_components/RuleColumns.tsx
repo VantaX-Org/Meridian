@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Mono, Pill, type PillTone } from "@/design";
+import { Mono, Pill, type PillTone, Status } from "@/design";
 import type { RuleRow } from "@/lib/api/insights";
 import { formatModuleName, labelOf } from "@/lib/format";
 
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "at-risk", medium: "at-risk" };
 const S4_TONE: Record<string, PillTone> = { blocking: "no-go", warning: "at-risk" };
 
 const n = (v: number) => v.toLocaleString();
@@ -16,12 +15,12 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
   const objectHref = (r: RuleRow) => `/objects/${r.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", check: r.check_id })}`;
   const cols: ColumnDef<RuleRow>[] = [
     { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { accessorKey: "name", header: "Name", cell: ({ row }) => <span className="line-clamp-2" title={row.original.name} style={{ minWidth: "14rem" }}>{row.original.name}</span> },
+    { accessorKey: "name", header: "Name", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.name}>{row.original.name}</span> },
     {
       id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module),
       cell: ({ row }) => <Link href={objectHref(row.original)} onClick={(e) => e.stopPropagation()} className="underline-offset-2 hover:underline">{formatModuleName(row.original.module)}</Link>,
     },
-    { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity ?? ""] ?? "neutral"} variant="solid">{labelOf(row.original.severity)}</Pill> },
+    { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
   ];
   if (!compact) cols.push({ id: "dimension", header: "Dimension", accessorFn: (r) => labelOf(r.dimension) });
   cols.push({ accessorKey: "affected", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => n(row.original.affected) });

@@ -134,10 +134,10 @@ export default function ForecastPage() {
           )}
           {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
           {hidden > 0 && (
-            <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{`+${hidden} more modules, shown one at a time when selected above`}</p>
+            <p className="m-text-meta m-ink-3">{`+${hidden} more modules, shown one at a time when selected above`}</p>
           )}
           {selected && (
-            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+            <p className="m-text-body m-ink-2">
               {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
             </p>
           )}

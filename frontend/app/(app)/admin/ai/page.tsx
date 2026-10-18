@@ -57,27 +57,27 @@ export default function AdminAIPage() {
 
       <div className="flex gap-4">
         <div className="flex flex-col gap-1">
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Provider</span>
+          <span className="m-text-meta m-ink-3">Provider</span>
           <span className="m-text-h font-semibold">{loading ? "–" : provider ?? "Not set"}</span>
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{provider ? "Writes the narrative" : "Choose a provider below"}</span>
+          <span className="m-text-meta m-ink-3">{provider ? "Writes the narrative" : "Choose a provider below"}</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Model</span>
+          <span className="m-text-meta m-ink-3">Model</span>
           <span className="m-text-h font-semibold">{loading ? "–" : c?.model || "Not set"}</span>
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{c?.model ? "Used for every request" : "Pick a model below"}</span>
+          <span className="m-text-meta m-ink-3">{c?.model ? "Used for every request" : "Pick a model below"}</span>
         </div>
         {c && providers.data?.[c.provider]?.requires_api_key !== false ? (
           <div className="flex flex-col gap-1">
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>API key</span>
+            <span className="m-text-meta m-ink-3">API key</span>
             <span className="m-text-h font-semibold">{loading ? "–" : c?.has_api_key ? "Stored" : "Not set"}</span>
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{c?.has_api_key ? "Kept on the server" : "Not stored, add one below"}</span>
+            <span className="m-text-meta m-ink-3">{c?.has_api_key ? "Kept on the server" : "Not stored, add one below"}</span>
           </div>
         ) : null}
       </div>
 
       {note("The model never sees SAP data. It receives aggregated finding summaries and writes narrative and remediation proposals. Every score, count and rate comes from deterministic checks.")}
 
-      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading the language-model settings</p>}
+      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <p className="m-text-body m-ink-3">Reading the language-model settings</p>}
     </div>
   );
 }
@@ -123,7 +123,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
             onValueChange={(v) => set({ provider: v, model: providers[v]?.default_model, base_url: providers[v]?.default_base_url })}
           />
         </Field>
-        {p?.description ? <p className="m-text-meta -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>{p.description}</p> : null}
+        {p?.description ? <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">{p.description}</p> : null}
 
         <Field label="Model">
           <Input value={form.model ?? ""} onChange={(e) => set({ model: e.target.value })} />
@@ -141,7 +141,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
           </Field>
         ) : null}
         {p?.requires_api_key ? (
-          <p className="m-text-meta -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">
             {config.has_api_key ? `Stored (${config.api_key_preview}); leave blank to keep it` : "Not set"}
           </p>
         ) : null}
@@ -160,7 +160,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
         <Field label="Temperature">
           <Input type="number" step="0.1" min="0" max="2" value={String(form.temperature ?? "")} onChange={(e) => set({ temperature: num(e.target.value) })} />
         </Field>
-        <p className="m-text-meta -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>0 is deterministic; narrative reads best at 0.2 to 0.4</p>
+        <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">0 is deterministic; narrative reads best at 0.2 to 0.4</p>
 
         <Field label="Max tokens">
           <Input type="number" min="1" value={String(form.max_tokens ?? "")} onChange={(e) => set({ max_tokens: num(e.target.value) })} />
@@ -169,7 +169,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
         <Field label="Request timeout">
           <Input type="number" min="1" value={String(form.request_timeout ?? "")} onChange={(e) => set({ request_timeout: num(e.target.value) })} />
         </Field>
-        <p className="m-text-meta -mt-2 sm:col-span-2" style={{ color: "var(--m-ink-3)" }}>seconds; bundled Ollama needs 120</p>
+        <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">seconds; bundled Ollama needs 120</p>
       </div>
 
       {test.data ? note(
@@ -188,7 +188,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
       </div>
 
       {config.updated_at ? (
-        <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-text-meta m-ink-3">
           Last changed {formatDate(config.updated_at, "datetime")} by {config.updated_by ?? "—"}
         </p>
       ) : null}

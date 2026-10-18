@@ -29,7 +29,7 @@ function ParetoPanel({ title, data, id }: { title: string; data: Point[]; id: st
           chart={<Pareto data={data} height={220} />}
           table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar dense
             tableId={id} exportName={id} />} />
-      ) : <p style={{ color: "var(--m-ink-3)" }}>None in this view.</p>}
+      ) : <p className="m-ink-3">None in this view.</p>}
     </section>
   );
 }

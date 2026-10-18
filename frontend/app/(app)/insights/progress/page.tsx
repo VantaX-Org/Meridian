@@ -8,7 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Delta, DrillLink, Mono, Pill, Select, Sparkline, Stat, type PillTone } from "@/design";
+import { Button, Card, DataTable, Delta, DrillLink, Mono, Select, Sparkline, Stat, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { compareRecords, compareVersions, pinBaseline, type RecordDiffCheck } from "@/lib/api/versions";
@@ -16,7 +16,7 @@ import { getScoreHistory } from "@/lib/api/findings";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getComparisonReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, apiErrorReason, isListFailure, isNotFound } from "@/lib/error";
-import { formatDate, formatModuleName, labelOf, plural, runOptionLabels } from "@/lib/format";
+import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { lineageOf, SCORE_HISTORY_LIMIT } from "@/lib/runs";
 import { InsightActions } from "../_components/InsightActions";
@@ -25,7 +25,6 @@ import { Section } from "../_components/Section";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "at-risk", medium: "at-risk" };
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 interface ObjectRow { module: string; now: number; before: number; change: number; series: number[] }
@@ -88,7 +87,7 @@ export default function ProgressPage() {
   const movedColumns = useMemo<ColumnDef<RecordDiffCheck>[]>(() => [
     { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
     { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module) },
-    { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"} variant="solid">{labelOf(row.original.severity)}</Pill> },
+    { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
     { accessorKey: "resolved", header: "Fixed", meta: { numeric: true }, cell: ({ row }) => row.original.resolved.toLocaleString() },
     { accessorKey: "new", header: "New", meta: { numeric: true }, cell: ({ row }) => row.original.new.toLocaleString() },
     { accessorKey: "persisting", header: "Still failing", meta: { numeric: true }, cell: ({ row }) => row.original.persisting.toLocaleString() },
@@ -160,11 +159,11 @@ export default function ProgressPage() {
       errorProps={{ message: apiErrorMessage(cmp.error), onRetry: () => { void cmp.refetch(); void recs.refetch(); } }}
     >
       <Card title="Objects since baseline" meta={rows.length ? plural(rows.length, "object") : undefined} actions={<Link href={withScope("/objects", { run })} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}>
-        {rows.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No object is scored in both runs.</p>
+        {rows.length === 0 ? <p className="m-text-body m-ink-3">No object is scored in both runs.</p>
           : <DataTable columns={objectColumns} data={rows} getRowId={(r) => r.module} hideToolbar dense height="auto" />}
       </Card>
       <Section title="Rules that moved" height={240} query={recs} meta={`Fixed, new and still-failing records per rule, worst movers first${notInBoth ? `. ${plural(notInBoth, "rule was", "rules were")} not evaluated in both runs and ${notInBoth === 1 ? "is" : "are"} left out` : ""}`}>
-        {moved.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No rule changed its failing records.</p>
+        {moved.length === 0 ? <p className="m-text-body m-ink-3">No rule changed its failing records.</p>
           : <DataTable columns={movedColumns} data={moved} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />}
       </Section>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

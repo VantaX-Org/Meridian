@@ -13,6 +13,7 @@ import { Button, Card, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, typ
 import { getConfigCompare, proposeConfigMatches, type MatchStatus } from "@/lib/api/config-pairing";
 import { apiErrorDetail, apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { clsx } from "clsx";
 
 const STATUS_LABEL: Record<MatchStatus, string> = {
   exists: "In target",
@@ -61,9 +62,9 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
   } else {
     body = (
       <div className="flex flex-col gap-3">
-        <table className="w-full m-text-body" style={{ color: "var(--m-ink)" }}>
+        <table className="w-full m-text-body m-ink">
           <thead>
-            <tr style={{ color: "var(--m-ink-2)" }}>
+            <tr className="m-ink-2">
               <th className="text-left font-medium">Object</th>
               <th className="text-right font-medium">In target</th>
               <th className="text-right font-medium">Key match</th>
@@ -73,7 +74,7 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
           </thead>
           <tbody>
             {data.objects.map((o) => (
-              <tr key={o.object} className="border-t" style={{ borderColor: "var(--m-line)" }}>
+              <tr key={o.object} className="border-t [border-color:var(--m-line)]">
                 <td>
                   <button type="button" className="underline" onClick={() => setObject(o.object)}>
                     <Mono>{o.object}</Mono>
@@ -82,7 +83,7 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
                 <td className="text-right">{o.exists}</td>
                 <td className="text-right">{o.key_match}</td>
                 <td className="text-right">{o.desc_match}</td>
-                <td className="text-right" style={{ color: o.missing ? "var(--m-critical)" : "var(--m-ink)" }}>{o.missing}</td>
+                <td className={clsx("text-right", o.missing ? "m-ink-critical" : "m-ink")}>{o.missing}</td>
               </tr>
             ))}
           </tbody>
@@ -95,10 +96,10 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
     <Card title={<><Mono>{object}</Mono> values</>}>
       <ul className="flex flex-col">
         {data.rows.map((r) => (
-          <li key={r.source_key} className="flex items-center justify-between gap-2 border-t py-2 m-text-body first:border-t-0" style={{ borderColor: "var(--m-line)" }}>
+          <li key={r.source_key} className="flex items-center justify-between gap-2 border-t py-2 m-text-body first:border-t-0 [border-color:var(--m-line)]!">
             <span className="flex items-center gap-2">
               <Mono>{r.source_key}</Mono>
-              {r.target_key && r.target_key !== r.source_key ? <span style={{ color: "var(--m-ink-2)" }}>to <Mono>{r.target_key}</Mono></span> : null}
+              {r.target_key && r.target_key !== r.source_key ? <span className="m-ink-2">to <Mono>{r.target_key}</Mono></span> : null}
             </span>
             <Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill>
           </li>

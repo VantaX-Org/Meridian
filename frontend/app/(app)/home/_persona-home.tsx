@@ -6,10 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Select, Skeleton, Sparkline, Stat,
-  type HeatmapCell, type PillTone,
-} from "@/design";
+import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, Select, Skeleton, Sparkline, Stat, type HeatmapCell, Status, Score } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { getFindings } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
@@ -48,11 +45,6 @@ const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.He
 
 const READINESS_SEVERITY = { fail: "critical", warn: "medium", pass: "pass" } as const;
 
-const READINESS_PILL: Record<NonNullable<ObjectSummary["readiness"]>, { tone: PillTone; label: string }> = {
-  pass: { tone: "go", label: "Go" },
-  warn: { tone: "at-risk", label: "At risk" },
-  fail: { tone: "no-go", label: "No-go" },
-};
 
 
 /** Header label for a run: never a raw id (same formula as the run selector). */
@@ -129,7 +121,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     return (
       <HomePage
         persona={role}
-        state="no-data"
+        state="empty"
         journey={{
           systemsConnected: (systemsQ.data ?? []).length > 0,
           configLoaded: (landscapeQ.data?.loaded ?? 0) > 0,
@@ -238,15 +230,14 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       id: "dqs", header: "DQS", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
       cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : (
-        <span className="inline-flex items-center gap-2"><ScoreRing score={o.composite_score} size={16} bands={bands} /><span className="m-numeric">{o.composite_score.toFixed(1)}</span></span>
+        <Score size="sm" value={o.composite_score} bands={bands} />
       ),
     },
     {
       id: "readiness", header: "Readiness", meta: { severity: true },
       accessorFn: (o) => (o.readiness ? READINESS_SEVERITY[o.readiness] : ""),
       cell: ({ row: { original: o } }) => {
-        const p = o.readiness ? READINESS_PILL[o.readiness] : null;
-        return p ? <Pill tone={p.tone} variant="solid">{p.label}</Pill> : <Pill>Not analysed</Pill>;
+        return o.readiness ? <Status kind="verdict" value={o.readiness} variant="solid" /> : <Pill>Not analysed</Pill>;
       },
     },
     {
@@ -273,7 +264,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         tableId="home-objects"
       />
       <div className="m-text-body px-3 pt-2">
-        <Link href={`/objects?run=${latest.id}`} style={{ color: "var(--m-accent)" }}>All objects</Link>
+        <Link href={`/objects?run=${latest.id}`} className="m-ink-accent">All objects</Link>
       </div>
     </Card>
   );
@@ -285,7 +276,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const trendCard = (
       <Card title="Score over runs">
         {trendPoints.length < 2 ? (
-          <div style={{ minHeight: 160 }}><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
+          <div className="[min-height:160px]"><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
         ) : (
           <Line
             data={trendPoints}
@@ -350,7 +341,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   return (
     <HomePage
       persona={role}
-      state="data"
+      state="ready"
       verdict={{
         dqs,
         delta: previous ? runDelta(trendPoints) : null,

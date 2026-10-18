@@ -141,26 +141,26 @@ export default function RecordFixSheetPage() {
       <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} overview={<>
       <Card title="Identity" domain={domainOf(object)}>
         <dl className="m-text-body grid grid-cols-2 gap-x-6 gap-y-1">
-          <dt style={{ color: "var(--m-ink-3)" }}>Description</dt>
+          <dt className="m-ink-3">Description</dt>
           <dd>{material.description ?? "—"}</dd>
           {isMaterial ? (
             <>
-              <dt style={{ color: "var(--m-ink-3)" }}>Material type</dt>
+              <dt className="m-ink-3">Material type</dt>
               <dd>{material.labels.MTART ?? "—"}</dd>
-              <dt style={{ color: "var(--m-ink-3)" }}>Material group</dt>
+              <dt className="m-ink-3">Material group</dt>
               <dd>{material.labels.MATKL ?? "—"}</dd>
-              <dt style={{ color: "var(--m-ink-3)" }}>Base unit</dt>
+              <dt className="m-ink-3">Base unit</dt>
               <dd>{material.labels.MEINS ?? "—"}</dd>
             </>
           ) : (
             Object.entries(material.labels).map(([field, fieldValue]) => (
               <Fragment key={field}>
-                <dt style={{ color: "var(--m-ink-3)" }}>{field}</dt>
+                <dt className="m-ink-3">{field}</dt>
                 <dd>{fieldValue ?? "—"}</dd>
               </Fragment>
             ))
           )}
-          <dt style={{ color: "var(--m-ink-3)" }}>Levels</dt>
+          <dt className="m-ink-3">Levels</dt>
           <dd>{material.levels_total}</dd>
         </dl>
       </Card>
@@ -193,7 +193,7 @@ export default function RecordFixSheetPage() {
               )}
             </ul>
           ) : (
-            <p style={{ color: "var(--m-ink-3)" }}>No failing rules on this run.</p>
+            <p className="m-ink-3">No failing rules on this run.</p>
           )}
         </Card>
       )}
@@ -212,7 +212,7 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p style={{ color: "var(--m-ink-3)" }}>Not superseded at any plant.</p>
+            <p className="m-ink-3">Not superseded at any plant.</p>
           )}
         </Card>
       )}
@@ -231,7 +231,7 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p style={{ color: "var(--m-ink-3)" }}>No duplicate candidates for this record.</p>
+            <p className="m-ink-3">No duplicate candidates for this record.</p>
           )}
         </Card>
       )}

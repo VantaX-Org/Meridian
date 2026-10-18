@@ -18,9 +18,9 @@ export function MappingTab({ modules, destType }: { modules: string[]; destType:
   if (!modules.length) return <EmptyState title="Add modules to this wave to edit their mapping." />;
   return (
     <div className="flex flex-col gap-4">
-      <label className="flex items-center gap-2 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+      <label className="flex items-center gap-2 m-text-meta m-ink-2">
         Module
-        <select className="rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body" style={{ borderColor: "var(--m-line)" }}
+        <select className="rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body [border-color:var(--m-line)]!"
                 value={module} onChange={(e) => { setModule(e.target.value); setTargetField(null); }}>
           {modules.map((m) => <option key={m} value={m}>{formatModuleName(m)}</option>)}
         </select>
@@ -78,14 +78,12 @@ function ValueMap({ module, targetField }: { module: string; targetField: string
   const rows = (entries.data ?? []).filter((e) => e.target_field === targetField);
   return (
     <div className="flex flex-col gap-2">
-      <p className="m-text-body font-semibold" style={{ color: "var(--m-ink)" }}>Value map for <Mono>{targetField}</Mono></p>
+      <p className="m-text-body font-semibold m-ink">Value map for <Mono>{targetField}</Mono></p>
       <DataTable columns={columns} data={rows} getRowId={(e) => e.id} />
       {can("analyse") ? (
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
-          <input aria-label="Source value" className="rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body"
-                 style={{ borderColor: "var(--m-line)" }} value={src} onChange={(e) => setSrc(e.target.value)} />
-          <input aria-label="Target value" className="rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body"
-                 style={{ borderColor: "var(--m-line)" }} value={dst} onChange={(e) => setDst(e.target.value)} />
+          <input aria-label="Source value" className="rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body [border-color:var(--m-line)]!" value={src} onChange={(e) => setSrc(e.target.value)} />
+          <input aria-label="Target value" className="rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body [border-color:var(--m-line)]!" value={dst} onChange={(e) => setDst(e.target.value)} />
           <Button type="submit" disabled={!src || !dst || save.isPending}>Add mapping</Button>
         </form>
       ) : null}

@@ -9,11 +9,10 @@ import { createSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api
 import type { SyncProfile } from "@/types/api";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { clsx } from "clsx";
 
 const th = "px-3 py-2 text-left font-medium";
-const thStyle = { color: "var(--m-ink-3)" };
 const td = "px-3 py-1.5 border-t";
-const tdStyle = { borderColor: "var(--m-line)" };
 
 const CUSTOM = "custom";
 const PRESETS = [
@@ -37,7 +36,7 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
   const [text, setText] = useState(value);
   return (
     <div className="flex gap-2">
-      <div style={{ width: 200 }}>
+      <div className="[width:200px]">
         <Select
           label="Schedule"
           options={PRESETS} value={custom ? CUSTOM : value}
@@ -83,7 +82,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
   return (
     <Card title="Scheduled re-evaluation" dataTour="schedules">
       <div className="flex flex-col gap-3">
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           Each schedule re-downloads the object and re-runs its checks, so the trends and alert thresholds pick up every run.
           Times are server time; the scheduler looks for due runs every 5 minutes.
           &ldquo;Changes only&rdquo; re-reads just the records SAP&rsquo;s change log shows changed since the last download, and does a full download at least weekly.
@@ -91,22 +90,22 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
         {profiles.length ? (
           <table className="w-full m-text-body">
             <thead><tr>
-              <th className={th} style={thStyle}>Object</th><th className={th} style={thStyle}>Schedule</th>
-              <th className={th} style={thStyle}>Download</th>
-              <th className={th} style={thStyle}>Last run</th><th className={th} style={thStyle}>Next run</th>
-              <th className={th} style={thStyle}>Status</th><th className={th} style={thStyle} />
+              <th className={clsx(th, "m-ink-3")}>Object</th><th className={clsx(th, "m-ink-3")}>Schedule</th>
+              <th className={clsx(th, "m-ink-3")}>Download</th>
+              <th className={clsx(th, "m-ink-3")}>Last run</th><th className={clsx(th, "m-ink-3")}>Next run</th>
+              <th className={clsx(th, "m-ink-3")}>Status</th><th className={clsx(th, "m-ink-3")} />
             </tr></thead>
             <tbody>
               {profiles.map((p) => (
                 <tr key={p.id}>
-                  <td className={td} style={tdStyle}>{formatModuleName(p.domain)}</td>
-                  <td className={td} style={tdStyle}>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{formatModuleName(p.domain)}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
                     {canManage
                       ? <CronPicker value={p.schedule_cron ?? ""} disabled={update.isPending}
                           onChange={(c) => update.mutate({ p, body: { schedule_cron: c } })} />
                       : <span className="font-mono">{presetLabel(p.schedule_cron)}</span>}
                   </td>
-                  <td className={td} style={tdStyle}>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
                     {canManage
                       ? <Select
                           label="Extraction mode"
@@ -114,10 +113,10 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                           onValueChange={(v) => update.mutate({ p, body: { extraction_mode: v === "delta" ? "delta" : "full" } })} />
                       : <span>{modeLabel(p.extraction_mode)}</span>}
                   </td>
-                  <td className={td} style={tdStyle}>{p.last_run_at ? relativeTime(p.last_run_at) : "never"}</td>
-                  <td className={td} style={tdStyle}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : "—"}</td>
-                  <td className={td} style={tdStyle}><Pill tone={p.active ? "go" : "neutral"}>{p.active ? "active" : "paused"}</Pill></td>
-                  <td className={td} style={tdStyle}>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.last_run_at ? relativeTime(p.last_run_at) : "never"}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : "—"}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}><Pill tone={p.active ? "go" : "neutral"}>{p.active ? "active" : "paused"}</Pill></td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
                     {canManage && (
                       <Button variant="ghost" disabled={update.isPending}
                         onClick={() => update.mutate({ p, body: { active: !p.active } })}>
@@ -130,20 +129,20 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
             </tbody>
           </table>
         ) : (
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body m-ink-2">
             No schedules yet — objects are only re-evaluated when someone downloads them.
           </p>
         )}
         {canManage && addable.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            <div style={{ width: 220 }}>
+            <div className="[width:220px]">
               <Select
                 label="Schedule an object"
                 placeholder="Schedule an object…" value={adding}
                 options={addable.map((o) => ({ value: o.object, label: formatModuleName(o.object) }))} onValueChange={setAdding} />
             </div>
             <CronPicker value={cron} onChange={setCron} />
-            <div style={{ width: 160 }}>
+            <div className="[width:160px]">
               <Select label="Extraction mode" value={mode} options={MODES} onValueChange={(v) => setMode(v === "delta" ? "delta" : "full")} />
             </div>
             <Button disabled={!adding || create.isPending} onClick={() => create.mutate()}>Add schedule</Button>

@@ -8,12 +8,12 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, type PillTone } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, type PillTone, Status } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { isListFailure } from "@/lib/error";
-import { labelOf, relativeTime } from "@/lib/format";
+import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { SAPSystemExtended } from "@/types/api";
 import type { Job } from "@/types/jobs";
@@ -39,7 +39,7 @@ const systemColumns: ColumnDef<SAPSystemExtended>[] = [
 ];
 
 const jobColumns: ColumnDef<Job>[] = [
-  { id: "status", header: "Status", cell: ({ row: { original: j } }) => <Pill tone={j.status === "queued" ? "neutral" : "at-risk"}>{labelOf(j.status)}</Pill> },
+  { id: "status", header: "Status", cell: ({ row: { original: j } }) => <Status kind="lifecycle" value={j.status} /> },
   { accessorKey: "label", header: "Job" },
   { id: "progress", header: "Progress", meta: { numeric: true }, cell: ({ row: { original: j } }) => `${Math.round(j.percent)}%` },
 ];

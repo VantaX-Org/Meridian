@@ -117,7 +117,7 @@ function CanvasInner(p: CanvasProps) {
           onClick={() => (p.editable ? setConnectMode((v) => !v) : p.onBlocked())}>Connect mode</Button>
         <IconButton aria-label="Delete selected" disabled={!selNode && !selFlow} onClick={remove}><Trash2 size={16} aria-hidden /></IconButton>
         {askDelete ? (
-          <span className="inline-flex items-center gap-2 m-text-body" style={{ color: "var(--m-ink-2)" }} role="alertdialog" aria-label="Delete activity">
+          <span className="inline-flex items-center gap-2 m-text-body m-ink-2" role="alertdialog" aria-label="Delete activity">
             Also delete the activity?
             <Button variant="secondary" onClick={() => { p.onDeleteNode(askDelete, true); setAskDelete(null); }}>Delete both</Button>
             <Button variant="ghost" onClick={() => { p.onDeleteNode(askDelete, false); setAskDelete(null); }}>Step only</Button>

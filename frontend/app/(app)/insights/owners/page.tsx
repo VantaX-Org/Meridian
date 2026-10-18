@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, ConfirmDialog, DataTable, Delta, Pill, Stat, type PillTone } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Delta, Stat, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getOwners, getReadiness, type OwnerCardResponse } from "@/lib/api/insights";
 import { sendOwnerDigests } from "@/lib/api/owners";
@@ -16,15 +16,6 @@ import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
 
-/** No direct severity->PillTone mapping exists yet; critical/high read as blocking (no-go), medium as at-risk, low/other as neutral. */
-function severityTone(severity: string): PillTone {
-  if (severity === "critical" || severity === "high") return "no-go";
-  if (severity === "medium") return "at-risk";
-  return "neutral";
-}
-
-const SEVERITY_LABEL: Record<string, string> = { critical: "Critical", high: "High", medium: "Medium", low: "Low", warning: "Warning" };
-const severityLabel = (severity: string) => SEVERITY_LABEL[severity] ?? labelOf(severity);
 
 const openCount = (o: OwnerCardResponse) => Object.values(o.open_by_severity).reduce((a, b) => a + b, 0);
 
@@ -55,16 +46,14 @@ function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend
       <Stat label="Score" value={owner.score} delta={<Delta value={owner.delta} />} href="/inbox" />
       <div className="flex gap-2 m-text-body">
         {Object.entries(owner.open_by_severity).map(([severity, count]) => (
-          <Pill key={severity} tone={severityTone(severity)}>
-            {severityLabel(severity)}: {count}
-          </Pill>
+          <Status key={severity} kind="severity" value={severity} count={count} />
         ))}
       </div>
-      <div className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+      <div className="m-text-body m-ink-3">
         {`Fixed since baseline ${owner.fixed_since_baseline.toLocaleString()}, oldest open item ${plural(owner.oldest_item_age_days, "day")}`}
       </div>
       <p className="m-text-body">{owner.digest}</p>
-      <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+      <div className="m-text-meta m-ink-3">
         {labelOf(owner.schedule)} digest, last sent {owner.last_sent ? relativeTime(owner.last_sent) : "never"}
       </div>
       {canSend ? (
@@ -122,7 +111,7 @@ export default function OwnersPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
         {owners.map((owner) => (
           <OwnerCard key={owner.owner} owner={owner} canSend={canSend} send={send} />
         ))}

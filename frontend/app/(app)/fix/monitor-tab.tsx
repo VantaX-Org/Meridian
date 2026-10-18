@@ -4,25 +4,24 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Delta, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { Button, Card, DataTable, Delta, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Status } from "@/design";
 import { useNowSec } from "@/hooks/use-now";
 import { useRole } from "@/hooks/use-role";
 import { errorText, getMonitor, type MonitorItem, type RegressedCheck } from "@/lib/api/remediation";
 import { getSyncProfiles, triggerSync } from "@/lib/api/systems";
 import { pinBaseline } from "@/lib/api/versions";
-import { formatDate, formatModuleName, labelOf, relativeTime } from "@/lib/format";
+import { formatDate, formatModuleName, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { presetLabel } from "../systems/[systemId]/schedules-panel";
 
 const STALE_AFTER_MS = 36 * 60 * 60 * 1000;
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "at-risk", medium: "at-risk" };
 
 const scopeLabel = (m: MonitorItem) => m.system_name ?? (m.scope === "upload" ? "Imported files" : m.scope);
 
 const regressedColumns: ColumnDef<RegressedCheck>[] = [
   { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Link href={`/rules/${row.original.check_id}`} className="underline"><Mono>{row.original.check_id}</Mono></Link> },
   { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
-  { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+  { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
   { accessorKey: "new", header: "New failing records", meta: { numeric: true }, cell: ({ row }) => row.original.new.toLocaleString() },
 ];
 
@@ -101,7 +100,7 @@ function MonitorCard({ item: m }: { item: MonitorItem }) {
           <DataTable columns={regressedColumns} data={mon.regressed_checks} getRowId={(r) => r.check_id} hideSearch maxHeight={280} />
         ) : null}
 
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           {!mon || !mon.new_records ? (
             "No records have regressed since the baseline."
           ) : mon.batch_id ? (
@@ -117,7 +116,7 @@ function MonitorCard({ item: m }: { item: MonitorItem }) {
         </p>
 
         {isSystem ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body m-ink-2">
             {profiles.isLoading ? "Loading schedule" : active.length === 0 ? (
               <>
                 No re-check schedule. The comparison only updates when someone extracts by hand.{" "}
@@ -132,14 +131,14 @@ function MonitorCard({ item: m }: { item: MonitorItem }) {
             )}
           </p>
         ) : (
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body m-ink-2">
             Imported files are re-checked when a new file is uploaded.{" "}
             <Link href="/import" className="underline">Upload</Link>
           </p>
         )}
 
         {stale ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body m-ink-2">
             Not checked in over 36 hours. The comparison may not reflect recent SAP changes.
           </p>
         ) : null}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
-import { AuthFrame, PasswordField, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { AuthFrame, PasswordField, authFormClass, authLinkClass } from "@/components/auth/auth-frame";
 import { Button, Field, Notice } from "@/design";
 import { resolveNavHref } from "@/lib/nav";
 import { isRole } from "@/hooks/use-role";
@@ -98,7 +98,7 @@ export default function SignInPage() {
         <PasswordField label="Password" value={password} onChange={setPassword} autoComplete="current-password"
           error={passwordError} readOnly={loading} />
         <div className="flex items-center">
-          <Link className={authLinkClass} style={authLinkStyle} href="/forgot-password">Forgot password?</Link>
+          <Link className={authLinkClass} href="/forgot-password">Forgot password?</Link>
         </div>
         <Button type="submit" pending={loading} className="w-full">Sign in</Button>
       </form>

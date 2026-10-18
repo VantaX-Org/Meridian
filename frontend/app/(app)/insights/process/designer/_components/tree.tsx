@@ -84,16 +84,16 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
           return (
             <li key={id} role="treeitem" aria-level={r.level} aria-selected={id === selected}
               aria-expanded={kids.length ? open.has(id) : undefined} className="m-designer__item">
-              <div className="m-designer__row" style={{ ["--m-level" as string]: r.level }} data-selected={id === selected || undefined}>
+              <div className="m-designer__row" data-selected={id === selected || undefined}>
                 {renaming === id ? (
                   <Input autoFocus defaultValue={r.item.name} aria-label="Name" maxLength={200}
                     onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== r.item.name) actions.rename(id, v); setRenaming(null); }}
                     onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setRenaming(null); }} />
                 ) : (
                   <button type="button" data-row={id} tabIndex={id === focusable ? 0 : -1}
-                    className="m-designer__label m-designer-focus m-rail-link m-text-body" style={{ ["--m-rail-fg" as string]: "var(--m-ink)" }}
+                    className="m-designer__label m-designer-focus m-rail-link m-text-body"
                     onClick={() => { onSelect(id); if (kids.length) toggle(id); }} onKeyDown={(e) => onKey(e, r, i)}>
-                    <span className="m-text-label" style={{ color: "var(--m-ink-3)" }}><Mono>{`L${r.level}`}</Mono></span>
+                    <span className="m-text-label m-ink-3"><Mono>{`L${r.level}`}</Mono></span>
                     <span className="m-designer__name">{r.item.name}</span>
                     {dot && dot !== "green" ? (
                       <span className="m-designer__dot" data-tone={dot === "red" ? "danger" : "warning"} role="img" aria-label={WORD[dot]} />
@@ -102,7 +102,7 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
                 )}
                 {confirm === id ? (
                   <span className="m-designer__actions" data-open>
-                    <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>Delete with everything below?</span>
+                    <span className="m-text-meta m-ink-2">Delete with everything below?</span>
                     <Button variant="secondary" onClick={() => { actions.remove(id); setConfirm(null); }}>Delete</Button>
                     <Button variant="ghost" onClick={() => setConfirm(null)}>Keep</Button>
                   </span>
