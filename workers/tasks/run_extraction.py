@@ -117,14 +117,6 @@ def wait_for_config(task: Task, session: Session, system_id: str) -> str:
     return "loaded" if basis == "loaded" else "baseline"
 
 
-@celery_app.task(
-    bind=True,
-    name="workers.tasks.run_extraction.run_extraction",
-    soft_time_limit=EXTRACT_TIME_LIMIT,
-    time_limit=EXTRACT_TIME_LIMIT + 60,
-    acks_late=True,
-    reject_on_worker_lost=True,
-)
 def _acquire_version_lock(version_id: str) -> bool:
     """One extraction per version, across worker restarts.
 
@@ -151,6 +143,14 @@ def _acquire_version_lock(version_id: str) -> bool:
         return True  # never block an extraction because the lock backend is unavailable
 
 
+@celery_app.task(
+    bind=True,
+    name="workers.tasks.run_extraction.run_extraction",
+    soft_time_limit=EXTRACT_TIME_LIMIT,
+    time_limit=EXTRACT_TIME_LIMIT + 60,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
 def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
                    scope=None, analyse=True, label=None, version_id=None, delta=False, purpose=None):
     """Download ``modules`` (business objects) from ``system_id`` into a new version.
