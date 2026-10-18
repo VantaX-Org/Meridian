@@ -12,11 +12,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import {
-  Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
-  emptyExportOptions, type PillTone,
-  entityTabs, useBreadcrumbTitle,
-} from "@/design";
+import { Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, emptyExportOptions, type PillTone, entityTabs, useBreadcrumbTitle, Score } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
@@ -238,7 +234,7 @@ export default function SystemPage() {
           loading={versionsQ.isLoading}
           delta={dqsTrend(versions) != null && Math.abs(dqsTrend(versions) ?? 0) >= 0.05 ? <Delta value={dqsTrend(versions) ?? 0} run="the previous run" /> : undefined}
           // The ring carries the number, as on the run page; no second numeral beside it.
-          value={dqs === null ? "—" : aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <ScoreRing score={dqs} size={48} />}
+          value={dqs === null ? "—" : aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <Score value={dqs} />}
           href={latest ? findingsHref(latest.id) : undefined}
         />
         <Stat label="Open findings" loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />

@@ -6,10 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, Stat, toneOfTier, type ChartPoint,
-  type ExportOption, type HeatmapCell,
-} from "@/design";
+import { Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getCleansing, getHeatmap, getOverview, getRootCauses, getRuleRanking, getTrends, l1Label, type RuleRow,
@@ -101,22 +98,16 @@ export default function InsightsOverviewPage() {
         loading,
         lead: (
           <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-            <div style={{ minWidth: 260, width: "max-content", maxWidth: 360 }}>
-              <Stat
-                hero
-                label="Data quality score"
-                help="dqs"
+            <Score
+                size="hero"
                 loading={loading}
-                value={o?.dqs.composite ?? "—"}
-                bar={o?.dqs.composite ?? undefined}
-                decimals={1}
+                value={o?.dqs.composite}
                 versionId={run}
                 href={withScope("/insights/trends", { run })}
                 tone={o?.dqs.tier === "go" ? "go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "no_go" ? "no-go" : undefined}
                 hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
                 delta={o?.dqs.delta != null ? <Delta value={o.dqs.delta} /> : undefined}
               />
-            </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1" style={{ minWidth: "min(100%, 16rem)", maxWidth: "48ch" }}>
               <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : loading ? "Scoring" : "Not scored yet"}

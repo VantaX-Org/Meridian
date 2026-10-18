@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, Select, Skeleton, Sparkline, Stat, type HeatmapCell, Status, ScoreRing } from "@/design";
+import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, Select, Skeleton, Sparkline, Stat, type HeatmapCell, Status, Score } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { getFindings } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
@@ -230,7 +230,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       id: "dqs", header: "DQS", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
       cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : (
-        <span className="inline-flex items-center gap-2"><ScoreRing score={o.composite_score} size={16} bands={bands} /><span className="m-numeric">{o.composite_score.toFixed(1)}</span></span>
+        <Score size="sm" value={o.composite_score} bands={bands} />
       ),
     },
     {

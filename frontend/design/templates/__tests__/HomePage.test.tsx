@@ -53,8 +53,8 @@ describe("HomePage data state", () => {
     render(<HomePage persona="lead" state="data" verdict={{ dqs: 70, sentence: "x", firstRun: true, delta: null }} run={run} />);
     expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
     expect(screen.getByTestId("home-dqs")).not.toHaveTextContent(/^vs /);
-    // The column grows with the numeral and its delta chip instead of clipping them.
-    expect((screen.getByTestId("home-dqs") as HTMLElement).style.width).toBe("max-content");
+    // The column grows with the numeral and its delta chip instead of clipping them (.m-score-hero: width max-content).
+    expect(screen.getByTestId("home-dqs").firstElementChild).toHaveClass("m-score-hero");
   });
 
   it("shows a dash when no module is scored, and no ring", () => {

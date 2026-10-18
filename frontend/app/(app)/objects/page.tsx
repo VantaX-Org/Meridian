@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ScoreBands, Status, ScoreRing } from "@/design";
+import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ScoreBands, Status, Score } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -61,10 +61,7 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
       const score = row.original.composite_score;
       if (score == null) return "—";
       return (
-        <span className="inline-flex items-center gap-2">
-          <ScoreRing score={score} size={16} bands={bands} />
-          {drill(row.original, run, score)}
-        </span>
+        <Score size="sm" value={score} bands={bands}>{drill(row.original, run, score)}</Score>
       );
     },
   },

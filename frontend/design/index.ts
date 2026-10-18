@@ -37,9 +37,8 @@ export * from "./primitives/Textarea";
 export * from "./hooks/usePrefetch";
 export * from "./hooks/useLoadingTimeout";
 export * from "./primitives/SeverityDot";
-export * from "./primitives/ScoreRing";
 export * from "./primitives/AiSummary";
-export * from "./primitives/ScoreExplainer";
+export * from "./primitives/Score";
 export * from "./primitives/DimensionBars";
 
 export * from "./table/DataTable";

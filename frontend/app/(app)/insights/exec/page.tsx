@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict, Score } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
@@ -108,19 +108,13 @@ export default function ExecPage() {
         hero: true,
         lead: dqs && typeof dqs.composite === "number" ? (
           <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-            <div style={{ minWidth: 260, width: "max-content", maxWidth: 360 }}>
-              <Stat
-                hero
-                label="Data quality score"
-                help="dqs"
+            <Score
+                size="hero"
                 value={dqs.composite}
-                bar={dqs.composite}
-                decimals={1}
                 versionId={vid}
                 hint={dqs.capped ? `Capped at ${dqs.composite <= 70 ? 70 : 85}` : undefined}
                 delta={dqs.delta != null ? <Delta value={dqs.delta} /> : undefined}
               />
-            </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1" style={{ minWidth: "min(100%, 16rem)", maxWidth: "48ch" }}>
               <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
                 {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}

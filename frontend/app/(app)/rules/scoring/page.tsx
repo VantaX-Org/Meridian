@@ -10,7 +10,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Radar, Select, Skeleton } from "@/design";
+import { Button, Card, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Radar, Select, Skeleton, Score } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getCostModel, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
@@ -123,24 +123,23 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         <ErrorState message={(agg.error as Error).message || "The latest findings could not be read."} onRetry={() => agg.refetch()} />
       ) : (
       <div className="flex gap-6">
-        <div className="flex flex-col gap-1">
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Score now</span>
-          {current === null ? (
-            <span className="m-text-title font-semibold">{agg.isLoading ? "–" : "—"}</span>
-          ) : (
-            <span className="m-numeric font-semibold" style={{ fontSize: "var(--m-text-hero)", lineHeight: "var(--m-leading-hero)", letterSpacing: "var(--m-tracking-tight)", color: "var(--m-ink)" }}>{current.toFixed(1)}</span>
-          )}
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{capped ? "A severity cap is in force" : current === null ? "No analysis has run yet" : "From the latest run"}</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>With these weights</span>
-          <span className="m-numeric font-semibold" style={{ fontSize: "var(--m-text-hero)", lineHeight: "var(--m-leading-hero)", letterSpacing: "var(--m-tracking-tight)", color: preview !== null && current !== null && preview < current ? "var(--m-at-risk)" : "var(--m-ink)" }}>{agg.isLoading ? "–" : preview === null ? "—" : preview.toFixed(1)}</span>
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
-            {capValue !== null && rawPreview !== null && rawPreview > capValue
-              ? `Capped at ${capValue} by ${criticals} critical ${criticals === 1 ? "finding" : "findings"}.`
-              : delta === null ? "Needs a scored run" : delta === 0 ? "Same as now" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points`}
-          </span>
-        </div>
+        <Score
+          size="hero"
+          label="Score now"
+          loading={agg.isLoading}
+          value={current}
+          hint={capped ? "A severity cap is in force" : current === null ? "No analysis has run yet" : "From the latest run"}
+        />
+        <Score
+          size="hero"
+          label="With these weights"
+          loading={agg.isLoading}
+          value={preview}
+          tone={preview !== null && current !== null && preview < current ? "at-risk" : undefined}
+          hint={capValue !== null && rawPreview !== null && rawPreview > capValue
+            ? `Capped at ${capValue} by ${criticals} critical ${criticals === 1 ? "finding" : "findings"}`
+            : delta === null ? "Needs a scored run" : delta === 0 ? "Same as now" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points`}
+        />
         <div className="flex flex-col gap-1">
           <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Weights sum</span>
           <span className="m-text-title font-semibold" style={{ color: sumOk ? undefined : "var(--m-critical)" }}>{sum.toFixed(2)}</span>

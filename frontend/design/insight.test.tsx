@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { AiSummary } from "./primitives/AiSummary";
-import { ScoreExplainer } from "./primitives/ScoreExplainer";
+import { Score } from "./primitives/Score";
 import { InsightHeader } from "./templates/InsightHeader";
 import { NextActions } from "./templates/NextActions";
 import { Funnel } from "./charts/Funnel";
@@ -79,24 +79,29 @@ describe("NextActions", () => {
   });
 });
 
-describe("ScoreExplainer", () => {
+describe("Score explain", () => {
   it("opens with contribution table and top rules ranked by failed x weight", () => {
     render(
-      <ScoreExplainer
-        score={72}
-        band={{ label: "At risk", tone: "at-risk" }}
-        dimensions={[{ name: "Completeness", weight: 0.25, score: 80 }]}
-        cap={{ value: 85, reason: "one critical failure" }}
-        rules={[
-          { ruleId: "MM-001", object: "material_master", recordsFailed: 10, weight: 1 },
-          { ruleId: "MM-002", object: "material_master", recordsFailed: 5, weight: 5 },
-        ]}
-        historyHref="/runs"
+      <Score
+        value={92}
+        cap={85}
+        explain={{
+          band: { label: "At risk", tone: "at-risk" },
+          dimensions: [{ name: "Completeness", weight: 0.25, score: 80 }],
+          capReason: "one critical failure",
+          rules: [
+            { ruleId: "MM-001", object: "material_master", recordsFailed: 10, weight: 1 },
+            { ruleId: "MM-002", object: "material_master", recordsFailed: 5, weight: 5 },
+          ],
+          historyHref: "/runs",
+        }}
       />,
     );
-    fireEvent.click(screen.getByLabelText("Explain score 72"));
+    fireEvent.click(screen.getByLabelText("Explain score 92"));
+    // The popover names the band and cap; the score itself is drawn once, by the ring.
+    expect(screen.getAllByLabelText(/^Score 85/)).toHaveLength(1);
     expect(screen.getByText("20.0")).toBeTruthy();
-    expect(screen.getByText(/Capped at 85/)).toBeTruthy();
+    expect(screen.getByText(/Capped at 85: one critical failure/)).toBeTruthy();
     const ids = screen.getAllByText(/MM-00/).map((n) => n.textContent);
     expect(ids).toEqual(["MM-002", "MM-001"]);
   });

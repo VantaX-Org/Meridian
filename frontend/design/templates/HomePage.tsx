@@ -4,8 +4,7 @@ import Link from "next/link";
 import { Button } from "../primitives/Button";
 import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
-import { Pill } from "../primitives/Pill";
-import { Stat } from "../primitives/Stat";
+import { Score } from "../primitives/Score";
 import { PageHeader } from "../primitives/PageHeader";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { ErrorState } from "../primitives/ErrorState";
@@ -130,24 +129,16 @@ export function HomePage({
 
       {state === "data" && verdict && (
         <section className="m-hero grid items-end gap-x-10 gap-y-6 md:grid-cols-[auto_1fr]" data-testid="home-verdict-row" data-tour="home-verdict">
-          {/* Wide enough for the numeral and its delta chip; the column grows with the content rather than clipping it. */}
-          <div data-testid="home-dqs" data-tour="home-score" style={{ minWidth: 260, width: "max-content", maxWidth: 360 }}>
-            <Stat
-              hero
-              label="Data quality score"
-              help="dqs"
-              value={verdict.dqs ?? "—"}
-              bar={verdict.dqs ?? undefined}
-              decimals={1}
+          <div data-testid="home-dqs" data-tour="home-score">
+            <Score
+              size="hero"
+              value={verdict.dqs}
               versionId={run?.label}
               hint={verdict.firstRun ? "First run for this object" : verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
               delta={verdict.delta != null ? <Delta value={verdict.delta} /> : undefined}
             />
           </div>
           <div className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "64ch" }}>
-            <div className="flex flex-wrap items-center gap-2">
-              {verdict.capLine && <Pill tone="at-risk">Capped</Pill>}
-            </div>
             <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>
             {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
             {verdict.action && (

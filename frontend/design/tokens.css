@@ -502,6 +502,8 @@
 .m-meridian-line::before { content: ""; position: absolute; left: 0; top: -1px; width: 24px; height: 3px; background: var(--m-accent); }
 .m-score-bar { position: relative; display: block; width: 100%; height: 8px; border-radius: var(--m-radius-pill); background: var(--m-dqs-track); overflow: hidden; }
 .m-score-bar .m-bar-fill { border-radius: var(--m-radius-pill); }
+/* Score size="hero": wide enough for the numeral and its delta chip; grows with the content rather than clipping it. */
+.m-score-hero { min-width: 260px; width: max-content; max-width: 360px; }
 .m-fade-bottom { background-image: var(--m-grad-fade-bottom); }
 
 .m-lift, .m-lift-sm { transition: transform var(--m-motion-duration) var(--m-ease-spring), box-shadow var(--m-motion-duration) var(--m-ease), background-color var(--m-motion-duration) var(--m-ease); }

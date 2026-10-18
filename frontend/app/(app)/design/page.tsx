@@ -1,4 +1,4 @@
-import { Button, Card, IconButton, Pill, Status, Badge, PageHeader, SeverityDot, Delta, Stat, Skeleton, Mono, ScoreRing } from "@/design";
+import { Button, Card, IconButton, Pill, Status, Badge, PageHeader, SeverityDot, Delta, Stat, Skeleton, Mono, Score } from "@/design";
 
 import { ExportDemo } from "./export-demo";
 import { GalleryMore } from "./gallery-more";
@@ -48,8 +48,9 @@ export default function DesignGalleryPage() {
           <div className="flex gap-4 items-center">
             <Delta value={5} />
             <Delta value={-5} />
-            <Stat label="DQS" help="dqs" value={92} delta={<Delta value={2} />} />
-            <ScoreRing score={78} />
+            <Stat label="Failing records" value={1204} delta={<Delta value={2} />} />
+            <Score size="sm" value={78} />
+            <Score value={78} cap={70} criticals={1} />
           </div>
           <div className="flex gap-4 items-center">
             <Skeleton width={120} />

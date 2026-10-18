@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, EmptyState, ExplorerPage, Line, PageHeader, ScoreExplainer, Stat } from "@/design";
+import { Button, Card, EmptyState, ExplorerPage, Line, PageHeader, Stat, Score } from "@/design";
 import { getMdmHealth } from "@/lib/api/analytics";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { getQueueItems } from "@/lib/api/stewardship";
@@ -64,18 +64,20 @@ export default function MdmOverviewPage() {
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 @5xl:grid-cols-12">
             <div className="@5xl:col-span-3">
-              <Card title="MDM health">{m ? <ScoreExplainer
-                score={m.mdm_health_score}
-                band={m.mdm_health_score >= 85 ? { label: "Healthy", tone: "go" } : m.mdm_health_score >= 60 ? { label: "Needs attention", tone: "at-risk" } : { label: "Unhealthy", tone: "no-go" }}
-                // Fixed weights from api/services/mdm_scoring.py; the snapshot carries the four inputs.
-                dimensions={[
-                  { name: "Golden record coverage", weight: 0.4, score: m.golden_record_coverage_pct },
-                  { name: "Match confidence", weight: 0.3, score: m.avg_match_confidence * 100 },
-                  { name: "Steward SLA", weight: 0.2, score: m.steward_sla_compliance_pct },
-                  { name: "Source consistency", weight: 0.1, score: m.source_consistency_pct },
-                ]}
-                rules={[]}
-                historyHref="/mdm"
+              <Card title="MDM health">{m ? <Score
+                value={m.mdm_health_score}
+                explain={{
+                  band: m.mdm_health_score >= 85 ? { label: "Healthy", tone: "go" } : m.mdm_health_score >= 60 ? { label: "Needs attention", tone: "at-risk" } : { label: "Unhealthy", tone: "no-go" },
+                  // Fixed weights from api/services/mdm_scoring.py; the snapshot carries the four inputs.
+                  dimensions: [
+                    { name: "Golden record coverage", weight: 0.4, score: m.golden_record_coverage_pct },
+                    { name: "Match confidence", weight: 0.3, score: m.avg_match_confidence * 100 },
+                    { name: "Steward SLA", weight: 0.2, score: m.steward_sla_compliance_pct },
+                    { name: "Source consistency", weight: 0.1, score: m.source_consistency_pct },
+                  ],
+                  rules: [],
+                  historyHref: "/mdm",
+                }}
               /> : <EmptyState title="No current snapshot" detail="The first snapshot is taken after golden records are built." action={<Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} />} />}</Card>
             </div>
             <div className="@5xl:col-span-5">
