@@ -270,7 +270,14 @@ class ConnectivityManager:
                 # SAP dates/times are system-local: the freshness checks need the offset (sap/ddic_reader.py)
                 from sap.ddic_reader import utc_offset_seconds
                 self.sap_utc_offset_seconds = utc_offset_seconds(connector) if hasattr(connector, "call") else None
-                plans = plan_modules(modules, dictionary, scope, system_type=system_type)
+                # Read the fields of a rule the tenant re-enabled from the UI even though its
+                # YAML ships enabled: false - otherwise it would evaluate with its columns
+                # unread and report not_evaluable.
+                from checks.overrides import load_overrides
+                _ov = load_overrides(self.session) or {}
+                _reenabled = any((o or {}).get("enabled") for o in _ov.values())
+                plans = plan_modules(modules, dictionary, scope, system_type=system_type,
+                                     include_disabled=_reenabled)
                 # fields this system's field-status customizing controls (checks/field_status_rules.py)
                 from checks.field_status_rules import extra_fields, load_config, material_fields
                 from sap.field_status_config import resolve_all, resolve_material

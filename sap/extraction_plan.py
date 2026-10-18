@@ -469,6 +469,7 @@ def _plan_process_events(modules: list[str], dictionary: Dictionary, system_type
 
 
 def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dict] = None, *,
+                 include_disabled: bool = False,
                  system_type: str = "ecc", today: Optional[date] = None) -> dict[str, TablePlan]:
     """Tables/fields to extract so every rule of ``modules`` can be evaluated.
 
@@ -500,6 +501,17 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
             rules = module_rules(module)
         except FileNotFoundError:
             continue
+        # A disabled rule never evaluates (checks/overrides.apply drops it), so reading its
+        # fields costs SAP time and extractor memory for no possible finding. The DDIC-derived
+        # rules ship disabled and they are the bulk of the library: on material_master this is
+        # 42 of MARC's 140 columns and most of MARA's 124, on tables of millions of rows.
+        #
+        # A tenant can re-enable a disabled rule from the UI (the rules table overrides the YAML
+        # default). plan_modules has no session, so it cannot see that override - the re-enabled
+        # rule would find its fields missing and report not_evaluable. `include_disabled`
+        # covers that: the extraction passes True when the tenant has re-enabled anything.
+        if not include_disabled:
+            rules = [r for r in rules if r.get("enabled", True)]
         for rule in rules:
             cols = rule_columns(rule)
             # S/4 field layout on an ECC source (VBAK.GBSTK lives in VBUK on ECC)
