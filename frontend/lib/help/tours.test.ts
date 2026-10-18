@@ -31,13 +31,13 @@ describe("tour definitions", () => {
     expect(TOURS.map((t) => t.id)).toEqual(["steward", "lead", "basis", "process", "first-run"]);
   });
 
-  it("gives each persona tour 5 to 7 steps and the first-run tour 3", () => {
+  it("gives each persona tour 5 to 7 steps and the first-run tour 2", () => {
     for (const id of ["steward", "lead", "basis", "process"]) {
       const n = tourById(id)!.steps.length;
       expect(n, id).toBeGreaterThanOrEqual(5);
       expect(n, id).toBeLessThanOrEqual(7);
     }
-    expect(tourById("first-run")!.steps).toHaveLength(3);
+    expect(tourById("first-run")!.steps).toHaveLength(2);
   });
 
   it("only points at data-tour attributes that exist in the source", () => {

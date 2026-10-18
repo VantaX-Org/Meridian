@@ -11,7 +11,8 @@ import { Can, PermissionsProvider, usePermissions } from "@/lib/permissions";
 import { RequestAccessDialog } from "@/components/request-access-dialog";
 import { ScopedPill } from "@/components/scoped-pill";
 import { GatedPrimary, primaryTooltip } from "@/components/gated-primary";
-import { runsInScope } from "@/design/shell/RunSelector";
+import { inSystems } from "@/lib/run-scope";
+import type { Version } from "@/types/api";
 import { permissionsPayload } from "../../e2e/fixtures/legacy-permissions";
 
 afterEach(() => vi.restoreAllMocks());
@@ -145,17 +146,14 @@ describe("GatedPrimary", () => {
   });
 });
 
-describe("runsInScope", () => {
-  const runs = [
-    { id: "r1", label: "Run 1", systemId: "s1" },
-    { id: "r2", label: "Run 2", systemId: "s2" },
-    { id: "u1", label: "Upload" },
-  ];
+describe("inSystems", () => {
+  const v = (id: string, system_id?: string) => ({ id, run_at: "2026-10-01T00:00:00Z", label: id, status: "complete", dqs_summary: null, metadata: system_id ? { system_id } : {} }) as Version;
+  const runs = [v("r1", "s1"), v("r2", "s2"), v("u1")];
   it("keeps every run when unscoped", () => {
-    expect(runsInScope(runs, null)).toEqual(runs);
+    expect(inSystems(runs, null)).toEqual(runs);
   });
   it("keeps only runs on in-scope systems", () => {
-    expect(runsInScope(runs, new Set(["s1"])).map((r) => r.id)).toEqual(["r1"]);
+    expect(inSystems(runs, new Set(["s1"])).map((r) => r.id)).toEqual(["r1"]);
   });
 });
 

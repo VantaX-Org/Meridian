@@ -36,7 +36,7 @@ export const RECORDED = {
   /** The one SAP system of the seeded tenant. */
   systemId: "c7a18906-1555-40ba-a1b2-caf83188238e",
   systemName: "KMZ-SIM",
-  /** The newest run, which the shell's run scope selects on every route. */
+  /** The newest finished run: the default scope of every cross-object page without ?run=. */
   latestRunId: "d3229ded-0708-4967-9dfb-1b7f4fada953",
   /** The 100k-row business partner run (the run detail route). */
   businessPartnerRunId: "64afe257-80b0-48b9-8b9a-397e29a7dfe6",
@@ -98,7 +98,7 @@ export const json = (body: unknown) => ({ status: 200, contentType: "application
  *    `(:days || ' days')::interval` (api/routes/analytics.py).
  *  - GET /stewardship?item_type=merge_decision… answered 500 on the /mdm page in two of six
  *    recording passes (intermittent; the recording holds its 200 and no shim is needed).
- *  - /migration/dry-run passes the shell's `?run=` (a data quality run) to
+ *  - /migration/dry-run, opened with a data quality run's `?run=`, passes it to
  *    GET /migration/runs/{id}, which knows only migration runs → 404 → error state.
  *  - GET /business-process/{run}/controlling → 500: the SPRO registry has no entry for
  *    controlling and spro_reader.read_config raises instead of answering empty

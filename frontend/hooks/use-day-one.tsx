@@ -24,7 +24,7 @@ const FAILED = new Set(["failed", "agents_failed"]);
 /**
  * Single source for "what should the tenant do next", derived from live
  * systems/config/versions state (spec section 4). Used by Home's no-data
- * layout, the top bar's run-selector slot, and every "no run yet" empty
+ * layout and every "no run yet" empty
  * state's action link — so the journey is always the same journey.
  */
 export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayOneStep | null } {

@@ -83,14 +83,7 @@ export function Rail() {
   const navRef = useRef<HTMLElement>(null);
   const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
 
-  // Carry the current ?run= onto rail hrefs so the layout's RunSelectorSlot
-  // doesn't have to router.replace() it back in after every rail click —
-  // that replace was a second, flicker-causing navigation (review M11).
-  const runParam = searchParams?.get("run") ?? null;
-  const withRun = (href: string): string => {
-    if (!runParam) return href;
-    return `${href}${href.includes("?") ? "&" : "?"}run=${encodeURIComponent(runParam)}`;
-  };
+  // Rail links never carry ?run=: each section opens on its own latest run (lib/run-scope.ts).
 
   const [expanded, setExpanded] = useState(true);
   const [openParents, setOpenParents] = useState<Set<string>>(new Set());
@@ -307,7 +300,7 @@ export function Rail() {
           else linkRefs.current.delete(item.href);
         }}
         key={item.href}
-        href={withRun(linkHref)}
+        href={linkHref}
         aria-label={item.label}
         aria-current={active ? "page" : undefined}
         aria-expanded={!expanded && hasChildren ? flyoutHref === item.href : undefined}
@@ -390,7 +383,7 @@ export function Rail() {
       style={{ width: expanded ? RAIL_WIDTH_EXPANDED : RAIL_WIDTH_COLLAPSED, background: "var(--m-rail)", borderRight: "1px solid var(--m-rail-edge)" }}
     >
       <Link
-        href={withRun(resolveNavHref("/home/lead", role))}
+        href={resolveNavHref("/home/lead", role)}
         aria-label="Meridian"
         className="flex items-center gap-2 shrink-0 font-semibold"
         style={{ height: "var(--m-topbar-h)", paddingLeft: expanded ? 16 : 0, justifyContent: expanded ? "flex-start" : "center", color: "var(--m-ink)" }}
@@ -472,7 +465,7 @@ export function Rail() {
           {(flyoutItem.children?.length ? flyoutItem.children : [flyoutItem]).map((child) => (
             <Link
               key={child.href}
-              href={withRun(resolveNavHref(child.href, role))}
+              href={resolveNavHref(child.href, role)}
               className="m-motion-colors flex items-center h-8 px-2 m-text-body font-medium hover:bg-[var(--m-rail-hover)]"
               style={{
                 borderRadius: "var(--m-radius-control)",
