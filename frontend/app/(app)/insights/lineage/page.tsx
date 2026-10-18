@@ -22,7 +22,7 @@ import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
   type ImpactRow, type LineageDirection, type LineageNode, type Severity,
 } from "@/lib/api/lineage";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -229,7 +229,7 @@ export default function LineagePage() {
             {!focus ? <EmptyState title="Enter a field, rule or KPI to trace" detail="The trace shows what feeds it and what it feeds." ghost="grid" />
               : graphQ.isLoading ? <Skeleton height={240} />
               : graphQ.error ? (
-                <ErrorState message={apiErrorMessage(graphQ.error)} onRetry={() => void graphQ.refetch()} />
+                <ErrorState {...apiErrorState(graphQ.error)} onRetry={() => void graphQ.refetch()} />
               )
               : nodes.length ? (
                 <>
@@ -245,7 +245,7 @@ export default function LineagePage() {
         </Card>
         <Card title="KPIs, processes and features at risk">
           {impactQ.isLoading ? <Skeleton height={160} />
-            : isListFailure(impactQ) ? <ErrorState message={apiErrorMessage(impactQ.error)} onRetry={() => void impactQ.refetch()} />
+            : isListFailure(impactQ) ? <ErrorState {...apiErrorState(impactQ.error)} onRetry={() => void impactQ.refetch()} />
             : rows.length === 0 ? (
               latest
                 ? <EmptyState title="No failing rule reaches a KPI, process or feature" action={<Button render={<Link href="/rules">Open rules</Link>} />} />

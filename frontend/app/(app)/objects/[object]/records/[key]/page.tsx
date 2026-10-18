@@ -10,7 +10,7 @@ import { Button, Card, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, Rec
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { getRecordReportUrl } from "@/lib/api/reports";
 import { queryKeys } from "@/lib/query-keys";
 import { parseRecordKey } from "@/lib/record-key";
@@ -94,7 +94,7 @@ export default function RecordFixSheetPage() {
   if (recordQuery.isError) {
     return (
       <ErrorState
-        message={apiErrorMessage(recordQuery.error)}
+        {...apiErrorState(recordQuery.error)}
         onRetry={() => recordQuery.refetch()}
       />
     );

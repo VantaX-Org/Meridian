@@ -12,7 +12,7 @@ import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
 import { exportAuditEntries, getAuditEntries, type AuditEntry } from "@/lib/api/audit";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
 import { InviteForm } from "@/components/admin/invite-form";
 import { relativeTime } from "@/lib/format";
@@ -132,7 +132,7 @@ function UsersView() {
       </div>
 
       {usersQ.isError ? (
-        <ErrorState message={apiErrorMessage(usersQ.error)} onRetry={() => usersQ.refetch()} />
+        <ErrorState {...apiErrorState(usersQ.error)} onRetry={() => usersQ.refetch()} />
       ) : usersQ.isLoading ? <Skeleton height={240} /> : users.length ? (
         <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowClick={(u) => setEditing(u)} />
       ) : (
@@ -181,7 +181,7 @@ function RolesView() {
     <div className="flex flex-col gap-6 pt-4">
       <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Permissions come from the API role matrix, the frontend keeps no copy.</p>
       {matrixQ.isError ? (
-        <ErrorState message={apiErrorMessage(matrixQ.error)} onRetry={() => matrixQ.refetch()} />
+        <ErrorState {...apiErrorState(matrixQ.error)} onRetry={() => matrixQ.refetch()} />
       ) : matrix ? (
         <Card title="Role matrix" padding="sm">
           <DataTable columns={matrixCols} data={ROLES} getRowId={(r) => r} />
@@ -215,7 +215,7 @@ function AuditView() {
         />
       </div>
       {auditQ.isError ? (
-        <ErrorState message={apiErrorMessage(auditQ.error)} onRetry={() => auditQ.refetch()} />
+        <ErrorState {...apiErrorState(auditQ.error)} onRetry={() => auditQ.refetch()} />
       ) : auditQ.isLoading ? <Skeleton height={240} /> : entries.length ? (
         <DataTable columns={auditCols} data={entries} getRowId={(e) => e.id} />
       ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}

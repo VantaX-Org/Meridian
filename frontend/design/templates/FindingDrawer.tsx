@@ -22,7 +22,7 @@ import { useRole } from "@/hooks/use-role";
 import { getFindingImpact } from "@/lib/api/analytics";
 import { getConfigRootCause, type RootCauseType } from "@/lib/api/config-intelligence";
 import { queryKeys } from "@/lib/query-keys";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { labelOf, checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/format";
 
 const heading = "m-text-body font-semibold";
@@ -113,7 +113,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
       ) : isFindingNotFound(findingQuery.error) || !findingQuery.data ? (
         <EmptyState title="Finding not found." detail="It may belong to a run that has since been deleted." />
       ) : findingQuery.isError ? (
-        <ErrorState message={apiErrorMessage(findingQuery.error)} onRetry={() => findingQuery.refetch()} />
+        <ErrorState {...apiErrorState(findingQuery.error)} onRetry={() => findingQuery.refetch()} />
       ) : (
         (() => {
           const finding = findingQuery.data;

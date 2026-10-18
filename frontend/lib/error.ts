@@ -37,6 +37,20 @@ export function apiErrorMessage(error: unknown): string {
   return apiErrorDetail(error) ?? "Could not reach the server.";
 }
 
+/**
+ * Title and message for an `ErrorState` from a failed request. The title says what actually happened: only a
+ * request that got no response is "Could not reach the server."; a 404 reads as not found, a 401/403 as access,
+ * anything else the server answered as a server error. The message is the API's detail when it gave one.
+ */
+export function apiErrorState(error: unknown): { title: string; message: string } {
+  const detail = apiErrorDetail(error);
+  const status = isAxiosError(error) ? error.response?.status : undefined;
+  if (status === 404) return { title: "Not found.", message: detail ?? "The server has no record of this." };
+  if (status === 401 || status === 403) return { title: "You do not have access to this.", message: detail ?? "Ask an administrator for access." };
+  if (status !== undefined) return { title: "The server could not complete the request.", message: detail ?? `The server answered ${status}.` };
+  return { title: "Could not reach the server.", message: detail ?? "" };
+}
+
 /** A 404 from a list endpoint means "no data here", not a failure; pages should show their empty state. */
 export function isNotFound(error: unknown): boolean {
   return isAxiosError(error) && error.response?.status === 404;

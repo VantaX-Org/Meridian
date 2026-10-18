@@ -21,7 +21,7 @@ import {
   putRolePermissions, updateRole, type ConvertResult, type Matrix, type Role,
 } from "@/lib/api/roles";
 import { getUsers } from "@/lib/api/users";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { User } from "@/types/api";
@@ -96,7 +96,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
     },
   ], []);
 
-  if (error) return <ErrorState message={apiErrorMessage(error)} onRetry={retry} />;
+  if (error) return <ErrorState {...apiErrorState(error)} onRetry={retry} />;
   if (loading) return <Skeleton height={240} />;
   if (!roles.length) return <EmptyState title="No roles yet" detail="Built-in roles appear once the tenant is set up." ghost="list" action={<Button variant="secondary" onClick={retry}>Reload roles</Button>} />;
   return (
@@ -130,7 +130,7 @@ function RoleDrawer({ role, onClone, onSaved }: { role: Role; onClone: () => voi
     onSuccess: () => { toast.success(`${role.name} saved`); setDraft(null); qc.invalidateQueries({ queryKey: ["role-matrix", role.key] }); onSaved(); },
     onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`),
   });
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   if (!q.data) return <Skeleton height={200} />;
   const matrix = draft ?? q.data.matrix;
   const diff = baseQ.data ? matrixDiff(baseQ.data.matrix, matrix) : null;
@@ -217,7 +217,7 @@ function UsersTab({ roles, onInvite }: { roles: Role[]; onInvite: () => void }) 
     { id: "role", header: "Legacy role", cell: ({ row }) => <Mono>{row.original.role}</Mono> },
     { id: "status", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
   ], []);
-  if (usersQ.isError) return <ErrorState message={apiErrorMessage(usersQ.error)} onRetry={() => usersQ.refetch()} />;
+  if (usersQ.isError) return <ErrorState {...apiErrorState(usersQ.error)} onRetry={() => usersQ.refetch()} />;
   if (usersQ.isLoading) return <Skeleton height={240} />;
   if (!users.length) return <EmptyState title="No users yet" detail="Invite the first one from the Invite tab." ghost="list" action={<Button onClick={() => onInvite()}>Invite user</Button>} />;
   return (
@@ -303,7 +303,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
     onSuccess: () => { toast.success("Request decided"); setGranting(null); setDeclining(null); setReason(""); qc.invalidateQueries({ queryKey: ["access-requests"] }); },
     onError: (e) => toast.error(`Not decided. ${apiErrorMessage(e)}`),
   });
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   if (q.isLoading) return <Skeleton height={160} />;
   const rows = q.data ?? [];
   if (!rows.length) return <EmptyState title="No open requests" detail="Access requests from users appear here for a decision." ghost="list" action={<Button variant="secondary" onClick={() => void q.refetch()}>Refresh</Button>} />;
@@ -348,7 +348,7 @@ function HistoryTab() {
   const qs = useQueries({
     queries: HISTORY_ACTIONS.map((action) => ({ queryKey: ["audit-history", action], queryFn: () => getAuditEntries({ action, limit: 50 }) })),
   });
-  if (qs.some((q) => q.isError)) return <ErrorState message={apiErrorMessage(qs.find((q) => q.isError)?.error)} onRetry={() => qs.forEach((q) => q.refetch())} />;
+  if (qs.some((q) => q.isError)) return <ErrorState {...apiErrorState(qs.find((q) => q.isError)?.error)} onRetry={() => qs.forEach((q) => q.refetch())} />;
   if (qs.some((q) => q.isLoading)) return <Skeleton height={240} />;
   const entries: AuditEntry[] = qs.flatMap((q) => q.data?.entries ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at));
   if (!entries.length) return <EmptyState title="No role changes yet" detail="Role, grant and request changes are listed here." ghost="list" action={<Button variant="secondary" onClick={() => qs.forEach((x) => void x.refetch())}>Refresh</Button>} />;

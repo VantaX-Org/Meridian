@@ -10,7 +10,7 @@ import { JobProgress } from "@/design/shell/JobProgress";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { getJob } from "@/lib/api/jobs";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -61,7 +61,7 @@ export default function ExtractionPage() {
         />
       );
     }
-    return <ErrorState message={apiErrorMessage(steps.error)} onRetry={() => steps.refetch()} />;
+    return <ErrorState {...apiErrorState(steps.error)} onRetry={() => steps.refetch()} />;
   }
 
   const stepRows = steps.data?.steps ?? [];

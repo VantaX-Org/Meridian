@@ -20,7 +20,7 @@ import {
 import { domainOf } from "@/design/tokens";
 import { getCostModel } from "@/lib/api/settings";
 import { labelOf, plural } from "@/lib/format";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame, formatMoney, statusTone } from "../_components/InsightFrame";
@@ -113,7 +113,7 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
   if (isListFailure(query)) {
     return (
       <ErrorState
-        message={apiErrorMessage(query.error)}
+        {...apiErrorState(query.error)}
         onRetry={() => query.refetch()}
       />
     );
@@ -171,7 +171,7 @@ function ImpactPanel({
   if (isListFailure(query)) {
     return (
       <ErrorState
-        message={apiErrorMessage(query.error)}
+        {...apiErrorState(query.error)}
         onRetry={() => query.refetch()}
       />
     );

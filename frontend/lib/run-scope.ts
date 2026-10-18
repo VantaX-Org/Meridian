@@ -14,6 +14,15 @@ export function runHasObject(v: Version, object: string): boolean {
   return !!v.dqs_summary?.[object] || !!v.metadata?.modules?.includes(object);
 }
 
+/**
+ * True when the run is known not to have measured `object`: it says which objects it covers (scores or asked-for
+ * modules) and `object` is not among them. A run that says nothing about its objects is not ruled out here.
+ */
+export function runLacksObject(v: Version, object: string): boolean {
+  const knows = Object.keys(v.dqs_summary ?? {}).length > 0 || (v.metadata?.modules?.length ?? 0) > 0;
+  return knows && !runHasObject(v, object);
+}
+
 /** Runs read from an in-scope system; every run when the user is not scoped to systems. */
 export function inSystems(versions: readonly Version[], systems: ReadonlySet<string> | null | undefined): Version[] {
   return systems ? versions.filter((v) => v.metadata?.system_id !== undefined && systems.has(v.metadata.system_id)) : [...versions];

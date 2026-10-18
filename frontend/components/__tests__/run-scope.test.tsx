@@ -38,7 +38,7 @@ describe("RunScope", () => {
 
   it("switches to another run of the lineage through ?run=, and to the latest by clearing it", async () => {
     render(<RunScope scope={{ run: OLD, choices: [NEW, OLD], latestId: NEW.id, pinned: true }} hrefFor={hrefFor} picker />);
-    const picker = screen.getByRole("combobox", { name: "Run shown" });
+    const picker = screen.getByRole("combobox", { name: "Showing run" });
     expect(picker).toHaveTextContent("material_master_10k, 10 Oct 2026");
     await userEvent.click(picker);
     await userEvent.click(await screen.findByRole("option", { name: "material_master_25k, 16 Oct 2026" }));

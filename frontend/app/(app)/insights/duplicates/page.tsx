@@ -19,7 +19,7 @@ import {
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { plural } from "@/lib/format";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
@@ -162,7 +162,7 @@ export default function DuplicatesPage() {
       {state === "loading" ? (
         <div aria-busy="true"><CardSkeleton height={320} /></div>
       ) : state === "error" ? (
-        <ErrorState message={apiErrorMessage(cluster.error)} onRetry={() => void cluster.refetch()} />
+        <ErrorState {...apiErrorState(cluster.error)} onRetry={() => void cluster.refetch()} />
       ) : state === "empty" ? (
         picked ? (
           <EmptyState title="No duplicate clusters" detail="This record has no matches." ghost="grid" action={<Button render={<Link href="/mdm/match-rules">Match rules</Link>} />} />

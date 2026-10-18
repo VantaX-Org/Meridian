@@ -9,7 +9,7 @@ import { DataTable, Drawer, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, 
 import {
   getConfigAlignmentByModule, getConfigInventoryByModule, type AlignmentFinding, type ConfigElement,
 } from "@/lib/api/config-intelligence";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 
 const STATUS_TONE: Record<string, PillTone> = { active: "go", dormant: "at-risk", ghost: "no-go" };
@@ -38,7 +38,7 @@ export function InventoryModuleDrawer({ module, onClose }: { module: string | nu
   return (
     <Drawer open={module !== null} onOpenChange={(o) => { if (!o) onClose(); }} title={module ? `${formatModuleName(module)} inventory` : "Inventory"} subtitle="Configuration elements seen in transactions">
       {q.isLoading ? <Skeleton height={200} /> : q.isError ? (
-        <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
+        <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
       ) : elements.length === 0 ? (
         <EmptyState title="No elements in this module" detail="Run discovery to fill the inventory" />
       ) : (
@@ -70,7 +70,7 @@ export function AlignmentModuleDrawer({ module, onClose }: { module: string | nu
   return (
     <Drawer open={module !== null} onOpenChange={(o) => { if (!o) onClose(); }} title={module ? `${formatModuleName(module)} alignment` : "Alignment"} subtitle="Configuration compared with how it is used">
       {q.isLoading ? <Skeleton height={200} /> : q.isError ? (
-        <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
+        <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
       ) : findings.length === 0 ? (
         <EmptyState title="Nothing found in this module" detail="The latest run raised no alignment findings here" />
       ) : (

@@ -30,7 +30,7 @@ function RunPicker({ run, choices, latestId, hrefFor }: { run: Version; choices:
   const labels = runChoiceLabels(choices);
   return (
     <Select
-      label="Run shown"
+      label="Showing run"
       value={run.id}
       onValueChange={(id) => {
         if (id && id !== run.id) router.replace(hrefFor(id === latestId ? null : id), { scroll: false });

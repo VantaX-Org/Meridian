@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, EmptyState, ErrorState, Notice, Pareto, Skeleton, Stat } from "@/design";
 import { getConformance, type Conformance, type ProcessFilterParams } from "@/lib/api/process-discovery";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { fitnessTone, fmtFitness, fmtShare, ViewAsTable } from "./shared";
 
@@ -42,7 +42,7 @@ export function ConformanceView({ runId, l1, filters, rework, onClearFilters }: 
   onClearFilters?: () => void;
 }) {
   const q = useQuery({ queryKey: queryKeys.processRunView(runId, "conformance", filters), queryFn: () => getConformance(runId, filters) });
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   if (!q.data) return <Skeleton height={320} />;
   const c = q.data;
   if (!c.steps.length) return <EmptyState title="No cases to check in this view" detail="Widen the filters to include more cases."

@@ -32,7 +32,7 @@ import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type Co
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
 import { formatModuleName, formatDate, plural, runOptionLabels } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRunList } from "@/hooks/use-run-list";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -532,7 +532,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
   }, [isLoading, dayOne.status, graphQ.isLoading, latest, modules.length, active, activities.length, blockedSteps, degradedSteps, variants.length, bottlenecks.length, failingRecords, worstStep?.id, onInsight]);
 
   if (isLoading || dayOne.status === "loading") return <ViewSkeleton stats={4} />;
-  if (error) return <ErrorState message={apiErrorMessage(error)} onRetry={() => void refetch()} />;
+  if (error) return <ErrorState {...apiErrorState(error)} onRetry={() => void refetch()} />;
   if (!latest) {
     return <EmptyState title="No process map yet"
       detail={dayOne.step?.detail ?? "The map is mined from a completed analysis."}

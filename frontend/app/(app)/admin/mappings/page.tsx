@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -109,7 +109,7 @@ export default function AdminMappingsPage() {
 
       {all.isLoading ? <Skeleton height={320} />
         : isListFailure(all) ? (
-          <ErrorState message={apiErrorMessage(all.error)} onRetry={() => all.refetch()} />
+          <ErrorState {...apiErrorState(all.error)} onRetry={() => all.refetch()} />
         ) : !shown.length ? (
           object || search ? (
             <EmptyState title="No standard field matches" detail="Clear the filter to see every field." action={<Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear filter</Button>} />

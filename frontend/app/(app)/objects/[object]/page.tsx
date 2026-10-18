@@ -14,7 +14,7 @@ import {
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
-import { hrefWithRun } from "@/lib/run-scope";
+import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
@@ -25,7 +25,7 @@ import { exportFindingRecords, getScoreHistory } from "@/lib/api/findings";
 import { SCORE_HISTORY_LIMIT } from "@/lib/runs";
 import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
 import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDate, formatModuleName } from "@/lib/format";
@@ -140,7 +140,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   ];
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
-  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data || data.rules.length === 0) {
     return (
       <EmptyState
@@ -151,7 +151,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       />
     );
   }
-  if (batch.isError) return <ErrorState message={apiErrorMessage(batch.error)} onRetry={() => batch.refetch()} />;
+  if (batch.isError) return <ErrorState {...apiErrorState(batch.error)} onRetry={() => batch.refetch()} />;
 
   const dimensions = [...new Set(data.rules.map((r) => r.dimension).filter((d): d is string => !!d))].map((d) => ({ value: d, label: d }));
   return (
@@ -198,7 +198,7 @@ function HistoryTab({ object, run }: { object: string; run: string }) {
     { accessorKey: "change", header: "Change", meta: { numeric: true }, cell: ({ row }) => (row.original.change === null ? "—" : <Delta value={row.original.change} />) },
   ];
   if (q.isLoading) return <Skeleton height={240} />;
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   if (points.length < 2) return <EmptyState title="Not enough runs to show a history" detail="The score history appears after the second scored run of this object." action={<Button render={<Link href="/runs">Open runs</Link>} />} />;
   return (
     <div className="flex flex-col gap-4">
@@ -217,7 +217,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
-  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data) return null;
 
   const dimensionPoints = Object.entries(data.dimension_scores).map(([dimension, score]) => ({
@@ -272,7 +272,7 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery(profileQuery(object, run));
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
-  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data || data.tables.length === 0) {
     return (
       <EmptyState
@@ -388,7 +388,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
   );
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
-  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data || data.records.length === 0) {
     return (
       <EmptyState
@@ -454,7 +454,7 @@ export default function ObjectDetailPage() {
   };
 
   // All detail queries start together at page level; tabs share these keys, so switching tabs never waterfalls.
-  const { data } = useQuery(objectQuery(object, run));
+  const { data, error: objectError } = useQuery(objectQuery(object, run));
   const { data: version } = useQuery({
     queryKey: queryKeys.run(run),
     queryFn: () => getVersion(run),
@@ -500,6 +500,28 @@ export default function ObjectDetailPage() {
         detail="Run an analysis that includes this object to see its data quality."
         action={<Button render={<Link href="/runs">Open runs</Link>} />}
       />
+    );
+  }
+  // A `?run=` that did not measure this object (its run says so, or the server has no such object in it) is a
+  // wrong pairing, not a failure: say so and offer this object's own latest run.
+  const shownRun = scope.run ?? version;
+  if (scope.explicit && ((shownRun && runLacksObject(shownRun, object)) || isNotFound(objectError))) {
+    const name = formatModuleName(object);
+    return (
+      <div className="flex flex-col gap-4 p-6">
+        <PageHeader title={name} />
+        <EmptyState
+          title={`${name} is not in this run`}
+          detail={`${shownRun ? runScopeLabel(shownRun) : "The run in the link"} did not measure ${name}.`}
+          action={
+            scope.latestId && scope.latestId !== scope.explicit ? (
+              <Button render={<Link href={hrefWithRun(`/objects/${object}`, search, null)}>Show latest run of {name}</Link>} />
+            ) : (
+              <Button render={<Link href="/runs">Open runs</Link>} />
+            )
+          }
+        />
+      </div>
     );
   }
 

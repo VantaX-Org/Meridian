@@ -15,7 +15,8 @@ for (const r of ROUTES) {
     await expect(app.getByRole("heading", { level: 1, name: r.heading })).toBeVisible();
     // the rail and the Jobs button are the shell's constant chrome
     await expect(app.getByRole("navigation").filter({ has: app.getByRole("button", { name: /(collapse|expand) navigation/i }) })).toBeVisible();
-    await expect(app.getByRole("button", { name: /jobs/i })).toBeVisible();
+    // the shell's Jobs button ("Jobs" or "Jobs, 2 running"), not Basis home's "Jobs running" stat
+    await expect(app.getByRole("button", { name: /^jobs(, \d+ running)?$/i })).toBeVisible();
     expect(errors).toEqual([]);
     // no snake_case identifier leaks into visible copy, except inside Mono
     const leaks = await app.evaluate(() => {

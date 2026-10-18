@@ -109,7 +109,7 @@ describe("ProgressPage", () => {
     ]);
     // The header names the run shown (picked from its lineage) and what it is compared with.
     expect(await screen.findByText("compared with business_partner_1k")).toBeInTheDocument();
-    expect(await screen.findByRole("combobox", { name: "Run shown" })).toHaveTextContent("business_partner_100k, 16 Oct 2026");
+    expect(await screen.findByRole("combobox", { name: "Showing run" })).toHaveTextContent("business_partner_100k, 16 Oct 2026");
     expect(screen.getByRole("link", { name: "Back to latest" })).toHaveAttribute("href", "/insights/progress");
     expect(getVersion).toHaveBeenCalledWith("bp2");
     expect(screen.queryByText(/the previous run/)).toBeNull();

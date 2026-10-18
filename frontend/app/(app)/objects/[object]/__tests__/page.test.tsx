@@ -72,7 +72,7 @@ describe("ObjectDetailPage", () => {
     expect(getObject).toHaveBeenCalledWith("material_master", "mm-latest");
     expect(getObject).not.toHaveBeenCalledWith("material_master", "bp-new");
     // The header names the run, offers its lineage, and nothing is pinned, so there is no "Back to latest".
-    expect(screen.getByRole("combobox", { name: "Run shown" })).toHaveTextContent("material_master_25k, 14 Oct 2026");
+    expect(screen.getByRole("combobox", { name: "Showing run" })).toHaveTextContent("material_master_25k, 14 Oct 2026");
     expect(screen.queryByRole("link", { name: "Back to latest" })).toBeNull();
     expect(replace).not.toHaveBeenCalled();
   });
@@ -87,6 +87,36 @@ describe("ObjectDetailPage", () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByRole("link", { name: "Back to latest" })).toHaveAttribute("href", "/objects/material_master?tab=rules");
     expect(getObject).toHaveBeenCalledWith("material_master", "mm-old");
+  });
+
+  it("a ?run= that did not measure the object shows a not-in-this-run state with the object's latest run, not an error", async () => {
+    searchParams = new URLSearchParams("run=co-1k");
+    const at = (id: string, label: string, day: string, module: string): Version => ({
+      id, label, status: "complete", run_at: `2026-10-${day}T05:00:00Z`, dqs_summary: null, metadata: { modules: [module] },
+    });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+      at("co-1k", "controlling_1k", "16", "controlling"),
+      at("mm-latest", "material_master_25k", "14", "material_master"),
+    ], total: 2 });
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(at("co-1k", "controlling_1k", "16", "controlling"));
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("Material Master is not in this run")).toBeInTheDocument();
+    expect(screen.getByText("controlling_1k, 16 Oct 2026 did not measure Material Master.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Show latest run of Material Master" })).toHaveAttribute("href", "/objects/material_master");
+    expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("a ?run= the server has no such object in (404) reads as not in this run, not as an unreachable server", async () => {
+    searchParams = new URLSearchParams("run=v1");
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [version("sys-1")], total: 1 });
+    const { AxiosError, AxiosHeaders } = await import("axios");
+    vi.spyOn(objectsApi, "getObject").mockRejectedValue(new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, {
+      status: 404, data: { detail: "Object not found for this run" }, statusText: "", headers: {}, config: { headers: new AxiosHeaders() },
+    }));
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("Material Master is not in this run", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.queryByText(/could not reach the server/i)).toBeNull();
   });
 
   it("renders the overview tab's stats and dimension chart", async () => {

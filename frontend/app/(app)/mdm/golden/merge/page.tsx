@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, DataTable, EmptyState, ErrorState, Mono, PageHeader, Skeleton } from "@/design";
 import type { ColumnDef } from "@tanstack/react-table";
 import { getMasterRecord } from "@/lib/api/master-records";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 export default function GoldenRecordMergePage() {
@@ -45,7 +45,7 @@ export default function GoldenRecordMergePage() {
     return (
       <div className="p-6">
         <ErrorState
-          message={apiErrorMessage(query.error)}
+          {...apiErrorState(query.error)}
           onRetry={() => void query.refetch()}
         />
       </div>

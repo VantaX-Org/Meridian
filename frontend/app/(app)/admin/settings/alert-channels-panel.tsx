@@ -9,7 +9,7 @@ import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest,
 } from "@/lib/api/notifications";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const KIND_LABEL: Record<AlertChannelKind, string> = {
@@ -90,7 +90,7 @@ export function AlertChannelsPanel() {
     <Card title="Alert channels" meta="Each system is compared with its own previous run. Alerts carry counts, rule ids and links, never record values">
       <div className="flex flex-col gap-3">
         {q.isLoading ? <Skeleton height={64} /> : isListFailure(q) ? (
-          <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
+          <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
         ) : !q.data?.length ? (
           <EmptyState title="No alert channel yet" detail="Add Slack, Teams, email or a signed webhook below" action={<Button onClick={() => targetRef.current?.querySelector("input")?.focus()}>Add channel</Button>} />
         ) : (

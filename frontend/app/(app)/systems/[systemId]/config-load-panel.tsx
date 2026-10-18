@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Button, Card, DrillLink, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, type PillTone } from "@/design";
 import { getConfigLoad, startConfigLoad, type AreaObject, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemType } from "@/types/api";
@@ -231,7 +231,7 @@ export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: s
   } else if (isLoading) {
     body = <Skeleton height={96} />;
   } else if (error) {
-    body = <ErrorState message={apiErrorMessage(error)} onRetry={() => void refetch()} />;
+    body = <ErrorState {...apiErrorState(error)} onRetry={() => void refetch()} />;
   } else if (status === "loading") {
     body = (
       <div className="flex flex-col gap-3">

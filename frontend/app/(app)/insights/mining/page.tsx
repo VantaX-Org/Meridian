@@ -44,7 +44,7 @@ import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { formatModuleName, labelOf, plural, relativeTime, formatDate } from "@/lib/format";
 import { miningWhy } from "./sentences";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { MineNow } from "../duplicates/mined-tabs";
 import { useInsightScope } from "../_components/useInsightScope";
 import { queryKeys } from "@/lib/query-keys";
@@ -137,7 +137,7 @@ function EntityLinks() {
   if (q.error) {
     return (
       <ErrorState
-        message={apiErrorMessage(q.error)}
+        {...apiErrorState(q.error)}
         onRetry={() => void q.refetch()}
       />
     );
@@ -237,7 +237,7 @@ function Dependencies() {
       </div>
       {profile.error ? (
         <ErrorState
-          message={apiErrorMessage(profile.error)}
+          {...apiErrorState(profile.error)}
           onRetry={() => void profile.refetch()}
         />
       ) : null}
@@ -280,7 +280,7 @@ function Patterns({ run }: { run?: string }) {
     const err = patterns.error ?? summary.error;
     return (
       <ErrorState
-        message={apiErrorMessage(err)}
+        {...apiErrorState(err)}
         onRetry={() => { void summary.refetch(); void patterns.refetch(); }}
       />
     );

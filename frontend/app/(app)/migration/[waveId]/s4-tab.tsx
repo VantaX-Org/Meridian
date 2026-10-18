@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { getS4Readiness, type S4Area, type S4Check } from "@/lib/api/migration";
 import { createBatch, errorText } from "@/lib/api/remediation";
 import { getRuleByCode } from "@/lib/api/rules";
@@ -156,7 +156,7 @@ export function S4Tab({ versionId }: { versionId: string | null }) {
   }, [versionId, canFix, fix, fixingCheck]);
 
   if (!versionId) return <EmptyState title="Run this wave to see S/4 simplification areas" />;
-  if (s4.isError) return <ErrorState message={apiErrorMessage(s4.error)} onRetry={() => void s4.refetch()} />;
+  if (s4.isError) return <ErrorState {...apiErrorState(s4.error)} onRetry={() => void s4.refetch()} />;
   if (s4.isLoading || !s4.data) return <Skeleton height={240} />;
   const d = s4.data;
   const blockingAreas = d.areas.filter((a) => a.blocking_failing > 0).length;

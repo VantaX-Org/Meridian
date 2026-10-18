@@ -29,7 +29,7 @@ import { getVersions } from "@/lib/api/versions";
 import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
@@ -325,7 +325,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       {rulesQ.isLoading ? (
         <Skeleton height={320} />
       ) : rulesQ.error ? (
-        <ErrorState message={apiErrorMessage(rulesQ.error)} onRetry={() => rulesQ.refetch()} />
+        <ErrorState {...apiErrorState(rulesQ.error)} onRetry={() => rulesQ.refetch()} />
       ) : visible.length ? (
         <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" />
       ) : filtered ? (

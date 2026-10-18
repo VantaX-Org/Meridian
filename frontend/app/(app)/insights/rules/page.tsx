@@ -11,7 +11,7 @@ import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pareto, Pill, Se
 import { FilterChips } from "@/app/(app)/objects/_header";
 import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
 import { getCostModel } from "@/lib/api/settings";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { rulesFor80 } from "../_components/rulesFor80";
@@ -164,7 +164,7 @@ export default function RulesPage() {
         </div>
       </div>
       {!run || rows.length === 0 ? (
-        q.isError ? <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />
+        q.isError ? <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />
           : <EmptyState title="No failing rules" detail="Nothing matches these filters in this run." ghost="table" action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run })}>Clear filters</Link>} />} />
       ) : (
         <>

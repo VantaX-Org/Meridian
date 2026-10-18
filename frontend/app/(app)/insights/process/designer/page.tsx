@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/process-designer";
 import { toast } from "sonner";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
 import { domainOf } from "@/design/tokens";
@@ -60,7 +60,7 @@ export default function ProcessDesigner() {
       <div className="flex flex-col gap-4">
         <PageHeader title="Process designer" meta="Design the process model and see where the data behind it breaks." />
         {failed ? (
-          <ErrorState message={apiErrorMessage(failed)}
+          <ErrorState {...apiErrorState(failed)}
             onRetry={() => void (reference ? ref.refetch() : saved.refetch())} />
         ) : <Skeleton height={240} />}
       </div>

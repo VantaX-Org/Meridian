@@ -12,7 +12,7 @@ import {
   createZRule, getZMapping, getZReport, getZRegistry, getZRules, updateZRegistryEntry,
   type ZCustomRule, type ZMapping, type ZRegistryEntry, type ZRegistryStatus, type ZRuleTemplate,
 } from "@/lib/api/z-objects";
-import { apiErrorMessage, isNotFound } from "@/lib/error";
+import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 
 const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
@@ -115,7 +115,7 @@ export function RulesSection({ canCreate }: { canCreate: boolean }) {
     { id: "severity", header: "Default severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.default_severity] ?? "neutral"}>{labelOf(row.original.default_severity)}</Pill> },
   ], []);
   if (q.isLoading) return <Skeleton height={200} />;
-  if (q.error) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.error) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   const custom = q.data?.custom_rules ?? [];
   return (
     <div className="flex flex-col gap-4">
@@ -148,7 +148,7 @@ export function MappingSection() {
   ], []);
   if (q.isLoading) return <Skeleton height={200} />;
   if (q.error && isNotFound(q.error)) return <EmptyState title="No custom object analysis yet" detail="Detect custom objects to see their standard mapping" />;
-  if (q.error) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.error) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   const mappings = q.data?.mappings ?? [];
   if (mappings.length === 0) return <EmptyState title="No mappings yet" detail="Mappings appear once custom objects are detected" />;
   return <DataTable columns={cols} data={mappings} getRowId={(m) => `${m.module}/${m.object_name}`} height={380} exportName="z-object-mapping" />;
@@ -182,7 +182,7 @@ export function ReportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       }
     >
       {q.isLoading ? <Skeleton height={120} /> : q.error ? (
-        <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
+        <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
       ) : r ? (
         <div className="m-stat-grid" data-testid="z-report">
           <Stat label="Custom objects" value={n(r.total_z_objects)} />
