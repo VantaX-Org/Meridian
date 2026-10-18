@@ -18,7 +18,7 @@ import { useFindingOpener } from "../_components/FindingOpener";
 import { Section } from "../_components/Section";
 import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
-import { CardSkeleton, InsightFrame, formatMoney, useRunLabel } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -69,7 +69,6 @@ export default function ExecPage() {
     queryFn: () => getExec({ version_id: run }),
     enabled: !!run,
   });
-  const runLabel = useRunLabel(data?.version_id);
 
   const cost = useQuery({ queryKey: queryKeys.insights("proven-cost", run), queryFn: () => getProvenCost({ version_id: run }), enabled: !!run });
   const overview = useQuery({ queryKey: queryKeys.insights("overview", run), queryFn: () => getOverview({ version_id: run }), enabled: !!run });
@@ -109,7 +108,7 @@ export default function ExecPage() {
   return (
     <InsightFrame
       title="Executive summary"
-      meta={runLabel}
+      scope
       actions={<InsightActions run={vid} options={exportOptions} />}
       insight={{
         hero: true,

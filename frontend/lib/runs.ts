@@ -12,8 +12,8 @@ export const SCORE_HISTORY_LIMIT = 500;
 export const isFinished =(v: Pick<Version, "status">): boolean => FINISHED.has(v.status);
 
 /**
- * A run page link whose `?run=` scope names the same run, so the page and the shell's run selector agree
- * (the shell would otherwise keep the previous page's run, or write the default run, onto the URL).
+ * A run page link whose `?run=` names the same run, so anything on the page that reads `?run=` (the help
+ * menu's tour links) agrees with the run in the path.
  */
 export function runPageHref(id: string, params?: Record<string, string | undefined>): string {
   const q = new URLSearchParams({ run: id });

@@ -50,7 +50,9 @@ describe("ForecastPage", () => {
     vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({ forecasts: [], early_warnings: [], reason: "needs_three_days", runs_seen: 6, days_seen: 1 });
     renderWithQuery(<ForecastPage />);
     expect(await screen.findByText("A forecast needs runs on three different days; these 6 runs cover 1 day.")).toBeInTheDocument();
-    expect(screen.getByText(/As of Run 1, 6 runs on 1 day/)).toBeInTheDocument();
+    // The header names the run the forecast is read from, then what the API saw.
+    expect(await screen.findByTestId("run-scope")).toHaveTextContent("As of Run 1, 1 Oct 2026");
+    expect(screen.getByText("6 runs on 1 day")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Report library" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Auto clean" })).toBeInTheDocument();
   });

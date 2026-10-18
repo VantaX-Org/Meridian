@@ -25,12 +25,13 @@ import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { useInsightScope } from "../_components/useInsightScope";
 import { MinedAnomalies, MinedDuplicates, MinedRelationships } from "./mined-tabs";
 
 export default function DuplicatesPage() {
   const search = useSearchParams();
   const router = useRouter();
-  const run = search.get("run") ?? "";
+  const run = useInsightScope().run ?? "";
   const tab = search.get("tab") ?? "clusters";
   const setTab = (next: string) => {
     const params = new URLSearchParams(search.toString());
@@ -117,6 +118,7 @@ export default function DuplicatesPage() {
   return (
     <InsightFrame
       title="Duplicates"
+      scope
       run={run || undefined}
       insight={{
         situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${plural(nodes.length, "record is", "records are")} in this cluster` },

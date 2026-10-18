@@ -23,7 +23,7 @@ import {
   type ImpactRow, type LineageDirection, type LineageNode, type Severity,
 } from "@/lib/api/lineage";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatDate } from "@/lib/format";
+import { runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
@@ -205,7 +205,7 @@ export default function LineagePage() {
     <>
       <InsightFrame
         title="Lineage"
-        meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} links${latest ? `, ${latest.label || formatDate(latest.run_at, "datetime")}` : ""}`}
+        meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} links${latest ? `, as of ${runScopeLabel(latest)}` : ""}`}
         run={latest?.id}
         insight={{
           situation: { sentence: impact ? atRiskSentence(kpis, features) : "Impact needs a completed analysis", tone: kpis ? "at-risk" : "neutral" },

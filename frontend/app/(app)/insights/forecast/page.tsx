@@ -9,7 +9,7 @@ import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning, type Predi
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { CardSkeleton, InsightFrame, useRunLabel } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
@@ -45,7 +45,6 @@ export function forecastEmptyDetail(d: Pick<PredictiveResponse, "reason" | "runs
 
 export default function ForecastPage() {
   const { run } = useInsightScope();
-  const runLabel = useRunLabel(run);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.analyticsPredictive(),
     queryFn: () => getPredictiveAnalytics(),
@@ -96,7 +95,8 @@ export default function ForecastPage() {
   return (
     <InsightFrame
       title="Forecast"
-      meta={[runLabel ? `As of ${runLabel}` : undefined, seen].filter(Boolean).join(", ") || undefined}
+      scope
+      meta={seen}
       run={run}
       insight={{
         situation: {

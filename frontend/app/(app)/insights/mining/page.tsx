@@ -325,6 +325,7 @@ export default function MiningPage() {
   return (
     <InsightFrame
       title="Mining"
+      scope
       meta="Entity links, mined dependencies and mined patterns"
       run={run}
       insight={{

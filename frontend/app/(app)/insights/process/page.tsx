@@ -31,6 +31,7 @@ import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/conne
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
 import { formatModuleName, formatDate, plural, runOptionLabels } from "@/lib/format";
+import { runScopeLabel } from "@/lib/run-scope";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRunList } from "@/hooks/use-run-list";
@@ -622,7 +623,7 @@ export default function ProcessInsightsPage() {
   return (
     <InsightFrame
       title="Process"
-      meta={latest ? `${latest.label || formatDate(latest.run_at, "datetime")}` : "Latest completed run"}
+      meta={latest ? `As of ${runScopeLabel(latest)}` : "Latest completed run"}
       run={latest?.id ?? run}
       insight={insight ?? placeholder}
     >

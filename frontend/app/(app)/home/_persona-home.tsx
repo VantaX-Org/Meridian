@@ -32,6 +32,8 @@ import {
 } from "@/lib/home-metrics";
 import { formatDate, formatModuleName, plural, shortCapReason } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
+import { hrefWithRun } from "@/lib/run-scope";
+import { RunScope } from "@/components/run-scope";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
@@ -78,8 +80,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const { scopeFilter } = usePermissions();
   const wantsFindings = role !== "basis";
 
-  // The topbar run selector writes ?run=; home follows it like every other page.
-  const run = useSearchParams().get("run") ?? "latest";
+  // No ?run=: the newest finished run, as the objects API resolves "latest". A ?run= deep link pins an older one.
+  const search = useSearchParams();
+  const run = search.get("run") ?? "latest";
   const objectsQ = useQuery({ queryKey: queryKeys.objects(run), queryFn: () => getObjects(run) });
   const { list: versionsQ, versions: allVersions } = useRunListWith(run === "latest" ? undefined : run);
   // Same key as the rail's counts, so this is not a second request; Basis has no inbox tile.
@@ -358,6 +361,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         action,
       }}
       run={{ label: runLabel(latest), runAt: latest.run_at }}
+      scope={
+        <RunScope
+          scope={{ run: latest, choices: [], latestId: finished[0]?.id, pinned: run !== "latest" && run !== finished[0]?.id }}
+          hrefFor={(id) => hrefWithRun(`/home/${role}`, search, id)}
+        />
+      }
       dimensions={dimensionStrip}
       objects={objectsCard}
       trend={trendCard}

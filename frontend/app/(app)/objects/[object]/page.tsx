@@ -12,6 +12,9 @@ import {
   entityTabs,
 } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
+import { RunScope } from "@/components/run-scope";
+import { useRunScope } from "@/hooks/use-run-scope";
+import { hrefWithRun } from "@/lib/run-scope";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
@@ -437,7 +440,9 @@ export default function ObjectDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const object = params.object;
-  const run = search.get("run") ?? "";
+  // `?run=` when the URL pins one, else this object's latest finished run; nothing is written onto the URL.
+  const scope = useRunScope({ object });
+  const run = scope.runId ?? "";
   const tab = search.get("tab") ?? "overview";
   // `check` is the shared drill parameter (rule tables link with it); `check_id` is the older spelling.
   const checkId = search.get("check") ?? search.get("check_id") ?? "";
@@ -480,11 +485,19 @@ export default function ObjectDetailPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [object, search]); // eslint-disable-line react-hooks/exhaustive-deps -- setTab closes over both
 
+  if (!run && scope.resolving) {
+    return (
+      <div className="flex flex-col gap-4 p-6" aria-busy="true">
+        <PageHeader title={formatModuleName(object)} />
+        <Skeleton height={240} />
+      </div>
+    );
+  }
   if (!run) {
     return (
       <EmptyState
-        title="No run selected"
-        detail="Select a run to see this object's data quality."
+        title="No run has measured this object"
+        detail="Run an analysis that includes this object to see its data quality."
         action={<Button render={<Link href="/runs">Open runs</Link>} />}
       />
     );
@@ -502,17 +515,22 @@ export default function ObjectDetailPage() {
         ),
     },
   ];
-  const meta = [
-    version?.label ? `Run ${version.label}` : null,
+  const counts = [
     summary ? `${summary.failing_checks.toLocaleString()} failing checks` : null,
     summary ? `${summary.affected_records.toLocaleString()} affected records` : null,
   ].filter(Boolean).join(", ");
+  const meta = (
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      <RunScope scope={scope} picker hrefFor={(id) => hrefWithRun(`/objects/${object}`, search, id)} />
+      {counts && <span>{counts}</span>}
+    </span>
+  );
 
   return (
     <div className="flex flex-col gap-4 p-6">
       <PageHeader
         title={summary?.label ?? formatModuleName(object)}
-        meta={meta || undefined}
+        meta={meta}
         status={summary?.readiness ? <Pill tone={READINESS_TONE[summary.readiness] ?? "neutral"}>{READINESS_LABEL[summary.readiness] ?? summary.readiness}</Pill> : null}
         actions={
           <>

@@ -135,6 +135,7 @@ export default function RulesPage() {
   return (
     <InsightFrame
       title="Explore"
+      scope
       meta={`${module ? formatModuleName(module) : "All objects"}${field ? `, field ${field}` : ""}`}
       run={run}
       module={module}
