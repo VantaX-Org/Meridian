@@ -70,6 +70,34 @@ def clear_logon_block(params) -> None:
     _LOGON_BLOCKED.pop(_logon_key(params), None)
 
 
+def _join_group(merged, part, keys: list[str]):
+    """Add ``part``'s columns to ``merged`` without allocating a second whole frame.
+
+    ``merged.merge(part, on=keys, how="outer")`` builds a new frame while both inputs are still
+    alive, so a wide table's peak is twice its size. Wide tables are exactly the ones this split
+    exists for: MARC is 18.3M rows and its fields do not fit one RFC work area, so it is read in
+    groups and merged - at ~18 GB a frame that is ~36 GB peak, which is an OOM kill on a 30 GB
+    box even when the read itself succeeded.
+
+    Every group is read over the same key ranges in the same order, so when the keys line up
+    row-for-row the columns can simply be attached. The key comparison is the guard: if the rows
+    do not correspond exactly, fall back to the merge, which is correct for any order.
+    """
+    if keys and len(part) == len(merged):
+        try:
+            same = (part[keys].to_numpy() == merged[keys].to_numpy()).all()
+        except Exception:
+            same = False
+        if same:
+            for col in part.columns:
+                if col not in merged.columns:
+                    merged[col] = part[col].to_numpy()
+            return merged
+    if keys:
+        return merged.merge(part, on=keys, how="outer")
+    return pd.concat([merged, part], axis=1)
+
+
 def _logon_advice(message: str) -> str:
     """Append what the operator must do, so a locked user is not mistaken for a wrong password."""
     if any(k in message.lower() for k in _LOGON_LOCKED):
@@ -259,8 +287,7 @@ class RFCConnector(SAPConnector):
                                                  max_rows)
             else:
                 part = self._read_paged(table, keys + group, where, max_rows, page_size, on_page)
-            merged = part if merged is None else merged.merge(part, on=keys, how="outer") if keys \
-                else pd.concat([merged, part], axis=1)
+            merged = part if merged is None else _join_group(merged, part, keys)
         if merged is None:
             merged = self._read_paged(table, keys, where, max_rows, page_size)
         return merged
