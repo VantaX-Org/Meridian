@@ -57,8 +57,7 @@ const pairs = [
   ...status.flatMap((s) => [[s, "sheet"], [s, "canvas"], [s, "sheet-raised"], [s, `${s}-soft`], [`${s}-ink`, `${s}-soft`], [`${s}-ink`, "sheet"]]),
   ["low", "low-soft"], ["low", "sheet"], ["low", "canvas"], ["low-ink", "low-soft"], ["low-ink", "sheet"],
   ...["critical", "high", "medium", "low", "pass", "info"].map((s) => [`${s}-on`, s]),
-  ...["ember", "ember-ink"].flatMap((e) => (e === "ember" ? ["sheet", "canvas", "sheet-raised"] : ["ember-soft", "sheet"]).map((s) => [e, s])),
-  ["ember-on", "ember"],
+  ["info", "sheet"], ["info", "info-soft"], ["info-ink", "info-soft"], ["info-ink", "sheet"],
   ...["hero-ink", "hero-ink-2", "hero-ink-3"].flatMap((i) => ["hero-bg", "hero-bg-2"].map((b) => [i, b])),
   ...["critical", "high", "medium", "pass"].map((t) => [`hero-tone-${t}`, "hero-bg"]),
   ...domains.flatMap((d) => [

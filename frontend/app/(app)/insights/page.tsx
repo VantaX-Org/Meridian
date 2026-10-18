@@ -106,19 +106,20 @@ export default function InsightsOverviewPage() {
         loading,
         lead: (
           <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-            <div style={{ minWidth: 200, width: "max-content", maxWidth: 360 }}>
+            <div style={{ minWidth: 260, width: "max-content", maxWidth: 360 }}>
               <Stat
                 hero
                 label="Data quality score"
                 help="dqs"
                 loading={loading}
                 value={o?.dqs.composite ?? "—"}
+                bar={o?.dqs.composite ?? undefined}
                 decimals={1}
                 versionId={run}
                 href={withScope("/insights/trends", { run })}
                 tone={o?.dqs.tier === "go" ? "go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "no_go" ? "no-go" : undefined}
                 hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
-                delta={o?.dqs.delta != null ? <Delta hero value={o.dqs.delta} /> : undefined}
+                delta={o?.dqs.delta != null ? <Delta value={o.dqs.delta} /> : undefined}
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1" style={{ minWidth: "min(100%, 16rem)", maxWidth: "48ch" }}>

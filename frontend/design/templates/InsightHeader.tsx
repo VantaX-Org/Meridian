@@ -22,7 +22,7 @@ export interface InsightHeaderProps {
   next: InsightCell & { action?: { label: string; href?: string; onClick?: () => void; impact?: string } };
   aiSummary?: AiSummaryProps;
   loading?: boolean;
-  /** Opt-in hero zone: dark band with up to four hero stats above the sentences. One per page. */
+  /** Opt-in hero zone: a white score sheet with up to four stats above the sentences. One per page. */
   hero?: boolean;
   /** `to` is the route the stat opens. */
   stats?: (Pick<StatProps, "label" | "value" | "hint" | "tone" | "decimals" | "versionId"> & { to?: string })[];
@@ -74,7 +74,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
     <section
       aria-label="Insight"
       className={hero ? "m-hero m-motion-rise" : "m-motion-rise"}
-      style={hero ? undefined : { background: "var(--m-sheet)", borderTop: "1px solid var(--m-line-strong)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-3) 0" }}
+      style={hero ? undefined : { background: "var(--m-sheet)", border: "1px solid var(--m-line)", borderRadius: "var(--m-radius-sheet)", padding: "var(--m-space-3) var(--m-space-4)" }}
     >
       {hero && (lead || (stats && stats.length > 0)) && (
         // Lead and stats sit side by side only where both fit (a wide container); below it they stack, the lead
@@ -83,8 +83,8 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
           {lead && <div data-testid="insight-hero-lead" className="min-w-0">{lead}</div>}
           {stats && stats.length > 0 && (
             <div className={`m-motion-stagger grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 ${lead ? HERO_STAT_COLS[Math.min(stats.length, 4)] ?? "" : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
-              {/* Hero numbers carry thousands separators, as the sentences under them do. */}
-              {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
+              {/* Only the lead score is set large; these sit at stat size and carry thousands separators, as the sentences under them do. */}
+              {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} countUp loading={loading} href={to} {...x} />)}
             </div>
           )}
         </div>

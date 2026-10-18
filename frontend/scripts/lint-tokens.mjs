@@ -12,13 +12,8 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
 const TOKEN_FILES = new Set(["design/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
-// design/tokens.ts holds the single TS map of ember and domain token names (mColor), so it must name them.
+// design/tokens.ts holds the single TS map of domain token names (mColor), so it must name them.
 // Colour-pass allow sets live here, never in lint-tokens.allow.txt.
-const HERO_ALLOW = new Set([
-  "design/templates/HomePage.tsx", "design/templates/InsightHeader.tsx", "design/primitives/EmptyState.tsx",
-  "design/primitives/Counter.tsx", "design/primitives/Stat.tsx", "design/tokens.ts", "components/auth/auth-frame.tsx",
-  "app/(app)/insights/reports/page.tsx", "app/icon.tsx", "app/apple-icon.tsx", "app/opengraph-image.tsx",
-]);
 const DOMAIN_ALLOW = new Set(["design/tokens.ts", "design/primitives/DomainChip.tsx"]);
 const RULES = [
   { name: "hex colour", re: /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/ },
@@ -32,8 +27,8 @@ const RULES = [
   { name: "text-transform uppercase", re: /^(?!.*::first-letter).*text-transform\s*:\s*uppercase|(?:className|class)=[^\n]*\buppercase\b|\buppercase\b(?=[^\n]*(?:className|class=|@apply))|@apply[^\n;]*\buppercase\b/ },
   // Rule 11: motion lives in the Aurora style files only.
   { name: "motion outside aurora css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/, skip: new Set(["app/styles/aurora.css"]) },
-  { name: "ember-outside-hero", re: /var\(--m-ember|var\(--m-grad-/, skip: HERO_ALLOW },
-  { name: "hero-elev-outside-hero", re: /var\(--m-elev-hero/, skip: HERO_ALLOW },
+  // Calm enterprise: no ember signal, no hero glow. Gradient tokens are functional ramps used by tokens.css classes only.
+  { name: "retired ember or gradient token", re: /var\(--m-ember|var\(--m-grad-|var\(--m-elev-hero/ },
   { name: "glow-outside-graph", re: /var\(--m-elev-glow-|var\(--m-glow-/, skip: new Set(["design/charts/Graph.tsx"]) },
   { name: "domain-literal", re: /var\(--m-dom-(?:material|customer|vendor|partner|finance|people|plant|asset|other)/, skip: DOMAIN_ALLOW },
   { name: "duration literal outside aurora.css", re: /\b\d*\.?\d+ms\b/, skip: new Set(["app/styles/aurora.css"]) },
