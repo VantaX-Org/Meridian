@@ -14,7 +14,7 @@ import {
   type LLMConfigUpdate,
   type LLMProvider,
 } from "@/lib/api/llm-settings";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -39,7 +39,7 @@ export default function AdminAIPage() {
     return (
       <div className="flex flex-col gap-6 p-6">
         <ErrorState
-          message={apiErrorMessage(providers.error ?? config.error)}
+          {...apiErrorState(providers.error ?? config.error)}
           onRetry={() => { providers.refetch(); config.refetch(); }}
         />
       </div>

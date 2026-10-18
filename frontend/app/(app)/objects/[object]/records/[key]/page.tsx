@@ -10,10 +10,13 @@ import { Button, Card, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, Rec
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { getRecordReportUrl } from "@/lib/api/reports";
 import { queryKeys } from "@/lib/query-keys";
 import { parseRecordKey } from "@/lib/record-key";
+import { RunScope } from "@/components/run-scope";
+import { useRunScope } from "@/hooks/use-run-scope";
+import { hrefWithRun } from "@/lib/run-scope";
 
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
@@ -33,7 +36,10 @@ export default function RecordFixSheetPage() {
   // "=" / "|", otherwise a composite key never matches and falls back to the
   // whole encoded string as `primary`, breaking every fetch keyed on it.
   const key = params.key ? decodeURIComponent(params.key) : params.key;
-  const run = search.get("run") ?? "";
+  // `?run=` when the URL pins one, else this object's latest finished run.
+  const scope = useRunScope({ object });
+  const run = scope.runId ?? "";
+  const backHref = hrefWithRun(`/objects/${object}`, null, scope.explicit ?? null);
   const { primary, fields } = parseRecordKey(key);
   const plant = fields.WERKS;
   const isMaterial = object === "material_master";
@@ -60,15 +66,7 @@ export default function RecordFixSheetPage() {
     enabled: !!run && isMaterial,
   });
 
-  if (!run) {
-    return (
-      <EmptyState
-        title="Select a run to see this record's fix sheet"
-        action={<Button render={<Link href={`/objects/${object}`}>Back to object</Link>} />}
-      />
-    );
-  }
-  if (recordQuery.isLoading) {
+  if (recordQuery.isLoading || (!run && scope.resolving)) {
     return (
       <div className="flex flex-col gap-2 p-6">
         <Skeleton height={32} />
@@ -76,19 +74,27 @@ export default function RecordFixSheetPage() {
       </div>
     );
   }
+  if (!run) {
+    return (
+      <EmptyState
+        title="No run has measured this object"
+        action={<Button render={<Link href={`/objects/${object}`}>Back to object</Link>} />}
+      />
+    );
+  }
   if (isAxiosError(recordQuery.error) && recordQuery.error.response?.status === 501) {
     return (
       <EmptyState
         title="Not yet available"
         detail={`The record fix sheet for ${object} isn't built yet.`}
-        action={<Button render={<Link href={`/objects/${object}?run=${run}`}>Back to object</Link>} />}
+        action={<Button render={<Link href={backHref}>Back to object</Link>} />}
       />
     );
   }
   if (recordQuery.isError) {
     return (
       <ErrorState
-        message={apiErrorMessage(recordQuery.error)}
+        {...apiErrorState(recordQuery.error)}
         onRetry={() => recordQuery.refetch()}
       />
     );
@@ -99,7 +105,7 @@ export default function RecordFixSheetPage() {
       <EmptyState
         title="Record not found in this run"
         detail="The key may belong to another system or run."
-        action={<Button render={<Link href={`/objects/${object}?run=${run}`}>Back to object</Link>} />}
+        action={<Button render={<Link href={backHref}>Back to object</Link>} />}
       />
     );
   }
@@ -125,6 +131,7 @@ export default function RecordFixSheetPage() {
       recordKey={material.matnr}
       object={object}
       status={status}
+      meta={<RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}/records/${encodeURIComponent(key)}`, search, id)} />}
       actions={<ExportMenu options={exportOptions} />}
       stats={[
         { label: "Missing fields", value: material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0), tone: hasMissing ? "no-go" : "go" },

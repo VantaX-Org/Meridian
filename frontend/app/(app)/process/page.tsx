@@ -7,7 +7,7 @@ import { PageHeader, Button, ErrorState, InsightHeader, type InsightHeaderProps 
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue } from "@/lib/api/process-discovery";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { BodySkeleton, ProcessFrame } from "./_components/process-header";
 import { CatalogueTable, NoSystem, SystemSelect, processInsight, useProcessSystem } from "./_components/shared";
@@ -26,9 +26,9 @@ export default function ProcessCataloguePage() {
     refetchInterval: (q) => (q.state.data?.some((r) => r.in_progress) ? 5_000 : false),
   });
 
-  if (systems.isError) return <ProcessFrame><ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
+  if (systems.isError) return <ProcessFrame><ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
   if (systems.isSuccess && !system) return <ProcessFrame><NoSystem /></ProcessFrame>;
-  if (catalogue.isError) return <ProcessFrame><ErrorState message={apiErrorMessage(catalogue.error)} onRetry={() => catalogue.refetch()} /></ProcessFrame>;
+  if (catalogue.isError) return <ProcessFrame><ErrorState {...apiErrorState(catalogue.error)} onRetry={() => catalogue.refetch()} /></ProcessFrame>;
   const rows = catalogue.data;
   return (
     <ProcessFrame>

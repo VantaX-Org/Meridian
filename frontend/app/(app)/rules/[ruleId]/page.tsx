@@ -14,7 +14,7 @@ import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/ap
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
 import { getRuleLineage } from "@/lib/api/lineage";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { ConditionList, ThresholdTable } from "../rule-ui";
@@ -216,7 +216,7 @@ export default function RulePage() {
       />
     );
   }
-  if (isError || !data) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError || !data) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
 
   // Rule names are "{check id}: {message}"; data.id is the rules row UUID, not the check id.
   const checkId = data.name.split(":")[0];

@@ -11,7 +11,7 @@ import {
   getConfigProcesses, getConfigShadow,
   type AlignmentFinding, type ConfigDriftEntry, type ConfigElement, type ConfigHealthScore, type LicenceUtilisation, type ProcessHealth,
 } from "@/lib/api/config-intelligence";
-import { apiErrorMessage, isNotFound } from "@/lib/error";
+import { isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { ConfigComparePanel } from "./config-compare-panel";
 import { AlignmentModuleDrawer, InventoryModuleDrawer } from "./config-module-drawers";
@@ -30,7 +30,7 @@ function Feed<T>({ q, empty, children }: { q: UseQueryResult<T>; empty: string; 
   if (q.error && isNotFound(q.error)) {
     return <EmptyState title="No configuration analysis yet" detail={empty} action={analyseAction} />;
   }
-  if (q.error) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.error) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   return <>{q.data ? children(q.data) : null}</>;
 }
 

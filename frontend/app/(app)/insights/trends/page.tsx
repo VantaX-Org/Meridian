@@ -18,7 +18,7 @@ import { runPageHref } from "@/lib/runs";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
-import { CardSkeleton, InsightFrame, useRunLabel } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { scopeTrendRuns, trendDomain, trendPoints } from "../_components/trendLineage";
 
 const WINDOWS = [{ value: "6", label: "Last 6 runs" }, { value: "12", label: "Last 12 runs" }, { value: "24", label: "Last 24 runs" }];
@@ -34,7 +34,6 @@ export default function TrendsPage() {
   const systemId = systemChoice === "all" ? undefined : systemChoice;
   const q = useQuery({ queryKey: queryKeys.insights("trends", run, win, systemId ?? "all"), queryFn: () => getTrends({ version_id: run, system_id: systemId, limit: Number(win) }), enabled: !!run });
   const moved = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "moved"), queryFn: () => getRuleRanking({ version_id: run, limit: 200 }), enabled: !!run });
-  const runLabel = useRunLabel(run);
   const router = useRouter();
   // A dot opens its own run, with ?run= naming that run so the page and the shell agree.
   const openRun = (p: ChartPoint) => { if (p.runId) router.push(runPageHref(p.runId)); };
@@ -67,7 +66,8 @@ export default function TrendsPage() {
   return (
     <InsightFrame
       title="Trends"
-      meta={runLabel ? `${runLabel}, ${plural(trend.length, "run")} in this lineage` : `${plural(runs.length, "completed run")}`}
+      scope
+      meta={run ? `${plural(trend.length, "run")} in this lineage` : `${plural(runs.length, "completed run")}`}
       run={run}
       controls={
         <>

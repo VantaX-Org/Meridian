@@ -19,18 +19,19 @@ import {
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { plural } from "@/lib/format";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { useInsightScope } from "../_components/useInsightScope";
 import { MinedAnomalies, MinedDuplicates, MinedRelationships } from "./mined-tabs";
 
 export default function DuplicatesPage() {
   const search = useSearchParams();
   const router = useRouter();
-  const run = search.get("run") ?? "";
+  const run = useInsightScope().run ?? "";
   const tab = search.get("tab") ?? "clusters";
   const setTab = (next: string) => {
     const params = new URLSearchParams(search.toString());
@@ -117,6 +118,7 @@ export default function DuplicatesPage() {
   return (
     <InsightFrame
       title="Duplicates"
+      scope
       run={run || undefined}
       insight={{
         situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${plural(nodes.length, "record is", "records are")} in this cluster` },
@@ -160,7 +162,7 @@ export default function DuplicatesPage() {
       {state === "loading" ? (
         <div aria-busy="true"><CardSkeleton height={320} /></div>
       ) : state === "error" ? (
-        <ErrorState message={apiErrorMessage(cluster.error)} onRetry={() => void cluster.refetch()} />
+        <ErrorState {...apiErrorState(cluster.error)} onRetry={() => void cluster.refetch()} />
       ) : state === "empty" ? (
         picked ? (
           <EmptyState title="No duplicate clusters" detail="This record has no matches." ghost="grid" action={<Button render={<Link href="/mdm/match-rules">Match rules</Link>} />} />

@@ -6,7 +6,7 @@ import { Button, Card, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/
 import { useRole } from "@/hooks/use-role";
 import { getDoctor, type DoctorItem } from "@/lib/api/admin-doctor";
 import { getLicenceManifest } from "@/lib/api/licence";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { formatDate, labelOf, humanizeIds } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { AlertChannelsPanel } from "./alert-channels-panel";
@@ -41,7 +41,7 @@ export default function AdminSettingsPage() {
   if (licence.isError) {
     return (
       <div className="flex flex-col gap-6 p-6">
-        <ErrorState message={apiErrorMessage(licence.error)} onRetry={() => licence.refetch()} />
+        <ErrorState {...apiErrorState(licence.error)} onRetry={() => licence.refetch()} />
       </div>
     );
   }
@@ -69,7 +69,7 @@ export default function AdminSettingsPage() {
       {can("manage_settings") ? <RetentionPanel /> : null}
 
       {can("manage_system") && doctor.isError ? (
-        <ErrorState message={apiErrorMessage(doctor.error)} onRetry={() => doctor.refetch()} />
+        <ErrorState {...apiErrorState(doctor.error)} onRetry={() => doctor.refetch()} />
       ) : null}
       {can("manage_system") && doctor.data ? (
         <Card title="Health checks" meta={`Last checked ${formatDate(doctor.data.last_checked, "datetime")}`}>

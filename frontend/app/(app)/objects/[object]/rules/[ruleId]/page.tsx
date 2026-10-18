@@ -14,7 +14,8 @@ export default function RuleDetailRedirect() {
   const run = search.get("run") ?? "";
 
   useEffect(() => {
-    router.replace(`/objects/${params.object}?run=${run}&tab=records&check_id=${params.ruleId}`);
+    // Without ?run= the object page opens on the object's latest run.
+    router.replace(`/objects/${params.object}?${run ? `run=${run}&` : ""}tab=records&check_id=${params.ruleId}`);
   }, [params.object, params.ruleId, run, router]);
 
   return <Skeleton height={240} />;

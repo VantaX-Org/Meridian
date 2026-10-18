@@ -13,7 +13,7 @@ import { Button, DataTable, Drawer, EmptyState, ErrorState, Mono, Skeleton } fro
 import type { Graph as GraphChart } from "@/design/charts/Graph";
 import { domainOf, type DomainKey } from "@/design/tokens";
 import { getDfg, type Dfg, type NodeStats, type ProcessFilterParams } from "@/lib/api/process-discovery";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { L4, ProcessModelDocument } from "@/types/process-model";
 import { findActivity, locate } from "@/app/(app)/insights/process/designer/_components/doc";
@@ -63,7 +63,7 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
   const dfg = useQuery({ queryKey: queryKeys.processRunView(runId, "dfg", params), queryFn: () => getDfg(runId, params) });
   const pulse = usePulseOnce(JSON.stringify(params), !!dfg.data);
 
-  if (dfg.isError) return <ErrorState message={apiErrorMessage(dfg.error)} onRetry={() => dfg.refetch()} />;
+  if (dfg.isError) return <ErrorState {...apiErrorState(dfg.error)} onRetry={() => dfg.refetch()} />;
   if (!dfg.data) return <Skeleton height={420} />;
   const d = dfg.data;
   if (!d.nodes.length) return <EmptyState title="No activity below this step" detail="Go up one level to see its flow."

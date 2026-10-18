@@ -4,9 +4,13 @@
 // tabs), the four-sentence InsightHeader, then the cards. The spine is owned here so no page can
 // drop a piece of it.
 import type { ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Card, EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useRunListWith } from "@/hooks/use-run-list";
+import { useRunScope } from "@/hooks/use-run-scope";
+import { RunScope } from "@/components/run-scope";
+import { hrefWithRun } from "@/lib/run-scope";
 import { formatDate } from "@/lib/format";
 import { InsightActions } from "./InsightActions";
 import { InsightTabs } from "./InsightViews";
@@ -21,8 +25,13 @@ export function useRunLabel(versionId?: string | null): string | undefined {
 
 export interface InsightFrameProps {
   title: string;
-  /** Run label or one line of context. */
+  /** One line of context; with `scope` it follows the "As of" run line. */
   meta?: ReactNode;
+  /**
+   * The page's numbers come from the scoped run (`useInsightScope().run`): the header names it ("As of ..."),
+   * offers the other runs of its lineage, and "Back to latest" while `?run=` pins an older one.
+   */
+  scope?: boolean;
   /**
    * The whole action slot. Leave it out and the frame renders the standard `InsightActions` bar for
    * `run` and `module`, with `controls` (page-specific selects or buttons) in front of it.
@@ -60,10 +69,19 @@ export function CardSkeleton({ height }: { height: number }) {
   );
 }
 
+/** The "As of" line of an insight page: the scoped run, a picker of its lineage, "Back to latest". */
+function InsightRunScope() {
+  const scope = useRunScope();
+  // Both hooks return null outside the App Router (unit tests, static export).
+  const pathname = usePathname() ?? "";
+  const search = useSearchParams();
+  return <RunScope scope={scope} picker hrefFor={(id) => hrefWithRun(pathname, search, id)} />;
+}
+
 export const SLOW_LOAD_MESSAGE = "This is taking longer than expected.";
 
 export function InsightFrame({
-  title, meta, actions, controls, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
+  title, meta, scope, actions, controls, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
 }: InsightFrameProps) {
   // A skeleton that never resolves becomes an error with Retry after the shared timeout.
   const stuck = useLoadingTimeout(state === "loading");
@@ -90,7 +108,17 @@ export function InsightFrame({
   );
   return (
     <div className="mx-auto flex w-full flex-col" style={{ gap: "var(--m-section-gap)", padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
-      <PageHeader title={title} meta={meta} actions={actionBar} tabs={<InsightTabs />} />
+      <PageHeader
+        title={title}
+        meta={scope ? (
+          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+            <InsightRunScope />
+            {meta != null && meta !== "" && <span>{meta}</span>}
+          </span>
+        ) : meta}
+        actions={actionBar}
+        tabs={<InsightTabs />}
+      />
       {insight && state !== "empty" && state !== "error" && !(state === "loading" && stuck) && (
         <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />
       )}

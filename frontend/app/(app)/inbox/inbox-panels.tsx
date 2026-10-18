@@ -13,7 +13,7 @@ import {
   commentIssue, exportIssues, getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue,
 } from "@/lib/api/issues";
 import { approveWriteback, getPendingApprovals, type PendingApproval } from "@/lib/api/writeback";
-import { apiErrorMessage, isNotFound } from "@/lib/error";
+import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import type { Exception } from "@/types/api";
 
@@ -24,7 +24,7 @@ const note = { color: "var(--m-ink-2)" };
 
 function Panel({ q, children }: { q: { isLoading: boolean; error: unknown; refetch: () => unknown }; children: React.ReactNode }) {
   if (q.isLoading) return <Skeleton height={240} />;
-  if (q.error && !isNotFound(q.error)) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.error && !isNotFound(q.error)) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   return <>{children}</>;
 }
 

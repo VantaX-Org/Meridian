@@ -33,6 +33,8 @@ import { DIMENSIONS, formatDate, formatModuleName, labelOf, runAxisLabels } from
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
+import { latestFinishedRun, lineageChoices } from "@/lib/run-scope";
+import { RunScope } from "@/components/run-scope";
 import type { Finding, Version } from "@/types/api";
 
 const STATUS_TONE: Record<string, PillTone> = {
@@ -533,6 +535,10 @@ export default function RunDetailPage() {
   const v = version.data;
   const runs = scope.data?.versions ?? [];
   const prevId = v ? previousRunId(v, runs) : null;
+  // The other runs of this run's lineage, to switch to from the header; "Back to latest" when this is an older one.
+  const choices = v ? lineageChoices(v, runs) : [];
+  const latestOfLineage = latestFinishedRun(choices);
+  const runScope = { run: v, choices, latestId: latestOfLineage?.id, pinned: !!v && !!latestOfLineage && latestOfLineage.id !== v.id };
   const baseId = v ? baselineRunId(v, runs) : null;
   const stepRows = steps.data?.steps ?? [];
   const systemName = systems.data?.find((s) => s.id === systemId)?.name;
@@ -567,7 +573,14 @@ export default function RunDetailPage() {
   const header = v ? (
     <PageHeader
       title={v.label ?? formatDate(v.run_at, "datetime")}
-      meta={["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}
+      meta={
+        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>{["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}</span>
+          {(choices.length > 1 || runScope.pinned) && (
+            <RunScope scope={runScope} picker hrefFor={(id) => runPageHref(id ?? latestOfLineage?.id ?? versionId)} />
+          )}
+        </span>
+      }
       status={
         <>
           <Pill tone={statusTone(v.status)}>{labelOf(v.status)}</Pill>

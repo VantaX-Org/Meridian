@@ -107,7 +107,10 @@ describe("ProgressPage", () => {
       upload("bp1b", "business_partner_1k", "2026-10-02T05:17:02Z", ["business_partner"]),
       upload("bp1a", "business_partner_1k", "2026-10-02T05:17:01Z", ["business_partner"]),
     ]);
-    expect(await screen.findByText("business_partner_100k compared with business_partner_1k")).toBeInTheDocument();
+    // The header names the run shown (picked from its lineage) and what it is compared with.
+    expect(await screen.findByText("compared with business_partner_1k")).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: "Showing run" })).toHaveTextContent("business_partner_100k, 16 Oct 2026");
+    expect(screen.getByRole("link", { name: "Back to latest" })).toHaveAttribute("href", "/insights/progress");
     expect(getVersion).toHaveBeenCalledWith("bp2");
     expect(screen.queryByText(/the previous run/)).toBeNull();
     expect(await screen.findByText("DQS unchanged since business_partner_1k")).toBeInTheDocument();

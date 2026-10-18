@@ -15,7 +15,7 @@ import {
   getMiningAnomalies, getMiningDuplicates, getMiningRelationships,
   type MinedAnomaly, type MinedDuplicate, type MinedRelationship,
 } from "@/lib/api/mining";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 
 const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
@@ -39,7 +39,7 @@ export function MineNow({ run, task }: { run?: string; task?: MiningTask }) {
 
 function Feed<T>({ q, run, task, empty, children }: { q: UseQueryResult<T[]>; run?: string; task: MiningTask; empty: { title: string; detail: string }; children: (rows: T[]) => ReactNode }) {
   if (q.isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   const rows = q.data ?? [];
   if (rows.length === 0) {
     return <EmptyState title={empty.title} detail={empty.detail} ghost="table" action={<MineNow run={run} task={task} />} />;

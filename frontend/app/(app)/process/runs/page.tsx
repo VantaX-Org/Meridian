@@ -7,7 +7,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { ACTIVE_RUN, getCatalogue, listRuns } from "@/lib/api/process-discovery";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { ProcessFrame, RowsSkeleton } from "../_components/process-header";
 import { NewRunDialog } from "../_components/new-run-dialog";
@@ -30,7 +30,7 @@ export default function ProcessRunsPage() {
     enabled: !!system && can("run_process_discovery"),
   });
 
-  if (systems.isError) return <ProcessFrame><ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
+  if (systems.isError) return <ProcessFrame><ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
   if (systems.isSuccess && !system) return <ProcessFrame><NoSystem /></ProcessFrame>;
   if (!system) return <ProcessFrame><PageHeader title="Discovery runs" /><RowsSkeleton /></ProcessFrame>;
   const extraction = active.find((j) => j.kind === "extraction" && j.system_id === system.id);
@@ -49,7 +49,7 @@ export default function ProcessRunsPage() {
         </Notice>
       )}
       {runs.isError
-        ? <ErrorState message={apiErrorMessage(runs.error)} onRetry={() => runs.refetch()} />
+        ? <ErrorState {...apiErrorState(runs.error)} onRetry={() => runs.refetch()} />
         : runs.data ? <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} /> : <RowsSkeleton />}
       {catalogue.data && (
         <NewRunDialog open={newRun === "1"} onOpenChange={(o) => setNewRun(o ? "1" : "")}

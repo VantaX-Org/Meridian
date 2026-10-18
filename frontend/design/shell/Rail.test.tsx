@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 let pathname = "/systems";
-const searchParams = new URLSearchParams("");
+let searchParams = new URLSearchParams("");
 
 vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
@@ -41,11 +41,22 @@ function renderRail() {
 describe("Rail", () => {
   beforeEach(() => {
     pathname = "/systems";
+    searchParams = new URLSearchParams("");
     window.sessionStorage.clear();
     // Rail defaults to expanded at narrow widths only when no stored preference exists;
     // force a wide viewport so these tests see the same expanded-by-default start state
     // regardless of the ≥1024px default-expanded rule.
     Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1440 });
+  });
+
+  it("never carries the page's ?run= onto a rail link", async () => {
+    pathname = "/objects/material_master";
+    searchParams = new URLSearchParams("run=v-old&tab=rules");
+    const { container } = renderRail();
+    await screen.findByRole("link", { name: "Runs" });
+    const hrefs = [...container.querySelectorAll("a[href]")].map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.length).toBeGreaterThan(5);
+    expect(hrefs.filter((h) => /[?&]run=/.test(h))).toEqual([]);
   });
 
   it("marks exactly one nav link as the current page", async () => {

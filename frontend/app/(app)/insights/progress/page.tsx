@@ -113,7 +113,8 @@ export default function ProgressPage() {
   return (
     <InsightFrame
       title="Progress"
-      meta={v1 && v2 ? `${label(v2)} compared with ${label(v1)}` : undefined}
+      scope
+      meta={v1 && v2 ? `compared with ${label(v1)}` : undefined}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Select

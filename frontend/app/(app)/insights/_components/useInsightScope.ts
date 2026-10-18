@@ -1,23 +1,23 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useRunListWith } from "@/hooks/use-run-list";
+import { useRunScope } from "@/hooks/use-run-scope";
 import { isFinished } from "@/lib/runs";
 
 /**
- * `?run=` and `?module=` for every insight page. Without `?run=` the newest finished run is used,
- * because the aggregate endpoints need a version id. A `?run=` older than the shared run list is read by id
- * and merged into `runs`, so lineage scoping, labels and "Compare with" always know it.
+ * `?run=` and `?module=` for every insight page. Without `?run=` the newest finished run (of an in-scope system
+ * for a scoped user) is used, because the aggregate endpoints need a version id; nothing is written onto the URL.
+ * A `?run=` older than the shared run list is read by id and merged into `runs`, so lineage scoping, labels and
+ * "Compare with" always know it. `scope` is what the frame's "As of" line and run picker read.
  */
 export function useInsightScope() {
   // The hook returns null outside the App Router (unit tests, static export).
   const search = useSearchParams();
-  const explicit = search?.get("run") ?? undefined;
   const mod = search?.get("module") ?? undefined;
-  const { list: versions, versions: all, fetchingRun } = useRunListWith(explicit);
+  const scope = useRunScope();
+  const { list: versions, versions: all, explicit } = scope;
   const runs = all.filter(isFinished);
-  const run = explicit ?? runs[0]?.id;
-  return { run, explicit, module: mod, runs, versions, resolving: explicit ? fetchingRun : versions.isLoading };
+  return { run: scope.runId, explicit, module: mod, runs, versions, resolving: explicit ? scope.fetchingRun : versions.isLoading, scope };
 }
 
 /** `?run=` and `?module=` carried onto a drill link. */

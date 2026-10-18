@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Bar, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Pill, Skeleton, Stat, Tabs, entityTabs, type ExportOption } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, signoffWave,
 } from "@/lib/api/migration";
@@ -65,7 +65,7 @@ export default function WaveCockpitPage() {
     );
   }
   if (cockpit.isError)
-    return <ErrorState message={apiErrorMessage(cockpit.error)} onRetry={() => void cockpit.refetch()} />;
+    return <ErrorState {...apiErrorState(cockpit.error)} onRetry={() => void cockpit.refetch()} />;
   const c = cockpit.data;
   const w = c.wave;
   const run = c.source_version_id ?? c.run_id;

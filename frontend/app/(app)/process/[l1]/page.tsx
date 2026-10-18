@@ -15,7 +15,7 @@ import {
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue, getRun, getRunModel, type DiscoveryRunDetail, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { getReference } from "@/lib/api/process-designer";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { L4, ProcessModelDocument } from "@/types/process-model";
@@ -64,10 +64,10 @@ export default function ProcessL1Page() {
   const reference = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference });
 
   const wrap = (n: ReactNode) => <ProcessFrame>{n}</ProcessFrame>;
-  if (systems.isError) return wrap(<ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} />);
+  if (systems.isError) return wrap(<ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} />);
   if (systems.isSuccess && !system) return wrap(<NoSystem />);
   for (const q of [catalogue, run, model, reference]) {
-    if (q.isError) return wrap(<ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />);
+    if (q.isError) return wrap(<ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />);
   }
   if (!catalogue.data || !reference.data || (runId && !run.data) || (discovered && !model.data)) {
     return wrap(<><PageHeader title={row?.name ?? l1} /><BodySkeleton rows={4} /></>);

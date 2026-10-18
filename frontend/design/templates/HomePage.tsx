@@ -12,7 +12,6 @@ import { ErrorState } from "../primitives/ErrorState";
 import { PageFrame } from "./PageFrame";
 import { JourneyStepper } from "./JourneyStepper";
 import type { DayOneStep } from "../../hooks/use-day-one";
-import { relativeTime } from "../../lib/format";
 
 /** Situation sentence for a fresh install. */
 const NO_DATA_VERDICT = "No analysis yet. Connect a system and run the first extraction.";
@@ -55,12 +54,14 @@ const row36 = Array.from({ length: 8 }, (_, i) => i);
  * component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding,
+  state, verdict, run, scope, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding,
 }: {
   persona: string;
   state: "loading" | "no-data" | "data" | "error";
   verdict?: HomeVerdict;
   run?: HomeRunInfo | null;
+  /** Header meta in the data state: the run the page's numbers belong to ("As of ..."). */
+  scope?: ReactNode;
   journey?: HomeJourney;
   error?: { message: string; onRetry: () => void };
   /** Right of the trend (5/12): the dimension inline bars. */
@@ -78,10 +79,10 @@ export function HomePage({
   /** First-run tour offer and setup checklist (components/help/home-onboarding.tsx); shown once the page has loaded. */
   onboarding?: ReactNode;
 }) {
-  const runLabel = state === "data" && run ? `${/^run\b/i.test(run.label) ? "" : "Run "}${run.label}, ${relativeTime(run.runAt)}` : undefined;
   const header = (
     <PageHeader
       title="Home"
+      meta={state === "data" ? scope : undefined}
       actions={state === "data" ? headerActions : undefined}
     />
   );
@@ -146,7 +147,6 @@ export function HomePage({
           <div className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "64ch" }}>
             <div className="flex flex-wrap items-center gap-2">
               {verdict.capLine && <Pill tone="at-risk">Capped</Pill>}
-              {runLabel && <span className="m-text-meta" style={{ color: "var(--m-hero-ink-3)" }}>{runLabel}</span>}
             </div>
             <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>
             {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}

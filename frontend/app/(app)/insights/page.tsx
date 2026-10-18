@@ -17,7 +17,7 @@ import {
 import { getS4Readiness } from "@/lib/api/migration";
 import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { deltaSentence, formatDate, formatModuleName, labelOf, plural, shortCapReason, trendSentence } from "@/lib/format";
+import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
@@ -89,17 +89,12 @@ export default function InsightsOverviewPage() {
   const loading = ov.isLoading;
   const fallback = (s: string) => (loading ? "Loading" : s);
   const nl = o?.narrative ?? [];
-  const runLabel = o?.run_label || (o?.run_at ? formatDate(o.run_at, "datetime") : undefined);
 
   return (
     <InsightFrame
       title="Insights"
-      meta={
-        <span className="inline-flex flex-wrap items-center gap-2">
-          {runLabel ? `As of ${runLabel}` : "Latest run"}
-          {module ? <Pill tone="info">{formatModuleName(module)}</Pill> : <span>Scope: all objects</span>}
-        </span>
-      }
+      scope
+      meta={module ? <Pill tone="info">{formatModuleName(module)}</Pill> : "Scope: all objects"}
       actions={<InsightActions run={run} module={module} options={exportOptions} />}
       insight={{
         hero: true,

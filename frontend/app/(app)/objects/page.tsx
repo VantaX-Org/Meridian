@@ -18,6 +18,9 @@ import { barFill } from "@/design/table/columns";
 import { DIMENSIONS } from "@/lib/home-metrics";
 import { formatModuleName } from "@/lib/format";
 import { bySeverity } from "../_severity-sort";
+import { RunScope } from "@/components/run-scope";
+import { useRunScope } from "@/hooks/use-run-scope";
+import { hrefWithRun } from "@/lib/run-scope";
 import { FilterChips } from "./_header";
 
 const READINESS_LABEL: Record<"pass" | "warn" | "fail", string> = {
@@ -158,7 +161,10 @@ export default function ObjectsPage() {
   const { scopeFilter } = usePermissions();
   const objects = (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
 
-  useBreadcrumbScope(data ? [`${objects.length} ${objects.length === 1 ? "object" : "objects"}`, ...(version?.label ? [`run ${version.label}`] : [])] : []);
+  useBreadcrumbScope(data ? [`${objects.length} ${objects.length === 1 ? "object" : "objects"}`] : []);
+  // The header names the run the list belongs to; a ?run= other than the newest finished run offers "Back to latest".
+  const { latestId } = useRunScope();
+  const runScope = { run: version, choices: [], latestId, pinned: run !== "latest" && !!latestId && run !== latestId };
 
   let state: "loading" | "empty" | "error" | undefined;
   let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = { title: "No objects in this run", ghost: "table" };
@@ -238,7 +244,7 @@ export default function ObjectsPage() {
       header={
         <PageHeader
           title="Objects"
-          meta={version?.label ? `Run ${version.label}` : undefined}
+          meta={<RunScope scope={runScope} hrefFor={(id) => hrefWithRun("/objects", search, id)} />}
           actions={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
         />
       }

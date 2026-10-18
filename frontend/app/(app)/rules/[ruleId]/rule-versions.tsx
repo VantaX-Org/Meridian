@@ -10,7 +10,7 @@ import { Button, Card, ConfirmDialog, DataTable, EmptyState, ErrorState, Menu, P
 import { useRole } from "@/hooks/use-role";
 import { allowedVersionTargets, transitionRuleVersion, type RuleVersionState } from "@/lib/api/rule-authoring";
 import { getRuleVersions, type RuleVersion } from "@/lib/api/rules";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate, labelOf } from "@/lib/format";
 
 const STATE_TONE: Record<string, PillTone> = { draft: "neutral", in_review: "at-risk", active: "go", retired: "neutral" };
@@ -68,7 +68,7 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
   return (
     <Card title="Versions" meta="A new version applies from the next analysis run">
       {q.isLoading ? <Skeleton height={96} /> : q.isError ? (
-        <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
+        <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
       ) : versions.length === 0 ? (
         <EmptyState
           variant="inline"

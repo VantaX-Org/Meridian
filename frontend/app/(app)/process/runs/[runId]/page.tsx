@@ -8,7 +8,7 @@ import { PageHeader, Card, DataTable, ErrorState, InsightHeader, Mono, Notice, P
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { ACTIVE_RUN, getCatalogue, getRun, startRuns } from "@/lib/api/process-discovery";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { JobStageStatus } from "@/types/jobs";
@@ -63,7 +63,7 @@ export default function ProcessRunPage() {
     },
   });
 
-  if (run.isError) return <ProcessFrame><ErrorState message={apiErrorMessage(run.error)} onRetry={() => run.refetch()} /></ProcessFrame>;
+  if (run.isError) return <ProcessFrame><ErrorState {...apiErrorState(run.error)} onRetry={() => run.refetch()} /></ProcessFrame>;
   if (!run.data) return <ProcessFrame><PageHeader title="Discovery run" /><BodySkeleton rows={4} /></ProcessFrame>;
   const r = run.data;
   const name = catalogue.data?.find((c) => c.l1 === r.l1)?.name ?? r.l1;

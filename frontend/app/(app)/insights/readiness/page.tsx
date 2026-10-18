@@ -14,7 +14,7 @@ import { formatModuleName, plural } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { Section } from "../_components/Section";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
-import { CardSkeleton, InsightFrame, useRunLabel } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -106,7 +106,6 @@ export default function ReadinessPage() {
   const waves = Array.from(new Set(cells.map((c) => c.wave)));
 
   const blockers = cells.filter((c) => c.records_blocked > 0 || c.blocker_count > 0).sort((a, b) => b.records_blocked - a.records_blocked);
-  const runLabel = useRunLabel(data?.version_id);
   const worst = blockers[0];
   const noGo = cells.filter((c) => c.verdict === "no_go").length;
   const blocked = cells.reduce((n, c) => n + c.records_blocked, 0);
@@ -130,7 +129,7 @@ export default function ReadinessPage() {
   return (
     <InsightFrame
       title="Readiness"
-      meta={runLabel}
+      scope
       run={run}
       insight={{
         situation: {

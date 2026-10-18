@@ -20,10 +20,10 @@ import {
 import { domainOf } from "@/design/tokens";
 import { getCostModel } from "@/lib/api/settings";
 import { labelOf, plural } from "@/lib/format";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { CardSkeleton, InsightFrame, formatMoney, statusTone, useRunLabel } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame, formatMoney, statusTone } from "../_components/InsightFrame";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 /** Real route for a single check/rule, independent of any module context —
@@ -113,7 +113,7 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
   if (isListFailure(query)) {
     return (
       <ErrorState
-        message={apiErrorMessage(query.error)}
+        {...apiErrorState(query.error)}
         onRetry={() => query.refetch()}
       />
     );
@@ -171,7 +171,7 @@ function ImpactPanel({
   if (isListFailure(query)) {
     return (
       <ErrorState
-        message={apiErrorMessage(query.error)}
+        {...apiErrorState(query.error)}
         onRetry={() => query.refetch()}
       />
     );
@@ -216,7 +216,6 @@ export default function ImpactPage() {
   const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
   const unpriced = !!costModel.data && Object.keys(costModel.data.features ?? {}).length === 0;
 
-  const runLabel = useRunLabel(impactQuery.data?.version_id);
   const rows = impactRows(impactQuery.data?.rows ?? []);
   const top = [...rows].sort((x, y) => y.value_at_risk - x.value_at_risk)[0];
   const currency = provenCostQuery.data?.currency ?? costModel.data?.currency;
@@ -228,7 +227,7 @@ export default function ImpactPage() {
   return (
     <InsightFrame
       title="Value at risk"
-      meta={runLabel}
+      scope
       run={run}
       state={state}
       skeleton={

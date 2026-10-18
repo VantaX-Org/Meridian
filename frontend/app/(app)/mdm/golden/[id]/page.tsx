@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, DataTable, Dialog, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
@@ -98,7 +98,7 @@ export default function MasterRecordPage() {
     return (
       <div className="p-6">
         <ErrorState
-          message={apiErrorMessage(recordQuery.error)}
+          {...apiErrorState(recordQuery.error)}
           onRetry={() => void recordQuery.refetch()}
         />
       </div>

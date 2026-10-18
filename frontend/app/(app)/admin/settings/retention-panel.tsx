@@ -9,7 +9,7 @@ import {
   getPurgeLog, getRetention, getRetentionPreview, updateRetention,
   type PurgeLogEntry, type RetentionPolicy, type RetentionPreviewItem, type RowsByTable,
 } from "@/lib/api/retention";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -150,7 +150,7 @@ export function RetentionPanel() {
     <Card title="Retention" meta="How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task">
       <div className="flex flex-col gap-4">
         {q.isLoading ? <Skeleton height={120} /> : q.isError ? (
-          <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
+          <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
         ) : (
           <>
             {statusLine ? (
@@ -186,7 +186,7 @@ export function RetentionPanel() {
           <Button variant="secondary" pending={preview.isFetching} onClick={() => preview.refetch()}>Preview what would be purged</Button>
         </div>
         {preview.isFetching && !preview.data ? <Skeleton height={64} /> : isListFailure(preview) ? (
-          <ErrorState message={apiErrorMessage(preview.error)} onRetry={() => preview.refetch()} />
+          <ErrorState {...apiErrorState(preview.error)} onRetry={() => preview.refetch()} />
         ) : !preview.data ? (
           <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Run the preview to see what the policy selects now. Nothing is deleted by a preview.</p>
         ) : preview.data.length === 0 ? (
@@ -197,7 +197,7 @@ export function RetentionPanel() {
 
         <h3 className="font-semibold" style={{ fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" }}>Purge log</h3>
         {log.isLoading ? <Skeleton height={64} /> : isListFailure(log) ? (
-          <ErrorState message={apiErrorMessage(log.error)} onRetry={() => log.refetch()} />
+          <ErrorState {...apiErrorState(log.error)} onRetry={() => log.refetch()} />
         ) : !log.data?.length ? (
           <EmptyState title="No purge yet" detail="Dry runs and purges appear here with the rows removed per table" action={<Button variant="ghost" onClick={() => log.refetch()}>Refresh</Button>} />
         ) : (

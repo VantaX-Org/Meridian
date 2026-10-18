@@ -6,7 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
 import { exportConfigMatches, getConfigMatches, type ConfigMatch } from "@/lib/api/config-matches";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage, isNotFound } from "@/lib/error";
+import { isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 
 const dash = (v: string | number | null) => v ?? "—";
@@ -30,7 +30,7 @@ export function ConfigMatchesTab({ versionId }: { versionId: string }) {
   ], []);
 
   if (q.isLoading) return <Skeleton height={240} />;
-  if (q.error && !isNotFound(q.error)) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.error && !isNotFound(q.error)) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   const items = q.data?.items ?? [];
   if (items.length === 0) {
     return <EmptyState title="No config matches for this run." detail="They appear when an analysis includes the config intelligence engine." />;

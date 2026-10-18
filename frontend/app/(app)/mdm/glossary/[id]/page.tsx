@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { AIDraftResponse, GlossaryTermDetail } from "@/types/api";
@@ -82,7 +82,7 @@ export default function GlossaryTermPage() {
     return (
       <div className="p-6">
         <ErrorState
-          message={apiErrorMessage(termQuery.error)}
+          {...apiErrorState(termQuery.error)}
           onRetry={() => void termQuery.refetch()}
         />
       </div>

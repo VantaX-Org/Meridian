@@ -15,7 +15,7 @@ import {
   clearPairConstraint, getPairConstraints, matchTuningDryRun,
   type DryRunResult, type PairConstraint, type PairConstraintKind,
 } from "@/lib/api/merge-explain";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MatchRule, MatchType, SimulationResult } from "@/types/api";
@@ -145,7 +145,7 @@ function RulesTab() {
         <Skeleton height={200} />
       ) : rulesQuery.error ? (
         <ErrorState
-          message={apiErrorMessage(rulesQuery.error)}
+          {...apiErrorState(rulesQuery.error)}
           onRetry={() => void rulesQuery.refetch()}
         />
       ) : list.length ? (
@@ -248,7 +248,7 @@ function TuningTab() {
         <Skeleton height={160} />
       ) : rulesQuery.error ? (
         <ErrorState
-          message={apiErrorMessage(rulesQuery.error)}
+          {...apiErrorState(rulesQuery.error)}
           onRetry={() => void rulesQuery.refetch()}
         />
       ) : (
@@ -358,7 +358,7 @@ function ConstraintsTab() {
         <Skeleton height={200} />
       ) : list.error ? (
         <ErrorState
-          message={apiErrorMessage(list.error)}
+          {...apiErrorState(list.error)}
           onRetry={() => void list.refetch()}
         />
       ) : rows.length ? (

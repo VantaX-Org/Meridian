@@ -11,7 +11,7 @@ import {
   detectZObjectsNow, getZAnomalies, getZDormant, getZDrift, getZGhost, getZProfile, getZRegistry, submitZAnomalyFeedback,
   type ZAnomaly, type ZAnomalyVerdict, type ZDormant, type ZDrift, type ZGhost, type ZRegistryEntry,
 } from "@/lib/api/z-objects";
-import { apiErrorMessage, isNotFound } from "@/lib/error";
+import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { MappingSection, RegistryEditor, ReportDialog, RulesSection } from "./z-object-panels";
 import { useRerun } from "./use-rerun";
@@ -25,7 +25,7 @@ const analyseAction = <Button render={<Link href="/analyse">Run an analysis</Lin
 function Feed<T>({ q, children }: { q: UseQueryResult<T>; children: (data: T) => ReactNode }) {
   if (q.isLoading) return <Skeleton height={200} />;
   if (q.error && isNotFound(q.error)) return <EmptyState title="No custom object analysis yet" detail="An analysis detects the custom Z objects." action={analyseAction} />;
-  if (q.error) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.error) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   return <>{q.data ? children(q.data) : null}</>;
 }
 

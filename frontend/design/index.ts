@@ -73,7 +73,6 @@ export * from "./templates/EntityTabs";
 export * from "./shell/Rail";
 export * from "./shell/TopBar";
 export * from "./shell/Breadcrumb";
-export * from "./shell/RunSelector";
 export * from "./shell/JobTray";
 export * from "./shell/NotificationBell";
 export * from "./shell/CommandPalette";

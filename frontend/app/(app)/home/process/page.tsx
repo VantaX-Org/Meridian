@@ -9,7 +9,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -49,9 +49,9 @@ export default function ProcessHomePage() {
   });
 
   const framed = (node: React.ReactNode) => <PageFrame>{node}</PageFrame>;
-  if (systems.isError) return framed(<ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} />);
+  if (systems.isError) return framed(<ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} />);
   if (systems.isSuccess && !system) return framed(<NoSystem />);
-  if (catalogue.isError) return framed(<ErrorState message={apiErrorMessage(catalogue.error)} onRetry={() => catalogue.refetch()} />);
+  if (catalogue.isError) return framed(<ErrorState {...apiErrorState(catalogue.error)} onRetry={() => catalogue.refetch()} />);
   const rows = catalogue.data;
   if (!rows || !system) {
     return (
@@ -79,7 +79,7 @@ export default function ProcessHomePage() {
       </Card>
       <Card title="Latest runs">
         {runs.isError
-          ? <ErrorState message={apiErrorMessage(runs.error)} onRetry={() => runs.refetch()} />
+          ? <ErrorState {...apiErrorState(runs.error)} onRetry={() => runs.refetch()} />
           : runs.data ? <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} hideToolbar /> : <Skeleton height={120} />}
       </Card>
     </PageFrame>
