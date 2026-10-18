@@ -1,23 +1,23 @@
-# Meridian design system: "The Ledger"
+# Meridian design system: "Calm enterprise"
 
 Source of truth for the visual layer. Values live in `frontend/design/tokens.css`, the only file that may hold colour, shadow, blur or motion literals. Spec: `docs/superpowers/specs/2026-10-12-ui-polish-design.md`. When this file and the code disagree, the code is right and this file needs updating.
 
 ## 1. Direction
 
-Meridian is a ledger of SAP data quality: a dense, ruled record that a steward reads down and an executive reads across. The canvas is deep navy and dark is the default; light is a full equal under `[data-theme="light"]`. Surfaces are not cards but ruled sheets: a hairline on top, a hairline below, a stronger rule on the left of every stat column. There are no gradients, no shadows outside popovers and dialogs, and no tinted pills for state. One amber accent marks interaction only (selection, focus, links, the primary button); severity hue carries meaning, never decoration. The score is set in type, not drawn in a ring: an 84px condensed numeral with the verdict sentence beside it. Heatmaps are integer counts in 30px cells; waterfalls sit on a drawn baseline. The bar is Linear, Vercel and Bloomberg for density and craft; Ataccama, Collibra and Informatica for data quality.
+Meridian is calm enterprise software for SAP data quality: a steward reads down a table, an executive reads one number and one sentence. The canvas is a cool off-white (`#F7F8FA`) and light is the default; dark is a full alternative under `[data-theme="dark"]` in neutral graphite. Content sits on white cards with a 1px hairline border and an 8px radius. There are no gradients, no glow, no dark hero blocks and no shadows outside popovers and dialogs. One deep blue accent (`#1F4FD8`) marks interaction only (the primary button, links, selection, focus). Colour otherwise means defect status: red, amber and green, plus an info blue for neutral notices. The score is a plain large number with one horizontal bar under it, on the same white card as everything else. The benchmark is Linear, Stripe and Vercel for calm and craft; Ataccama, Collibra and Informatica for data quality.
 
 Rules, all enforced by lint or review:
 
-1. **Restrained decoration.** No glass, backdrop blur, gradients outside hero zones, illustrations, mascots, or icons that do not stand for a state. No tile without a drill-down.
-2. **One accent.** `--m-accent` (amber) is selection, focus, links and the primary button, nothing else. The `--m-grad-*` tokens resolve to `none`; hero zones (`.m-hero`, `.m-brand-panel`, `.m-report-cover`) are flat navy on `--m-hero-bg` with `--m-hero-line` rules. `lint:tokens` enforces it.
-3. **Hue means defect state.** `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` and the verdicts `--m-go`, `--m-at-risk`, `--m-no-go` carry severity only, never selection or decoration. Severity is colour plus shape (critical square, high triangle, medium circle, low ring, pass check), never colour alone. Object domain (`--m-dom-*`, via `domainOf(moduleId)`) and chart series (`--m-viz-*`, ramps `--m-seq-*`, `--m-div-*`) are separate families and never stand for severity.
-4. **Type.** IBM Plex Sans Condensed for UI and numerals (400, 500, 600), JetBrains Mono for SAP identifiers only (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both load through `next/font`. Numbers are tabular (`font-variant-numeric: tabular-nums` on `body`). Sentence case everywhere, no all-caps eyebrows. No serif face exists.
+1. **Restrained decoration.** No glass, backdrop blur, gradients, illustrations, mascots, or icons that do not stand for a state. No tile without a drill-down.
+2. **One accent.** `--m-accent` (deep blue) is selection, focus, links and the primary button, nothing else. There is no second signal colour: the old amber "ember" and the `--m-grad-hero*`/`--m-elev-hero` tokens are retired, and `lint:tokens` rejects any `var(--m-ember…)`, `var(--m-grad-…)` or `var(--m-elev-hero)` outside `tokens.css`. Hero zones (`.m-hero`, `.m-brand-panel`) are white sheets: the `--m-hero-*` names remain only as aliases of the ordinary sheet, ink, line and status tokens, so the hero follows the theme like every other card.
+3. **Hue means defect state.** `--m-critical` (red), `--m-high` (deep amber), `--m-medium` (amber), `--m-low` (slate), `--m-pass` (green) and the verdicts `--m-no-go` (red), `--m-at-risk` (amber), `--m-go` (green) carry severity only, never selection or decoration. `--m-info` is the blue of neutral notices and info pills. Severity is colour plus shape (critical square, high triangle, medium circle, low ring, pass check), never colour alone. Object domain (`--m-dom-*`, via `domainOf(moduleId)`) and chart series (`--m-viz-*`, ramps `--m-seq-*`, `--m-div-*`) are separate, muted families that sit quietly on white and never stand for severity.
+4. **Type.** IBM Plex Sans (regular width) for UI and numerals (400, 500, 600), JetBrains Mono for SAP identifiers only (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both load through `next/font` (`app/layout.tsx`). Body text is 14px. Numbers are tabular (`font-variant-numeric: tabular-nums` on `body`). Sentence case everywhere, no all-caps eyebrows. No serif face exists.
 5. **Three elevations.** Flat (hairline), raised (menus, popovers), floating (drawer, dialog, palette).
 6. **Motion is 120, 240 or 480 ms**, ease-out, and zero under `prefers-reduced-motion`. Entrance motion is for the first mount of a page frame, not for content that arrives after data.
 7. **Show the cap.** When a critical finding caps the DQS at 85 or 70, the score shows the measured value, the cap and the rules that caused it.
 8. **Every number opens the rows behind it** (`DrillLink`, `Stat href`).
 9. **URL is state.** Filters, tabs, selected run and open drawer live in the query string.
-10. **Light and dark are equals.** Every token has both values, including the domain, viz, ramp and hero tokens; `check:contrast` covers each pair in light, dark and system dark. Every review screenshot is taken in both.
+10. **Light and dark are equals.** Every token has both values, including the domain, viz and ramp tokens; `check:contrast` covers each pair in light, dark and system dark. Every review screenshot is taken in both.
 11. **Speed is a feature.** Skeletons in the final geometry (no layout shift, never a spinner except the inline `Button pending` dot), virtualised tables above 200 rows, prefetch on hover and focus, optimistic updates for reversible local mutations. Colour adds no layout: edges and bars are inset shadows, and count-up and draw-in reserve their final width and height. Reduced motion zeroes all of it.
 
 ## 2. Tokens
@@ -26,36 +26,38 @@ Light values on `:root`, dark under `[data-theme="dark"]` and under `prefers-col
 
 | Token | Light | Dark |
 |---|---|---|
-| `--m-canvas` | `#F4F5F8` | `#0A0F1A` |
-| `--m-sheet` | `#FFFFFF` | `#0F1626` |
-| `--m-sheet-raised` | `#EDEFF4` | `#162038` |
-| `--m-ink`, `-2`, `-3` | `#0D1526`, `#4A5771`, `#5B6882` | `#E6ECF7`, `#AAB6CD`, `#8E9BB6` |
-| `--m-line`, `--m-line-strong` | `#C9D0DD`, `#A6B0C3` | `#1F2A40`, `#30405F` |
-| `--m-accent`, `-soft`, `-ink` | `#945500`, `#FBF0DC`, `#7A4700` | `#FFB020`, `#2A2210`, `#FFC65A` |
-| `--m-hero-bg`, `--m-hero-line` | `#0A0F1A`, `rgb(230 236 247 / 0.14)` | same |
-| `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` | `#B4232C`, `#B2440E`, `#7F6100`, `#58647E`, `#0F7A45` | `#FF6B79`, `#FF9466`, `#F2C94C`, `#9EABC5`, `#4FD38A` |
+| `--m-canvas` | `#F7F8FA` | `#111418` |
+| `--m-sheet` | `#FFFFFF` | `#181C21` |
+| `--m-sheet-raised` | `#F1F3F6` | `#20252C` |
+| `--m-rail` | `#FFFFFF` | `#14171B` |
+| `--m-ink`, `-2`, `-3` | `#161A21`, `#474F5C`, `#5A6371` | `#E7E9EC`, `#B5BBC4`, `#99A1AD` |
+| `--m-line`, `--m-line-strong` | `#E3E6EB`, `#C5CBD3` | `#2A3038`, `#3D444F` |
+| `--m-accent`, `-soft`, `-ink` | `#1F4FD8`, `#EBF0FC`, `#1A44BC` | `#7398F5`, `#1C2741`, `#A4BCF8` |
+| `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` | `#C02630`, `#B34A0B`, `#8A6100`, `#5A6371`, `#1A7A47` | `#F0737C`, `#EE965A`, `#E2BE5C`, `#A3ABB7`, `#5CC78C` |
+| `--m-info` | `#2659C9` | `#7FA2F3` |
 
-Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is high, `--m-no-go` is critical, `--m-info` is ink-2. Other groups: DQS bands and caps, chart series `--m-viz-*`, space (4px grid), radii (`--m-radius-control` 2px, `-sheet` and `-tile` 0, `-pill`), tracking (`--m-tracking-tight` on hero and stat numerals, `--m-tracking-title`), elevation (`m-elev-1..3`, `--m-elev-focus`), motion (`--m-motion-*`), layout (`--m-page-pad`, `--m-page-max`, `--m-rail-w`, `--m-topbar-h`, `--m-row-h`, `--m-control-h`).
+Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is medium, `--m-no-go` is critical. `--m-hero-*` alias sheet, ink, line and the status hues. Other groups: DQS bands and caps, chart series `--m-viz-*`, space (4px grid), radii (`--m-radius-control` 6px, `-sheet` 8px, `-tile` 0, `-pill`), tracking (`--m-tracking-tight` on hero and stat numerals, `--m-tracking-title`), elevation (`m-elev-1..3`, `--m-elev-focus`), motion (`--m-motion-*`), layout (`--m-page-pad`, `--m-page-max`, `--m-rail-w`, `--m-topbar-h`, `--m-row-h`, `--m-control-h`).
 
-Type scale (px, size/line): label 11/14, meta 12/16, body 13/18, heading 15/20, page title 22/28, hero score 84/76 (112/100 in presentation mode). Use the `m-text-*` utility classes, never `text-[Npx]` literals in pages.
+Type scale (px, size/line): label 11/14, meta 12/16, body 14/20, heading 15/22, page title 22/28, stat 26/32, hero score 64/64 (88/88 in presentation mode). The root font size is 14px. Use the `m-text-*` utility classes, never `text-[Npx]` literals in pages.
 
-Density: the user's preference (`/me/preferences`) lands on `<html data-density>` as `compact`, `default` or `comfortable`, and `tokens.css` retunes `--m-row-h`, `--m-row-h-dense`, `--m-control-h`, `--m-card-pad*`, `--m-hero-pad`, `--m-stat-pad`, `--m-stat-h`, `--m-stat-hero-h`, `--m-section-gap` and `--m-page-pad` per tier. Cards, stat tiles, the hero and the insight page gap read those tokens, so no component carries a density branch. Presentation mode (`[data-present="1"]`) steps the type scale, the hero and the page padding up one size the same way.
+Density: the user's preference (`/me/preferences`) lands on `<html data-density>` as `compact`, `default` or `comfortable`, and `tokens.css` retunes `--m-row-h` (34 / 40 / 48), `--m-row-h-dense`, `--m-control-h` (30 / 34 / 38), `--m-card-pad*` (16 / 24 / 28 by default), `--m-hero-pad`, `--m-stat-pad`, `--m-stat-h`, `--m-stat-hero-h`, `--m-section-gap` and `--m-page-pad` per tier. Cards, stat tiles, the hero and the insight page gap read those tokens, so no component carries a density branch. Presentation mode (`[data-present="1"]`) steps the type scale, the hero and the page padding up one size the same way.
 
-Contrast: `npm run check:contrast` fails unless ink on sheet and canvas, accent on sheet, and every defect hue on sheet are at least 4.5:1, in light, explicit dark and system dark.
+Contrast: `npm run check:contrast` fails unless ink on every surface, accent on sheet and canvas, every defect and info hue on sheet, canvas and its soft tint, every domain hue, and the ramp inks are at least 4.5:1, in light, explicit dark and system dark.
 
 ## 3. Components
 
 All in `@/design`; there is no second library. Pages compose these and draw nothing of their own.
 
-- **PageHeader**: `<h1>` title 20/26 semibold, one-line meta, optional status `Pill`, actions (one primary `Button` at most), tabs. Every page uses it.
+- **PageHeader**: `<h1>` title 22/28 semibold, one-line meta, optional status `Pill`, actions (one primary `Button` at most), tabs. Every page uses it.
 - **Button**: primary, secondary, ghost, danger (confirm dialogs only). `pending` shows the inline dot and disables the button. Use `render={<Link>}` for navigation, never a button inside an anchor.
-- **Field** with a control, **Select**, **Combobox**, **Checkbox**, **Menu**: 32px controls, labels 12/16 medium, helper and error text under the control, never inside the label.
-- **Card**: sheet, `--m-radius-sheet`, `m-elev-1`, optional title 15/20, meta and actions. Replaces every hand-rolled `rounded border` box.
+- **Field** with a control, **Select**, **Combobox**, **Checkbox**, **Menu**: 34px controls (`--m-control-h`), 6px radius, labels 12/16 medium, helper and error text under the control, never inside the label.
+- **Card**: white sheet, 1px `--m-line` border on every side, `--m-radius-sheet` (8px), `--m-card-pad` (24px), optional title 15/22, meta and actions. Replaces every hand-rolled `rounded border` box.
 - **Notice**: tinted note with a 3px tone bar (info, warning, danger, success). Replaces raw alert boxes.
 - **Pill, Badge, SeverityDot**: state only. Pills are sentence case with no full stop.
-- **Stat**: label, value (`min-width: 4ch`, tabular), delta, optional `href` or `onClick`, `loading` skeleton at the same height.
+- **Stat**: label, value (`min-width: 4ch`, tabular), delta, optional `href` or `onClick`, `loading` skeleton at the same height. `hero` sets the value at the 64px hero size; `bar` (0 to 100) draws the score bar under it, one 8px horizontal bar in the verdict or DQS band hue.
+- **Score hero** (`.m-hero`: Home's verdict row, the Insights and Executive summary `InsightHeader hero`): a white card holding the plain large score, its one bar, the verdict sentence and at most four stat-size tiles. No dark band, no glow, no gradient.
 - **ScoreRing / DqsScore**: the logo geometry (270 degree arc open at the top). `DqsScore` explains itself: formula, six inputs, cap reason with links.
-- **DataTable**: fixed 36px (44 comfortable) rows, virtualised above 200, arrow-key row navigation, Enter opens, Space selects, Escape clears. Filters are removable chips. One empty row when a filter removes everything.
+- **DataTable**: fixed 40px (48 comfortable, 32 dense) rows, virtualised above 200, arrow-key row navigation, Enter opens, Space selects, Escape clears. Filters are removable chips. One empty row when a filter removes everything.
 - **EmptyState** (title under 8 words, one detail sentence, one required action), **ErrorState** (message plus Retry), **Skeleton** in final geometry. No raw `<p>` for loading, empty or error.
 - **ConfirmDialog**: every confirmation. `tone="danger"` for deletes, `typeToConfirm` makes the user type the name first, buttons name the action and its inverse ("Delete team" / "Keep"). `window.confirm` is not used anywhere in `app/`.
 - **Toasts** (`toast` from `@/design`, wraps sonner): `toast.undoable(message, { undo, timeoutMs })` adds an Undo action and only exists for actions whose API has a real inverse. No inverse endpoint, no undo.
@@ -67,10 +69,11 @@ Copy: no full stops in table cells, pills, tile labels or hints; no "Showing X."
 ## 4. Brand
 
 - **Mark**: a 270 degree arc, open at the top, crossed by a vertical meridian line, on a 32 grid, stroke 3, round caps. The arc is ink, the line is the accent. In the app it is the inline SVG `MeridianMark` (`components/meridian/icons.tsx`).
-- **Wordmark**: the word "Meridian" type-set in IBM Plex Sans Condensed 600, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
-- **Assets** in `public/brand/` (see its README): marks, outlined lockups, `apple-icon.svg` (cover gradient, hero-ink mark, ember meridian line; the live icon is `app/apple-icon.tsx`), PWA icons from `npm run brand:rasterise`. Colours are in `brand.json`.
+- **Wordmark**: the word "Meridian" type-set in IBM Plex Sans 600, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
+- **Assets** in `public/brand/` (see its README): marks, outlined lockups, `apple-icon.svg` (the older cover-gradient design; the live icon is `app/apple-icon.tsx`, not yet redrawn for the calm palette), PWA icons from `npm run brand:rasterise`. Colours are in `brand.json`.
 - **Favicon**: `app/icon.svg` (stroke 3.5, follows the OS colour scheme) with `app/icon.png` fallback. **Open Graph image**: `app/opengraph-image.tsx`, lockup plus "SAP data quality, measured".
-- **Signed-out pages** (`components/auth/auth-frame.tsx`): one 400px card on the canvas with the lockup, an `<h1>`, the form and the version string beneath. No brand panel, no tagline, no marketing facts.
+- **Signed-out pages** (`components/auth/auth-frame.tsx`): a white brand panel (`.m-brand-panel`: lockup, the decorative score-ring instrument in the accent, two facts) beside one 400px card on the canvas with an `<h1>`, the form and the version string beneath.
+- **Rail** (`design/shell/Rail.tsx`): a light sheet with a hairline right edge. Each item shows its icon and text label, expanded by default (collapsed to icons below 1024px or when the user collapses it with the button or `[`). The active item is a soft blue tint with blue ink.
 
 ## Routes
 Live pages are under `app/(app)/`: `home` (redirects each role to its persona home: lead, steward, basis, process), `systems`, `objects` (tabs: overview, rules, fields, records, history), `runs`, `rules`, `insights`, `mdm` (glossary, golden, match-rules, survivorship), `migration`, `inbox`, `fix`, `import`, `search`, `admin` (users, roles, audit, settings, mappings, reference, notifications, jobs, ai, licence, billing, triage), and `design` (the component gallery).
@@ -101,7 +104,7 @@ Meridian is read top-down. Every level answers one question and opens the level 
 
 ## Guardrails
 
-- `npm run lint:tokens` rejects raw hex, gradients, backdrop blur, ad hoc shadows, motion and duration literals and all-caps text outside `design/tokens.css`. `scripts/lint-tokens.allow.txt` holds no entries. Never add a line to it.
+- `npm run lint:tokens` rejects raw hex, gradients, backdrop blur, ad hoc shadows, motion and duration literals and all-caps text outside `design/tokens.css`. `scripts/lint-tokens.allow.txt` holds no entries. Never add a line to it. It also rejects the retired ember, hero-gradient and hero-elevation tokens anywhere outside `tokens.css`.
 - `npm run lint` runs `eslint . --max-warnings 0`.
 - `npm run check:contrast` gates the colour pairs above.
 - Reduced motion turns off every animation. Focus rings always show (`--m-elev-focus`).

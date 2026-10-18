@@ -44,7 +44,7 @@ describe("Rail", () => {
     window.sessionStorage.clear();
     // Rail defaults to expanded at narrow widths only when no stored preference exists;
     // force a wide viewport so these tests see the same expanded-by-default start state
-    // regardless of the ≥1440px default-expanded rule.
+    // regardless of the ≥1024px default-expanded rule.
     Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1440 });
   });
 

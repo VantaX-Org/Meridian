@@ -256,17 +256,24 @@ disagree, follow DESIGN.md.
   charts, table, shell and page templates. There is no second library and
   no legacy shell; `components/aurora`, `components/ui-core`,
   `components/shell` and `lib/aurora` were retired.
-- **Direction**: an instrument panel. Cool slate canvas, white sheets,
-  near-black ink. Light is the default; dark is a full alternative under
-  `[data-theme="dark"]`.
-- **Colour**: cobalt `--m-accent` is interaction (selection, focus, links,
-  primary button). Ember and the `--m-grad-*` gradients appear only in hero
-  zones. Hue means defect state, object domain (`--m-dom-*`, only where an
-  element stands for one SAP object) or chart series (`--m-viz-*`); each
-  family never borrows another's tokens. No glass or backdrop blur.
-- **Type**: IBM Plex Sans Condensed for UI and numerals (no serif anywhere), JetBrains Mono for SAP identifiers only
+- **Direction**: calm enterprise. Cool off-white canvas (`#F7F8FA`), white
+  cards with 1px hairline borders and an 8px radius, near-black ink, slightly
+  roomy density (40px table rows, 24px card padding). Light is the default;
+  dark is a full alternative in neutral graphite under `[data-theme="dark"]`.
+  No dark hero blocks: the score is a plain large number plus one horizontal
+  bar on a white card.
+- **Colour**: one deep blue accent `--m-accent` (`#1F4FD8`, lightened in
+  dark) is interaction only (primary button, links, selection, focus). Hue
+  otherwise means defect status: red / amber / green (critical, high, medium,
+  low and no-go, at-risk, go map onto these) plus info blue for neutral
+  notices. Object domain (`--m-dom-*`, only where an element stands for one
+  SAP object) and chart series (`--m-viz-*`) are muted families; each family
+  never borrows another's tokens. The amber "ember" signal and hero
+  gradients are retired. No glass, gradients or backdrop blur.
+- **Type**: IBM Plex Sans (regular width) for UI and numerals, 14px body,
+  tabular figures (no serif anywhere); JetBrains Mono for SAP identifiers only
   (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both
-  loaded with `next/font`. Numbers use tabular figures. Sentence case.
+  loaded with `next/font`. Sentence case.
 - **Tokens**: `frontend/design/tokens.css` defines every `--m-*` token.
   `npm run lint:tokens` rejects raw hex, gradients, blur, ad hoc shadows,
   motion and duration literals outside that one file.

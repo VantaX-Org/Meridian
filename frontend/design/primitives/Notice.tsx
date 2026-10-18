@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 export type NoticeTone = "info" | "warning" | "danger" | "success";
 
 const TONE: Record<NoticeTone, { bar: string; bg: string; ink: string }> = {
-  info: { bar: "var(--m-accent)", bg: "var(--m-accent-soft)", ink: "var(--m-accent-ink)" },
+  info: { bar: "var(--m-info)", bg: "var(--m-info-soft)", ink: "var(--m-info-ink)" },
   warning: { bar: "var(--m-at-risk)", bg: "var(--m-at-risk-soft)", ink: "var(--m-at-risk-ink)" },
   danger: { bar: "var(--m-critical)", bg: "var(--m-critical-soft)", ink: "var(--m-critical-ink)" },
   success: { bar: "var(--m-pass)", bg: "var(--m-pass-soft)", ink: "var(--m-pass-ink)" },

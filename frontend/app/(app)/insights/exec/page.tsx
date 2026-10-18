@@ -115,16 +115,17 @@ export default function ExecPage() {
         hero: true,
         lead: dqs && typeof dqs.composite === "number" ? (
           <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-            <div style={{ minWidth: 200, width: "max-content", maxWidth: 360 }}>
+            <div style={{ minWidth: 260, width: "max-content", maxWidth: 360 }}>
               <Stat
                 hero
                 label="Data quality score"
                 help="dqs"
                 value={dqs.composite}
+                bar={dqs.composite}
                 decimals={1}
                 versionId={vid}
                 hint={dqs.capped ? `Capped at ${dqs.composite <= 70 ? 70 : 85}` : undefined}
-                delta={dqs.delta != null ? <Delta hero value={dqs.delta} /> : undefined}
+                delta={dqs.delta != null ? <Delta value={dqs.delta} /> : undefined}
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1" style={{ minWidth: "min(100%, 16rem)", maxWidth: "48ch" }}>
