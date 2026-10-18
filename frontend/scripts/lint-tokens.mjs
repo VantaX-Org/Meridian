@@ -30,13 +30,13 @@ const RULES = [
   // Catches the CSS declaration, the Tailwind utility inside a className/class string (before or after
   // the attribute name), and `@apply uppercase`.
   { name: "text-transform uppercase", re: /^(?!.*::first-letter).*text-transform\s*:\s*uppercase|(?:className|class)=[^\n]*\buppercase\b|\buppercase\b(?=[^\n]*(?:className|class=|@apply))|@apply[^\n;]*\buppercase\b/ },
-  // Rule 11: motion lives in the Aurora style files only.
-  { name: "motion outside aurora css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/, skip: new Set(["app/styles/aurora.css"]) },
+  // Rule 11: motion lives in design/tokens.css only.
+  { name: "motion outside tokens.css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/ },
   { name: "ember-outside-hero", re: /var\(--m-ember|var\(--m-grad-/, skip: HERO_ALLOW },
   { name: "hero-elev-outside-hero", re: /var\(--m-elev-hero/, skip: HERO_ALLOW },
   { name: "glow-outside-graph", re: /var\(--m-elev-glow-|var\(--m-glow-/, skip: new Set(["design/charts/Graph.tsx"]) },
   { name: "domain-literal", re: /var\(--m-dom-(?:material|customer|vendor|partner|finance|people|plant|asset|other)/, skip: DOMAIN_ALLOW },
-  { name: "duration literal outside aurora.css", re: /\b\d*\.?\d+ms\b/, skip: new Set(["app/styles/aurora.css"]) },
+  { name: "duration literal outside tokens.css", re: /\b\d*\.?\d+ms\b/ },
 ];
 
 // Rule 14 and rule 6 read the CSS selector that owns each declaration.
@@ -78,7 +78,7 @@ for (const abs of walk(ROOT)) {
   src.split("\n").forEach((line, i) => {
     for (const r of RULES) if (!r.skip?.has(file) && r.re.test(line)) add(i + 1, r.name);
   });
-  if (file.endsWith(".css") && file !== "app/styles/aurora.css") {
+  if (file.endsWith(".css")) {
     for (const d of cssDecls(src)) {
       if (/--m-elev-[2-4]/.test(d.text) && !/^\s*--/.test(d.text) && !OVERLAY.test(d.sel)) add(d.line, "elevation 2-4 outside an overlay");
       if (STATUS_USE.test(d.text) && !/^\s*--/.test(d.text) && !STATUS_OWNER.test(d.sel)) add(d.line, "status colour without data-severity, data-tone or a pill, badge, severity or heat class");
