@@ -155,6 +155,51 @@ class DeltaRequest:
     load_baseline: Callable[[str], Optional[pd.DataFrame]]
 
 
+_SIGNALS = ("SIGTERM", "SIGINT", "SIGHUP")
+
+
+def _install_close_on_signal(connector) -> dict:
+    """Make SIGTERM/SIGINT close the SAP sessions before the process dies.
+
+    ``connector.close()`` lives in a ``finally`` block, which a non-catchable SIGKILL never
+    reaches and a default SIGTERM does not either (Python's default handler exits without
+    unwinding). Dangling RFC sessions are counted by SAP against the user, so a stopped
+    extraction could lock an otherwise healthy account.
+    """
+    import signal
+
+    previous: dict = {}
+
+    def _handler(signum, frame):
+        try:
+            connector.close()
+        finally:
+            signal.signal(signum, previous.get(signum, signal.SIG_DFL))
+            previous.get("__raise__", lambda: None)()
+            raise SystemExit(128 + signum)
+
+    for name in _SIGNALS:
+        sig = getattr(signal, name, None)
+        if sig is None:
+            continue
+        try:
+            previous[sig] = signal.getsignal(sig)
+            signal.signal(sig, _handler)
+        except (ValueError, OSError):
+            pass  # not in the main thread: leave the default alone
+    return previous
+
+
+def _restore_signal_handlers(previous: dict) -> None:
+    import signal
+    for sig, prior in (previous or {}).items():
+        if isinstance(sig, int) and prior is not None:
+            try:
+                signal.signal(sig, prior)
+            except (ValueError, OSError):
+                pass
+
+
 class ConnectivityManager:
     """Manages all SAP system connections for a tenant."""
 
@@ -278,6 +323,12 @@ class ConnectivityManager:
                 # plan-only paths), in which case there are no tenant overrides to honour.
                 _ov = (load_overrides(self.session) or {}) if self.session is not None else {}
                 _reenabled = any((o or {}).get("enabled") for o in _ov.values())
+                # Close the SAP sessions if this process is asked to stop. A killed extraction used
+                # to leave its RFC sessions dangling, and SAP counts an uncleaned session against
+                # the user - a hard kill of a running extraction is what locked the sandbox user
+                # the second time. SIGKILL cannot be caught; SIGTERM/INT can, and this makes them
+                # clean.
+                _prev_handlers = _install_close_on_signal(connector)
                 plans = plan_modules(modules, dictionary, scope, system_type=system_type,
                                      include_disabled=_reenabled)
                 # fields this system's field-status customizing controls (checks/field_status_rules.py)
@@ -431,6 +482,10 @@ class ConnectivityManager:
                                  "detail": f"{system_type} data has no rule pack mapped yet; use upload or "
                                            f"the cross-system integration module"})
         finally:
+            try:
+                _restore_signal_handlers(_prev_handlers)
+            except Exception:
+                pass
             connector.close()
         return frames, coverage
 

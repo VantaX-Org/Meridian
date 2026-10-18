@@ -111,3 +111,64 @@ def _real_lock(fake):
     def lock(version_id: str) -> bool:
         return bool(fake.set(f"extract-lock:{version_id}", "1", nx=True, ex=9999))
     return lock
+
+
+# ── sessions must be closed when the process is asked to stop ──────────────────────────────────
+def test_sigterm_closes_the_sap_sessions(monkeypatch):
+    """SIGKILL cannot be caught, but SIGTERM must not leave SAP sessions dangling.
+
+    connector.close() sits in a `finally`, which Python's default SIGTERM handler never reaches
+    (it exits without unwinding). Dangling RFC sessions are counted by SAP against the user, so a
+    stopped extraction can lock a healthy account - which is how it happened the second time.
+    """
+    import signal
+
+    from api.services import connectivity_manager as cm
+
+    closed = []
+    installed = {}
+
+    class Conn:
+        def close(self):
+            closed.append(True)
+
+    def fake_signal(sig, handler):
+        installed[sig] = handler
+
+    monkeypatch.setattr(signal, "signal", fake_signal)
+    monkeypatch.setattr(signal, "getsignal", lambda sig: signal.SIG_DFL)
+
+    cm._install_close_on_signal(Conn())
+
+    sigterm = installed.get(signal.SIGTERM)
+    assert sigterm is not None, "no SIGTERM handler was installed"
+
+    with pytest.raises(SystemExit):
+        sigterm(signal.SIGTERM, None)
+    assert closed == [True], "the handler must close the SAP sessions before exiting"
+
+
+def test_install_and_restore_do_not_raise_outside_the_main_thread():
+    """Workers run in prefork children; signal registration there must not break extraction."""
+    import threading
+
+    from api.services import connectivity_manager as cm
+
+    class Conn:
+        def close(self):
+            pass
+
+    result = {}
+
+    def run():
+        try:
+            prev = cm._install_close_on_signal(Conn())
+            cm._restore_signal_handlers(prev)
+            result["ok"] = True
+        except Exception as e:  # pragma: no cover
+            result["err"] = e
+
+    t = threading.Thread(target=run)
+    t.start()
+    t.join()
+    assert result.get("ok") is True, result
