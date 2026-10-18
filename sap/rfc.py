@@ -129,6 +129,10 @@ class RFCConnector(SAPConnector):
             self._password = ""
             _note_logon_failure(params, safe)
             raise SAPConnectorError(_logon_advice(safe)) from e
+        # A successful logon proves the account works again (unlocked, password reset), so the
+        # cooldown must lift at once - otherwise the operator unlocks the user and Meridian still
+        # refuses for the remainder of the window it set itself.
+        clear_logon_block(params)
         self._open_extra = lambda: pyrfc.Connection(ashost=params.host, client=params.client, user=params.user,
                                                     passwd=params.password, sysnr=params.sysnr)
 
