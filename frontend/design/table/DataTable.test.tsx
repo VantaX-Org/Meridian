@@ -97,18 +97,18 @@ describe("DataTable", () => {
       const { container } = render(<DataTable columns={columns} data={bigRows} getRowId={(r) => r.id} dense={false} />);
       const scrollParent = container.querySelector("div[style*='overflow: auto']") as HTMLDivElement;
       const tbody = container.querySelector("tbody") as HTMLTableSectionElement;
-      // Spacer rows plus rendered rows always add up to 36px comfortable row * 2500 rows.
+      // Spacer rows plus rendered rows always add up to 40px comfortable row * 2500 rows.
       const total = () =>
         Array.from(tbody.querySelectorAll("tr")).reduce((n, tr) => n + parseFloat((tr as HTMLElement).style.height), 0);
 
-      expect(total()).toBe(90000);
+      expect(total()).toBe(100000);
       expect(screen.queryByText("Row 2400")).not.toBeInTheDocument();
 
-      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 86000 });
+      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 95800 });
       fireEvent.scroll(scrollParent);
 
       expect(screen.getByText("Row 2400")).toBeInTheDocument();
-      expect(total()).toBe(90000);
+      expect(total()).toBe(100000);
       expect(screen.getByText("Row 2400").closest("tr")).toHaveAttribute("aria-rowindex", "2402");
       expect(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "2501");
     } finally {
@@ -228,7 +228,7 @@ describe("DataTable", () => {
     render(<DataTable columns={cols} data={[{ id: "A1", name: "x", n: 1234 }] as never} getRowId={(r: Row) => r.id} dense />);
     expect(screen.getByText("A1")).toHaveClass("m-mono");
     expect(screen.getByText(/^1\D?234$/)).toHaveClass("text-right", "m-numeric");
-    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "30px" });
+    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "32px" });
   });
 
   it("marks selected rows and shows the floating bulk bar", () => {
