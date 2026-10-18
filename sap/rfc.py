@@ -41,6 +41,35 @@ _LOGON_LOCKED = ("too many failed attempts", "password logon no longer possible"
                  "user is locked", "logon currently not possible")
 
 
+# Per-system cooldown after a lock/expiry reply. Meridian must not be able to contribute to a
+# lock: once SAP says the user is locked or expired, every further attempt is another failed
+# attempt, and repeated attempts are what turn a locked user into a stubbornly locked one.
+_LOGON_BLOCKED: dict[str, float] = {}
+_LOGON_COOLDOWN_S = 15 * 60
+
+
+def _logon_key(params) -> str:
+    return f"{params.host}/{params.sysnr}/{params.client}/{params.user}"
+
+
+def logon_blocked_for(params) -> float:
+    """Seconds still to wait before this system may be connected to again (0 = allowed)."""
+    import time
+    until = _LOGON_BLOCKED.get(_logon_key(params), 0.0)
+    return max(0.0, until - time.time())
+
+
+def _note_logon_failure(params, message: str) -> None:
+    import time
+    if any(k in message.lower() for k in _LOGON_LOCKED):
+        _LOGON_BLOCKED[_logon_key(params)] = time.time() + _LOGON_COOLDOWN_S
+
+
+def clear_logon_block(params) -> None:
+    """Called by an operator action (a connection test) so a fixed password takes effect at once."""
+    _LOGON_BLOCKED.pop(_logon_key(params), None)
+
+
 def _logon_advice(message: str) -> str:
     """Append what the operator must do, so a locked user is not mistaken for a wrong password."""
     if any(k in message.lower() for k in _LOGON_LOCKED):
@@ -69,6 +98,15 @@ class RFCConnector(SAPConnector):
     # ── Lifecycle ──────────────────────────────────────────────────────────────
 
     def connect(self, params: SAPConnectionParams) -> None:
+        # Checked before anything else, including loading the driver: while SAP reports the user
+        # locked, no attempt of any kind may be made, because each one extends the lock.
+        wait = logon_blocked_for(params)
+        if wait > 0:
+            raise SAPConnectorError(
+                f"not attempting logon to {_logon_key(params)}: a previous attempt reported the "
+                f"user locked or the password expired, and retrying extends the lock. Waiting "
+                f"{int(wait)}s. An SAP basis administrator must unlock the user (SU01) or reset "
+                f"the password; a successful connection test clears this wait.")
         if self._conn is not None or self._extra is not None:
             self.close()  # a stale pool from a previous connect() would keep old params and sessions open
         try:
@@ -89,6 +127,7 @@ class RFCConnector(SAPConnector):
         except Exception as e:
             safe = self._mask_password(str(e), params.password)
             self._password = ""
+            _note_logon_failure(params, safe)
             raise SAPConnectorError(_logon_advice(safe)) from e
         self._open_extra = lambda: pyrfc.Connection(ashost=params.host, client=params.client, user=params.user,
                                                     passwd=params.password, sysnr=params.sysnr)

@@ -125,6 +125,32 @@ def wait_for_config(task: Task, session: Session, system_id: str) -> str:
     acks_late=True,
     reject_on_worker_lost=True,
 )
+def _acquire_version_lock(version_id: str) -> bool:
+    """One extraction per version, across worker restarts.
+
+    ``run_extraction`` is declared ``acks_late=True, reject_on_worker_lost=True`` so that a crash
+    does not silently lose a finished read. The cost is that the broker REQUEUES a task whose
+    worker died, and a restart - every deploy - therefore re-runs an extraction that may already
+    be hours in. Two concurrent extractions of the same version then compete: they double the SAP
+    reads and, worse, each opens its own RFC sessions. Repeated logons against a strict SAP user
+    lock it ("too many failed attempts"), which is exactly what happened on the Komatsu sandbox.
+
+    A Redis key per version makes the redelivered copy exit immediately instead. The TTL is the
+    extraction limit, so a genuinely dead run frees the lock without operator action.
+    """
+    try:
+        import redis  # type: ignore
+
+        from workers.celery_app import celery_app
+        url = celery_app.conf.broker_url
+        if not url:
+            return True
+        client = redis.from_url(url)
+        return bool(client.set(f"extract-lock:{version_id}", "1", nx=True, ex=EXTRACT_TIME_LIMIT))
+    except Exception:
+        return True  # never block an extraction because the lock backend is unavailable
+
+
 def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
                    scope=None, analyse=True, label=None, version_id=None, delta=False, purpose=None):
     """Download ``modules`` (business objects) from ``system_id`` into a new version.
@@ -139,6 +165,12 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     the version and the DQ side effects (module map, table profiles) are skipped.
     """
     from api.services.task_progress import publish_progress
+
+    if version_id and not _acquire_version_lock(str(version_id)):
+        logger.warning(
+            "extraction for version %s is already running (redelivered after a restart); "
+            "exiting rather than starting a second read of the same system", version_id)
+        return {"version_id": str(version_id), "status": "duplicate_ignored"}
 
     engine = get_sync_engine()
     if sync_type != "config":
