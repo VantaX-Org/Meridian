@@ -32,7 +32,7 @@ function Instrument() {
     <div className="relative" style={{ width: RING, height: RING }}>
       <svg width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`} aria-hidden="true" className="absolute inset-0">
         <circle cx={c} cy={c} r={R} fill="none" stroke="var(--m-hero-line)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(-45 ${c} ${c})`} {...arc} />
-        <circle className="m-motion-draw" cx={c} cy={c} r={R} fill="none" stroke="var(--m-ember)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(-45 ${c} ${c})`}
+        <circle className="m-motion-draw" cx={c} cy={c} r={R} fill="none" stroke="var(--m-accent)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(-45 ${c} ${c})`}
           style={{ "--m-draw-length": ARC } as CSSProperties} {...arc} />
         <line x1={c} x2={c} y1={STROKE / 2} y2={RING - STROKE / 2} stroke="var(--m-hero-ink)" strokeOpacity={0.4} strokeWidth={1} />
       </svg>
@@ -57,7 +57,7 @@ export function AuthFrame({ title, lead, children }: { title: string; lead?: Rea
           <ul className="grid grid-cols-2 gap-x-6 gap-y-3">
             {FACTS.map((f) => (
               <li key={f} className="m-text-body flex items-start gap-2" style={{ color: "var(--m-hero-ink-2)" }}>
-                <span aria-hidden className="mt-1.5 shrink-0" style={{ width: 6, height: 6, background: "var(--m-ember)" }} />
+                <span aria-hidden className="mt-1.5 shrink-0" style={{ width: 6, height: 6, background: "var(--m-accent)" }} />
                 {f}
               </li>
             ))}

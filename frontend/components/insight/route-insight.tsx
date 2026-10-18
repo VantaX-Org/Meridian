@@ -4,30 +4,26 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { usePathname, useSearchParams } from "next/navigation";
 import { InsightHeader } from "@/design";
-import { useRole } from "@/hooks/use-role";
 import { useDayOne } from "@/hooks/use-day-one";
 import { getLlmHealth } from "@/lib/api/analytics";
 import { getSystems } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getExec, submitInsightFeedback } from "@/lib/api/insights";
-import { getWaves } from "@/lib/api/migration";
-import { getMetrics } from "@/lib/api/stewardship";
 import { getCostModel } from "@/lib/api/settings";
 import { compareVersions } from "@/lib/api/versions";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { formatModuleName } from "@/lib/format";
 import { isFinished, lineageOf, overallDqs } from "@/lib/runs";
 import { queryKeys } from "@/lib/query-keys";
-import { buildInsight, sectionOf, type InsightFacts } from "@/lib/route-insight";
+import { buildInsight, sectionOf, showsRouteInsight, type InsightFacts } from "@/lib/route-insight";
 
 
-/** The insight header above every (app) page. Layout-level, so no page needs to opt in. */
+/** The insight banner above the persona homes. Every other page starts with its own title. */
 export function RouteInsight() {
   const pathname = usePathname();
   const run = useSearchParams().get("run") ?? undefined;
-  const section = sectionOf(pathname);
+  const section = showsRouteInsight(pathname) ? sectionOf(pathname) : null;
   const dayOne = useDayOne();
-  const { isAdmin } = useRole();
   // The shared run list, plus a ?run= older than it read by id, so the previous run of its lineage is found.
   const { list: versionsQ, versions: allVersions } = useRunListWith(section ? run : undefined);
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, enabled: !!section });
@@ -49,16 +45,13 @@ export function RouteInsight() {
     enabled: !!section && !!prevId && !!runId,
     retry: false,
   });
-  const wavesQ = useQuery({ queryKey: queryKeys.migrationWaves(), queryFn: getWaves, enabled: section === "migration" });
-  const backlogQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, enabled: section === "inbox" || section === "mdm" });
   const llmQ = useQuery({ queryKey: ["health", "llm"], queryFn: getLlmHealth, enabled: !!section && hasRun, staleTime: 60_000 });
   const llmOn = llmQ.data?.llm_available === true;
   const execQ = useQuery({ queryKey: queryKeys.insights("exec", runId), queryFn: () => getExec({ version_id: runId }), enabled: !!section && hasRun && !!runId && llmOn });
   const costAtRisk = aggQ.data?.cost_at_risk;
   const costModelQ = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: !!section && costAtRisk != null && costAtRisk > 0, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
 
-  // Insight pages carry their own four-sentence header (InsightFrame); the shell strip would repeat it.
-  if (!section || pathname.startsWith("/insights")) return null;
+  if (!section) return null;
 
   const agg = aggQ.data;
   const loading = versionsQ.isLoading || (hasRun && aggQ.isLoading);
@@ -90,25 +83,26 @@ export function RouteInsight() {
       : undefined,
     worst: worst ? { module: worst.module, label: formatModuleName(worst.module), findings: worst.findings, critical: worst.critical } : undefined,
     systems: (systemsQ.data ?? []).length,
-    waves: (wavesQ.data ?? []).length,
-    backlog: backlogQ.data?.backlog_total ?? null,
+    waves: 0,
+    backlog: null,
     running: allVersions.filter((v) => !isFinished(v) && v.status !== "failed").length,
     dayOne: dayOne.step ? { label: dayOne.step.label, href: dayOne.step.href, status: dayOne.step.key === "running" } : undefined,
   };
   const cells = buildInsight(section, facts);
+  // AI on: the model's summary replaces the four cells. AI off (or no narrative): the four cells alone.
+  const aiOn = hasRun && llmOn && (execQ.isLoading || !!execQ.data?.narrative);
 
   return (
     <div className="@container mx-auto w-full" style={{ padding: "16px var(--m-page-pad) 0", maxWidth: "var(--m-page-max)" }}>
       <InsightHeader
         {...cells}
-        aiSummary={hasRun ? {
-          llmOk: llmQ.data?.llm_available,
+        aiSummary={aiOn ? {
+          llmOk: true,
           text: execQ.data?.narrative,
           fallback: `${cells.situation.sentence} ${cells.why.sentence}`,
           findingsCount: agg?.total,
           runId,
-          loading: execQ.isLoading && llmOn,
-          adminHref: isAdmin && llmQ.data?.llm_available === false ? "/admin/ai" : undefined,
+          loading: execQ.isLoading,
           onFeedback: (vote) =>
             submitInsightFeedback({ surface: section, run_id: runId, vote }).then(
               () => toast.success("Thanks, feedback recorded."),

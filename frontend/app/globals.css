@@ -111,9 +111,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  /* 13px root is load-bearing for legacy rem layouts. New parts size in px. */
+  /* 14px root: the body size. Legacy rem layouts scale from it; new parts size in px. */
   html {
-    font-size: 13px;
+    font-size: 14px;
     @apply font-sans;
   }
   h1, .text-display-lg { font-family: var(--m-font-sans); font-weight: 600; font-size: 2rem; line-height: 1.15; letter-spacing: -0.01em; }
@@ -224,7 +224,7 @@
   .m-input:hover { border-color: var(--m-ink-3); }
   .m-input:focus, .m-input:focus-visible { outline: none; border-color: var(--m-accent); box-shadow: var(--m-elev-focus); }
   .m-input[aria-invalid="true"], .m-input[data-invalid] { border-color: var(--m-critical); }
-  .m-popup { background: var(--m-sheet); border: 1px solid var(--m-line-strong); padding: 4px; box-shadow: var(--m-elev-2); max-height: var(--available-height, 24rem); overflow-y: auto; }
+  .m-popup { background: var(--m-sheet); border: 1px solid var(--m-line-strong); border-radius: var(--m-radius-control); padding: 4px; box-shadow: var(--m-elev-2); max-height: var(--available-height, 24rem); overflow-y: auto; }
   .m-popup-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: var(--m-control-h); padding: 0 10px; border-radius: var(--m-radius-control); font-size: var(--m-text-body); cursor: pointer; color: var(--m-ink); }
   .m-popup-item[data-highlighted] { background: var(--m-sheet-raised); }
   .m-popup-item:active { background: var(--m-sheet-sunken); }
@@ -236,10 +236,10 @@
   .m-field-error::before { content: ""; width: 8px; height: 8px; background: var(--m-critical); flex-shrink: 0; }
 
   /* First focusable element of the app shell; off-screen until focused. */
-  .m-skip-link { position: fixed; left: -9999px; top: var(--m-space-2); z-index: 100; display: inline-flex; align-items: center; height: var(--m-control-h); padding: 0 var(--m-space-3); border-radius: var(--m-radius-control); background: var(--m-accent); color: var(--m-accent-ink); font-size: var(--m-text-body); font-weight: 500; text-decoration: none; }
+  .m-skip-link { position: fixed; left: -9999px; top: var(--m-space-2); z-index: 100; display: inline-flex; align-items: center; height: var(--m-control-h); padding: 0 var(--m-space-3); border-radius: var(--m-radius-control); background: var(--m-accent); color: var(--m-ink-on-accent); font-size: var(--m-text-body); font-weight: 500; text-decoration: none; }
   .m-skip-link:focus { left: var(--m-space-2); outline: none; box-shadow: var(--m-elev-focus); }
 
-  .m-card { background: var(--m-sheet); border-top: 1px solid var(--m-line-strong); border-bottom: 1px solid var(--m-line); padding: var(--m-card-pad); }
+  .m-card { background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); padding: var(--m-card-pad); }
   .m-card-sm { padding: var(--m-card-pad-sm); }
   .m-card-lg { padding: var(--m-card-pad-lg); }
 
@@ -276,14 +276,14 @@
   .m-pill-at-risk .m-pill-dot { background: var(--m-at-risk); }
   .m-pill-no-go { background: var(--m-no-go-soft); color: var(--m-no-go-ink); }
   .m-pill-no-go .m-pill-dot { background: var(--m-no-go); }
-  .m-pill-info { background: var(--m-accent-soft); color: var(--m-accent-ink); }
+  .m-pill-info { background: var(--m-info-soft); color: var(--m-info-ink); }
 
   .m-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--m-radius-pill); font-family: var(--m-font-mono); font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; background: var(--m-accent); color: var(--m-ink-on-accent); }
   .m-badge-inverted { background: var(--m-accent-ink); color: var(--m-accent-soft); }
   .m-badge-neutral { background: var(--m-sheet-raised); color: var(--m-ink-2); }
 
   .m-tabs-list { position: relative; display: flex; border-bottom: 1px solid var(--m-line); }
-  .m-tab { height: 36px; padding: 0 2px; margin-right: 20px; font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 500; color: var(--m-ink-3); cursor: pointer; }
+  .m-tab { height: 40px; padding: 0 2px; margin-right: 20px; font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 500; color: var(--m-ink-3); cursor: pointer; }
   .m-tab:hover { color: var(--m-ink); }
   .m-tab:focus-visible { outline: none; box-shadow: var(--m-elev-focus); border-radius: var(--m-radius-control); }
   .m-tab[data-selected] { color: var(--m-ink); font-weight: 600; }

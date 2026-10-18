@@ -48,6 +48,14 @@ export function sectionOf(pathname: string): Section | null {
   return known.includes(seg) ? seg : null;
 }
 
+/**
+ * The shell banner belongs on the persona homes only. `/insights` carries its own four-sentence
+ * header (InsightFrame), and every other page starts with its own title.
+ */
+export function showsRouteInsight(pathname: string): boolean {
+  return pathname === "/home" || pathname.startsWith("/home/");
+}
+
 const FRESH: Record<Section, string> = {
   home: "No analysis has run yet, so there is no score to report.",
   objects: "No objects to show until the first analysis has run.",

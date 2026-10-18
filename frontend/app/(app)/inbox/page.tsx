@@ -34,7 +34,7 @@ import {
   updateExceptionRule,
 } from "@/lib/api/exceptions";
 import { apiErrorMessage, isNotFound } from "@/lib/error";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { formatInt, formatModuleName, labelOf } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, IssuesPanel, SapMonitorPanel } from "./inbox-panels";
@@ -419,7 +419,7 @@ export default function InboxPage() {
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.breached;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
   const header = (
-    <PageHeader title="Inbox" meta={`${openCount} open, ${overdue} overdue`} />
+    <PageHeader title="Inbox" meta={`${formatInt(openCount)} open, ${formatInt(overdue)} overdue`} />
   );
 
   if (kind === "issues" || kind === "sap" || kind === "approvals") {
@@ -632,16 +632,20 @@ export default function InboxPage() {
   );
 }
 
-/** Replaces the legacy OwnerLadder (not in @/design) with a plain table. */
+/**
+ * Replaces the legacy OwnerLadder (not in @/design) with a plain table. Its counts come from the triage
+ * metrics, which span every queue (record issues as well as stewardship tasks), so the heading says so
+ * rather than reading as a breakdown of the inbox list.
+ */
 function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRungs>; aiAcceptance: number | null }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="m-text-body font-medium">Who holds the work</span>
+      <span className="m-text-body font-medium">Who holds the work across all queues</span>
       {rungs.length ? (
         <table className="w-full m-text-body">
           <tbody>
             {rungs.map((r) => (
-              <tr key={r.label}><td>{r.label}</td><td>{r.open} open</td><td>{r.breached} breached</td></tr>
+              <tr key={r.label}><td>{r.label}</td><td>{formatInt(r.open)} open across all queues</td><td>{formatInt(r.breached)} breached</td></tr>
             ))}
           </tbody>
         </table>

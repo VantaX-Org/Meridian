@@ -57,7 +57,7 @@ function ListGhost() {
   );
 }
 
-/** 64px, 270 degree arc on a track, with an ember tick at the arc's end. */
+/** 64px, 270 degree arc on a track, with the meridian tick at the top. */
 function RingGhost() {
   const stroke = 8;
   const r = (64 - stroke) / 2;
@@ -66,7 +66,7 @@ function RingGhost() {
     <svg width={64} height={64} viewBox="0 0 64 64">
       <circle cx={32} cy={32} r={r} fill="none" stroke="var(--m-accent-soft-2)" strokeWidth={stroke} />
       <circle cx={32} cy={32} r={r} fill="none" stroke="var(--m-accent)" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${circ * 0.75} ${circ}`} transform="rotate(-90 32 32)" />
-      <line x1={32} x2={32} y1={0} y2={9} stroke="var(--m-ember)" strokeWidth={2} />
+      <line x1={32} x2={32} y1={0} y2={9} stroke="var(--m-ink-3)" strokeWidth={2} />
     </svg>
   );
 }

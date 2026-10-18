@@ -132,7 +132,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     const { container } = renderWithQuery(<LeadHomePage />);
 
     const [link] = await screen.findAllByRole("link", { name: "MM-001" });
-    expect(link).toHaveAttribute("href", "/objects/material_master/rules/MM-001?run=v1");
+    expect(link).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=MM-001");
     expect(screen.getByRole("link", { name: "MM-002" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "MM-003" })).toBeNull();
     expect(container.querySelector("a[href^='/findings']")).toBeNull();
@@ -162,7 +162,7 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     const line = await screen.findByText(/Capped at 70 by 4 critical rules/);
     expect(line).toHaveTextContent("Capped at 70 by 4 critical rules: BP019, BP002 and 2 more");
-    expect(screen.getByRole("link", { name: "BP019" })).toHaveAttribute("href", "/objects/material_master/rules/BP019?run=v1");
+    expect(screen.getByRole("link", { name: "BP019" })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=BP019");
   });
 
   it("counts an object whose cap reason names no rule by its critical count", async () => {
@@ -238,6 +238,15 @@ describe("PersonaHomePage header actions (T20)", () => {
         "meridian-executive-Oct 8.pdf",
       ),
     );
+  });
+
+  it("gives the steward one Export menu, not two side by side", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+
+    renderWithQuery(<StewardHomePage />);
+
+    await screen.findByRole("button", { name: "Export" });
+    expect(screen.getAllByRole("button", { name: "Export" })).toHaveLength(1);
   });
 
   it("does not render the header export action while gated by useDayOne's day-one journey", async () => {

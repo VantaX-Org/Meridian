@@ -35,6 +35,7 @@ import { previousInLineage, runPageHref } from "@/lib/runs";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
+import { PERSONA_OPTIONS } from "@/lib/persona";
 import type { Finding, Version } from "@/types/api";
 
 const TABLE_ROWS = 8;
@@ -366,22 +367,22 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       onboarding={<HomeOnboarding />}
       headerActions={<>
         <RunAnalysis />
-        {role === "steward" && can("export") ? (
-          <ExportMenu options={[{ format: "xlsx", label: "My failing records (Excel)", run: () => exportFindings("xlsx", { version_id: latest.id, sort: "severity" }) }]} />
-        ) : null}
         <Select
           label="View as"
           value={role}
           onValueChange={(r) => router.push(`/home/${r}`)}
-          options={[{ value: "lead", label: "Data lead" }, { value: "steward", label: "Steward" }, { value: "basis", label: "Basis" }, { value: "process", label: "Process owner" }]}
+          options={PERSONA_OPTIONS}
         />
         {can("export") ? (
           <span data-tour="home-export" className="inline-flex"><ExportMenu
-            options={[{
-              format: "pdf",
-              label: "Executive report (PDF)",
-              run: () => downloadAuthenticated(getExecutiveReportUrl(latest.id), `meridian-executive-${latest.label ?? latest.id}.pdf`),
-            }]}
+            options={[
+              ...(role === "steward" ? [{ format: "xlsx" as const, label: "My failing records (Excel)", run: () => exportFindings("xlsx", { version_id: latest.id, sort: "severity" }) }] : []),
+              {
+                format: "pdf",
+                label: "Executive report (PDF)",
+                run: () => downloadAuthenticated(getExecutiveReportUrl(latest.id), `meridian-executive-${latest.label ?? latest.id}.pdf`),
+              },
+            ]}
           /></span>
         ) : null}
       </>}

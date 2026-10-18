@@ -19,7 +19,7 @@ describe("DrillLink", () => {
 
   it("builds a rule href", () => {
     render(<DrillLink object="material_master" ruleId="CHK_001" run="v1">Rule</DrillLink>);
-    expect(screen.getByText("Rule")).toHaveAttribute("href", "/objects/material_master/rules/CHK_001?run=v1");
+    expect(screen.getByText("Rule")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=CHK_001");
   });
 
   it("appends extra filters as search params", () => {
@@ -30,7 +30,7 @@ describe("DrillLink", () => {
     );
     expect(screen.getByText("Failing")).toHaveAttribute(
       "href",
-      "/objects/material_master/rules/CHK_001?run=v1&severity=critical",
+      "/objects/material_master?run=v1&tab=records&check_id=CHK_001&severity=critical",
     );
   });
 });

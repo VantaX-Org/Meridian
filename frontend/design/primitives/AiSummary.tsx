@@ -2,7 +2,6 @@
 
 // frontend/design/primitives/AiSummary.tsx
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { Skeleton } from "./Skeleton";
@@ -19,12 +18,10 @@ export interface AiSummaryProps {
   runId?: string;
   loading?: boolean;
   /** Thumbs are shown only when a handler is passed. */
-  /** Shown to admins when the LLM is off. */
-  adminHref?: string;
   onFeedback?: (vote: "up" | "down") => void;
 }
 
-export function AiSummary({ text, llmOk, fallback, findingsCount, runId, loading, adminHref, onFeedback }: AiSummaryProps) {
+export function AiSummary({ text, llmOk, fallback, findingsCount, runId, loading, onFeedback }: AiSummaryProps) {
   const on = llmOk === true && !!text;
   return (
     <details open className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
@@ -51,11 +48,6 @@ export function AiSummary({ text, llmOk, fallback, findingsCount, runId, loading
               </span>
             )}
           </p>
-        )}
-        {!on && !loading && adminHref && (
-          <Link href={adminHref} className="mt-1 inline-block m-text-label underline-offset-2 hover:underline" style={{ color: "var(--m-ink-3)" }}>
-            Enable in Admin &gt; AI
-          </Link>
         )}
       </div>
     </details>

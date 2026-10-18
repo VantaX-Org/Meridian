@@ -97,8 +97,8 @@ export interface RowPrefetch {
 }
 
 // Fallbacks when the --m-row-h tokens cannot be read (tests, SSR); tokens.css owns the real values.
-const ROW_H_FALLBACK = 36;
-const ROW_H_DENSE_FALLBACK = 30;
+const ROW_H_FALLBACK = 40;
+const ROW_H_DENSE_FALLBACK = 32;
 const VIRTUALIZE_ABOVE = 200;
 
 /** True while the page is being printed: paper needs every row, not the virtualised window. */
