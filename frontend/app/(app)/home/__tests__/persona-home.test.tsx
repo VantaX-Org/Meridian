@@ -19,7 +19,8 @@ import StewardHomePage from "../steward/page";
 import BasisHomePage from "../basis/page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams("") }));
+const nav = vi.hoisted(() => ({ search: "" }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams(nav.search) }));
 
 const OBJECTS: ObjectSummary[] = [
   { module: "material_master", label: "Material Master", composite_score: 72.5, readiness: "warn", failing_checks: 1, affected_records: 120 },
@@ -110,7 +111,7 @@ describe("PersonaHomePage lineage and heatmap", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [upload, other] });
     renderWithQuery(<LeadHomePage />);
     const dqs = await screen.findByTestId("home-dqs");
-    expect(dqs).toHaveTextContent("First run for this object");
+    expect(dqs).toHaveTextContent("First run of Material Master");
     expect(dqs).not.toHaveTextContent("vs Controlling");
   });
 });
@@ -120,7 +121,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     ...LATEST,
     dqs_summary: { material_master: { ...LATEST.dqs_summary!.material_master, critical_count: 3, capped: true, cap_reason: "capped at 60 by critical rules" } },
   };
-  const finding = (check_id: string) => ({ id: check_id, check_id, module: "material_master", severity: "critical" });
+  const finding = (check_id: string) => ({ id: check_id, version_id: "v1", check_id, module: "material_master", severity: "critical" });
 
   it("names up to two distinct critical rules in the cap line as drill links, never /findings", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
@@ -162,7 +163,10 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     const line = await screen.findByText(/Capped at 70 by 4 critical rules/);
     expect(line).toHaveTextContent("Capped at 70 by 4 critical rules: BP019, BP002 and 2 more");
-    expect(screen.getByRole("link", { name: "BP019" })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=BP019");
+    // the cap line, and the objects table's blocking rule until the findings name a higher-impact one
+    for (const link of screen.getAllByRole("link", { name: "BP019" })) {
+      expect(link).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=BP019");
+    }
   });
 
   it("counts an object whose cap reason names no rule by its critical count", async () => {
@@ -197,17 +201,8 @@ describe("PersonaHomePage blocking and loading states", () => {
     renderWithQuery(<LeadHomePage />);
 
     const stat = (await screen.findByText("Blocking findings")).closest("a");
-    expect(stat).toHaveAttribute("href", "/objects?run=v1&readiness=fail");
+    expect(stat).toHaveAttribute("href", "/objects?readiness=fail");
     expect(stat).toHaveTextContent("1");
-  });
-
-  it("prefers the API's blocking_findings_total over the run's severity counts", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
-    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS, blocking_findings_total: 42 });
-
-    renderWithQuery(<LeadHomePage />);
-
-    await waitFor(() => expect((screen.getByText("Blocking findings")).closest("a")).toHaveTextContent("42"));
   });
 
   it("shows a dash, no hint, for inbox and proposals until counts load", async () => {
@@ -280,4 +275,86 @@ describe("PersonaHomePage empty mode (all list APIs 404)", () => {
       expect(dup.map((c) => c.map(String).join(" ").slice(0, 200))).toEqual([]);
     },
   );
+});
+
+describe("PersonaHomePage current state across objects", () => {
+  const summary = LATEST.dqs_summary!.material_master;
+  const upload = (id: string, run_at: string, module: string, score: number, extra: Partial<typeof summary> = {}): Version => ({
+    id, label: `${module}_1k`, status: "agents_complete", run_at,
+    dqs_summary: { [module]: { ...summary, composite_score: score, ...extra } },
+    metadata: { modules: [module], file_name: `${module}.csv`, row_count: 1000 },
+  });
+  // Two uploads of controlling (the newest runs) and one each of material master and accounts payable.
+  const RUNS = [
+    upload("co2", "2026-10-16T05:17:46Z", "controlling", 70, { critical_count: 2, high_count: 1 }),
+    upload("co1", "2026-10-16T05:17:40Z", "controlling", 64),
+    upload("mm1", "2026-10-16T03:05:18Z", "material_master", 95),
+    upload("ap1", "2026-10-16T03:01:18Z", "accounts_payable", 80, { high_count: 4 }),
+  ];
+
+  beforeEach(() => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: RUNS });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "co2", objects: [], thresholds: { target: 90, warning: 75, critical: 60 } });
+  });
+
+  it("summarises every object at its latest run, not the newest run alone", async () => {
+    renderWithQuery(<LeadHomePage />);
+
+    expect(await screen.findByTestId("run-scope")).toHaveTextContent("Current state of 3 objects, latest run 16 Oct 2026");
+    expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 3 objects is not ready for go-live.");
+    // (70 + 95 + 80) / 3 against the state before the newest run, (64 + 95 + 80) / 3: +2
+    const dqs = screen.getByTestId("home-dqs");
+    expect(dqs).toHaveTextContent("vs before the latest run");
+    expect(dqs).toHaveTextContent("2.0");
+    const notReady = (screen.getByText("Objects not ready")).closest("a");
+    expect(notReady).toHaveTextContent("of 3");
+    expect(notReady).toHaveAttribute("href", "/objects?readiness=fail");
+    // critical and high: controlling 2 + 1, material master 1, accounts payable 4
+    expect((screen.getByText("Blocking findings")).closest("a")).toHaveTextContent("8");
+    expect(screen.getByText("All objects, each at its latest run by then")).toBeInTheDocument();
+  });
+
+  it("opens each object at the run its numbers come from", async () => {
+    const reason = "1 critical failure over tolerance (MM045: 4% of MARA rows) — score capped at 85";
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({
+      versions: RUNS.map((r) => (r.id === "mm1" ? upload("mm1", r.run_at, "material_master", 85, { critical_count: 1, capped: true, cap_reason: reason }) : r)),
+    });
+
+    renderWithQuery(<StewardHomePage />);
+
+    await screen.findByTestId("run-scope");
+    expect((screen.getByText("Worst object")).closest("a")).toHaveAttribute("href", "/objects/controlling?run=co2");
+    expect(screen.getByRole("link", { name: "Open worst object" })).toHaveAttribute("href", "/objects/controlling?run=co2");
+    // the blocking rule of an object that is not in the newest run drills into that object's own run
+    expect(screen.getByRole("link", { name: "MM045" })).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
+    expect(screen.getByText("1 of 3 objects capped by critical rules")).toBeInTheDocument();
+  });
+
+  it("asks the findings endpoints for the current state, not one run", async () => {
+    const top = vi.spyOn(findingsApi, "getFindings").mockResolvedValue({ findings: [] } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+    const agg = vi.spyOn(findingsApi, "getFindingsAggregate").mockReturnValue(new Promise(() => {}));
+
+    renderWithQuery(<LeadHomePage />);
+
+    await screen.findByTestId("run-scope");
+    await waitFor(() => expect(top).toHaveBeenCalledWith({ sort: "impact", limit: 100 }));
+    expect(agg).toHaveBeenCalledWith(undefined);
+  });
+
+  it("with ?run= shows that one run, names it, and offers the way back", async () => {
+    nav.search = "run=co1";
+    try {
+      renderWithQuery(<LeadHomePage />);
+
+      const scope = await screen.findByTestId("run-scope");
+      expect(scope).toHaveTextContent("As of controlling_1k, 16 Oct 2026");
+      expect(screen.getByRole("link", { name: "Back to latest" })).toHaveAttribute("href", "/home/lead");
+      expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 1 object is not ready for go-live.");
+      expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
+      expect((screen.getByText("Objects not ready")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=fail");
+    } finally {
+      nav.search = "";
+    }
+  });
 });
