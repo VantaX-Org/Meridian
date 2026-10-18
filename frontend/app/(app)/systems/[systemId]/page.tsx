@@ -54,7 +54,8 @@ const findingsHref = (versionId: string, module?: string) =>
   `/runs/${versionId}${module ? `?module=${module}` : ""}`;
 const HEALTH_TONE: Record<string, PillTone> = { healthy: "go", unknown: "neutral" };
 
-function runColumns(): ColumnDef<SystemVersion>[] {
+/** With `systemId`, each row also links to its extraction log (the Runs tab); without, the overview's short list. */
+function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
   return [
     {
       id: "run",
@@ -80,6 +81,15 @@ function runColumns(): ColumnDef<SystemVersion>[] {
         );
       },
     },
+    ...(systemId ? [{
+      id: "log",
+      header: "Extraction",
+      cell: ({ row }) => (
+        <Link href={`/systems/${systemId}/extractions/${row.original.id}`} className="underline">
+          {row.original.status === "failed" ? "Why it failed" : "Extraction log"}
+        </Link>
+      ),
+    } satisfies ColumnDef<SystemVersion>] : []),
   ];
 }
 
@@ -453,7 +463,7 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
 
 function Runs({ systemId, versions, loading, canSync }: { systemId: string; versions: SystemVersion[]; loading: boolean; canSync: boolean }) {
   const router = useRouter();
-  const columns = useMemo(() => runColumns(), []);
+  const columns = useMemo(() => runColumns(systemId), [systemId]);
   if (loading) return <Skeleton height={240} />;
   if (!versions.length) {
     return (

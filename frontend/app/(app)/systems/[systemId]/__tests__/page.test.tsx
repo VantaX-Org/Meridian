@@ -104,6 +104,21 @@ describe("system detail page", () => {
     expect(stat).not.toHaveTextContent("70.0");
   });
 
+  it("links each run on the Runs tab to its extraction log, a failed one by why it failed", async () => {
+    tab = "runs";
+    mockHappyPath();
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [
+        { id: "r2", run_at: "2026-10-02T00:00:00Z", label: null, status: "failed", objects: ["material_master"], scope: {}, records: {}, analysed_at: null, rule_set: null, baseline: false, analysable: false, dqs: {} },
+        { id: "r1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } },
+      ] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    expect(await screen.findByRole("link", { name: "Why it failed" })).toHaveAttribute("href", "/systems/s1/extractions/r2");
+    expect(screen.getByRole("link", { name: "Extraction log" })).toHaveAttribute("href", "/systems/s1/extractions/r1");
+  });
+
   it("shows the system role in the header", async () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);

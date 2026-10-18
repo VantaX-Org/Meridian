@@ -4,14 +4,8 @@
  * The seeded tenant has no failed run, so this spec mocks its own system "s1" with one
  * failed run "r1" (ids match the system page's and the extraction page's Vitest fixtures).
  *
- * Deviation from the brief: in the real markup (app/(app)/systems/[systemId]/page.tsx),
- * the Runs tab's row — both the "Run" cell's <Link> and the table's onRowClick — navigates
- * to `/runs/${versionId}`, never to `/systems/:id/extractions/:runId`. Nothing in the app
- * links to the extractions page today (grepped for "extractions/" across app/ and design/ —
- * only the page itself and its own Vitest test reference that path). So this journey is
- * split into what the real UI supports (seeing the failed run on the system page) and a
- * direct navigation to the extraction page (the only way to reach it), rather than a
- * click-through the brief's example assumed.
+ * The journey is a click-through: the system page's Runs tab gives every row an Extraction
+ * column linking to `/systems/:id/extractions/:runId` ("Why it failed" on a failed run).
  */
 
 import { expect, json, test } from "./fixtures";
@@ -53,8 +47,9 @@ test("basis opens a failed extraction and reads the error line", async ({ app })
   // run's status, so scope to the Runs tabpanel to disambiguate.
   await expect(app.getByRole("tabpanel", { name: "Runs" }).getByText("Failed")).toBeVisible();
 
-  // No in-app link reaches /systems/:id/extractions/:runId (see module doc above) — go there directly.
-  await app.goto("/systems/s1/extractions/r1", { waitUntil: "load" });
+  // The failed row's Extraction cell opens its log.
+  await app.getByRole("tabpanel", { name: "Runs" }).getByRole("link", { name: "Why it failed" }).click();
+  await expect(app).toHaveURL(/\/systems\/s1\/extractions\/r1$/);
 
   // app/(app)/systems/[systemId]/extractions/[runId]/page.tsx: the failed step's role="alert" line.
   // Next also renders its own (empty) route-announcer with role="alert", so filter by text.
