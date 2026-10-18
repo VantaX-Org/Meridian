@@ -78,3 +78,20 @@ if __name__ == "__main__":
     import sys
     import pytest
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+def test_a_module_with_no_checks_has_no_dimension_scores():
+    """An unmeasured dimension must be None, not 100.
+
+    It used to be 100.0 "with coverage 0", relying on each consumer to check the coverage first.
+    The object API does; the PDF report does not - `dimension_scores()` weights by
+    max(1, total_checks or 1), so an object with no checks contributed a 100 to the report's
+    average. A client reading that report sees a perfect score for an object nothing was tested
+    on. None cannot be misread.
+    """
+    from api.services.scoring import score_module
+
+    out = score_module([], {}, module="learning_management")
+    assert out.composite_score is None
+    assert all(v is None for v in out.dimension_scores.values()), out.dimension_scores
+    assert all(v == 0 for v in out.dimension_coverage.values())
