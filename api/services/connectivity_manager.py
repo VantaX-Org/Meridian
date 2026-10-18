@@ -274,7 +274,9 @@ class ConnectivityManager:
                 # YAML ships enabled: false - otherwise it would evaluate with its columns
                 # unread and report not_evaluable.
                 from checks.overrides import load_overrides
-                _ov = load_overrides(self.session) or {}
+                # self.session is None when the manager runs without a database (tests, and the
+                # plan-only paths), in which case there are no tenant overrides to honour.
+                _ov = (load_overrides(self.session) or {}) if self.session is not None else {}
                 _reenabled = any((o or {}).get("enabled") for o in _ov.values())
                 plans = plan_modules(modules, dictionary, scope, system_type=system_type,
                                      include_disabled=_reenabled)
