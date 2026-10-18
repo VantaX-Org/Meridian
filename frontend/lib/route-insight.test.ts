@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildInsight, sectionOf, type InsightFacts } from "./route-insight";
+import { buildInsight, sectionOf, showsRouteInsight, type InsightFacts } from "./route-insight";
 
 const empty: InsightFacts = { hasRun: false, dqs: null, prevDqs: null, critical: 0, total: 0, affected: 0, systems: 0, waves: 0, backlog: null };
 
@@ -8,6 +8,13 @@ describe("route insight", () => {
     expect(sectionOf("/objects/material_master")).toBe("objects");
     expect(sectionOf("/design")).toBeNull();
     expect(sectionOf("/nope")).toBeNull();
+  });
+  it("shows the shell banner on the persona homes only", () => {
+    expect(showsRouteInsight("/home")).toBe(true);
+    expect(showsRouteInsight("/home/basis")).toBe(true);
+    expect(showsRouteInsight("/homework")).toBe(false);
+    expect(showsRouteInsight("/insights")).toBe(false);
+    expect(showsRouteInsight("/objects/material_master")).toBe(false);
   });
   it("gives a designed fresh-install sentence for every cell and uses the day-one step", () => {
     const h = buildInsight("home", { ...empty, dayOne: { label: "Connect a system", href: "/systems" } });

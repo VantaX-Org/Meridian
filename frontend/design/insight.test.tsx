@@ -33,18 +33,10 @@ describe("AiSummary", () => {
   });
 });
 
-describe("AiSummary fallback and admin link", () => {
+describe("AiSummary fallback", () => {
   it("shows the fallback open by default", () => {
     const { container } = render(<AiSummary llmOk={false} fallback="rule words" />);
     expect(container.querySelector("details")?.hasAttribute("open")).toBe(true);
-  });
-  it("shows the admin link only when adminHref is given and the LLM is off", () => {
-    const { rerender } = render(<AiSummary llmOk={false} fallback="f" adminHref="/admin/ai" />);
-    expect(screen.getByRole("link", { name: /Enable in Admin/ }).getAttribute("href")).toBe("/admin/ai");
-    rerender(<AiSummary llmOk={false} fallback="f" />);
-    expect(screen.queryByRole("link", { name: /Enable in Admin/ })).toBeNull();
-    rerender(<AiSummary llmOk text="t" fallback="f" adminHref="/admin/ai" />);
-    expect(screen.queryByRole("link", { name: /Enable in Admin/ })).toBeNull();
   });
 });
 
@@ -61,6 +53,12 @@ describe("InsightHeader", () => {
     expect(screen.getByText("No runs yet.").closest("a")?.getAttribute("href")).toBe("/x");
     expect(screen.getByText("Connect").closest("a")?.getAttribute("href")).toBe("/systems");
     expect(screen.getByText("2 minutes")).toBeTruthy();
+  });
+  it("shows the AI summary in place of the four cells, never both", () => {
+    render(<InsightHeader situation={cell("S")} changed={cell("C")} why={cell("W")} next={cell("N")} aiSummary={{ llmOk: true, text: "model words", fallback: "S W" }} />);
+    expect(screen.getByText("model words")).toBeTruthy();
+    expect(screen.queryByText("Situation")).toBeNull();
+    expect(screen.queryByText("S")).toBeNull();
   });
   it("shows skeletons, not sentences, while loading", () => {
     render(<InsightHeader situation={cell("S")} changed={cell("C")} why={cell("W")} next={cell("N")} loading />);

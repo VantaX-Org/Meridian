@@ -2,15 +2,12 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const m = vi.hoisted(() => ({ llm: vi.fn(), exec: vi.fn(), compare: vi.fn(), versions: { v: [{ id: "r1", status: "complete" }] as { id: string; status: string; metadata?: { system_id?: string } }[] }, admin: { v: true } }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/objects", useSearchParams: () => new URLSearchParams() }));
+const m = vi.hoisted(() => ({ llm: vi.fn(), exec: vi.fn(), compare: vi.fn(), versions: { v: [{ id: "r1", status: "complete" }] as { id: string; status: string; metadata?: { system_id?: string } }[] }, path: { v: "/home/lead" } }));
+vi.mock("next/navigation", () => ({ usePathname: () => m.path.v, useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ step: undefined }) }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ isAdmin: m.admin.v }) }));
 vi.mock("@/lib/api/analytics", () => ({ getLlmHealth: m.llm }));
 vi.mock("@/lib/api/insights", () => ({ getExec: m.exec }));
 vi.mock("@/lib/api/connectivity", () => ({ getSystems: async () => [] }));
-vi.mock("@/lib/api/migration", () => ({ getWaves: async () => [] }));
-vi.mock("@/lib/api/stewardship", () => ({ getMetrics: async () => ({}) }));
 vi.mock("@/lib/api/versions", () => ({ getVersions: async () => ({ versions: m.versions.v }), compareVersions: m.compare }));
 vi.mock("@/lib/api/findings", () => ({
   getFindingsAggregate: async () => ({ dqs: { composite: 70 }, severity: { critical: 1 }, total: 5, affected_records: 3, by_module: [], previous_dqs: 65 }),
@@ -24,21 +21,31 @@ function mount() {
 }
 
 describe("RouteInsight gating", () => {
-  beforeEach(() => { m.llm.mockReset(); m.exec.mockReset(); m.admin.v = true; m.compare.mockReset(); m.versions.v = [{ id: "r1", status: "complete" }]; });
+  beforeEach(() => { m.llm.mockReset(); m.exec.mockReset(); m.path.v = "/home/lead"; m.compare.mockReset(); m.versions.v = [{ id: "r1", status: "complete" }]; });
 
-  it("does not fetch the exec narrative and shows the admin link when the LLM is off", async () => {
+  it.each(["/objects", "/runs/r1", "/inbox", "/systems/s1", "/insights", "/insights/trends", "/admin/ai"])("renders nothing on %s", (path) => {
+    m.path.v = path;
     m.llm.mockResolvedValue({ llm_available: false });
-    mount();
-    expect(await screen.findByRole("link", { name: /Enable in Admin/ })).toBeTruthy();
-    expect(m.exec).not.toHaveBeenCalled();
+    const { container } = mount();
+    expect(container.innerHTML).toBe("");
   });
 
-  it("fetches the exec narrative once the LLM reports available", async () => {
+  it("shows the four cells only when the LLM is off: no repeated sentence, no admin link", async () => {
+    m.llm.mockResolvedValue({ llm_available: false });
+    mount();
+    expect(await screen.findByText("Situation")).toBeTruthy();
+    expect(m.exec).not.toHaveBeenCalled();
+    expect(screen.queryByText(/AI summary off/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Enable in Admin/ })).toBeNull();
+  });
+
+  it("shows the AI summary only once the LLM reports available", async () => {
+    m.path.v = "/home";
     m.llm.mockResolvedValue({ llm_available: true });
     m.exec.mockResolvedValue({ narrative: "model words" });
     mount();
-    await waitFor(() => expect(m.exec).toHaveBeenCalled());
-    expect(screen.queryByRole("link", { name: /Enable in Admin/ })).toBeNull();
+    expect(await screen.findByText("model words")).toBeTruthy();
+    expect(screen.queryByText("Situation")).toBeNull();
   });
 
   it("calls compare with a defined previous run as v1 and links current-vs-baseline", async () => {
@@ -65,13 +72,13 @@ describe("RouteInsight gating", () => {
   it("skips compare when there is no earlier finished run", async () => {
     m.llm.mockResolvedValue({ llm_available: false });
     mount();
-    await screen.findByRole("link", { name: /Enable in Admin/ });
+    await screen.findByText("Situation");
     expect(m.compare).not.toHaveBeenCalled();
   });
 });
 
 describe("RouteInsight lineage", () => {
-  beforeEach(() => { m.llm.mockReset(); m.exec.mockReset(); m.admin.v = true; m.compare.mockReset(); });
+  beforeEach(() => { m.llm.mockReset(); m.exec.mockReset(); m.path.v = "/home/lead"; m.compare.mockReset(); });
 
   it("never compares an upload with an upload of other objects, and says it is the first run", async () => {
     m.llm.mockResolvedValue({ llm_available: false });

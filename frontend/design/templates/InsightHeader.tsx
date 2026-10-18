@@ -20,6 +20,7 @@ export interface InsightHeaderProps {
   changed: InsightCell;
   why: InsightCell;
   next: InsightCell & { action?: { label: string; href?: string; onClick?: () => void; impact?: string } };
+  /** When given, the AI summary replaces the four cells; the sentences are never shown twice. */
   aiSummary?: AiSummaryProps;
   loading?: boolean;
   /** Opt-in hero zone: dark band with up to four hero stats above the sentences. One per page. */
@@ -70,6 +71,13 @@ function Cell({ label, cell, loading, hero, children }: { label: string; cell: I
 
 export function InsightHeader({ situation, changed, why, next, aiSummary, loading, hero, stats, lead }: InsightHeaderProps) {
   const a = next.action;
+  if (aiSummary) {
+    return (
+      <section aria-label="Insight" className="m-motion-rise" style={{ background: "var(--m-sheet)", borderTop: "1px solid var(--m-line-strong)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-3) 0" }}>
+        <AiSummary {...aiSummary} />
+      </section>
+    );
+  }
   return (
     <section
       aria-label="Insight"
@@ -106,11 +114,6 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
           )}
         </Cell>
       </div>
-      {aiSummary && (
-        <div className="pt-4">
-          {hero ? <div className="py-3" style={{ borderTop: "1px solid var(--m-hero-line)" }}><AiSummary {...aiSummary} /></div> : <AiSummary {...aiSummary} />}
-        </div>
-      )}
     </section>
   );
 }
