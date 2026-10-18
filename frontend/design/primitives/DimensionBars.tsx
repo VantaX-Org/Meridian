@@ -40,3 +40,27 @@ export function DimensionBars({ items, label = "Dimension scores" }: { items: Di
     </ul>
   );
 }
+
+/** The shortest visible fill, so a measured score of 0 still reads as a red sliver and not as "not measured". */
+const STRIP_MIN_FILL = 12;
+
+/**
+ * Table-cell form of `DimensionBars`: one 6x16 track per dimension, filled from the bottom to the score in its
+ * pass-rate tone. A null score leaves the track empty (not measured). The strip is one image whose name lists
+ * every dimension and its score.
+ */
+export function DimensionStrip({ items }: { items: DimensionBarItem[] }) {
+  const name = items.map((d) => `${d.label} ${d.score === null ? "not measured" : formatScore(d.score)}`).join(", ");
+  return (
+    <span role="img" aria-label={name} className="m-dim-strip" data-testid="dimension-strip">
+      {items.map((d) => {
+        const fill = d.score === null ? null : barFill(d.score, { max: 100, tone: "rate" });
+        return (
+          <span key={d.key} className="m-dim-strip-track" data-measured={fill ? "true" : "false"}>
+            {fill && <span className="m-bar-fill" {...fill.attr} style={{ height: `${Math.max(STRIP_MIN_FILL, fill.pct)}%` }} />}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
