@@ -99,7 +99,7 @@ describe("rule detail page", () => {
     expect(screen.getByText("LFA1 → LFB1 on LIFNR")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Vendor number" })).toHaveAttribute("href", "/mdm/glossary/g1");
     expect(screen.getByRole("link", { name: "See failing records" })).toHaveAttribute(
-      "href", "/objects/business_partner/rules/AP001",
+      "href", "/objects/business_partner?tab=records&check_id=AP001",
     );
     await waitFor(() => expect(screen.getByText("No owner set.")).toBeInTheDocument());
   });
