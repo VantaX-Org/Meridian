@@ -3,7 +3,7 @@
  * the header page titles. Both surfaces filter it with `visibleNav()`, so a
  * role or licence never sees a page in one place and not the other.
  *
- * Ten sections, each href appearing exactly once (enforced by a Rail test).
+ * Eleven sections, each href appearing exactly once (enforced by a Rail test).
  * `children` collapse under their parent and only render expanded, or in
  * the collapsed flyout and tooltip. Routes removed from the nav stay
  * routable — their titles live in `OFF_NAV_TITLES` or come from the
