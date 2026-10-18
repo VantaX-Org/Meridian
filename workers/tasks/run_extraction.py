@@ -223,8 +223,17 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             def store(table: str, df, entry: dict) -> None:
                 """One data table, straight to the bundle: the frame is dropped once uploaded."""
                 buf = io.BytesIO()
-                # arrow-backed strings: the frame as read, not a python-object copy of it
-                df.astype("string[pyarrow]").to_parquet(buf, index=False)
+                # arrow-backed strings, converted ONE COLUMN AT A TIME.
+                #
+                # `df.astype("string[pyarrow]")` builds a second copy of the whole frame before
+                # writing. For MARC that is the difference between a ~18 GB peak and ~36 GB, and
+                # 36 GB is an OOM kill on a 30 GB box: the read itself succeeded (all 18,333,093
+                # rows) and the worker was killed by the kernel during the write, which is exactly
+                # how the material_master baseline kept dying at the very end.
+                for _col in df.columns:
+                    if df[_col].dtype != "string[pyarrow]":
+                        df[_col] = df[_col].astype("string[pyarrow]")
+                df.to_parquet(buf, index=False)
                 # Upload failure fails the extraction — never report success
                 # for data the checks cannot read.
                 upload_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}", buf.getvalue())
