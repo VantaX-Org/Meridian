@@ -172,3 +172,13 @@ def test_install_and_restore_do_not_raise_outside_the_main_thread():
     t.start()
     t.join()
     assert result.get("ok") is True, result
+
+
+def test_a_successful_logon_lifts_the_cooldown():
+    """Unlocking in SU01 must take effect immediately, not after our own 15-minute window."""
+    from sap.rfc import clear_logon_block
+
+    _note_logon_failure(_Params(), "too many failed attempts")
+    assert logon_blocked_for(_Params()) > 0
+    clear_logon_block(_Params())  # what connect() calls on success
+    assert logon_blocked_for(_Params()) == 0
