@@ -35,6 +35,7 @@ import { previousInLineage, runPageHref } from "@/lib/runs";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
+import { PERSONA_OPTIONS } from "@/lib/persona";
 import type { Finding, Version } from "@/types/api";
 
 const TABLE_ROWS = 8;
@@ -370,7 +371,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           label="View as"
           value={role}
           onValueChange={(r) => router.push(`/home/${r}`)}
-          options={[{ value: "lead", label: "Data lead" }, { value: "steward", label: "Steward" }, { value: "basis", label: "Basis" }, { value: "process", label: "Process owner" }]}
+          options={PERSONA_OPTIONS}
         />
         {can("export") ? (
           <span data-tour="home-export" className="inline-flex"><ExportMenu
