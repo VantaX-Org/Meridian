@@ -132,7 +132,8 @@ export function Rail() {
       /* storage blocked: fall through to the width default */
     }
     if (stored === "collapsed" || stored === "expanded") setExpanded(stored === "expanded");
-    else setExpanded(window.innerWidth >= 1440);
+    // Labels show by default; only a narrow window starts collapsed to icons.
+    else setExpanded(window.innerWidth >= 1024);
   }, []);
 
   // "[" toggles the rail, like a shortcut — ignored while typing or with a modifier held.
@@ -291,11 +292,12 @@ export function Rail() {
     const showChevronButton = hasChildren && expanded;
 
     const rowWrapperClassName = "m-motion-colors group relative flex items-center hover:bg-[var(--m-rail-hover)]";
-    // Ledger: the active row is a ruled entry, a 2px amber rule down its left edge on a flat row. No tinted pill.
+    // Calm enterprise: the active row is a soft blue tint with blue ink; every row is the same height.
     const rowWrapperStyle = {
-      height: depth === 0 && active ? 32 : 28,
+      height: depth === 0 ? 34 : 30,
       margin: "0 8px",
-      borderLeft: `2px solid ${active ? "var(--m-accent)" : "transparent"}`,
+      borderRadius: "var(--m-radius-control)",
+      background: active ? "var(--m-accent-soft)" : undefined,
     };
 
     const link = (
@@ -319,7 +321,7 @@ export function Rail() {
         onMouseLeave={() => closeFlyout()}
         className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full m-text-body m-rail-link"
         style={{
-          ["--m-rail-fg" as string]: active ? "var(--m-ink)" : "var(--m-ink-2)",
+          ["--m-rail-fg" as string]: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
           fontWeight: active ? 600 : 500,
           paddingLeft: expanded && depth === 1 ? 28 : undefined,
           justifyContent: expanded ? "flex-start" : "center",
