@@ -45,7 +45,7 @@ test("basis opens a failed extraction and reads the error line", async ({ app })
   // runColumns()'s Status cell renders <Pill>{labelOf(status)}</Pill> — "Failed" for status "failed".
   // Both tab panels stay mounted (Base UI Tabs), and the Overview tab also shows the latest
   // run's status, so scope to the Runs tabpanel to disambiguate.
-  await expect(app.getByRole("tabpanel", { name: "Runs" }).getByText("Failed")).toBeVisible();
+  await expect(app.getByRole("tabpanel", { name: "Runs" }).getByText("Failed", { exact: true })).toBeVisible();
 
   // The failed row's Extraction cell opens its log.
   await app.getByRole("tabpanel", { name: "Runs" }).getByRole("link", { name: "Why it failed" }).click();
