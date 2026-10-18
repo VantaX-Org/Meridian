@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Breadcrumb, Button, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame } from "@/design";
+import { Breadcrumb, Button, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill } from "@/design";
 import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
@@ -64,8 +64,8 @@ function JobProgressBar() {
     ? 0
     : Math.min(100, Math.max(0, Math.round(active.reduce((n, j) => n + (j.percent ?? 0), 0) / active.length)));
   return (
-    <div aria-hidden="true" className="shrink-0 m-print-hide" style={{ height: 2 }}>
-      {active.length > 0 && <div className="m-motion-width" style={{ height: "100%", width: `${percent}%`, background: "var(--m-accent)" }} />}
+    <div aria-hidden="true" className="shrink-0 m-print-hide [height:2px]">
+      {active.length > 0 && <ProgressFill value={percent} animate />}
     </div>
   );
 }
@@ -105,7 +105,7 @@ function Presentation({ children }: { children: ReactNode }) {
     <div className="flex h-screen flex-col" data-present="1">
       {/* The shell is gone, so the document heading the Breadcrumb owns is kept here, visually hidden. */}
       <div className="sr-only"><Breadcrumb /></div>
-      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none" style={{ background: "var(--m-canvas)" }}>
+      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none [background:var(--m-canvas)]">
         <RootPageFrame>{children}</RootPageFrame>
       </main>
       <div className="fixed bottom-4 right-4 m-print-hide">
@@ -120,7 +120,7 @@ function Chrome({ children }: { children: ReactNode }) {
   if (present) return <Presentation>{children}</Presentation>;
   return (
       <div className="flex h-screen m-print-flow">
-        <Suspense fallback={<div style={{ width: 240 }} />}>
+        <Suspense fallback={<div className="[width:240px]" />}>
           <Rail />
         </Suspense>
         <div className="flex flex-col flex-1 overflow-hidden m-print-flow">
@@ -131,7 +131,7 @@ function Chrome({ children }: { children: ReactNode }) {
             notifications={<NotificationBell />}
             userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
-          <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow" style={{ background: "var(--m-canvas)" }}>
+          <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
             <Suspense fallback={null}><RouteInsight /></Suspense>
             <RootPageFrame>{children}</RootPageFrame>
           </main>

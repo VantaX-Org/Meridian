@@ -563,6 +563,18 @@
 .m-chip-domain-other { background: var(--m-dom-other-soft); color: var(--m-dom-other-ink); }
 .m-chip-domain-other .m-chip-domain-swatch { background: var(--m-dom-other); }
 
+/* Domain stripe: a 4px rule down the left edge of a positioned box, in the domain solid (data-domain). */
+.m-domain-stripe { position: absolute; inset: 0 auto 0 0; width: 4px; z-index: 1; }
+.m-domain-stripe[data-domain="material"] { background: var(--m-dom-material); }
+.m-domain-stripe[data-domain="customer"] { background: var(--m-dom-customer); }
+.m-domain-stripe[data-domain="vendor"] { background: var(--m-dom-vendor); }
+.m-domain-stripe[data-domain="partner"] { background: var(--m-dom-partner); }
+.m-domain-stripe[data-domain="finance"] { background: var(--m-dom-finance); }
+.m-domain-stripe[data-domain="people"] { background: var(--m-dom-people); }
+.m-domain-stripe[data-domain="plant"] { background: var(--m-dom-plant); }
+.m-domain-stripe[data-domain="asset"] { background: var(--m-dom-asset); }
+.m-domain-stripe[data-domain="other"] { background: var(--m-dom-other); }
+
 /* Stat edge: 2 px rule over the column's left hairline */
 .m-stat-edge { position: absolute; top: 0; bottom: 0; left: -1px; width: 2px; background: var(--m-line-strong); }
 .m-stat-hero { background: transparent; box-shadow: none; border-left: 0; padding-left: 0; color: var(--m-ink); }
@@ -614,3 +626,16 @@
 /* DataTable keyboard cursor */
 .m-row-active { outline: 2px solid var(--m-accent); outline-offset: -2px; }
 .m-stat-link { text-align: left; cursor: pointer; }
+
+/* ---------- Ink and type utilities for app/ (pages carry no inline style; DESIGN.md "No inline style").
+   Unlayered and last, so on an element they win over a component class the way the inline style did. ---------- */
+.m-ink { color: var(--m-ink); }
+.m-ink-2 { color: var(--m-ink-2); }
+.m-ink-3 { color: var(--m-ink-3); }
+.m-ink-accent { color: var(--m-accent); }
+.m-ink-accent-ink { color: var(--m-accent-ink); }
+.m-ink-critical { color: var(--m-critical); }
+.m-text-verdict-line { font-size: var(--m-text-verdict); line-height: var(--m-leading-verdict); }
+.m-text-hero { font-size: var(--m-text-hero); line-height: var(--m-leading-hero); }
+/* ProgressFill: the accent fill inside a caller-owned progress track. */
+.m-progress-fill { display: block; height: 100%; background: var(--m-accent); }

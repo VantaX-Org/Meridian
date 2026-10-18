@@ -79,8 +79,8 @@ export function AlignmentModuleDrawer({ module, onClose }: { module: string | nu
           renderExpanded={(f) => (
             <div className="flex flex-col gap-2 m-text-body">
               <p>{f.description}</p>
-              {f.remediation ? <p style={{ color: "var(--m-ink-2)" }}>Remediation: {f.remediation}</p> : null}
-              {f.affected_elements.length ? <p style={{ color: "var(--m-ink-2)" }}>Affected: {f.affected_elements.join(", ")}</p> : null}
+              {f.remediation ? <p className="m-ink-2">Remediation: {f.remediation}</p> : null}
+              {f.affected_elements.length ? <p className="m-ink-2">Affected: {f.affected_elements.join(", ")}</p> : null}
             </div>
           )}
         />

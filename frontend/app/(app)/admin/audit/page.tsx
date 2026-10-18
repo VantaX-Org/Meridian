@@ -63,7 +63,7 @@ function LlmAudit() {
   return (
     <ExplorerPage
       summary={q.data?.cache.length ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-text-body m-ink-3">
           {q.data.cache.map((c) => `${c.service_name}: ${c.deterministic} of ${c.decisions} answered by rules`).join(". ")}.
         </p>
       ) : undefined}

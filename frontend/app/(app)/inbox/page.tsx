@@ -345,7 +345,7 @@ export default function InboxPage() {
       id: "task", header: "Task",
       cell: ({ row }) => {
         const focused = items[focusedIndex]?.id === row.original.id;
-        return <span>{focused ? "> " : ""}{labelOf(row.original.item_type)} <span style={{ color: "var(--m-ink-3)" }}>in {formatModuleName(row.original.domain)}, record {row.original.source_id}</span></span>;
+        return <span>{focused ? "> " : ""}{labelOf(row.original.item_type)} <span className="m-ink-3">in {formatModuleName(row.original.domain)}, record {row.original.source_id}</span></span>;
       },
     },
     { id: "sla", header: "SLA", accessorFn: (t) => slaOf(t, now).remaining ?? NO_DUE, cell: ({ row }) => { const s = slaOf(row.original, now); return <Pill tone={SLA_TONE[s.state]}>{slaText(s)}</Pill>; } },
@@ -374,7 +374,7 @@ export default function InboxPage() {
       id: "exception", header: "Exception",
       cell: ({ row }) => {
         const focused = excItems[focusedIndex]?.id === row.original.id;
-        return <span>{focused ? "> " : ""}{row.original.title} <span style={{ color: "var(--m-ink-3)" }}>in {row.original.category}</span></span>;
+        return <span>{focused ? "> " : ""}{row.original.title} <span className="m-ink-3">in {row.original.category}</span></span>;
       },
     },
     { id: "severity", header: "Severity", accessorFn: (e) => e.severity, meta: { severity: true } satisfies CellMeta, cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
@@ -548,7 +548,7 @@ export default function InboxPage() {
           >
             <div className="flex flex-col gap-3">
               <Field label="Reason">
-                <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }}
+                <textarea className="m-input [height:auto] [padding:6px_10px]"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={4}
@@ -576,7 +576,7 @@ export default function InboxPage() {
                   <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2">
                     <div className="flex flex-col">
                       <span className="m-text-body font-medium">{r.name}</span>
-                      <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{r.object_type}, {r.rule_type}</span>
+                      <span className="m-text-body m-ink-3">{r.object_type}, {r.rule_type}</span>
                     </div>
                     <Button variant="secondary" onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
                       {r.is_active ? "Disable" : "Enable"}
@@ -584,7 +584,7 @@ export default function InboxPage() {
                   </div>
                 ))}
                 {excRulesQ.data && excRulesQ.data.rules.length === 0 && (
-                  <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No exception rules yet.</span>
+                  <span className="m-text-body m-ink-3">No exception rules yet.</span>
                 )}
               </div>
               <div className="flex flex-col gap-2">
@@ -649,10 +649,10 @@ function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRung
           </tbody>
         </table>
       ) : (
-        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Nobody holds open work.</span>
+        <span className="m-text-body m-ink-3">Nobody holds open work.</span>
       )}
       {aiAcceptance != null && (
-        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
+        <span className="m-text-body m-ink-3">Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
       )}
     </div>
   );

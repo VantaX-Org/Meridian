@@ -4,7 +4,7 @@ export function FilterChips<T extends string>({ label, value, options, onChange 
 }) {
   return (
     <div role="group" aria-label={label} className="flex flex-wrap items-center gap-2">
-      <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{label}</span>
+      <span className="m-text-meta m-ink-3">{label}</span>
       {options.map((o) => (
         <button
           key={o.value}

@@ -11,8 +11,7 @@ const COVERAGE: Record<Coverage, { step: 1 | 3 | 5; label: string }> = {
 export function CoveragePill({ coverage }: { coverage: Coverage }) {
   const c = COVERAGE[coverage];
   return (
-    <span className={`m-heat-seq-${c.step}`} style={{ display: "inline-flex", alignItems: "center", height: 22, padding: "0 8px",
-      borderRadius: "var(--m-radius-pill)", fontSize: "var(--m-text-meta)", fontWeight: 500, whiteSpace: "nowrap" }}>
+    <span className={`m-heat-seq-${c.step} [display:inline-flex] [align-items:center] [height:22px] [padding:0_8px] [border-radius:var(--m-radius-pill)] [font-size:var(--m-text-meta)] [font-weight:500] [white-space:nowrap]`}>
       {c.label}
     </span>
   );

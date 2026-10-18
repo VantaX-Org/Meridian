@@ -100,7 +100,7 @@ function MonitorCard({ item: m }: { item: MonitorItem }) {
           <DataTable columns={regressedColumns} data={mon.regressed_checks} getRowId={(r) => r.check_id} hideSearch maxHeight={280} />
         ) : null}
 
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           {!mon || !mon.new_records ? (
             "No records have regressed since the baseline."
           ) : mon.batch_id ? (
@@ -116,7 +116,7 @@ function MonitorCard({ item: m }: { item: MonitorItem }) {
         </p>
 
         {isSystem ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body m-ink-2">
             {profiles.isLoading ? "Loading schedule" : active.length === 0 ? (
               <>
                 No re-check schedule. The comparison only updates when someone extracts by hand.{" "}
@@ -131,14 +131,14 @@ function MonitorCard({ item: m }: { item: MonitorItem }) {
             )}
           </p>
         ) : (
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body m-ink-2">
             Imported files are re-checked when a new file is uploaded.{" "}
             <Link href="/import" className="underline">Upload</Link>
           </p>
         )}
 
         {stale ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body m-ink-2">
             Not checked in over 36 hours. The comparison may not reflect recent SAP changes.
           </p>
         ) : null}

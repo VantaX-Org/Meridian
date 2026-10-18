@@ -118,7 +118,7 @@ export default function ProcessL1Page() {
         <ol className="flex flex-wrap items-center gap-1">
           {crumbs.map((c, i) => (
             <li key={c.id} className="flex items-center gap-1">
-              {i > 0 && <span aria-hidden style={{ color: "var(--m-ink-3)" }}>›</span>}
+              {i > 0 && <span aria-hidden className="m-ink-3">›</span>}
               {i === crumbs.length - 1
                 ? <span aria-current="page" className="font-semibold">{c.name}</span>
                 : <button type="button" className="ui-link-button" onClick={() => drill.set({ node: c.level === 1 ? null : c.id })}>{c.name}</button>}

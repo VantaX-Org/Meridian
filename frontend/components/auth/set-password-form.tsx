@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AuthFrame, PasswordField, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { AuthFrame, PasswordField, authFormClass, authLinkClass } from "@/components/auth/auth-frame";
 import { Button, Notice } from "@/design";
 
 /** Server-side minimum (api.routes.auth._MIN_PASSWORD_LENGTH = 12). */
@@ -60,7 +60,7 @@ export function SetPasswordForm({ title, lead, intro, submitLabel, missingToken,
         <PasswordField label="Confirm password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
         <Button type="submit" pending={submitting} className="w-full">{submitLabel}</Button>
       </form>
-      <Link className={authLinkClass} style={authLinkStyle} href="/sign-in">Back to sign in</Link>
+      <Link className={authLinkClass} href="/sign-in">Back to sign in</Link>
     </AuthFrame>
   );
 }

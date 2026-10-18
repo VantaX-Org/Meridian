@@ -38,7 +38,7 @@ export function CaseExplorer({ runId, filters, caseId, onOpenCase, onClearFilter
         : (
           <div className="grid gap-2">
             {q.data.total > q.data.items.length && (
-              <p style={{ color: "var(--m-ink-3)" }}>
+              <p className="m-ink-3">
                 Showing the first {fmtCount(q.data.items.length)} of {fmtCount(q.data.total)} cases. Narrow the filters to find one.
               </p>
             )}
@@ -78,7 +78,7 @@ function CaseDrawer({ runId, filters, caseId, onClose }: {
                     <strong>{e.activity}</strong>
                     {e.automated === true && <Pill tone="info">Automated</Pill>}
                   </span>
-                  <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                  <span className="m-text-meta m-ink-3">
                     {formatDate(e.ts, "datetime")}{e.resource ? `, ${e.resource}` : ""}{e.doc_type ? `, document type ${e.doc_type}` : ""}
                   </span>
                   {e.object_refs && (

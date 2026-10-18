@@ -17,21 +17,21 @@ const itemLabel = (t: string) => t.replace(/_/g, " ");
 /** A short list of open stewardship items; a region-empty line, never a card, when there are none. */
 function QueuePanel({ title, items, total, empty }: { title: string; items: StewardshipQueueItem[] | undefined; total: number; empty: string }) {
   return (
-    <Card title={title} actions={<Link href="/inbox" className="m-text-meta" style={{ color: "var(--m-accent-ink)" }}>{total > (items?.length ?? 0) ? `Open all ${total.toLocaleString()}` : "Open inbox"}</Link>}>
+    <Card title={title} actions={<Link href="/inbox" className="m-text-meta m-ink-accent-ink">{total > (items?.length ?? 0) ? `Open all ${total.toLocaleString()}` : "Open inbox"}</Link>}>
       {items && items.length > 0 ? (
         <ul className="flex flex-col">
           {items.map((i) => (
-            <li key={i.id} className="flex items-baseline justify-between gap-3 py-1 m-text-body" style={{ borderTop: "1px solid var(--m-line)" }}>
+            <li key={i.id} className="flex items-baseline justify-between gap-3 py-1 m-text-body [border-top:1px_solid_var(--m-line)]!">
               <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <span>{formatModuleName(i.domain)}</span>
-                <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{itemLabel(i.item_type)}</span>
+                <span className="m-text-meta m-ink-3">{itemLabel(i.item_type)}</span>
               </span>
-              <span className="m-text-meta shrink-0" style={{ color: "var(--m-ink-3)" }}>{i.due_at ? `due ${relativeTime(i.due_at)}` : `opened ${relativeTime(i.created_at)}`}</span>
+              <span className="m-text-meta shrink-0 m-ink-3">{i.due_at ? `due ${relativeTime(i.due_at)}` : `opened ${relativeTime(i.created_at)}`}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{empty}</p>
+        <p className="m-text-body m-ink-3">{empty}</p>
       )}
     </Card>
   );

@@ -133,7 +133,7 @@ function RulesTab() {
       </div>
 
       {simulation ? (
-        <dl className="flex gap-6 m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <dl className="flex gap-6 m-text-body m-ink-2">
           <div><dt>Candidate pairs</dt><dd className="font-semibold">{simulation.total_pairs.toLocaleString()}</dd></div>
           <div><dt>Would auto-merge</dt><dd className="font-semibold">{simulation.auto_merge_count.toLocaleString()}</dd></div>
           <div><dt>Would dismiss</dt><dd className="font-semibold">{simulation.auto_dismiss_count.toLocaleString()}</dd></div>
@@ -238,7 +238,7 @@ function TuningTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-body m-ink-3">
         Re-scores the newest 50,000 stored pairs in a domain with the weights below. Nothing is saved.
       </p>
       <div ref={tuneRef}><Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} /></div>
@@ -264,7 +264,7 @@ function TuningTab() {
               ))}
             </div>
           ) : (
-            <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No active match rules for {formatModuleName(domain)}, but thresholds can still be tried</p>
+            <p className="m-text-body m-ink-3">No active match rules for {formatModuleName(domain)}, but thresholds can still be tried</p>
           )}
           <div className="flex gap-3">
             <Field label="Auto-merge at">
@@ -281,7 +281,7 @@ function TuningTab() {
           </div>
           {result ? (
             <>
-              <dl className="flex flex-wrap gap-6 m-text-body" style={{ color: "var(--m-ink-2)" }}>
+              <dl className="flex flex-wrap gap-6 m-text-body m-ink-2">
                 <div><dt>Pairs re-scored</dt><dd className="font-semibold">{result.pairs.toLocaleString()}</dd></div>
                 <div><dt>Newly linked</dt><dd className="font-semibold">{result.pairs_newly_linked.toLocaleString()}</dd></div>
                 <div><dt>Unlinked</dt><dd className="font-semibold">{result.pairs_unlinked.toLocaleString()}</dd></div>
@@ -296,7 +296,7 @@ function TuningTab() {
                   getRowId={([k]) => k}
                   height="auto"
                 />
-              ) : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No pair changes band</p>}
+              ) : <p className="m-text-body m-ink-3">No pair changes band</p>}
             </>
           ) : null}
         </div>
@@ -341,7 +341,7 @@ function ConstraintsTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-body m-ink-3">
         Stewards create these by accepting or rejecting a pair, or by unmerging. They override the score until cleared.
       </p>
       <div className="flex items-center gap-2">

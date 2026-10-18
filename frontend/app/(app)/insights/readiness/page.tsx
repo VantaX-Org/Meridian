@@ -158,7 +158,7 @@ export default function ReadinessPage() {
                 if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: cell.col })}`);
               }}
             />
-            <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>Each cell is a wave and object pair. Select one to open its records.</p>
+            <p className="mt-2 m-text-body m-ink-2">Each cell is a wave and object pair. Select one to open its records.</p>
           </>
         )}
       </Card>

@@ -108,11 +108,11 @@ export default function InsightsOverviewPage() {
                 hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
                 delta={o?.dqs.delta != null ? <Delta value={o.dqs.delta} /> : undefined}
               />
-            <div className="flex min-w-0 flex-1 flex-col gap-1" style={{ minWidth: "min(100%, 16rem)", maxWidth: "48ch" }}>
-              <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
+            <div className="flex min-w-0 flex-1 flex-col gap-1 [min-width:min(100%,16rem)] [max-width:48ch]">
+              <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : loading ? "Scoring" : "Not scored yet"}
               </span>
-              <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
+              <span className="m-text-body m-ink-2">
                 {o ? `${plural(o.blockers.count, "blocking gap")}${o.blockers.waves ? ` across ${plural(o.blockers.waves, "wave")}` : ""}` : " "}
               </span>
             </div>
@@ -160,20 +160,20 @@ export default function InsightsOverviewPage() {
         <div className="@5xl:col-span-6">
           <Section title="Root causes" height={264} query={causes} meta={causes.data ? `${Math.min(5, causes.data.clusters.length)} of ${causes.data.clusters.length}` : undefined}>
             {(causes.data?.clusters.length ?? 0) === 0 ? (
-              <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No failing fields in this run.</p>
+              <p className="m-text-body m-ink-3">No failing fields in this run.</p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {[...(causes.data?.clusters ?? [])].sort((a, b) => b.impact - a.impact).slice(0, 5).map((c) => {
                   const where = c.table && c.field ? `${c.table}.${c.field}` : null;
                   return (
-                    <li key={c.key} className="m-card-sm flex flex-col gap-1" style={{ background: "var(--m-surface)", borderRadius: "var(--m-radius-sheet)", padding: "var(--m-space-3)" }}>
+                    <li key={c.key} className="m-card-sm flex flex-col gap-1 [background:var(--m-surface)] [border-radius:var(--m-radius-sheet)] [padding:var(--m-space-3)]">
                       <span className="font-medium">
                         {where ? `${where} fails on ${c.records.toLocaleString()}${c.records_estimated ? " (estimated)" : ""} records` : `${formatModuleName(c.module)}: ${c.records.toLocaleString()} records without a known field`}
                       </span>
-                      <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                      <span className="m-text-meta m-ink-3">
                         {`${c.rules.length} ${c.rules.length === 1 ? "rule" : "rules"}, ${labelOf(c.dimension).toLowerCase()}, ${labelOf(c.severity).toLowerCase()}`}
                       </span>
-                      <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                      <span className="m-text-meta m-ink-3">
                         {`Impact ${c.impact.toLocaleString()}${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
                       </span>
                       <span className="flex gap-3 m-text-body">
@@ -199,14 +199,14 @@ export default function InsightsOverviewPage() {
 
         <div className="@5xl:col-span-8">
           <Section title="Trend" height={240} query={trends} meta={trendNote}>
-            {trendLine.length < 2 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>A trend needs at least two scored runs of this object.</p> : (
+            {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs at least two scored runs of this object.</p> : (
               <Line data={trendLine} label="Composite score per run" annotations={annotations} />
             )}
           </Section>
         </div>
         <div className="@5xl:col-span-4">
           <Section title="Dimensions" height={280} query={trends}>
-            {dims.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No dimension scores in this run.</p>
+            {dims.length === 0 ? <p className="m-text-body m-ink-3">No dimension scores in this run.</p>
               : dims.length < 3 ? <Bar data={dims} label="Dimension scores, this run" height={160} />
               : <Radar data={dims} label="Dimension scores, this run" />}
           </Section>
@@ -214,7 +214,7 @@ export default function InsightsOverviewPage() {
 
         <div className="@5xl:col-span-12">
           <Section title="Object heatmap" height={320} query={heat}>
-            {heatRows.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No object scores in this run.</p> : (
+            {heatRows.length === 0 ? <p className="m-text-body m-ink-3">No object scores in this run.</p> : (
               <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
                 <Heatmap
                   rows={heatRows.map((r) => formatModuleName(r.module))}
@@ -239,7 +239,7 @@ export default function InsightsOverviewPage() {
 
         <div className="@5xl:col-span-6">
           <Section title="S/4 migration" height={240} query={s4} meta={s4.data ? `${blocking.toLocaleString()} blocking, ${warning.toLocaleString()} warning` : undefined}>
-            {areas.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No S/4 areas assessed.</p> : (
+            {areas.length === 0 ? <p className="m-text-body m-ink-3">No S/4 areas assessed.</p> : (
               <>
                 <Bar
                   data={areas.filter((a) => a.failing > 0).map((a) => ({ x: a.label, y: a.blocking_failing }))}
@@ -247,7 +247,7 @@ export default function InsightsOverviewPage() {
                   height={200}
                   onPointClick={(p) => router.push(withScope("/insights/readiness", { run, area: areas.find((a) => a.label === p.x)?.area }))}
                 />
-                <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                <p className="mt-2 m-text-body m-ink-2">
                   {`${blocking.toLocaleString()} blocking and ${warning.toLocaleString()} warning failing rules. `}
                   <Link href={withScope("/insights/readiness", { run })} className="underline-offset-2 hover:underline">Open readiness</Link>
                 </p>

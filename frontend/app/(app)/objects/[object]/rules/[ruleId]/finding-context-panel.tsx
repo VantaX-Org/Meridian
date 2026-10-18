@@ -31,7 +31,7 @@ export function FindingContextPanel({ ruleId, run, moduleId, fields }: {
       meta={<><Mono>{data.object}</Mono>{data.baseline ? <> <Pill tone="neutral">Baseline target</Pill></> : null}</>}
       padding="sm"
     >
-      <p style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-ink-2">
         {data.missing_total} of {data.source.length} source values are not configured in {data.target_label}.
       </p>
       {data.missing.length ? (

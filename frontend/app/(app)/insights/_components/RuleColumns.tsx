@@ -15,7 +15,7 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
   const objectHref = (r: RuleRow) => `/objects/${r.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", check: r.check_id })}`;
   const cols: ColumnDef<RuleRow>[] = [
     { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { accessorKey: "name", header: "Name", cell: ({ row }) => <span className="line-clamp-2" title={row.original.name} style={{ minWidth: "14rem" }}>{row.original.name}</span> },
+    { accessorKey: "name", header: "Name", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.name}>{row.original.name}</span> },
     {
       id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module),
       cell: ({ row }) => <Link href={objectHref(row.original)} onClick={(e) => e.stopPropagation()} className="underline-offset-2 hover:underline">{formatModuleName(row.original.module)}</Link>,

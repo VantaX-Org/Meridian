@@ -27,7 +27,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
   };
 
   return (
-    <div style={{ padding: "var(--m-space-8) 0" }}>
+    <div className="[padding:var(--m-space-8)_0]">
       <ErrorState
         title="This page hit an error"
         message=""

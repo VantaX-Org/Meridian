@@ -116,15 +116,15 @@ export function processInsight(rows: CatalogueRow[], systemName: string, systemI
 function Figure({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid gap-0.5">
-      <span className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{label}</span>
-      <span className="m-numeric m-text-body" style={{ color: "var(--m-ink)" }}>{children}</span>
+      <span className="m-text-label m-ink-3">{label}</span>
+      <span className="m-numeric m-text-body m-ink">{children}</span>
     </div>
   );
 }
 
 export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; systemId: string; jobs: Job[] }) {
   return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
+    <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
       {rows.map((r) => {
         const run = r.last_run;
         const active = r.in_progress;
@@ -134,11 +134,11 @@ export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; 
           <Card key={r.l1} title={r.name} meta={<Mono>{r.l1}</Mono>} padding="sm">
             <div className="grid gap-2">
               <div><CoveragePill coverage={r.coverage} /></div>
-              {r.reason && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{r.reason}</p>}
+              {r.reason && <p className="m-text-meta m-ink-3">{r.reason}</p>}
               {active && (
                 <div className="grid gap-1">
                   <Skeleton height={16} />
-                  <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                  <span className="m-text-meta m-ink-3">
                     {stageLabel(jobs.find((j) => j.id === active.job_id)) ?? <RunStatusPill status={active.status} />}
                   </span>
                 </div>
@@ -155,7 +155,7 @@ export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; 
                   <Figure label="Median">{fmtSeconds(run.median_seconds)}</Figure>
                 </div>
               )}
-              <div className="flex items-center justify-between m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+              <div className="flex items-center justify-between m-text-meta m-ink-3">
                 <span>{run?.finished_at ? `Last run ${relativeTime(run.finished_at)}` : "Not run yet"}</span>
                 <DrillLink href={l1Href(r.l1, systemId, done ? run.id : undefined)}>Open {r.l1}</DrillLink>
               </div>
@@ -187,7 +187,7 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
         const live = r.in_progress && (stageLabel(jobs.find((j) => j.id === r.in_progress?.job_id)) ?? <RunStatusPill status={r.in_progress.status} />);
         return (
           <span className="flex items-center gap-2">{last}
-            {live && <span style={{ color: "var(--m-ink-3)" }}>{live}</span>}
+            {live && <span className="m-ink-3">{live}</span>}
             {r.failed && <DrillLink href={`/process/runs/${r.failed.id}`}>See the error</DrillLink>}
           </span>
         );

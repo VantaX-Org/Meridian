@@ -113,8 +113,7 @@ export default function SearchPage() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Object, rule, glossary term, batch or run id"
-              className="w-full rounded border px-4 py-3 m-text-h"
-              style={{ borderColor: "var(--m-line)" }}
+              className="w-full rounded border px-4 py-3 m-text-h [border-color:var(--m-line)]!"
             />
           </Field>
         </form>

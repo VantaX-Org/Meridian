@@ -58,10 +58,10 @@ export default function AdminSettingsPage() {
 
       <Card title="Deployment">
         <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
-          <dt style={{ color: "var(--m-ink-3)" }}>Tenant</dt><dd>{l?.company_name ?? "Not set"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Licence tier</dt><dd>{l?.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Licence status</dt><dd>{l ? labelOf(l.status) : "Loading"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Language model</dt><dd>{l?.llm_config ? `${l.llm_config.model}, tier ${l.llm_config.tier}` : "Not configured"}</dd>
+          <dt className="m-ink-3">Tenant</dt><dd>{l?.company_name ?? "Not set"}</dd>
+          <dt className="m-ink-3">Licence tier</dt><dd>{l?.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
+          <dt className="m-ink-3">Licence status</dt><dd>{l ? labelOf(l.status) : "Loading"}</dd>
+          <dt className="m-ink-3">Language model</dt><dd>{l?.llm_config ? `${l.llm_config.model}, tier ${l.llm_config.tier}` : "Not configured"}</dd>
         </dl>
       </Card>
 
@@ -88,9 +88,9 @@ export default function AdminSettingsPage() {
             {doctor.data.items.map((i) => (
               <li key={i.id} className="flex items-center gap-3">
                 <Pill tone={DOCTOR_TONE[i.status]}>{doctorLabel(i.label)}</Pill>
-                {i.detail ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{doctorDetail(i.detail)}</span> : null}
+                {i.detail ? <span className="m-text-meta m-ink-3">{doctorDetail(i.detail)}</span> : null}
                 {i.status !== "ok" && FIX_HREF[i.id] ? (
-                  <Link href={FIX_HREF[i.id]} className="m-text-meta underline" style={{ color: "var(--m-accent)" }}>Fix</Link>
+                  <Link href={FIX_HREF[i.id]} className="m-text-meta underline m-ink-accent">Fix</Link>
                 ) : null}
               </li>
             ))}

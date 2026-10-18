@@ -77,15 +77,15 @@ function AreaDrawer({ area, versionId, onClose, onFix, fixing, canFix }: {
                       {r.isLoading ? <Skeleton height={32} /> : r.data ? (
                         <>
                           {r.data.message ? <p>{r.data.message}</p> : null}
-                          {r.data.sap_impact ? <p style={{ color: "var(--m-ink-2)" }}>{r.data.sap_impact}</p> : null}
-                          {r.data.record_fix_template ? <p style={{ color: "var(--m-ink-3)" }}>{r.data.record_fix_template}</p> : null}
+                          {r.data.sap_impact ? <p className="m-ink-2">{r.data.sap_impact}</p> : null}
+                          {r.data.record_fix_template ? <p className="m-ink-3">{r.data.record_fix_template}</p> : null}
                         </>
-                      ) : <p style={{ color: "var(--m-ink-3)" }}>No fix text for this check</p>}
+                      ) : <p className="m-ink-3">No fix text for this check</p>}
                     </div>
                   );
                 })}
                 {failing.length > shown.length ? (
-                  <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{n(failing.length - shown.length)} more failing checks. Open the findings for the rest</p>
+                  <p className="m-text-meta m-ink-3">{n(failing.length - shown.length)} more failing checks. Open the findings for the rest</p>
                 ) : null}
               </section>
             </>

@@ -137,7 +137,7 @@ function EntityLinks() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}.
         </p>
         {q.isLoading || dayOne.status === "loading" ? <Skeleton height={440} />
@@ -233,7 +233,7 @@ function Dependencies() {
         />
       ) : null}
       <div>
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           One field decides another in at least 99 % of records. Click a field to open its profile.
         </p>
         {profile.isLoading || systems.isLoading || versions.isLoading ? <Skeleton height={480} />

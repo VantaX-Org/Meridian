@@ -159,11 +159,11 @@ export default function ProgressPage() {
       errorProps={{ message: apiErrorMessage(cmp.error), onRetry: () => { void cmp.refetch(); void recs.refetch(); } }}
     >
       <Card title="Objects since baseline" meta={rows.length ? plural(rows.length, "object") : undefined} actions={<Link href={withScope("/objects", { run })} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}>
-        {rows.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No object is scored in both runs.</p>
+        {rows.length === 0 ? <p className="m-text-body m-ink-3">No object is scored in both runs.</p>
           : <DataTable columns={objectColumns} data={rows} getRowId={(r) => r.module} hideToolbar dense height="auto" />}
       </Card>
       <Section title="Rules that moved" height={240} query={recs} meta={`Fixed, new and still-failing records per rule, worst movers first${notInBoth ? `. ${plural(notInBoth, "rule was", "rules were")} not evaluated in both runs and ${notInBoth === 1 ? "is" : "are"} left out` : ""}`}>
-        {moved.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No rule changed its failing records.</p>
+        {moved.length === 0 ? <p className="m-text-body m-ink-3">No rule changed its failing records.</p>
           : <DataTable columns={movedColumns} data={moved} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />}
       </Section>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

@@ -19,7 +19,6 @@ import type { Exception } from "@/types/api";
 
 const SLA_TONE: Record<string, PillTone> = { on_track: "go", at_risk: "at-risk", breached: "no-go" };
 const STATUSES: IssueStatus[] = ["open", "in_progress", "waiting_sap", "waiting_requester", "accepted", "resolved"];
-const note = { color: "var(--m-ink-2)" };
 
 function Panel({ q, children }: { q: { isLoading: boolean; error: unknown; refetch: () => unknown }; children: React.ReactNode }) {
   if (q.isLoading) return <Skeleton height={240} />;
@@ -42,15 +41,15 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
   return (
     <div className="flex flex-col gap-3 m-text-body">
       <p>{issue.message ?? "No message"}</p>
-      <p style={note}><Mono>{issue.record_key}</Mono>{issue.field ? <>, field {issue.field}</> : null}</p>
-      {q.isLoading ? <Skeleton height={80} /> : q.error ? <p style={note}>{apiErrorMessage(q.error)}</p> : (
+      <p className="m-ink-2"><Mono>{issue.record_key}</Mono>{issue.field ? <>, field {issue.field}</> : null}</p>
+      {q.isLoading ? <Skeleton height={80} /> : q.error ? <p className="m-ink-2">{apiErrorMessage(q.error)}</p> : (
         <ol className="flex flex-col gap-2">
-          {(q.data?.events ?? []).length === 0 ? <li style={note}>No activity yet.</li> : null}
+          {(q.data?.events ?? []).length === 0 ? <li className="m-ink-2">No activity yet.</li> : null}
           {(q.data?.events ?? []).map((e, i) => (
             <li key={`${e.created_at}-${i}`} className="border-l-2 pl-3">
               <span className="font-medium">{labelOf(e.action)}</span>
               {e.to_value ? <> to {labelOf(e.to_value)}</> : null}
-              <span style={note}> by {e.user_label ?? "System"}, {relativeTime(e.created_at)}</span>
+              <span className="m-ink-2"> by {e.user_label ?? "System"}, {relativeTime(e.created_at)}</span>
               {e.note ? <p>{e.note}</p> : null}
             </li>
           ))}
@@ -58,7 +57,7 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
       )}
       {can("analyse") ? (
         <Field label="Add a comment">
-          <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+          <textarea className="m-input [height:auto] [padding:6px_10px]" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
         </Field>
       ) : null}
       {can("analyse") ? <Button variant="secondary" disabled={!text.trim() || post.isPending} onClick={() => post.mutate()}>Post comment</Button> : null}
@@ -186,7 +185,7 @@ export function ApprovalsPanel() {
         {q.data && !q.data.live_enabled ? (
           <Notice>Live SAP write-back is off on this deployment. Export fixes as an LSMW or BAPI file and load them in SAP.</Notice>
         ) : null}
-        <p className="m-text-body" style={note}>A different person than the requester must approve each request.</p>
+        <p className="m-text-body m-ink-2">A different person than the requester must approve each request.</p>
         {list.length === 0 ? <EmptyState title="No write-backs waiting" detail="Approved fixes queue here before they reach SAP" action={<Button variant="secondary" render={<Link href="/fix">Open fixes</Link>} />} /> : (
           <DataTable columns={cols} data={list} getRowId={(a) => a.id} height={380} exportName="writeback-approvals" />
         )}

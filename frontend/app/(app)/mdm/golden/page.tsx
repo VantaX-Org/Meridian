@@ -87,8 +87,7 @@ export default function GoldenRecordsPage() {
               value={minConfidence}
               onChange={(e) => setParams({ min: e.target.value })}
               placeholder="0-100"
-              inputMode="numeric"
-              style={{ width: 90 }}
+              inputMode="numeric" className="[width:90px]"
             />
           </Field>
           <Field label="Max confidence %">
@@ -96,8 +95,7 @@ export default function GoldenRecordsPage() {
               value={maxConfidence}
               onChange={(e) => setParams({ max: e.target.value })}
               placeholder="0-100"
-              inputMode="numeric"
-              style={{ width: 90 }}
+              inputMode="numeric" className="[width:90px]"
             />
           </Field>
         </div>

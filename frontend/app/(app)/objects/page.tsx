@@ -22,6 +22,7 @@ import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
 import { FilterChips } from "./_header";
+import { clsx } from "clsx";
 
 
 /** Number cells drill to the object's rules tab. */
@@ -89,7 +90,7 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
         <span className="inline-flex items-center gap-0.5" role="img" aria-label={DIMENSIONS.map((d) => `${formatModuleName(d)} ${scores[d] === undefined ? "not measured" : scores[d].toFixed(0)}`).join(", ")}>
           {DIMENSIONS.map((d) => {
             const v = scores[d];
-            return <span key={d} className="m-bar-fill" {...(v === undefined ? {} : barFill(v, { max: 100, tone: "rate" })?.attr)} style={{ width: 10, height: 14, borderRadius: 2, background: v === undefined ? "var(--m-line)" : undefined }} />;
+            return <span key={d} {...(v === undefined ? {} : barFill(v, { max: 100, tone: "rate" })?.attr)} className={clsx("m-bar-fill [width:10px] [height:14px] [border-radius:2px]", v === undefined && "[background:var(--m-line)]!")} />;
           })}
         </span>
       );

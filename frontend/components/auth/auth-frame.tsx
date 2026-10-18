@@ -11,8 +11,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { MeridianMark } from "@/components/meridian/icons";
 
 export const authFormClass = "flex flex-col gap-4";
-export const authLinkClass = "m-text-body hover:underline";
-export const authLinkStyle = { color: "var(--m-accent)" };
+export const authLinkClass = "m-text-body m-ink-accent hover:underline";
 
 const appVersion = process.env.NEXT_PUBLIC_APP_VERSION;
 

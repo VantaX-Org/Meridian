@@ -89,13 +89,13 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      <h2 className="font-semibold" style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)" }}>
+      <h2 className="font-semibold m-text-title">
         <Mono>{rule.check_id}</Mono>
       </h2>
       <Pill tone={regressed ? "no-go" : "neutral"}>{regressed ? "Newly failing" : "Fixed"}</Pill>
       {regressed ? (
         <>
-          <p style={{ color: "var(--m-ink-2)" }}>Records that newly fail</p>
+          <p className="m-ink-2">Records that newly fail</p>
           <Field label="Filter record keys">
             <Input
               type="search"
@@ -118,7 +118,7 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
           ) : null}
         </>
       ) : (
-        <p style={{ color: "var(--m-ink-2)" }}>{fmtN(rule.v1_affected)} records failed before; none fail now.</p>
+        <p className="m-ink-2">{fmtN(rule.v1_affected)} records failed before; none fail now.</p>
       )}
     </div>
   );
@@ -251,7 +251,7 @@ export default function CompareRunsPage() {
     />
   ) : (
     <div className="flex flex-col gap-1" aria-busy="true">
-      {Array.from({ length: 8 }, (_, i) => <div key={i} style={{ height: 36 }}><Skeleton height="100%" /></div>)}
+      {Array.from({ length: 8 }, (_, i) => <div key={i} className="[height:36px]"><Skeleton height="100%" /></div>)}
     </div>
   );
 

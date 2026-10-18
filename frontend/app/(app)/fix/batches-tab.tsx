@@ -156,7 +156,7 @@ export function BatchesTab() {
       header: "Still failing",
       cell: ({ row }) =>
         row.original.status !== "exported" ? "—" : row.original.still_failing > 0 ? (
-          <span style={{ color: "var(--m-critical)" }}>{row.original.still_failing.toLocaleString()}</span>
+          <span className="m-ink-critical">{row.original.still_failing.toLocaleString()}</span>
         ) : "0",
     },
     { id: "created_at", accessorFn: (b) => b.created_at, header: "Created", cell: ({ row }) => formatDate(row.original.created_at, "datetime") },
@@ -194,7 +194,7 @@ export function BatchesTab() {
                 : "No exported record is still failing."} />
           </Link>
         </div>
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           {q.data
             ? `${batches.length.toLocaleString()} fix batch${batches.length === 1 ? "" : "es"}. ${counts.draft} draft, ${counts.approved} waiting for export.`
             : null}
@@ -388,22 +388,22 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid grid-cols-2 gap-2 m-text-body">
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Status</dt><dd>{STATUS_LABEL[batch.status]}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Items</dt><dd>{items.length.toLocaleString()}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>With proposal</dt><dd>{items.filter((i) => i.proposed_value !== null).length.toLocaleString()}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Accepted</dt><dd>{items.filter((i) => i.accepted).length.toLocaleString()}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Auto-approvable</dt><dd>{items.filter((i) => i.auto_approvable).length.toLocaleString()}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Created by</dt><dd>{batch.created_by_label ?? "Meridian monitor"}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Created</dt><dd>{formatDate(batch.created_at, "datetime")}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Approved by</dt><dd>{batch.approved_by_label ?? "—"}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Approved</dt><dd>{batch.approved_at ? formatDate(batch.approved_at, "datetime") : "—"}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Exported</dt><dd>{batch.exported_at ? formatDate(batch.exported_at, "datetime") : "—"}</dd></div>
+        <div><dt className="m-ink-2">Status</dt><dd>{STATUS_LABEL[batch.status]}</dd></div>
+        <div><dt className="m-ink-2">Items</dt><dd>{items.length.toLocaleString()}</dd></div>
+        <div><dt className="m-ink-2">With proposal</dt><dd>{items.filter((i) => i.proposed_value !== null).length.toLocaleString()}</dd></div>
+        <div><dt className="m-ink-2">Accepted</dt><dd>{items.filter((i) => i.accepted).length.toLocaleString()}</dd></div>
+        <div><dt className="m-ink-2">Auto-approvable</dt><dd>{items.filter((i) => i.auto_approvable).length.toLocaleString()}</dd></div>
+        <div><dt className="m-ink-2">Created by</dt><dd>{batch.created_by_label ?? "Meridian monitor"}</dd></div>
+        <div><dt className="m-ink-2">Created</dt><dd>{formatDate(batch.created_at, "datetime")}</dd></div>
+        <div><dt className="m-ink-2">Approved by</dt><dd>{batch.approved_by_label ?? "—"}</dd></div>
+        <div><dt className="m-ink-2">Approved</dt><dd>{batch.approved_at ? formatDate(batch.approved_at, "datetime") : "—"}</dd></div>
+        <div><dt className="m-ink-2">Exported</dt><dd>{batch.exported_at ? formatDate(batch.exported_at, "datetime") : "—"}</dd></div>
       </dl>
 
       <BeforeAfter batch={batch} monitor={monitor.data?.items ?? []} />
 
       {isCreator && batch.status === "draft" ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           Four-eyes required: a second person must approve this batch before it can be exported.
         </p>
       ) : null}
@@ -453,7 +453,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             </Button>
           ) : null}
           {batch.status === "exported" ? (
-            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+            <p className="m-text-body m-ink-2">
               Exported. Load it with the Migration Cockpit or a mass-change template — Meridian never posts to SAP.
             </p>
           ) : null}
@@ -481,7 +481,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
           <h3 className="m-text-body font-semibold">History</h3>
           <ul className="flex flex-col gap-1">
             {events.data.items.map((e, idx) => (
-              <li key={`${e.item_id}-${idx}`} className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+              <li key={`${e.item_id}-${idx}`} className="m-text-body m-ink-2">
                 {EVENT_LABEL[e.action]}{e.user_label ? ` by ${e.user_label}` : ""}, {relativeTime(e.created_at)}
               </li>
             ))}
@@ -529,9 +529,9 @@ function PackagesSection({ items }: { items: ExportPackage[] | undefined }) {
           <li key={p.id} className="m-text-body flex items-center gap-2">
             <span>{FORMAT_LABEL[p.format]}</span>
             <Tooltip label={p.sha256}>
-              <span style={{ color: "var(--m-ink-2)" }}><Mono>{p.sha256.slice(0, 12)}</Mono></span>
+              <span className="m-ink-2"><Mono>{p.sha256.slice(0, 12)}</Mono></span>
             </Tooltip>
-            <span style={{ color: "var(--m-ink-3)" }}>
+            <span className="m-ink-3">
               {p.created_by_label ? `exported by ${p.created_by_label}` : "exported"}
               {p.approved_by_label ? `, approved by ${p.approved_by_label}` : ""}, {relativeTime(p.created_at)}
             </span>

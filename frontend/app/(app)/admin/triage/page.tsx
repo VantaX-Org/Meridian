@@ -45,12 +45,7 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className="px-2 py-0.5 m-text-meta rounded-full border"
-      style={{
-        color: active ? "var(--m-pass)" : "var(--m-ink-3)",
-        borderColor: active ? "var(--m-pass)" : "var(--m-line)",
-        background: active ? "var(--m-sheet-raised)" : "var(--m-sheet)",
-      }}
+      className="px-2 py-0.5 m-text-meta rounded-full border m-ink-3 [border-color:var(--m-line)] [background:var(--m-sheet)] aria-pressed:[color:var(--m-pass)] aria-pressed:[border-color:var(--m-pass)] aria-pressed:[background:var(--m-sheet-raised)]"
     >
       {children}
     </button>
@@ -257,7 +252,7 @@ function RulesSection({ write }: { write: boolean }) {
   const ruleCols: ColumnDef<AssignmentRule, unknown>[] = [
     { id: "n", header: "#", cell: ({ row }) => <span className="font-mono m-text-meta">{row.index + 1}</span> },
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
-    { id: "match", header: "Matches", cell: ({ row }) => <span style={{ color: "var(--m-ink-3)" }}>{matchText(row.original.match)}</span> },
+    { id: "match", header: "Matches", cell: ({ row }) => <span className="m-ink-3">{matchText(row.original.match)}</span> },
     { id: "to", header: "Assigns to", cell: ({ row }) => target(row.original) },
     { id: "on", header: "Enabled", cell: ({ row }) => <input type="checkbox" checked={row.original.enabled} disabled={!write} onChange={() => toggle.mutate(row.original)} aria-label={`${row.original.name} enabled`} /> },
     {
@@ -533,7 +528,7 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
         <Select value={fallback} onValueChange={setFallback} options={[{ value: "", label: "None" }, ...users.map((u) => ({ value: u.id, label: u.name }))]} />
       </Field>
       <Field label="Holidays (YYYY-MM-DD, one per line)" error={badDates.length ? `Not a date: ${badDates.join(", ")}` : undefined}>
-        <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
+        <textarea className="m-input [height:auto] [padding:6px_10px]" rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
       </Field>
       {write ? (
         <div>

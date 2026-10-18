@@ -70,7 +70,7 @@ function RunsWithProcess({ exclude }: { exclude?: string }) {
   const options = withProcess
     .map((v) => ({ value: v.id, label: `${names.get(v.id) ?? formatDate(v.run_at, "datetime")}, ${Object.keys(v.dqs_summary ?? {}).filter((m) => PROCESS_MODULES.has(m)).map(formatModuleName).join(", ")}` }));
   if (q.isLoading) return <Skeleton height={32} width={280} />;
-  if (!options.length) return <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>No finished run covers a procure to pay or order to cash object yet.</p>;
+  if (!options.length) return <p className="m-text-body m-ink-2">No finished run covers a procure to pay or order to cash object yet.</p>;
   return (
     <Select
       label="Runs with a process definition"
@@ -143,7 +143,7 @@ function NotApplicableList({ title, t, findingHref }: {
   const expanded = expandedTitles.has(title);
   if (!t.not_applicable_rules.length) {
     return t.not_applicable ? (
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body m-ink-2">
         Does not apply ({t.not_applicable.toLocaleString()}): {t.not_applicable_reasons.map((x) => `${x.reason} (${x.count})`).join("; ")}.
       </p>
     ) : null;
@@ -151,7 +151,7 @@ function NotApplicableList({ title, t, findingHref }: {
   const shown = expanded ? t.not_applicable_rules : t.not_applicable_rules.slice(0, NOT_APPLICABLE_PREVIEW);
   return (
     <div className="flex flex-col gap-1">
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Does not apply ({t.not_applicable.toLocaleString()}):</p>
+      <p className="m-text-body m-ink-2">Does not apply ({t.not_applicable.toLocaleString()}):</p>
       <ul className="flex flex-col gap-1">
         {shown.map((na) => (
           <li key={na.check_id} className="flex items-center gap-3">
@@ -159,7 +159,7 @@ function NotApplicableList({ title, t, findingHref }: {
             <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? "/analyse"}>
               <Mono>{na.check_id}</Mono>
             </Link>
-            <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+            <span className="m-text-body m-ink-2">
               {na.reason ?? "Not used by the loaded configuration"}
             </span>
           </li>
@@ -182,11 +182,11 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
   return (
     <div className="flex flex-col gap-1">
       <h4 className="font-medium">{title}</h4>
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body m-ink-2">
         {t.score === null ? "No rules apply" : `${fmt1(t.score)}%, ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} apply`}, {failing.toLocaleString()} failing
       </p>
       {configuredIn?.length ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           Where this is configured: <ConfiguredInText items={configuredIn} />
         </p>
       ) : null}
@@ -218,10 +218,10 @@ function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
     <Card title="SAP features at risk">
       <ul className="flex flex-col gap-2">
         {sorted.slice(0, 20).map((r) => (
-          <li key={`${r.system}:${r.feature}`} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+          <li key={`${r.system}:${r.feature}`} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
             <Status kind="verdict" value={r.status} />
             <span className="flex-1">{r.feature}</span>
-            <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{r.system}</span>
+            <span className="m-text-body m-ink-2">{r.system}</span>
             <span className="m-text-body">{records(r.total_affected_records)}</span>
           </li>
         ))}
@@ -369,7 +369,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
             options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
             onValueChange={setSystem} />
         ) : null}
-        <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+        <span className="m-text-meta m-ink-3">
           Version {latest.label ?? latest.id.slice(0, 8)}, run {formatDate(latest.run_at, "datetime")}
         </span>
       </div>
@@ -384,7 +384,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
       <Card title="Gates" meta={l1.l1_name}>
         <ul className="flex flex-col gap-2">
           {gates.map((g) => (
-            <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+            <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
               <Pill tone={g.blocking ? "no-go" : g.score >= 90 ? "go" : "at-risk"}>
                 {g.blocking ? "Blocked" : g.score >= 90 ? "Ready" : "At risk"}
               </Pill>
@@ -400,10 +400,10 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
           {blockingFindings.length ? (
             <ul className="flex flex-col gap-2">
               {blockingFindings.slice(0, 10).map((b) => (
-                <li key={b.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+                <li key={b.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
                   <Status kind="severity" value={b.severity} />
                   <span className="flex-1">{b.href ? <Link className="underline" href={b.href}>{b.title}</Link> : b.title}</span>
-                  <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{b.gate}</span>
+                  <span className="m-text-body m-ink-2">{b.gate}</span>
                   <span className="m-text-body">{records(b.affected)}</span>
                 </li>
               ))}
@@ -414,9 +414,9 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
           {recommendations.length ? (
             <ul className="flex flex-col gap-2">
               {recommendations.map((r) => (
-                <li key={r.id} className="border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+                <li key={r.id} className="border-b py-2 [border-color:var(--m-line)]">
                   <div>{r.label}</div>
-                  <div className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{r.rationale}</div>
+                  <div className="m-text-body m-ink-2">{r.rationale}</div>
                 </li>
               ))}
             </ul>
@@ -428,7 +428,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         <Card title="Rules by step">
           <div id="applicability" className="flex flex-col gap-3">
             {!aware.data?.config_load ? (
-              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+              <p className="m-text-body m-ink-2">
                 All {awareL1.applicable.toLocaleString()} rules apply by default. Load configuration to narrow this.
               </p>
             ) : null}
@@ -553,7 +553,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
               {bottlenecks.length ? (
                 <ol className="flex flex-col gap-2">
                   {bottlenecks.slice(0, 8).map((b) => (
-                    <li key={b.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+                    <li key={b.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
                       <Status kind="verdict" value={b.step_status} />
                       <span className="flex-1">{b.label}</span>
                       <span className="m-text-body">{records(b.affected_records)}</span>
@@ -566,7 +566,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
               {variants.length ? (
                 <ul className="flex flex-col gap-2">
                   {variants.slice(0, 8).map((v) => (
-                    <li key={v.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
+                    <li key={v.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
                       <Status kind="verdict" value={v.readiness} />
                       <span className="flex-1">{v.label}</span>
                       <span className="m-text-body">{plural(v.activity_count, "step")}</span>

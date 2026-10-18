@@ -56,7 +56,7 @@ export function BlockersTab({ waveId, runId, blockers }: { waveId: string; runId
                  onRowClick={setOpen} />
       {open ? (
         <div className="flex flex-col gap-2">
-          <p className="m-text-body font-semibold" style={{ color: "var(--m-ink)" }}>
+          <p className="m-text-body font-semibold m-ink">
             {open.label}: {formatModuleName(open.gap_type)} {open.field ?? ""}
           </p>
           <DataTable columns={GAP_COLUMNS} data={gaps.data?.items ?? []}

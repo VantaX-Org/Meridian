@@ -116,7 +116,7 @@ export default function MigrationPage() {
           <div className="flex items-center justify-between gap-2 m-text-body">
             {verdict ? (
               <span className="flex items-center gap-2">
-                <span style={{ color: "var(--m-ink-2)" }}>Showing {verdict.replace("_", " ")} waves.</span>
+                <span className="m-ink-2">Showing {verdict.replace("_", " ")} waves.</span>
                 <Button variant="secondary" onClick={() => setVerdict("")}>Show all waves</Button>
               </span>
             ) : <span />}

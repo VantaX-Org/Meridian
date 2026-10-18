@@ -117,9 +117,14 @@
   padding-left: calc(var(--m-space-2) + (var(--m-level, 1) - 1) * var(--m-space-4));
   border-radius: var(--m-radius-control);
 }
+/* Indent by tree level (aria-level on the item), so the row needs no inline custom property. */
+.m-designer__item[aria-level="2"] > .m-designer__row { --m-level: 2; }
+.m-designer__item[aria-level="3"] > .m-designer__row { --m-level: 3; }
+.m-designer__item[aria-level="4"] > .m-designer__row { --m-level: 4; }
 .m-designer__row:hover { background: var(--m-rail-hover); }
 .m-designer__row[data-selected] { background: var(--m-accent-soft); }
 .m-designer__label {
+  --m-rail-fg: var(--m-ink);
   display: inline-flex;
   align-items: center;
   gap: var(--m-space-2);

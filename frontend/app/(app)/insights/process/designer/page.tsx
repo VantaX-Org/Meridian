@@ -280,7 +280,7 @@ function Editor(p: EditorProps) {
           {l4 ? (
             <>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{l4.name}</h2>
+                <h2 className="m-text-h font-semibold m-ink">{l4.name}</h2>
                 <Button variant="secondary" onClick={() => go({ attr: l4.id })}>Sub-process details</Button>
               </div>
               <DesignerCanvas key={l4.id} l4={l4} domain={domainOf(doc.l1.find((x) => D.locate({ ...doc, l1: [x] }, l4.id))?.modules[0])} overlay={ov} selected={attr} editable={editable} canDesign={canDesign} onBlocked={blocked}

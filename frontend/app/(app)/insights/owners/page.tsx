@@ -49,11 +49,11 @@ function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend
           <Status key={severity} kind="severity" value={severity} count={count} />
         ))}
       </div>
-      <div className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+      <div className="m-text-body m-ink-3">
         {`Fixed since baseline ${owner.fixed_since_baseline.toLocaleString()}, oldest open item ${plural(owner.oldest_item_age_days, "day")}`}
       </div>
       <p className="m-text-body">{owner.digest}</p>
-      <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+      <div className="m-text-meta m-ink-3">
         {labelOf(owner.schedule)} digest, last sent {owner.last_sent ? relativeTime(owner.last_sent) : "never"}
       </div>
       {canSend ? (
@@ -111,7 +111,7 @@ export default function OwnersPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
         {owners.map((owner) => (
           <OwnerCard key={owner.owner} owner={owner} canSend={canSend} send={send} />
         ))}

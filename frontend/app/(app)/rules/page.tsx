@@ -187,8 +187,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
               <Switch
                 checked={r.enabled}
                 label={r.enabled ? "On" : "Off"}
-                aria-label={`Enabled: ${nameOf(r)}`}
-                style={{ minWidth: 24, minHeight: 24 }}
+                aria-label={`Enabled: ${nameOf(r)}`} className="[min-width:24px] [min-height:24px]"
                 onCheckedChange={(enabled) => toggleRule({ id: r.id, enabled })}
               />
             </span>
@@ -360,7 +359,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       >
         {selected ? (
           <div className="flex flex-col gap-4">
-            {selected.description ? <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{selected.description}</p> : null}
+            {selected.description ? <p className="m-text-body m-ink-2">{selected.description}</p> : null}
             <Card title="Definition" padding="sm">
               <div className="flex flex-col gap-3">
                 <Rows items={[
@@ -433,7 +432,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
   return (
     <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }} title="New rule">
       <div className="flex flex-col gap-3">
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-text-body m-ink-3">
           Build a check from an existing check type. Fields are SAP TABLE.FIELD names and are checked against the data
           dictionary. Dry-run it on an analysed version, then save; it runs on every later analysis of the object.
         </p>
@@ -480,7 +479,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
             placeholder={draft.module ? "Choose a version" : "Choose an object first"}
             options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${formatDate(v.run_at, "datetime")}${v.label ? `, ${v.label}` : ""}` }))} />
         </Field>
-        {draft.module && versions.data?.length === 0 ? <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>No analysed version holds this object yet</p> : null}
+        {draft.module && versions.data?.length === 0 ? <p className="m-text-meta m-ink-3">No analysed version holds this object yet</p> : null}
         {error ? (
           <Notice tone="danger">Not valid yet: {error}</Notice>
         ) : null}
@@ -490,9 +489,9 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
           <section className="flex flex-col gap-2">
             <h3 className="m-text-body font-semibold">Dry run{result.grain ? ` -- per ${result.grain} record` : ""}</h3>
             <dl className="m-text-body flex flex-col gap-1">
-              <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Checked</dt><dd>{result.population.toLocaleString()}</dd></div>
-              <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Failing</dt><dd>{result.failing.toLocaleString()}</dd></div>
-              <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Pass rate</dt><dd>{pct(result.pass_rate)}</dd></div>
+              <div className="flex justify-between"><dt className="m-ink-3">Checked</dt><dd>{result.population.toLocaleString()}</dd></div>
+              <div className="flex justify-between"><dt className="m-ink-3">Failing</dt><dd>{result.failing.toLocaleString()}</dd></div>
+              <div className="flex justify-between"><dt className="m-ink-3">Pass rate</dt><dd>{pct(result.pass_rate)}</dd></div>
             </dl>
             {result.sample_keys.length ? (
               <pre className="m-text-meta overflow-auto">{result.sample_keys.join("\n")}{result.failing > result.sample_keys.length ? `\n+${(result.failing - result.sample_keys.length).toLocaleString()} more` : ""}</pre>

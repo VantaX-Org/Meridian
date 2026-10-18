@@ -97,7 +97,7 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+        <span className="m-text-meta m-ink-3">
           {allEdges ? "Every observed edge." : `Edges under ${fmtShare(d.edge_threshold)} of cases are hidden, as in the Signavio export.`}
         </span>
         <Button variant="secondary" aria-pressed={allEdges} onClick={() => setAllEdges((v) => !v)}>
@@ -143,11 +143,11 @@ function L5Drawer({ doc, id, onClose }: { doc: ProcessModelDocument; id: string 
     <Drawer open={!!a} onOpenChange={(o) => !o && onClose()} title={a?.name ?? ""} subtitle={a ? <Mono>{a.id}</Mono> : undefined}>
       {a && (
         <div className="grid gap-4">
-          {!s?.observed && <p style={{ color: "var(--m-ink-3)" }}>Reference step, not observed in this run.</p>}
+          {!s?.observed && <p className="m-ink-3">Reference step, not observed in this run.</p>}
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
             {rows.map(([k, v]) => (
               <div key={k} className="contents">
-                <dt style={{ color: "var(--m-ink-3)" }}>{k}</dt><dd className="m-numeric">{v}</dd>
+                <dt className="m-ink-3">{k}</dt><dd className="m-numeric">{v}</dd>
               </div>
             ))}
           </dl>
@@ -159,7 +159,7 @@ function L5Drawer({ doc, id, onClose }: { doc: ProcessModelDocument; id: string 
                   <li key={f.field}><Mono>{f.field}</Mono>{f.mandatory ? ", mandatory" : ""}{f.description ? `, ${f.description}` : ""}</li>
                 ))}
               </ul>
-            ) : <p style={{ color: "var(--m-ink-3)" }}>No fields recorded for this step.</p>}
+            ) : <p className="m-ink-3">No fields recorded for this step.</p>}
           </section>
         </div>
       )}

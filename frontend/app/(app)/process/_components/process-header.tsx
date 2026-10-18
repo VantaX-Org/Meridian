@@ -3,7 +3,7 @@ import { Skeleton } from "@/design";
 
 /** Page frame shared by the process pages: centred, padded from the page tokens. */
 export function ProcessFrame({ children }: { children: ReactNode }) {
-  return <div className="mx-auto grid w-full gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>{children}</div>;
+  return <div className="mx-auto grid w-full gap-4 [padding:var(--m-page-pad)] [max-width:var(--m-page-max)]">{children}</div>;
 }
 
 /** Final-geometry loading frame: header, 112px insight strip, table rows. Never one tall block. */

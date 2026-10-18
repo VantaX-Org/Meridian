@@ -264,7 +264,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         tableId="home-objects"
       />
       <div className="m-text-body px-3 pt-2">
-        <Link href={`/objects?run=${latest.id}`} style={{ color: "var(--m-accent)" }}>All objects</Link>
+        <Link href={`/objects?run=${latest.id}`} className="m-ink-accent">All objects</Link>
       </div>
     </Card>
   );
@@ -276,7 +276,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const trendCard = (
       <Card title="Score over runs">
         {trendPoints.length < 2 ? (
-          <div style={{ minHeight: 160 }}><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
+          <div className="[min-height:160px]"><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
         ) : (
           <Line
             data={trendPoints}

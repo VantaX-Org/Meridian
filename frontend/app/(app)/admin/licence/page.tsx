@@ -46,14 +46,14 @@ export default function AdminLicencePage() {
       {l ? (
         <Card title="Licence detail">
           <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
-            <dt style={{ color: "var(--m-ink-3)" }}>Tenant</dt><dd>{l.company_name ?? "Not set"}</dd>
-            <dt style={{ color: "var(--m-ink-3)" }}>Tier</dt><dd>{l.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
-            <dt style={{ color: "var(--m-ink-3)" }}>Status</dt><dd>{labelOf(l.status)}</dd>
-            <dt style={{ color: "var(--m-ink-3)" }}>Seats</dt><dd>{seats ? String(seats) : "Unlimited"}</dd>
-            <dt style={{ color: "var(--m-ink-3)" }}>Days remaining</dt><dd style={{ color: days !== undefined && days !== null && days < 30 ? "var(--m-medium)" : undefined }}>{days ?? "—"}</dd>
-            <dt style={{ color: "var(--m-ink-3)" }}>Renews</dt><dd>{l.expiry_date ? formatDate(l.expiry_date) : "Not set"}</dd>
-            <dt style={{ color: "var(--m-ink-3)" }}>Last validated</dt><dd>{l.last_validated ? formatDate(l.last_validated, "datetime") : "Not validated yet"}</dd>
-            <dt style={{ color: "var(--m-ink-3)" }}>Language-model tier</dt><dd>{l.llm_config ? `tier ${l.llm_config.tier}, ${l.llm_config.model}` : "Not set"}</dd>
+            <dt className="m-ink-3">Tenant</dt><dd>{l.company_name ?? "Not set"}</dd>
+            <dt className="m-ink-3">Tier</dt><dd>{l.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
+            <dt className="m-ink-3">Status</dt><dd>{labelOf(l.status)}</dd>
+            <dt className="m-ink-3">Seats</dt><dd>{seats ? String(seats) : "Unlimited"}</dd>
+            <dt className="m-ink-3">Days remaining</dt><dd className={days !== undefined && days !== null && days < 30 ? "[color:var(--m-medium)]" : undefined}>{days ?? "—"}</dd>
+            <dt className="m-ink-3">Renews</dt><dd>{l.expiry_date ? formatDate(l.expiry_date) : "Not set"}</dd>
+            <dt className="m-ink-3">Last validated</dt><dd>{l.last_validated ? formatDate(l.last_validated, "datetime") : "Not validated yet"}</dd>
+            <dt className="m-ink-3">Language-model tier</dt><dd>{l.llm_config ? `tier ${l.llm_config.tier}, ${l.llm_config.model}` : "Not set"}</dd>
           </dl>
         </Card>
       ) : null}
@@ -63,7 +63,7 @@ export default function AdminLicencePage() {
           <div className="flex gap-2 flex-wrap">
             {all ? <Pill tone="go">all modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
             {!all && !modules.length ? (
-              <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+              <p className="m-text-body m-ink-3">
                 {l.valid === null ? "Modules follow the licence once Meridian HQ has validated it." : "No modules enabled on this licence"}
               </p>
             ) : null}
@@ -102,7 +102,7 @@ function PlatformVersion() {
       ) : (
         <div className="flex flex-col gap-2">
           <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
-            <dt style={{ color: "var(--m-ink-3)" }}>Running</dt><dd className="font-mono">{s.current_version}</dd>
+            <dt className="m-ink-3">Running</dt><dd className="font-mono">{s.current_version}</dd>
           </dl>
           {s.update_available && s.updater_configured ? (
             <div><Button onClick={open}>View update {s.latest_version}</Button></div>

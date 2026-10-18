@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Skeleton, Stat, type PillTone, PageFrame, Status } from "@/design";
+import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Skeleton, Stat, type PillTone, PageFrame, Status, ProgressFill } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
@@ -15,6 +15,7 @@ import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { formatSize, readHeaderSample } from "@/lib/upload-preview";
 import type { Version } from "@/types/api";
+import { clsx } from "clsx";
 
 /** Backend step ids to the label shown under the progress bar. */
 const STEP_LABEL: Record<string, string> = {
@@ -107,7 +108,7 @@ export default function ImportPage() {
   ], []);
   const mapColumns = useMemo<ColumnDef<MatchResponse["mappings"][number]>[]>(() => [
     { id: "source", header: "Your column", cell: ({ row }) => row.original.source_column },
-    { id: "target", header: "Standard field", cell: ({ row }) => <>{row.original.target_field ? <Mono>{row.original.target_field}</Mono> : <span style={{ color: "var(--m-ink-3)" }}>Not mapped</span>}{row.original.is_required ? " (required)" : ""}</> },
+    { id: "target", header: "Standard field", cell: ({ row }) => <>{row.original.target_field ? <Mono>{row.original.target_field}</Mono> : <span className="m-ink-3">Not mapped</span>}{row.original.is_required ? " (required)" : ""}</> },
     { id: "confidence", header: "Confidence", cell: ({ row }) => `${Math.round(row.original.confidence * 100)}%` },
     { id: "match", header: "Match", cell: ({ row }) => <Pill tone={confidenceTone(row.original.confidence)}>{labelOf(row.original.match_type)}</Pill> },
   ], []);
@@ -141,8 +142,7 @@ export default function ImportPage() {
       ) : null}
 
       <label
-        className="block cursor-pointer [&>section]:border-dashed! [&>section]:border-(--m-line-strong)!"
-        style={dragging ? { outline: "2px solid var(--m-accent)" } : undefined}
+        className={clsx("block cursor-pointer [&>section]:border-dashed! [&>section]:border-(--m-line-strong)!", dragging && "[outline:2px_solid_var(--m-accent)]")}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); if (canUpload) pick(e.dataTransfer.files?.[0] ?? null); }}
@@ -151,17 +151,17 @@ export default function ImportPage() {
         <Card padding="lg">
           <div className="flex flex-col gap-2 text-center">
             <strong className="m-text-h">{file ? file.name : canUpload ? "Drop a CSV or XLSX, or choose a file" : "Importing needs the upload permission"}</strong>
-            <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{file ? fileNote : "CSV, TSV, XLSX, XLS, JSON or Parquet, up to 2 GB"}</span>
+            <span className="m-text-body m-ink-3">{file ? fileNote : "CSV, TSV, XLSX, XLS, JSON or Parquet, up to 2 GB"}</span>
           </div>
         </Card>
       </label>
 
-      <div className="flex flex-col gap-1" style={{ minHeight: 28 }}>
+      <div className="flex flex-col gap-1 [min-height:28px]">
         {running || (run.isPending && !job) ? (<>
-          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} style={{ height: 2, background: "var(--m-line)" }}>
-            <div style={{ height: 2, width: `${pct}%`, background: "var(--m-accent)" }} />
+          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="[height:2px] [background:var(--m-line)]">
+            <ProgressFill value={pct} />
           </div>
-          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{job ? stepLabel(job.step) : `Uploading ${uploadPct}%`}</p>
+          <p className="m-text-meta m-ink-3">{job ? stepLabel(job.step) : `Uploading ${uploadPct}%`}</p>
         </>) : null}
       </div>
       {job?.error ? <Notice tone="danger">Analysis failed: {job.error}</Notice> : null}
@@ -184,11 +184,7 @@ export default function ImportPage() {
                 type="button"
                 onClick={() => setTargetModule(m.value)}
                 aria-pressed={targetModule === m.value}
-                className="px-2 py-0.5 m-text-meta rounded-full border"
-                style={{
-                  borderColor: targetModule === m.value ? "var(--m-accent)" : "var(--m-line)",
-                  color: targetModule === m.value ? "var(--m-accent)" : "var(--m-ink)",
-                }}
+                className="px-2 py-0.5 m-text-meta rounded-full border m-ink [border-color:var(--m-line)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[color:var(--m-accent)]"
               >
                 {m.label}
               </button>

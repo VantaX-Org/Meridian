@@ -89,7 +89,7 @@ export default function PreferencesPage() {
             <Select value={prefs.timezone ?? AUTO} onValueChange={(v) => update({ timezone: v === AUTO ? null : v })} options={zones} />
           </Field>
         </div>
-        <p className="m-text-meta mt-3" style={{ color: "var(--m-ink-3)" }}>Dates look like {formatDate(new Date(), "datetime")}</p>
+        <p className="m-text-meta mt-3 m-ink-3">Dates look like {formatDate(new Date(), "datetime")}</p>
       </Card>
       <Card title="Notifications" meta="Where and how alerts reach you">
         <div className="flex flex-col gap-4">
@@ -101,7 +101,7 @@ export default function PreferencesPage() {
           <Switch label="Also email me" checked={email} onCheckedChange={(on) => update({ notifications: { channels: { email: on } } })} />
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" pending={testing} onClick={sendTest}>Send me a test</Button>
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Writes a test to your inbox{emailConfigured ? " and emails your address" : ""}</span>
+            <span className="m-text-meta m-ink-3">Writes a test to your inbox{emailConfigured ? " and emails your address" : ""}</span>
           </div>
         </div>
       </Card>

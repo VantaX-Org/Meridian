@@ -102,7 +102,7 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
 function LineageRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt style={{ color: "var(--m-ink-3)" }}>{label}</dt>
+      <dt className="m-ink-3">{label}</dt>
       <dd className="text-right">{children}</dd>
     </div>
   );
@@ -130,7 +130,7 @@ function LineageAndOwnership({ checkId, builtIn }: { checkId: string; builtIn: b
 
   let body: ReactNode;
   if (!builtIn) {
-    body = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Lineage is shown for built-in rules only.</p>;
+    body = <p className="m-text-body m-ink-3">Lineage is shown for built-in rules only.</p>;
   } else if (q.isLoading) {
     body = <Skeleton height={96} />;
   } else if (q.isError || !q.data) {
@@ -246,13 +246,13 @@ export default function RulePage() {
           />
         ) : undefined}
         overview={<>
-      {data.description ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{data.description}</p> : null}
+      {data.description ? <p className="m-text-body m-ink-3">{data.description}</p> : null}
 
       <dl className="m-text-body flex flex-col gap-1">
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Object</dt><dd>{formatModuleName(data.module)}</dd></div>
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>System</dt><dd>{labelOf(data.category)}</dd></div>
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? `, ${data.source_yaml}` : ""}</dd></div>
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Last run</dt><dd>{data.last_pass_rate != null ? <DrillLink object={data.module} ruleId={checkId}>{(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %</DrillLink> : "not run yet"}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">Object</dt><dd>{formatModuleName(data.module)}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">System</dt><dd>{labelOf(data.category)}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? `, ${data.source_yaml}` : ""}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">Last run</dt><dd>{data.last_pass_rate != null ? <DrillLink object={data.module} ruleId={checkId}>{(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %</DrillLink> : "not run yet"}</dd></div>
       </dl>
 
       {data.tags?.length ? <div className="flex flex-wrap gap-1">{data.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}

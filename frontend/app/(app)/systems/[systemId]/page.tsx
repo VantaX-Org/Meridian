@@ -531,7 +531,7 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
           </>
         }
       >
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{verdict}</p>
+        <p className="m-text-body m-ink-2">{verdict}</p>
         <dl className="mt-2 grid grid-cols-2 gap-2 m-text-body">
           <Field label="Health"><Pill tone={HEALTH_TONE[system.health_status] ?? "no-go"}>{HEALTH_LABEL[system.health_status]}</Pill></Field>
           <Field label="Last health check"><span>{when(system.last_health_check, "Never")}</span></Field>

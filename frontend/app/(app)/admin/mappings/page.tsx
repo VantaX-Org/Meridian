@@ -44,7 +44,7 @@ function SaveCell({ m }: { m: FieldMapping }) {
 
 const baseColumns: ColumnDef<FieldMapping, unknown>[] = [
   { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
-  { id: "field", header: "Standard field", cell: ({ row }) => <span><Mono>{row.original.standard_field}</Mono><div className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{row.original.standard_label}</div></span> },
+  { id: "field", header: "Standard field", cell: ({ row }) => <span><Mono>{row.original.standard_field}</Mono><div className="m-text-label m-ink-3">{row.original.standard_label}</div></span> },
   { id: "type", header: "Type", cell: ({ row }) => <span className="font-mono m-text-meta">{row.original.data_type}</span> },
   { id: "col", header: "Customer column", cell: ({ row }) => <DraftInput m={row.original} field="customer_field" label="customer column" mono /> },
   { id: "label", header: "Customer label", cell: ({ row }) => <DraftInput m={row.original} field="customer_label" label="customer label" /> },
@@ -98,7 +98,7 @@ export default function AdminMappingsPage() {
         {object || search ? <Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear</Button> : null}
         {write ? (confirmReset ? (
           <>
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Reset {object ? formatModuleName(object) : "every object"} to the shipped mappings?</span>
+            <span className="m-text-meta m-ink-3">Reset {object ? formatModuleName(object) : "every object"} to the shipped mappings?</span>
             <Button variant="secondary" disabled={reset.isPending} onClick={() => reset.mutate()}>Reset</Button>
             <Button variant="ghost" onClick={() => setConfirmReset(false)}>Keep mappings</Button>
           </>

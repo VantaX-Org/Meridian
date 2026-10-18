@@ -18,7 +18,6 @@ import { useRerun } from "./use-rerun";
 
 const n = (v: number) => v.toLocaleString();
 const dash = (v: string | null | undefined) => v ?? "—";
-const note = { color: "var(--m-ink-2)" };
 const analyseAction = <Button render={<Link href="/analyse">Run an analysis</Link>} />;
 
 function Feed<T>({ q, children }: { q: UseQueryResult<T>; children: (data: T) => ReactNode }) {
@@ -38,21 +37,21 @@ function ProfileDetail({ entry }: { entry: ZRegistryEntry }) {
   return (
     <div className="flex flex-col gap-3 m-text-body">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
-        <dt style={note}>Category</dt><dd>{labelOf(entry.category)}</dd>
-        <dt style={note}>Rules applied</dt><dd>{entry.rules_applied.length ? entry.rules_applied.join(", ") : "None"}</dd>
+        <dt className="m-ink-2">Category</dt><dd>{labelOf(entry.category)}</dd>
+        <dt className="m-ink-2">Rules applied</dt><dd>{entry.rules_applied.length ? entry.rules_applied.join(", ") : "None"}</dd>
       </dl>
       <RegistryEditor key={entry.id} entry={entry} canEdit={can("manage_rules")} />
-      <p className="font-medium" style={{ color: "var(--m-ink)" }}>Profile</p>
+      <p className="font-medium m-ink">Profile</p>
       {q.isLoading ? <Skeleton height={80} /> : q.error ? (
-        <p style={note}>{isNotFound(q.error) ? "No profile recorded for this object." : apiErrorMessage(q.error)}</p>
+        <p className="m-ink-2">{isNotFound(q.error) ? "No profile recorded for this object." : apiErrorMessage(q.error)}</p>
       ) : q.data ? (
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
-          <dt style={note}>Data type</dt><dd>{q.data.data_type}</dd>
-          <dt style={note}>Distinct values</dt><dd>{n(q.data.cardinality)}</dd>
-          <dt style={note}>Empty</dt><dd>{(q.data.null_rate * 100).toFixed(1)}%</dd>
-          <dt style={note}>Transactions</dt><dd>{n(q.data.transaction_count)}</dd>
-          <dt style={note}>Users</dt><dd>{n(q.data.user_count)}</dd>
-          <dt style={note}>Trend</dt><dd>{dash(q.data.trend_direction)}</dd>
+          <dt className="m-ink-2">Data type</dt><dd>{q.data.data_type}</dd>
+          <dt className="m-ink-2">Distinct values</dt><dd>{n(q.data.cardinality)}</dd>
+          <dt className="m-ink-2">Empty</dt><dd>{(q.data.null_rate * 100).toFixed(1)}%</dd>
+          <dt className="m-ink-2">Transactions</dt><dd>{n(q.data.transaction_count)}</dd>
+          <dt className="m-ink-2">Users</dt><dd>{n(q.data.user_count)}</dd>
+          <dt className="m-ink-2">Trend</dt><dd>{dash(q.data.trend_direction)}</dd>
         </dl>
       ) : null}
     </div>
@@ -174,7 +173,7 @@ export function CustomObjectsTab({ systemId }: { systemId?: string }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="m-text-body" style={note}>Custom (Z) objects found across every connected system in this workspace.</p>
+        <p className="m-text-body m-ink-2">Custom (Z) objects found across every connected system in this workspace.</p>
         <div className="flex shrink-0 gap-2">
           <Button variant="secondary" onClick={() => setReportOpen(true)}>Report</Button>
           {can("analyse") ? <Button onClick={() => detect.mutate()} pending={detect.isPending}>Detect now</Button> : null}

@@ -105,7 +105,7 @@ export function InsightFrame({
     </div>
   );
   return (
-    <div className="mx-auto flex w-full flex-col" style={{ gap: "var(--m-section-gap)", padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+    <div className="mx-auto flex w-full flex-col [gap:var(--m-section-gap)] [padding:var(--m-page-pad)] [max-width:var(--m-page-max)]">
       <PageHeader
         title={title}
         meta={scope ? (

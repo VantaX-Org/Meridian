@@ -17,6 +17,7 @@ import { getCostModel, getSettings, saveNotificationSettings, updateCostModel, s
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { AlertThresholds, CostModel, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
+import { clsx } from "clsx";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
@@ -116,7 +117,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       {!write ? <Notice tone="info">These settings are read only for your role</Notice> : null}
 
       {!agg.isError && !agg.isLoading && current === null ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Save weights; the preview uses the latest findings once a run completes.</p>
+        <p className="m-text-body m-ink-3">Save weights; the preview uses the latest findings once a run completes.</p>
       ) : null}
 
       {agg.isError ? (
@@ -141,9 +142,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
             : delta === null ? "Needs a scored run" : delta === 0 ? "Same as now" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points`}
         />
         <div className="flex flex-col gap-1">
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Weights sum</span>
-          <span className="m-text-title font-semibold" style={{ color: sumOk ? undefined : "var(--m-critical)" }}>{sum.toFixed(2)}</span>
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{sumOk ? "Sums to one" : "Must sum to 1.00 before you can save"}</span>
+          <span className="m-text-meta m-ink-3">Weights sum</span>
+          <span className={clsx("m-text-title font-semibold", !sumOk && "m-ink-critical")}>{sum.toFixed(2)}</span>
+          <span className="m-text-meta m-ink-3">{sumOk ? "Sums to one" : "Must sum to 1.00 before you can save"}</span>
         </div>
       </div>
       )}
@@ -153,7 +154,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       ) : null}
 
       <Card title="Dimension weights"><div className="flex flex-col gap-3">
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-text-body m-ink-3">
           The score is each measured dimension times its weight. One critical finding caps it at 85, two or more at 70. The cap is fixed.
         </p>
         <table className="m-text-body">
@@ -162,7 +163,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
             {DIMS.map((d: Dim) => (
               <tr key={d}>
                 <td>{d[0].toUpperCase() + d.slice(1)}</td>
-                <td style={{ width: 140 }}>
+                <td className="[width:140px]">
                   <Input type="number" step="0.05" min="0" max="1" value={weights[d]} aria-label={`${d} weight`} disabled={!write}
                     onChange={(e) => setWeights({ ...weights, [d]: Number(e.target.value) })} />
                 </td>
@@ -177,7 +178,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           <div className="flex items-center gap-3">
             <Button onClick={() => saveWeights.mutate()} disabled={saveWeights.isPending || !sumOk}>Save weights</Button>
             <Button variant="ghost" onClick={() => setWeights(DEFAULT)}>Use DAMA defaults</Button>
-            {!sumOk ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Weights sum to {sum.toFixed(2)}. Adjust them to 1.00 to save.</span> : null}
+            {!sumOk ? <span className="m-text-meta m-ink-3">Weights sum to {sum.toFixed(2)}. Adjust them to 1.00 to save.</span> : null}
           </div>
         ) : null}
       </div></Card>
@@ -198,14 +199,14 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
                 onChange={(e) => setThresholds({ ...thresholds, dqs_drop_threshold: Number(e.target.value) })} />
             </Field>
           </div>
-          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-meta m-ink-3">
             Alert when a run has at least this many critical or high findings, or an object&rsquo;s score falls by more than this against the previous run.
           </p>
 
           <div>
             <h3 className="m-text-body font-semibold mb-1">Score floors per object</h3>
-            <p className="m-text-meta mb-2" style={{ color: "var(--m-ink-3)" }}>An analysis that scores an object below its floor raises an in-app alert, and an email or Teams message when configured.</p>
-            <table className="m-text-body" style={{ maxWidth: 480 }}>
+            <p className="m-text-meta mb-2 m-ink-3">An analysis that scores an object below its floor raises an in-app alert, and an email or Teams message when configured.</p>
+            <table className="m-text-body [max-width:480px]!">
               <thead><tr><th className="text-left">Object</th><th className="text-left">Floor</th><th /></tr></thead>
               <tbody>
                 {Object.entries(floors).sort(([a], [b]) => a.localeCompare(b)).map(([m, v]) => (
@@ -218,11 +219,11 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
                     <td>{write ? <Button type="button" variant="ghost" onClick={() => setFloor(m, null)}>Remove</Button> : null}</td>
                   </tr>
                 ))}
-                {!Object.keys(floors).length ? <tr><td colSpan={3} className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>No floors set</td></tr> : null}
+                {!Object.keys(floors).length ? <tr><td colSpan={3} className="m-text-meta m-ink-3">No floors set</td></tr> : null}
               </tbody>
             </table>
             {write && unfloored.length ? (
-              <div className="mt-2" style={{ maxWidth: 260 }}>
+              <div className="mt-2 [max-width:260px]">
                 <Select
                   label="Add a floor for"
                   value="" placeholder="Add a floor for"
@@ -237,7 +238,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
 
       <Card title="Planner assumptions"><div className="flex flex-col gap-3">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); savePlanner.mutate(); }}>
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-body m-ink-3">
             The next-sprint planner ranks open work by severity-weighted records per hour. Effort comes from these figures.
             Money appears only when you state what one failing record costs you.
           </p>
@@ -283,7 +284,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
                 onChange={(e) => setNotify({ ...notify, teams_webhook: e.target.value })} />
             </Field>
           </div>
-          <fieldset className="flex gap-4" style={{ border: 0, margin: 0, padding: 0 }}>
+          <fieldset className="flex gap-4 [border:0] [margin:0] [padding:0]">
             <legend className="sr-only">Scheduled reports</legend>
             {([["daily_digest", "Daily digest"], ["weekly_summary", "Weekly summary"], ["monthly_report", "Monthly report"]] as const).map(([k, label]) => (
               <label key={k} className="flex items-center gap-2 m-text-body">
@@ -316,7 +317,7 @@ function CostModelCard({ write }: { write: boolean }) {
   const sev = { ...q.data.severity, ...draft };
   return (
     <Card title={`Cost model (${q.data.currency})`}><div className="flex flex-col gap-3">
-      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>What one blocked record costs, by severity.</p>
+      <p className="m-text-body m-ink-3">What one blocked record costs, by severity.</p>
       {Object.keys(sev).length === 0 && <EmptyState title="No severity costs set" detail="Enter a cost per blocked record to value findings" />}
       <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(q.data); }}>
         {Object.entries(sev).map(([k, v]) => (

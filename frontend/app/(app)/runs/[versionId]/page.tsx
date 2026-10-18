@@ -30,6 +30,7 @@ import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPag
 import { latestFinishedRun, lineageChoices } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
 import type { Finding, Version } from "@/types/api";
+import { clsx } from "clsx";
 
 
 
@@ -67,7 +68,6 @@ const stepColumns: ColumnDef<RunStep>[] = [
 
 type History = UseQueryResult<Awaited<ReturnType<typeof getScoreHistory>>>;
 const FINDINGS_PAGE = 100;
-const sectionTitle = { fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" } as const;
 
 function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; history: History; onOpenSteps: () => void }) {
   const { can } = useRole();
@@ -247,14 +247,14 @@ function SummaryTab({
           />
         </Card>
       </div>
-      <section className="flex flex-col gap-2" data-testid="next-actions-slot" style={{ minHeight: prescriptive.isLoading ? 96 + 28 : undefined }}>
-        <h2 className="font-semibold" style={sectionTitle}>Next actions</h2>
+      <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
+        <h2 className="font-semibold m-text-h">Next actions</h2>
         {prescriptive.isLoading ? (
           <Skeleton height={96} />
         ) : next.length > 0 ? (
           <NextActions actions={next} />
         ) : (
-          <p className="text-sm" style={{ color: "var(--m-ink-muted)" }}>No next actions for this run</p>
+          <p className="text-sm m-ink-3">No next actions for this run</p>
         )}
       </section>
       <Card title="Composite over runs">
@@ -294,8 +294,7 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
       type="button"
       onClick={onRemove}
       aria-label={`Remove filter ${label}`}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors"
-      style={{ background: "var(--m-accent-soft)", color: "var(--m-accent)", fontSize: "var(--m-text-meta)" }}
+      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors [background:var(--m-accent-soft)]! m-ink-accent [font-size:var(--m-text-meta)]!"
     >
       {label}
       <span aria-hidden>×</span>
@@ -398,7 +397,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
       table={
         <div className="flex flex-col gap-2">
           <DataTable columns={columns} data={rows} getRowId={(f) => f.id} onRowClick={(f) => openFinding(f.id)} dataTour="finding-rows" />
-          <div style={{ minHeight: "var(--m-control-h)" }}>
+          <div className="[min-height:var(--m-control-h)]">
             {total > FINDINGS_PAGE ? (
               <Pager page={page} pageCount={Math.ceil(total / FINDINGS_PAGE)} onPageChange={setPage} pageSize={FINDINGS_PAGE} total={total} />
             ) : null}
@@ -663,9 +662,9 @@ export default function RunDetailPage() {
                     getRowId={(s) => String(s.step_number)}
                     renderDrawer={(s) => (
                       <div className="flex flex-col gap-2 p-4">
-                        <h2 className="font-semibold" style={sectionTitle}>{s.step_name}</h2>
+                        <h2 className="font-semibold m-text-h">{s.step_name}</h2>
                         <Status kind="lifecycle" value={s.status} />
-                        <p style={{ color: "var(--m-ink-2)" }}>{s.error_detail ?? "No error recorded"}</p>
+                        <p className="m-ink-2">{s.error_detail ?? "No error recorded"}</p>
                       </div>
                     )}
                   />

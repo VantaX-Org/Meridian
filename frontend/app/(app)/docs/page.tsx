@@ -37,14 +37,7 @@ export default async function DocsPage({ searchParams }: { searchParams: Promise
                   <Link
                     href={`/docs?page=${p.slug}`}
                     aria-current={active ? "page" : undefined}
-                    className="m-motion-colors flex items-center px-3 m-text-body"
-                    style={{
-                      height: "var(--m-control-h)",
-                      borderRadius: "var(--m-radius-control)",
-                      background: active ? "var(--m-accent-soft)" : undefined,
-                      color: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
-                      fontWeight: active ? 600 : 400,
-                    }}
+                    className="m-motion-colors flex items-center px-3 m-text-body [height:var(--m-control-h)] [border-radius:var(--m-radius-control)] m-ink-2 [font-weight:400] aria-[current=page]:[background:var(--m-accent-soft)] aria-[current=page]:[color:var(--m-accent-ink)] aria-[current=page]:[font-weight:600]"
                   >
                     {p.title}
                   </Link>
@@ -53,7 +46,7 @@ export default async function DocsPage({ searchParams }: { searchParams: Promise
             })}
           </ul>
         </nav>
-        <div className="min-w-0 flex-1" style={{ maxWidth: 720 }} data-testid="guide-page" data-guide-page={current.slug}>
+        <div className="min-w-0 flex-1 [max-width:720px]" data-testid="guide-page" data-guide-page={current.slug}>
           {source === null ? (
             <EmptyState
               title="This page is not available"

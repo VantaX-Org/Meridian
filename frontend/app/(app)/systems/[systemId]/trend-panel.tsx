@@ -8,11 +8,10 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
+import { clsx } from "clsx";
 
 const th = "px-3 py-2 text-left font-medium";
-const thStyle = { color: "var(--m-ink-3)" };
 const td = "px-3 py-1.5 border-t";
-const tdStyle = { borderColor: "var(--m-line)" };
 
 const FLAG_LABEL: Record<TrendFlag, string> = {
   scope_changed: "Scope changed",
@@ -22,7 +21,7 @@ const FLAG_LABEL: Record<TrendFlag, string> = {
 };
 
 const signed = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}`;
-const deltaColor = (n: number) => (n > 0 ? "var(--m-pass)" : n < 0 ? "var(--m-critical)" : "var(--m-ink-2)");
+const deltaInk = (n: number) => (n > 0 ? "[color:var(--m-pass)]" : n < 0 ? "m-ink-critical" : "m-ink-2");
 
 /** Score per object across this system's analysed runs. A change is only meaningful when the
  *  point is comparable (same scope, rule set and record volume); flags say why it is not. */
@@ -42,9 +41,9 @@ export function TrendPanel({ systemId }: { systemId: string }) {
         <table className="w-full m-text-body">
           <thead>
             <tr>
-              <th className={th} style={thStyle}>Object</th><th className={th} style={thStyle}>DQS</th>
-              <th className={th} style={thStyle}>Last change</th><th className={th} style={thStyle}>Trend</th>
-              <th className={th} style={thStyle}>Since baseline</th><th className={th} style={thStyle}>Notes</th>
+              <th className={clsx(th, "m-ink-3")}>Object</th><th className={clsx(th, "m-ink-3")}>DQS</th>
+              <th className={clsx(th, "m-ink-3")}>Last change</th><th className={clsx(th, "m-ink-3")}>Trend</th>
+              <th className={clsx(th, "m-ink-3")}>Since baseline</th><th className={clsx(th, "m-ink-3")}>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -55,12 +54,12 @@ export function TrendPanel({ systemId }: { systemId: string }) {
               const pts = scored.map((p) => ({ x: p.version_id, label: ticks.get(p.version_id), y: p.dqs as number }));
               return (
                 <tr key={s.object}>
-                  <td className={td} style={tdStyle}>{formatModuleName(s.object)}</td>
-                  <td className={td} style={tdStyle}>{s.dqs == null ? "—" : <DrillLink href={`/objects/${s.object}`}>{s.dqs.toFixed(1)}</DrillLink>}</td>
-                  <td className={td} style={tdStyle}>
-                    {s.dqs_delta == null ? "—" : <span style={{ color: deltaColor(s.dqs_delta) }}>{signed(s.dqs_delta)}</span>}
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{formatModuleName(s.object)}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{s.dqs == null ? "—" : <DrillLink href={`/objects/${s.object}`}>{s.dqs.toFixed(1)}</DrillLink>}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                    {s.dqs_delta == null ? "—" : <span className={deltaInk(s.dqs_delta)}>{signed(s.dqs_delta)}</span>}
                   </td>
-                  <td className={td} style={tdStyle}>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
                     {pts.length >= 2 ? (
                       // The trend opens the latest run of this object, scoped to that run and object.
                       <Link
@@ -75,10 +74,10 @@ export function TrendPanel({ systemId }: { systemId: string }) {
                       "—"
                     )}
                   </td>
-                  <td className={td} style={tdStyle}>
-                    {s.vs_baseline ? <span style={{ color: deltaColor(s.vs_baseline.dqs_delta) }}>{signed(s.vs_baseline.dqs_delta)}</span> : "—"}
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                    {s.vs_baseline ? <span className={deltaInk(s.vs_baseline.dqs_delta)}>{signed(s.vs_baseline.dqs_delta)}</span> : "—"}
                   </td>
-                  <td className={td} style={tdStyle}>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
                     <span className="flex flex-wrap gap-1">
                       {s.flags.map((f) => <Pill key={f} tone="at-risk">{FLAG_LABEL[f]}</Pill>)}
                     </span>
