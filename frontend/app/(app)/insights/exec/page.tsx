@@ -107,7 +107,7 @@ export default function ExecPage() {
       insight={{
         hero: true,
         lead: dqs && typeof dqs.composite === "number" ? (
-          <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+          <div className="m-hero-lead">
             <Score
                 size="hero"
                 value={dqs.composite}
@@ -115,7 +115,7 @@ export default function ExecPage() {
                 hint={dqs.capped ? `Capped at ${dqs.composite <= 70 ? 70 : 85}` : undefined}
                 delta={dqs.delta != null ? <Delta value={dqs.delta} /> : undefined}
               />
-            <div className="flex min-w-0 flex-1 flex-col gap-1 [min-width:min(100%,16rem)] [max-width:48ch]">
+            <div className="m-hero-verdict" data-testid="hero-verdict">
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
                 {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
               </span>

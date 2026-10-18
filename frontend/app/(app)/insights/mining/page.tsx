@@ -317,7 +317,7 @@ export default function MiningPage() {
     <InsightFrame
       title="Mining"
       scope
-      meta="Entity links, mined dependencies and mined patterns"
+      meta="Links and patterns from every mined run; Mine now mines the run shown"
       run={run}
       insight={{
         loading: rel.isLoading || sum.isLoading,

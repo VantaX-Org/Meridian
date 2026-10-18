@@ -90,7 +90,7 @@ export default function ReportsPage() {
   };
 
   const o = overview.data;
-  const scopeLine = [versionId ? runLabel(versionId) : "no run", cmp ? `compared with ${runLabel(cmp)}` : "no comparison run", mod ? formatModuleName(mod) : "all objects"].join(", ");
+  const scopeLine = [versionId ? runLabel(versionId) : "no run", cmp ? `compared with ${runLabel(cmp)}` : "no comparison run", mod ? formatModuleName(mod) : "every object in the run"].join(", ");
 
   return (
     <InsightFrame
