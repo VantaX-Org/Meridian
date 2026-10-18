@@ -24,13 +24,23 @@ import { InsightActions } from "./_components/InsightActions";
 import { useFindingOpener } from "./_components/FindingOpener";
 import { ruleColumns } from "./_components/RuleColumns";
 import { useInsightScope, withScope } from "./_components/useInsightScope";
+import { CurrentOverview } from "./_components/CurrentOverview";
 
 const VERDICT_SENTENCE: Record<string, string> = { go: "Ready to load", at_risk: "At risk", no_go: "Not ready" };
 
 
 const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));
 
+/**
+ * Without `?run=` or `?module=` the overview is the current state across objects (`CurrentOverview`); a `?run=`
+ * deep link, the header's run picker or an object filter shows one run, and the header says so.
+ */
 export default function InsightsOverviewPage() {
+  const { mode } = useInsightScope();
+  return mode === "current" ? <CurrentOverview /> : <RunOverview />;
+}
+
+function RunOverview() {
   const router = useRouter();
   const dayOne = useDayOne();
   const { run, module, runs, versions, resolving } = useInsightScope();
@@ -91,13 +101,13 @@ export default function InsightsOverviewPage() {
     <InsightFrame
       title="Insights"
       scope
-      meta={module ? <Pill tone="info">{formatModuleName(module)}</Pill> : "Scope: all objects"}
+      meta={module ? <Pill tone="info">{formatModuleName(module)}</Pill> : undefined}
       actions={<InsightActions run={run} module={module} options={exportOptions} />}
       insight={{
         hero: true,
         loading,
         lead: (
-          <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+          <div className="m-hero-lead">
             <Score
                 size="hero"
                 loading={loading}
@@ -108,7 +118,7 @@ export default function InsightsOverviewPage() {
                 hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
                 delta={o?.dqs.delta != null ? <Delta value={o.dqs.delta} /> : undefined}
               />
-            <div className="flex min-w-0 flex-1 flex-col gap-1 [min-width:min(100%,16rem)] [max-width:48ch]">
+            <div className="m-hero-verdict" data-testid="hero-verdict">
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : loading ? "Scoring" : "Not scored yet"}
               </span>

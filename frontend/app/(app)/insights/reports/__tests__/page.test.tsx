@@ -113,7 +113,7 @@ describe("ReportsPage scope and rendering", () => {
   it("offers only runs of the same lineage under Compare with and writes the scope line from the run label", async () => {
     perm.allowed = true;
     mount();
-    expect(await screen.findByText(/Scope: Run 2, no comparison run, all objects/)).toBeInTheDocument();
+    expect(await screen.findByText(/Scope: Run 2, no comparison run, every object in the run/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("combobox", { name: "Compare with" }));
     expect(await screen.findByRole("option", { name: "Run 1" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "controlling_1k" })).toBeNull();

@@ -135,7 +135,7 @@ export default function RulesPage() {
     <InsightFrame
       title="Explore"
       scope
-      meta={`${module ? formatModuleName(module) : "All objects"}${field ? `, field ${field}` : ""}`}
+      meta={`${module ? formatModuleName(module) : "Every object in this run"}${field ? `, field ${field}` : ""}`}
       run={run}
       module={module}
       insight={{
@@ -158,7 +158,7 @@ export default function RulesPage() {
           <Select label="Auto-fixable" value={auto} onValueChange={setAuto} options={yesNo("Any fix type")} />
           <Select label="S/4 blocking" value={s4} onValueChange={setS4} options={yesNo("Any S/4 status")} />
           {field && <Button variant="secondary" onClick={() => go({ field: undefined })}>Clear field filter</Button>}
-          {module && <Button variant="secondary" onClick={() => go({ module: undefined })}>All objects</Button>}
+          {module && <Button variant="secondary" onClick={() => go({ module: undefined })}>Every object in this run</Button>}
           <SavedViews route="/insights/rules" current={filters} onApply={(f) => router.replace(withScope(path, { run, ...f }))} />
         </div>
       </div>

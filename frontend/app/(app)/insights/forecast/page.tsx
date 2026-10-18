@@ -10,7 +10,7 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
-import { useInsightScope, withScope } from "../_components/useInsightScope";
+import { withScope } from "../_components/useInsightScope";
 
 const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
   red: "no-go",
@@ -43,8 +43,11 @@ export function forecastEmptyDetail(d: Pick<PredictiveResponse, "reason" | "runs
   return "A forecast needs runs on three different days.";
 }
 
+/**
+ * The forecast reads every object's score history across all runs (`GET /analytics/predictive`), not one run, so
+ * the header names what it saw ("Every object, 6 runs on 1 day") rather than a run.
+ */
 export default function ForecastPage() {
-  const { run } = useInsightScope();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.analyticsPredictive(),
     queryFn: () => getPredictiveAnalytics(),
@@ -95,9 +98,7 @@ export default function ForecastPage() {
   return (
     <InsightFrame
       title="Forecast"
-      scope
-      meta={seen}
-      run={run}
+      meta={seen ? `Every object, ${seen}` : undefined}
       insight={{
         situation: {
           sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d}% DQS in 30 days` : "Not enough runs to forecast",
@@ -105,7 +106,7 @@ export default function ForecastPage() {
         },
         changed: { sentence: `${plural(declining.length, "module is", "modules are")} declining` },
         why: { sentence: warnings.length ? `${plural(warnings.length, "early warning is", "early warnings are")} open` : "No early warning is open" },
-        next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: worst ? "Open failing rules" : "Open runs", href: worst ? withScope("/insights/rules", { run, module: worst.module_id }) : "/runs" } },
+        next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: worst ? "Open failing rules" : "Open runs", href: worst ? withScope("/insights/rules", { module: worst.module_id }) : "/runs" } },
       }}
       state={state}
       skeleton={

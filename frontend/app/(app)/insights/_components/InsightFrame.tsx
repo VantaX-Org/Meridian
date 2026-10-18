@@ -4,16 +4,20 @@
 // tabs), the four-sentence InsightHeader, then the cards. The spine is owned here so no page can
 // drop a piece of it.
 import type { ReactNode } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { Async, Card, PageHeader, InsightHeader, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Async, Card, PageHeader, InsightHeader, Select, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useRunListWith } from "@/hooks/use-run-list";
-import { useRunScope } from "@/hooks/use-run-scope";
 import { RunScope } from "@/components/run-scope";
-import { hrefWithRun } from "@/lib/run-scope";
+import { stateScopeLine } from "@/lib/current-state";
+import { hrefWithRun, runChoiceLabels } from "@/lib/run-scope";
 import { formatDate } from "@/lib/format";
 import { InsightActions } from "./InsightActions";
 import { InsightTabs } from "./InsightViews";
+import { CURRENT_STATE_VIEWS, insightRunChoices } from "./scopeMode";
+import { useCurrentState } from "./useCurrentState";
+import { useInsightScope } from "./useInsightScope";
 
 export { formatMoney } from "@/lib/format";
 
@@ -28,8 +32,11 @@ export interface InsightFrameProps {
   /** One line of context; with `scope` it follows the "As of" run line. */
   meta?: ReactNode;
   /**
-   * The page's numbers come from the scoped run (`useInsightScope().run`): the header names it ("As of ..."),
-   * offers the other runs of its lineage, and "Back to latest" while `?run=` pins an older one.
+   * The page takes its scope from `useInsightScope()`. In "run" mode its numbers come from the scoped run
+   * (`useInsightScope().run`): the header says "One run", names it ("As of ..."), offers the other runs of its
+   * lineage and the latest run of every other one, and "Back to latest" while `?run=` pins an older one. In
+   * "current" mode (a view in `CURRENT_STATE_VIEWS` without `?run=` or `?module=`) the header says "Current state
+   * of N objects, latest run <date>" and offers one run instead.
    */
   scope?: boolean;
   /**
@@ -70,13 +77,62 @@ export function CardSkeleton({ height }: { height: number }) {
   );
 }
 
-/** The "As of" line of an insight page: the scoped run, a picker of its lineage, "Back to latest". */
+/**
+ * The one-run header line: "One run", "As of" the scoped run with a picker of its lineage and of every other
+ * lineage's latest run, "Back to latest" while pinned. On a view that can show the current state, the way back is
+ * "Back to current state" instead.
+ */
 function InsightRunScope() {
-  const scope = useRunScope();
+  const { scope, explicit } = useInsightScope();
   // Both hooks return null outside the App Router (unit tests, static export).
   const pathname = usePathname() ?? "";
   const search = useSearchParams();
-  return <RunScope scope={scope} picker hrefFor={(id) => hrefWithRun(pathname, search, id)} />;
+  const canShowCurrent = CURRENT_STATE_VIEWS.includes(pathname);
+  if (!scope.run) return null;
+  const choices = insightRunChoices(scope.run, scope.versions);
+  return (
+    <span data-testid="insight-scope" data-scope="run" className="inline-flex flex-wrap items-center gap-2">
+      <span className="font-medium m-ink">One run</span>
+      <RunScope
+        scope={{ run: scope.run, latestId: canShowCurrent ? undefined : scope.latestId, pinned: canShowCurrent ? false : scope.pinned, choices }}
+        picker
+        hrefFor={(id) => hrefWithRun(pathname, search, id)}
+      />
+      {canShowCurrent && explicit && (
+        <Link href={hrefWithRun(pathname, search, null)} className="m-ink-accent underline-offset-2 hover:underline">Back to current state</Link>
+      )}
+    </span>
+  );
+}
+
+/** The current-state header line: what the numbers cover, and a picker that opens one run instead. */
+function InsightCurrentScope() {
+  const { objects, runs, newest } = useCurrentState();
+  const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const search = useSearchParams();
+  if (!newest) return null;
+  const labels = runChoiceLabels(runs);
+  return (
+    <span data-testid="insight-scope" data-scope="current" className="inline-flex flex-wrap items-center gap-2">
+      <span data-testid="run-scope">{stateScopeLine(objects.length, newest.run_at)}</span>
+      <Select
+        label="Showing"
+        value="current"
+        onValueChange={(id) => {
+          if (id && id !== "current") router.replace(hrefWithRun(pathname, search, id), { scroll: false });
+        }}
+        options={[{ value: "current", label: "Current state" }, ...runs.map((r) => ({ value: r.id, label: labels.get(r.id) ?? r.id }))]}
+        className="m-input inline-flex max-w-[320px] items-center justify-between gap-2"
+      />
+    </span>
+  );
+}
+
+/** The scope line of the header: the current state across objects, or one run. */
+function InsightScopeLine() {
+  const { mode } = useInsightScope();
+  return mode === "current" ? <InsightCurrentScope /> : <InsightRunScope />;
 }
 
 export { SLOW_LOAD_MESSAGE } from "@/design";
@@ -110,7 +166,7 @@ export function InsightFrame({
         title={title}
         meta={scope ? (
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-            <InsightRunScope />
+            <InsightScopeLine />
             {meta != null && meta !== "" && <span>{meta}</span>}
           </span>
         ) : meta}

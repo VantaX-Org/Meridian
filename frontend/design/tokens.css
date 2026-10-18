@@ -637,5 +637,11 @@
 .m-ink-critical { color: var(--m-critical); }
 .m-text-verdict-line { font-size: var(--m-text-verdict); line-height: var(--m-leading-verdict); }
 .m-text-hero { font-size: var(--m-text-hero); line-height: var(--m-leading-hero); }
+/* The hero lead of the Insights and Executive summary sheets: the score and its verdict side by side while the
+   verdict keeps its 18rem basis (the verdict and "6 blocking gaps across 2 waves" on one line each), else the
+   verdict wraps under the score at the lead's full width. A zero basis (flex-1) never wraps and squeezed the
+   verdict into a word-per-line column beside a wide score. */
+.m-hero-lead { display: flex; flex-wrap: wrap; align-items: flex-end; column-gap: var(--m-space-8); row-gap: var(--m-space-4); min-width: 0; }
+.m-hero-verdict { display: flex; flex-direction: column; gap: var(--m-space-1); flex: 1 1 18rem; min-width: 0; max-width: 48ch; }
 /* ProgressFill: the accent fill inside a caller-owned progress track. */
 .m-progress-fill { display: block; height: 100%; background: var(--m-accent); }
