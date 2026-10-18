@@ -91,6 +91,19 @@ describe("system detail page", () => {
     expect(screen.queryByText(/0 of /)).toBeNull();
   });
 
+  it("shows the score once, in the ring, not again as a numeral beside it", async () => {
+    mockHappyPath();
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    const ring = await screen.findByRole("img", { name: "Score 70" });
+    const stat = ring.closest("a");
+    expect(stat).toHaveTextContent("DQS");
+    expect(stat).not.toHaveTextContent("70.0");
+  });
+
   it("shows the system role in the header", async () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);
