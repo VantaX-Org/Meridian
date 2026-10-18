@@ -5,9 +5,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, PageHeader, Pill, Stat, type CellMeta } from "@/design";
+import { Button, DataTable, ExplorerPage, PageHeader, Pill, Stat, type CellMeta, asyncStateOf } from "@/design";
 import { getSurvivorshipRules, type SurvivorshipRule } from "@/lib/api/survivorship";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 
 const columns: ColumnDef<SurvivorshipRule>[] = [
@@ -33,7 +33,7 @@ export default function SurvivorshipPage() {
           <Stat label="Inferred by AI" value={rules.filter((r) => r.ai_inferred).length.toLocaleString()} loading={q.isLoading} />
         </div>
       }
-      state={q.isLoading ? "loading" : isListFailure(q) ? "error" : rules.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(q, () => rules.length === 0, true)}
       emptyProps={{ title: "No survivorship rules", detail: "Until a rule exists for a field, the most recent source value wins.", action: <Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
       table={<DataTable columns={columns} data={rules} getRowId={(r) => r.id} />}

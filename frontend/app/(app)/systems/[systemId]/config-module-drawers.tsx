@@ -5,8 +5,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, Drawer, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone, Status } from "@/design";
-import { apiErrorState } from "@/lib/error";
+import { DataTable, Drawer, EmptyState, Mono, Pill, Stat, type PillTone, Status, Async } from "@/design";
 import {
   getConfigAlignmentByModule, getConfigInventoryByModule, type AlignmentFinding, type ConfigElement,
 } from "@/lib/api/config-intelligence";
@@ -36,9 +35,7 @@ export function InventoryModuleDrawer({ module, onClose }: { module: string | nu
   ], []);
   return (
     <Drawer open={module !== null} onOpenChange={(o) => { if (!o) onClose(); }} title={module ? `${formatModuleName(module)} inventory` : "Inventory"} subtitle="Configuration elements seen in transactions">
-      {q.isLoading ? <Skeleton height={200} /> : q.isError ? (
-        <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
-      ) : elements.length === 0 ? (
+      <Async query={q} skeleton={200}>{elements.length === 0 ? (
         <EmptyState title="No elements in this module" detail="Run discovery to fill the inventory" />
       ) : (
         <div className="flex flex-col gap-4">
@@ -48,7 +45,7 @@ export function InventoryModuleDrawer({ module, onClose }: { module: string | nu
           </div>
           <DataTable columns={columns} data={elements} getRowId={(e) => `${e.element_type}/${e.element_value}`} hideToolbar dense height="auto" tableId="config-inventory-module" />
         </div>
-      )}
+      )}</Async>
     </Drawer>
   );
 }
@@ -68,9 +65,7 @@ export function AlignmentModuleDrawer({ module, onClose }: { module: string | nu
   ], []);
   return (
     <Drawer open={module !== null} onOpenChange={(o) => { if (!o) onClose(); }} title={module ? `${formatModuleName(module)} alignment` : "Alignment"} subtitle="Configuration compared with how it is used">
-      {q.isLoading ? <Skeleton height={200} /> : q.isError ? (
-        <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
-      ) : findings.length === 0 ? (
+      <Async query={q} skeleton={200}>{findings.length === 0 ? (
         <EmptyState title="Nothing found in this module" detail="The latest run raised no alignment findings here" />
       ) : (
         <DataTable
@@ -89,7 +84,7 @@ export function AlignmentModuleDrawer({ module, onClose }: { module: string | nu
             </div>
           )}
         />
-      )}
+      )}</Async>
     </Drawer>
   );
 }

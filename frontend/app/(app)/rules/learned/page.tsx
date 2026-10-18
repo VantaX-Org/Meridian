@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, PageHeader, Pill, Select } from "@/design";
+import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, PageHeader, Pill, Select, asyncStateOf } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   approveLearnedRule,
@@ -25,7 +25,7 @@ import {
 } from "@/lib/api/learnedRules";
 import { errorText } from "@/lib/api/remediation";
 import { getVersions } from "@/lib/api/versions";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const STATUS_OPTIONS = [
@@ -105,7 +105,7 @@ export default function LearnedRulesPage() {
           <Field label="Kind"><Select value={kind} onValueChange={(v) => setKind(v as "all" | LearnedKind)} options={KIND_OPTIONS} /></Field>
         </div>
       }
-      state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(q, () => items.length === 0, true)}
       emptyProps={{ title: "No learned rules yet", detail: "Mining runs after the second analysis", action: <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
       errorProps={{
         message: apiErrorMessage(q.error),

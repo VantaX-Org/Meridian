@@ -6,9 +6,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, type CellMeta, ExplorerPage, Field, Input, PageHeader, Pager, Select } from "@/design";
+import { Button, DataTable, type CellMeta, ExplorerPage, Field, Input, PageHeader, Pager, Select, asyncStateOf } from "@/design";
 import { getMasterRecords } from "@/lib/api/master-records";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MasterRecordSummary } from "@/types/api";
@@ -68,7 +68,7 @@ export default function GoldenRecordsPage() {
 
   const records = useMemo(() => query.data?.records ?? [], [query.data]);
   const pageCount = Math.max(1, Math.ceil((query.data?.total ?? 0) / 100));
-  const state = query.isLoading ? "loading" : isListFailure(query) ? "error" : records.length === 0 ? "empty" : undefined;
+  const state = asyncStateOf(query, () => records.length === 0, true);
   const filtered = domain !== "all" || status !== "all" || !!minConfidence || !!maxConfidence;
 
   return (

@@ -12,14 +12,14 @@ import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, EmptyState, ErrorState, Input, LineageChart, type LineageChartEdge, type LineageChartNode, Card, Mono, Select, Skeleton, Status } from "@/design";
+import { Button, DataTable, Drawer, EmptyState, ErrorState, Input, LineageChart, type LineageChartEdge, type LineageChartNode, Card, Mono, Select, Skeleton, Status, Async } from "@/design";
 import { useLatestVersion } from "@/components/process/shared";
 import { getFindings } from "@/lib/api/findings";
 import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
   type ImpactRow, type LineageDirection, type LineageNode,
 } from "@/lib/api/lineage";
-import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -239,14 +239,12 @@ export default function LineagePage() {
           </div>
         </Card>
         <Card title="KPIs, processes and features at risk">
-          {impactQ.isLoading ? <Skeleton height={160} />
-            : isListFailure(impactQ) ? <ErrorState {...apiErrorState(impactQ.error)} onRetry={() => void impactQ.refetch()} />
-            : rows.length === 0 ? (
+          <Async query={impactQ} skeleton={160} notFoundIsEmpty>{rows.length === 0 ? (
               latest
                 ? <EmptyState title="No failing rule reaches a KPI, process or feature" action={<Button render={<Link href="/rules">Open rules</Link>} />} />
                 : <EmptyState title="No lineage yet" detail={dayOne.step?.detail ?? "Impact needs a completed analysis."} action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
             )
-            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />}
+            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />}</Async>
         </Card>
       </InsightFrame>
 

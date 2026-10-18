@@ -5,10 +5,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat } from "@/design";
+import { Button, Card, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
-import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -107,10 +107,7 @@ export default function AdminMappingsPage() {
         )) : null}
       </div>
 
-      {all.isLoading ? <Skeleton height={320} />
-        : isListFailure(all) ? (
-          <ErrorState {...apiErrorState(all.error)} onRetry={() => all.refetch()} />
-        ) : !shown.length ? (
+      <Async query={all} skeleton={320} notFoundIsEmpty>{!shown.length ? (
           object || search ? (
             <EmptyState title="No standard field matches" detail="Clear the filter to see every field." action={<Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear filter</Button>} />
           ) : (
@@ -122,7 +119,7 @@ export default function AdminMappingsPage() {
               <DataTable columns={columns} data={shown} getRowId={(m) => m.id} />
             </DraftsContext.Provider>
           </Card>
-        )}
+        )}</Async>
     </div>
   );
 }

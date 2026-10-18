@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Pill, Skeleton, Switch } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Pill, Skeleton, Switch, Async } from "@/design";
 import {
   getPurgeLog, getRetention, getRetentionPreview, updateRetention,
   type PurgeLogEntry, type RetentionPolicy, type RetentionPreviewItem, type RowsByTable,
@@ -149,9 +149,7 @@ export function RetentionPanel() {
   return (
     <Card title="Retention" meta="How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task">
       <div className="flex flex-col gap-4">
-        {q.isLoading ? <Skeleton height={120} /> : q.isError ? (
-          <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
-        ) : (
+        <Async query={q} skeleton={120}>{(
           <>
             {statusLine ? (
               <Notice tone={enforcement?.enforced ? "warning" : "info"}>
@@ -179,7 +177,7 @@ export function RetentionPanel() {
               Only archived runs are purged, never the baseline nor the newest runs of each system. Golden records, rules, glossary terms and contracts are never touched.
             </p>
           </>
-        )}
+        )}</Async>
 
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-semibold" style={{ fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" }}>Preview</h3>
@@ -196,13 +194,11 @@ export function RetentionPanel() {
         )}
 
         <h3 className="font-semibold" style={{ fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" }}>Purge log</h3>
-        {log.isLoading ? <Skeleton height={64} /> : isListFailure(log) ? (
-          <ErrorState {...apiErrorState(log.error)} onRetry={() => log.refetch()} />
-        ) : !log.data?.length ? (
+        <Async query={log} skeleton={64} notFoundIsEmpty>{!log.data?.length ? (
           <EmptyState title="No purge yet" detail="Dry runs and purges appear here with the rows removed per table" action={<Button variant="ghost" onClick={() => log.refetch()}>Refresh</Button>} />
         ) : (
           <DataTable columns={logColumns} data={log.data} getRowId={(r) => r.id} tableId="purge-log" hideToolbar />
-        )}
+        )}</Async>
       </div>
     </Card>
   );

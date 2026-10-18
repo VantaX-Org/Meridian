@@ -7,12 +7,12 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, Dialog, ExplorerPage, Field, PageHeader, Pill, Select, Input } from "@/design";
+import { Button, DataTable, Dialog, ExplorerPage, Field, PageHeader, Pill, Select, Input, asyncStateOf } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest,
 } from "@/lib/api/notifications";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { usePermissions } from "@/lib/permissions";
 import { email, length, oneOf, pattern, required, url, useFormErrors, type Schema } from "@/lib/forms";
 
@@ -100,7 +100,7 @@ export default function NotificationsAdminPage() {
       <ExplorerPage
         header={<PageHeader title="Notifications" meta="Outbound alert channels" actions={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined} />}
         summary={<p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>.</p>}
-        state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
+        state={asyncStateOf(q, () => items.length === 0, true)}
         emptyProps={{ title: "No alert channels", detail: "Add email, Slack, Teams or a webhook to send critical alerts and digests.", action: canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined }}
         errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
         table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}

@@ -6,11 +6,11 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, ConfirmDialog, DataTable, EmptyState, ErrorState, Menu, Pill, Skeleton, type PillTone } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, EmptyState, Menu, Pill, type PillTone, Async } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { allowedVersionTargets, transitionRuleVersion, type RuleVersionState } from "@/lib/api/rule-authoring";
 import { getRuleVersions, type RuleVersion } from "@/lib/api/rules";
-import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { formatDate, labelOf } from "@/lib/format";
 
 const STATE_TONE: Record<string, PillTone> = { draft: "neutral", in_review: "at-risk", active: "go", retired: "neutral" };
@@ -67,9 +67,7 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
   const versions = q.data?.versions ?? [];
   return (
     <Card title="Versions" meta="A new version applies from the next analysis run">
-      {q.isLoading ? <Skeleton height={96} /> : q.isError ? (
-        <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
-      ) : versions.length === 0 ? (
+      <Async query={q} skeleton={96}>{versions.length === 0 ? (
         <EmptyState
           variant="inline"
           title="No tenant versions"
@@ -77,7 +75,7 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
         />
       ) : (
         <DataTable columns={columns} data={versions} getRowId={(v) => String(v.version)} hideToolbar dense height="auto" tableId="rule-versions" />
-      )}
+      )}</Async>
       <ConfirmDialog
         open={retiring !== null}
         onOpenChange={(o) => { if (!o) setRetiring(null); }}

@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, Mono, Pill } from "@/design";
+import { Button, DataTable, ExplorerPage, Mono, Pill, asyncStateOf } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { endRuleSuppression, getRuleFeedback, getRuleSuppressions, type RuleFeedbackRow, type RuleSuppression } from "@/lib/api/rules";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 
 /** Active rule suppressions. Ending one needs `approve`; creating one happens from a finding. */
@@ -34,7 +34,7 @@ export function SuppressionsPanel() {
   const rows = q.data?.suppressions ?? [];
   return (
     <ExplorerPage
-      state={q.isLoading ? "loading" : isListFailure({ isError: q.isError, error: q.error }) ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(q, () => rows.length === 0, true)}
       emptyProps={{ title: "No active suppressions", detail: "A suppression keeps a rule or one record out of the score until it expires", action: <Button variant="secondary" render={<Link href="/rules">Browse rules</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />}
@@ -59,7 +59,7 @@ export function FeedbackPanel() {
   const rows = q.data?.rules ?? [];
   return (
     <ExplorerPage
-      state={q.isLoading ? "loading" : isListFailure({ isError: q.isError, error: q.error }) ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(q, () => rows.length === 0, true)}
       emptyProps={{ title: "No steward feedback yet", detail: "Verdicts appear when stewards mark flagged records as real or false positive", action: <Button variant="secondary" render={<Link href="/runs">View runs</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={feedbackColumns} data={rows} getRowId={(r) => r.check_id} />}

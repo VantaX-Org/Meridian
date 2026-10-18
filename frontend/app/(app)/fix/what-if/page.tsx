@@ -5,11 +5,11 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall } from "@/design";
+import { Button, Card, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall, asyncStateOf } from "@/design";
 import { createSimulation, getSimulation, isSimulationResult } from "@/lib/api/simulation";
 import { getVersions } from "@/lib/api/versions";
 import { isFinished } from "@/lib/runs";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { useSearchParams } from "next/navigation";
 import { usePermissions } from "@/lib/permissions";
 import { CreateBatchFromSimulation, RuleImpact } from "./rule-impact";
@@ -49,7 +49,7 @@ export default function WhatIfPage() {
   const o = result?.dqs.overall;
   return (
     <ReportPage
-      state={versions.isLoading ? "loading" : isListFailure(versions) ? "error" : runs.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(versions, () => runs.length === 0, true)}
       emptyProps={{ title: "No finished run to simulate", detail: "Run an analysis, then come back to see what the fixes would be worth.", ghost: "chart" }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
       narrative={controls}

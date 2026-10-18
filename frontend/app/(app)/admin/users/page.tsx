@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
+import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
@@ -131,13 +131,11 @@ function UsersView() {
         <Stat label="Never signed in" value={usersQ.isLoading ? undefined : neverSignedIn} />
       </div>
 
-      {usersQ.isError ? (
-        <ErrorState {...apiErrorState(usersQ.error)} onRetry={() => usersQ.refetch()} />
-      ) : usersQ.isLoading ? <Skeleton height={240} /> : users.length ? (
+      <Async query={usersQ} skeleton={240}>{users.length ? (
         <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowClick={(u) => setEditing(u)} />
       ) : (
         <EmptyState title="No users yet" detail="Invite the first steward or analyst." action={<Button onClick={() => setInvite(true)}>Invite user</Button>}/>
-      )}
+      )}</Async>
 
       <Drawer open={invite} onOpenChange={setInvite} title="Invite a user">
         {invite ? <InviteForm onDone={() => { setInvite(false); refresh(); }} /> : null}
@@ -214,11 +212,9 @@ function AuditView() {
           ]}
         />
       </div>
-      {auditQ.isError ? (
-        <ErrorState {...apiErrorState(auditQ.error)} onRetry={() => auditQ.refetch()} />
-      ) : auditQ.isLoading ? <Skeleton height={240} /> : entries.length ? (
+      <Async query={auditQ} skeleton={240}>{entries.length ? (
         <DataTable columns={auditCols} data={entries} getRowId={(e) => e.id} />
-      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}
+      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}</Async>
     </div>
   );
 }

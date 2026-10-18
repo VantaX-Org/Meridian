@@ -121,7 +121,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     return (
       <HomePage
         persona={role}
-        state="no-data"
+        state="empty"
         journey={{
           systemsConnected: (systemsQ.data ?? []).length > 0,
           configLoaded: (landscapeQ.data?.loaded ?? 0) > 0,
@@ -341,7 +341,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   return (
     <HomePage
       persona={role}
-      state="data"
+      state="ready"
       verdict={{
         dqs,
         delta: previous ? runDelta(trendPoints) : null,

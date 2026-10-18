@@ -8,12 +8,11 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip, DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type HeatmapCell, entityTabs, NextActions, PageHeader, Status } from "@/design";
+import { Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip, DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type HeatmapCell, entityTabs, NextActions, PageHeader, Status, asyncStateOf } from "@/design";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { isListFailure } from "@/lib/error";
 import { exportFindings, getFindings, getFindingsAggregate, getScoreHistory, type FindingsAggregate } from "@/lib/api/findings";
 import { errorText } from "@/lib/api/remediation";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
@@ -128,7 +127,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
           rowHref={(o) => `/objects/${o.module}?run=${versionId}`}
         />
       }
-      state={objects.isLoading ? "loading" : isListFailure(objects) ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(objects, () => rows.length === 0, true)}
       emptyProps={{ title: "No objects scored", detail: "This run produced no object scores.", action: <Button onClick={onOpenSteps}>Open steps</Button> }}
       errorProps={{ message: errorText(objects.error), onRetry: () => objects.refetch() }}
     />
@@ -406,7 +405,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
           </div>
         </div>
       }
-      state={findings.isLoading ? "loading" : isListFailure(findings) ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(findings, () => rows.length === 0, true)}
       emptyProps={
         filtered
           ? { title: "No findings match", detail: "Try removing a filter.", action: <Button onClick={clearFilters}>Clear filters</Button> }
@@ -671,7 +670,7 @@ export default function RunDetailPage() {
                     )}
                   />
                 }
-                state={steps.isLoading ? "loading" : isListFailure(steps) ? "error" : stepRows.length === 0 ? "empty" : undefined}
+                state={asyncStateOf(steps, () => stepRows.length === 0, true)}
                 emptyProps={{
                   title: "No steps recorded",
                   detail: "This run has no step history.",

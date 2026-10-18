@@ -6,13 +6,13 @@ import { useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, Field, Input, Pill, Select } from "@/design";
+import { Button, Card, Field, Input, Pill, Select, asyncStateOf } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
 import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
 import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
 import { lineageOf } from "@/lib/runs";
@@ -113,7 +113,7 @@ export default function ReportsPage() {
           <Select label="Object" value={module} onValueChange={setModule} options={[{ value: NONE, label: "All objects" }, ...(heat.data?.rows ?? []).map((r) => ({ value: r.module, label: formatModuleName(r.module) }))]} />
         </>
       }
-      state={versions.isLoading ? "loading" : isListFailure(versions) ? "error" : runs.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(versions, () => runs.length === 0, true)}
       emptyProps={{ title: "No completed run yet", detail: "Reports are rendered from a finished run.", ghost: "table", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
     >

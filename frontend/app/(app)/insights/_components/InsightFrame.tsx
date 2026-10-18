@@ -5,7 +5,7 @@
 // drop a piece of it.
 import type { ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Card, EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
+import { Async, Card, PageHeader, InsightHeader, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { useRunScope } from "@/hooks/use-run-scope";
@@ -43,9 +43,10 @@ export interface InsightFrameProps {
   /** Extra export formats added before the failing-records list. */
   exportOptions?: ExportOption[];
   insight?: InsightHeaderProps;
-  state?: "loading" | "empty" | "error";
+  /** The body's state (`Async`); default "ready". */
+  state?: AsyncState;
   emptyProps?: { title: string; detail?: string; action: ReactNode; ghost?: EmptyStateGhost };
-  errorProps?: { message: string; onRetry?: () => void };
+  errorProps?: AsyncError;
   /** Loading body shaped like the final cards so nothing shifts. */
   skeleton?: ReactNode;
   children?: ReactNode;
@@ -78,28 +79,25 @@ function InsightRunScope() {
   return <RunScope scope={scope} picker hrefFor={(id) => hrefWithRun(pathname, search, id)} />;
 }
 
-export const SLOW_LOAD_MESSAGE = "This is taking longer than expected.";
+export { SLOW_LOAD_MESSAGE } from "@/design";
 
 export function InsightFrame({
   title, meta, scope, actions, controls, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
 }: InsightFrameProps) {
-  // A skeleton that never resolves becomes an error with Retry after the shared timeout.
+  // A skeleton that never resolves becomes an error with Retry after the shared timeout (inside Async); the
+  // header gives way with it.
   const stuck = useLoadingTimeout(state === "loading");
-  const retry = errorProps?.onRetry ?? (() => window.location.reload());
-  let body: ReactNode = children;
-  if (state === "loading" && stuck) {
-    body = <ErrorState title={SLOW_LOAD_MESSAGE} message="The server has not answered. Retry, or check the job tray." onRetry={retry} />;
-  } else if (state === "loading") {
-    body = (
-      <div aria-busy="true" className="flex flex-col gap-4">
-        {skeleton ?? <CardSkeleton height={240} />}
-      </div>
-    );
-  } else if (state === "empty" && emptyProps) {
-    body = <EmptyState title={emptyProps.title} detail={emptyProps.detail} action={emptyProps.action} ghost={emptyProps.ghost ?? "chart"} />;
-  } else if (state === "error") {
-    body = <ErrorState message={errorProps?.message ?? "Something went wrong"} onRetry={errorProps?.onRetry} />;
-  }
+  // Empty without empty copy keeps the children (a page that renders its own empty cards).
+  const body = (
+    <Async
+      state={state === "empty" && !emptyProps ? "ready" : state}
+      skeleton={<div className="flex flex-col gap-4">{skeleton ?? <CardSkeleton height={240} />}</div>}
+      empty={emptyProps && { ...emptyProps, ghost: emptyProps.ghost ?? "chart" }}
+      error={errorProps ?? { message: "Something went wrong" }}
+    >
+      {children}
+    </Async>
+  );
   const actionBar = actions ?? (
     <div className="flex flex-wrap items-center gap-2">
       {controls}

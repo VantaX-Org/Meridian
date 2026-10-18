@@ -23,6 +23,7 @@ export * from "./primitives/Skeleton";
 export * from "./primitives/Counter";
 export * from "./primitives/EmptyState";
 export * from "./primitives/ErrorState";
+export * from "./primitives/Async";
 export * from "./primitives/Mono";
 export * from "./primitives/Delta";
 export * from "./primitives/Stat";

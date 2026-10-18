@@ -4,10 +4,10 @@
 
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Button, Card, ExplorerPage, PageHeader, Select, Switch, NotificationRow, NOTIFICATION_TYPE_LABEL, useNotificationMutations } from "@/design";
+import { Button, Card, ExplorerPage, PageHeader, Select, Switch, NotificationRow, NOTIFICATION_TYPE_LABEL, useNotificationMutations, asyncStateOf } from "@/design";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { getNotifications, getUnreadCount } from "@/lib/api/notifications";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { Notification, NotificationType } from "@/types/api";
 
@@ -48,7 +48,7 @@ export default function NotificationsPage() {
           <Switch label="Unread only" checked={unreadOnly} onCheckedChange={(on) => { setLimit(PAGE); setUnread(on ? "1" : ""); }} />
         </div>
       }
-      state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(q, () => items.length === 0, true)}
       emptyProps={{
         title: filtering ? "No notifications match" : "You are all caught up",
         detail: filtering ? "Try another type or show read notifications" : "Findings, approvals and digests appear here",

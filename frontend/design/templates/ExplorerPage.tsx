@@ -2,13 +2,10 @@
 
 // frontend/design/templates/ExplorerPage.tsx
 import type { ReactNode } from "react";
-import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
-import { ErrorState } from "../primitives/ErrorState";
+import { Async, type AsyncEmpty, type AsyncError, type AsyncState } from "../primitives/Async";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { PageFrame } from "./PageFrame";
 import { useLoadingTimeout } from "../hooks/useLoadingTimeout";
-
-const SLOW = "This is taking longer than expected.";
 
 export function ExplorerPage({
   header,
@@ -33,11 +30,11 @@ export function ExplorerPage({
   toolbarEnd?: ReactNode;
   summary?: ReactNode;
   table: ReactNode;
-  /** Swaps the table region for a skeleton, empty or error state. */
-  state?: "loading" | "empty" | "error";
+  /** Swaps the table region for a skeleton, empty or error state (`Async`); default "ready". */
+  state?: AsyncState;
   /** `summary` is still read by the objects page; kept until page tasks drop it. */
-  emptyProps?: { title: string; detail?: string; action?: ReactNode; ghost?: EmptyStateGhost; summary?: string };
-  errorProps?: { message: string; onRetry?: () => void };
+  emptyProps?: AsyncEmpty & { summary?: string };
+  errorProps?: AsyncError;
   /** A drawer rendered alongside the page, e.g. a row-detail panel. */
   drawer?: ReactNode;
   /** A band under the stats and above the table, e.g. the runs systems strip. */
@@ -46,37 +43,31 @@ export function ExplorerPage({
   aside?: ReactNode;
 }) {
   const stuck = useLoadingTimeout(state === "loading");
-  let body = table;
+  // Toolbar, table header (28) and twelve rows, so loading does not shift the layout.
+  const rowH = dense ? "var(--m-row-h-dense)" : "var(--m-row-h)";
+  const skeleton = (
+    <div className="m-motion-stagger flex flex-col gap-1">
+      <div style={{ height: "var(--m-control-h)" }}><Skeleton width={320} height="100%" /></div>
+      <div style={{ height: 28 }}><Skeleton height="100%" /></div>
+      {Array.from({ length: 12 }, (_, i) => <div key={i} style={{ height: rowH }}><Skeleton height="100%" /></div>)}
+    </div>
+  );
+  const body = (
+    <Async
+      state={state}
+      skeleton={skeleton}
+      empty={{ ...emptyProps, title: emptyProps?.title ?? "Nothing to show", ghost: emptyProps?.ghost ?? "table" }}
+      error={errorProps ?? { message: "Something went wrong" }}
+    >
+      {table}
+    </Async>
+  );
   let summarySlot = summary;
-  if (state === "loading" && stuck) {
-    // A skeleton that never resolves gives way to an error with Retry.
-    body = <ErrorState title={SLOW} message="The server has not answered. Retry, or check the job tray." onRetry={errorProps?.onRetry ?? (() => window.location.reload())} />;
-  } else if (state === "loading") {
-    // Stat row (84), toolbar, table header (28) and twelve rows (30), so loading does not shift the layout.
-    const rowH = dense ? "var(--m-row-h-dense)" : "var(--m-row-h)";
-    body = (
-      <div className="m-motion-stagger flex flex-col gap-1" data-state="loading">
-        <div style={{ height: "var(--m-control-h)" }}><Skeleton width={320} height="100%" /></div>
-        <div style={{ height: 28 }}><Skeleton height="100%" /></div>
-        {Array.from({ length: 12 }, (_, i) => <div key={i} style={{ height: rowH }}><Skeleton height="100%" /></div>)}
-      </div>
-    );
-    // A page that passes its own summary keeps it (it reserves its own loading geometry).
+  if (state === "loading" && !stuck) {
+    // A page that passes its own summary keeps it (it reserves its own loading geometry); otherwise the stat row (84).
     summarySlot = summary || <div className="m-stat-grid" data-testid="explorer-stat-skeleton">{[0, 1, 2, 3].map((i) => <StatSkeleton key={i} />)}</div>;
-  } else if (state === "empty") {
-    if (emptyProps?.summary) {
-      summarySlot = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{emptyProps.summary}</p>;
-    }
-    body = (
-      <EmptyState
-        title={emptyProps?.title ?? "Nothing to show"}
-        detail={emptyProps?.detail}
-        action={emptyProps?.action}
-        ghost={emptyProps?.ghost ?? "table"}
-      />
-    );
-  } else if (state === "error") {
-    body = <ErrorState message={errorProps?.message ?? "Something went wrong"} onRetry={errorProps?.onRetry} />;
+  } else if (state === "empty" && emptyProps?.summary) {
+    summarySlot = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{emptyProps.summary}</p>;
   }
 
   return (

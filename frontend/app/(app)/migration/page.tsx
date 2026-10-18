@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
-import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat, Status } from "@/design";
+import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat, Status, asyncStateOf } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -124,7 +124,7 @@ export default function MigrationPage() {
         }
         table={<DataTable columns={columns} data={shownWaves} getRowId={(w) => w.id}
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}
-        state={waves.isPending ? "loading" : isListFailure(waves) ? "error" : data.length === 0 ? "empty" : undefined}
+        state={asyncStateOf(waves, () => data.length === 0, true)}
         emptyProps={{ title: "No migration waves yet. Create one to track readiness.", action: createButton }}
         errorProps={{ message: apiErrorMessage(waves.error), onRetry: () => void waves.refetch() }}
       />
