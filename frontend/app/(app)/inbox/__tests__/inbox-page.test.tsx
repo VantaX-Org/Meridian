@@ -6,8 +6,8 @@ import * as stewardship from "@/lib/api/stewardship";
 import * as triage from "@/lib/api/triage";
 import InboxPage from "../page";
 
-const nav = vi.hoisted(() => ({ replace: vi.fn(), qs: "view=mine&type=exception&keep=1" }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => false }) }));
+const nav = vi.hoisted(() => ({ replace: vi.fn(), qs: "view=mine&type=exception&keep=1", can: false }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => nav.can }) }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
 vi.mock("@/hooks/use-day-one", () => ({
   useDayOne: () => ({ step: null }),
@@ -19,7 +19,28 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(nav.qs),
 }));
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); nav.can = false; nav.qs = "view=mine&type=exception&keep=1"; });
+
+describe("InboxPage counts", () => {
+  it("labels the team counts as all queues, not the inbox list, and groups digits", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [{
+        id: "i1", tenant_id: "t", item_type: "exception", source_id: "s", domain: "material_master", priority: 1,
+        due_at: null, assigned_to: null, status: "open", sla_hours: null,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: null, ai_confidence: null,
+      }] : [],
+      total: p?.status === "open" ? 1 : 0,
+    }));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 41191, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    expect(await screen.findByText("1 open, 0 overdue")).toBeTruthy();
+    expect(await screen.findByText("Who holds the work across all queues")).toBeTruthy();
+    expect(screen.getByText("41,191 open across all queues")).toBeTruthy();
+  });
+});
 
 describe("InboxPage show all", () => {
   it("clears view and type in one URL replace", async () => {
