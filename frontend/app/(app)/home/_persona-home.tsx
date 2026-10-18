@@ -6,10 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Select, Skeleton, Sparkline, Stat,
-  type HeatmapCell, type PillTone,
-} from "@/design";
+import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, Select, Skeleton, Sparkline, Stat, type HeatmapCell, Status, ScoreRing } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { getFindings } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
@@ -48,11 +45,6 @@ const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.He
 
 const READINESS_SEVERITY = { fail: "critical", warn: "medium", pass: "pass" } as const;
 
-const READINESS_PILL: Record<NonNullable<ObjectSummary["readiness"]>, { tone: PillTone; label: string }> = {
-  pass: { tone: "go", label: "Go" },
-  warn: { tone: "at-risk", label: "At risk" },
-  fail: { tone: "no-go", label: "No-go" },
-};
 
 
 /** Header label for a run: never a raw id (same formula as the run selector). */
@@ -245,8 +237,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       id: "readiness", header: "Readiness", meta: { severity: true },
       accessorFn: (o) => (o.readiness ? READINESS_SEVERITY[o.readiness] : ""),
       cell: ({ row: { original: o } }) => {
-        const p = o.readiness ? READINESS_PILL[o.readiness] : null;
-        return p ? <Pill tone={p.tone} variant="solid">{p.label}</Pill> : <Pill>Not analysed</Pill>;
+        return o.readiness ? <Status kind="verdict" value={o.readiness} variant="solid" /> : <Pill>Not analysed</Pill>;
       },
     },
     {

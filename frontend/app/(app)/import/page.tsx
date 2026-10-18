@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Skeleton, Stat, type PillTone, PageFrame } from "@/design";
+import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Skeleton, Stat, type PillTone, PageFrame, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
@@ -33,7 +33,6 @@ function versionDqs(v: Version): number | null {
   const scores = Object.values(v.dqs_summary ?? {}).flatMap((m) => (m.composite_score == null ? [] : [m.composite_score]));
   return scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
 }
-const versionTone = (s: string): PillTone => (s === "failed" || s === "agents_failed" ? "no-go" : TERMINAL.has(s) ? "go" : "at-risk");
 const confidenceTone = (c: number): PillTone => (c >= 0.85 ? "go" : c >= 0.6 ? "at-risk" : "no-go");
 
 export default function ImportPage() {
@@ -103,7 +102,7 @@ export default function ImportPage() {
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
     { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <DrillLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</DrillLink> : "") },
     { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink>; } },
-    { id: "status", header: "Status", cell: ({ row }) => <Pill tone={versionTone(row.original.status)}>{labelOf(row.original.status)}</Pill> },
+    { id: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
     { id: "when", header: "Imported", cell: ({ row }) => relativeTime(row.original.run_at) },
   ], []);
   const mapColumns = useMemo<ColumnDef<MatchResponse["mappings"][number]>[]>(() => [

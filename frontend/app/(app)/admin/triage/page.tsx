@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createRule, createTeam, deleteRule, deleteSlaPolicy, deleteTeam, getRules, getSlaPolicies, getTeams, getTriageSettings,
@@ -13,7 +13,7 @@ import {
 } from "@/lib/api/triage";
 import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorMessage } from "@/lib/error";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 type User = { id: string; name: string; email: string };
@@ -381,7 +381,7 @@ function PoliciesSection({ write }: { write: boolean }) {
   });
 
   const slaCols: ColumnDef<SlaPolicy, unknown>[] = [
-    { id: "sev", header: "Severity", cell: ({ row }) => <Pill tone={row.original.severity === "critical" ? "no-go" : row.original.severity === "high" ? "at-risk" : "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "sev", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "mod", header: "Module", cell: ({ row }) => (row.original.module ? formatModuleName(row.original.module) : "All modules") },
     { id: "ack", header: "Acknowledge", cell: ({ row }) => mins(row.original.ack_minutes) },
     { id: "res", header: "Resolve", cell: ({ row }) => mins(row.original.resolve_minutes) },

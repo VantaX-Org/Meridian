@@ -1,6 +1,4 @@
-import {
-  Button, Card, IconButton, Pill, Badge, PageHeader, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono,
-} from "@/design";
+import { Button, Card, IconButton, Pill, Status, Badge, PageHeader, SeverityDot, Delta, Stat, Skeleton, Mono, ScoreRing } from "@/design";
 
 import { ExportDemo } from "./export-demo";
 import { GalleryMore } from "./gallery-more";
@@ -24,10 +22,21 @@ export default function DesignGalleryPage() {
             <IconButton aria-label="Example icon button">{"•"}</IconButton>
           </div>
           <div className="flex gap-2 items-center">
-            <Pill tone="go">Go</Pill>
-            <Pill tone="at-risk">At risk</Pill>
-            <Pill tone="no-go">No-go</Pill>
+            <Status kind="verdict" value="go" />
+            <Status kind="verdict" value="at-risk" />
+            <Status kind="verdict" value="no-go" />
             <Badge count={3} />
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <Status kind="severity" value="critical" />
+            <Status kind="severity" value="high" />
+            <Status kind="severity" value="medium" />
+            <Status kind="severity" value="low" />
+            <Status kind="lifecycle" value="queued" />
+            <Status kind="lifecycle" value="running" />
+            <Status kind="lifecycle" value="done" />
+            <Status kind="lifecycle" value="failed" />
+            <Pill>Free label</Pill>
           </div>
           <div className="flex gap-4 items-center">
             <SeverityDot severity="critical" />

@@ -5,22 +5,15 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Notice, Pill, ReportPage, type PillTone } from "@/design";
+import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Notice, ReportPage, Status } from "@/design";
 import { JobProgress } from "@/design/shell/JobProgress";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { getJob } from "@/lib/api/jobs";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { apiErrorState } from "@/lib/error";
-import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
-const STATUS_TONE: Record<string, PillTone> = {
-  failed: "no-go",
-  ok: "go",
-  complete: "go",
-};
 
-const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk";
 
 const columns: ColumnDef<RunStep>[] = [
   { accessorKey: "step_number", header: "#" },
@@ -28,7 +21,7 @@ const columns: ColumnDef<RunStep>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill>,
+    cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} />,
   },
   {
     accessorKey: "duration_ms",

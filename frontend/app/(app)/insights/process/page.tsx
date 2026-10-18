@@ -19,20 +19,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  Button, Card, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs,
-  type InsightHeaderProps, type PillTone,
-} from "@/design";
+import { Button, Card, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
+import { apiErrorState } from "@/lib/error";
 import { isCompleteVersion, useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
-import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
+import { getMiningGraph } from "@/lib/api/process-mining";
 import { formatModuleName, formatDate, plural, runOptionLabels } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
-import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRunList } from "@/hooks/use-run-list";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -98,22 +95,13 @@ const score = (fs: BusinessProcessL5Field[]) =>
 const red = (fs: BusinessProcessL5Field[]) => fs.filter((f) => f.dq_status === "red").length;
 const sev = (f: BusinessProcessL5Field): "critical" | "high" | "medium" =>
   f.mandatory ? "critical" : (f.pass_rate ?? 100) < 50 ? "high" : "medium";
-const SEV_TONE: Record<"critical" | "high" | "medium", PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk" };
-const SEV_LABEL: Record<"critical" | "high" | "medium", string> = { critical: "Critical", high: "High", medium: "Medium" };
 
-const STATE: Record<ConfigImpactResult["status"], { tone: PillTone; label: string }> = {
-  blocked: { tone: "no-go", label: "Blocked" },
-  degraded: { tone: "at-risk", label: "Degraded" },
-  ok: { tone: "go", label: "Unaffected" },
-};
 const ORDER = { blocked: 0, degraded: 1, ok: 2 } as const;
 
 /* ---------- Readiness ---------- */
 
 const fmt1 = (n: number) => n.toFixed(1);
 const records = (n: number) => plural(n, "record");
-const AWARE_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", warning: "at-risk", low: "go" };
-const AWARE_LABEL: Record<string, string> = { critical: "Critical", high: "High", medium: "Medium", warning: "Warning", low: "Low" };
 
 function ConfiguredInText({ items }: { items: ConfiguredIn[] }) {
   return (
@@ -167,7 +155,7 @@ function NotApplicableList({ title, t, findingHref }: {
       <ul className="flex flex-col gap-1">
         {shown.map((na) => (
           <li key={na.check_id} className="flex items-center gap-3">
-            <Pill tone={AWARE_TONE[na.severity ?? ""] ?? "neutral"}>{AWARE_LABEL[na.severity ?? ""] ?? na.severity ?? "Unrated"}</Pill>
+            {na.severity ? <Status kind="severity" value={na.severity} /> : <Pill>Unrated</Pill>}
             <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? "/analyse"}>
               <Mono>{na.check_id}</Mono>
             </Link>
@@ -206,7 +194,7 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
         <ul className="flex flex-col gap-1" aria-label={`Top failing rules, ${title}`}>
           {t.top_failing.slice(0, 5).map((f) => (
             <li key={f.check_id} className="flex items-center gap-3">
-              <Pill tone={AWARE_TONE[f.severity ?? ""] ?? "neutral"}>{AWARE_LABEL[f.severity ?? ""] ?? f.severity ?? "Unrated"}</Pill>
+              {f.severity ? <Status kind="severity" value={f.severity} /> : <Pill>Unrated</Pill>}
               <Link className="flex-1 underline" href={findingHref(f.module, f.check_id) ?? "/analyse"}>
                 <Mono>{f.check_id}</Mono>
               </Link>
@@ -231,7 +219,7 @@ function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
       <ul className="flex flex-col gap-2">
         {sorted.slice(0, 20).map((r) => (
           <li key={`${r.system}:${r.feature}`} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
-            <Pill tone={STATE[r.status].tone}>{STATE[r.status].label}</Pill>
+            <Status kind="verdict" value={r.status} />
             <span className="flex-1">{r.feature}</span>
             <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{r.system}</span>
             <span className="m-text-body">{records(r.total_affected_records)}</span>
@@ -413,7 +401,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
             <ul className="flex flex-col gap-2">
               {blockingFindings.slice(0, 10).map((b) => (
                 <li key={b.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
-                  <Pill tone={SEV_TONE[b.severity]}>{SEV_LABEL[b.severity]}</Pill>
+                  <Status kind="severity" value={b.severity} />
                   <span className="flex-1">{b.href ? <Link className="underline" href={b.href}>{b.title}</Link> : b.title}</span>
                   <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{b.gate}</span>
                   <span className="m-text-body">{records(b.affected)}</span>
@@ -459,9 +447,6 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
 
 /* ---------- Map ---------- */
 
-const STEP_TONE: Record<MiningActivity["step_status"], PillTone> = { green: "go", amber: "at-risk", red: "no-go" };
-const STEP_LABEL: Record<MiningActivity["step_status"], string> = { green: "Passing", amber: "Some fields failing", red: "Blocking failures" };
-const READINESS_LABEL: Record<MiningVariant["readiness"], string> = { green: "Ready", amber: "At risk", red: "Blocked" };
 const MAPPED = new Set(["accounts_payable", "accounts_receivable", "fi_gl", "material_master", "mm_purchasing", "sd_customer_master", "sd_sales_orders"]);
 
 function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) {
@@ -569,7 +554,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
                 <ol className="flex flex-col gap-2">
                   {bottlenecks.slice(0, 8).map((b) => (
                     <li key={b.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
-                      <Pill tone={STEP_TONE[b.step_status]}>{b.step_status === "red" ? "Blocking" : "Failing"}</Pill>
+                      <Status kind="verdict" value={b.step_status} />
                       <span className="flex-1">{b.label}</span>
                       <span className="m-text-body">{records(b.affected_records)}</span>
                     </li>
@@ -582,7 +567,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
                 <ul className="flex flex-col gap-2">
                   {variants.slice(0, 8).map((v) => (
                     <li key={v.id} className="flex items-center gap-3 border-b py-2" style={{ borderColor: "var(--m-line)" }}>
-                      <Pill tone={STEP_TONE[v.readiness] ?? "neutral"}>{READINESS_LABEL[v.readiness] ?? v.readiness}</Pill>
+                      <Status kind="verdict" value={v.readiness} />
                       <span className="flex-1">{v.label}</span>
                       <span className="m-text-body">{plural(v.activity_count, "step")}</span>
                     </li>
@@ -597,7 +582,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
       <Drawer open={!!picked} onOpenChange={(o) => { if (!o) setNode(null); }} title={picked?.label ?? "Step"}>
         {picked ? (
           <div className="flex flex-col gap-2">
-            <Pill tone={STEP_TONE[picked.step_status]}>{STEP_LABEL[picked.step_status]}</Pill>
+            <Status kind="verdict" value={picked.step_status} />
             <p>
               {picked.tcode ? <><Mono>{picked.tcode}</Mono>, </> : null}{picked.affected_records.toLocaleString()} affected records, {picked.finding_count.toLocaleString()} findings
               {picked.avg_pass_rate != null ? `, ${Math.round(picked.avg_pass_rate)}% pass rate` : ""}.

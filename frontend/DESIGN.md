@@ -53,7 +53,8 @@ All in `@/design`; there is no second library. Pages compose these and draw noth
 - **Field** with a control, **Select**, **Combobox**, **Checkbox**, **Menu**: 34px controls (`--m-control-h`), 6px radius, labels 12/16 medium, helper and error text under the control, never inside the label.
 - **Card**: white sheet, 1px `--m-line` border on every side, `--m-radius-sheet` (8px), `--m-card-pad` (24px), optional title 15/22, meta and actions. Replaces every hand-rolled `rounded border` box.
 - **Notice**: tinted note with a 3px tone bar (info, warning, danger, success). Replaces raw alert boxes.
-- **Pill, Badge, SeverityDot**: state only. Pills are sentence case with no full stop.
+- **Status**: the one status vocabulary (see "Status vocabulary" below). `<Status kind="verdict" value={api.verdict} />` renders the pill with the canonical label and tone; callers pass the API value and never write the label.
+- **Pill, Badge, SeverityDot**: `Pill` is a free label (a tag, a role, "Baseline", a count sentence) in `neutral`, `info` or a verdict tone; when the text is a verdict, a severity or a lifecycle stage it is a `Status` instead. `Badge` is a count only (`tone="critical"` for counts of failing items). Pills are sentence case with no full stop.
 - **Stat**: label, value (`min-width: 4ch`, tabular), delta, optional `href` or `onClick`, `loading` skeleton at the same height. `hero` sets the value at the 64px hero size; `bar` (0 to 100) draws the score bar under it, one 8px horizontal bar in the verdict or DQS band hue.
 - **Score hero** (`.m-hero`: Home's verdict row, the Insights and Executive summary `InsightHeader hero`): a white card holding the plain large score, its one bar, the verdict sentence and at most four stat-size tiles. No dark band, no glow, no gradient.
 - **ScoreRing / DqsScore**: the logo geometry (270 degree arc open at the top). `DqsScore` explains itself: formula, six inputs, cap reason with links.
@@ -63,6 +64,26 @@ All in `@/design`; there is no second library. Pages compose these and draw noth
 - **Toasts** (`toast` from `@/design`, wraps sonner): `toast.undoable(message, { undo, timeoutMs })` adds an Undo action and only exists for actions whose API has a real inverse. No inverse endpoint, no undo.
 - **Error surfaces**: `app/(app)/error.tsx` (inside the shell, reference id, Try again, Go home, Copy details), `app/global-error.tsx` (no shell, inline token styles), `app/(app)/not-found.tsx` and `app/not-found.tsx`. Every error is reported once per session to `POST /api/v1/client-errors` through `lib/client-errors.ts`; nothing goes to a third party.
 - **Charts** (`design/charts`): horizontal grid only, no axis lines, series `--m-viz-1..8`, custom tooltip, each chart has a sentence under its title saying what it answers.
+
+### Status vocabulary
+
+Three fixed sets. Each value has one label and one tone; `Status` normalises the API's spellings (`at_risk`, `fail`, `red`, `blocked`, `agents_complete`, `warning` ...) with `toVerdict`, `toSeverity` and `toLifecycle`, and a value outside its set renders neutral with its own humanised text.
+
+| Kind | Value | Label | Tone | Reads in place of |
+|---|---|---|---|---|
+| verdict | `go` | Go | `--m-go` (green), dot | Pass, Ready, Passing, Unaffected, Compliant |
+| verdict | `at-risk` | At risk | `--m-at-risk` (amber), dot | Warn, Degraded, Failing, Some fields failing |
+| verdict | `no-go` | No-go | `--m-no-go` (red), dot | Fail, Blocked, Blocking, Not ready |
+| severity | `critical` | Critical | `--m-critical`, square | |
+| severity | `high` | High | `--m-high`, triangle | |
+| severity | `medium` | Medium | `--m-medium`, circle | Warning |
+| severity | `low` | Low | `--m-low`, ring | Info |
+| lifecycle | `queued` | Queued | neutral | Pending, Waiting |
+| lifecycle | `running` | Running | `--m-info` | Processing, Extracting, Mining |
+| lifecycle | `done` | Done | `--m-go`, dot | Complete, Completed, Agents complete |
+| lifecycle | `failed` | Failed | `--m-no-go`, dot | Agents failed, Error |
+
+`variant="solid"` is for the row's primary verdict or severity (one column per table). Other components speak the same values: `Stat tone` and `InsightHeader` cells take a verdict, `Card tone="critical"` and `Badge tone="critical"` take the severity value. `Notice` is a message, not a state, and keeps its message severities: `info` (neutral note), `success` (draws in the go hue), `warning` (the at-risk hue), `danger` (the no-go hue).
 
 Copy: no full stops in table cells, pills, tile labels or hints; no "Showing X." sentences; numbers through `toLocaleString`; currency with the tenant currency code.
 

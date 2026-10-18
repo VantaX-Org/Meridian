@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type CellMeta, type PillTone, Input } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type CellMeta, type PillTone, Input, Status } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -45,7 +45,6 @@ const HOUR = 3_600_000;
 // Every status still waiting on a steward; the list endpoint filters one status at a time.
 const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
 const STATUS_TONE: Record<StewardshipStatus, PillTone> = { open: "neutral", in_progress: "at-risk", escalated: "no-go", resolved: "go" };
-const SEVERITY_TONE: Record<Severity, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral", warning: "at-risk" };
 const EXC_STATUS_TONE: Record<ExceptionStatus, PillTone> = { open: "neutral", investigating: "at-risk", pending_approval: "at-risk", resolved: "go", verified: "go", closed: "neutral" };
 const KINDS = [
   { value: "task", label: "Tasks" }, { value: "exception", label: "Exceptions" }, { value: "issues", label: "Issues" },
@@ -378,7 +377,7 @@ export default function InboxPage() {
         return <span>{focused ? "> " : ""}{row.original.title} <span style={{ color: "var(--m-ink-3)" }}>in {row.original.category}</span></span>;
       },
     },
-    { id: "severity", header: "Severity", accessorFn: (e) => e.severity, meta: { severity: true } satisfies CellMeta, cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity]}>{labelOf(row.original.severity)}</Pill> },
+    { id: "severity", header: "Severity", accessorFn: (e) => e.severity, meta: { severity: true } satisfies CellMeta, cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "status", header: "Status", accessorFn: (e) => e.status, cell: ({ row }) => <Pill tone={EXC_STATUS_TONE[row.original.status]}>{labelOf(row.original.status)}</Pill> },
     { id: "assignee", header: "Assignee", accessorFn: (e) => who(e.assigned_to), cell: ({ row }) => who(row.original.assigned_to) },
     {

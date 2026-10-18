@@ -5,15 +5,14 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, Drawer, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { DataTable, Drawer, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone, Status } from "@/design";
+import { apiErrorState } from "@/lib/error";
 import {
   getConfigAlignmentByModule, getConfigInventoryByModule, type AlignmentFinding, type ConfigElement,
 } from "@/lib/api/config-intelligence";
-import { apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 
 const STATUS_TONE: Record<string, PillTone> = { active: "go", dormant: "at-risk", ghost: "no-go" };
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
 const n = (v: number) => v.toLocaleString();
 
 export function InventoryModuleDrawer({ module, onClose }: { module: string | null; onClose: () => void }) {
@@ -64,7 +63,7 @@ export function AlignmentModuleDrawer({ module, onClose }: { module: string | nu
   const findings = q.data?.findings ?? [];
   const columns = useMemo<ColumnDef<AlignmentFinding>[]>(() => [
     { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "title", header: "Finding", cell: ({ row }) => row.original.title },
   ], []);
   return (

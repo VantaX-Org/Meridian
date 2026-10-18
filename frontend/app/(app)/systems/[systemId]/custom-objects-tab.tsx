@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Tabs, type PillTone } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Tabs, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   detectZObjectsNow, getZAnomalies, getZDormant, getZDrift, getZGhost, getZProfile, getZRegistry, submitZAnomalyFeedback,
@@ -16,7 +16,6 @@ import { formatModuleName, labelOf } from "@/lib/format";
 import { MappingSection, RegistryEditor, ReportDialog, RulesSection } from "./z-object-panels";
 import { useRerun } from "./use-rerun";
 
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
 const n = (v: number) => v.toLocaleString();
 const dash = (v: string | null | undefined) => v ?? "—";
 const note = { color: "var(--m-ink-2)" };
@@ -97,7 +96,7 @@ function AnomaliesSection() {
   const cols = useMemo<ColumnDef<ZAnomaly, unknown>[]>(() => [
     { id: "name", header: "Object", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
     { id: "type", header: "Anomaly", cell: ({ row }) => labelOf(row.original.anomaly_type) },
-    { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "desc", header: "Description", cell: ({ row }) => row.original.description },
     { id: "dev", header: "Deviation", cell: ({ row }) => `${row.original.deviation_pct.toFixed(1)}%` },
     { id: "status", header: "Status", cell: ({ row }) => labelOf(row.original.status) },

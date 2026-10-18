@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Button, DataTable, EmptyState, ErrorState, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone, Input } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone, Input, Status } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { getSAPMonitor } from "@/lib/api/exceptions";
@@ -17,7 +17,6 @@ import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import type { Exception } from "@/types/api";
 
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral", warning: "at-risk" };
 const SLA_TONE: Record<string, PillTone> = { on_track: "go", at_risk: "at-risk", breached: "no-go" };
 const STATUSES: IssueStatus[] = ["open", "in_progress", "waiting_sap", "waiting_requester", "accepted", "resolved"];
 const note = { color: "var(--m-ink-2)" };
@@ -83,7 +82,7 @@ export function IssuesPanel() {
     { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "check", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
     { id: "record", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
-    { id: "sev", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "sev", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "status", header: "Status", cell: ({ row }) => labelOf(row.original.status) },
     { id: "sla", header: "SLA", cell: ({ row }) => row.original.sla_state ? <Pill tone={SLA_TONE[row.original.sla_state] ?? "neutral"}>{labelOf(row.original.sla_state)}</Pill> : "—" },
     { id: "assignee", header: "Assignee", cell: ({ row }) => row.original.assignee_email ?? "Unassigned" },
@@ -128,7 +127,7 @@ export function SapMonitorPanel() {
   const cols = useMemo<ColumnDef<Exception, unknown>[]>(() => [
     { id: "title", header: "Signal", cell: ({ row }) => row.original.title },
     { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
-    { id: "sev", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "sev", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "status", header: "Status", cell: ({ row }) => labelOf(row.original.status) },
     { id: "source", header: "Source", cell: ({ row }) => row.original.source_system ?? "—" },
     { id: "when", header: "Raised", cell: ({ row }) => relativeTime(row.original.created_at) },

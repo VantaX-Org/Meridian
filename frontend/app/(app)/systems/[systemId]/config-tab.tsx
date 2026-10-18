@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   discoverConfigNow, getConfigAlignment, getConfigDrift, getConfigGhost, getConfigHealth, getConfigInventory, getConfigLicence,
@@ -17,7 +17,6 @@ import { ConfigComparePanel } from "./config-compare-panel";
 import { AlignmentModuleDrawer, InventoryModuleDrawer } from "./config-module-drawers";
 import { useRerun } from "./use-rerun";
 
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
 const STATUS_TONE: Record<string, PillTone> = { active: "go", partial: "at-risk", dormant: "at-risk", inactive: "no-go", ghost: "no-go" };
 const n = (v: number) => v.toLocaleString();
 const dash = (v: string | null | undefined) => v ?? "—";
@@ -138,7 +137,7 @@ function findingCols(): ColumnDef<AlignmentFinding, unknown>[] {
     { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
-    { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "title", header: "Finding", cell: ({ row }) => row.original.title },
     { id: "impact", header: "Impact (ZAR)", cell: ({ row }) => n(Math.round(row.original.estimated_impact_zar)) },
   ];
@@ -168,7 +167,7 @@ function AlignmentSection() {
   const moduleCols = useMemo<ColumnDef<ModuleFindings, unknown>[]>(() => [
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "total", header: "Findings", cell: ({ row }) => n(row.original.total) },
-    { id: "worst", header: "Worst severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.worst] ?? "neutral"}>{labelOf(row.original.worst)}</Pill> },
+    { id: "worst", header: "Worst severity", cell: ({ row }) => <Status kind="severity" value={row.original.worst} /> },
   ], []);
   return (
     <Feed q={q} empty="Alignment compares configuration with how it is used.">

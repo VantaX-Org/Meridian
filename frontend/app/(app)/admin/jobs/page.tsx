@@ -5,19 +5,18 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, PageHeader, Pill, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, PageHeader, Status } from "@/design";
 import { getJobs } from "@/lib/api/jobs";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import type { Job, JobStatus } from "@/types/jobs";
+import type { Job } from "@/types/jobs";
 
-const TONE: Record<JobStatus, PillTone> = { queued: "at-risk", running: "at-risk", completed: "go", failed: "no-go" };
 const when = (s: number) => formatDate(s * 1000, "datetime");
 
 const columns: ColumnDef<Job>[] = [
   { accessorKey: "label", header: "Job" },
   { accessorKey: "kind", header: "Kind" },
-  { id: "status", header: "Status", cell: ({ row }) => <Pill tone={TONE[row.original.status]}>{formatModuleName(row.original.status)}</Pill> },
+  { id: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
   { id: "rows", header: "Rows", cell: ({ row }) => row.original.rows_done.toLocaleString() },
   { id: "start", header: "Started", cell: ({ row }) => when(row.original.started_at) },
   { id: "end", header: "Finished", cell: ({ row }) => (row.original.finished_at ? when(row.original.finished_at) : "—") },

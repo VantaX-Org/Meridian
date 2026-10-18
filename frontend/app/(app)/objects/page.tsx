@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, ScoreRing, Sparkline, Stat, emptyExportOptions, type CellMeta, type PillTone, type ScoreBands } from "@/design";
+import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ScoreBands, Status, ScoreRing } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -23,16 +23,6 @@ import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
 import { FilterChips } from "./_header";
 
-const READINESS_LABEL: Record<"pass" | "warn" | "fail", string> = {
-  pass: "Go",
-  warn: "At risk",
-  fail: "No-go",
-};
-const READINESS_TONE: Record<"pass" | "warn" | "fail", PillTone> = {
-  pass: "go",
-  warn: "at-risk",
-  fail: "no-go",
-};
 
 /** Number cells drill to the object's rules tab. */
 const drill = (o: ObjectSummary, run: string, n: number | string) => (
@@ -88,7 +78,7 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
     cell: ({ row }) => {
       const readiness = row.original.readiness;
       if (!readiness) return "—";
-      return <Pill tone={READINESS_TONE[readiness]} variant="solid">{READINESS_LABEL[readiness]}</Pill>;
+      return <Status kind="verdict" value={readiness} variant="solid" />;
     },
   },
   {

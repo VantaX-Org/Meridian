@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Select, Skeleton, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, type PillTone } from "@/design";
+import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Select, Skeleton, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -17,20 +17,12 @@ import { exportRuns } from "@/lib/api/v1/runs";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatDate, labelOf, runAxisLabels } from "@/lib/format";
+import { formatDate, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 
-const STATUS_TONE: Record<string, PillTone> = {
-  failed: "no-go",
-  agents_failed: "no-go",
-  complete: "go",
-  agents_complete: "go",
-  ai_enriched: "go",
-};
-const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk";
 
 const runName = (v: Version) => v.label ?? formatDate(v.run_at, "datetime");
 const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
@@ -85,7 +77,7 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[], on
       header: "Status",
       cell: ({ row }) => (
         <span className="inline-flex gap-1">
-          <Pill tone={statusTone(row.original.status)} variant="solid">{labelOf(row.original.status)}</Pill>
+          <Status kind="lifecycle" value={row.original.status} variant="solid" />
           {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
           {IN_PROGRESS.has(row.original.status) ? <RunRowProgress id={row.original.id} /> : null}
         </span>
@@ -209,8 +201,8 @@ export default function RunsPage() {
   const scoped = useMemo(() => (system ? allVersions.filter((v) => v.metadata?.system_id === system) : allVersions), [allVersions, system]);
   const headVersions = useMemo(() => head.data?.versions ?? [], [head.data]);
   const headScoped = useMemo(() => (system ? headVersions.filter((v) => v.metadata?.system_id === system) : headVersions), [headVersions, system]);
-  const failedCount = headScoped.filter((v) => statusTone(v.status) === "no-go").length;
-  const rows = failedOnly ? scoped.filter((v) => statusTone(v.status) === "no-go") : scoped;
+  const failedCount = headScoped.filter((v) => toLifecycle(v.status) === "failed").length;
+  const rows = failedOnly ? scoped.filter((v) => toLifecycle(v.status) === "failed") : scoped;
 
   const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 ? "empty" : undefined;
 

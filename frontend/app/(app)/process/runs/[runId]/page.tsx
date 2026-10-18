@@ -4,25 +4,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, type PillTone } from "@/design";
+import { PageHeader, Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, Status } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { ACTIVE_RUN, getCatalogue, getRun, startRuns } from "@/lib/api/process-discovery";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { JobStageStatus } from "@/types/jobs";
 import { BodySkeleton, ProcessFrame } from "../../_components/process-header";
 import { CoveragePill, RunStatusPill } from "../../_components/coverage-pill";
 import { fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, stageLabel } from "../../_components/shared";
 
-const STAGE: Record<JobStageStatus, { tone: PillTone; label: string }> = {
-  queued: { tone: "neutral", label: "Queued" },
-  running: { tone: "info", label: "Running" },
-  done: { tone: "go", label: "Done" },
-  failed: { tone: "no-go", label: "Failed" },
-  skipped: { tone: "neutral", label: "Skipped" },
-};
 
 type TableRow = { table: string; rows: number; partial: boolean; truncated: boolean };
 
@@ -112,7 +104,7 @@ export default function ProcessRunPage() {
             {job.stages.map((st) => (
               <li key={st.id} className="flex items-center justify-between">
                 <span>{st.label}</span>
-                <Pill tone={STAGE[st.status].tone}>{STAGE[st.status].label}</Pill>
+                <Status kind="lifecycle" value={st.status} />
               </li>
             ))}
           </ol>

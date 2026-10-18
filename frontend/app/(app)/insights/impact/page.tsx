@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat } from "@/design";
+import { Button, chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat, Status } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -23,7 +23,7 @@ import { labelOf, plural } from "@/lib/format";
 import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { CardSkeleton, InsightFrame, formatMoney, statusTone } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 /** Real route for a single check/rule, independent of any module context —
@@ -61,7 +61,7 @@ const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
       </DrillLink>
     ),
   },
-  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill> },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.status} /> },
   {
     accessorKey: "record_count",
     header: "Blocked records",

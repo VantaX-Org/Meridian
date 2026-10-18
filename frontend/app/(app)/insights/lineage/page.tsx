@@ -12,15 +12,12 @@ import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Button, DataTable, Drawer, EmptyState, ErrorState, Input, LineageChart, type LineageChartEdge, type LineageChartNode,
-  Card, Mono, Pill, type PillTone, Select, Skeleton,
-} from "@/design";
+import { Button, DataTable, Drawer, EmptyState, ErrorState, Input, LineageChart, type LineageChartEdge, type LineageChartNode, Card, Mono, Select, Skeleton, Status } from "@/design";
 import { useLatestVersion } from "@/components/process/shared";
 import { getFindings } from "@/lib/api/findings";
 import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
-  type ImpactRow, type LineageDirection, type LineageNode, type Severity,
+  type ImpactRow, type LineageDirection, type LineageNode,
 } from "@/lib/api/lineage";
 import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { runScopeLabel } from "@/lib/run-scope";
@@ -32,8 +29,6 @@ import { atRiskSentence, findingsHref, pct } from "./links";
 // ponytail: the layered chart past this many nodes gets taller than a screen. Narrow the trace depth to see the rest.
 const MAX_NODES = 150;
 
-const SEV_TONE: Record<Severity, PillTone> = { low: "neutral", medium: "at-risk", high: "no-go", critical: "no-go" };
-const SEV_LABEL: Record<Severity, string> = { low: "Low", medium: "Medium", high: "High", critical: "Critical" };
 const TYPE_LABEL: Record<ImpactRow["type"], string> = { kpi: "KPI", process: "Process", feature: "Feature" };
 
 function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) {
@@ -182,7 +177,7 @@ export default function LineagePage() {
     },
     {
       id: "worst", header: "Severity", accessorFn: (r) => r.worst_severity ?? "", size: 110,
-      cell: ({ row }) => row.original.worst_severity ? <Pill tone={SEV_TONE[row.original.worst_severity]}>{SEV_LABEL[row.original.worst_severity]}</Pill> : null,
+      cell: ({ row }) => row.original.worst_severity ? <Status kind="severity" value={row.original.worst_severity} /> : null,
     },
   ], [latest, moduleByCheck]);
 

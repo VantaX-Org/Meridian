@@ -8,12 +8,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import {
-  Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip,
-  DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone, type HeatmapCell,
-  entityTabs, NextActions,
-  PageHeader,
-} from "@/design";
+import { Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip, DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type HeatmapCell, entityTabs, NextActions, PageHeader, Status } from "@/design";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
@@ -37,17 +32,8 @@ import { latestFinishedRun, lineageChoices } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
 import type { Finding, Version } from "@/types/api";
 
-const STATUS_TONE: Record<string, PillTone> = {
-  failed: "no-go",
-  agents_failed: "no-go",
-  complete: "go",
-  agents_complete: "go",
-  ai_enriched: "go",
-};
 
-const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk";
 
-const READINESS_TONE: Record<string, PillTone> = { pass: "go", warn: "at-risk", fail: "no-go" };
 
 const SEVERITY_OPTIONS = [
   { value: "", label: "All severities" },
@@ -64,7 +50,7 @@ const stepColumns: ColumnDef<RunStep>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill>,
+    cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} />,
   },
   { accessorKey: "started_at", header: "Started", cell: ({ row }) => formatDate(row.original.started_at, "datetime") },
   {
@@ -108,7 +94,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
       id: "readiness",
       header: "Readiness",
       cell: ({ row }) =>
-        row.original.readiness ? <Pill tone={READINESS_TONE[row.original.readiness] ?? "neutral"}>{labelOf(row.original.readiness)}</Pill> : "—",
+        row.original.readiness ? <Status kind="verdict" value={row.original.readiness} /> : "—",
     },
     {
       accessorKey: "failing_checks",
@@ -583,7 +569,7 @@ export default function RunDetailPage() {
       }
       status={
         <>
-          <Pill tone={statusTone(v.status)}>{labelOf(v.status)}</Pill>
+          <Status kind="lifecycle" value={v.status} />
           {isBaseline ? <Pill>Baseline</Pill> : null}
         </>
       }
@@ -679,7 +665,7 @@ export default function RunDetailPage() {
                     renderDrawer={(s) => (
                       <div className="flex flex-col gap-2 p-4">
                         <h2 className="font-semibold" style={sectionTitle}>{s.step_name}</h2>
-                        <Pill tone={statusTone(s.status)}>{labelOf(s.status)}</Pill>
+                        <Status kind="lifecycle" value={s.status} />
                         <p style={{ color: "var(--m-ink-2)" }}>{s.error_detail ?? "No error recorded"}</p>
                       </div>
                     )}

@@ -6,11 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill,
-  SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
-  entityTabs,
-} from "@/design";
+import { Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity, entityTabs, Status } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
@@ -35,8 +31,6 @@ const PAGE_SIZE = 50;
 const STALE_MS = 30_000;
 const RULE_HISTORY_RUNS = 8;
 
-const READINESS_TONE: Record<string, "go" | "at-risk" | "no-go"> = { pass: "go", warn: "at-risk", fail: "no-go" };
-const READINESS_LABEL: Record<string, string> = { pass: "Go", warn: "At risk", fail: "No-go" };
 const TAB_KEYS = ["overview", "rules", "fields", "records"] as const;
 const SEVERITIES = ["critical", "high", "medium", "low"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }));
 const isBlocking = (r: ObjectRule) => r.severity === "critical" || r.severity === "high";
@@ -553,7 +547,7 @@ export default function ObjectDetailPage() {
       <PageHeader
         title={summary?.label ?? formatModuleName(object)}
         meta={meta}
-        status={summary?.readiness ? <Pill tone={READINESS_TONE[summary.readiness] ?? "neutral"}>{READINESS_LABEL[summary.readiness] ?? summary.readiness}</Pill> : null}
+        status={summary?.readiness ? <Status kind="verdict" value={summary.readiness} /> : null}
         actions={
           <>
             <OwnerPicker kind="object" refId={object} />

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Button, Checkbox, Drawer, Field, Input, Mono, Pill, type PillTone } from "@/design";
+import { Button, Checkbox, Drawer, Field, Input, Mono, Pill, Status } from "@/design";
 import type { ReactNode } from "react";
 import { getDdicFields } from "@/lib/api/rules";
 import { formatModuleName } from "@/lib/format";
@@ -11,9 +11,6 @@ import { allL4, findActivity, l1Of, locate, type Doc } from "./doc";
 
 const CLASS_LABEL: Record<Classification, string> = {
   implemented: "Implemented", dormant: "Dormant", configured_not_used: "Configured, not used", customer_specific: "Customer-specific",
-};
-const DQ: Record<ActivityOverlay["dq_status"], { tone: PillTone; label: string }> = {
-  green: { tone: "go", label: "Passing" }, amber: { tone: "at-risk", label: "Some fields failing" }, red: { tone: "no-go", label: "Blocking failures" },
 };
 const FIELD = /^[A-Z0-9_/]+\.[A-Z0-9_/]+$/;
 
@@ -131,7 +128,7 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
       {act.evidence === "not_extracted" ? <Note>No document table extracted for this step.</Note> : null}
       {dq ? (
         <Note>
-          <Pill tone={DQ[dq.dq_status].tone}>{DQ[dq.dq_status].label}</Pill>{" "}
+          <Status kind="verdict" value={dq.dq_status} />{" "}
           {dq.finding_count.toLocaleString()} {dq.finding_count === 1 ? "check has" : "checks have"} findings, {dq.affected_count.toLocaleString()} records affected.
         </Note>
       ) : null}

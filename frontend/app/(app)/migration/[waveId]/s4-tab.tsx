@@ -6,17 +6,14 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, Mono, Skeleton, Stat, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorState } from "@/lib/error";
 import { getS4Readiness, type S4Area, type S4Check } from "@/lib/api/migration";
 import { createBatch, errorText } from "@/lib/api/remediation";
 import { getRuleByCode } from "@/lib/api/rules";
-import { formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
-const TONE: Record<string, PillTone> = { green: "go", amber: "at-risk", red: "no-go" };
-const STATUS_LABEL: Record<string, string> = { green: "Ready", amber: "At risk", red: "Blocked", not_evaluated: "Not evaluated" };
 const n = (v: number) => v.toLocaleString();
 const topFailing = (a: S4Area): S4Check | undefined => a.checks.find((c) => c.affected_count > 0);
 const REMEDIATION_CHECKS = 5;
@@ -37,7 +34,7 @@ function AreaDrawer({ area, versionId, onClose, onFix, fixing, canFix }: {
   });
   const columns = useMemo<ColumnDef<S4Check>[]>(() => [
     { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { id: "impact", header: "Impact", cell: ({ row }) => <Pill tone={row.original.impact === "blocking" ? "no-go" : "at-risk"}>{labelOf(row.original.impact)}</Pill> },
+    { id: "impact", header: "Impact", cell: ({ row }) => <Status kind="verdict" value={row.original.impact} /> },
     {
       id: "records", header: "Failing records", meta: { numeric: true },
       cell: ({ row }) => row.original.module
@@ -72,7 +69,7 @@ function AreaDrawer({ area, versionId, onClose, onFix, fixing, canFix }: {
                   return (
                     <div key={c.check_id} className="flex flex-col gap-1 m-text-body">
                       <div className="flex items-center justify-between gap-2">
-                        <span><Mono>{c.check_id}</Mono> <Pill tone={c.impact === "blocking" ? "no-go" : "at-risk"}>{labelOf(c.impact)}</Pill></span>
+                        <span><Mono>{c.check_id}</Mono> <Status kind="verdict" value={c.impact} /></span>
                         {canFix ? (
                           <Button variant="secondary" size="sm" onClick={() => onFix(area, c)} pending={fixing === c.check_id}>Create fix batch</Button>
                         ) : null}
@@ -131,7 +128,7 @@ export function S4Tab({ versionId }: { versionId: string | null }) {
     };
     return [
       { accessorKey: "label", header: "Area" },
-      { id: "status", header: "Status", cell: ({ row }) => <Pill tone={TONE[row.original.status] ?? "neutral"}>{STATUS_LABEL[row.original.status] ?? formatModuleName(row.original.status)}</Pill> },
+      { id: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.status} /> },
       { id: "rules", header: "Rules", meta: { numeric: true }, cell: ({ row }) => n(row.original.rules) },
       { id: "failing", header: "Failing rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={findingsHref(row.original)}>{n(row.original.failing)}</DrillLink> },
       { id: "blocking", header: "Blocking", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={findingsHref(row.original)}>{n(row.original.blocking_failing)}</DrillLink> },
@@ -165,7 +162,7 @@ export function S4Tab({ versionId }: { versionId: string | null }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="m-stat-grid" data-testid="s4-summary">
-        <Stat label="Ready" value={<Pill tone={d.ready ? "go" : "no-go"}>{d.ready ? "Ready" : "Not ready"}</Pill>} href={findingsRoot} />
+        <Stat label="Ready" value={<Status kind="verdict" value={d.ready ? "go" : "no-go"} />} href={findingsRoot} />
         <Stat label="Blocking areas" value={n(blockingAreas)} href={findingsRoot} />
         <Stat label="Failing records" value={n(d.failing_records)} href={findingsRoot} />
       </div>

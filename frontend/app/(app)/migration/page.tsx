@@ -6,13 +6,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
-import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat } from "@/design";
+import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { VERDICT_LABEL, VERDICT_TONE } from "@/lib/migration-verdict";
 import type { MigrationWave, TransferVerdict, WaveVerdict } from "@/types/api";
 import { CreateWaveDialog, STAGE_LABEL } from "./create-wave-dialog";
 
@@ -59,7 +58,7 @@ export default function MigrationPage() {
       id: "verdict", header: "Verdict",
       cell: ({ row }) => {
         const v = row.original.last_verdict ? FROM_ENGINE[row.original.last_verdict] : null;
-        return v ? <Pill tone={VERDICT_TONE[v]}>{VERDICT_LABEL[v]}</Pill> : <Pill>Not run</Pill>;
+        return v ? <Status kind="verdict" value={v} /> : <Pill>Not run</Pill>;
       },
     },
     {

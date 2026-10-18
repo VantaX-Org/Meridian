@@ -518,6 +518,15 @@
 .m-pill-solid-no-go { background: var(--m-no-go); color: var(--m-no-go-on); }
 .m-pill-solid-info { background: var(--m-info); color: var(--m-info-on); }
 .m-pill-solid-neutral { background: var(--m-low); color: var(--m-low-on); }
+/* Pill, severity tones (Status kind="severity"): the severity hue's soft tint and ink; the SeverityDot carries the shape. */
+.m-pill-critical { background: var(--m-critical-soft); color: var(--m-critical-ink); }
+.m-pill-high { background: var(--m-high-soft); color: var(--m-high-ink); }
+.m-pill-medium { background: var(--m-medium-soft); color: var(--m-medium-ink); }
+.m-pill-low { background: var(--m-low-soft); color: var(--m-low-ink); }
+.m-pill-solid-critical { background: var(--m-critical); color: var(--m-critical-on); }
+.m-pill-solid-high { background: var(--m-high); color: var(--m-high-on); }
+.m-pill-solid-medium { background: var(--m-medium); color: var(--m-medium-on); }
+.m-pill-solid-low { background: var(--m-low); color: var(--m-low-on); }
 .m-badge-critical { background: var(--m-critical); color: var(--m-critical-on); }
 
 /* Delta chip */

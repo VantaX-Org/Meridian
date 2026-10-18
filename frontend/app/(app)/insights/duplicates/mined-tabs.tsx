@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, Pill, Skeleton, type PillTone } from "@/design";
+import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, Skeleton, Status } from "@/design";
 import { mineLearnedRules } from "@/lib/api/learnedRules";
 import {
   runMining,
@@ -18,7 +18,6 @@ import {
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 
-const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
 const pct = (v: number) => `${(v * (v <= 1 ? 100 : 1)).toFixed(0)}%`;
 const LIMIT = 500;
 
@@ -74,7 +73,7 @@ export function MinedAnomalies({ run }: { run: string }) {
     { id: "value", header: "Value", cell: ({ row }) => (row.original.field_value === null ? "—" : row.original.field_value.toLocaleString()), meta: { numeric: true } },
     { id: "method", header: "Method", cell: ({ row }) => labelOf(row.original.detection_method) },
     { id: "z", header: "Z-score", cell: ({ row }) => (row.original.z_score === null ? "—" : row.original.z_score.toFixed(1)), meta: { numeric: true } },
-    { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
   ], []);
   return (

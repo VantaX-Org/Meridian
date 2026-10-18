@@ -44,7 +44,7 @@ describe("S4Tab", () => {
   it("summarises readiness, blocking areas and failing records", async () => {
     renderWithQuery(<S4Tab versionId="v1" />);
     const summary = await screen.findByTestId("s4-summary");
-    expect(within(summary).getByText("Not ready")).toBeInTheDocument();
+    expect(within(summary).getByText("No-go")).toBeInTheDocument();
     expect(within(summary).getByText("Blocking areas").parentElement).toHaveTextContent("1");
     expect(within(summary).getByText("40")).toBeInTheDocument();
   });

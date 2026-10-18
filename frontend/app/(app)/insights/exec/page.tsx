@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Pill, Stat, Tabs, Waterfall, type ExportOption, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
@@ -20,13 +20,7 @@ import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 
-const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
-  go: "go",
-  at_risk: "at-risk",
-  no_go: "no-go",
-};
 
-const VERDICT_LABEL: Record<ReadinessCell["verdict"], string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
 
 const plain = (n: number) => formatMoney(n);
 
@@ -36,7 +30,7 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
   {
     accessorKey: "verdict",
     header: "Verdict",
-    cell: ({ row }) => <Pill tone={VERDICT_TONE[row.original.verdict]}>{VERDICT_LABEL[row.original.verdict]}</Pill>,
+    cell: ({ row }) => <Status kind="verdict" value={row.original.verdict} />,
   },
   {
     accessorKey: "blocker_count",
@@ -176,7 +170,7 @@ export default function ExecPage() {
                 <Heatmap
                   rows={heatRows}
                   cols={heatCols}
-                  cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: VERDICT_TONE[c.verdict] as "go" | "at-risk" | "no-go" }))}
+                  cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: toVerdict(c.verdict) ?? "at-risk" }))}
                   rowHref={(row) => withScope(`/objects/${cells.find((c) => formatModuleName(c.module) === row)?.module ?? ""}`, { run })}
                 />
               </div>
