@@ -84,7 +84,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const pinnedId = search.get("run");
   const run = pinnedId ?? "latest";
   const objectsQ = useQuery({ queryKey: queryKeys.objects(run), queryFn: () => getObjects(run) });
-  const { list: versionsQ, versions: allVersions } = useRunListWith(pinnedId);
+  const { list: versionsQ, versions: allVersions, resolving } = useRunListWith(pinnedId);
   // Same key as the rail's counts, so this is not a second request; Basis has no inbox tile.
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, enabled: wantsFindings });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -148,7 +148,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   }
 
   // dayOne says a finished run exists but it hasn't landed in this cache yet: treat as loading rather than crash.
-  if (!newest) return <HomePage persona={role} state="loading" />;
+  // A ?run= older than the run list is still being read by id: wait for it rather than show the current state.
+  if (!newest || (pinnedId && !pinned && resolving)) return <HomePage persona={role} state="loading" />;
 
   // A module-scoped user sees only in-scope objects (and so only those heatmap rows, scores and counts).
   const state = stateObjects(scopeRuns, scopeFilter.modules);
