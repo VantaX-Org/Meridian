@@ -31,7 +31,7 @@ function version(systemId?: string): Version {
 
 const OBJECT: objectsApi.ObjectDetail = {
   module: "material_master",
-  label: "Material Master",
+  label: "Material master",
   composite_score: 72.5,
   readiness: "warn",
   failing_checks: 1,
@@ -100,9 +100,9 @@ describe("ObjectDetailPage", () => {
     ], total: 2 });
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(at("co-1k", "controlling_1k", "16", "controlling"));
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByText("Material Master is not in this run")).toBeInTheDocument();
-    expect(screen.getByText("controlling_1k, 16 Oct 2026 did not measure Material Master.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Show latest run of Material Master" })).toHaveAttribute("href", "/objects/material_master");
+    expect(await screen.findByText("Material master is not in this run")).toBeInTheDocument();
+    expect(screen.getByText("controlling_1k, 16 Oct 2026 did not measure Material master.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Show latest run of Material master" })).toHaveAttribute("href", "/objects/material_master");
     expect(screen.queryByText(/could not reach the server/i)).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
@@ -115,14 +115,14 @@ describe("ObjectDetailPage", () => {
       status: 404, data: { detail: "Object not found for this run" }, statusText: "", headers: {}, config: { headers: new AxiosHeaders() },
     }));
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByText("Material Master is not in this run", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText("Material master is not in this run", {}, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.queryByText(/could not reach the server/i)).toBeNull();
   });
 
   it("renders the overview tab's stats and dimension chart", async () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("72.5")).toBeInTheDocument();
-    expect(screen.getByText("Material Master")).toBeInTheDocument();
+    expect(screen.getByText("Material master")).toBeInTheDocument();
   });
 
   it("lists rules on the rules tab and navigates to the records tab on row click", async () => {
@@ -358,7 +358,7 @@ describe("ObjectDetailPage", () => {
 describe("ObjectDetailPage keyboard and gating", () => {
   it("keys 1-4 switch tabs", async () => {
     renderWithQuery(<ObjectDetailPage />);
-    await screen.findByText("Material Master");
+    await screen.findByText("Material master");
     fireEvent.keyDown(document.body, { key: "2" });
     expect(push).toHaveBeenCalledWith(expect.stringContaining("tab=rules"));
     fireEvent.keyDown(document.body, { key: "4" });
@@ -367,7 +367,7 @@ describe("ObjectDetailPage keyboard and gating", () => {
 
   it("1-4 ignored while typing in an input", async () => {
     renderWithQuery(<ObjectDetailPage />);
-    await screen.findByText("Material Master");
+    await screen.findByText("Material master");
     const input = document.createElement("input");
     document.body.appendChild(input);
     fireEvent.keyDown(input, { key: "2" });
@@ -398,7 +398,7 @@ describe("ObjectDetailPage keyboard and gating", () => {
   it("does not fetch records without check_id", async () => {
     const spy = vi.spyOn(versionsApi, "getFindingRecords");
     renderWithQuery(<ObjectDetailPage />);
-    await screen.findByText("Material Master");
+    await screen.findByText("Material master");
     expect(spy).not.toHaveBeenCalled();
   });
 

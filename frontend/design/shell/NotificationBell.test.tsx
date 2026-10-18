@@ -69,7 +69,7 @@ describe("NotificationBell", () => {
     renderBell();
     fireEvent.click(await screen.findByRole("button", { name: /Notifications/ }));
     expect(await screen.findByText("Quality alert")).toBeInTheDocument();
-    expect(screen.getByText("New analysis complete: 172 findings in Accounts Payable")).toBeInTheDocument();
+    expect(screen.getByText("New analysis complete: 172 findings in Accounts payable")).toBeInTheDocument();
   });
 
   it("marks a notification read when it is opened", async () => {

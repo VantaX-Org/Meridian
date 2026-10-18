@@ -11,7 +11,7 @@ test("lead reaches a failing record in three clicks", async ({ app }) => {
 
   await app.goto(`/objects?run=${RUN}`, { waitUntil: "load" });
   // Scoped to the grid (DataTable is role=grid): the "Most affected" stat hint also names the object.
-  const objectCell = app.getByRole("grid").getByText("Material Master");
+  const objectCell = app.getByRole("grid").getByText("Material master");
   await expect(objectCell).toBeVisible();
 
   // Click 1: objects list -> object detail, rules tab.

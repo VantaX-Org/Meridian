@@ -66,10 +66,10 @@ describe("rules page", () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox", { name: "Object" }));
-    const objectOption = await screen.findByRole("option", { name: "Material Master" });
+    const objectOption = await screen.findByRole("option", { name: "Material master" });
     await waitFor(() => expect(objectOption.closest("[role=listbox]")).toHaveAttribute("data-open"));
     await user.click(objectOption);
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Object" })).toHaveTextContent("Material Master"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Object" })).toHaveTextContent("Material master"));
     await waitFor(() => expect(screen.queryByText("Vendor number is mandatory")).not.toBeInTheDocument());
     expect(screen.getByText("Base unit of measure is mandatory")).toBeInTheDocument();
 

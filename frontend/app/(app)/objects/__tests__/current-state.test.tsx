@@ -39,8 +39,8 @@ const VERSIONS = [
 const LISTS: Record<string, ObjectSummary[]> = {
   co2: [row("controlling", "Controlling", 60, "fail", "accuracy", 120)],
   co1: [row("controlling", "Controlling", 99, "pass", "accuracy", 1)],
-  mm: [row("material_master", "Material Master", 95, "pass", "completeness", 0)],
-  sys: [row("business_partner", "Business Partner", 80, "warn", "accuracy", 4500)],
+  mm: [row("material_master", "Material master", 95, "pass", "completeness", 0)],
+  sys: [row("business_partner", "Business partner", 80, "warn", "accuracy", 4500)],
 };
 
 const bodyRows = () => screen.getAllByRole("row").slice(1);
@@ -61,9 +61,9 @@ describe("ObjectsPage without ?run=: the current state", () => {
 
   it("lists every object at its own latest run, each row linking to the object without ?run=", async () => {
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("Business Partner")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Business partner")).toBeInTheDocument());
     expect(screen.getByText("Controlling")).toBeInTheDocument();
-    expect(screen.getByText("Material Master")).toBeInTheDocument();
+    expect(screen.getByText("Material master")).toBeInTheDocument();
     expect(bodyRows()).toHaveLength(3);
     // one list per lineage, never the superseded controlling upload and never run=latest
     expect(getObjects.mock.calls.map((c) => c[0]).sort()).toEqual(["co2", "mm", "sys"]);
@@ -82,16 +82,16 @@ describe("ObjectsPage without ?run=: the current state", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(screen.getByText("Controlling")).toBeInTheDocument());
     expect(bodyRows()).toHaveLength(1);
-    expect(screen.queryByText("Business Partner")).toBeNull();
-    expect(screen.queryByText("Material Master")).toBeNull();
+    expect(screen.queryByText("Business partner")).toBeNull();
+    expect(screen.queryByText("Material master")).toBeNull();
   });
 
   it("?dimension= keeps the objects whose worst dimension it is, across runs", async () => {
     currentSearch = "dimension=accuracy";
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("Business Partner")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Business partner")).toBeInTheDocument());
     expect(screen.getByText("Controlling")).toBeInTheDocument();
-    expect(screen.queryByText("Material Master")).toBeNull();
+    expect(screen.queryByText("Material master")).toBeNull();
     expect(bodyRows()).toHaveLength(2);
     expect(screen.getByRole("button", { name: "accuracy", pressed: true })).toBeInTheDocument();
   });
@@ -107,7 +107,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
       by_dimension: [], avg_pass_rate: null, dqs: { composite: null, dimension_scores: {}, modules: {} }, previous_dqs: null,
     });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("Business Partner")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Business partner")).toBeInTheDocument());
     expect(bodyRows()).toHaveLength(3);
     expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?tab=rules");
     expect(screen.queryByText(/could not reach the server/i)).toBeNull();
@@ -117,7 +117,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     currentSearch = "run=sys";
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(VERSIONS[3]);
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("Business Partner")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Business partner")).toBeInTheDocument());
     expect(bodyRows()).toHaveLength(1);
     expect(getObjects.mock.calls.map((c) => c[0])).toEqual(["sys"]);
     expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?run=sys&tab=rules");

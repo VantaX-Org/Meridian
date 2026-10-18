@@ -97,6 +97,16 @@ Copy: no full stops in table cells, pills, tile labels or hints; no "Showing X."
 - **Signed-out pages** (`components/auth/auth-frame.tsx`): a white brand panel (`.m-brand-panel`: lockup, the decorative score-ring instrument in the accent, two facts) beside one 400px card on the canvas with an `<h1>`, the form and the version string beneath.
 - **Rail** (`design/shell/Rail.tsx`): a light sheet with a hairline right edge. Each item shows its icon and text label, expanded by default (collapsed to icons below 1024px or when the user collapses it with the button or `[`). The active item is a soft blue tint with blue ink.
 
+## Object names
+An object (a module id such as `fi_gl`) is shown by its name from `formatModuleName` (`lib/format.ts`), never by an API `label` and never by title-casing the id; `lib/api/v1/objects.ts` renames the objects API's rows on read. `MODULE_LABELS` holds a name for every module with a rule file under `checks/rules/` and every module `sap/extraction_registry.py` extracts, worded as `api/routes/sync_trigger.py` `MODULE_REGISTRY` and cased by one convention:
+
+- Sentence case: the first word capitalised, every other word lower case ("Material master", "Accounts payable", "Performance and goals"; "&" is written "and").
+- SAP acronyms stay upper case wherever they fall: FI, MM, SD, HCM, MDG, GRC, WM, BP, CVI, PII, IDoc, S/4HANA ("FI general ledger", "HCM personnel administration", "SD sales orders"). The id's component prefix is spelled as the acronym plus the words, not expanded (`fi_gl` is "FI general ledger", not "Financial accounting general ledger").
+- eWMS keeps its lower-case e, also at the start of a name ("eWMS stock").
+- Product names keep SAP's spelling: Concur, Ariba, SuccessFactors ("Ariba suppliers"). Module names inside a product are ordinary words ("Employee central").
+
+An id missing from the map is sentence-cased (`new_module` reads "New module"); `lib/__tests__/format-copy.test.ts` fails when a module of the coverage table or a rule file has no name, or when a name breaks the convention.
+
 ## Routes
 Live pages are under `app/(app)/`: `home` (redirects each role to its persona home: lead, steward, basis, process), `systems`, `objects` (tabs: overview, rules, fields, records, history), `runs`, `rules`, `insights`, `mdm` (glossary, golden, match-rules, survivorship), `migration`, `inbox`, `fix`, `import`, `search`, `admin` (users, roles, audit, settings, mappings, reference, notifications, jobs, ai, licence, billing, triage), and `design` (the component gallery).
 

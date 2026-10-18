@@ -199,8 +199,8 @@ describe("RunDetailPage", () => {
     renderWithQuery(<RunDetailPage />);
     await waitFor(() => expect(screen.getByRole("tab", { name: "Objects" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("tab", { name: "Objects" }));
-    await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
-    expect(screen.getByRole("link", { name: "Material Master" })).toHaveAttribute("href", "/objects/material_master?run=v2");
+    await waitFor(() => expect(screen.getByText("Material master")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Material master" })).toHaveAttribute("href", "/objects/material_master?run=v2");
   });
 
   it("renders a sparkline trend column on the objects tab from the per-module score history", async () => {
@@ -221,7 +221,7 @@ describe("RunDetailPage", () => {
     });
     renderWithQuery(<RunDetailPage />);
     fireEvent.click(await screen.findByRole("tab", { name: "Objects" }));
-    await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Material master")).toBeInTheDocument());
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
     await waitFor(() => expect(document.querySelector(".recharts-wrapper")).toBeInTheDocument());
   });
@@ -233,10 +233,10 @@ describe("RunDetailPage", () => {
       by_module: [{ module: "material_master", findings: 7, critical: 2, high: 0, medium: 5, low: 0, affected_records: 9 }] as never,
     });
     renderWithQuery(<RunDetailPage />);
-    const critical = await screen.findByLabelText("Material Master Critical: 2, no go");
+    const critical = await screen.findByLabelText("Material master Critical: 2, no go");
     expect(critical).toHaveTextContent("2");
-    expect(screen.getByLabelText("Material Master High: 0, go")).toHaveTextContent("0");
-    expect(screen.getByLabelText("Material Master Medium: 5, at risk")).toHaveTextContent("5");
+    expect(screen.getByLabelText("Material master High: 0, go")).toHaveTextContent("0");
+    expect(screen.getByLabelText("Material master Medium: 5, at risk")).toHaveTextContent("5");
   });
 
   it("draws the composite line for an upload from the scored runs of the same objects, keyed by run id", async () => {

@@ -17,9 +17,9 @@ test("object page with another object's ?run= says not in this run and links to 
   await app.route(new RegExp(`/api/v1/objects/material_master.*${RECORDED.businessPartnerRunId}`), (r) =>
     r.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Object not found for this run" }) }));
   await app.goto(`/objects/material_master?run=${RECORDED.businessPartnerRunId}`, { waitUntil: "load" });
-  await expect(app.getByText("Material Master is not in this run")).toBeVisible({ timeout: 20_000 });
+  await expect(app.getByText("Material master is not in this run")).toBeVisible({ timeout: 20_000 });
   await expect(app.getByText(/could not reach the server/i)).toHaveCount(0);
-  const back = app.getByRole("link", { name: "Show latest run of Material Master" });
+  const back = app.getByRole("link", { name: "Show latest run of Material master" });
   await expect(back).toHaveAttribute("href", "/objects/material_master");
   await back.click();
   await expect(app).toHaveURL(/\/objects\/material_master$/);

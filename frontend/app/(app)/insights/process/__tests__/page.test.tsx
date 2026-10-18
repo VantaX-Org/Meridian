@@ -77,12 +77,12 @@ describe("ProcessInsightsPage without a process definition", () => {
     vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<ProcessInsightsPage />);
-    expect(await screen.findByText("Business Partner has no process definition")).toBeInTheDocument();
+    expect(await screen.findByText("Business partner has no process definition")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Runs with a process definition" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("combobox", { name: "Runs with a process definition" }));
-    expect(await screen.findByRole("option", { name: /accounts_payable_1k, Accounts Payable/ })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: /accounts_payable_1k, Accounts payable/ })).toBeInTheDocument();
     // The four sentences come from the frame, once, with the shared action bar beside the title.
-    expect(screen.getByText("Business Partner has no L1 to L5 process definition.")).toBeInTheDocument();
+    expect(screen.getByText("Business partner has no L1 to L5 process definition.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Report library" })).toBeInTheDocument();
   });
 });

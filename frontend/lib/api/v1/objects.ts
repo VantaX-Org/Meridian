@@ -3,6 +3,7 @@ import { downloadBlob } from "../download";
 import type { ScoreBands } from "@/design/primitives/ScoreRing";
 import type { Material360 } from "../materials";
 import { optional } from "../optional";
+import { formatModuleName } from "@/lib/format";
 
 export interface ObjectSummary {
   module: string;
@@ -44,12 +45,21 @@ const get = async <T>(path: string, params?: Record<string, string | undefined>)
 
 /** A tenant with no completed run answers 200 with `run_id: null` and an
  *  empty list for run=latest — that is an empty state, not an error. */
-export const getObjects = async (run: string) =>
-  (await optional(() => get<{ run_id: string | null; objects: ObjectSummary[]; blocking_findings_total?: number; thresholds?: ScoreBands }>("/api/v1/objects", { run })))
-  ?? { run_id: null, objects: [] };
+export const getObjects = async (run: string) => {
+  const body = await optional(() => get<{ run_id: string | null; objects: ObjectSummary[]; blocking_findings_total?: number; thresholds?: ScoreBands }>("/api/v1/objects", { run }));
+  return body ? { ...body, objects: (body.objects ?? []).map(named) } : { run_id: null, objects: [] };
+};
 
-export const getObject = (module: string, run: string) =>
-  get<ObjectDetail>(`/api/v1/objects/${encodeURIComponent(module)}`, { run });
+export const getObject = async (module: string, run: string) =>
+  named(await get<ObjectDetail>(`/api/v1/objects/${encodeURIComponent(module)}`, { run }));
+
+/**
+ * The API's `label` title-cases the module id ("hcm" -> "Hcm", "fi_gl" -> "Fi Gl"); every object is shown by its
+ * name from `formatModuleName` instead, the one module-name map (lib/format.ts `MODULE_LABELS`).
+ */
+function named<T extends { module: string; label: string }>(o: T): T {
+  return typeof o?.module === "string" ? { ...o, label: formatModuleName(o.module) } : o;
+}
 
 export const getObjectRecord = (
   object: string,

@@ -23,7 +23,7 @@ const nav = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams(nav.search) }));
 
 const OBJECTS: ObjectSummary[] = [
-  { module: "material_master", label: "Material Master", composite_score: 72.5, readiness: "warn", failing_checks: 1, affected_records: 120 },
+  { module: "material_master", label: "Material master", composite_score: 72.5, readiness: "warn", failing_checks: 1, affected_records: 120 },
 ];
 
 const LATEST: Version = {
@@ -84,7 +84,7 @@ describe("PersonaHomePage data layout", () => {
     expect(dims.querySelectorAll("a[href*='dimension=']")).toHaveLength(6);
     expect(screen.getByTestId("home-verdict-row")).toBeInTheDocument();
     expect(screen.getByText("Objects, worst first")).toBeInTheDocument();
-    expect(screen.getAllByText("Material Master").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Material master").length).toBeGreaterThan(0);
     // No count tile is a button wrapping a link.
     expect(document.querySelector("button a")).toBeNull();
   });
@@ -94,10 +94,10 @@ describe("PersonaHomePage lineage and heatmap", () => {
   it("prints each dimension score in the heatmap cell with the readiness as its tone", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
     renderWithQuery(<LeadHomePage />);
-    const cell = await screen.findByLabelText("Material Master Uniqueness: 95, go");
+    const cell = await screen.findByLabelText("Material master Uniqueness: 95, go");
     expect(cell).toHaveTextContent("95");
-    expect(screen.getByLabelText("Material Master Completeness: 80, at risk")).toHaveTextContent("80");
-    expect(screen.getByLabelText(/Material Master Timeliness: 60, /)).toHaveTextContent("60");
+    expect(screen.getByLabelText("Material master Completeness: 80, at risk")).toHaveTextContent("80");
+    expect(screen.getByLabelText(/Material master Timeliness: 60, /)).toHaveTextContent("60");
   });
 
   it("calls the only run of its lineage the first run instead of comparing with another object's run", async () => {
@@ -111,7 +111,7 @@ describe("PersonaHomePage lineage and heatmap", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [upload, other] });
     renderWithQuery(<LeadHomePage />);
     const dqs = await screen.findByTestId("home-dqs");
-    expect(dqs).toHaveTextContent("First run of Material Master");
+    expect(dqs).toHaveTextContent("First run of Material master");
     expect(dqs).not.toHaveTextContent("vs Controlling");
   });
 });
