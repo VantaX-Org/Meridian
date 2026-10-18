@@ -366,9 +366,6 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       onboarding={<HomeOnboarding />}
       headerActions={<>
         <RunAnalysis />
-        {role === "steward" && can("export") ? (
-          <ExportMenu options={[{ format: "xlsx", label: "My failing records (Excel)", run: () => exportFindings("xlsx", { version_id: latest.id, sort: "severity" }) }]} />
-        ) : null}
         <Select
           label="View as"
           value={role}
@@ -377,11 +374,14 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         />
         {can("export") ? (
           <span data-tour="home-export" className="inline-flex"><ExportMenu
-            options={[{
-              format: "pdf",
-              label: "Executive report (PDF)",
-              run: () => downloadAuthenticated(getExecutiveReportUrl(latest.id), `meridian-executive-${latest.label ?? latest.id}.pdf`),
-            }]}
+            options={[
+              ...(role === "steward" ? [{ format: "xlsx" as const, label: "My failing records (Excel)", run: () => exportFindings("xlsx", { version_id: latest.id, sort: "severity" }) }] : []),
+              {
+                format: "pdf",
+                label: "Executive report (PDF)",
+                run: () => downloadAuthenticated(getExecutiveReportUrl(latest.id), `meridian-executive-${latest.label ?? latest.id}.pdf`),
+              },
+            ]}
           /></span>
         ) : null}
       </>}

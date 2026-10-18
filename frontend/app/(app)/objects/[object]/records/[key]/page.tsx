@@ -125,15 +125,13 @@ export default function RecordFixSheetPage() {
       recordKey={material.matnr}
       object={object}
       status={status}
+      actions={<ExportMenu options={exportOptions} />}
       stats={[
         { label: "Missing fields", value: material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0), tone: hasMissing ? "no-go" : "go" },
         { label: "Views", value: material.views.length },
       ]}
     >
-      <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} exportOptions={exportOptions} overview={<>
-      <div className="flex justify-end">
-        <ExportMenu options={exportOptions} />
-      </div>
+      <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} overview={<>
       <Card title="Identity" domain={domainOf(object)}>
         <dl className="m-text-body grid grid-cols-2 gap-x-6 gap-y-1">
           <dt style={{ color: "var(--m-ink-3)" }}>Description</dt>

@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, Skeleton, ExportMenu, Mono, Notice, Pill, type ExportOption } from "@/design";
+import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, Skeleton, Mono, Notice, Pill, type ExportOption } from "@/design";
 import {
   approveCleaning,
   bulkApprove,
@@ -174,10 +174,6 @@ export default function BatchPage() {
               Accept {confident.length} at 85% or higher
             </Button>
           ) : null}
-          <ExportMenu
-            disabled={items.length === 0}
-            options={exportOptions}
-          />
         </div>
       }
       table={

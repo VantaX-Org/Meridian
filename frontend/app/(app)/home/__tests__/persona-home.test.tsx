@@ -240,6 +240,15 @@ describe("PersonaHomePage header actions (T20)", () => {
     );
   });
 
+  it("gives the steward one Export menu, not two side by side", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+
+    renderWithQuery(<StewardHomePage />);
+
+    await screen.findByRole("button", { name: "Export" });
+    expect(screen.getAllByRole("button", { name: "Export" })).toHaveLength(1);
+  });
+
   it("does not render the header export action while gated by useDayOne's day-one journey", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({
       step: { key: "connect", href: "/systems", label: "Connect a system.", detail: "", actionable: true },

@@ -39,6 +39,15 @@ describe("BatchPage", () => {
     await waitFor(() => expect(approveCleaning).toHaveBeenCalledWith("i1"));
   });
 
+  it("renders one Export for the batch", async () => {
+    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [item({})], total: 1, page: 1, per_page: 100 });
+
+    renderWithQuery(<BatchPage />);
+
+    await screen.findByText("100001");
+    expect(screen.getAllByRole("button", { name: "Export" })).toHaveLength(1);
+  });
+
   it("asks the server for this batch only, not a client-side filter over one page", async () => {
     // Regression for I11: a client-side filter over a fixed 100-item page missed
     // batches further back in the queue. The filter must be server-side now.
