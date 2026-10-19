@@ -1,0 +1,85 @@
+"use client";
+
+import type { ReactNode } from "react";
+import type { GlossaryKey } from "@/lib/help/glossary";
+import { ScoreRing, type ScoreBands } from "./ScoreRing";
+import { ScoreExplainer, type ScoreExplanation } from "./ScoreExplainer";
+import { Stat } from "./Stat";
+import type { Verdict } from "./Status";
+
+export { DEFAULT_SCORE_BANDS, type ScoreBands } from "./ScoreRing";
+export type { ScoreDimension, ScoreRule, ScoreExplanation } from "./ScoreExplainer";
+
+export type ScoreSize = "sm" | "md" | "hero";
+
+export interface ScoreProps {
+  /** The score shown (0 to 100); null or undefined reads as "—". With `cap`, the measured value before the cap. */
+  value: number | null | undefined;
+  /**
+   * sm: a 16px ring and the number, for a table cell or a line of text.
+   * md: the 48px ring that carries the number, for a detail header or a stat tile; with `explain` it opens the explainer.
+   * hero: the large number and one bar, for the one score sheet of a page (Home, Insights, Executive summary).
+   */
+  size?: ScoreSize;
+  /** The cap a critical finding put on the score. sm and md fill the ring to it and say "Capped at"; hero says it under the bar. */
+  cap?: number;
+  /** Critical findings behind the cap, named in the cap line. */
+  criticals?: number;
+  bands?: ScoreBands;
+  /** md only: the formula, inputs, cap reason and costliest rules behind the score, in a popover on the ring. */
+  explain?: ScoreExplanation;
+  /** sm only: the numeral, when it is a link (a `DrillLink` to the rows behind it). */
+  children?: ReactNode;
+  /** hero only: the label above the number; default "Data quality score". */
+  label?: string;
+  /** hero only: glossary term for the label; default "dqs". */
+  help?: GlossaryKey;
+  /** hero only: the `<Delta>` beside the number. */
+  delta?: ReactNode;
+  /** hero only: the line under the bar (what the delta compares with, or the cap reason); default "Capped at {cap}" when capped. */
+  hint?: ReactNode;
+  /** hero only: the route the number opens. */
+  href?: string;
+  /** hero only: the verdict that colours the bar; without it the bar takes the DQS band. */
+  tone?: Verdict;
+  /** hero only: count-up runs once per version id. */
+  versionId?: string;
+  /** hero only: skeleton in the number slot at the final height. */
+  loading?: boolean;
+}
+
+/** The one way to draw a score. A block shows a score once, at one size. */
+export function Score({ value, size = "md", cap, criticals, bands, explain, children, label, help, delta, hint, href, tone, versionId, loading }: ScoreProps) {
+  if (size === "hero") {
+    const capped = value != null && cap != null && value > cap;
+    return (
+      <div className="m-score-hero" data-testid="score-hero">
+        <Stat
+          hero
+          label={label ?? "Data quality score"}
+          help={help ?? "dqs"}
+          value={value ?? "—"}
+          bar={value ?? undefined}
+          decimals={1}
+          versionId={versionId}
+          loading={loading}
+          href={href}
+          tone={tone}
+          hint={hint ?? (capped ? `Capped at ${cap}${criticals ? `, ${criticals} critical` : ""}` : undefined)}
+          delta={delta}
+        />
+      </div>
+    );
+  }
+  if (value == null) return <span className="m-numeric">—</span>;
+  if (size === "sm") {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <ScoreRing score={value} size={16} bands={bands} />
+        <span className="m-numeric">{children ?? value.toFixed(1)}</span>
+      </span>
+    );
+  }
+  if (explain) return <ScoreExplainer score={value} cap={cap} {...explain} />;
+  return <ScoreRing score={value} size={48} cap={cap} criticals={criticals} bands={bands} />;
+}

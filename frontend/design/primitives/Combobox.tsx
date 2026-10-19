@@ -17,7 +17,7 @@ export function Combobox({
         className="m-input"
       />
       <BaseCombobox.Portal>
-        <BaseCombobox.Positioner>
+        <BaseCombobox.Positioner className="z-50">
           <BaseCombobox.Popup className="m-popup">
             <BaseCombobox.List>
               {(option: ComboboxOption) => (

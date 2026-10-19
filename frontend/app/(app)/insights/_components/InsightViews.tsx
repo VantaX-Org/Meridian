@@ -19,7 +19,7 @@ export function viewOf(pathname: string): InsightView | undefined {
   return VIEWS.find((v) => v.tabs.some(([href]) => href === pathname));
 }
 
-/** Link strip under the page header: the tabs of the current view, run carried along. */
+/** Link strip under the page header: the tabs of the current view, the pinned run carried to the other insight tabs only. */
 export function InsightTabs() {
   // Both hooks return null outside the App Router (unit tests, static export).
   const pathname = usePathname() ?? "";
@@ -28,16 +28,15 @@ export function InsightTabs() {
   const view = viewOf(pathname);
   if (!view || search?.get("present") === "1") return null;
   return (
-    <nav aria-label={`${view.label} views`} data-tour="insight-views" className="flex flex-wrap items-center gap-1 border-b" style={{ borderColor: "var(--m-line)" }}>
+    <nav aria-label={`${view.label} views`} data-tour="insight-views" className="flex flex-wrap items-center gap-1 border-b [border-color:var(--m-line)]">
       {view.tabs.map(([href, label]) => {
         const current = href === pathname;
         return (
           <Link
             key={href}
-            href={withScope(href, { run })}
+            href={href.startsWith("/insights") ? withScope(href, { run }) : href}
             aria-current={current ? "page" : undefined}
-            className="m-motion-colors -mb-px flex h-9 items-center px-3 m-text-body font-medium"
-            style={{ color: current ? "var(--m-ink)" : "var(--m-ink-3)", borderBottom: `2px solid ${current ? "var(--m-accent)" : "transparent"}` }}
+            className="m-motion-colors -mb-px flex h-9 items-center px-3 m-text-body font-medium m-ink-3 [border-bottom:2px_solid_transparent] aria-[current=page]:[color:var(--m-ink)] aria-[current=page]:[border-bottom-color:var(--m-accent)]"
           >
             {label}
           </Link>

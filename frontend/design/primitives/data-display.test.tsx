@@ -44,7 +44,7 @@ describe("data-display primitives", () => {
 });
 
 import { Stat } from "./Stat";
-import { Counter } from "./Counter";
+import { Counter, formatCount } from "./Counter";
 import { EmptyState } from "./EmptyState";
 import { Skeleton } from "./Skeleton";
 
@@ -96,6 +96,19 @@ describe("wave 6 readings", () => {
   it("Counter uses the hero token by default", () => {
     render(<Counter value={null} />);
     expect(screen.getByLabelText("No data").style.fontSize).toBe("var(--m-text-hero)");
+  });
+
+  it("Counter groups thousands and reserves the width of the grouped number", () => {
+    render(<Counter value={34301} decimals={0} />);
+    const el = screen.getByLabelText("34,301");
+    expect(el.style.minWidth).toBe("6ch");
+    expect(formatCount(1008920.5, 1)).toBe("1,008,920.5");
+    expect(formatCount(70, 1)).toBe("70.0");
+  });
+
+  it("Stat groups a plain numeric value that does not count up", () => {
+    render(<Stat label="In flight" value={11151} />);
+    expect(screen.getByText("11,151")).toBeInTheDocument();
   });
 
   it("EmptyState supports ring and stepper ghosts; ErrorState has fixed title and mono message", () => {

@@ -42,7 +42,8 @@ export interface Version {
     | "agents_complete"
     | "agents_failed"
     | "ai_enriching"
-    | "ai_enriched";
+    | "ai_enriched"
+    | "partial";
   dqs_summary: Record<string, DQSSummary> | null;
   /** Free-form JSON: system extractions and older runs carry none of modules, file_name or row_count. */
   metadata: {
@@ -499,7 +500,14 @@ export type NotificationType =
   | "exception"
   | "approval"
   | "digest"
-  | "warning";
+  | "daily_digest"
+  | "warning"
+  | "dq_alert"
+  | "rule_proposal"
+  | "info"
+  | "sla_at_risk"
+  | "sla_ack_breached"
+  | "sla_breached";
 
 export interface Notification {
   id: string;

@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import type { SeverityLevel } from "./Status";
 
 export function Badge({
   count,
@@ -8,8 +9,8 @@ export function Badge({
   count: number;
   /** Active Rail row: accent-ink fill on soft text. */
   inverted?: boolean;
-  /** `critical` marks counts of failing items (the Fix queue), solid critical fill. */
-  tone?: "neutral" | "critical";
+  /** A count only, never a status. `critical` (the severity value) marks counts of failing items (the Fix queue), solid critical fill. */
+  tone?: "neutral" | Extract<SeverityLevel, "critical">;
 }) {
   if (count <= 0) return null;
   return (

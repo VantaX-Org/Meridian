@@ -21,13 +21,12 @@ import {
   putRolePermissions, updateRole, type ConvertResult, type Matrix, type Role,
 } from "@/lib/api/roles";
 import { getUsers } from "@/lib/api/users";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { User } from "@/types/api";
 
 const TABS = ["roles", "users", "invite", "requests", "history"] as const;
-const dim = { color: "var(--m-ink-3)" } as const;
 
 export default function AdminRolesPage() {
   const { can, loading } = useRole();
@@ -96,7 +95,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
     },
   ], []);
 
-  if (error) return <ErrorState message={apiErrorMessage(error)} onRetry={retry} />;
+  if (error) return <ErrorState {...apiErrorState(error)} onRetry={retry} />;
   if (loading) return <Skeleton height={240} />;
   if (!roles.length) return <EmptyState title="No roles yet" detail="Built-in roles appear once the tenant is set up." ghost="list" action={<Button variant="secondary" onClick={retry}>Reload roles</Button>} />;
   return (
@@ -109,7 +108,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
       <EditDialog role={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); refresh(); }} />
       <Dialog open={!!deleting} onOpenChange={(o) => { if (!o) setDeleting(null); }} title={`Delete ${deleting?.name ?? "role"}?`}>
         <div className="flex flex-col gap-3">
-          <p className="m-text-body" style={dim}>Users holding it lose its grants.</p>
+          <p className="m-text-body m-ink-3">Users holding it lose its grants.</p>
           <div className="flex gap-2">
             <Button disabled={del.isPending} onClick={() => deleting && del.mutate(deleting)}>Delete role</Button>
             <Button variant="secondary" onClick={() => setDeleting(null)}>Keep role</Button>
@@ -130,13 +129,13 @@ function RoleDrawer({ role, onClone, onSaved }: { role: Role; onClone: () => voi
     onSuccess: () => { toast.success(`${role.name} saved`); setDraft(null); qc.invalidateQueries({ queryKey: ["role-matrix", role.key] }); onSaved(); },
     onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`),
   });
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   if (!q.data) return <Skeleton height={200} />;
   const matrix = draft ?? q.data.matrix;
   const diff = baseQ.data ? matrixDiff(baseQ.data.matrix, matrix) : null;
   return (
     <div className="flex flex-col gap-3">
-      {role.description ? <p className="m-text-body" style={dim}>{role.description}</p> : null}
+      {role.description ? <p className="m-text-body m-ink-3">{role.description}</p> : null}
       {role.built_in ? (
         <div className="flex items-center gap-2">
           <Pill>Read-only</Pill>
@@ -217,7 +216,7 @@ function UsersTab({ roles, onInvite }: { roles: Role[]; onInvite: () => void }) 
     { id: "role", header: "Legacy role", cell: ({ row }) => <Mono>{row.original.role}</Mono> },
     { id: "status", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
   ], []);
-  if (usersQ.isError) return <ErrorState message={apiErrorMessage(usersQ.error)} onRetry={() => usersQ.refetch()} />;
+  if (usersQ.isError) return <ErrorState {...apiErrorState(usersQ.error)} onRetry={() => usersQ.refetch()} />;
   if (usersQ.isLoading) return <Skeleton height={240} />;
   if (!users.length) return <EmptyState title="No users yet" detail="Invite the first one from the Invite tab." ghost="list" action={<Button onClick={() => onInvite()}>Invite user</Button>} />;
   return (
@@ -248,7 +247,7 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
   const legacy = !converted && user.permissions && Object.keys(user.permissions).length > 0;
   return (
     <div className="flex flex-col gap-4">
-      <p className="m-text-body" style={dim}>{user.email}</p>
+      <p className="m-text-body m-ink-3">{user.email}</p>
       <Card title="Grants">
         <GrantsPicker
           grants={grantsQ.data ?? []} roles={roles} systems={systems} busy={add.isPending || rem.isPending}
@@ -278,7 +277,7 @@ function InviteTab() {
   const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col gap-3">
-      <p className="m-text-body" style={dim}>Invite someone and choose what they can reach before they sign in.</p>
+      <p className="m-text-body m-ink-3">Invite someone and choose what they can reach before they sign in.</p>
       <div><Button onClick={() => setOpen(true)}>Invite user</Button></div>
       <Drawer open={open} onOpenChange={setOpen} title="Invite a user">
         {open ? <InviteForm onDone={() => setOpen(false)} /> : null}
@@ -303,7 +302,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
     onSuccess: () => { toast.success("Request decided"); setGranting(null); setDeclining(null); setReason(""); qc.invalidateQueries({ queryKey: ["access-requests"] }); },
     onError: (e) => toast.error(`Not decided. ${apiErrorMessage(e)}`),
   });
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   if (q.isLoading) return <Skeleton height={160} />;
   const rows = q.data ?? [];
   if (!rows.length) return <EmptyState title="No open requests" detail="Access requests from users appear here for a decision." ghost="list" action={<Button variant="secondary" onClick={() => void q.refetch()}>Refresh</Button>} />;
@@ -313,7 +312,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-3 m-text-body">
             <span>{who(r.user_id)} wants <Mono>{r.resource} {r.action}</Mono> at {where(r) === "all" ? "all systems" : where(r)}</span>
-            <span style={dim}>{r.reason}, {relativeTime(r.created_at)}</span>
+            <span className="m-ink-3">{r.reason}, {relativeTime(r.created_at)}</span>
             <Button onClick={() => { setRole(""); setGranting(r); }}>Grant</Button>
             <Button variant="secondary" onClick={() => setDeclining(r)}>Decline</Button>
           </li>
@@ -331,7 +330,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       </Dialog>
       <Dialog open={!!declining} onOpenChange={(o) => { if (!o) setDeclining(null); }} title="Decline request">
         <div className="flex flex-col gap-3">
-          <Field label="Reason"><textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} value={reason} onChange={(e) => setReason(e.target.value)} rows={3} /></Field>
+          <Field label="Reason"><textarea className="m-input [height:auto] [padding:6px_10px]" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} /></Field>
           <div className="flex gap-2">
             <Button disabled={!reason.trim() || decide.isPending} onClick={() => declining && decide.mutate({ id: declining.id, body: { decision: "declined", reason } })}>Decline request</Button>
             <Button variant="secondary" onClick={() => setDeclining(null)}>Close</Button>
@@ -348,7 +347,7 @@ function HistoryTab() {
   const qs = useQueries({
     queries: HISTORY_ACTIONS.map((action) => ({ queryKey: ["audit-history", action], queryFn: () => getAuditEntries({ action, limit: 50 }) })),
   });
-  if (qs.some((q) => q.isError)) return <ErrorState message={apiErrorMessage(qs.find((q) => q.isError)?.error)} onRetry={() => qs.forEach((q) => q.refetch())} />;
+  if (qs.some((q) => q.isError)) return <ErrorState {...apiErrorState(qs.find((q) => q.isError)?.error)} onRetry={() => qs.forEach((q) => q.refetch())} />;
   if (qs.some((q) => q.isLoading)) return <Skeleton height={240} />;
   const entries: AuditEntry[] = qs.flatMap((q) => q.data?.entries ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at));
   if (!entries.length) return <EmptyState title="No role changes yet" detail="Role, grant and request changes are listed here." ghost="list" action={<Button variant="secondary" onClick={() => qs.forEach((x) => void x.refetch())}>Refresh</Button>} />;

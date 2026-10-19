@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
+from api.services.run_lineage import lineage_sql
+from api.services.version_status import ENDED, finished_sql
 from api.services.branded_xlsx import (
     ROW_CAP,
     ColumnSpec,
@@ -54,7 +56,8 @@ def _version_to_response(v: AnalysisVersion) -> VersionResponse:
 
 @router.get("/versions")
 async def list_versions(
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=1000,
+                       description="Runs per page (default 20, up to 1000); `total` counts the whole filtered set"),
     offset: int = Query(0, ge=0),
     module: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
@@ -112,7 +115,7 @@ ARCHIVE_SQL = """
 """
 RESTORE_SQL = ("UPDATE analysis_versions SET metadata = metadata - 'archived' "
                "WHERE tenant_id = :tid AND metadata->>'archived' = 'true'")
-_DONE = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched", "failed")
+_DONE = ENDED  # finished or failed: both may be archived
 
 
 @router.post("/versions/archive", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
@@ -154,14 +157,15 @@ _CHECK_CHANGES_SQL = """
 
 @router.get("/versions/compare")
 async def compare_versions(
-    v1: str = Query(...),
     v2: str = Query(...),
+    v1: Optional[str] = Query(None, description="Default: pinned baseline, else the previous finished run"),
     module: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Per-object DQS and dimension deltas (v2 − v1), and the checks that started
-    or stopped failing between the two versions."""
+    or stopped failing between the two versions. 404 ``{"reason": "no_baseline"}``
+    when ``v1`` is omitted and the system has no earlier finished run."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid1, vid2 = await _resolve_pair(db, v1, v2)
     found = {v.id: v for v in (await db.execute(
@@ -193,13 +197,25 @@ async def compare_versions(
 
 
 async def _scope_of(db: AsyncSession, vid: uuid.UUID) -> Optional[str]:
-    row = (await db.execute(text("SELECT COALESCE(metadata->>'system_id', 'upload') FROM analysis_versions "
+    """The run's lineage key (api/services/run_lineage.py): its system id, or ``upload:<sorted modules>``
+    for an upload. None when the run does not exist."""
+    row = (await db.execute(text(f"SELECT {lineage_sql()} FROM analysis_versions "
                                  "WHERE id = :v"), {"v": vid})).fetchone()
     return row[0] if row else None
 
 
+def _is_upload(scope: str) -> bool:
+    return scope == "upload" or scope.startswith("upload:")
+
+
+NO_BASELINE = {"reason": "no_baseline", "message": "No earlier run of this system or uploaded object to compare with."}
+
+
 async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[uuid.UUID, uuid.UUID]:
-    """v1 defaults to the pinned baseline of v2's lineage, else the previous complete run."""
+    """v1 defaults to the pinned baseline of v2's lineage, else the newest earlier finished run of it.
+    A system run's lineage is its system; an upload's is the uploads of the same objects, so a
+    controlling upload never defaults to a business_partner baseline.
+    Raises 404 ``NO_BASELINE`` when there is none (also for the only upload of its objects)."""
     vid2 = uuid.UUID(v2)
     scope = await _scope_of(db, vid2)
     if scope is None:
@@ -209,17 +225,17 @@ async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[u
         scope1 = await _scope_of(db, vid1)
         if scope1 is None:
             raise HTTPException(status_code=404, detail="Version not found")
-        if "upload" not in (scope1, scope) and scope1 != scope:
+        if not (_is_upload(scope1) or _is_upload(scope)) and scope1 != scope:
             raise HTTPException(status_code=400, detail="The versions belong to different systems.")
         return vid1, vid2
-    row = (await db.execute(text("""
+    row = (await db.execute(text(f"""
         SELECT id FROM analysis_versions
-         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND id <> :v2 AND status = 'complete'
+         WHERE {lineage_sql()} = :scope AND id <> :v2 AND {finished_sql()}
            AND run_at <= (SELECT run_at FROM analysis_versions WHERE id = :v2)
          ORDER BY (metadata->>'baseline') = 'true' DESC NULLS LAST, run_at DESC LIMIT 1
     """), {"scope": scope, "v2": vid2})).fetchone()
     if not row:
-        raise HTTPException(status_code=404, detail="No earlier run of this system to compare with.")
+        raise HTTPException(status_code=404, detail=NO_BASELINE)
     return row[0], vid2
 
 
@@ -404,7 +420,9 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
 
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
-    row = (await db.execute(text("SELECT status, metadata->>'dataset_path', metadata->>'system_id', label, metadata->>'purpose' "
+    # Extractions store the data under ``dataset_path``; uploads under ``parquet_path`` (api/routes/upload.py).
+    row = (await db.execute(text("SELECT status, COALESCE(metadata->>'dataset_path', metadata->>'parquet_path'), "
+                                 "metadata->>'system_id', label, metadata->>'purpose' "
                                  "FROM analysis_versions WHERE id = :v"), {"v": vid})).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Version not found")
@@ -430,15 +448,16 @@ async def pin_baseline(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Pin (or unpin) a run as the comparison baseline for its system; one baseline per system."""
+    """Pin (or unpin) a run as the comparison baseline for its lineage; one baseline per lineage
+    (per system, or per set of uploaded objects)."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
     scope = await _scope_of(db, vid)
     if scope is None:
         raise HTTPException(status_code=404, detail="Version not found")
-    await db.execute(text("""
-        UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) - 'baseline'
-         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND metadata ? 'baseline'
+    await db.execute(text(f"""
+        UPDATE analysis_versions SET metadata = COALESCE(metadata, '{{}}'::jsonb) - 'baseline'
+         WHERE {lineage_sql()} = :scope AND metadata ? 'baseline'
     """), {"scope": scope})
     if pinned:
         await db.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "

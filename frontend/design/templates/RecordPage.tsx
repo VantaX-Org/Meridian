@@ -5,6 +5,7 @@ import { DomainChip } from "../primitives/DomainChip";
 import { Mono } from "../primitives/Mono";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { Stat, type StatProps } from "../primitives/Stat";
+import { formatModuleName } from "../../lib/format";
 import { PageFrame } from "./PageFrame";
 
 export interface RecordStatus {
@@ -13,7 +14,7 @@ export interface RecordStatus {
 }
 
 export function RecordPage({
-  recordKey, object, status, children, stats, loading = false,
+  recordKey, object, status, children, stats, actions, meta, loading = false,
 }: {
   recordKey: string;
   object: string;
@@ -21,6 +22,10 @@ export function RecordPage({
   children: ReactNode;
   /** Stat row under the header (rule failures, dimensions failing, fields failing, batches, last changed, owner). */
   stats?: Pick<StatProps, "label" | "value" | "hint" | "tone">[];
+  /** One line under the header: the run the record is read from. */
+  meta?: ReactNode;
+  /** Page actions at the right of the header, e.g. the one ExportMenu. */
+  actions?: ReactNode;
   /** Header 32 + body 120 skeletons (screens.md 3.3) while the record loads. */
   loading?: boolean;
 }) {
@@ -39,10 +44,12 @@ export function RecordPage({
         <span style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", fontWeight: 600 }}>
           <Mono>{recordKey}</Mono>
         </span>
-        <span style={{ color: "var(--m-ink-3)" }}>{object}</span>
+        <span style={{ color: "var(--m-ink-3)" }}>{formatModuleName(object)}</span>
         <DomainChip moduleId={object} />
         <Pill tone={status.tone}>{status.label}</Pill>
+        {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
       </header>
+      {meta != null && <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{meta}</div>}
       {stats && stats.length > 0 && <div className="m-stat-grid">{stats.map((x) => <Stat key={x.label} {...x} />)}</div>}
       {children}
     </PageFrame>

@@ -2770,3 +2770,96 @@ rules:
     fix_map:
       __other__: Delete the company code (OX02) or create its accounts (FS00).
     record_fix_template: 'Company code {T001.BUKRS}: no G/L accounts created.'
+
+  - id: GL260
+    field: BKPF.BELNR
+    check_class: uniqueness_check
+    fields:
+    - BKPF.BUKRS
+    - BKPF.BELNR
+    - BKPF.GJAHR
+    normalize: alnum
+    grain: BKPF
+    applies_when:
+      BKPF.BSTAT:
+        not_in:
+        - D
+        - M
+        - S
+        - V
+        - W
+        - Z
+      BKPF.STBLG:
+        blank: true
+    severity: critical
+    dimension: uniqueness
+    message: Duplicate accounting document number within the same company code and fiscal year
+    why_it_matters: BUKRS + BELNR + GJAHR is the key SAP uses to identify one accounting document, so two rows
+      sharing it are the same document loaded twice, not two documents. GL069 looks for the same source
+      reference re-posted on the same date, which is a duplicate detector; this looks for the key itself
+      repeating, which is what a migration load does when a file is loaded twice or a re-run is appended
+      instead of replacing. Every figure in the duplicated document is counted twice in the trial balance.
+    rule_authority: sap_hard_constraint
+    sap_impact: The duplicated document double-counts its expense, revenue or balance sheet line in FAGLL03 and
+      in the financial statements until it is reversed. For a vendor or customer line it also creates a second
+      open item, so a payment run can pay the same invoice twice.
+    fix_map:
+      __other__: Read the duplicate in FB03 (S/4 F0717). Reverse the extra copy with FB08, or remove it in the
+        migration if the load has not been reconciled. Correct the load to replace rather than append.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} in company code {BKPF.BUKRS} appears on more than
+      one row - the same accounting document key was loaded twice.'
+  - id: GL261
+    field: BKPF.BUDAT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: '(`BKPF.BUDAT` - @today).dt.days > 366'
+    severity: critical
+    dimension: timeliness
+    message: Journal entry posting date is more than a year in the future
+    why_it_matters: 'GL060 and GL061 compare the posting date to the entry date, so they only catch a posting that
+      is inconsistent with when it was entered. A document posted into a period more than a year ahead is consistent
+      with its own entry date and still wrong: it lands in a fiscal period nobody has opened, so it is invisible in
+      the current-year statements and cannot be reconciled against the sub-ledgers that close each month. A load that
+      misparses a date - ''2099'' for a blank, a stubbed placeholder - produces exactly this on every affected document.'
+    rule_authority: sap_hard_constraint
+    sap_impact: 'The document sits in an unopened future period: absent from the period and year-end statements, and
+      the balance carried forward (FAGLGVTR) will not include it until that year is opened.'
+    fix_map:
+      __other__: Reverse and re-post with the correct posting date (FB08 then FB01), or correct the date field in
+        the migration load. Check whether the source extract wrote a placeholder for a blank date.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} in company code {BKPF.BUKRS}: posting date {BKPF.BUDAT}
+      is more than a year in the future.'
+    applies_when:
+      BKPF.BSTAT:
+        not_in:
+        - D
+        - M
+        - S
+        - V
+        - W
+        - Z
+      BKPF.BUDAT:
+        populated: true
+  - id: GL262
+    field: BKPF.CPUDT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.CPUDT` - @today).dt.days > 366
+    severity: high
+    dimension: timeliness
+    message: Journal entry has an entry (created) date more than a year in the future
+    why_it_matters: CPUDT is when the document was entered and is what the audit trail and the change log report.
+      A future entry date is impossible - the document cannot have been created after today - and it puts the record
+      outside every date-bounded audit query and retention calculation. Unlike GL060/GL061 this checks the entry date
+      on its own, so a document whose posting date was also shifted stays visible.
+    rule_authority: sap_hard_constraint
+    sap_impact: Audit and change-log reporting miss the document for every period up to the bogus date, and any retention
+      or ageing calculation keyed on the entry date is wrong.
+    fix_map:
+      __other__: Correct the entry date in the source record or the extract mapping; the entry date is system-maintained
+        on posting, so a wrong one means the load wrote it.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} in company code {BKPF.BUKRS}: entry date {BKPF.CPUDT}
+      is more than a year in the future.'
+    applies_when:
+      BKPF.CPUDT:
+        populated: true

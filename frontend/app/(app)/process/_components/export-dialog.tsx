@@ -60,7 +60,7 @@ export function ExportDialog({ open, onOpenChange, runId, l1, node, nodeName, fi
           </label>
         </fieldset>
         {format === "pptx" ? (
-          <p style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-ink-3">
             A deck of the reference L1 to L5 process model: a summary, one slide per L1 and one per L4. Discovered cases and filters are not part of the deck.
           </p>
         ) : (<>
@@ -90,7 +90,7 @@ export function ExportDialog({ open, onOpenChange, runId, l1, node, nodeName, fi
             </label>
           </fieldset>
         )}
-        <p style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-ink-3">
           Edges carried by fewer than {fmtShare(EDGE_THRESHOLD)} of cases are left out. Each step keeps its case count, share and median time.
         </p>
         <section className="grid gap-1">

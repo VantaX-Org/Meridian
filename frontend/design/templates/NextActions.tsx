@@ -39,7 +39,7 @@ export function NextActions({ actions }: { actions: NextAction[] }) {
             <Popover.Root>
               <Popover.Trigger className="m-text-meta underline" style={{ color: "var(--m-accent)" }}>Why?</Popover.Trigger>
               <Popover.Portal>
-                <Popover.Positioner sideOffset={6}>
+                <Popover.Positioner sideOffset={6} className="z-50">
                   <Popover.Popup className="m-popup p-3 m-text-body" style={{ maxWidth: 280 }}>
                     {a.why}
                   </Popover.Popup>

@@ -13,7 +13,7 @@ describe("HomePage no-data state", () => {
     render(
       <HomePage
         persona="lead"
-        state="no-data"
+        state="empty"
         journey={{
           systemsConnected: false,
           configLoaded: false,
@@ -36,7 +36,7 @@ describe("HomePage data state", () => {
     render(
       <HomePage
         persona="lead"
-        state="data"
+        state="ready"
         verdict={{ dqs: 82.4, sentence: "Material master is ready.", action: { label: "Open objects", href: "/objects" } }}
         run={run}
       />,
@@ -49,14 +49,22 @@ describe("HomePage data state", () => {
     expect(screen.getByRole("link", { name: "Open objects" })).toHaveAttribute("href", "/objects");
   });
 
+  it("says it is the first run for the object instead of comparing with another object", () => {
+    render(<HomePage persona="lead" state="ready" verdict={{ dqs: 70, sentence: "x", firstRun: true, delta: null }} run={run} />);
+    expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
+    expect(screen.getByTestId("home-dqs")).not.toHaveTextContent(/^vs /);
+    // The column grows with the numeral and its delta chip instead of clipping them (.m-score-hero: width max-content).
+    expect(screen.getByTestId("home-dqs").firstElementChild).toHaveClass("m-score-hero");
+  });
+
   it("shows a dash when no module is scored, and no ring", () => {
-    const { container } = render(<HomePage persona="lead" state="data" verdict={{ dqs: null, sentence: "x" }} run={run} />);
+    const { container } = render(<HomePage persona="lead" state="ready" verdict={{ dqs: null, sentence: "x" }} run={run} />);
     expect(screen.getByTestId("home-dqs")).toHaveTextContent("—");
     expect(container.querySelector("svg[role=img]")).toBeNull();
   });
 
   it("omits the objects column when there is no objects slot", () => {
-    render(<HomePage persona="basis" state="data" verdict={{ dqs: 70, sentence: "x" }} run={run} trend={<div data-testid="t" />} />);
+    render(<HomePage persona="basis" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} trend={<div data-testid="t" />} />);
     expect(screen.getByTestId("t").parentElement?.className).toContain("@5xl:col-span-12");
   });
 

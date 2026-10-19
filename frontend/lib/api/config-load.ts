@@ -31,7 +31,7 @@ export interface ConfigLoadHistory {
   available?: boolean;
 }
 
-export type ConfigLoadStatus = "running" | "completed" | "failed";
+export type ConfigLoadStatus = "running" | "completed" | "failed" | "never_loaded";
 
 export type Applicability = "applies" | "does_not_apply" | "applies_by_default" | "not_available";
 export type SystemConfigState = "loaded" | "with_gaps" | "loading" | "not_loaded" | "failed" | "not_available";
@@ -96,11 +96,11 @@ export async function startConfigLoad(systemId: string): Promise<ConfigLoadStart
   return data;
 }
 
-/** Latest load of the system, or null when none has run (the API answers 404). */
+/** Latest load of the system, or null when none has run (the API answers `never_loaded`, older ones 404). */
 export async function getConfigLoad(systemId: string): Promise<ConfigLoad | null> {
   try {
     const { data } = await apiClient.get<ConfigLoad>(`/api/v1/connectivity/config-load/${systemId}`);
-    return data;
+    return data.status === "never_loaded" ? null : data;
   } catch (e) {
     if (isAxiosError(e) && e.response?.status === 404) return null;
     throw e;

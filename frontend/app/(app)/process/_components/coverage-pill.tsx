@@ -1,4 +1,4 @@
-import { Pill, type PillTone } from "@/design";
+import { Status } from "@/design";
 import type { Coverage, RunStatus } from "@/lib/api/process-discovery";
 
 /** Coverage is ordinal: discovered fills the deepest ramp step, partial the middle, reference the lightest. */
@@ -11,24 +11,12 @@ const COVERAGE: Record<Coverage, { step: 1 | 3 | 5; label: string }> = {
 export function CoveragePill({ coverage }: { coverage: Coverage }) {
   const c = COVERAGE[coverage];
   return (
-    <span className={`m-heat-seq-${c.step}`} style={{ display: "inline-flex", alignItems: "center", height: 22, padding: "0 8px",
-      borderRadius: "var(--m-radius-pill)", fontSize: "var(--m-text-meta)", fontWeight: 500, whiteSpace: "nowrap" }}>
+    <span className={`m-heat-seq-${c.step} [display:inline-flex] [align-items:center] [height:22px] [padding:0_8px] [border-radius:var(--m-radius-pill)] [font-size:var(--m-text-meta)] [font-weight:500] [white-space:nowrap]`}>
       {c.label}
     </span>
   );
 }
 
-const STATUS: Record<RunStatus, { tone: PillTone; label: string }> = {
-  queued: { tone: "info", label: "Queued" },
-  waiting: { tone: "info", label: "Waiting for extraction" },
-  extracting: { tone: "info", label: "Extracting" },
-  building: { tone: "info", label: "Building event log" },
-  mining: { tone: "info", label: "Mining" },
-  completed: { tone: "go", label: "Completed" },
-  failed: { tone: "no-go", label: "Failed" },
-};
-
 export function RunStatusPill({ status }: { status: RunStatus }) {
-  const s = STATUS[status];
-  return <Pill tone={s.tone}>{s.label}</Pill>;
+  return <Status kind="lifecycle" value={status} />;
 }

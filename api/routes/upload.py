@@ -235,7 +235,19 @@ async def upload_file(
     logger.debug(f"Stored parquet: {parquet_path}")
 
     # Step 8: Create analysis_versions record
-    from db.queries.versions import create_version
+    #
+    # Resolved through the module rather than imported at call time. The deferred
+    # ``from db.queries.versions import create_version`` binds whatever object the module
+    # holds at request time, which makes the call site un-patchable from the source module:
+    # a test that patches ``db.queries.versions.create_version`` (the obvious seam, and how
+    # the other route tests do it) can silently miss this one whenever something earlier in
+    # the session has left ``sys.modules['db.queries.versions']`` rebound, and the route then
+    # calls the real function against the test's fake session. Observed exactly that:
+    # tests/test_upload_path.py passes alone and fails deep in the full suite with
+    # ``AttributeError: 'NoneType' object has no attribute 'execute'``. Going through
+    # ``versions`` makes the module attribute the single seam, so the patch always lands.
+    from db.queries import versions
+    create_version = versions.create_version
 
     metadata = {
         "file_name": filename,
@@ -276,19 +288,51 @@ async def upload_file(
     )
 
     # Step 9: Enqueue Celery task
-    from workers.tasks.run_checks import run_checks
-
-    job = run_checks.delay(str(version.id), str(tenant.id), parquet_path)
-    logger.info(f"Enqueued run_checks: job_id={job.id}")
-
+    job_id = await _enqueue_checks(db, tenant.id, version.id, parquet_path, total_rows=len(df))
     logger.info(f"Upload complete: version={version.id}")
 
     # Step 10: Return immediately — all heavy lifting happens in the Celery task.
     return UploadResponse(
         version_id=str(version.id),
-        job_id=job.id,
+        job_id=job_id,
         status="pending",
     )
+
+
+async def _enqueue_checks(db: AsyncSession, tenant_id: uuid.UUID, version_id: uuid.UUID,
+                          parquet_path: str, *, total_rows: int = 0) -> str:
+    """Queue ``run_checks`` for a freshly created version and return the Celery task id.
+
+    The version row is already committed, so a broker failure here must not leave it
+    ``pending`` forever with no job behind it: it is marked ``failed`` with the reason, the
+    progress stream is told, and the caller gets a 503 to retry the upload."""
+    from db.queries import versions
+    from workers.tasks.run_checks import run_checks
+    mark_version_failed = versions.mark_version_failed
+
+    try:
+        job = run_checks.delay(str(version_id), str(tenant_id), parquet_path)
+    except Exception as e:
+        logger.exception(f"Failed to enqueue run_checks for version {version_id}: {e}")
+        reason = f"Could not queue the analysis: {type(e).__name__}"
+        try:
+            await mark_version_failed(db, tenant_id, version_id, reason)
+        except Exception:
+            logger.exception(f"Could not mark version {version_id} failed after enqueue failure")
+        try:
+            update_task_progress(str(version_id), status="failed", current_step=reason,
+                                 step_number=STEP_PARSE[0], total_steps=TOTAL_STEPS,
+                                 total_rows=total_rows, error=reason)
+            jobs.finish_job(str(tenant_id), str(version_id), "failed", error=reason)
+        except Exception:
+            logger.exception(f"Could not publish enqueue failure for version {version_id}")
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "queue_unavailable",
+                    "detail": "The analysis queue is unavailable. The upload was stored; please try again shortly."},
+        )
+    logger.info(f"Enqueued run_checks: job_id={job.id}")
+    return job.id
 
 
 # ── Security helpers ──────────────────────────────────────────────────────────

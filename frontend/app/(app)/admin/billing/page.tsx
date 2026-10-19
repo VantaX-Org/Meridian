@@ -55,7 +55,7 @@ export default function ExceptionBillingPage() {
             <Stat label="Total" value={b ? money(b.total_amount) : q.isLoading ? "–" : "Pick a month"} />
             <Stat label="Base fee" value={b ? money(b.base_fee) : q.isLoading ? "–" : "—"} />
           </div>
-          <div style={{ maxWidth: 200 }}>
+          <div className="[max-width:200px]">
             <Field label="Month">
               <Input type="month" value={period} max={thisMonth()} onChange={(e) => setPeriod(e.target.value)} />
             </Field>
@@ -65,7 +65,7 @@ export default function ExceptionBillingPage() {
       tables={
         b ? (
           <div className="flex flex-col gap-2">
-            {b.stripe_invoice_id ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Invoice {b.stripe_invoice_id}</span> : null}
+            {b.stripe_invoice_id ? <span className="m-text-meta m-ink-3">Invoice {b.stripe_invoice_id}</span> : null}
             <DataTable columns={columns} data={rows} getRowId={(r) => String(r.tier)} />
           </div>
         ) : null

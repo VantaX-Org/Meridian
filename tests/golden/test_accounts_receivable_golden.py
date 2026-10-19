@@ -241,7 +241,10 @@ def _live_config(rules) -> dict[str, set[str]]:
               "LAND1": {"ZA", "DE", "NL", "FR"}, "BANKS": {"ZA", "DE", "NL", "FR"},
               "ZLSPR": {"*", "A", "B", "R", "V"},                  # T008 payment block reasons
               "UMSKZ": {"A", "F", "I", "W"},                       # T074U special G/L (customers)
-              "MANSP": {"A", "B", "R"}}                            # T040S dunning block reasons
+              "MANSP": {"A", "B", "R"},                            # T040S dunning block reasons
+              # T003: the FI document types this fixture posts with (RV invoice, DA, DZ, ...).
+              # AR270 checks BSID.BLART against it.
+              "BLART": {"RV", "DA", "DZ", "DR"}}
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:

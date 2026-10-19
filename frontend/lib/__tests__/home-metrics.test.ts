@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Version } from "@/types/api";
 import {
+  capRules,
   cappedReason,
   delta,
   dimensionBarPoints,
@@ -100,14 +101,24 @@ describe("home-metrics", () => {
     const first = version("v1", "2026-01-02", { material_master: 70 });
     const second = version("v2", "2026-01-03", { material_master: 80 });
     expect(trend([second, pending, first])).toEqual([
-      { x: "2 Jan 2026", y: 70, runId: "v1" },
-      { x: "3 Jan 2026", y: 80, runId: "v2" },
+      { x: "v1", label: "2 Jan 2026", y: 70, runId: "v1" },
+      { x: "v2", label: "3 Jan 2026", y: 80, runId: "v2" },
     ]);
   });
 
+  it("trend labels two runs of one day with their time, and follows only the current run's lineage", () => {
+    const morning = version("v1", "2026-01-02T05:00:00Z", { material_master: 70 });
+    const evening = version("v2", "2026-01-02T17:30:00Z", { material_master: 80 });
+    const other = version("v3", "2026-01-03T09:00:00Z", { fi_gl: 95 });
+    const all = trend([other, evening, morning], evening);
+    expect(all.map((p) => p.runId)).toEqual(["v1", "v2"]);
+    expect(all.map((p) => p.label)).toEqual(["2 Jan 2026, 05:00", "2 Jan 2026, 17:30"]);
+    expect(trend([other, evening, morning]).map((p) => p.runId)).toEqual(["v1", "v2", "v3"]);
+  });
+
   it("delta is the change from the previous finished run, or null with fewer than two", () => {
-    expect(delta([{ x: "a", y: 70, runId: "v1" }])).toBeNull();
-    expect(delta([{ x: "a", y: 70, runId: "v1" }, { x: "b", y: 85.4, runId: "v2" }])).toBe(15.4);
+    expect(delta([{ x: "a", label: "a", y: 70, runId: "v1" }])).toBeNull();
+    expect(delta([{ x: "a", label: "a", y: 70, runId: "v1" }, { x: "b", label: "b", y: 85.4, runId: "v2" }])).toBe(15.4);
   });
 
   it("severityTotals sums every module's counts", () => {
@@ -139,7 +150,7 @@ describe("home-metrics", () => {
       v,
     );
     expect(cells).toHaveLength(6);
-    expect(cells[0]).toEqual({ row: "Material Master", col: "Completeness", value: "go" });
+    expect(cells[0]).toEqual({ row: "Material Master", col: "Completeness", value: 90, tone: "go" });
   });
 
   it("worstObjectsFirst sorts ascending by composite_score and drops unscored objects", () => {
@@ -158,6 +169,22 @@ describe("home-metrics", () => {
       { x: "1 Jan 2026", y: 70 },
       { x: "2 Jan 2026", y: 85 },
     ]);
+  });
+});
+
+describe("capRules", () => {
+  it("names the rules each capped object's reason lists, once, with the object they capped", () => {
+    const v = version("v1", "2026-01-01", { business_partner: 70, fi_gl: 70, mm: 95 });
+    Object.assign(v.dqs_summary!.business_partner, { capped: true, cap_reason: "2 critical failures over tolerance (BP019: 4.0% of BUT000 rows; BP002: 3.1% of BUT000 rows) — score capped at 70" });
+    Object.assign(v.dqs_summary!.fi_gl, { capped: true, cap_reason: "2 critical failures over tolerance (GL024: 2.0% of SKA1 rows; BP019: 1.0% of BUT000 rows) — score capped at 70" });
+    expect(capRules(v)).toEqual([
+      { check_id: "BP019", module: "business_partner" },
+      { check_id: "BP002", module: "business_partner" },
+      { check_id: "GL024", module: "fi_gl" },
+    ]);
+  });
+  it("is empty when nothing is capped", () => {
+    expect(capRules(version("v1", "2026-01-01", { a: 90 }))).toEqual([]);
   });
 });
 

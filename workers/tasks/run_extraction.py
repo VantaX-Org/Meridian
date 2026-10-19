@@ -117,6 +117,32 @@ def wait_for_config(task: Task, session: Session, system_id: str) -> str:
     return "loaded" if basis == "loaded" else "baseline"
 
 
+def _acquire_version_lock(version_id: str) -> bool:
+    """One extraction per version, across worker restarts.
+
+    ``run_extraction`` is declared ``acks_late=True, reject_on_worker_lost=True`` so that a crash
+    does not silently lose a finished read. The cost is that the broker REQUEUES a task whose
+    worker died, and a restart - every deploy - therefore re-runs an extraction that may already
+    be hours in. Two concurrent extractions of the same version then compete: they double the SAP
+    reads and, worse, each opens its own RFC sessions. Repeated logons against a strict SAP user
+    lock it ("too many failed attempts"), which is exactly what happened on the Komatsu sandbox.
+
+    A Redis key per version makes the redelivered copy exit immediately instead. The TTL is the
+    extraction limit, so a genuinely dead run frees the lock without operator action.
+    """
+    try:
+        import redis  # type: ignore
+
+        from workers.celery_app import celery_app
+        url = celery_app.conf.broker_url
+        if not url:
+            return True
+        client = redis.from_url(url)
+        return bool(client.set(f"extract-lock:{version_id}", "1", nx=True, ex=EXTRACT_TIME_LIMIT))
+    except Exception:
+        return True  # never block an extraction because the lock backend is unavailable
+
+
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
@@ -139,6 +165,12 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     the version and the DQ side effects (module map, table profiles) are skipped.
     """
     from api.services.task_progress import publish_progress
+
+    if version_id and not _acquire_version_lock(str(version_id)):
+        logger.warning(
+            "extraction for version %s is already running (redelivered after a restart); "
+            "exiting rather than starting a second read of the same system", version_id)
+        return {"version_id": str(version_id), "status": "duplicate_ignored"}
 
     engine = get_sync_engine()
     if sync_type != "config":
@@ -190,9 +222,23 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
             def store(table: str, df, entry: dict) -> None:
                 """One data table, straight to the bundle: the frame is dropped once uploaded."""
+                # Refuse a write that would risk an OOM kill: SIGKILL cannot be caught, so the
+                # SAP sessions would be left dangling and SAP would lock the user.
+                from sap.rfc import require_memory
+                require_memory(int(df.memory_usage(deep=True).sum()), f"storing {table}")
+
                 buf = io.BytesIO()
-                # arrow-backed strings: the frame as read, not a python-object copy of it
-                df.astype("string[pyarrow]").to_parquet(buf, index=False)
+                # arrow-backed strings, converted ONE COLUMN AT A TIME.
+                #
+                # `df.astype("string[pyarrow]")` builds a second copy of the whole frame before
+                # writing. For MARC that is the difference between a ~18 GB peak and ~36 GB, and
+                # 36 GB is an OOM kill on a 30 GB box: the read itself succeeded (all 18,333,093
+                # rows) and the worker was killed by the kernel during the write, which is exactly
+                # how the material_master baseline kept dying at the very end.
+                for _col in df.columns:
+                    if df[_col].dtype != "string[pyarrow]":
+                        df[_col] = df[_col].astype("string[pyarrow]")
+                df.to_parquet(buf, index=False)
                 # Upload failure fails the extraction — never report success
                 # for data the checks cannot read.
                 upload_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}", buf.getvalue())

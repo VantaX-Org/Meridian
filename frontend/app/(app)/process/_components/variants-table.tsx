@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton } from "@/design";
 import { getVariants, type ProcessFilterParams, type VariantRow } from "@/lib/api/process-discovery";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { fitnessTone, fmtCount, fmtFitness, fmtSeconds, fmtShare } from "./shared";
 
@@ -32,7 +32,7 @@ export function VariantsTable({ runId, filters, canExport, onOpenCase, onClearFi
 }) {
   const params = { ...filters, limit: 200 };
   const q = useQuery({ queryKey: queryKeys.processRunView(runId, "variants", params), queryFn: () => getVariants(runId, params) });
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   if (!q.data) return <Skeleton height={320} />;
   const rows = q.data.items;
   if (!rows.length) return <EmptyState title="No variants in this view" detail="Widen the filters to include more cases."

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildInsight, sectionOf, type InsightFacts } from "./route-insight";
+import { buildInsight, sectionOf, showsRouteInsight, type InsightFacts } from "./route-insight";
 
 const empty: InsightFacts = { hasRun: false, dqs: null, prevDqs: null, critical: 0, total: 0, affected: 0, systems: 0, waves: 0, backlog: null };
 
@@ -8,6 +8,13 @@ describe("route insight", () => {
     expect(sectionOf("/objects/material_master")).toBe("objects");
     expect(sectionOf("/design")).toBeNull();
     expect(sectionOf("/nope")).toBeNull();
+  });
+  it("shows the shell banner on the persona homes only", () => {
+    expect(showsRouteInsight("/home")).toBe(true);
+    expect(showsRouteInsight("/home/basis")).toBe(true);
+    expect(showsRouteInsight("/homework")).toBe(false);
+    expect(showsRouteInsight("/insights")).toBe(false);
+    expect(showsRouteInsight("/objects/material_master")).toBe(false);
   });
   it("gives a designed fresh-install sentence for every cell and uses the day-one step", () => {
     const h = buildInsight("home", { ...empty, dayOne: { label: "Connect a system", href: "/systems" } });
@@ -45,5 +52,22 @@ describe("route insight", () => {
   it("falls back to the score delta when no compare data exists", () => {
     const h = buildInsight("runs", { ...empty, hasRun: true, runId: "r2", dqs: 70, prevDqs: 74, critical: 0, total: 5, affected: 9 });
     expect(h.changed.sentence).toBe("Score fell 4 points since the previous run.");
+  });
+});
+
+describe("route insight lineage and money", () => {
+  it("says this is the first run for the object instead of comparing with another object", () => {
+    const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: null, firstRun: true, critical: 0, total: 5, affected: 9 });
+    expect(h.changed.sentence).toBe("First run for this object. Change appears after the next run.");
+  });
+  it("writes the value at risk through formatMoney with the tenant currency", () => {
+    const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: 70, critical: 0, total: 5, affected: 9, costAtRisk: 5672930, currency: "ZAR" });
+    expect(h.why.sentence).toMatch(/About ZAR[  ]?5[,.  ]672[,.  ]930 is at risk\./);
+    expect(h.why.sentence).not.toMatch(/About 5672930/);
+  });
+  it("holds the value-at-risk sentence until the currency is known, never a bare number", () => {
+    const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: 70, critical: 0, total: 5, affected: 9, costAtRisk: 1008920, currency: undefined });
+    expect(h.why.sentence).not.toMatch(/at risk/);
+    expect(h.why.sentence).toBe("No critical findings, so the score is not capped.");
   });
 });

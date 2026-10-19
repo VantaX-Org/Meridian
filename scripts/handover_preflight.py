@@ -69,20 +69,49 @@ def check_checks_time_limit(results: list[dict]) -> None:
         results.append({"name": "checks time limit", "status": "PASS", "detail": f"{hours:.0f}h"})
 
 
-def check_images_match(results: list[dict]) -> None:
-    """A half-deployed fix is worse than none: the worker runs the checks."""
-    rc, out, _ = _run(["docker", "inspect", "--format", "{{.Config.Image}}", API, WORKER])
-    if rc != 0:
-        results.append({"name": "image versions", "status": "WARN", "detail": "could not read images"})
-        return
-    imgs = out.split()
-    ids = []
+def check_release_match(results: list[dict]) -> None:
+    """Both services must be on one release; the worker is what evaluates the rules.
+
+    Not compared by container image id: api and worker are built as different images (the
+    worker ships compiled bytecode and no api/ sources), so their digests differ by design and
+    comparing them fails on every healthy deployment. What matters is the release identity the
+    two agree on, so compare the app version AND the rule packs - a rule change is the thing a
+    half-deployed release would actually get wrong.
+    """
+    versions = {}
     for c in (API, WORKER):
-        r, o, _ = _run(["docker", "inspect", "--format", "{{.Image}}", c])
-        ids.append(o.strip() if r == 0 else "?")
-    same = len(set(ids)) == 1
-    results.append({"name": "api/worker build match", "status": "PASS" if same else "FAIL",
-                    "detail": f"{imgs} builds={'same' if same else 'DIFFERENT'}"})
+        rc, out, _ = _run(["docker", "exec", c, "python", "-c",
+                           "from api.services.version import APP_VERSION; print(APP_VERSION)"])
+        versions[c] = out.strip().splitlines()[-1] if rc == 0 and out.strip() else "?"
+    # the rule packs are in both images; hash them so a rules-only change is caught too
+    hashes = {}
+    for c in (API, WORKER):
+        rc, out, _ = _run(["docker", "exec", c, "sh", "-c",
+                           "cat /app/checks/rules/*/*.yaml | md5sum | cut -c1-12"])
+        hashes[c] = out.strip().split()[0] if rc == 0 and out.strip() else "?"
+    # All rules live in checks/rules, which both images carry; identical hashes are the
+    # strongest available proof that the worker is running the same release the api is.
+    same_rules = hashes[API] == hashes[WORKER] and hashes[API] != "?"
+    # Version strings are compared only when both are real. A worker image built without the
+    # release tag reports the source default (0.0.0-dev), which is not a mismatch - it is a
+    # missing label, and it is reported as a WARN so it gets fixed without failing a handover
+    # over a cosmetic value.
+    unknown = {"?", "", "0.0.0-dev"}
+    both_known = versions[API] not in unknown and versions[WORKER] not in unknown
+    version_differs = both_known and versions[API] != versions[WORKER]
+    if not same_rules:
+        status = "FAIL"
+    elif version_differs:
+        status = "FAIL"
+    elif not both_known:
+        status = "WARN"
+    else:
+        status = "PASS"
+    detail = (f"rule packs {'match' if same_rules else 'DIFFER'} ({hashes[API]}/{hashes[WORKER]}); "
+              f"version api={versions[API]} worker={versions[WORKER]}")
+    if not both_known and same_rules:
+        detail += " - the worker image carries no release label, so only the rule packs prove it"
+    results.append({"name": "api/worker same release", "status": status, "detail": detail})
 
 
 def check_no_stuck_runs(results: list[dict]) -> None:
@@ -111,6 +140,58 @@ def check_connections(results: list[dict]) -> None:
     results.append({"name": "connections", "status": "PASS" if not missing else "FAIL",
                     "detail": f"{len(systems)} system(s); missing credentials: "
                               f"{[m.split('|')[0] for m in missing] or 'none'}"})
+
+
+def check_systems_reachable(results: list[dict]) -> None:
+    """Log on to every configured system, the way an extraction will.
+
+    Credentials present is not the same as credentials that work. The expensive failures are the
+    silent ones: an SAP user whose password expired, or one already locked by an earlier attempt,
+    passes every static check and then fails the baseline at the first logon - or, worse, after
+    hours when the lock is hit mid-read. Meridian's connector refuses to retry a locked user and
+    says so (SU01), so surfacing it here turns a wasted night into one line of output.
+    """
+    code = r"""
+from sqlalchemy import text
+from workers.db import get_sync_engine
+from api.services.connectivity_manager import connect_sap_system
+from api.services.credential_store import decrypt_password
+T = "00000000-0000-0000-0000-000000000001"
+bad, ok = [], []
+e = get_sync_engine()
+with e.connect() as c:
+    c.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": T})
+    rows = c.execute(text(
+        "SELECT id, name, system_type, host, sysnr, client, username, base_url, company_id "
+        "FROM sap_systems ORDER BY name")).mappings().all()
+    for r in rows:
+        enc = c.execute(text("SELECT encrypted_password FROM system_credentials WHERE system_id=:s"),
+                        {"s": str(r["id"])}).scalar()
+        try:
+            if r["system_type"] == "successfactors":
+                conn = connect_sap_system("successfactors", {
+                    "base_url": r["base_url"] or "", "company_id": r["company_id"] or "",
+                    "auth_type": "basic", "username": r["username"] or "",
+                    "password": decrypt_password(T, enc) if enc else ""})
+                conn.read_entity_set("User", select=["userId"])
+            else:
+                conn = connect_sap_system("ecc", {
+                    "host": r["host"], "client": r["client"], "sysnr": r["sysnr"],
+                    "user": r["username"], "password": decrypt_password(T, enc) if enc else ""})
+                conn.read_table("T000", fields=["MANDT"], max_rows=1)
+            ok.append(r["name"])
+        except Exception as ex:
+            bad.append(r["name"] + ": " + str(ex)[:160])
+print("OK " + ", ".join(ok) if not bad else "BAD " + " || ".join(bad))
+"""
+    rc, out = _py(API, code)
+    if rc != 0 or not out:
+        results.append({"name": "systems reachable", "status": "WARN",
+                        "detail": (out or "could not run the logon test")[:200]})
+        return
+    results.append({"name": "systems reachable",
+                    "status": "PASS" if out.startswith("OK") else "FAIL",
+                    "detail": out[3:][:220]})
 
 
 def check_rules_load(results: list[dict]) -> None:
@@ -146,8 +227,8 @@ def main() -> int:
     args = ap.parse_args()
 
     results: list[dict] = []
-    for fn in (check_checks_time_limit, check_images_match, check_no_stuck_runs,
-               check_connections, check_rules_load, check_disk):
+    for fn in (check_checks_time_limit, check_release_match, check_no_stuck_runs,
+               check_connections, check_systems_reachable, check_rules_load, check_disk):
         try:
             fn(results)
         except Exception as e:  # a check must never take the preflight down

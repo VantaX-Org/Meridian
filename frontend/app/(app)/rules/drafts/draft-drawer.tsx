@@ -139,7 +139,7 @@ export function DraftDrawer({ draft, open, onOpenChange }: { draft: RuleDraft | 
                 >
                   <Sparkles size={14} aria-hidden /> Generate with AI
                 </Button>
-                {!form.module.trim() ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Choose an object first</span> : null}
+                {!form.module.trim() ? <span className="m-text-meta m-ink-3">Choose an object first</span> : null}
               </div>
             </div>
           ) : null}
@@ -162,7 +162,7 @@ export function DraftDrawer({ draft, open, onOpenChange }: { draft: RuleDraft | 
           </div>
           <Field label="Message" error={shown("message")}><Input value={form.message} onChange={(e) => set("message", e.target.value)} /></Field>
           <Field label="Conditions (JSON)" error={shown("conditions")}>
-            <textarea className="m-input m-textarea" rows={8} value={form.conditions} onChange={(e) => set("conditions", e.target.value)} spellCheck={false} style={{ fontFamily: "var(--m-font-mono)" }} />
+            <textarea className="m-input m-textarea [font-family:var(--m-font-mono)]!" rows={8} value={form.conditions} onChange={(e) => set("conditions", e.target.value)} spellCheck={false} />
           </Field>
           <Field label="Why this rule"><Input value={rationale} onChange={(e) => { setRationale(e.target.value); setDirty(true); }} /></Field>
 

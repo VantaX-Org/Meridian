@@ -3,9 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, Mono, Pill } from "@/design";
+import { Button, DataTable, ExplorerPage, Mono, Pill, asyncStateOf } from "@/design";
 import { getDedupCandidates, type DedupCandidate } from "@/lib/api/cleaning";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 
 const dedupColumns: ColumnDef<DedupCandidate>[] = [
@@ -23,7 +23,7 @@ export function DedupTab() {
   const items = q.data?.items ?? [];
   return (
     <ExplorerPage
-      state={q.isLoading ? "loading" : isListFailure({ isError: q.isError, error: q.error }) ? "error" : items.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(q, () => items.length === 0, true)}
       emptyProps={{ title: "No duplicate candidates", detail: "Candidates appear after matching runs on a master-data object", action: <Button variant="secondary" render={<Link href="/mdm/match-rules">Tune match rules</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={dedupColumns} data={items} getRowId={(r) => r.id} />}

@@ -5,10 +5,11 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall } from "@/design";
+import { Button, Card, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall, asyncStateOf } from "@/design";
 import { createSimulation, getSimulation, isSimulationResult } from "@/lib/api/simulation";
 import { getVersions } from "@/lib/api/versions";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isFinished } from "@/lib/runs";
+import { apiErrorMessage } from "@/lib/error";
 import { useSearchParams } from "next/navigation";
 import { usePermissions } from "@/lib/permissions";
 import { CreateBatchFromSimulation, RuleImpact } from "./rule-impact";
@@ -18,7 +19,7 @@ export default function WhatIfPage() {
   const [picked, setPicked] = useState("");
   const [simId, setSimId] = useState<string | null>(null);
   const versions = useQuery({ queryKey: ["versions", "what-if"], queryFn: () => getVersions({ limit: 25 }) });
-  const runs = (versions.data?.versions ?? []).filter((v) => v.status === "complete" || v.status === "agents_complete" || v.status === "ai_enriched");
+  const runs = (versions.data?.versions ?? []).filter(isFinished);
   const fromUrl = useSearchParams().get("run");
   const versionId = picked || runs.find((v) => v.id === fromUrl)?.id || runs[0]?.id || "";
   const run = useMutation({
@@ -48,7 +49,7 @@ export default function WhatIfPage() {
   const o = result?.dqs.overall;
   return (
     <ReportPage
-      state={versions.isLoading ? "loading" : isListFailure(versions) ? "error" : runs.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(versions, () => runs.length === 0, true)}
       emptyProps={{ title: "No finished run to simulate", detail: "Run an analysis, then come back to see what the fixes would be worth.", ghost: "chart" }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
       narrative={controls}

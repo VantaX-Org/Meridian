@@ -30,9 +30,10 @@ export async function savePlannerConfig(config: PlannerConfig): Promise<void> {
   await apiClient.post("/api/v1/settings/planner", config);
 }
 
+/** The effective cost model (defaults with the tenant's overrides laid over them); the API wraps it as `{defaults, tenant, effective}`. */
 export async function getCostModel(): Promise<CostModel> {
-  const { data } = await apiClient.get<CostModel>("/api/v1/settings/cost-model");
-  return data;
+  const { data } = await apiClient.get<{ effective: CostModel }>("/api/v1/settings/cost-model");
+  return data.effective;
 }
 
 export async function updateCostModel(model: CostModel): Promise<void> {

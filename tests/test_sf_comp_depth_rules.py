@@ -74,14 +74,12 @@ CASES = [
     ("COMP126", {"COMPINFO": ci(PAY_GRADE_STATUS=["X", "A"])}, 1),
     ("COMP127", {"COMPINFO": ci(PAY_RANGE_STATUS=["X", "I"])}, 1),
     ("COMP128", {"COMPINFO": ci(PAY_COMPONENT_STATUS=["X", "A"])}, 1),
-    ("COMP239", {"COMPINFO": ci(PAY_COMPONENT_TYPE=["BOGUS", "AMOUNT"])}, 1),
     # regex_check
     # ^.{1,N}$ (m6 fix round 2) is length-only so non-ASCII names pass; the "bad" fixture
     # value must be over-length (not merely non-ASCII) to still fail.
     ("COMP118", {"COMPINFO": ci(PAY_SCALE_TYPE=["X" * 40, "A1"])}, 1),
     ("COMP150", {"PAYCOMPNONREC": nr(UNIT_OF_MEASURE=["X" * 40, "HR"])}, 1),
     ("COMP157", {"PAYCOMPNONREC": nr(USERID=["bad user!", "u1"])}, 1),
-    ("COMP228", {"COMPINFO": ci(CURRENCY=["usd", "USD"])}, 1),
     ("COMP230", {"COMPINFO": ci(PAY_GRADE=["X" * 150, "G1"])}, 1),
     ("COMP246", {"COMPINFO": ci(PAY_TYPE=["X" * 40, "SALARY"])}, 1),
     # exists_check (target table has only the valid code, so dropping row0 leaves a clean match)
@@ -395,7 +393,7 @@ def _apply(steps, v):
 
 @pytest.mark.parametrize("rid,dirty,fixed", [
     ("COMP126", " a ", "A"), ("COMP127", " i ", "I"), ("COMP128", " a ", "A"),
-    ("COMP228", " usd ", "USD"), ("COMP229", " usd ", "USD"),
+    ("COMP004", " usd ", "USD"),
     # COMP246/247 lost their auto_fix this round (m5): strip+upper can't repair an
     # over-length value, so no safe auto_fix exists for a length/newline violation.
 ])

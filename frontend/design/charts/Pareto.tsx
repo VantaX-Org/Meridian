@@ -5,9 +5,10 @@ import { Bar as RBar, Cell, CartesianGrid, ComposedChart, Line as RLine, Respons
 import { ChartTooltip } from "./Tooltip";
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { hoverBar } from "./HoverBar";
+import { categoryAxisWidth } from "./Bar";
 import { mMotion, reducedMotion } from "../tokens";
+import { formatInt } from "../../lib/format";
 
-const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 const tick = { fill: chartTheme.axis, fontSize: 12 };
 
 /** Sorts descending and adds a cumulative-share line, so the few causes behind most defects stand out. */
@@ -37,8 +38,8 @@ export function Pareto({
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows}>
         <CartesianGrid stroke={chartTheme.grid} vertical={false} />
-        <XAxis dataKey="x" axisLine={false} tickLine={false} tick={tick} />
-        <YAxis yAxisId="n" axisLine={false} tickLine={false} tick={tick} tickFormatter={(v: number) => compact.format(v)} />
+        <XAxis dataKey="x" axisLine={false} tickLine={false} tick={tick} minTickGap={16} />
+        <YAxis yAxisId="n" axisLine={false} tickLine={false} tick={tick} tickFormatter={(v: number) => formatInt(v)} width={categoryAxisWidth(rows.map((r) => formatInt(r.y)), 36, 72)} />
         <YAxis yAxisId="c" orientation="right" domain={[0, 100]} unit="%" axisLine={false} tickLine={false} tick={tick} />
         <Tooltip
           cursor={false}
@@ -49,7 +50,7 @@ export function Pareto({
               payload={payload?.map((p) => ({
                 name: p.dataKey === "cum" ? "Cumulative" : "Impact",
                 color: p.dataKey === "cum" ? undefined : p.color,
-                value: p.dataKey === "cum" ? `${p.value} %` : Number(p.value).toLocaleString("en"),
+                value: p.dataKey === "cum" ? `${p.value}%` : formatInt(Number(p.value)),
               }))}
             />
           )}

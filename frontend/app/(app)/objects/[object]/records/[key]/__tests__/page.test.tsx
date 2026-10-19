@@ -49,6 +49,10 @@ describe("RecordFixSheetPage", () => {
     await waitFor(() => expect(screen.getByText("Steel bolt")).toBeInTheDocument());
     expect(screen.getByText("100001")).toBeInTheDocument();
     expect(screen.getByText(/basic data: 1\/1 maintained/i)).toBeInTheDocument();
+    // One Export, in the record header.
+    const exports = screen.getAllByRole("button", { name: "Export" });
+    expect(exports).toHaveLength(1);
+    expect(exports[0].closest("header")).not.toBeNull();
   });
 
   it("shows a not-yet-available state for an unsupported object", async () => {

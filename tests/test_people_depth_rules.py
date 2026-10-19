@@ -67,6 +67,11 @@ def sf(m, rid, tables):
     return fire(next(r for r in PACKS[m] if r["id"] == rid), tables, m, S4)
 
 
+# Ids retired because they were exact duplicates of another rule in the same pack, found by
+# tests/checks/test_rule_duplicates.py. The number is not reused: recycling it for an unrelated
+# check would hide that the duplicate existed.
+_RETIRED = {"hcm": {113}, "employee_central": {160}}
+
 # ---- integrity ---------------------------------------------------------------------------------------------------
 
 def test_ids_unique_and_contiguous():
@@ -74,7 +79,8 @@ def test_ids_unique_and_contiguous():
         ids = [r["id"] for r in rules]
         assert len(ids) == len(set(ids))
     nums = sorted(int(r["id"][2:]) for r in NEW_HCM)
-    assert nums == list(range(67, nums[-1] + 1))
+    retired = _RETIRED.get("hcm", set())
+    assert nums == [n for n in range(67, nums[-1] + 1) if n not in retired]
     assert len(NEW_ALL) >= 120
 
 

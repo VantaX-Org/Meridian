@@ -29,8 +29,11 @@ PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41), ("BEN
 # FOCOMPANY.EXTERNAL_CODE (SF legal-entity external code, up to 128 chars) — a
 # code-space mismatch, not a referential pair, same class of bug as PAY157/158.
 # PAY205: duplicate of PAY027
+# PAY127: exact duplicate of PAY043 (same PAYMENTINFO.BIC predicate, same BIC-format regex);
+# PAY208: exact duplicate of PAY040. Both found by tests/checks/test_rule_duplicates.py, which
+# is the gate that catches this class - it did not exist when PAY209 was spotted by hand.
 DELETED = {"payroll_integration": {"PAY157", "PAY158", "PAY205", "PAY206", "PAY209", "PAY210", "PAY211", "PAY213",
-                                    "PAY214", "PAY219"}}
+                                    "PAY214", "PAY219", "PAY127", "PAY208"}}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 OPS = {"strip": set(), "collapse_spaces": set(), "upper": set(), "lower": set(), "title": set(),
@@ -246,8 +249,6 @@ CASES = {
     "PAY115": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="AUS", ROUTING_NUMBER="11111"), c(PI, BANK_COUNTRY="AUS", ROUTING_NUMBER="111111")]}),
     "PAY120": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="HKG", ROUTING_NUMBER="11"), c(PI, BANK_COUNTRY="HKG", ROUTING_NUMBER="111")]}),
     "PAY126": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="ZAF", ROUTING_NUMBER="11111"), c(PI, BANK_COUNTRY="ZAF", ROUTING_NUMBER="111111")]}),
-    "PAY127": ("payroll_integration", {"PAYMENTINFO": [c(PI, BIC="DEUTDEFF500"),
-                                                       c(PI, BIC="DEUTDE")]}),
     "PAY128": ("payroll_integration", {"PAYMENTINFO": [c(PI, ACCOUNT_NUMBER="123", ACCOUNT_OWNER=None),
                                                        c(PI, ACCOUNT_NUMBER="123", ACCOUNT_OWNER="Alice Smith")]}),
     "PAY129": ("payroll_integration", {"PAYMENTINFO": [c(PI, IBAN="DE89370400440532013000", ACCOUNT_NUMBER=None, ACCOUNT_OWNER=None),

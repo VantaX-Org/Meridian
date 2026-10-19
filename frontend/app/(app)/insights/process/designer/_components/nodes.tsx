@@ -2,7 +2,7 @@
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { Card, Mono } from "@/design";
-import { mColor, type DomainKey } from "@/design/tokens";
+import type { DomainKey } from "@/design/tokens";
 import type { DqColour, Evidence } from "@/types/process-model";
 
 const ALIGN: Record<DqColour, string> = { green: "aligned", amber: "drifting", red: "blocked" };
@@ -32,14 +32,14 @@ function Task({ data }: NodeProps<Node<TaskData>>) {
       data-alignment={data.status ? ALIGN[data.status] : undefined} data-evidence={data.evidence ?? undefined}>
       <Handles />
       <div className="m-process-node__clip">
-      {data.domain ? <span aria-hidden data-domain={data.domain} style={{ position: "absolute", inset: "0 auto 0 0", width: 4, background: mColor.dom[data.domain], zIndex: 1 }} /> : null}
+      {data.domain ? <span aria-hidden data-domain={data.domain} className="m-domain-stripe" /> : null}
       <Card padding="sm">
         <div className="flex flex-col gap-0.5">
-          {data.tcode ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}><Mono>{data.tcode}</Mono></span> : null}
-          <span className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>{data.name}</span>
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{plural(data.fields, "field")}, {plural(data.rules, "rule")}</span>
+          {data.tcode ? <span className="m-text-meta m-ink-3"><Mono>{data.tcode}</Mono></span> : null}
+          <span className="m-text-body font-medium m-ink">{data.name}</span>
+          <span className="m-text-meta m-ink-3">{plural(data.fields, "field")}, {plural(data.rules, "rule")}</span>
           {data.failing != null && data.failing > 0 ? (
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{plural(data.failing, "rule")} failing, {plural(data.affected ?? 0, "record")} open</span>
+            <span className="m-text-meta m-ink-3">{plural(data.failing, "rule")} failing, {plural(data.affected ?? 0, "record")} open</span>
           ) : null}
         </div>
       </Card>
@@ -55,7 +55,7 @@ function Gateway({ data }: NodeProps<Node<MarkData>>) {
     <div className="m-bpmn-gateway" data-selected={data.selected} data-parallel={data.parallel || undefined}>
       <Handles />
       <span className="m-bpmn-gateway__shape" aria-hidden />
-      <span className="m-bpmn-gateway__label m-text-meta" style={{ color: "var(--m-ink-2)" }}>{data.label}</span>
+      <span className="m-bpmn-gateway__label m-text-meta m-ink-2">{data.label}</span>
     </div>
   );
 }

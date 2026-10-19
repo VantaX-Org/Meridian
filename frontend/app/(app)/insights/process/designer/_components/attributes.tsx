@@ -2,36 +2,32 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Button, Checkbox, Drawer, Field, Input, Mono, Pill, type PillTone } from "@/design";
+import { Button, Checkbox, Drawer, Field, Input, Mono, Pill, Status } from "@/design";
 import type { ReactNode } from "react";
 import { getDdicFields } from "@/lib/api/rules";
 import { formatModuleName } from "@/lib/format";
 import type { ActivityOverlay, Classification, FieldRef, L4, ProcessVariant } from "@/types/process-model";
 import { allL4, findActivity, l1Of, locate, type Doc } from "./doc";
+import { clsx } from "clsx";
 
 const CLASS_LABEL: Record<Classification, string> = {
   implemented: "Implemented", dormant: "Dormant", configured_not_used: "Configured, not used", customer_specific: "Customer-specific",
 };
-const DQ: Record<ActivityOverlay["dq_status"], { tone: PillTone; label: string }> = {
-  green: { tone: "go", label: "Passing" }, amber: { tone: "at-risk", label: "Some fields failing" }, red: { tone: "no-go", label: "Blocking failures" },
-};
 const FIELD = /^[A-Z0-9_/]+\.[A-Z0-9_/]+$/;
 
-const note = { color: "var(--m-ink-2)" } as const;
-const Note = ({ children }: { children: ReactNode }) => <p className="m-text-meta" style={note}>{children}</p>;
-const Heading = ({ children }: { children: ReactNode }) => <h3 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{children}</h3>;
-const Ranked = ({ children }: { children: ReactNode }) => <ul className="flex flex-col gap-2" style={{ listStyle: "none", margin: 0, padding: 0 }}>{children}</ul>;
+const Note = ({ children }: { children: ReactNode }) => <p className="m-text-meta m-ink-2">{children}</p>;
+const Heading = ({ children }: { children: ReactNode }) => <h3 className="m-text-h font-semibold m-ink">{children}</h3>;
+const Ranked = ({ children }: { children: ReactNode }) => <ul className="flex flex-col gap-2 [list-style:none] [margin:0] [padding:0]">{children}</ul>;
 const Item = ({ title, num, meta, children }: { title: ReactNode; num?: ReactNode; meta?: ReactNode; children?: ReactNode }) => (
   <li className="flex flex-wrap items-center gap-x-3 gap-y-1">
     <div className="flex flex-1 min-w-0 flex-col gap-0.5">
-      <div className="flex flex-wrap items-center gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>{title}{num}</div>
-      {meta ? <div className="m-text-meta" style={note}>{meta}</div> : null}
+      <div className="flex flex-wrap items-center gap-2 m-text-body m-ink">{title}{num}</div>
+      {meta ? <div className="m-text-meta m-ink-2">{meta}</div> : null}
     </div>
     {children}
   </li>
 );
 const linkCls = "underline m-text-body";
-const linkStyle = { color: "var(--m-accent-ink)" } as const;
 
 function FieldChip({ table, field }: { table: string; field: string }) {
   return <Pill>{`${table}.${field}`}</Pill>;
@@ -121,7 +117,7 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
       </Field>
       <Field label="Description">
         <textarea key={`${act.id}d`} rows={3} defaultValue={act.description} disabled={!p.editable}
-          className="m-input w-full" style={{ height: "auto", padding: "var(--m-space-2) var(--m-space-3)" }}
+          className="m-input w-full [height:auto] [padding:var(--m-space-2)_var(--m-space-3)]"
           onBlur={(e) => e.target.value !== act.description && p.patchActivity(act.id, { description: e.target.value })} />
       </Field>
       <Field label="T-code">
@@ -131,7 +127,7 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
       {act.evidence === "not_extracted" ? <Note>No document table extracted for this step.</Note> : null}
       {dq ? (
         <Note>
-          <Pill tone={DQ[dq.dq_status].tone}>{DQ[dq.dq_status].label}</Pill>{" "}
+          <Status kind="verdict" value={dq.dq_status} />{" "}
           {dq.finding_count.toLocaleString()} {dq.finding_count === 1 ? "check has" : "checks have"} findings, {dq.affected_count.toLocaleString()} records affected.
         </Note>
       ) : null}
@@ -143,15 +139,15 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
             const finding = f.check_id ? link(f.check_id) : undefined;
             return (
               <Item key={f.field} title={<FieldChip table={table} field={col} />}
-                num={f.check_id ? <Link className={linkCls} style={linkStyle} href={`/analyse/rule/${f.check_id}`}><Mono>{f.check_id}</Mono></Link> : null}
+                num={f.check_id ? <Link className={clsx(linkCls, "m-ink-accent-ink")} href={`/analyse/rule/${f.check_id}`}><Mono>{f.check_id}</Mono></Link> : null}
                 meta={<>
                   {f.description}{f.config_source ? <>{" "}Config source <Mono>{f.config_source}</Mono>.</> : null}
-                  {finding ? <>{" "}<Link className="underline" style={linkStyle} href={finding}>Open finding</Link></> : null}
+                  {finding ? <>{" "}<Link className="underline m-ink-accent-ink" href={finding}>Open finding</Link></> : null}
                 </>}>
                 {p.canDesign === false ? (
-                  <span className="m-text-meta" style={note}>{f.mandatory ? "Mandatory" : "Optional"}</span>
+                  <span className="m-text-meta m-ink-2">{f.mandatory ? "Mandatory" : "Optional"}</span>
                 ) : (
-                  <span className="inline-flex items-center gap-2 m-text-meta" style={note}>
+                  <span className="inline-flex items-center gap-2 m-text-meta m-ink-2">
                     <Checkbox aria-label={`Mandatory ${f.field}`} checked={f.mandatory} disabled={!p.editable}
                       onChange={(e) => set(act.fields.map((x) => (x === f ? { ...x, mandatory: e.target.checked } : x)))} /> Mandatory
                   </span>

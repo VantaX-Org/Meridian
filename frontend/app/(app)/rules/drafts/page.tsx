@@ -6,11 +6,11 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Mono, PageHeader } from "@/design";
+import { Button, DataTable, ExplorerPage, Mono, PageHeader, asyncStateOf } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getRuleDrafts, type RuleDraft } from "@/lib/api/rules";
 import { formatDate, formatModuleName } from "@/lib/format";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { DraftDrawer } from "./draft-drawer";
 
 export default function RuleDraftsPage() {
@@ -32,7 +32,7 @@ export default function RuleDraftsPage() {
       <ExplorerPage
         header={<PageHeader title="Rule drafts" meta="Edit, dry run and publish rules before they run" actions={newDraft} />}
         toolbarEnd={<Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />}
-        state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
+        state={asyncStateOf(q, () => items.length === 0, true)}
         emptyProps={{ title: "No drafts", detail: "Start a draft, or let AI write the first version", ghost: "table", action: newDraft ?? <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
         errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
         table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} onRowClick={(r) => setSelected(r)} tableId="rule-drafts" />}

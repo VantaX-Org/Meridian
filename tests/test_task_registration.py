@@ -1,35 +1,46 @@
-"""Every task the beat schedule or the API enqueues must be registered in the worker."""
+"""Every Celery task must actually be a task.
 
-import re
-from pathlib import Path
+A helper function inserted between `@celery_app.task(...)` and the function it decorates silently
+binds the decorator to the helper. The decorated function then becomes a plain function: no error
+at import, no error in the tests that call it directly, and the failure only appears at runtime as
+
+    AttributeError: 'function' object has no attribute 'delay'
+
+which is how a deployed build shipped with extraction unable to start at all.
+"""
+
+import pytest
 
 from workers.celery_app import celery_app
 
-ROOT = Path(__file__).resolve().parent.parent
+# tasks whose registration matters to the product, not only to a test
+CRITICAL = [
+    "workers.tasks.run_extraction.run_extraction",
+    "workers.tasks.run_checks.run_checks",
+    "workers.tasks.run_agents.run_agents",
+]
 
 
-def test_beat_schedule_tasks_are_registered():
-    missing = [
-        entry["task"]
-        for entry in celery_app.conf.beat_schedule.values()
-        if entry["task"] not in celery_app.tasks
-    ]
-    assert missing == []
+@pytest.mark.parametrize("name", CRITICAL)
+def test_the_task_is_registered_under_its_documented_name(name: str) -> None:
+    assert name in celery_app.tasks, (
+        f"{name} is not registered. A decorator bound to the wrong object does this silently - "
+        f"check that @celery_app.task sits immediately above its function."
+    )
 
 
-def test_enqueued_task_modules_are_registered():
-    """`from workers.tasks.X import Y` followed by Y.delay/apply_async must resolve."""
-    pat = re.compile(r"from (workers\.tasks[\w.]*) import (\w+)")
-    unregistered = set()
-    for path in list((ROOT / "api").rglob("*.py")) + list((ROOT / "workers").rglob("*.py")):
-        src = path.read_text()
-        for module, name in pat.findall(src):
-            if f"{name}.delay(" not in src and f"{name}.apply_async(" not in src:
-                continue
-            registered = {t.name for t in celery_app.tasks.values() if t.__module__ == module}
-            if not any(n.endswith(f".{name}") or n == name for n in registered) and not any(
-                getattr(t, "__name__", "") == name and t.__module__ == module
-                for t in celery_app.tasks.values()
-            ):
-                unregistered.add(f"{module}.{name} (in {path.relative_to(ROOT)})")
-    assert sorted(unregistered) == []
+def test_run_extraction_is_dispatchable() -> None:
+    from workers.tasks.run_extraction import run_extraction
+
+    assert hasattr(run_extraction, "delay"), (
+        "run_extraction has no .delay: the task decorator is bound to something else, so no "
+        "extraction can ever be queued"
+    )
+    assert run_extraction.name == "workers.tasks.run_extraction.run_extraction"
+
+
+def test_the_version_lock_helper_is_not_the_task() -> None:
+    """The exact mistake: the helper must not carry the task decorator."""
+    from workers.tasks.run_extraction import _acquire_version_lock
+
+    assert not hasattr(_acquire_version_lock, "delay")

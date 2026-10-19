@@ -17,9 +17,9 @@ describe("settings.ts cost model", () => {
     mockedPut.mockReset();
   });
 
-  it("getCostModel calls GET /api/v1/settings/cost-model and returns the body", async () => {
+  it("getCostModel calls GET /api/v1/settings/cost-model and returns the effective model from its envelope", async () => {
     const model: CostModel = { currency: "USD", severity: {}, modules: {}, rules: {}, features: { MIGO: 150 } };
-    mockedGet.mockResolvedValue({ data: model });
+    mockedGet.mockResolvedValue({ data: { defaults: {}, tenant: { features: { MIGO: 150 } }, effective: model } });
     const result = await getCostModel();
     expect(mockedGet).toHaveBeenCalledWith("/api/v1/settings/cost-model");
     expect(result).toEqual(model);

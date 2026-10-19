@@ -5,11 +5,11 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, EmptyState, ExplorerPage, ExportMenu, PageHeader, Pill, Skeleton, Tabs } from "@/design";
+import { Button, DataTable, EmptyState, ExplorerPage, ExportMenu, PageHeader, Pill, Skeleton, Tabs, asyncStateOf } from "@/design";
 import {
   exportAuditEntries, getAuditEntries, getLlmAudit, type AuditEntry, type AuditListParams, type LlmAuditEntry,
 } from "@/lib/api/audit";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { usePermissions } from "@/lib/permissions";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -49,7 +49,7 @@ function AuditTable({ params, empty }: { params: AuditListParams; empty: string 
           <ExportMenu options={[{ format: "xlsx", run: () => exportAuditEntries("xlsx") }, { format: "csv", run: () => exportAuditEntries("csv") }]} />
         )
       }
-      state={q.isLoading ? "loading" : isListFailure(q) ? "error" : entries.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(q, () => entries.length === 0, true)}
       emptyProps={{ title: empty, action: <Button variant="secondary" onClick={() => void q.refetch()}>Refresh</Button> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
       table={<DataTable columns={auditColumns} data={entries} getRowId={(r) => r.id} />}
@@ -63,11 +63,11 @@ function LlmAudit() {
   return (
     <ExplorerPage
       summary={q.data?.cache.length ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+        <p className="m-text-body m-ink-3">
           {q.data.cache.map((c) => `${c.service_name}: ${c.deterministic} of ${c.decisions} answered by rules`).join(". ")}.
         </p>
       ) : undefined}
-      state={q.isLoading ? "loading" : isListFailure(q) ? "error" : entries.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(q, () => entries.length === 0, true)}
       emptyProps={{ title: "No AI calls recorded", detail: "Every call to a model is listed here with its latency and outcome", action: <Button variant="secondary" render={<Link href="/admin/ai">Open AI settings</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
       table={<DataTable columns={llmColumns} data={entries} getRowId={(r) => r.id} />}

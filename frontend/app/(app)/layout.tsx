@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Button, NotificationBell, Pill, Rail, Skeleton, TopBar, CommandPalette, RootPageFrame, RunSelector, type RunOption } from "@/design";
+import { Breadcrumb, Button, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill } from "@/design";
 import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
@@ -17,20 +16,15 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { flattenNav, resolveNavHref } from "@/lib/nav";
-import { getVersions } from "@/lib/api/versions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
-import { isNotFound } from "@/lib/error";
-import { formatDate, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { useDayOne } from "@/hooks/use-day-one";
-import { PermissionsProvider, usePermissions } from "@/lib/permissions";
+import { PermissionsProvider } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
 import { RouteInsight } from "@/components/insight/route-insight";
 import { HelpSlot } from "@/components/help/help-slot";
 import { reportClientError } from "@/lib/client-errors";
 
-const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
@@ -62,71 +56,6 @@ function CommandPaletteSlot() {
   return <CommandPalette items={items} grammar={grammar} />;
 }
 
-function RunSelectorSlot() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { data, error, isLoading, isError, refetch } = useQuery({
-    queryKey: queryKeys.run("list"),
-    queryFn: () => getVersions(),
-  });
-  const dayOne = useDayOne();
-  const { scopeFilter } = usePermissions();
-
-  const versions = data?.versions ?? [];
-  // A scoped user's default run is one from a system in scope (ruling 7).
-  const pickable = scopeFilter.systems
-    ? versions.filter((v) => v.metadata?.system_id !== undefined && scopeFilter.systems?.has(v.metadata.system_id))
-    : versions;
-  const defaultId = pickable.find((v) => FINISHED.has(v.status))?.id ?? pickable[0]?.id;
-  const hasRunParam = searchParams.has("run");
-
-  // Write the default run onto the URL once, so every page under this
-  // layout reads a stable ?run= instead of each inferring its own default.
-  useEffect(() => {
-    if (!hasRunParam && defaultId) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("run", defaultId);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasRunParam, defaultId]);
-
-  if (isLoading) return <Skeleton width={160} height={24} />;
-  // A 404 from the runs list means no runs yet; only a real failure gets the error pill.
-  if (isError && !isNotFound(error)) {
-    return (
-      <span className="inline-flex items-center gap-2">
-        {/* Below md the pill is dropped so the page title keeps the row; Retry stays and carries the meaning. */}
-        <span className="hidden md:inline-flex"><Pill tone="no-go">Runs unavailable</Pill></span>
-        <Button variant="ghost" aria-label="Runs unavailable, retry" onClick={() => refetch()}>Retry</Button>
-      </span>
-    );
-  }
-
-  if (versions.length === 0) {
-    if (dayOne.status !== "ready" || !dayOne.step) {
-      return <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No runs yet</span>;
-    }
-    if (!dayOne.step.actionable || !dayOne.step.href) {
-      return <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{dayOne.step.label}</span>;
-    }
-    return (
-      <Link href={dayOne.step.href} className="m-text-body" style={{ color: "var(--m-accent)" }}>
-        {dayOne.step.label}
-      </Link>
-    );
-  }
-
-  const runs: RunOption[] = versions.map((v) => ({
-    id: v.id,
-    systemId: v.metadata?.system_id,
-    at: v.run_at,
-    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"}, ${formatDate(v.run_at, "date")}`,
-  }));
-  return <RunSelector runs={runs} systems={scopeFilter.systems} />;
-}
-
 /** 2px track at the top of the content column; the accent fill shows only while a job runs. The track is always
  * rendered so the layout below never shifts. */
 function JobProgressBar() {
@@ -135,8 +64,8 @@ function JobProgressBar() {
     ? 0
     : Math.min(100, Math.max(0, Math.round(active.reduce((n, j) => n + (j.percent ?? 0), 0) / active.length)));
   return (
-    <div aria-hidden="true" className="shrink-0 m-print-hide" style={{ height: 2 }}>
-      {active.length > 0 && <div className="m-motion-width" style={{ height: "100%", width: `${percent}%`, background: "var(--m-accent)" }} />}
+    <div aria-hidden="true" className="shrink-0 m-print-hide [height:2px]">
+      {active.length > 0 && <ProgressFill value={percent} animate />}
     </div>
   );
 }
@@ -174,7 +103,9 @@ function Presentation({ children }: { children: ReactNode }) {
   }, [pathname, searchParams]);
   return (
     <div className="flex h-screen flex-col" data-present="1">
-      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none" style={{ background: "var(--m-canvas)" }}>
+      {/* The shell is gone, so the document heading the Breadcrumb owns is kept here, visually hidden. */}
+      <div className="sr-only"><Breadcrumb /></div>
+      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none [background:var(--m-canvas)]">
         <RootPageFrame>{children}</RootPageFrame>
       </main>
       <div className="fixed bottom-4 right-4 m-print-hide">
@@ -189,19 +120,18 @@ function Chrome({ children }: { children: ReactNode }) {
   if (present) return <Presentation>{children}</Presentation>;
   return (
       <div className="flex h-screen m-print-flow">
-        <Suspense fallback={<div style={{ width: 240 }} />}>
+        <Suspense fallback={<div className="[width:240px]" />}>
           <Rail />
         </Suspense>
         <div className="flex flex-col flex-1 overflow-hidden m-print-flow">
           <JobProgressBar />
           <TopBar
-            runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
             commandPalette={<CommandPaletteSlot />}
             helpMenu={<HelpSlot />}
             notifications={<NotificationBell />}
             userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
-          <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow" style={{ background: "var(--m-canvas)" }}>
+          <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
             <Suspense fallback={null}><RouteInsight /></Suspense>
             <RootPageFrame>{children}</RootPageFrame>
           </main>

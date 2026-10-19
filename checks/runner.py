@@ -29,6 +29,7 @@ from checks.types.value_placement_check import ValuePlacementCheck
 from checks.types.balance_check import BalanceCheck
 from checks.types.country_format_check import CountryFormatCheck
 from checks.types.aggregate_check import AggregateCheck
+from checks.types.reconciliation_check import ReconciliationCheck
 from checks.types.interval_check import IntervalCheck
 from checks.types.exists_check import ExistsCheck, target_keys
 from checks.types.dependency_check import DependencyCheck
@@ -137,6 +138,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "balance_check": BalanceCheck,
     "country_format_check": CountryFormatCheck,
     "aggregate_check": AggregateCheck,
+    "reconciliation_check": ReconciliationCheck,
     "interval_check": IntervalCheck,
     "exists_check": ExistsCheck,
     "similarity_check": SimilarityCheck,
@@ -147,7 +149,8 @@ REGISTRY: dict[str, type[BaseCheck]] = {
 }
 
 # check types judging a group of rows together: only sound on a complete extract
-_WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check", "hierarchy_check", "group_sum_check"}
+_WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check", "hierarchy_check",
+                "group_sum_check", "reconciliation_check"}
 
 # A presence check failing at least this fraction of its population is describing an
 # unmaintained field rather than per-record defects (see _unmaintained).
@@ -268,6 +271,8 @@ def target_columns(rule: dict) -> list[str]:
     if rule.get("check_class") == "group_sum_check":
         return list(dict.fromkeys([rule["amount"], *rule["group_keys"], *(rule.get("child_when") or {})]
                                   + ([rule["sign_field"]] if rule.get("sign_field") else [])))
+    if rule.get("check_class") == "reconciliation_check":
+        return [f"{rule['target_table']}.{rule['target_field']}"]
     if rule.get("check_class") != "exists_check":
         return []
     t = rule["target_table"]
@@ -288,6 +293,29 @@ def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | 
     return {**rule, "_target_values": target_keys(target, [f"{t}.{f}" for f in rule["target_fields"]])}
 
 
+def _with_target_sums(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | str | None:
+    """The rule with the target table's total; None when it was not read; a reason when it was
+    read incompletely.
+
+    Same refusal as _with_targets: a total computed over a partial or windowed target is not a
+    reconciliation, it is a false difference, so the rule is left unevaluated.
+    """
+    from checks.base import sap_number
+
+    t = rule["target_table"]
+    if t in getattr(frames, "incomplete", set()) | getattr(frames, "partial", set()):
+        return f"not evaluated: {t} was not read in full (incomplete, windowed or scoped download)"
+    target = frames.frames.get(t)
+    if target is None:
+        return None
+    col = f"{t}.{rule['target_field']}"
+    if col not in target.columns:
+        return None
+    when = {f"{t}.{k}": v for k, v in (rule.get("target_when") or {}).items()}
+    rows = apply_context(target[[col]], when, as_of)
+    return {**rule, "_target_total": float(sap_number(rows[col]).fillna(0).sum())}
+
+
 def _with_child_sums(rule: dict, frames: TableFrames) -> dict | None:
     """The rule with its child totals per parent key; None when the child table was not read."""
     child = frames.frames.get(tables_of([rule["amount"]])[0])
@@ -297,9 +325,19 @@ def _with_child_sums(rule: dict, frames: TableFrames) -> dict | None:
     return {**rule, "_child_sums": child_sums(rule, apply_context(child, rule.get("child_when")))}
 
 
-def get_required_columns(module_name: str) -> set[str]:
-    """Return every column referenced by the rules of a module (for column pruning)."""
-    cols = {c for rule in module_rules(module_name)
+def get_required_columns(module_name: str, include_disabled: bool = False) -> set[str]:
+    """Every column the rules of a module read, for column pruning at extraction.
+
+    Only rules that will actually run are counted. A disabled rule (the DDIC-derived ones ship
+    ``enabled: false``) never evaluates, so reading its fields costs extraction time and memory
+    for nothing - on ``material_master`` that was 42 of MARC's 140 columns and most of MARA's
+    124, on tables of millions of rows. ``include_disabled`` is for callers that need the full
+    rule set regardless (rule editing, coverage reporting).
+    """
+    rules = module_rules(module_name)
+    if not include_disabled:
+        rules = [r for r in rules if r.get("enabled", True)]
+    cols = {c for rule in rules
             for c in rule_columns(rule) + target_columns(rule) + auto_fix.columns(rule) + auto_fix.reference_columns(rule)}
     return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
@@ -333,7 +371,8 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
     if rule.get("check_class") in ("referential_check", "domain_value_check"):
         rule = _with_reference(rule, frames.dictionary, reference_values or {})
     if rule.get("check_class") == "exists_check":
-        resolved = _with_targets(rule, frames, as_of)
+        resolved = _with_target_sums(rule, frames, as_of) if rule.get("check_class") == "reconciliation_check" \
+            else _with_targets(rule, frames, as_of)
         if resolved is None:
             return rule, None  # the referenced table is not in the extract
         if isinstance(resolved, str):

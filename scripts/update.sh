@@ -307,12 +307,80 @@ pull_dependencies() {
         || warn "Could not pull db/redis images — the running ones are kept."
 }
 
+# `docker compose up -d` recreates a container whose configuration changed; it does NOT
+# start one left merely in the `Created` state, which is what an interrupted update leaves
+# behind. Observed on this deployment (2026-10-16): api, worker, beat and frontend came up
+# while nginx stayed `Created` through both the roll-forward and the rollback, so the site was
+# down even though the API itself was healthy - and verify_health, which polls only the API,
+# could not see it. Start anything left behind before judging health.
+ensure_started() {
+    local stuck
+    stuck=$(docker ps -a --filter "status=created" --format "{{.Names}}" \
+        | grep -E "^docker-(api|worker|beat|frontend|nginx)-1$" || true)
+    if [[ -n "$stuck" ]]; then
+        warn "Containers left in 'created' by an earlier attempt, starting them:"
+        for c in $stuck; do
+            warn "  $c"
+            docker start "$c" >/dev/null 2>&1 || true
+        done
+    fi
+}
+
+# `verify_health` talks to the api, so it passed while nginx was stopped and the site was
+# unreachable. This checks the entry point end to end, from wherever the script is running:
+# the updater container is on the same docker network (alias `nginx`) and the host reaches it
+# on loopback. It reports rather than fails on a deployment whose network layout differs.
+verify_entrypoint() {
+    # An HTTP 200 from the front door is the only conclusive evidence, so it is tried first and
+    # decides on its own. Container state is a tiebreaker for the case where HTTP cannot be
+    # reached: stopped is a real failure, anything else (unknown, or a docker the caller cannot
+    # query) is reported rather than failed - the script must not call an update broken because
+    # it could not ask the question.
+    local code="" url
+    for url in http://nginx/health http://127.0.0.1/health; do
+        if command -v curl >/dev/null 2>&1; then
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$url" 2>/dev/null || true)
+        elif command -v python3 >/dev/null 2>&1; then
+            code=$(python3 - "$url" <<'PYEOF' 2>/dev/null || true
+import sys, urllib.request
+try:
+    with urllib.request.urlopen(sys.argv[1], timeout=8) as r:
+        print(r.status)
+except Exception:
+    print("")
+PYEOF
+)
+        fi
+        if [[ "$code" == "200" ]]; then
+            info "Entry point reachable at $url (200) ✓"
+            return 0
+        fi
+    done
+
+    # Checked by container state, not `dc ps`: compose reads .env for `ps` and this runs in
+    # contexts where it cannot (measured: "open /opt/meridian/docker/.env: permission denied"),
+    # which made `dc ps nginx` print nothing and look like a stopped container.
+    local state
+    state=$(docker inspect --format '{{.State.Status}}' docker-nginx-1 2>/dev/null || true)
+    if [[ "$state" == "exited" || "$state" == "dead" || "$state" == "created" ]]; then
+        error "nginx is $state after the update — the site is unreachable even if the api is healthy"
+        return 1
+    fi
+    warn "Could not confirm the entry point over HTTP (last code: '${code:-none}', nginx state: '${state:-unknown}'). Check it from your network."
+    return 0
+}
+
 verify_health() {
-    info "Verifying /health for up to 120s..."
-    local timeout=120 interval=5 elapsed=0
+    ensure_started
+    # 120s was too tight. The api runs `alembic upgrade head` before it serves, which on this
+    # 8-core box took ~90s on its own, leaving almost no room for the container to be
+    # recreated and nginx to come up behind it.
+    info "Verifying /health for up to 300s..."
+    local timeout=300 interval=5 elapsed=0
     while [[ $elapsed -lt $timeout ]]; do
         if dc exec -T api curl -sf http://localhost:8000/health 2>/dev/null | grep -q '"status":"ok"'; then
             info "API healthy ✓"
+            verify_entrypoint
             return 0
         fi
         sleep "$interval"

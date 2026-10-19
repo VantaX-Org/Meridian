@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Bar, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Pill, Skeleton, Stat, Tabs, entityTabs, type ExportOption } from "@/design";
+import { Bar, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Skeleton, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, signoffWave,
 } from "@/lib/api/migration";
@@ -16,7 +16,6 @@ import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
 import { STAGE_LABEL } from "../create-wave-dialog";
-import { VERDICT_LABEL, VERDICT_TONE } from "@/lib/migration-verdict";
 import { BlockersTab } from "./blockers-tab";
 import { MappingTab } from "./mapping-tab";
 import { S4Tab } from "./s4-tab";
@@ -29,7 +28,7 @@ const objectColumns = (run: string | null): ColumnDef<WaveObject>[] => {
   return [
   { accessorKey: "label", header: "Object" },
   { id: "verdict", header: "Verdict", cell: ({ row }) => (
-      <Pill tone={VERDICT_TONE[row.original.verdict]}>{VERDICT_LABEL[row.original.verdict]}</Pill>) },
+      <Status kind="verdict" value={row.original.verdict} />) },
   { id: "score", header: "Readiness", cell: ({ row }) => drill(row.original.module, "overview", pct(row.original.score)) },
   { id: "records", header: "Records", cell: ({ row }) => drill(row.original.module, "records", row.original.records.toLocaleString()) },
   { id: "blocked", header: "Records blocked", cell: ({ row }) => drill(row.original.module, "records", row.original.records_blocked.toLocaleString()) },
@@ -65,12 +64,12 @@ export default function WaveCockpitPage() {
     );
   }
   if (cockpit.isError)
-    return <ErrorState message={apiErrorMessage(cockpit.error)} onRetry={() => void cockpit.refetch()} />;
+    return <ErrorState {...apiErrorState(cockpit.error)} onRetry={() => void cockpit.refetch()} />;
   const c = cockpit.data;
   const w = c.wave;
   const run = c.source_version_id ?? c.run_id;
   const funnel = (["go", "at_risk", "no_go"] as const).map((v) => ({
-    x: VERDICT_LABEL[v], y: c.objects.filter((o) => o.verdict === v).length,
+    x: statusLabel("verdict", v), y: c.objects.filter((o) => o.verdict === v).length,
   }));
 
   const exportOptions: ExportOption[] = [
@@ -95,7 +94,7 @@ export default function WaveCockpitPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title={w.name}
-        status={<Pill tone={VERDICT_TONE[c.verdict]}>{VERDICT_LABEL[c.verdict]}</Pill>}
+        status={<Status kind="verdict" value={c.verdict} />}
         meta={`${STAGE_LABEL[w.stage]}, target ${w.target_date ? formatDate(w.target_date, "date") : "not set"}, ${w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", "SAST")}` : "not signed off"}`}
         actions={
           <>
@@ -107,7 +106,7 @@ export default function WaveCockpitPage() {
         }
       />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Verdict" value={<Pill tone={VERDICT_TONE[c.verdict]}>{VERDICT_LABEL[c.verdict]}</Pill>} href={`/migration/${waveId}?tab=overview`} />
+        <Stat label="Verdict" value={<Status kind="verdict" value={c.verdict} />} href={`/migration/${waveId}?tab=overview`} />
         <Stat label="Readiness" href={`/migration/${waveId}?tab=overview`} value={pct(c.score)} delta={`minimum ${w.min_readiness}%`} />
         <Stat label="Records blocked" href={`/migration/${waveId}?tab=blockers`} value={c.records_blocked.toLocaleString()}
               delta={`of ${c.records_total.toLocaleString()}`} />

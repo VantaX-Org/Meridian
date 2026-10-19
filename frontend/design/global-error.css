@@ -1,0 +1,15 @@
+/* app/global-error.tsx replaces the root layout: no Tailwind, no shell, no design primitives. Its few elements are
+   styled here, from tokens.css variables only. */
+.m-ge-body { margin: 0; background: var(--m-canvas); color: var(--m-ink); font-family: var(--m-font-ui); font-size: var(--m-text-body); line-height: var(--m-leading-body); }
+.m-ge-main { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--m-space-6); box-sizing: border-box; }
+.m-ge-card { max-width: 560px; width: 100%; background: var(--m-sheet); border-bottom: 1px solid var(--m-line); padding: var(--m-space-6); display: flex; flex-direction: column; gap: var(--m-space-2); }
+.m-ge-card[data-tone="critical"] { border-top: 2px solid var(--m-critical); }
+.m-ge-title { margin: 0; font-size: var(--m-text-section); line-height: var(--m-leading-section); font-weight: 600; }
+.m-ge-ref { margin: 0; color: var(--m-ink-2); }
+.m-ge-mono { font-family: var(--m-font-mono); }
+.m-ge-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m-space-2); margin-top: var(--m-space-2); }
+.m-ge-status { color: var(--m-ink-3); font-size: var(--m-text-meta); }
+.m-ge-btn { height: var(--m-control-h); padding: 0 var(--m-space-3); border-radius: var(--m-radius-control); font-family: inherit; font-size: var(--m-text-body); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; text-decoration: none; }
+.m-ge-btn-primary { background: var(--m-accent); color: var(--m-accent-ink); border: 1px solid var(--m-accent); }
+.m-ge-btn-secondary { background: var(--m-sheet); color: var(--m-ink); border: 1px solid var(--m-line-strong); }
+.m-ge-btn-ghost { background: transparent; color: var(--m-ink-2); border: 1px solid transparent; }

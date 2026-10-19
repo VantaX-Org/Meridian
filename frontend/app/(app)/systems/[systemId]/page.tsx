@@ -12,11 +12,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import {
-  Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
-  emptyExportOptions, type PillTone,
-  entityTabs,
-} from "@/design";
+import { Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, emptyExportOptions, type PillTone, entityTabs, useBreadcrumbTitle, Score } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
@@ -29,11 +25,12 @@ import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
-import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
+import { runPageHref } from "@/lib/runs";
 import type { SystemModule, SystemType } from "@/types/api";
 import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
 import { PilotTab } from "./pilot-tab";
@@ -53,7 +50,8 @@ const findingsHref = (versionId: string, module?: string) =>
   `/runs/${versionId}${module ? `?module=${module}` : ""}`;
 const HEALTH_TONE: Record<string, PillTone> = { healthy: "go", unknown: "neutral" };
 
-function runColumns(): ColumnDef<SystemVersion>[] {
+/** With `systemId`, each row also links to its extraction log (the Runs tab); without, the overview's short list. */
+function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
   return [
     {
       id: "run",
@@ -79,6 +77,15 @@ function runColumns(): ColumnDef<SystemVersion>[] {
         );
       },
     },
+    ...(systemId ? [{
+      id: "log",
+      header: "Extraction",
+      cell: ({ row }) => (
+        <Link href={`/systems/${systemId}/extractions/${row.original.id}`} className="underline">
+          {row.original.status === "failed" ? "Why it failed" : "Extraction log"}
+        </Link>
+      ),
+    } satisfies ColumnDef<SystemVersion>] : []),
   ];
 }
 
@@ -116,6 +123,8 @@ export default function SystemPage() {
     [versionsQ.data],
   );
   const { dqs, version: latest } = latestDqs(versions);
+  // The page's h1 is the system's name, with Systems as the crumb before it.
+  useBreadcrumbTitle(system ? { label: system.name, parent: { label: "Systems", href: "/systems" } } : null);
   const aggQ = useQuery({
     queryKey: queryKeys.systemAgg(systemId, latest?.id),
     queryFn: () => getFindingsAggregate(latest!.id),
@@ -172,7 +181,7 @@ export default function SystemPage() {
       <PageHeader
         title={system.name}
         status={<Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>}
-        meta={[labelOf(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}
+        meta={[systemTypeLabel(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}
         actions={
         <>
           {can("manage_systems") ? <Button variant="secondary" onClick={() => setEditOpen(true)}>Edit</Button> : null}
@@ -210,14 +219,22 @@ export default function SystemPage() {
       ) : null}
 
       <div className="grid grid-cols-4 gap-4">
-        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
-        <Stat label="Objects loaded" loading={modulesQ.isLoading} value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
+        {/* Runs can exist without an extraction (uploads); "nothing extracted" must not sit beside their score. */}
+        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : versions.length ? "Runs come from uploads" : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
+        <Stat
+          label="Objects loaded"
+          loading={modulesQ.isLoading}
+          value={loaded > 0 ? `${loaded} of ${modules.length}` : "—"}
+          hint={loaded > 0 ? undefined : versions.length ? "Runs come from uploads" : modules.length ? `${modules.length} objects not extracted yet` : undefined}
+          href={`/systems/${systemId}?tab=objects`}
+        />
         <Stat
           label="DQS"
           help="dqs"
           loading={versionsQ.isLoading}
           delta={dqsTrend(versions) != null && Math.abs(dqsTrend(versions) ?? 0) >= 0.05 ? <Delta value={dqsTrend(versions) ?? 0} run="the previous run" /> : undefined}
-          value={dqs === null ? "—" : <span className="inline-flex items-center gap-2">{aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <ScoreRing score={dqs} size={48} />}{dqs.toFixed(1)}</span>}
+          // The ring carries the number, as on the run page; no second numeral beside it.
+          value={dqs === null ? "—" : aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <Score value={dqs} />}
           href={latest ? findingsHref(latest.id) : undefined}
         />
         <Stat label="Open findings" loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
@@ -289,6 +306,8 @@ export default function SystemPage() {
 function Overview({ systemId, modules, versions }: { systemId: string; modules: SystemModule[]; versions: SystemVersion[] }) {
   const router = useRouter();
   const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
+  // Ticks are dates (with the time when two runs share a day); the run id is the key so a click opens the right run.
+  const tickOf = runAxisLabels(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
   const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
   const runCols = useMemo(() => runColumns(), []);
   return (
@@ -303,11 +322,9 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
             />
           ) : (
             <Line
-              data={scored.map((v) => ({ x: formatDate(v.run_at), y: Number((meanDqs(v) ?? 0).toFixed(1)) }))}
-              onPointClick={(p) => {
-                const v = scored.find((s) => formatDate(s.run_at) === p.x);
-                if (v) router.push(findingsHref(v.id));
-              }}
+              data={scored.map((v) => ({ x: v.id, label: tickOf.get(v.id), y: Number((meanDqs(v) ?? 0).toFixed(1)), runId: v.id }))}
+              label="Score per run"
+              onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }}
             />
           )}
         </Card>
@@ -442,7 +459,7 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
 
 function Runs({ systemId, versions, loading, canSync }: { systemId: string; versions: SystemVersion[]; loading: boolean; canSync: boolean }) {
   const router = useRouter();
-  const columns = useMemo(() => runColumns(), []);
+  const columns = useMemo(() => runColumns(systemId), [systemId]);
   if (loading) return <Skeleton height={240} />;
   if (!versions.length) {
     return (
@@ -514,7 +531,7 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
           </>
         }
       >
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{verdict}</p>
+        <p className="m-text-body m-ink-2">{verdict}</p>
         <dl className="mt-2 grid grid-cols-2 gap-2 m-text-body">
           <Field label="Health"><Pill tone={HEALTH_TONE[system.health_status] ?? "no-go"}>{HEALTH_LABEL[system.health_status]}</Pill></Field>
           <Field label="Last health check"><span>{when(system.last_health_check, "Never")}</span></Field>

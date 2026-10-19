@@ -2,65 +2,61 @@
  * The only file that may contain colour, shadow, gradient, blur, radius,
  * motion or duration literals. `npm run lint:tokens` enforces this.
  * Every token has a light value (:root) and a dark value ([data-theme="dark"]).
- * Direction: "Ledger". Navy, condensed numerals, one amber signal, hairline rules, no gradients.
+ * Direction: "Calm enterprise". Cool off-white canvas, white cards with hairline borders,
+ * one deep blue accent for interaction, hue only for defect status. No gradients, no dark hero blocks.
  */
 
 :root {
-  /* ---------- Surfaces (light: cool paper) ---------- */
-  --m-canvas: #F4F5F8;          /* page background */
-  --m-sheet: #FFFFFF;           /* tables, forms, popovers */
-  --m-sheet-raised: #EDEFF4;    /* table header rows, hover rows, inset wells */
-  --m-sheet-sunken: #E4E7EE;    /* code/sample wells, ghost shapes */
-  --m-rail: #F4F5F8;            /* sidebar background (same as canvas in light) */
+  /* ---------- Surfaces (light: off-white canvas, white cards) ---------- */
+  --m-canvas: #F7F8FA;          /* page background */
+  --m-sheet: #FFFFFF;           /* cards, tables, forms, popovers */
+  --m-sheet-raised: #F1F3F6;    /* table header rows, hover rows, inset wells */
+  --m-sheet-sunken: #E9ECF0;    /* code/sample wells, bar tracks, ghost shapes */
+  --m-rail: #FFFFFF;            /* sidebar background: a light sheet */
   --m-rail-hover: var(--m-sheet-raised);
   --m-rail-edge: var(--m-line); /* rail right rule */
-  --m-line: #C9D0DD;            /* hairline rules (1px) */
-  --m-line-strong: #A6B0C3;     /* input borders, table head rule */
-  --m-scrim: rgb(10 15 26 / 0.40);
+  --m-line: #E3E6EB;            /* hairline borders (1px) */
+  --m-line-strong: #C5CBD3;     /* input borders, table head rule */
+  --m-scrim: rgb(17 20 24 / 0.36);
 
   /* ---------- Ink ---------- */
-  --m-ink: #0D1526;             /* 17.9:1 on sheet */
-  --m-ink-2: #4A5771;
-  --m-ink-3: #5B6882;           /* minimum for body text on every surface */
-  --m-ink-4: #A3ADC0;           /* disabled, decorative only; never for text */
+  --m-ink: #161A21;             /* 17:1 on sheet */
+  --m-ink-2: #474F5C;
+  --m-ink-3: #5A6371;           /* minimum for body text on every surface */
+  --m-ink-4: #A7AEB9;           /* disabled, decorative only; never for text */
   --m-ink-on-accent: #FFFFFF;
 
-  /* ---------- Accent: amber. Interaction only (selection, focus, links, primary button) ---------- */
-  --m-accent: #945500;
-  --m-accent-hover: #7E4800;
-  --m-accent-active: #693C00;
-  --m-accent-soft: #FBF0DC;     /* selected row, active nav */
-  --m-accent-soft-2: #F3DFB6;   /* selected + hover */
-  --m-accent-ink: #7A4700;      /* accent used as text on soft tint */
-  --m-accent-ring: rgb(148 85 0 / 0.35);
+  /* ---------- Accent: deep blue. Interaction only (selection, focus, links, primary button) ---------- */
+  --m-accent: #1F4FD8;
+  --m-accent-hover: #1A44BC;
+  --m-accent-active: #163A9F;
+  --m-accent-soft: #EBF0FC;     /* selected row, active nav */
+  --m-accent-soft-2: #D8E2FA;   /* selected + hover */
+  --m-accent-ink: #1A44BC;      /* accent used as text on soft tint */
+  --m-accent-ring: rgb(31 79 216 / 0.30);
 
-  /* ---------- Ember: the amber signal in hero zones (score band, sign-in panel, report cover, count settle) ---------- */
-  --m-ember: #945500;
-  --m-ember-soft: #FBF0DC;
-  --m-ember-ink: #7A4700;
-  --m-ember-on: #FFFFFF;
+  /* ---------- Hero zones are white sheets: these names alias the ordinary surface and ink tokens ---------- */
+  --m-hero-bg: var(--m-sheet);
+  --m-hero-bg-2: var(--m-sheet-raised);
+  --m-hero-ink: var(--m-ink);
+  --m-hero-ink-2: var(--m-ink-2);
+  --m-hero-ink-3: var(--m-ink-3);
+  --m-hero-line: var(--m-line);
+  --m-hero-skeleton: var(--m-sheet-sunken);
+  --m-hero-skeleton-sweep: var(--m-sheet-raised);
+  --m-hero-tone-critical: var(--m-critical);
+  --m-hero-tone-high: var(--m-high);
+  --m-hero-tone-medium: var(--m-medium);
+  --m-hero-tone-pass: var(--m-pass);
 
-  /* ---------- Hero surface: navy in both themes; text on it uses hero ink only ---------- */
-  --m-hero-bg: #0A0F1A;
-  --m-hero-bg-2: #111A2E;
-  --m-hero-ink: #E6ECF7;
-  --m-hero-ink-2: #A9B5CC;
-  --m-hero-ink-3: #8A97B2;
-  --m-hero-line: rgb(230 236 247 / 0.14);
-  --m-hero-skeleton: rgb(255 255 255 / 0.06);
-  --m-hero-skeleton-sweep: rgb(255 255 255 / 0.12);
-  --m-hero-tone-critical: #FF6B79;
-  --m-hero-tone-high: #FF9466;
-  --m-hero-tone-medium: #F2C94C;
-  --m-hero-tone-pass: #4FD38A;
-
-  /* ---------- Status scale (hue means defect state; never the accent hue) ---------- */
-  --m-critical: #B4232C;        --m-critical-soft: #FBE7E9;   --m-critical-ink: #8C1A22;   --m-critical-on: #FFFFFF;
-  --m-high: #B2440E;            --m-high-soft: #FCEBE2;       --m-high-ink: #87330B;       --m-high-on: #FFFFFF;
-  --m-medium: #7F6100;          --m-medium-soft: #F8F0D0;     --m-medium-ink: #5E4800;     --m-medium-on: #FFFFFF;
-  --m-low: #58647E;             --m-low-soft: #E4E7EE;        --m-low-ink: #46526B;        --m-low-on: #FFFFFF;
-  --m-pass: #0F7A45;            --m-pass-soft: #E1F4E9;       --m-pass-ink: #0B5B33;       --m-pass-on: #FFFFFF;
-  --m-info: var(--m-accent);    --m-info-soft: var(--m-accent-soft);  --m-info-ink: var(--m-accent-ink);  --m-info-on: #FFFFFF;
+  /* ---------- Status scale (hue means defect state; never the accent hue) ----------
+     Red: critical. Amber: high (deep) and medium. Slate: low. Green: pass. Info is the blue notice tone. */
+  --m-critical: #C02630;        --m-critical-soft: #FDEDEE;   --m-critical-ink: #9A1D26;   --m-critical-on: #FFFFFF;
+  --m-high: #B34A0B;            --m-high-soft: #FDF0E6;       --m-high-ink: #8C3A08;       --m-high-on: #FFFFFF;
+  --m-medium: #8A6100;          --m-medium-soft: #FBF3DC;     --m-medium-ink: #694A00;     --m-medium-on: #FFFFFF;
+  --m-low: #5A6371;             --m-low-soft: #EEF0F3;        --m-low-ink: #464E5B;        --m-low-on: #FFFFFF;
+  --m-pass: #1A7A47;            --m-pass-soft: #E7F5EC;       --m-pass-ink: #135C35;       --m-pass-on: #FFFFFF;
+  --m-info: #2659C9;            --m-info-soft: #EDF2FC;       --m-info-ink: #1C46A3;       --m-info-on: #FFFFFF;
 
   /* Readiness verdicts reuse the status scale */
   --m-go: var(--m-pass);        --m-go-soft: var(--m-pass-soft);        --m-go-ink: var(--m-pass-ink);        --m-go-on: var(--m-pass-on);
@@ -76,70 +72,64 @@
   --m-dqs-track: var(--m-sheet-sunken);
   --m-dqs-cap-line: var(--m-ink-2);
 
-  /* ---------- Domains: one hue per SAP object family (solid / soft / ink) ---------- */
-  --m-dom-material: #0E7490; --m-dom-material-soft: #DFF3F8; --m-dom-material-ink: #0B5A70;
-  --m-dom-customer: #6D28D9; --m-dom-customer-soft: #EFE7FD; --m-dom-customer-ink: #5620B0;
-  --m-dom-vendor: #BE185D; --m-dom-vendor-soft: #FCE7F1; --m-dom-vendor-ink: #9A1249;
-  --m-dom-partner: #A21CAF; --m-dom-partner-soft: #FAE8FB; --m-dom-partner-ink: #7E1587;
-  --m-dom-finance: #946200; --m-dom-finance-soft: #FBF1DB; --m-dom-finance-ink: #6E4900;
-  --m-dom-people: #0E6FA8; --m-dom-people-soft: #E3F1FB; --m-dom-people-ink: #0B5380;
-  --m-dom-plant: #497809; --m-dom-plant-soft: #EDF6DF; --m-dom-plant-ink: #3B6009;
-  --m-dom-asset: #8A3B12; --m-dom-asset-soft: #F9EAE0; --m-dom-asset-ink: #6B2D0D;
-  --m-dom-other: #475569; --m-dom-other-soft: #EAEEF3; --m-dom-other-ink: #334155;
+  /* ---------- Domains: one muted hue per SAP object family (solid / soft / ink) ---------- */
+  --m-dom-material: #2D6E7E; --m-dom-material-soft: #EAF3F5; --m-dom-material-ink: #22596A;
+  --m-dom-customer: #5F4FA3; --m-dom-customer-soft: #F1EFF9; --m-dom-customer-ink: #4D3F88;
+  --m-dom-vendor: #9C4468; --m-dom-vendor-soft: #F8EEF2; --m-dom-vendor-ink: #803654;
+  --m-dom-partner: #874A92; --m-dom-partner-soft: #F5EEF6; --m-dom-partner-ink: #6E3B78;
+  --m-dom-finance: #7F6420; --m-dom-finance-soft: #F6F1E4; --m-dom-finance-ink: #66501A;
+  --m-dom-people: #36668F; --m-dom-people-soft: #ECF2F7; --m-dom-people-ink: #2A5274;
+  --m-dom-plant: #4B6E2E; --m-dom-plant-soft: #EFF4EA; --m-dom-plant-ink: #3C5925;
+  --m-dom-asset: #8A4E33; --m-dom-asset-soft: #F7EFEB; --m-dom-asset-ink: #703E28;
+  --m-dom-other: #56606E; --m-dom-other-soft: #EFF1F4; --m-dom-other-ink: #434B57;
   --m-dom-on: #FFFFFF;
 
-  /* ---------- Charts: ten-hue categorical, ramps. Series 1 is blue, never the amber accent ---------- */
-  --m-viz-1: #2F55C9;
-  --m-viz-2: #0F7A45;
-  --m-viz-3: #946200;
-  --m-viz-4: #0E7490;
-  --m-viz-5: #6D28D9;
-  --m-viz-6: #B4232C;
-  --m-viz-7: #BE185D;
-  --m-viz-8: #4D7C0F;
-  --m-viz-9: #0E6FA8;
-  --m-viz-10: #A21CAF;
-  --m-viz-1-fill: rgb(47 85 201 / 0.15);
-  --m-viz-2-fill: rgb(15 122 69 / 0.15);
-  --m-viz-3-fill: rgb(148 98 0 / 0.15);
-  --m-viz-4-fill: rgb(14 116 144 / 0.15);
-  --m-viz-5-fill: rgb(109 40 217 / 0.15);
-  --m-viz-6-fill: rgb(180 35 44 / 0.15);
-  --m-viz-7-fill: rgb(190 24 93 / 0.15);
-  --m-viz-8-fill: rgb(77 124 15 / 0.15);
-  --m-viz-9-fill: rgb(14 111 168 / 0.15);
-  --m-viz-10-fill: rgb(162 28 175 / 0.15);
+  /* ---------- Charts: ten muted categorical hues, ramps. Series 1 is a quiet blue ---------- */
+  --m-viz-1: #3F63C2;
+  --m-viz-2: #2E8257;
+  --m-viz-3: #A17A22;
+  --m-viz-4: #2F7D8E;
+  --m-viz-5: #6D58B0;
+  --m-viz-6: #B5474E;
+  --m-viz-7: #A94E78;
+  --m-viz-8: #5E7E2F;
+  --m-viz-9: #3B6E9C;
+  --m-viz-10: #8C5096;
+  --m-viz-1-fill: rgb(63 99 194 / 0.14);
+  --m-viz-2-fill: rgb(46 130 87 / 0.14);
+  --m-viz-3-fill: rgb(161 122 34 / 0.14);
+  --m-viz-4-fill: rgb(47 125 142 / 0.14);
+  --m-viz-5-fill: rgb(109 88 176 / 0.14);
+  --m-viz-6-fill: rgb(181 71 78 / 0.14);
+  --m-viz-7-fill: rgb(169 78 120 / 0.14);
+  --m-viz-8-fill: rgb(94 126 47 / 0.14);
+  --m-viz-9-fill: rgb(59 110 156 / 0.14);
+  --m-viz-10-fill: rgb(140 80 150 / 0.14);
   --m-viz-grid: var(--m-line);
   --m-viz-axis: var(--m-ink-3);
   --m-viz-threshold: var(--m-ink-2);
-  --m-viz-area: rgb(47 85 201 / 0.10);
-  --m-viz-tooltip-bg: #0D1526;
+  --m-viz-area: rgb(63 99 194 / 0.10);
+  --m-viz-tooltip-bg: #161A21;
   --m-viz-tooltip-ink: #FFFFFF;
-  --m-seq-1: #E6ECFA; --m-seq-2: #B9C8F2; --m-seq-3: #8AA3E8; --m-seq-4: #2F55C9; --m-seq-5: #1E3C9A;
-  --m-div-neg-2: #B4232C; --m-div-neg-1: #F4B3B8; --m-div-mid: #E4E7EE; --m-div-pos-1: #A9DEBB; --m-div-pos-2: #0F7A45;
+  --m-seq-1: #EBF0FA; --m-seq-2: #C7D4F0; --m-seq-3: #97ADE2; --m-seq-4: #3C5FBE; --m-seq-5: #26408A;
+  --m-div-neg-2: #B5373F; --m-div-neg-1: #F2C3C6; --m-div-mid: #E9ECF0; --m-div-pos-1: #BFE2CB; --m-div-pos-2: #22744A;
 
-  /* ---------- Gradients: the ledger is flat. Names stay so hero zones keep resolving; the only real ramps are functional (fade, count settle). ---------- */
-  --m-grad-hero: none;
-  --m-grad-hero-flare: none;
-  --m-grad-login: none;
-  --m-grad-login-flare: none;
-  --m-grad-cover: none;
-  --m-grad-ghost: none;
+  /* ---------- Gradients: flat everywhere. The only ramps are functional (fade, count settle). ---------- */
   --m-grad-fade-bottom: linear-gradient(180deg, rgb(255 255 255 / 0) 0%, var(--m-sheet) 100%);
-  --m-grad-count-settle: linear-gradient(90deg, var(--m-ember-soft) 0%, transparent 100%);
+  --m-grad-count-settle: linear-gradient(90deg, var(--m-accent-soft) 0%, transparent 100%);
 
   /* ---------- Type ---------- */
-  --m-font-ui: var(--font-ui, "IBM Plex Sans Condensed", system-ui, sans-serif);
+  --m-font-ui: var(--font-ui, "IBM Plex Sans", system-ui, sans-serif);
   --m-font-sans: var(--m-font-ui);
   --m-font-mono: var(--font-jbm, "JetBrains Mono", ui-monospace, monospace);
 
-  --m-text-hero: 84px;      --m-leading-hero: 76px;      /* the score, typographic hero */
-  --m-text-verdict: 28px;   --m-leading-verdict: 34px;   /* verdict sentence */
-  --m-text-verdict-num: 44px; --m-leading-verdict-num: 44px; /* verdict number */
+  --m-text-hero: 64px;      --m-leading-hero: 64px;      /* the score: a plain large number */
+  --m-text-verdict: 22px;   --m-leading-verdict: 30px;   /* verdict sentence */
+  --m-text-verdict-num: 40px; --m-leading-verdict-num: 44px; /* verdict number */
   --m-text-title: 22px;     --m-leading-title: 28px;     /* page title, auth h1, record key */
-  --m-text-stat: 28px;      --m-leading-stat: 30px;      /* KPI value */
-  --m-text-section: 15px;   --m-leading-section: 20px;   /* h2, drawer title */
-  --m-text-body: 13px;      --m-leading-body: 18px;
+  --m-text-stat: 26px;      --m-leading-stat: 32px;      /* KPI value */
+  --m-text-section: 15px;   --m-leading-section: 22px;   /* h2, drawer title */
+  --m-text-body: 14px;      --m-leading-body: 20px;
   --m-text-meta: 12px;      --m-leading-meta: 16px;
   --m-text-micro: 11px;     --m-leading-micro: 14px;     /* badges, kbd */
   --m-tracking-tight: -0.02em;   /* hero and stat numerals */
@@ -153,45 +143,43 @@
   --m-page-max: 1600px;
   --m-page-max-reading: 760px;
   --m-page-pad-sm: 16px;
-  --m-page-pad: var(--m-space-6);
+  --m-page-pad: var(--m-space-8);
 
   /* ---------- Shape ---------- */
-  --m-radius-control: 2px;      /* buttons, inputs, pills' inner shapes */
-  --m-radius-sheet: 0px;        /* ruled sheets: cards, tables, dialogs */
-  --m-radius-tile: 0px;         /* KPI columns */
+  --m-radius-control: 6px;      /* buttons, inputs, menu items */
+  --m-radius-sheet: 8px;        /* cards, tables, dialogs, the score sheet */
+  --m-radius-tile: 0px;         /* KPI columns (ruled, not boxed) */
   --m-radius-pill: 999px;
   --m-border: 1px;
   --m-rail-group-pad: 16px 16px 4px;
   --m-rail-w: 240px;
   --m-rail-w-collapsed: 56px;
-  --m-topbar-h: 48px;
-  --m-row-h: 36px;
-  --m-row-h-dense: 30px;
-  --m-control-h: 32px;
+  --m-topbar-h: 52px;
+  --m-row-h: 40px;
+  --m-row-h-dense: 32px;
+  --m-control-h: 34px;
   --m-control-h-lg: 40px;
 
   /* ---------- Density (the `[data-density]` tiers below retune these) ---------- */
-  --m-card-pad: 20px;
-  --m-card-pad-sm: 12px;
-  --m-card-pad-lg: 24px;
-  --m-hero-pad: 24px 0;
-  --m-stat-pad: 8px 0 8px 14px;
-  --m-stat-h: 84px;
-  --m-stat-hero-h: 132px;
-  --m-section-gap: var(--m-space-4);
+  --m-card-pad: 24px;
+  --m-card-pad-sm: 16px;
+  --m-card-pad-lg: 28px;
+  --m-hero-pad: 24px 28px;
+  --m-stat-pad: 10px 0 10px 16px;
+  --m-stat-h: 88px;
+  --m-stat-hero-h: 120px;
+  --m-section-gap: var(--m-space-5);
 
   /* ---------- Elevation (three levels + focus) ---------- */
   --m-elev-0: none;
   --m-elev-1: 0 0 0 1px var(--m-line);                                    /* flat card: hairline only */
-  --m-elev-2: 0 0 0 1px var(--m-line), 0 4px 12px rgb(20 21 25 / 0.08);     /* menu, popover, tooltip, hover lift */
-  --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(20 21 25 / 0.16);    /* drawer, dialog, palette */
+  --m-elev-2: 0 0 0 1px var(--m-line), 0 4px 12px rgb(17 20 24 / 0.08);     /* menu, popover, tooltip, hover lift */
+  --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(17 20 24 / 0.14);    /* drawer, dialog, palette */
   --m-ring: 0 0 0 2px var(--m-accent);                                      /* selection outline */
   --m-elev-focus: 0 0 0 2px var(--m-sheet), 0 0 0 4px var(--m-accent);
   --m-elev-accent: none;                                               /* primary button */
-  --m-elev-hero: 0 0 0 1px var(--m-line);                                  /* hero band and sign-in panel: hairline only */
-  --m-elev-glow-critical: 0 0 0 3px rgb(180 35 44 / 0.22);                  /* DFG bottleneck halo only */
-  --m-glow-critical-fill: rgb(180 35 44 / 0.22);
-  --m-elev-focus-hero: 0 0 0 2px var(--m-hero-bg), 0 0 0 4px var(--m-hero-ink-2);
+  --m-elev-glow-critical: 0 0 0 3px rgb(192 38 48 / 0.22);                  /* DFG bottleneck halo only */
+  --m-glow-critical-fill: rgb(192 38 48 / 0.22);
 
   /* ---------- Motion ---------- */
   --m-motion-duration: 120ms;    /* hover, focus, colour, lift */
@@ -209,169 +197,157 @@
   --m-motion-rise-y: 6px;
 }
 
-/* ---------- Dark ---------- */
+/* ---------- Dark: neutral graphite ---------- */
 [data-theme="dark"] {
-  --m-canvas: #0A0F1A;
-  --m-sheet: #0F1626;
-  --m-sheet-raised: #162038;
-  --m-sheet-sunken: #060A12;
-  --m-rail: #0A0F1A;
+  --m-canvas: #111418;
+  --m-sheet: #181C21;
+  --m-sheet-raised: #20252C;
+  --m-sheet-sunken: #0C0E11;
+  --m-rail: #14171B;
   --m-rail-edge: var(--m-line);
-  --m-rail-hover: var(--m-sheet);
-  --m-line: #1F2A40;
-  --m-line-strong: #30405F;
+  --m-rail-hover: var(--m-sheet-raised);
+  --m-line: #2A3038;
+  --m-line-strong: #3D444F;
   --m-scrim: rgb(0 0 0 / 0.6);
-  --m-ink: #E6ECF7;
-  --m-ink-2: #AAB6CD;
-  --m-ink-3: #8E9BB6;
-  --m-ink-4: #4A5670;
-  --m-ink-on-accent: #0A0F1A;
-  --m-accent: #FFB020;
-  --m-accent-hover: #FFC24D;
-  --m-accent-active: #E89E12;
-  --m-accent-soft: #2A2210;
-  --m-accent-soft-2: #3B3015;
-  --m-accent-ink: #FFC65A;
-  --m-accent-ring: rgb(255 176 32 / 0.40);
-  --m-ember: #FFB020;
-  --m-ember-soft: #2A2210;
-  --m-ember-ink: #FFC65A;
-  --m-ember-on: #0A0F1A;
-  --m-hero-bg: #0A0F1A;
-  --m-hero-bg-2: #111A2E;
-  --m-critical: #FF6B79; --m-critical-soft: #3A1420; --m-critical-ink: #FF9AA4; --m-critical-on: #0A0F1A;
-  --m-high: #FF9466; --m-high-soft: #3A1F12; --m-high-ink: #FFB893; --m-high-on: #0A0F1A;
-  --m-medium: #F2C94C; --m-medium-soft: #332B0F; --m-medium-ink: #F7DB85; --m-medium-on: #0A0F1A;
-  --m-low: #9EABC5; --m-low-soft: #162038; --m-low-ink: #B7C2D6; --m-low-on: #0A0F1A;
-  --m-pass: #4FD38A; --m-pass-soft: #0E2F1E; --m-pass-ink: #8FE5B4; --m-pass-on: #0A0F1A;
-  --m-info-on: #0A0F1A;
-  --m-dom-material: #4FC3DB; --m-dom-material-soft: #0D2A33; --m-dom-material-ink: #8ADCEC;
-  --m-dom-customer: #B79AF5; --m-dom-customer-soft: #241A42; --m-dom-customer-ink: #CDB9FA;
-  --m-dom-vendor: #F27AB0; --m-dom-vendor-soft: #3B1326; --m-dom-vendor-ink: #F8A8CB;
-  --m-dom-partner: #E68AF0; --m-dom-partner-soft: #33123A; --m-dom-partner-ink: #F0B4F6;
-  --m-dom-finance: #E2B646; --m-dom-finance-soft: #352A0C; --m-dom-finance-ink: #F3D27E;
-  --m-dom-people: #5BB8F0; --m-dom-people-soft: #0E2A3F; --m-dom-people-ink: #9AD3F7;
-  --m-dom-plant: #A3CF5F; --m-dom-plant-soft: #1E2C0C; --m-dom-plant-ink: #C3E08E;
-  --m-dom-asset: #FF8A4C; --m-dom-asset-soft: #3D1C0C; --m-dom-asset-ink: #FFB088;
-  --m-dom-other: #A0AEC2; --m-dom-other-soft: #1C222C; --m-dom-other-ink: #C2CDDB;
-  --m-dom-on: #0A0F1A;
-  --m-viz-1: #7FA3FF;
-  --m-viz-2: #4FD38A;
-  --m-viz-3: #E2B646;
-  --m-viz-4: #4FC3DB;
-  --m-viz-5: #B79AF5;
-  --m-viz-6: #FF6B79;
-  --m-viz-7: #F27AB0;
-  --m-viz-8: #A3CF5F;
-  --m-viz-9: #5BB8F0;
-  --m-viz-10: #E68AF0;
-  --m-viz-1-fill: rgb(127 163 255 / 0.15);
-  --m-viz-2-fill: rgb(79 211 138 / 0.15);
-  --m-viz-3-fill: rgb(226 182 70 / 0.15);
-  --m-viz-4-fill: rgb(79 195 219 / 0.15);
-  --m-viz-5-fill: rgb(183 154 245 / 0.15);
-  --m-viz-6-fill: rgb(255 107 121 / 0.15);
-  --m-viz-7-fill: rgb(242 122 176 / 0.15);
-  --m-viz-8-fill: rgb(163 207 95 / 0.15);
-  --m-viz-9-fill: rgb(91 184 240 / 0.15);
-  --m-viz-10-fill: rgb(230 138 240 / 0.15);
-  --m-viz-area: rgb(127 163 255 / 0.14);
-  --m-viz-tooltip-bg: #E6ECF7;
-  --m-viz-tooltip-ink: #0A0F1A;
-  --m-seq-1: #172542; --m-seq-2: #233A70; --m-seq-3: #3558AB; --m-seq-4: #7FA3FF; --m-seq-5: #BCD0FF;
-  --m-div-neg-2: #FF6B79; --m-div-neg-1: #6B2028; --m-div-mid: #162038; --m-div-pos-1: #1D5A36; --m-div-pos-2: #4FD38A;
-  --m-grad-fade-bottom: linear-gradient(180deg, rgb(15 22 38 / 0) 0%, var(--m-sheet) 100%);
+  --m-ink: #E7E9EC;
+  --m-ink-2: #B5BBC4;
+  --m-ink-3: #99A1AD;
+  --m-ink-4: #4D5560;
+  --m-ink-on-accent: #0C0E11;
+  --m-accent: #7398F5;
+  --m-accent-hover: #8DABF7;
+  --m-accent-active: #5F87EE;
+  --m-accent-soft: #1C2741;
+  --m-accent-soft-2: #25335A;
+  --m-accent-ink: #A4BCF8;
+  --m-accent-ring: rgb(115 152 245 / 0.40);
+  --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #111418;
+  --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #111418;
+  --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #111418;
+  --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #111418;
+  --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #111418;
+  --m-info: #7FA2F3; --m-info-soft: #1C2741; --m-info-ink: #AFC4F8; --m-info-on: #111418;
+  --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
+  --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
+  --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
+  --m-dom-partner: #C49DCC; --m-dom-partner-soft: #2E2232; --m-dom-partner-ink: #DBBFE0;
+  --m-dom-finance: #CCB06E; --m-dom-finance-soft: #2E2919; --m-dom-finance-ink: #E0CC9C;
+  --m-dom-people: #8DB1D3; --m-dom-people-soft: #1C2733; --m-dom-people-ink: #B4CCE2;
+  --m-dom-plant: #A0BE86; --m-dom-plant-soft: #212A1B; --m-dom-plant-ink: #C1D5B0;
+  --m-dom-asset: #D39E84; --m-dom-asset-soft: #33241D; --m-dom-asset-ink: #E3BDAA;
+  --m-dom-other: #A6AEBA; --m-dom-other-soft: #23272D; --m-dom-other-ink: #C4CAD3;
+  --m-dom-on: #111418;
+  --m-viz-1: #86A4EE;
+  --m-viz-2: #6CC594;
+  --m-viz-3: #D3B466;
+  --m-viz-4: #72B7C6;
+  --m-viz-5: #AE9FDE;
+  --m-viz-6: #EB8A90;
+  --m-viz-7: #D892B2;
+  --m-viz-8: #A2C27C;
+  --m-viz-9: #81AEDA;
+  --m-viz-10: #C99BD1;
+  --m-viz-1-fill: rgb(134 164 238 / 0.15);
+  --m-viz-2-fill: rgb(108 197 148 / 0.15);
+  --m-viz-3-fill: rgb(211 180 102 / 0.15);
+  --m-viz-4-fill: rgb(114 183 198 / 0.15);
+  --m-viz-5-fill: rgb(174 159 222 / 0.15);
+  --m-viz-6-fill: rgb(235 138 144 / 0.15);
+  --m-viz-7-fill: rgb(216 146 178 / 0.15);
+  --m-viz-8-fill: rgb(162 194 124 / 0.15);
+  --m-viz-9-fill: rgb(129 174 218 / 0.15);
+  --m-viz-10-fill: rgb(201 155 209 / 0.15);
+  --m-viz-area: rgb(134 164 238 / 0.14);
+  --m-viz-tooltip-bg: #E7E9EC;
+  --m-viz-tooltip-ink: #111418;
+  --m-seq-1: #1A2132; --m-seq-2: #253353; --m-seq-3: #34508C; --m-seq-4: #7F9EEA; --m-seq-5: #BFCFF6;
+  --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #20252C; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
+  --m-grad-fade-bottom: linear-gradient(180deg, rgb(24 28 33 / 0) 0%, var(--m-sheet) 100%);
   --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
   --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
-  --m-elev-accent: 0 1px 2px rgb(0 0 0 / 0.5);
-  --m-elev-glow-critical: 0 0 0 3px rgb(255 107 121 / 0.28);
-  --m-glow-critical-fill: rgb(255 107 121 / 0.28);
+  --m-elev-accent: none;
+  --m-elev-glow-critical: 0 0 0 3px rgb(240 115 124 / 0.28);
+  --m-glow-critical-fill: rgb(240 115 124 / 0.28);
 }
 
 /* System preference when no explicit theme is set. Generated from the dark block above: keep value for value. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --m-canvas: #0A0F1A;
-    --m-sheet: #0F1626;
-    --m-sheet-raised: #162038;
-    --m-sheet-sunken: #060A12;
-    --m-rail: #0A0F1A;
+    --m-canvas: #111418;
+    --m-sheet: #181C21;
+    --m-sheet-raised: #20252C;
+    --m-sheet-sunken: #0C0E11;
+    --m-rail: #14171B;
     --m-rail-edge: var(--m-line);
-    --m-rail-hover: var(--m-sheet);
-    --m-line: #1F2A40;
-    --m-line-strong: #30405F;
+    --m-rail-hover: var(--m-sheet-raised);
+    --m-line: #2A3038;
+    --m-line-strong: #3D444F;
     --m-scrim: rgb(0 0 0 / 0.6);
-    --m-ink: #E6ECF7;
-    --m-ink-2: #AAB6CD;
-    --m-ink-3: #8E9BB6;
-    --m-ink-4: #4A5670;
-    --m-ink-on-accent: #0A0F1A;
-    --m-accent: #FFB020;
-    --m-accent-hover: #FFC24D;
-    --m-accent-active: #E89E12;
-    --m-accent-soft: #2A2210;
-    --m-accent-soft-2: #3B3015;
-    --m-accent-ink: #FFC65A;
-    --m-accent-ring: rgb(255 176 32 / 0.40);
-    --m-ember: #FFB020;
-    --m-ember-soft: #2A2210;
-    --m-ember-ink: #FFC65A;
-    --m-ember-on: #0A0F1A;
-    --m-hero-bg: #0A0F1A;
-    --m-hero-bg-2: #111A2E;
-    --m-critical: #FF6B79; --m-critical-soft: #3A1420; --m-critical-ink: #FF9AA4; --m-critical-on: #0A0F1A;
-    --m-high: #FF9466; --m-high-soft: #3A1F12; --m-high-ink: #FFB893; --m-high-on: #0A0F1A;
-    --m-medium: #F2C94C; --m-medium-soft: #332B0F; --m-medium-ink: #F7DB85; --m-medium-on: #0A0F1A;
-    --m-low: #9EABC5; --m-low-soft: #162038; --m-low-ink: #B7C2D6; --m-low-on: #0A0F1A;
-    --m-pass: #4FD38A; --m-pass-soft: #0E2F1E; --m-pass-ink: #8FE5B4; --m-pass-on: #0A0F1A;
-    --m-info-on: #0A0F1A;
-    --m-dom-material: #4FC3DB; --m-dom-material-soft: #0D2A33; --m-dom-material-ink: #8ADCEC;
-    --m-dom-customer: #B79AF5; --m-dom-customer-soft: #241A42; --m-dom-customer-ink: #CDB9FA;
-    --m-dom-vendor: #F27AB0; --m-dom-vendor-soft: #3B1326; --m-dom-vendor-ink: #F8A8CB;
-    --m-dom-partner: #E68AF0; --m-dom-partner-soft: #33123A; --m-dom-partner-ink: #F0B4F6;
-    --m-dom-finance: #E2B646; --m-dom-finance-soft: #352A0C; --m-dom-finance-ink: #F3D27E;
-    --m-dom-people: #5BB8F0; --m-dom-people-soft: #0E2A3F; --m-dom-people-ink: #9AD3F7;
-    --m-dom-plant: #A3CF5F; --m-dom-plant-soft: #1E2C0C; --m-dom-plant-ink: #C3E08E;
-    --m-dom-asset: #FF8A4C; --m-dom-asset-soft: #3D1C0C; --m-dom-asset-ink: #FFB088;
-    --m-dom-other: #A0AEC2; --m-dom-other-soft: #1C222C; --m-dom-other-ink: #C2CDDB;
-    --m-dom-on: #0A0F1A;
-    --m-viz-1: #7FA3FF;
-    --m-viz-2: #4FD38A;
-    --m-viz-3: #E2B646;
-    --m-viz-4: #4FC3DB;
-    --m-viz-5: #B79AF5;
-    --m-viz-6: #FF6B79;
-    --m-viz-7: #F27AB0;
-    --m-viz-8: #A3CF5F;
-    --m-viz-9: #5BB8F0;
-    --m-viz-10: #E68AF0;
-    --m-viz-1-fill: rgb(127 163 255 / 0.15);
-    --m-viz-2-fill: rgb(79 211 138 / 0.15);
-    --m-viz-3-fill: rgb(226 182 70 / 0.15);
-    --m-viz-4-fill: rgb(79 195 219 / 0.15);
-    --m-viz-5-fill: rgb(183 154 245 / 0.15);
-    --m-viz-6-fill: rgb(255 107 121 / 0.15);
-    --m-viz-7-fill: rgb(242 122 176 / 0.15);
-    --m-viz-8-fill: rgb(163 207 95 / 0.15);
-    --m-viz-9-fill: rgb(91 184 240 / 0.15);
-    --m-viz-10-fill: rgb(230 138 240 / 0.15);
-    --m-viz-area: rgb(127 163 255 / 0.14);
-    --m-viz-tooltip-bg: #E6ECF7;
-    --m-viz-tooltip-ink: #0A0F1A;
-    --m-seq-1: #172542; --m-seq-2: #233A70; --m-seq-3: #3558AB; --m-seq-4: #7FA3FF; --m-seq-5: #BCD0FF;
-    --m-div-neg-2: #FF6B79; --m-div-neg-1: #6B2028; --m-div-mid: #162038; --m-div-pos-1: #1D5A36; --m-div-pos-2: #4FD38A;
-    --m-grad-fade-bottom: linear-gradient(180deg, rgb(15 22 38 / 0) 0%, var(--m-sheet) 100%);
+    --m-ink: #E7E9EC;
+    --m-ink-2: #B5BBC4;
+    --m-ink-3: #99A1AD;
+    --m-ink-4: #4D5560;
+    --m-ink-on-accent: #0C0E11;
+    --m-accent: #7398F5;
+    --m-accent-hover: #8DABF7;
+    --m-accent-active: #5F87EE;
+    --m-accent-soft: #1C2741;
+    --m-accent-soft-2: #25335A;
+    --m-accent-ink: #A4BCF8;
+    --m-accent-ring: rgb(115 152 245 / 0.40);
+    --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #111418;
+    --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #111418;
+    --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #111418;
+    --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #111418;
+    --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #111418;
+    --m-info: #7FA2F3; --m-info-soft: #1C2741; --m-info-ink: #AFC4F8; --m-info-on: #111418;
+    --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
+    --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
+    --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
+    --m-dom-partner: #C49DCC; --m-dom-partner-soft: #2E2232; --m-dom-partner-ink: #DBBFE0;
+    --m-dom-finance: #CCB06E; --m-dom-finance-soft: #2E2919; --m-dom-finance-ink: #E0CC9C;
+    --m-dom-people: #8DB1D3; --m-dom-people-soft: #1C2733; --m-dom-people-ink: #B4CCE2;
+    --m-dom-plant: #A0BE86; --m-dom-plant-soft: #212A1B; --m-dom-plant-ink: #C1D5B0;
+    --m-dom-asset: #D39E84; --m-dom-asset-soft: #33241D; --m-dom-asset-ink: #E3BDAA;
+    --m-dom-other: #A6AEBA; --m-dom-other-soft: #23272D; --m-dom-other-ink: #C4CAD3;
+    --m-dom-on: #111418;
+    --m-viz-1: #86A4EE;
+    --m-viz-2: #6CC594;
+    --m-viz-3: #D3B466;
+    --m-viz-4: #72B7C6;
+    --m-viz-5: #AE9FDE;
+    --m-viz-6: #EB8A90;
+    --m-viz-7: #D892B2;
+    --m-viz-8: #A2C27C;
+    --m-viz-9: #81AEDA;
+    --m-viz-10: #C99BD1;
+    --m-viz-1-fill: rgb(134 164 238 / 0.15);
+    --m-viz-2-fill: rgb(108 197 148 / 0.15);
+    --m-viz-3-fill: rgb(211 180 102 / 0.15);
+    --m-viz-4-fill: rgb(114 183 198 / 0.15);
+    --m-viz-5-fill: rgb(174 159 222 / 0.15);
+    --m-viz-6-fill: rgb(235 138 144 / 0.15);
+    --m-viz-7-fill: rgb(216 146 178 / 0.15);
+    --m-viz-8-fill: rgb(162 194 124 / 0.15);
+    --m-viz-9-fill: rgb(129 174 218 / 0.15);
+    --m-viz-10-fill: rgb(201 155 209 / 0.15);
+    --m-viz-area: rgb(134 164 238 / 0.14);
+    --m-viz-tooltip-bg: #E7E9EC;
+    --m-viz-tooltip-ink: #111418;
+    --m-seq-1: #1A2132; --m-seq-2: #253353; --m-seq-3: #34508C; --m-seq-4: #7F9EEA; --m-seq-5: #BFCFF6;
+    --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #20252C; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
+    --m-grad-fade-bottom: linear-gradient(180deg, rgb(24 28 33 / 0) 0%, var(--m-sheet) 100%);
     --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
     --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
-    --m-elev-accent: 0 1px 2px rgb(0 0 0 / 0.5);
-    --m-elev-glow-critical: 0 0 0 3px rgb(255 107 121 / 0.28);
-    --m-glow-critical-fill: rgb(255 107 121 / 0.28);
+    --m-elev-accent: none;
+    --m-elev-glow-critical: 0 0 0 3px rgb(240 115 124 / 0.28);
+    --m-glow-critical-fill: rgb(240 115 124 / 0.28);
   }
 }
 
 /* ---------- Legacy aliases (kept so existing var() references resolve; do not use in new code) ---------- */
 :root {
-  --m-text-root: 13px;
+  --m-text-root: 14px;
   --m-motion-duration-slow: var(--m-motion-slow);
   --m-motion-duration-draw: var(--m-motion-draw);
   --m-motion-duration-shimmer: var(--m-motion-shimmer);
@@ -448,46 +424,46 @@
 /* ---------- Density tiers: the user's preference on <html data-density>. Compact is the analyst's
    screen (Explore, Operate, long tables); comfortable is for touch and large displays. ---------- */
 [data-density="compact"] {
-  --m-row-h: 32px;
-  --m-row-h-dense: 26px;
-  --m-control-h: 28px;
-  --m-card-pad: 14px;
-  --m-card-pad-sm: 8px;
-  --m-card-pad-lg: 18px;
-  --m-hero-pad: 16px 0;
+  --m-row-h: 34px;
+  --m-row-h-dense: 28px;
+  --m-control-h: 30px;
+  --m-card-pad: 16px;
+  --m-card-pad-sm: 10px;
+  --m-card-pad-lg: 20px;
+  --m-hero-pad: 16px 20px;
   --m-stat-pad: 6px 0 6px 12px;
-  --m-stat-h: 72px;
-  --m-stat-hero-h: 112px;
+  --m-stat-h: 76px;
+  --m-stat-hero-h: 104px;
   --m-section-gap: var(--m-space-3);
   --m-page-pad: var(--m-space-4);
   --m-text-stat: 22px;
   --m-leading-stat: 26px;
 }
 [data-density="comfortable"] {
-  --m-row-h: 44px;
-  --m-row-h-dense: 36px;
-  --m-control-h: 36px;
-  --m-card-pad: 24px;
-  --m-card-pad-sm: 16px;
-  --m-card-pad-lg: 32px;
-  --m-hero-pad: 32px 0;
-  --m-stat-pad: 10px 0 10px 16px;
-  --m-stat-h: 96px;
-  --m-stat-hero-h: 148px;
+  --m-row-h: 48px;
+  --m-row-h-dense: 40px;
+  --m-control-h: 38px;
+  --m-card-pad: 28px;
+  --m-card-pad-sm: 20px;
+  --m-card-pad-lg: 36px;
+  --m-hero-pad: 32px 36px;
+  --m-stat-pad: 12px 0 12px 18px;
+  --m-stat-h: 100px;
+  --m-stat-hero-h: 136px;
   --m-section-gap: var(--m-space-5);
   --m-page-pad: var(--m-space-8);
 }
 
 /* ---------- Presentation: `?present=1` fills a boardroom screen; type and the hero step up one size. ---------- */
 [data-present="1"] {
-  --m-text-hero: 112px;       --m-leading-hero: 100px;
+  --m-text-hero: 88px;        --m-leading-hero: 88px;
   --m-text-stat: 34px;        --m-leading-stat: 40px;
   --m-text-verdict-num: 56px; --m-leading-verdict-num: 60px;
   --m-text-title: 24px;       --m-leading-title: 30px;
   --m-text-section: 17px;     --m-leading-section: 24px;
   --m-text-body: 15px;        --m-leading-body: 22px;
   --m-text-meta: 13px;        --m-leading-meta: 18px;
-  --m-hero-pad: 40px 0;
+  --m-hero-pad: 40px 44px;
   --m-stat-h: 100px;
   --m-stat-hero-h: 164px;
   --m-section-gap: var(--m-space-6);
@@ -518,15 +494,16 @@
 }
 
 /* ---------- Colour-pass utilities (hero, depth, tone, domain, heat) ---------- */
-.m-hero { position: relative; color: var(--m-hero-ink); padding: var(--m-hero-pad); background-color: var(--m-hero-bg); border-top: 1px solid var(--m-hero-line); border-bottom: 1px solid var(--m-hero-line); }
-.m-hero :focus-visible { outline: none; box-shadow: var(--m-elev-focus-hero); }
-.m-brand-panel { position: relative; color: var(--m-hero-ink); padding: 48px; background-color: var(--m-hero-bg); border-right: 1px solid var(--m-hero-line); }
-.m-brand-panel :focus-visible { outline: none; box-shadow: var(--m-elev-focus-hero); }
-.m-report-cover { position: relative; overflow: hidden; color: var(--m-hero-ink); background-color: var(--m-hero-bg); }
-.m-report-cover::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--m-ember); }
-.m-ghost-bg { background-color: transparent; border-top: 1px solid var(--m-line); border-bottom: 1px solid var(--m-line); }
-.m-meridian-line { position: relative; height: 1px; background: var(--m-hero-line); }
-.m-meridian-line::before { content: ""; position: absolute; left: 0; top: -1px; width: 24px; height: 3px; background: var(--m-ember); }
+/* The score sheet: a white card like any other, a plain large number and one horizontal bar. */
+.m-hero { position: relative; color: var(--m-ink); padding: var(--m-hero-pad); background-color: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); }
+.m-brand-panel { position: relative; color: var(--m-ink); padding: 48px; background-color: var(--m-sheet); border-right: 1px solid var(--m-line); }
+.m-ghost-bg { background-color: transparent; border: 1px dashed var(--m-line); border-radius: var(--m-radius-sheet); }
+.m-meridian-line { position: relative; height: 1px; background: var(--m-line); }
+.m-meridian-line::before { content: ""; position: absolute; left: 0; top: -1px; width: 24px; height: 3px; background: var(--m-accent); }
+.m-score-bar { position: relative; display: block; width: 100%; height: 8px; border-radius: var(--m-radius-pill); background: var(--m-dqs-track); overflow: hidden; }
+.m-score-bar .m-bar-fill { border-radius: var(--m-radius-pill); }
+/* Score size="hero": wide enough for the numeral and its delta chip; grows with the content rather than clipping it. */
+.m-score-hero { min-width: 260px; width: max-content; max-width: 360px; }
 .m-fade-bottom { background-image: var(--m-grad-fade-bottom); }
 
 .m-lift, .m-lift-sm { transition: transform var(--m-motion-duration) var(--m-ease-spring), box-shadow var(--m-motion-duration) var(--m-ease), background-color var(--m-motion-duration) var(--m-ease); }
@@ -543,8 +520,15 @@
 .m-pill-solid-no-go { background: var(--m-no-go); color: var(--m-no-go-on); }
 .m-pill-solid-info { background: var(--m-info); color: var(--m-info-on); }
 .m-pill-solid-neutral { background: var(--m-low); color: var(--m-low-on); }
-.m-pill-ember { background: var(--m-ember-soft); color: var(--m-ember-ink); }
-.m-pill-ember .m-pill-dot { background: var(--m-ember); }
+/* Pill, severity tones (Status kind="severity"): the severity hue's soft tint and ink; the SeverityDot carries the shape. */
+.m-pill-critical { background: var(--m-critical-soft); color: var(--m-critical-ink); }
+.m-pill-high { background: var(--m-high-soft); color: var(--m-high-ink); }
+.m-pill-medium { background: var(--m-medium-soft); color: var(--m-medium-ink); }
+.m-pill-low { background: var(--m-low-soft); color: var(--m-low-ink); }
+.m-pill-solid-critical { background: var(--m-critical); color: var(--m-critical-on); }
+.m-pill-solid-high { background: var(--m-high); color: var(--m-high-on); }
+.m-pill-solid-medium { background: var(--m-medium); color: var(--m-medium-on); }
+.m-pill-solid-low { background: var(--m-low); color: var(--m-low-on); }
 .m-badge-critical { background: var(--m-critical); color: var(--m-critical-on); }
 
 /* Delta chip */
@@ -556,9 +540,6 @@
 .m-delta-good { background: var(--m-pass-soft); color: var(--m-pass-ink); }
 .m-delta-bad { background: var(--m-critical-soft); color: var(--m-critical-ink); }
 .m-delta-zero { background: var(--m-sheet-sunken); color: var(--m-ink-2); }
-.m-delta-hero { background: rgb(255 255 255 / 0.10); color: var(--m-hero-ink-2); }
-.m-delta-hero.m-delta-good { color: var(--m-hero-tone-pass); }
-.m-delta-hero.m-delta-bad { color: var(--m-hero-tone-critical); }
 
 /* Domain chip: square swatch distinguishes domain from status (dot). */
 .m-chip-domain { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--m-radius-pill); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); font-weight: 500; white-space: nowrap; }
@@ -582,13 +563,27 @@
 .m-chip-domain-other { background: var(--m-dom-other-soft); color: var(--m-dom-other-ink); }
 .m-chip-domain-other .m-chip-domain-swatch { background: var(--m-dom-other); }
 
+/* Domain stripe: a 4px rule down the left edge of a positioned box, in the domain solid (data-domain). */
+.m-domain-stripe { position: absolute; inset: 0 auto 0 0; width: 4px; z-index: 1; }
+.m-domain-stripe[data-domain="material"] { background: var(--m-dom-material); }
+.m-domain-stripe[data-domain="customer"] { background: var(--m-dom-customer); }
+.m-domain-stripe[data-domain="vendor"] { background: var(--m-dom-vendor); }
+.m-domain-stripe[data-domain="partner"] { background: var(--m-dom-partner); }
+.m-domain-stripe[data-domain="finance"] { background: var(--m-dom-finance); }
+.m-domain-stripe[data-domain="people"] { background: var(--m-dom-people); }
+.m-domain-stripe[data-domain="plant"] { background: var(--m-dom-plant); }
+.m-domain-stripe[data-domain="asset"] { background: var(--m-dom-asset); }
+.m-domain-stripe[data-domain="other"] { background: var(--m-dom-other); }
+
 /* Stat edge: 2 px rule over the column's left hairline */
 .m-stat-edge { position: absolute; top: 0; bottom: 0; left: -1px; width: 2px; background: var(--m-line-strong); }
-.m-stat-hero { background: transparent; box-shadow: none; border-left: 1px solid var(--m-hero-line); color: var(--m-hero-ink); }
+.m-stat-hero { background: transparent; box-shadow: none; border-left: 0; padding-left: 0; color: var(--m-ink); }
+.m-stat-hero .m-stat-edge { display: none; }   /* the score bar carries the tone */
 
 /* DataTable severity bar: inset shadow on the first cell, no layout shift */
 .m-bar-fill[data-tone="pass"] { background: var(--m-pass); }
 .m-bar-fill[data-tone="medium"] { background: var(--m-medium); }
+.m-bar-fill[data-tone="high"] { background: var(--m-high); }
 .m-bar-fill[data-tone="critical"] { background: var(--m-critical); }
 .m-bar-fill[data-step="1"] { background: var(--m-seq-1); }
 .m-bar-fill[data-step="2"] { background: var(--m-seq-2); }
@@ -631,3 +626,22 @@
 /* DataTable keyboard cursor */
 .m-row-active { outline: 2px solid var(--m-accent); outline-offset: -2px; }
 .m-stat-link { text-align: left; cursor: pointer; }
+
+/* ---------- Ink and type utilities for app/ (pages carry no inline style; DESIGN.md "No inline style").
+   Unlayered and last, so on an element they win over a component class the way the inline style did. ---------- */
+.m-ink { color: var(--m-ink); }
+.m-ink-2 { color: var(--m-ink-2); }
+.m-ink-3 { color: var(--m-ink-3); }
+.m-ink-accent { color: var(--m-accent); }
+.m-ink-accent-ink { color: var(--m-accent-ink); }
+.m-ink-critical { color: var(--m-critical); }
+.m-text-verdict-line { font-size: var(--m-text-verdict); line-height: var(--m-leading-verdict); }
+.m-text-hero { font-size: var(--m-text-hero); line-height: var(--m-leading-hero); }
+/* The hero lead of the Insights and Executive summary sheets: the score and its verdict side by side while the
+   verdict keeps its 18rem basis (the verdict and "6 blocking gaps across 2 waves" on one line each), else the
+   verdict wraps under the score at the lead's full width. A zero basis (flex-1) never wraps and squeezed the
+   verdict into a word-per-line column beside a wide score. */
+.m-hero-lead { display: flex; flex-wrap: wrap; align-items: flex-end; column-gap: var(--m-space-8); row-gap: var(--m-space-4); min-width: 0; }
+.m-hero-verdict { display: flex; flex-direction: column; gap: var(--m-space-1); flex: 1 1 18rem; min-width: 0; max-width: 48ch; }
+/* ProgressFill: the accent fill inside a caller-owned progress track. */
+.m-progress-fill { display: block; height: 100%; background: var(--m-accent); }

@@ -6,6 +6,9 @@ import * as miningApi from "@/lib/api/process-mining";
 import * as versionsApi from "@/lib/api/versions";
 import ProcessInsightsPage from "../page";
 
+// The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
   useRouter: () => ({ replace: vi.fn() }),
@@ -62,5 +65,24 @@ describe("ProcessInsightsPage", () => {
     const calls = (versionsApi.getVersions as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((versionsApi.getVersions as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+  });
+});
+
+describe("ProcessInsightsPage without a process definition", () => {
+  it("offers the finished runs that cover a process object instead of a dead end, with the header and actions at page level", async () => {
+    const bp = { id: "bp", label: "business_partner_1k", status: "complete", run_at: "2026-10-02T00:00:00Z", dqs_summary: { business_partner: 90 } };
+    const ap = { id: "ap", label: "accounts_payable_1k", status: "complete", run_at: "2026-10-01T00:00:00Z", dqs_summary: { accounts_payable: 80 } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [bp as never, ap as never] });
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    expect(await screen.findByText("Business partner has no process definition")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Runs with a process definition" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("combobox", { name: "Runs with a process definition" }));
+    expect(await screen.findByRole("option", { name: /accounts_payable_1k, Accounts payable/ })).toBeInTheDocument();
+    // The four sentences come from the frame, once, with the shared action bar beside the title.
+    expect(screen.getByText("Business partner has no L1 to L5 process definition.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Report library" })).toBeInTheDocument();
   });
 });

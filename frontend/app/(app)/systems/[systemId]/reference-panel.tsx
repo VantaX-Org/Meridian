@@ -56,7 +56,7 @@ function ReferenceRow({ id, spec, list }: { id: string; spec: (typeof KINDS)[num
   });
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{spec.help}</p>
+      <p className="m-text-body m-ink-2">{spec.help}</p>
       {list ? (
         <Pill tone="go">
           {list.records.toLocaleString()} {spec.unit}, {list.countries.join(", ")}

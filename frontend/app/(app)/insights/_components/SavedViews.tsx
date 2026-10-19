@@ -32,7 +32,7 @@ export function SavedViews({ route, current, onApply }: { route: string; current
       <Dialog open={open} onOpenChange={setOpen} title="Saved views" footer={<Button variant="secondary" onClick={() => setOpen(false)}>Close</Button>}>
         <div className="flex flex-col gap-4">
           {list.length === 0 ? (
-            <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{views.isLoading ? "Loading" : "No saved views for this page yet"}</p>
+            <p className="m-text-body m-ink-3">{views.isLoading ? "Loading" : "No saved views for this page yet"}</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {list.map((v) => (

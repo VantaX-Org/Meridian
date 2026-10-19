@@ -17,6 +17,7 @@ import statistics
 from collections import Counter
 from typing import Optional
 
+from checks.sap_dates import parse_sap_date
 from api.models.z_object_intelligence import (
     ZDataType,
     ZDetectedObject,
@@ -392,19 +393,22 @@ class ZProfiler:
 
     @staticmethod
     def _extract_date_range(records: list[dict]) -> tuple[Optional[str], Optional[str]]:
-        """Extract first_seen / last_seen from date fields."""
+        """Extract first_seen / last_seen (ISO ``YYYY-MM-DD``) from date fields.
+
+        A record's date may be ``YYYYMMDD`` text, a float a CSV read made of it
+        (``20221007.0``) or ``YYYY-MM-DD``; initial and unparsable dates are skipped."""
         date_fields = ("BUDAT", "ERDAT", "CPUDT", "budat", "erdat", "cpudt")
-        dates: list[str] = []
+        dates: list = []
         for rec in records:
             for df in date_fields:
-                val = rec.get(df)
-                if val is not None and str(val).strip():
-                    dates.append(str(val).strip())
+                # The first field that holds a real date wins; an initial or unparsable
+                # value (00000000, blank, float noise) falls through to the next field.
+                if (d := parse_sap_date(rec.get(df))) is not None:
+                    dates.append(d)
                     break
         if not dates:
             return None, None
-        dates.sort()
-        return dates[0], dates[-1]
+        return min(dates).isoformat(), max(dates).isoformat()
 
     @staticmethod
     def _compute_length_stats(lengths: list[int]) -> dict[str, float]:

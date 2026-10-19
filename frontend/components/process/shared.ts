@@ -1,22 +1,25 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getFindings } from "@/lib/api/findings";
-import { getVersions } from "@/lib/api/versions";
+import { useRunListWith } from "@/hooks/use-run-list";
+import { isFinished } from "@/lib/runs";
 import type { Version } from "@/types/api";
 
-export const isCompleteVersion = (v: Version) =>
-  (v.status === "agents_complete" || v.status === "complete" || v.status === "ai_enriched") && !!v.dqs_summary;
+export const isCompleteVersion = (v: Version) => isFinished(v) && !!v.dqs_summary;
 
-/** The run the topbar selected (`?run=`) when it is complete, else the latest complete analysis. */
+/**
+ * The run the topbar selected (`?run=`) when it is finished, else the latest finished analysis. Reads the shared
+ * run list, and a `?run=` older than the list by id, so a selected run is never swapped for the newest one.
+ */
 export function useLatestVersion() {
   const run = useSearchParams().get("run");
-  const q = useQuery({ queryKey: ["versions.list", { limit: 20 }], queryFn: () => getVersions({ limit: 20 }) });
-  const latest = useMemo(() => {
-    const vs = q.data?.versions ?? [];
-    return vs.find((v) => v.id === run && isCompleteVersion(v)) ?? vs.find(isCompleteVersion);
-  }, [q.data, run]);
-  return { latest, isLoading: q.isLoading, error: q.error as Error | null, refetch: q.refetch };
+  const { list: q, versions: vs, fetchingRun } = useRunListWith(run);
+  const latest = useMemo(
+    () => (fetchingRun ? undefined : vs.find((v) => v.id === run && isCompleteVersion(v)) ?? vs.find(isCompleteVersion)),
+    [vs, run, fetchingRun],
+  );
+  return { latest, isLoading: q.isLoading || fetchingRun, error: q.error as Error | null, refetch: q.refetch };
 }
 
 /**
@@ -33,8 +36,8 @@ export function useFindingHref(versionId: string | undefined) {
     for (const f of q.data?.findings ?? []) if (!m.has(`${f.module}:${f.check_id}`)) m.set(`${f.module}:${f.check_id}`, f.id);
     return m;
   }, [q.data]);
-  return (module: string, checkId: string) => {
+  return useCallback((module: string, checkId: string) => {
     const id = byCheck.get(`${module}:${checkId}`);
     return id ? `/analyse/finding/${id}?v=${versionId}` : undefined;
-  };
+  }, [byCheck, versionId]);
 }

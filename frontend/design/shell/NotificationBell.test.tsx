@@ -61,6 +61,17 @@ describe("NotificationBell", () => {
     expect(screen.getByRole("link", { name: "Open all" })).toHaveAttribute("href", "/inbox/notifications");
   });
 
+  it("names every server type and writes module ids as names", async () => {
+    api.getUnreadCount.mockResolvedValue(1);
+    api.getNotifications.mockResolvedValue({
+      items: [note({ type: "dq_alert", title: "New analysis complete: 172 findings in accounts_payable" })], total: 1,
+    });
+    renderBell();
+    fireEvent.click(await screen.findByRole("button", { name: /Notifications/ }));
+    expect(await screen.findByText("Quality alert")).toBeInTheDocument();
+    expect(screen.getByText("New analysis complete: 172 findings in Accounts payable")).toBeInTheDocument();
+  });
+
   it("marks a notification read when it is opened", async () => {
     api.getUnreadCount.mockResolvedValue(1);
     api.getNotifications.mockResolvedValue({ items: [note({})], total: 1 });

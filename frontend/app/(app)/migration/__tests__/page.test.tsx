@@ -61,6 +61,13 @@ describe("MigrationPage", () => {
     })));
   });
 
+  it("renders the page header, not four empty cells, while the waves load", () => {
+    vi.spyOn(migrationApi, "getWaves").mockReturnValue(new Promise(() => {}));
+    renderWithQuery(<MigrationPage />);
+    expect(screen.getByRole("heading", { level: 2, name: "Migration" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+  });
+
   it("shows the error with a retry", async () => {
     vi.spyOn(migrationApi, "getWaves").mockRejectedValue(new Error("network down"));
     renderWithQuery(<MigrationPage />);

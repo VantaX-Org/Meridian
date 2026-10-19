@@ -47,11 +47,11 @@ export function RootCauseSection({ run, ruleId }: { run: string; ruleId: string 
     <Card title="Root cause" padding="sm">
       {data.status === "computed" ? (
         <div className="flex flex-col gap-2">
-          <p style={{ color: "var(--m-ink)" }}>{data.summary}</p>
+          <p className="m-ink">{data.summary}</p>
           <DataTable columns={columns} data={data.origins}
             getRowId={(o) => `${o.origin}|${o.username}|${o.tcode}`} />
           {data.analysed < data.total && (
-            <p className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+            <p className="m-text-meta m-ink-2">
               Based on {data.analysed} of {data.total} failing records.
             </p>
           )}

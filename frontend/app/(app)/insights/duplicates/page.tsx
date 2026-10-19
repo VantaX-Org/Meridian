@@ -19,17 +19,19 @@ import {
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
+import { plural } from "@/lib/format";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { useInsightScope } from "../_components/useInsightScope";
 import { MinedAnomalies, MinedDuplicates, MinedRelationships } from "./mined-tabs";
 
 export default function DuplicatesPage() {
   const search = useSearchParams();
   const router = useRouter();
-  const run = search.get("run") ?? "";
+  const run = useInsightScope().run ?? "";
   const tab = search.get("tab") ?? "clusters";
   const setTab = (next: string) => {
     const params = new URLSearchParams(search.toString());
@@ -105,7 +107,7 @@ export default function DuplicatesPage() {
     if (pairs.length === 0) return;
     const result = await createMergeProposals(pairs);
     toast(`Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`, {
-      action: { label: "Review in stewardship", onClick: () => router.push("/workbench?tab=queue") },
+      action: { label: "Review in the inbox", onClick: () => router.push("/inbox?tab=queue") },
     });
   }
 
@@ -116,10 +118,12 @@ export default function DuplicatesPage() {
   return (
     <InsightFrame
       title="Duplicates"
+      scope
+      run={run || undefined}
       insight={{
-        situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${nodes.length} records are in this cluster` },
-        changed: { sentence: "—" },
-        why: { sentence: picked && !cluster.isLoading ? `${edges.length} matched pairs link these records` : "—" },
+        situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${plural(nodes.length, "record is", "records are")} in this cluster` },
+        changed: { sentence: "Mined pairs, anomalies and relationships follow the run you choose" },
+        why: { sentence: picked && !cluster.isLoading ? `${plural(edges.length, "matched pair links", "matched pairs link")} these records` : "A cluster shows which records would merge into one" },
         next: { sentence: nodes.length ? "Choose the surviving record, then propose the merge" : "Pick an object and a record" },
         loading: picked && cluster.isLoading,
       }}
@@ -158,7 +162,7 @@ export default function DuplicatesPage() {
       {state === "loading" ? (
         <div aria-busy="true"><CardSkeleton height={320} /></div>
       ) : state === "error" ? (
-        <ErrorState message={apiErrorMessage(cluster.error)} onRetry={() => void cluster.refetch()} />
+        <ErrorState {...apiErrorState(cluster.error)} onRetry={() => void cluster.refetch()} />
       ) : state === "empty" ? (
         picked ? (
           <EmptyState title="No duplicate clusters" detail="This record has no matches." ghost="grid" action={<Button render={<Link href="/mdm/match-rules">Match rules</Link>} />} />
@@ -201,8 +205,8 @@ function ClusterPanel({
   mergeImpactCount: number;
 }) {
   return (
-    <fieldset className="flex flex-col gap-2 p-3 rounded border" style={{ borderColor: "var(--m-line)" }}>
-      <legend className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+    <fieldset className="flex flex-col gap-2 p-3 rounded border [border-color:var(--m-line)]">
+      <legend className="m-text-meta m-ink-2">
         Pick the surviving (master) record
       </legend>
       {nodes.map((node) => (
@@ -217,8 +221,8 @@ function ClusterPanel({
           {node.label ?? node.id}
         </label>
       ))}
-      <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
-        Merge impact: {mergeImpactCount} document{mergeImpactCount === 1 ? "" : "s"} would move
+      <p className="m-text-meta m-ink-3">
+        Merge impact: {plural(mergeImpactCount, "document")} would move
       </p>
     </fieldset>
   );

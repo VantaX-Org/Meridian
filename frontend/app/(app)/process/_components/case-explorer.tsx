@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, Drawer, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton } from "@/design";
 import { getCaseEvents, listCases, type CaseRow, type ProcessFilterParams } from "@/lib/api/process-discovery";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { fmtCount } from "./shared";
@@ -31,14 +31,14 @@ export function CaseExplorer({ runId, filters, caseId, onOpenCase, onClearFilter
   const q = useQuery({ queryKey: queryKeys.processRunView(runId, "cases", params), queryFn: () => listCases(runId, params) });
   return (
     <>
-      {q.isError ? <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
+      {q.isError ? <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
         : !q.data ? <Skeleton height={320} />
         : !q.data.items.length ? <EmptyState title="No cases in this view" detail="Widen the filters to include more cases."
           action={onClearFilters && <Button variant="secondary" onClick={onClearFilters}>Clear filters</Button>} />
         : (
           <div className="grid gap-2">
             {q.data.total > q.data.items.length && (
-              <p style={{ color: "var(--m-ink-3)" }}>
+              <p className="m-ink-3">
                 Showing the first {fmtCount(q.data.items.length)} of {fmtCount(q.data.total)} cases. Narrow the filters to find one.
               </p>
             )}
@@ -62,7 +62,7 @@ function CaseDrawer({ runId, filters, caseId, onClose }: {
   const events = q.data?.events ?? [];
   return (
     <Drawer open={!!caseId} onOpenChange={(o) => !o && onClose()} title="Case timeline" subtitle={caseId ? <Mono>{caseId}</Mono> : undefined}>
-      {q.isError ? <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
+      {q.isError ? <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />
         : !q.data ? <Skeleton height={240} />
         : (
           <div className="grid gap-3">
@@ -78,7 +78,7 @@ function CaseDrawer({ runId, filters, caseId, onClose }: {
                     <strong>{e.activity}</strong>
                     {e.automated === true && <Pill tone="info">Automated</Pill>}
                   </span>
-                  <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                  <span className="m-text-meta m-ink-3">
                     {formatDate(e.ts, "datetime")}{e.resource ? `, ${e.resource}` : ""}{e.doc_type ? `, document type ${e.doc_type}` : ""}
                   </span>
                   {e.object_refs && (

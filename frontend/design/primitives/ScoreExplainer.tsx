@@ -22,32 +22,33 @@ export interface ScoreRule {
   weight: number;
 }
 
-export interface ScoreExplainerProps {
-  score: number;
+/** What `Score size="md" explain` opens: the band, the weighted inputs, the cap reason and the rules costing the most. */
+export interface ScoreExplanation {
   band: { label: string; tone: PillTone };
   dimensions: ScoreDimension[];
-  /** Present when a critical failure capped the composite. */
-  cap?: { value: number; reason: string };
+  /** Why a critical failure capped the composite (the cap value is `Score`'s `cap`). */
+  capReason?: string;
   rules: ScoreRule[];
   historyHref: string;
   run?: string;
 }
 
-export function ScoreExplainer({ score, band, dimensions, cap, rules, historyHref, run }: ScoreExplainerProps) {
+/** Internal to `Score`: the md ring as a popover trigger. The popover names the band and the cap; it does not draw the score again. */
+export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules, historyHref, run }: ScoreExplanation & { score: number; cap?: number }) {
   const top = [...rules].sort((a, b) => b.recordsFailed * b.weight - a.recordsFailed * a.weight).slice(0, 5);
   return (
     <Popover.Root>
       <Popover.Trigger className="inline-flex items-center gap-2 rounded" aria-label={`Explain score ${Math.round(score)}`}>
-        <ScoreRing score={score} size={48} cap={cap?.value} />
+        <ScoreRing score={score} size={48} cap={cap} />
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner sideOffset={8}>
+        <Popover.Positioner sideOffset={8} className="z-50">
           <Popover.Popup
             className="m-motion-scale-in rounded p-4 m-text-body"
             style={{ background: "var(--m-sheet)", color: "var(--m-ink)", boxShadow: "var(--m-elev-2)", width: 360 }}
           >
             <div className="flex items-center gap-3">
-              <ScoreRing score={score} size={48} cap={cap?.value} />
+              <span className="m-text-h font-semibold">Score breakdown</span>
               <Pill tone={band.tone}>{band.label}</Pill>
             </div>
             <table className="mt-3 w-full text-left tabular-nums">
@@ -65,7 +66,7 @@ export function ScoreExplainer({ score, band, dimensions, cap, rules, historyHre
                 ))}
               </tbody>
             </table>
-            {cap && <p className="mt-2 flex items-center gap-1" style={{ color: "var(--m-ink-2)" }}>Capped at {cap.value}: {cap.reason}<HelpHint term="cap" /></p>}
+            {cap != null && score > cap && <p className="mt-2 flex items-center gap-1" style={{ color: "var(--m-ink-2)" }}>Capped at {cap}{capReason ? `: ${capReason}` : ""}<HelpHint term="cap" /></p>}
             {top.length > 0 && (
               <>
                 <p className="mt-3" style={{ color: "var(--m-ink-3)" }}>Rules costing the most</p>

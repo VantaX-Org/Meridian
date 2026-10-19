@@ -20,6 +20,13 @@ from api.utils.llm_logger import log_llm_call
 logger = logging.getLogger("meridian.ai_survivorship")
 
 
+def ai_survivorship_available() -> bool:
+    """False when no LLM is configured (``LLM_PROVIDER=none`` or the admin config says so):
+    the engine then runs deterministic survivorship only. Decide this once per run."""
+    from llm.provider import llm_is_noop
+    return not llm_is_noop()
+
+
 def _hash_value(value: object) -> str:
     """Hash a value for prompt inclusion — LLM sees hash, not raw data."""
     return hashlib.sha256(str(value).encode()).hexdigest()[:12]
@@ -87,6 +94,8 @@ def propose_field_winner(
     """
     if not contributions or len(contributions) < 2:
         return None
+    if not ai_survivorship_available():
+        return None  # no LLM: the caller's deterministic chain decides
 
     prompt = _build_prompt(field_name, domain, contributions)
     start_ms = time.monotonic_ns() // 1_000_000
@@ -94,8 +103,8 @@ def propose_field_winner(
     try:
         from llm.provider import get_llm, safe_invoke
 
-        llm = get_llm().bind(max_tokens=600)
-        response = safe_invoke(llm, prompt, timeout_seconds=40)
+        llm = get_llm()
+        response = safe_invoke(llm, prompt, timeout_seconds=40, max_tokens=600)
         if response is None:
             logger.warning(f"Survivorship LLM timeout for {field_name}")
             return None  # Fallback to deterministic survivorship

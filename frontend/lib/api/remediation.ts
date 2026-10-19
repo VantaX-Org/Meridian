@@ -110,7 +110,10 @@ export interface MonitorSummary {
 }
 
 export interface MonitorItem {
+  /** "upload" or the system id; several upload lineages can share it. */
   scope: string;
+  /** The run lineage (system id, or "upload:" plus the sorted objects): unique per card. */
+  lineage?: string;
   system_name: string | null;
   baseline: MonitorRun;
   latest: MonitorRun;

@@ -8,12 +8,207 @@ export function roundedDelta(before: number, after: number): number {
   return round1(after) - round1(before);
 }
 
-/** "business_partner" -> "Business Partner" */
+/**
+ * Display names for every module id the backend scores (checks/rules/<system>/<module>.yaml) or extracts
+ * (sap/extraction_registry.py). Wording follows api/routes/sync_trigger.py MODULE_REGISTRY, cased by the object-name
+ * convention in DESIGN.md: sentence case, SAP acronyms upper case (FI, MM, SD, HCM, MDG, GRC, WM, BP, CVI, PII, IDoc,
+ * S/4HANA), eWMS with its lower-case e, product names as SAP writes them (Concur, Ariba, SuccessFactors), "and" for "&".
+ */
+export const MODULE_LABELS: Record<string, string> = {
+  // ECC and S/4HANA
+  business_partner: "Business partner",
+  material_master: "Material master",
+  fi_gl: "FI general ledger",
+  accounts_payable: "Accounts payable",
+  accounts_receivable: "Accounts receivable",
+  asset_accounting: "Asset accounting",
+  controlling: "Controlling",
+  hcm: "HCM personnel administration",
+  mm_purchasing: "MM purchasing",
+  plant_maintenance: "Plant maintenance",
+  production_planning: "Production planning",
+  project_system: "Project system",
+  quality_management: "Quality management",
+  sd_customer_master: "SD customer master",
+  sd_sales_orders: "SD sales orders",
+  interface_health: "Interface health (IDoc)",
+  s4_readiness: "S/4HANA readiness",
+  banking_tax: "Banking and tax master data",
+  s4hc_master_data: "BP roles, CVI and product valuation",
+  // SuccessFactors
+  employee_central: "Employee central",
+  compensation: "Compensation",
+  benefits: "Benefits",
+  payroll_integration: "Payroll integration",
+  performance_goals: "Performance and goals",
+  succession_planning: "Succession planning",
+  recruiting_onboarding: "Recruiting and onboarding",
+  learning_management: "Learning management",
+  time_attendance: "Time and attendance",
+  // Warehouse
+  ewms_stock: "eWMS stock",
+  ewms_transfer_orders: "eWMS transfer orders",
+  batch_management: "Batch management",
+  mdg_master_data: "MDG master data",
+  grc_compliance: "GRC compliance",
+  fleet_management: "Fleet management",
+  transport_management: "Transport management",
+  wm_interface: "WM interface",
+  cross_system_integration: "Cross-system integration",
+  // Concur and Ariba
+  concur_expense: "Concur expense reports",
+  concur_travel: "Concur travel",
+  concur_users: "Concur users and cost objects",
+  ariba_supplier: "Ariba suppliers",
+  ariba_contracts: "Ariba contracts",
+  ariba_procurement: "Ariba purchase orders and invoices",
+  ariba_spend: "Ariba spend",
+  // Extraction-only and cross-cutting
+  process_discovery: "Process discovery",
+  process_events_sfx: "SuccessFactors process events",
+  process_events_arb: "Ariba process events",
+  process_events_cnq: "Concur process events",
+  s4_load_sim: "S/4HANA load simulation",
+  proven_cost: "Proven cost",
+  pii: "PII",
+};
+
+/**
+ * "fi_gl" -> "FI general ledger": the module's name from `MODULE_LABELS`. An id missing there is sentence-cased
+ * ("new_module" -> "New module"), which also names dimensions ("completeness" -> "Completeness").
+ */
 export function formatModuleName(name: string): string {
-  return name
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+  if (Object.hasOwn(MODULE_LABELS, name)) return MODULE_LABELS[name];
+  const s = name.replace(/_+/g, " ").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** "1 record", "2,310 records": a count with its noun agreed. `pluralForm` defaults to `singular + "s"`. */
+export function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${formatNumber(n)} ${n === 1 ? singular : pluralForm}`;
+}
+
+/** "GL024, GL003 and 3 more": the first `max` items, then how many are left. */
+export function shortList(items: readonly string[], max = 2): string {
+  if (items.length <= max) return items.join(", ");
+  return `${items.slice(0, max).join(", ")} and ${items.length - max} more`;
+}
+
+/** Currency amounts use the code the API sends ("ZAR 5,672,930"), in the viewer's locale; no code, no symbol. */
+export function formatMoney(n: number, currency?: string | null): string {
+  const base = { maximumFractionDigits: 0 };
+  try {
+    return currency
+      ? new Intl.NumberFormat(formatPrefs.locale, { ...base, style: "currency", currency, currencyDisplay: "code" }).format(n)
+      : new Intl.NumberFormat(formatPrefs.locale, base).format(n);
+  } catch {
+    return `${currency ?? ""} ${new Intl.NumberFormat(undefined, base).format(n)}`.trim();
+  }
+}
+
+const SYSTEM_TYPE_LABELS: Record<string, string> = {
+  ecc: "ECC",
+  s4hana_onprem: "S/4HANA on premise",
+  s4hana_cloud: "S/4HANA Cloud",
+  successfactors: "SuccessFactors",
+  concur: "Concur",
+  ariba: "Ariba",
+  btp: "BTP",
+  ewm: "EWM",
+};
+
+/** "ecc" -> "ECC", "s4hana_cloud" -> "S/4HANA Cloud"; unknown types are humanized. */
+export function systemTypeLabel(type: string | null | undefined): string {
+  if (!type) return "—";
+  return SYSTEM_TYPE_LABELS[type] ?? labelOf(type);
+}
+
+/**
+ * Axis labels for a run series keyed by run id: the date, or date and time when two runs share a day, with seconds
+ * when two share a minute, and an ordinal ("#2", in run order) when even the second is shared.
+ * Run labels are user-supplied upload names, so they never become ticks; this is the one tick formatter.
+ */
+export function runAxisLabels(runs: readonly { id: string; run_at: string | null | undefined }[]): Map<string, string> {
+  const kinds = ["date", "datetime", "seconds"] as const;
+  const tally = kinds.map((k) => {
+    const m = new Map<string, number>();
+    for (const r of runs) {
+      const key = formatDate(r.run_at, k);
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return m;
+  });
+  const out = new Map<string, string>();
+  const ordinal = new Map<string, number>();
+  const ordered = [...runs].sort((a, b) => (a.run_at ?? "").localeCompare(b.run_at ?? ""));
+  for (const r of ordered) {
+    const level = kinds.findIndex((k, i) => (tally[i].get(formatDate(r.run_at, k)) ?? 0) <= 1);
+    if (level >= 0) {
+      out.set(r.id, formatDate(r.run_at, kinds[level]));
+      continue;
+    }
+    const key = formatDate(r.run_at, "seconds");
+    const n = (ordinal.get(key) ?? 0) + 1;
+    ordinal.set(key, n);
+    out.set(r.id, key === "—" ? key : `${key} #${n}`);
+  }
+  return out;
+}
+
+/**
+ * Option labels for a run picker: the run's label, and where two runs share a label, the label with the run's
+ * date (disambiguated as on the axis), so 19 runs of "controlling_1k" read as 19 different options.
+ */
+export function runOptionLabels(runs: readonly { id: string; label?: string | null; run_at: string | null | undefined }[]): Map<string, string> {
+  const base = (r: (typeof runs)[number]) => r.label || formatDate(r.run_at, "datetime");
+  const groups = new Map<string, (typeof runs)[number][]>();
+  for (const r of runs) groups.set(base(r), [...(groups.get(base(r)) ?? []), r]);
+  const out = new Map<string, string>();
+  for (const [name, group] of groups) {
+    if (group.length === 1) { out.set(group[0].id, name); continue; }
+    const when = runAxisLabels(group);
+    // A label that already is the date is replaced by the finer date, never repeated beside it.
+    for (const r of group) out.set(r.id, r.label ? `${name}, ${when.get(r.id)}` : when.get(r.id) ?? name);
+  }
+  return out;
+}
+
+/** Rule ids named in a DQS cap reason ("2 critical failures over tolerance (MM140: 3.2% of MARA rows; ...)"). */
+export function capRuleIds(reason: string | null | undefined): string[] {
+  if (!reason) return [];
+  const inner = /\((.*)\)/.exec(reason)?.[1] ?? reason;
+  const ids = inner.split(";").flatMap((part) => {
+    const m = /^\s*([A-Za-z][A-Za-z0-9_.-]*):/.exec(part);
+    return m ? [m[1]] : [];
+  });
+  return [...new Set(ids)];
+}
+
+/** "6 critical rules over tolerance: CO003, CO020 and 4 more": a cap reason short enough for a hero, two rules named. */
+export function shortCapReason(reason: string | null | undefined, named = 2): string {
+  if (!reason) return "";
+  const ids = capRuleIds(reason);
+  if (ids.length <= 1) return reason.replace(/\s*[—-]\s*score capped at \d+$/, "");
+  const shown = ids.slice(0, named).join(", ");
+  const more = ids.length - Math.min(named, ids.length);
+  return `${plural(ids.length, "critical rule")} over tolerance: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+}
+
+/** "Up 2.1 since the last run", "Down 0.8 since the last run", "Unchanged since the last run"; null means no earlier run. */
+export function deltaSentence(delta: number | null | undefined, since = "since the last run"): string {
+  if (!isNum(delta)) return "First scored run";
+  const r = round1(delta);
+  if (r === 0) return `Unchanged ${since}`;
+  return `${r > 0 ? "Up" : "Down"} ${Math.abs(r)} ${since}`;
+}
+
+/** "Composite score rose from 60 to 70 over 3 runs.", or "held at 70 over 2 runs." when first and last are equal. */
+export function trendSentence(first: number, last: number, runs: number, subject = "Composite score"): string {
+  const a = round1(first);
+  const b = round1(last);
+  const over = `over ${plural(runs, "run")}`;
+  if (a === b) return `${subject} held at ${a} ${over}.`;
+  return `${subject} ${b > a ? "rose" : "fell"} from ${a} to ${b} ${over}.`;
 }
 
 /** Relative time: "2 hours ago", "3 days ago" */
@@ -85,16 +280,17 @@ export function formatNumber(n: number, options?: Intl.NumberFormatOptions): str
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
 const DATETIME_OPTS: Intl.DateTimeFormatOptions = { ...DATE_OPTS, hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+const SECONDS_OPTS: Intl.DateTimeFormatOptions = { ...DATETIME_OPTS, second: "2-digit" };
 
 /** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09" (UTC unless the user chose a time zone), or with
  * `tz: "SAST"` (UTC+2, the zone the scheduler's cron runs in, used only for schedule and next-run times),
  * "2 Oct 2026, 07:09 SAST". An unparseable value is an em dash. */
-export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" = "date", tz: "UTC" | "SAST" = "UTC"): string {
+export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz: "UTC" | "SAST" = "UTC"): string {
   if (iso === null || iso === undefined || iso === "") return "—";
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
   if (tz === "SAST" && kind === "datetime") return `${intl(DATETIME_OPTS, "Africa/Johannesburg").format(d)} SAST`;
-  return intl(kind === "date" ? DATE_OPTS : DATETIME_OPTS, formatPrefs.timezone ?? "UTC").format(d);
+  return intl(kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : DATETIME_OPTS, formatPrefs.timezone ?? "UTC").format(d);
 }
 
 const LABEL_OVERRIDES: Record<string, string> = {
@@ -123,7 +319,7 @@ export function errorLabel(error: string | null | undefined): string {
   return humanizeIds(error);
 }
 
-/** Server copy with machine ids ("accounts_payable") rewritten as names ("Accounts Payable"). */
+/** Server copy with machine ids ("accounts_payable") rewritten as names ("Accounts payable"). */
 export function humanizeIds(text: string): string {
   return text.replace(/\b[a-z]+(?:_[a-z]+)+\b/g, formatModuleName);
 }
@@ -207,7 +403,7 @@ const OBJECT_NOUN: Record<string, string> = {
 };
 /** Singular noun for one record of a module: "material_master" -> "Material". */
 export function objectNoun(module: string): string {
-  return OBJECT_NOUN[module] ?? formatModuleName(module).replace(/ (Master|Data)$/, "");
+  return OBJECT_NOUN[module] ?? formatModuleName(module).replace(/ (master|data)$/i, "");
 }
 
 const KEY_LABEL: Record<string, string> = { LIFNR: "vendor", KUNNR: "customer", MATNR: "material", BUKRS: "company code", WERKS: "plant", EKORG: "purchasing org", VKORG: "sales org", VTWEG: "distribution channel", SPART: "division", LGORT: "storage location", KOKRS: "controlling area", KOSTL: "cost centre", SAKNR: "account", EBELN: "purchase order", VBELN: "document" };

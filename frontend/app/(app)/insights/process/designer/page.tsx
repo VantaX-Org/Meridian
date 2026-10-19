@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/process-designer";
 import { toast } from "sonner";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
 import { domainOf } from "@/design/tokens";
@@ -60,7 +60,7 @@ export default function ProcessDesigner() {
       <div className="flex flex-col gap-4">
         <PageHeader title="Process designer" meta="Design the process model and see where the data behind it breaks." />
         {failed ? (
-          <ErrorState message={apiErrorMessage(failed)}
+          <ErrorState {...apiErrorState(failed)}
             onRetry={() => void (reference ? ref.refetch() : saved.refetch())} />
         ) : <Skeleton height={240} />}
       </div>
@@ -280,7 +280,7 @@ function Editor(p: EditorProps) {
           {l4 ? (
             <>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{l4.name}</h2>
+                <h2 className="m-text-h font-semibold m-ink">{l4.name}</h2>
                 <Button variant="secondary" onClick={() => go({ attr: l4.id })}>Sub-process details</Button>
               </div>
               <DesignerCanvas key={l4.id} l4={l4} domain={domainOf(doc.l1.find((x) => D.locate({ ...doc, l1: [x] }, l4.id))?.modules[0])} overlay={ov} selected={attr} editable={editable} canDesign={canDesign} onBlocked={blocked}

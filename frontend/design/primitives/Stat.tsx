@@ -9,16 +9,22 @@ import { HelpHint } from "./HelpHint";
 import type { GlossaryKey } from "@/lib/help/glossary";
 import { Sparkline } from "../charts/Sparkline";
 import { usePrefetch } from "../hooks/usePrefetch";
-import type { DomainKey } from "../tokens";
+import { dqsBand, type DomainKey } from "../tokens";
+import type { Verdict } from "./Status";
 
-export type StatTone = "go" | "at-risk" | "no-go";
+export type StatTone = Verdict;
 
-/** Tone to the dark-set hero tone token (the hero is dark in both themes). */
+/** Tone to the hero tone token (aliases of the status scale; the hero is a white sheet). */
 const HERO_TONE: Record<StatTone, string> = {
   go: "var(--m-hero-tone-pass)",
   "at-risk": "var(--m-hero-tone-medium)",
   "no-go": "var(--m-hero-tone-critical)",
 };
+
+/** Verdict tone to the bar-fill tone key. */
+const BAR_TONE: Record<StatTone, "pass" | "medium" | "critical"> = { go: "pass", "at-risk": "medium", "no-go": "critical" };
+/** Default DQS bands (tokens.css --m-dqs-*), used to colour the score bar when no `tone` is given. */
+const DQS_BANDS = { target: 90, warning: 75, critical: 60 };
 
 export interface StatProps {
   label: string;
@@ -34,8 +40,10 @@ export interface StatProps {
   tone?: StatTone;
   /** 2px left rule in the domain solid, when no `tone` is set. */
   domain?: DomainKey;
-  /** Hero mode: ruled column inside `.m-hero`, hero ink, hero-size numeral, count-up on by default. */
+  /** Hero mode: ruled column inside `.m-hero`, hero-size numeral, count-up on by default. */
   hero?: boolean;
+  /** Score bar: one horizontal bar under the value, filled to this percent (0 to 100), in the `tone` or the DQS band hue. */
+  bar?: number;
   /** Sparkline under the value, drawn when at least 3 points. */
   spark?: number[];
   /** Count the value up from 0. Needs a numeric `value`. Default on for `hero`, off otherwise. */
@@ -51,7 +59,7 @@ export interface StatProps {
 }
 
 /** KPI tile. */
-export function Stat({ label, value, delta, hint, href, onClick, tone, domain, hero = false, spark, countUp, versionId, decimals = 0, loading, help }: StatProps) {
+export function Stat({ label, value, delta, hint, href, onClick, tone, domain, hero = false, bar, spark, countUp, versionId, decimals = 0, loading, help }: StatProps) {
   const prefetch = usePrefetch(href);
   const edge = tone ? (hero ? HERO_TONE[tone] : `var(--m-${tone})`) : domain ? `var(--m-dom-${domain})` : undefined;
   const animate = (countUp ?? hero) && typeof value === "number";
@@ -85,13 +93,18 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
             color: hero ? "var(--m-hero-ink)" : "var(--m-ink)",
           }}
         >
-          {loading ? <Skeleton width="4ch" height={hero ? 76 : 30} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : value}
+          {loading ? <Skeleton width="4ch" height={hero ? 76 : 30} hero={hero} /> : animate ? <Counter value={value as number} versionId={versionId} decimals={decimals} size="inherit" onHero={hero} /> : typeof value === "number" ? value.toLocaleString("en-US") : value}
         </span>
         {delta != null && !loading && <span>{delta}</span>}
       </span>
       {spark && spark.length >= 3 && !loading && (
         <span className="absolute" style={{ top: 8, right: 0 }}>
           <Sparkline data={spark.map((y, x) => ({ x: String(x), y }))} width={60} height={16} color={sparkColor} />
+        </span>
+      )}
+      {bar != null && !loading && (
+        <span aria-hidden className="m-score-bar" style={{ margin: "var(--m-space-2) 0 var(--m-space-1)" }}>
+          <span className="m-bar-fill" data-tone={tone ? BAR_TONE[tone] : dqsBand(bar, DQS_BANDS)} style={{ width: `${Math.min(100, Math.max(0, bar))}%` }} />
         </span>
       )}
       {hint != null && (

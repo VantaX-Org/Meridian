@@ -59,7 +59,7 @@ export default function ContractsPage() {
       cell: ({ row }) => (
         <span>
           <strong>{row.original.name}</strong>
-          {row.original.description ? <span className="block m-text-meta" style={{ color: "var(--m-ink-3)" }}>{row.original.description}</span> : null}
+          {row.original.description ? <span className="block m-text-meta m-ink-3">{row.original.description}</span> : null}
         </span>
       ),
     },
@@ -142,15 +142,15 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
   return (
     <div className="flex flex-col gap-4">
       <Pill tone={breached(c) ? "no-go" : TONE[c.status]}>{breached(c) ? "Breached" : labelOf(c.status)}</Pill>
-      {c.description ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{c.description}</p> : null}
+      {c.description ? <p className="m-text-body m-ink-3">{c.description}</p> : null}
       <dl className="grid grid-cols-[140px_1fr] gap-y-1 m-text-body">
-        <dt style={{ color: "var(--m-ink-3)" }}>Producer</dt><dd>{c.producer}</dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Consumer</dt><dd>{c.consumer}</dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Latest check</dt><dd>{c.latest_compliant === true ? "Compliant" : c.latest_compliant === false ? "Not compliant" : "Not checked"}</dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Checked</dt><dd>{c.last_checked ? relativeTime(c.last_checked) : "Never"}</dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Created</dt><dd>{relativeTime(c.created_at)}{c.created_by ? ` by ${c.created_by}` : ""}</dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Activated</dt><dd>{c.activated_at ? `${relativeTime(c.activated_at)}${c.approved_by ? ` by ${c.approved_by}` : ""}` : "Not yet"}</dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Expires</dt><dd>{c.expires_at ? formatDate(c.expires_at) : "Never"}</dd>
+        <dt className="m-ink-3">Producer</dt><dd>{c.producer}</dd>
+        <dt className="m-ink-3">Consumer</dt><dd>{c.consumer}</dd>
+        <dt className="m-ink-3">Latest check</dt><dd>{c.latest_compliant === true ? "Compliant" : c.latest_compliant === false ? "Not compliant" : "Not checked"}</dd>
+        <dt className="m-ink-3">Checked</dt><dd>{c.last_checked ? relativeTime(c.last_checked) : "Never"}</dd>
+        <dt className="m-ink-3">Created</dt><dd>{relativeTime(c.created_at)}{c.created_by ? ` by ${c.created_by}` : ""}</dd>
+        <dt className="m-ink-3">Activated</dt><dd>{c.activated_at ? `${relativeTime(c.activated_at)}${c.approved_by ? ` by ${c.approved_by}` : ""}` : "Not yet"}</dd>
+        <dt className="m-ink-3">Expires</dt><dd>{c.expires_at ? formatDate(c.expires_at) : "Never"}</dd>
       </dl>
 
       {terms.length ? (
@@ -161,7 +161,7 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
                 <dl className="m-text-body grid grid-cols-[140px_1fr] gap-y-1">
                   {Object.entries(c[k] as Record<string, unknown>).map(([key, v]) => (
                     <div key={key} className="contents">
-                      <dt style={{ color: "var(--m-ink-3)" }}>{key.replace(/_/g, " ")}</dt>
+                      <dt className="m-ink-3">{key.replace(/_/g, " ")}</dt>
                       <dd><Mono>{typeof v === "string" ? v : JSON.stringify(v)}</Mono></dd>
                     </div>
                   ))}
@@ -171,21 +171,21 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
           ))}
         </div>
       ) : (
-        <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>No terms stated yet; the contract documents the pair until terms are added.</p>
+        <p className="m-text-meta m-ink-3">No terms stated yet; the contract documents the pair until terms are added.</p>
       )}
 
       <div>
         <h3 className="m-text-body font-semibold mb-2">Compliance history</h3>
         {compliance.isLoading ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading compliance history.</p>
+          <p className="m-text-body m-ink-3">Reading compliance history.</p>
         ) : !history.length ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No compliance checks recorded yet.</p>
+          <p className="m-text-body m-ink-3">No compliance checks recorded yet.</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {history.map((h) => (
               <li key={h.id} className="flex items-center gap-2 m-text-body">
                 <Pill tone={h.overall_compliant ? "go" : "no-go"}>{h.overall_compliant ? "Compliant" : "Not compliant"}</Pill>
-                <span style={{ color: "var(--m-ink-3)" }}>{relativeTime(h.recorded_at)}</span>
+                <span className="m-ink-3">{relativeTime(h.recorded_at)}</span>
               </li>
             ))}
           </ul>
@@ -199,7 +199,7 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
         <Mono>{c.id}</Mono>
       </div>
       {c.status === "draft" || c.status === "pending_approval" ? (
-        <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Four eyes: someone other than the author activates a contract.</p>
+        <p className="m-text-meta m-ink-3">Four eyes: someone other than the author activates a contract.</p>
       ) : null}
     </div>
   );
@@ -229,7 +229,7 @@ function NewContractForm({ onDone }: { onDone: () => void }) {
       <Field label="What the contract governs" error={form.error("description")}>
         <Textarea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} onBlur={() => form.blur("description")} />
       </Field>
-      <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>It starts as a draft. Add schema, quality, freshness and volume terms, then activate it.</p>
+      <p className="m-text-meta m-ink-3">It starts as a draft. Add schema, quality, freshness and volume terms, then activate it.</p>
       <div><Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Creating…" : "Create draft"}</Button></div>
     </form>
   );

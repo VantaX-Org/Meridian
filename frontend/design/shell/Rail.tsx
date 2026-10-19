@@ -83,14 +83,7 @@ export function Rail() {
   const navRef = useRef<HTMLElement>(null);
   const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
 
-  // Carry the current ?run= onto rail hrefs so the layout's RunSelectorSlot
-  // doesn't have to router.replace() it back in after every rail click —
-  // that replace was a second, flicker-causing navigation (review M11).
-  const runParam = searchParams?.get("run") ?? null;
-  const withRun = (href: string): string => {
-    if (!runParam) return href;
-    return `${href}${href.includes("?") ? "&" : "?"}run=${encodeURIComponent(runParam)}`;
-  };
+  // Rail links never carry ?run=: each section opens on its own latest run (lib/run-scope.ts).
 
   const [expanded, setExpanded] = useState(true);
   const [openParents, setOpenParents] = useState<Set<string>>(new Set());
@@ -132,7 +125,8 @@ export function Rail() {
       /* storage blocked: fall through to the width default */
     }
     if (stored === "collapsed" || stored === "expanded") setExpanded(stored === "expanded");
-    else setExpanded(window.innerWidth >= 1440);
+    // Labels show by default; only a narrow window starts collapsed to icons.
+    else setExpanded(window.innerWidth >= 1024);
   }, []);
 
   // "[" toggles the rail, like a shortcut — ignored while typing or with a modifier held.
@@ -291,11 +285,12 @@ export function Rail() {
     const showChevronButton = hasChildren && expanded;
 
     const rowWrapperClassName = "m-motion-colors group relative flex items-center hover:bg-[var(--m-rail-hover)]";
-    // Ledger: the active row is a ruled entry, a 2px amber rule down its left edge on a flat row. No tinted pill.
+    // Calm enterprise: the active row is a soft blue tint with blue ink; every row is the same height.
     const rowWrapperStyle = {
-      height: depth === 0 && active ? 32 : 28,
+      height: depth === 0 ? 34 : 30,
       margin: "0 8px",
-      borderLeft: `2px solid ${active ? "var(--m-accent)" : "transparent"}`,
+      borderRadius: "var(--m-radius-control)",
+      background: active ? "var(--m-accent-soft)" : undefined,
     };
 
     const link = (
@@ -305,7 +300,7 @@ export function Rail() {
           else linkRefs.current.delete(item.href);
         }}
         key={item.href}
-        href={withRun(linkHref)}
+        href={linkHref}
         aria-label={item.label}
         aria-current={active ? "page" : undefined}
         aria-expanded={!expanded && hasChildren ? flyoutHref === item.href : undefined}
@@ -319,7 +314,7 @@ export function Rail() {
         onMouseLeave={() => closeFlyout()}
         className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full m-text-body m-rail-link"
         style={{
-          ["--m-rail-fg" as string]: active ? "var(--m-ink)" : "var(--m-ink-2)",
+          ["--m-rail-fg" as string]: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
           fontWeight: active ? 600 : 500,
           paddingLeft: expanded && depth === 1 ? 28 : undefined,
           justifyContent: expanded ? "flex-start" : "center",
@@ -388,7 +383,7 @@ export function Rail() {
       style={{ width: expanded ? RAIL_WIDTH_EXPANDED : RAIL_WIDTH_COLLAPSED, background: "var(--m-rail)", borderRight: "1px solid var(--m-rail-edge)" }}
     >
       <Link
-        href={withRun(resolveNavHref("/home/lead", role))}
+        href={resolveNavHref("/home/lead", role)}
         aria-label="Meridian"
         className="flex items-center gap-2 shrink-0 font-semibold"
         style={{ height: "var(--m-topbar-h)", paddingLeft: expanded ? 16 : 0, justifyContent: expanded ? "flex-start" : "center", color: "var(--m-ink)" }}
@@ -470,7 +465,7 @@ export function Rail() {
           {(flyoutItem.children?.length ? flyoutItem.children : [flyoutItem]).map((child) => (
             <Link
               key={child.href}
-              href={withRun(resolveNavHref(child.href, role))}
+              href={resolveNavHref(child.href, role)}
               className="m-motion-colors flex items-center h-8 px-2 m-text-body font-medium hover:bg-[var(--m-rail-hover)]"
               style={{
                 borderRadius: "var(--m-radius-control)",

@@ -5,7 +5,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { ErrorState, Field, Select, Skeleton } from "@/design";
 import { getSystemModules } from "@/lib/api/connectivity";
 import { getUserEffective, getRolePermissions } from "@/lib/api/roles";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { scopeLabel, type SystemRef } from "./grants-picker";
 
 const ALL = "__all__";
@@ -36,7 +36,7 @@ export function EffectivePermissionsView({ userId, systems }: { userId: string; 
         <Field label="System"><Select value={system} onValueChange={(v) => { setSystem(v); setModKey(ALL); }} options={[{ value: ALL, label: "All systems" }, ...systems.map((s) => ({ value: s.id, label: s.name }))]} /></Field>
         <Field label="Module"><Select value={modKey} onValueChange={setModKey} options={[{ value: ALL, label: "All modules" }, ...modules.map((m) => ({ value: m, label: m }))]} /></Field>
       </div>
-      {q.isError ? <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} /> : !q.data ? <Skeleton height={160} /> : (
+      {q.isError ? <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} /> : !q.data ? <Skeleton height={160} /> : (
         <table className="m-text-meta" aria-label="Effective permissions">
           <thead>
             <tr><th scope="col" className="text-left pr-3">Resource</th>{Object.keys(Object.values(q.data.resources)[0] ?? {}).map((a) => <th key={a} scope="col" className="px-2">{a}</th>)}</tr>

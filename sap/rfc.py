@@ -35,6 +35,116 @@ PAYROLL_TABLE = "ZMERIDIAN_PAYRT"
 PAYROLL_FIELDS = ["PERNR", "SEQNR", "FPPER", "INPER", "PAYDT", "LGART", "BETRG", "ANZHL", "WAERS"]
 
 
+# SAP's reply to a locked or expired user. Nothing here should retry on these: every further
+# attempt extends SAP's lock, and the operator has to act (SU01) rather than wait.
+_LOGON_LOCKED = ("too many failed attempts", "password logon no longer possible",
+                 "user is locked", "logon currently not possible")
+
+
+# Per-system cooldown after a lock/expiry reply. Meridian must not be able to contribute to a
+# lock: once SAP says the user is locked or expired, every further attempt is another failed
+# attempt, and repeated attempts are what turn a locked user into a stubbornly locked one.
+_LOGON_BLOCKED: dict[str, float] = {}
+_LOGON_COOLDOWN_S = 15 * 60
+
+
+def _logon_key(params) -> str:
+    return f"{params.host}/{params.sysnr}/{params.client}/{params.user}"
+
+
+def logon_blocked_for(params) -> float:
+    """Seconds still to wait before this system may be connected to again (0 = allowed)."""
+    import time
+    until = _LOGON_BLOCKED.get(_logon_key(params), 0.0)
+    return max(0.0, until - time.time())
+
+
+def _note_logon_failure(params, message: str) -> None:
+    import time
+    if any(k in message.lower() for k in _LOGON_LOCKED):
+        _LOGON_BLOCKED[_logon_key(params)] = time.time() + _LOGON_COOLDOWN_S
+
+
+def clear_logon_block(params) -> None:
+    """Called by an operator action (a connection test) so a fixed password takes effect at once."""
+    _LOGON_BLOCKED.pop(_logon_key(params), None)
+
+
+class ExtractionMemoryError(RuntimeError):
+    """Raised instead of letting the process be OOM-killed.
+
+    An OOM kill is SIGKILL: no `finally`, no `close()`. The RFC sessions are left dangling, and
+    SAP counts an uncleaned session against the user exactly as it counts a failed logon - which
+    is how the sandbox user was locked twice. Failing cleanly keeps the sessions closable, so the
+    account cannot be locked by running out of memory.
+    """
+
+
+def available_memory_bytes() -> int | None:
+    """MemAvailable from /proc/meminfo, or None where it cannot be read."""
+    try:
+        with open("/proc/meminfo", encoding="ascii") as f:
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
+def require_memory(needed: int, what: str, fraction: float = 0.55) -> None:
+    """Refuse an allocation that would risk an OOM kill, before making it."""
+    avail = available_memory_bytes()
+    if avail is None or needed <= avail * fraction:
+        return
+    raise ExtractionMemoryError(
+        f"{what} needs about {needed / 1e9:.1f} GB and only {avail / 1e9:.1f} GB is available "
+        f"(limit {int(fraction * 100)}%). Stopping before the allocation: an OOM kill cannot be "
+        f"caught, so it would leave the SAP sessions open and lock the user. Raise the worker's "
+        f"memory, or narrow the object's rules, and run again.")
+
+
+def _join_group(merged, part, keys: list[str]):
+    """Add ``part``'s columns to ``merged`` without allocating a second whole frame.
+
+    ``merged.merge(part, on=keys, how="outer")`` builds a new frame while both inputs are still
+    alive, so a wide table's peak is twice its size. Wide tables are exactly the ones this split
+    exists for: MARC is 18.3M rows and its fields do not fit one RFC work area, so it is read in
+    groups and merged - at ~18 GB a frame that is ~36 GB peak, which is an OOM kill on a 30 GB
+    box even when the read itself succeeded.
+
+    Every group is read over the same key ranges in the same order, so when the keys line up
+    row-for-row the columns can simply be attached. The key comparison is the guard: if the rows
+    do not correspond exactly, fall back to the merge, which is correct for any order.
+    """
+    if keys and len(part) == len(merged):
+        try:
+            same = (part[keys].to_numpy() == merged[keys].to_numpy()).all()
+        except Exception:
+            same = False
+        if same:
+            for col in part.columns:
+                if col not in merged.columns:
+                    merged[col] = part[col].to_numpy()
+            return merged
+    # The fallback allocates a second whole frame. Check before doing it rather than being killed
+    # mid-allocation, which would leave the SAP sessions dangling.
+    require_memory(int(merged.memory_usage(deep=True).sum()) + int(part.memory_usage(deep=True).sum()),
+                   "joining RFC field groups for a wide table")
+    if keys:
+        return merged.merge(part, on=keys, how="outer")
+    return pd.concat([merged, part], axis=1)
+
+
+def _logon_advice(message: str) -> str:
+    """Append what the operator must do, so a locked user is not mistaken for a wrong password."""
+    if any(k in message.lower() for k in _LOGON_LOCKED):
+        return (message + " - the SAP user is locked or its password has expired. An SAP basis "
+                          "administrator must unlock it (transaction SU01) or reset the password. "
+                          "Meridian does not retry, because each failed attempt extends the lock.")
+    return message
+
+
 class RFCConnector(SAPConnector):
     """SAP connector backed by pyrfc / SAP NW RFC SDK."""
 
@@ -54,6 +164,15 @@ class RFCConnector(SAPConnector):
     # ── Lifecycle ──────────────────────────────────────────────────────────────
 
     def connect(self, params: SAPConnectionParams) -> None:
+        # Checked before anything else, including loading the driver: while SAP reports the user
+        # locked, no attempt of any kind may be made, because each one extends the lock.
+        wait = logon_blocked_for(params)
+        if wait > 0:
+            raise SAPConnectorError(
+                f"not attempting logon to {_logon_key(params)}: a previous attempt reported the "
+                f"user locked or the password expired, and retrying extends the lock. Waiting "
+                f"{int(wait)}s. An SAP basis administrator must unlock the user (SU01) or reset "
+                f"the password; a successful connection test clears this wait.")
         if self._conn is not None or self._extra is not None:
             self.close()  # a stale pool from a previous connect() would keep old params and sessions open
         try:
@@ -74,7 +193,12 @@ class RFCConnector(SAPConnector):
         except Exception as e:
             safe = self._mask_password(str(e), params.password)
             self._password = ""
-            raise SAPConnectorError(safe) from e
+            _note_logon_failure(params, safe)
+            raise SAPConnectorError(_logon_advice(safe)) from e
+        # A successful logon proves the account works again (unlocked, password reset), so the
+        # cooldown must lift at once - otherwise the operator unlocks the user and Meridian still
+        # refuses for the remainder of the window it set itself.
+        clear_logon_block(params)
         self._open_extra = lambda: pyrfc.Connection(ashost=params.host, client=params.client, user=params.user,
                                                     passwd=params.password, sysnr=params.sysnr)
 
@@ -201,8 +325,7 @@ class RFCConnector(SAPConnector):
                                                  max_rows)
             else:
                 part = self._read_paged(table, keys + group, where, max_rows, page_size, on_page)
-            merged = part if merged is None else merged.merge(part, on=keys, how="outer") if keys \
-                else pd.concat([merged, part], axis=1)
+            merged = part if merged is None else _join_group(merged, part, keys)
         if merged is None:
             merged = self._read_paged(table, keys, where, max_rows, page_size)
         return merged

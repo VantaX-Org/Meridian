@@ -43,7 +43,7 @@ describe("compareNarrative", () => {
   it("writes every sentence in order", () => {
     expect(compareNarrative(cmp(), diff)).toEqual([
       "DQS moved from 71.2 to 74.8 (+3.6) across 2 modules.",
-      "Material Master improved most (+6.1), driven by validity (+9.0).",
+      "Material master improved most (+6.1), driven by validity (+9.0).",
       `2 checks newly fail: MM041 (critical, ${nf.format(1240)} records), MM077 (high, ${nf.format(88)} records).`,
       `2 checks fixed, ${nf.format(3410)} records resolved.`,
       "2 checks did not run cleanly in both runs; their deltas are excluded.",
@@ -62,7 +62,7 @@ describe("compareNarrative", () => {
       null,
     );
     expect(out[0]).toBe("DQS moved from 70.0 to 68.0 (-2.0) across 1 module.");
-    expect(out[1]).toBe("Fi Gl declined most (-2.0), driven by accuracy (-4.0).");
+    expect(out[1]).toBe("FI general ledger declined most (-2.0), driven by accuracy (-4.0).");
     expect(out[2]).toBe("5 checks newly fail: C0 (low, 10 records), C1 (low, 9 records), C2 (low, 8 records), and 2 more.");
     expect(out).toHaveLength(3);
   });

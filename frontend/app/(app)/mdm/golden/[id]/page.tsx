@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, DataTable, Dialog, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
@@ -98,7 +98,7 @@ export default function MasterRecordPage() {
     return (
       <div className="p-6">
         <ErrorState
-          message={apiErrorMessage(recordQuery.error)}
+          {...apiErrorState(recordQuery.error)}
           onRetry={() => void recordQuery.refetch()}
         />
       </div>
@@ -133,7 +133,7 @@ export default function MasterRecordPage() {
         related={<>
       <Card title="Related records" meta={String(relationships.length)}>
         {relationships.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No related records found</p>
+          <p className="m-text-body m-ink-3">No related records found</p>
         ) : (
           <DataTable columns={relCols} getRowId={(r) => r.id} data={relationships as Rel[]} height="auto" />
         )}
@@ -142,7 +142,7 @@ export default function MasterRecordPage() {
         history={<>
       <Card title="History" meta={String(history.length)}>
         {history.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No changes recorded</p>
+          <p className="m-text-body m-ink-3">No changes recorded</p>
         ) : (
           <DataTable columns={histCols} getRowId={(r) => r.id} data={history as Hist[]} height="auto" />
         )}
@@ -173,11 +173,11 @@ export default function MasterRecordPage() {
         </GatedPrimary>
       </section>
       {writeback.data ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{writeback.data.message}</p>
+        <p className="m-text-body m-ink-3">{writeback.data.message}</p>
       ) : null}
 
       <Dialog open={confirmPromote} onOpenChange={setConfirmPromote} title="Promote to golden record?">
-        <p className="m-text-body mb-4" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body mb-4 m-ink-2">
           This replaces the current golden fields for {record.sap_object_key} with the merged values. This cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
@@ -190,7 +190,7 @@ export default function MasterRecordPage() {
 
       <Card title="Golden fields" meta={String(fields.length)}>
         {fields.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No golden fields recorded</p>
+          <p className="m-text-body m-ink-3">No golden fields recorded</p>
         ) : (
           <DataTable columns={fieldCols} getRowId={(r) => r.field} data={fieldRows} height="auto" />
         )}
@@ -198,7 +198,7 @@ export default function MasterRecordPage() {
 
       <Card title="Source contributions" meta={String(sources.length)}>
         {sources.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No sources recorded</p>
+          <p className="m-text-body m-ink-3">No sources recorded</p>
         ) : (
           <DataTable columns={sourceCols} getRowId={(r) => r.system} data={sourceRows} height="auto" />
         )}
@@ -208,7 +208,7 @@ export default function MasterRecordPage() {
       />
 
       <section>
-        <Link href="/insights/duplicates" className="m-text-body" style={{ color: "var(--m-accent)" }}>
+        <Link href="/insights/duplicates" className="m-text-body m-ink-accent">
           Review merge candidates in duplicates
         </Link>
       </section>

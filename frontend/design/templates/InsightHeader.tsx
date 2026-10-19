@@ -20,9 +20,10 @@ export interface InsightHeaderProps {
   changed: InsightCell;
   why: InsightCell;
   next: InsightCell & { action?: { label: string; href?: string; onClick?: () => void; impact?: string } };
+  /** When given, the AI summary replaces the four cells; the sentences are never shown twice. */
   aiSummary?: AiSummaryProps;
   loading?: boolean;
-  /** Opt-in hero zone: dark band with up to four hero stats above the sentences. One per page. */
+  /** Opt-in hero zone: a white score sheet with up to four stats above the sentences. One per page. */
   hero?: boolean;
   /** `to` is the route the stat opens. */
   stats?: (Pick<StatProps, "label" | "value" | "hint" | "tone" | "decimals" | "versionId"> & { to?: string })[];
@@ -36,6 +37,12 @@ const HERO_TONE: Record<PillTone, string> = {
   "at-risk": "var(--m-hero-tone-medium)",
   "no-go": "var(--m-hero-tone-critical)",
   info: "var(--m-hero-ink-2)",
+};
+
+/** Stat columns beside a lead: a row of their own while stacked, three abreast once the lead sits beside them. */
+const HERO_STAT_COLS: Record<number, string> = {
+  3: "@3xl:grid-cols-3",
+  4: "@3xl:grid-cols-4 @7xl:grid-cols-3",
 };
 
 const TONE: Record<PillTone, string> = {
@@ -64,18 +71,28 @@ function Cell({ label, cell, loading, hero, children }: { label: string; cell: I
 
 export function InsightHeader({ situation, changed, why, next, aiSummary, loading, hero, stats, lead }: InsightHeaderProps) {
   const a = next.action;
+  if (aiSummary) {
+    return (
+      <section aria-label="Insight" className="m-motion-rise" style={{ background: "var(--m-sheet)", borderTop: "1px solid var(--m-line-strong)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-3) 0" }}>
+        <AiSummary {...aiSummary} />
+      </section>
+    );
+  }
   return (
     <section
       aria-label="Insight"
       className={hero ? "m-hero m-motion-rise" : "m-motion-rise"}
-      style={hero ? undefined : { background: "var(--m-sheet)", borderTop: "1px solid var(--m-line-strong)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-3) 0" }}
+      style={hero ? undefined : { background: "var(--m-sheet)", border: "1px solid var(--m-line)", borderRadius: "var(--m-radius-sheet)", padding: "var(--m-space-3) var(--m-space-4)" }}
     >
       {hero && (lead || (stats && stats.length > 0)) && (
-        <div className={lead ? "mb-6 grid gap-8 @5xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @5xl:items-end" : "mb-6"}>
-          {lead && <div data-testid="insight-hero-lead">{lead}</div>}
+        // Lead and stats sit side by side only where both fit (a wide container); below it they stack, the lead
+        // on its own row, so the verdict never paints over a stat or wraps into a narrow column.
+        <div className={lead ? "mb-6 grid gap-8 @7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @7xl:items-end" : "mb-6"}>
+          {lead && <div data-testid="insight-hero-lead" className="min-w-0">{lead}</div>}
           {stats && stats.length > 0 && (
-            <div className={`m-motion-stagger grid grid-cols-2 gap-x-6 gap-y-4 ${lead ? (stats.length >= 3 ? "@5xl:grid-cols-3" : "") : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
-              {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} hero loading={loading} href={to} {...x} />)}
+            <div className={`m-motion-stagger grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 ${lead ? HERO_STAT_COLS[Math.min(stats.length, 4)] ?? "" : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
+              {/* Only the lead score is set large; these sit at stat size and carry thousands separators, as the sentences under them do. */}
+              {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} countUp loading={loading} href={to} {...x} />)}
             </div>
           )}
         </div>
@@ -97,11 +114,6 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
           )}
         </Cell>
       </div>
-      {aiSummary && (
-        <div className="pt-4">
-          {hero ? <div className="py-3" style={{ borderTop: "1px solid var(--m-hero-line)" }}><AiSummary {...aiSummary} /></div> : <AiSummary {...aiSummary} />}
-        </div>
-      )}
     </section>
   );
 }

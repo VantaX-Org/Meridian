@@ -1,12 +1,18 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import * as learnedRulesApi from "@/lib/api/learnedRules";
 import * as miningApi from "@/lib/api/mining";
 import * as relationshipsApi from "@/lib/api/relationships";
-import MiningPage from "../page";
+import * as versionsApi from "@/lib/api/versions";
+import MiningPage, { patternTypeLabel } from "../page";
 
+// The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+
+let query = "";
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(""),
+  useSearchParams: () => new URLSearchParams(query),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/insights/mining",
 }));
@@ -61,5 +67,37 @@ describe("MiningPage", () => {
     await waitFor(() =>
       expect((relationshipsApi.getRelationships as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls),
     );
+  });
+});
+
+describe("MiningPage patterns", () => {
+  const summary = { window_days: 30, total_patterns: 1, new_anomalies: 1, stable_patterns: 0, coverage_pct: 80, runs_total: 2, cost_usd: 0 };
+
+  it("labels pattern types for a reader, not as module names", () => {
+    expect(patternTypeLabel("pii")).toBe("PII");
+    expect(patternTypeLabel("anomaly")).toBe("Anomaly");
+    expect(patternTypeLabel("value_set")).toBe("Value set");
+  });
+
+  it("shows pattern types through the label map and offers Mine now on the current run when nothing is mined", async () => {
+    query = "run=v1&tab=patterns";
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-01T00:00:00Z" }] } as never);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    vi.spyOn(miningApi, "getMiningSummary").mockResolvedValue(summary);
+    const patterns = vi.spyOn(miningApi, "getMiningPatterns").mockResolvedValue({ patterns: [
+      { id: "p1", name: "Tax number drift", module: "business_partner", pattern_type: "pii", severity: "high", occurrences: 3, first_seen: "2026-10-01T00:00:00Z", last_seen: "2026-10-02T00:00:00Z", confidence: 0.9, trend: [1, 2], promoted_to_rule: false },
+    ] });
+    const view = renderWithQuery(<MiningPage />);
+    expect(await screen.findByText("PII")).toBeInTheDocument();
+    expect(screen.queryByText("Pii")).toBeNull();
+    view.unmount();
+
+    patterns.mockResolvedValue({ patterns: [] });
+    const mine = vi.spyOn(learnedRulesApi, "mineLearnedRules").mockResolvedValue({ queued: true });
+    renderWithQuery(<MiningPage />);
+    const button = await screen.findByRole("button", { name: "Mine now" });
+    fireEvent.click(button);
+    await waitFor(() => expect(mine).toHaveBeenCalledWith("v1"));
+    query = "";
   });
 });

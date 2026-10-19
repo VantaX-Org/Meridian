@@ -6,12 +6,11 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill,
-  SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
-  entityTabs,
-} from "@/design";
+import { Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity, entityTabs, Status } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
+import { RunScope } from "@/components/run-scope";
+import { useRunScope } from "@/hooks/use-run-scope";
+import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
@@ -19,9 +18,10 @@ import { exportObject, getObject, type ObjectRule, type ObjectSummary } from "@/
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
 import { exportFindingRecords, getScoreHistory } from "@/lib/api/findings";
+import { SCORE_HISTORY_LIMIT } from "@/lib/runs";
 import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
 import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDate, formatModuleName } from "@/lib/format";
@@ -31,8 +31,6 @@ const PAGE_SIZE = 50;
 const STALE_MS = 30_000;
 const RULE_HISTORY_RUNS = 8;
 
-const READINESS_TONE: Record<string, "go" | "at-risk" | "no-go"> = { pass: "go", warn: "at-risk", fail: "no-go" };
-const READINESS_LABEL: Record<string, string> = { pass: "Go", warn: "At risk", fail: "No-go" };
 const TAB_KEYS = ["overview", "rules", "fields", "records"] as const;
 const SEVERITIES = ["critical", "high", "medium", "low"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }));
 const isBlocking = (r: ObjectRule) => r.severity === "critical" || r.severity === "high";
@@ -136,7 +134,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   ];
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
-  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data || data.rules.length === 0) {
     return (
       <EmptyState
@@ -147,7 +145,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       />
     );
   }
-  if (batch.isError) return <ErrorState message={apiErrorMessage(batch.error)} onRetry={() => batch.refetch()} />;
+  if (batch.isError) return <ErrorState {...apiErrorState(batch.error)} onRetry={() => batch.refetch()} />;
 
   const dimensions = [...new Set(data.rules.map((r) => r.dimension).filter((d): d is string => !!d))].map((d) => ({ value: d, label: d }));
   return (
@@ -180,7 +178,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
 
 /** This object's composite score across every scored run, oldest first: improvement over time, per object. */
 function HistoryTab({ object, run }: { object: string; run: string }) {
-  const q = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: 24 }) });
+  const q = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: SCORE_HISTORY_LIMIT }) });
   const series = q.data?.modules[object] ?? [];
   const runs = new Map((q.data?.history ?? []).map((h) => [h.version_id, h]));
   const points = series.map((p, i) => {
@@ -194,7 +192,7 @@ function HistoryTab({ object, run }: { object: string; run: string }) {
     { accessorKey: "change", header: "Change", meta: { numeric: true }, cell: ({ row }) => (row.original.change === null ? "—" : <Delta value={row.original.change} />) },
   ];
   if (q.isLoading) return <Skeleton height={240} />;
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   if (points.length < 2) return <EmptyState title="Not enough runs to show a history" detail="The score history appears after the second scored run of this object." action={<Button render={<Link href="/runs">Open runs</Link>} />} />;
   return (
     <div className="flex flex-col gap-4">
@@ -213,7 +211,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
-  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data) return null;
 
   const dimensionPoints = Object.entries(data.dimension_scores).map(([dimension, score]) => ({
@@ -268,7 +266,7 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery(profileQuery(object, run));
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
-  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data || data.tables.length === 0) {
     return (
       <EmptyState
@@ -384,7 +382,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
   );
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
-  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data || data.records.length === 0) {
     return (
       <EmptyState
@@ -436,9 +434,12 @@ export default function ObjectDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const object = params.object;
-  const run = search.get("run") ?? "";
+  // `?run=` when the URL pins one, else this object's latest finished run; nothing is written onto the URL.
+  const scope = useRunScope({ object });
+  const run = scope.runId ?? "";
   const tab = search.get("tab") ?? "overview";
-  const checkId = search.get("check_id") ?? "";
+  // `check` is the shared drill parameter (rule tables link with it); `check_id` is the older spelling.
+  const checkId = search.get("check") ?? search.get("check_id") ?? "";
 
   const setTab = (next: string) => {
     const params = new URLSearchParams(search.toString());
@@ -447,7 +448,7 @@ export default function ObjectDetailPage() {
   };
 
   // All detail queries start together at page level; tabs share these keys, so switching tabs never waterfalls.
-  const { data } = useQuery(objectQuery(object, run));
+  const { data, error: objectError } = useQuery(objectQuery(object, run));
   const { data: version } = useQuery({
     queryKey: queryKeys.run(run),
     queryFn: () => getVersion(run),
@@ -478,13 +479,43 @@ export default function ObjectDetailPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [object, search]); // eslint-disable-line react-hooks/exhaustive-deps -- setTab closes over both
 
+  if (!run && scope.resolving) {
+    return (
+      <div className="flex flex-col gap-4 p-6" aria-busy="true">
+        <PageHeader title={formatModuleName(object)} />
+        <Skeleton height={240} />
+      </div>
+    );
+  }
   if (!run) {
     return (
       <EmptyState
-        title="No run selected"
-        detail="Select a run to see this object's data quality."
+        title="No run has measured this object"
+        detail="Run an analysis that includes this object to see its data quality."
         action={<Button render={<Link href="/runs">Open runs</Link>} />}
       />
+    );
+  }
+  // A `?run=` that did not measure this object (its run says so, or the server has no such object in it) is a
+  // wrong pairing, not a failure: say so and offer this object's own latest run.
+  const shownRun = scope.run ?? version;
+  if (scope.explicit && ((shownRun && runLacksObject(shownRun, object)) || isNotFound(objectError))) {
+    const name = formatModuleName(object);
+    return (
+      <div className="flex flex-col gap-4 p-6">
+        <PageHeader title={name} />
+        <EmptyState
+          title={`${name} is not in this run`}
+          detail={`${shownRun ? runScopeLabel(shownRun) : "The run in the link"} did not measure ${name}.`}
+          action={
+            scope.latestId && scope.latestId !== scope.explicit ? (
+              <Button render={<Link href={hrefWithRun(`/objects/${object}`, search, null)}>Show latest run of {name}</Link>} />
+            ) : (
+              <Button render={<Link href="/runs">Open runs</Link>} />
+            )
+          }
+        />
+      </div>
     );
   }
 
@@ -500,18 +531,23 @@ export default function ObjectDetailPage() {
         ),
     },
   ];
-  const meta = [
-    version?.label ? `Run ${version.label}` : null,
+  const counts = [
     summary ? `${summary.failing_checks.toLocaleString()} failing checks` : null,
     summary ? `${summary.affected_records.toLocaleString()} affected records` : null,
   ].filter(Boolean).join(", ");
+  const meta = (
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      <RunScope scope={scope} picker hrefFor={(id) => hrefWithRun(`/objects/${object}`, search, id)} />
+      {counts && <span>{counts}</span>}
+    </span>
+  );
 
   return (
     <div className="flex flex-col gap-4 p-6">
       <PageHeader
         title={summary?.label ?? formatModuleName(object)}
-        meta={meta || undefined}
-        status={summary?.readiness ? <Pill tone={READINESS_TONE[summary.readiness] ?? "neutral"}>{READINESS_LABEL[summary.readiness] ?? summary.readiness}</Pill> : null}
+        meta={meta}
+        status={summary?.readiness ? <Status kind="verdict" value={summary.readiness} /> : null}
         actions={
           <>
             <OwnerPicker kind="object" refId={object} />

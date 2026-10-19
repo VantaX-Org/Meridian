@@ -41,6 +41,16 @@ describe("objects.ts", () => {
     expect(mockedGet).toHaveBeenCalledWith("/api/v1/objects/material_master", { params: { run: "v1" } });
   });
 
+  it("names every object from the module-name map, not the API's title-cased label", async () => {
+    mockedGet.mockResolvedValue({ data: { run_id: "v1", objects: [
+      { module: "hcm", label: "Hcm" }, { module: "fi_gl", label: "Fi Gl" }, { module: "ewms_stock", label: "Ewms Stock" },
+    ] } });
+    const list = await getObjects("v1");
+    expect(list.objects.map((o) => o.label)).toEqual(["HCM personnel administration", "FI general ledger", "eWMS stock"]);
+    mockedGet.mockResolvedValue({ data: { module: "sd_sales_orders", label: "Sd Sales Orders", rules: [] } });
+    expect((await getObject("sd_sales_orders", "v1")).label).toBe("SD sales orders");
+  });
+
   it("getObjectRecord encodes the key and forwards optional params", async () => {
     mockedGet.mockResolvedValue({ data: {} });
     await getObjectRecord("material_master", "1000/01", { plant: "1000" });

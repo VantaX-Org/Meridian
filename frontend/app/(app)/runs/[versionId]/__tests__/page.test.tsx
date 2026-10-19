@@ -78,7 +78,7 @@ describe("RunDetailPage", () => {
       vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockReturnValue(new Promise(() => {}));
       renderWithQuery(<RunDetailPage />);
       const slot = await screen.findByTestId("next-actions-slot");
-      expect(slot.style.minHeight).not.toBe("");
+      expect(slot).toHaveClass("[min-height:124px]");
     });
 
     it("shows a muted line when there are no actions", async () => {
@@ -199,8 +199,8 @@ describe("RunDetailPage", () => {
     renderWithQuery(<RunDetailPage />);
     await waitFor(() => expect(screen.getByRole("tab", { name: "Objects" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("tab", { name: "Objects" }));
-    await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
-    expect(screen.getByRole("link", { name: "Material Master" })).toHaveAttribute("href", "/objects/material_master?run=v2");
+    await waitFor(() => expect(screen.getByText("Material master")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Material master" })).toHaveAttribute("href", "/objects/material_master?run=v2");
   });
 
   it("renders a sparkline trend column on the objects tab from the per-module score history", async () => {
@@ -221,9 +221,52 @@ describe("RunDetailPage", () => {
     });
     renderWithQuery(<RunDetailPage />);
     fireEvent.click(await screen.findByRole("tab", { name: "Objects" }));
-    await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Material master")).toBeInTheDocument());
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
     await waitFor(() => expect(document.querySelector(".recharts-wrapper")).toBeInTheDocument());
+  });
+
+  it("prints the finding count in every heatmap cell with the severity as its tone", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+      ...EMPTY_AGGREGATE, total: 7,
+      by_module: [{ module: "material_master", findings: 7, critical: 2, high: 0, medium: 5, low: 0, affected_records: 9 }] as never,
+    });
+    renderWithQuery(<RunDetailPage />);
+    const critical = await screen.findByLabelText("Material master Critical: 2, no go");
+    expect(critical).toHaveTextContent("2");
+    expect(screen.getByLabelText("Material master High: 0, go")).toHaveTextContent("0");
+    expect(screen.getByLabelText("Material master Medium: 5, at risk")).toHaveTextContent("5");
+  });
+
+  it("draws the composite line for an upload from the scored runs of the same objects, keyed by run id", async () => {
+    const dqs = (composite_score: number) => ({
+      composite_score, dimension_scores: { completeness: 0, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 },
+      critical_count: 0, high_count: 0, medium_count: 0, low_count: 0, total_checks: 1, passing_checks: 1, capped: false, cap_reason: null,
+    });
+    const up = (id: string, run_at: string, score: number) => version({ id, run_at, dqs_summary: { material_master: dqs(score) }, metadata: { modules: ["material_master"], file_name: "f.csv", row_count: 1 } });
+    const other = version({ id: "co", run_at: "2026-10-05T00:00:00Z", dqs_summary: { controlling: dqs(95) }, metadata: { modules: ["controlling"], file_name: "g.csv", row_count: 1 } });
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(up("v2", "2026-10-08T00:00:00Z", 80));
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [up("v2", "2026-10-08T00:00:00Z", 80), other, up("v1", "2026-10-01T00:00:00Z", 70)] });
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    renderWithQuery(<RunDetailPage />);
+    // Two runs of the same objects make a line; the controlling upload is not on it, and the ticks are dates.
+    expect(await screen.findByRole("img", { name: "Composite over runs: 1 Oct 2026 70, 8 Oct 2026 80" })).toBeInTheDocument();
+    expect(screen.queryByText("Only one run so far")).toBeNull();
+  });
+
+  it("draws the composite line from runs whose agents finished or failed, not only status complete", async () => {
+    const dqs = (composite_score: number) => ({
+      composite_score, dimension_scores: { completeness: 0, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 },
+      critical_count: 0, high_count: 0, medium_count: 0, low_count: 0, total_checks: 1, passing_checks: 1, capped: false, cap_reason: null,
+    });
+    const up = (id: string, run_at: string, score: number, status: Version["status"]) => version({ id, run_at, status, dqs_summary: { controlling: dqs(score) }, metadata: { modules: ["controlling"], file_name: "f.csv", row_count: 1 } });
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(up("v2", "2026-10-08T00:00:00Z", 80, "agents_complete"));
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [up("v2", "2026-10-08T00:00:00Z", 80, "agents_complete"), up("v1", "2026-10-01T00:00:00Z", 70, "agents_failed")] });
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    renderWithQuery(<RunDetailPage />);
+    expect(await screen.findByRole("img", { name: "Composite over runs: 1 Oct 2026 70, 8 Oct 2026 80" })).toBeInTheDocument();
+    expect(screen.queryByText("Only one run so far")).toBeNull();
   });
 
   it("downloads the narrative report from the Narrative report (PDF) export option, distinct from the Analysis report URL", async () => {

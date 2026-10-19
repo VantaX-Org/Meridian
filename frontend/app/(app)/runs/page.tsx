@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Select, Skeleton, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, type PillTone } from "@/design";
+import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Select, Skeleton, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -17,20 +17,12 @@ import { exportRuns } from "@/lib/api/v1/runs";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatDate, labelOf } from "@/lib/format";
+import { formatDate, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { overallDqs, previousRunId, scopeOf } from "@/lib/runs";
+import { isFinished, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 
-const STATUS_TONE: Record<string, PillTone> = {
-  failed: "no-go",
-  agents_failed: "no-go",
-  complete: "go",
-  agents_complete: "go",
-  ai_enriched: "go",
-};
-const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk";
 
 const runName = (v: Version) => v.label ?? formatDate(v.run_at, "datetime");
 const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
@@ -54,11 +46,10 @@ function RunRowProgress({ id }: { id: string }) {
   const detail = status === "queued" ? "Queued" : p?.current_step ?? "Running";
   return (
     <span className="inline-flex items-center gap-2" title={p?.total_rows ? `${p.rows_processed.toLocaleString()} of ${p.total_rows.toLocaleString()} rows` : undefined}>
-      <span role="progressbar" aria-label={`${detail} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
-        style={{ width: 64, height: 4, borderRadius: "var(--m-radius-pill)", background: "var(--m-sheet-sunken)", overflow: "hidden" }}>
-        <span className="m-motion-width block" style={{ width: `${pct}%`, height: "100%", background: "var(--m-accent)" }} />
+      <span role="progressbar" aria-label={`${detail} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="[width:64px] [height:4px] [border-radius:var(--m-radius-pill)] [background:var(--m-sheet-sunken)] [overflow:hidden]">
+        <ProgressFill value={pct} animate />
       </span>
-      <span className="m-text-meta m-numeric" style={{ color: "var(--m-ink-3)" }}>{pct}% {detail}</span>
+      <span className="m-text-meta m-numeric m-ink-3">{pct}% {detail}</span>
     </span>
   );
 }
@@ -85,7 +76,7 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[], on
       header: "Status",
       cell: ({ row }) => (
         <span className="inline-flex gap-1">
-          <Pill tone={statusTone(row.original.status)} variant="solid">{labelOf(row.original.status)}</Pill>
+          <Status kind="lifecycle" value={row.original.status} variant="solid" />
           {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
           {IN_PROGRESS.has(row.original.status) ? <RunRowProgress id={row.original.id} /> : null}
         </span>
@@ -142,7 +133,7 @@ function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [two, selected, onCompare]);
-  return two ? <Button {...prefetch} onClick={() => onCompare(selected[0], selected[1])}>Compare</Button> : <span style={{ color: "var(--m-ink-2)" }}>Select two runs</span>;
+  return two ? <Button {...prefetch} onClick={() => onCompare(selected[0], selected[1])}>Compare</Button> : <span className="m-ink-2">Select two runs</span>;
 }
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
@@ -151,8 +142,7 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
       type="button"
       onClick={onRemove}
       aria-label={`Remove filter ${label}`}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors"
-      style={{ background: "var(--m-accent-soft)", color: "var(--m-accent)", fontSize: "var(--m-text-meta)" }}
+      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors [background:var(--m-accent-soft)]! m-ink-accent [font-size:var(--m-text-meta)]!"
     >
       {label}
       <span aria-hidden>×</span>
@@ -177,7 +167,9 @@ export default function RunsPage() {
 
   const [page, setPage] = useState(1);
   const all = useQuery({
-    queryKey: page === 1 && !showArchived ? queryKeys.run("list") : queryKeys.run(`list-page-${page}${showArchived ? "-archived" : ""}`),
+    // Nested under the shared list's key so invalidating it refreshes this page too, but never the same key:
+    // the shared list holds the paginated newest runs (hooks/use-run-list) and must not be replaced by one page.
+    queryKey: [...queryKeys.run("list"), "page", page, showArchived] as const,
     queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, ...(showArchived ? { include_archived: true } : {}) }),
     placeholderData: keepPreviousData,
     // Keep the list fresh while any run on this page is still being analysed.
@@ -185,7 +177,7 @@ export default function RunsPage() {
   });
   // Summary stats and the trend use the newest page only, whichever table page is showing. Page 1 shares the cache key above.
   const head = useQuery({
-    queryKey: queryKeys.run("list"),
+    queryKey: [...queryKeys.run("list"), "page", 1, false] as const,
     queryFn: () => getVersions({ limit: PAGE_SIZE, offset: 0 }),
     placeholderData: keepPreviousData,
   });
@@ -207,8 +199,8 @@ export default function RunsPage() {
   const scoped = useMemo(() => (system ? allVersions.filter((v) => v.metadata?.system_id === system) : allVersions), [allVersions, system]);
   const headVersions = useMemo(() => head.data?.versions ?? [], [head.data]);
   const headScoped = useMemo(() => (system ? headVersions.filter((v) => v.metadata?.system_id === system) : headVersions), [headVersions, system]);
-  const failedCount = headScoped.filter((v) => statusTone(v.status) === "no-go").length;
-  const rows = failedOnly ? scoped.filter((v) => statusTone(v.status) === "no-go") : scoped;
+  const failedCount = headScoped.filter((v) => toLifecycle(v.status) === "failed").length;
+  const rows = failedOnly ? scoped.filter((v) => toLifecycle(v.status) === "failed") : scoped;
 
   const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 ? "empty" : undefined;
 
@@ -220,14 +212,14 @@ export default function RunsPage() {
 
   // Chart scope: the chosen system, else the system of the latest run.
   const chartScope = system || (latest ? scopeOf(latest) : "");
-  const points = useMemo(
-    () =>
-      headScoped
-        .filter((v) => v.status === "complete" && scopeOf(v) === chartScope)
-        .flatMap((v) => { const y = overallDqs(v); return y === null ? [] : [{ x: formatDate(v.run_at, "date"), y: Math.round(y * 10) / 10, runId: v.id }]; })
-        .reverse(),
-    [headScoped, chartScope],
-  );
+  const points = useMemo(() => {
+    // Keyed by run id with a disambiguated date as the tick, so two runs on one day never merge into one point.
+    const scoped = headScoped.filter((v) => isFinished(v) && scopeOf(v) === chartScope);
+    const ticks = runAxisLabels(scoped);
+    return scoped
+      .flatMap((v) => { const y = overallDqs(v); return y === null ? [] : [{ x: v.id, label: ticks.get(v.id), y: Math.round(y * 10) / 10, runId: v.id }]; })
+      .reverse();
+  }, [headScoped, chartScope]);
 
   const exportOptions = [{ format: "xlsx" as const, run: () => exportRuns("xlsx", { system_id: system || undefined, limit: 100 }) }];
   const refreshLists = () => {
@@ -316,13 +308,13 @@ export default function RunsPage() {
         </div>
       ) : null}
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
-        <h2 className="font-semibold" style={{ fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" }}>
+        <h2 className="font-semibold m-text-h">
           {`Score per run, ${systemName.get(chartScope) ?? "latest system"}`}
         </h2>
         {points.length > 1 ? (
-          <Line data={points} height={160} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
+          <Line data={points} height={160} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
         ) : (
-          <div className="flex items-center justify-center text-sm" style={{ height: 160, background: "var(--m-sheet-sunken)", color: "var(--m-ink-muted)" }}>
+          <div className="flex items-center justify-center text-sm [height:160px] [background:var(--m-sheet-sunken)] m-ink-3">
             Trend appears after two runs
           </div>
         )}
@@ -381,7 +373,7 @@ export default function RunsPage() {
           <Field label="Keep the newest">
             <Input type="number" min={0} max={100} value={keepLatest} onChange={(e) => setKeepLatest(e.target.value)} />
           </Field>
-          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-meta m-ink-3">
             {all.data?.total != null
               ? `Up to ${Math.max(0, all.data.total - Math.max(0, Number(keepLatest) || 0)).toLocaleString()} of ${all.data.total.toLocaleString()} runs will be archived.`
               : "Runs older than the ones you keep will be archived."}

@@ -9,6 +9,7 @@ import { Button, Card, Checkbox, DataTable, EmptyState, Field, Input, Mono, Noti
 import { getSystemObjects, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { clsx } from "clsx";
 
 const SCOPE_LABEL: Record<ScopeKey, string> = {
   company_codes: "Company codes",
@@ -18,7 +19,6 @@ const SCOPE_LABEL: Record<ScopeKey, string> = {
 };
 const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
 const note = "m-text-body";
-const noteStyle = { color: "var(--m-ink-2)" };
 
 /** Choose objects and scope, confirm inline, then extract into a new run. */
 export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (jobId: string) => void }) {
@@ -96,14 +96,14 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
                   <Input className="w-full" value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
                 </Field>
               </div>
-              <p className={note} style={noteStyle}>
+              <p className={clsx(note, "m-ink-2")}>
                 Organisational filters restrict every table that carries the field. General data without it is read in full so no record loses its context.
               </p>
-              <label className="flex items-center gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>
+              <label className="flex items-center gap-2 m-text-body m-ink">
                 <Checkbox aria-label="Skip records flagged for deletion" checked={excludeDeleted} onChange={(e) => setExcludeDeleted(e.target.checked)} />
                 Skip records flagged for deletion
               </label>
-              <p className={note} style={noteStyle}>
+              <p className={clsx(note, "m-ink-2")}>
                 Faster reads. Leave off for a full quality score, because inactive data is itself a finding.
               </p>
               {confirm === null ? (
@@ -124,7 +124,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
                 </Notice>
               )}
             </div>
-          ) : <p className={note} style={noteStyle}>Select the objects to extract.</p>}
+          ) : <p className={clsx(note, "m-ink-2")}>Select the objects to extract.</p>}
         </div>
       )}
     </Card>

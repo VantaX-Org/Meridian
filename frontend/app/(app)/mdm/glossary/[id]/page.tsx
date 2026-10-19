@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { AIDraftResponse, GlossaryTermDetail } from "@/types/api";
@@ -82,7 +82,7 @@ export default function GlossaryTermPage() {
     return (
       <div className="p-6">
         <ErrorState
-          message={apiErrorMessage(termQuery.error)}
+          {...apiErrorState(termQuery.error)}
           onRetry={() => void termQuery.refetch()}
         />
       </div>
@@ -138,7 +138,7 @@ export default function GlossaryTermPage() {
           <Card title="Auto-draft">
             <p className="m-text-body">{draft.business_definition}</p>
             {draft.why_it_matters_business ? (
-              <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{draft.why_it_matters_business}</p>
+              <p className="m-text-meta m-ink-3">{draft.why_it_matters_business}</p>
             ) : null}
             <div className="flex gap-2">
               <Button onClick={() => { setEditDef(draft.business_definition); setDraft(null); }}>
@@ -149,7 +149,7 @@ export default function GlossaryTermPage() {
           </Card>
         ) : null}
         <Field label="Business definition">
-          <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }}
+          <textarea className="m-input [height:auto] [padding:6px_10px]"
             value={currentDef}
             onChange={(e) => setEditDef(e.target.value)}
             placeholder="No business definition yet. Use Auto-draft to propose one."
@@ -178,20 +178,20 @@ export default function GlossaryTermPage() {
 
       <Card title="Where it lives in SAP">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 m-text-body">
-          <dt style={{ color: "var(--m-ink-3)" }}>SAP table</dt>
+          <dt className="m-ink-3">SAP table</dt>
           <dd><Mono>{term.sap_table}</Mono></dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Field</dt>
+          <dt className="m-ink-3">Field</dt>
           <dd><Mono>{term.sap_field}</Mono></dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Technical name</dt>
+          <dt className="m-ink-3">Technical name</dt>
           <dd><Mono>{term.technical_name}</Mono></dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Steward</dt>
+          <dt className="m-ink-3">Steward</dt>
           <dd>{term.data_steward_id ?? "Unassigned"}</dd>
         </dl>
       </Card>
 
       <Card title="Approved values" meta={String(approved.length)}>
         {approved.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{"No approved values are defined for this field"}</p>
+          <p className="m-text-body m-ink-3">{"No approved values are defined for this field"}</p>
         ) : (
           <DataTable columns={approvedCols} getRowId={(r) => r.code} data={approved.map(([code, label]) => ({ code, label }))} height="auto" />
         )}
@@ -199,7 +199,7 @@ export default function GlossaryTermPage() {
 
       <Card title="Linked rules failing" meta={String(failing.length)}>
         {failing.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+          <p className="m-text-body m-ink-3">
             {term.linked_rules.length ? "Every linked rule passes in the latest analysis" : "No rules are linked to this term"}
           </p>
         ) : (
@@ -209,7 +209,7 @@ export default function GlossaryTermPage() {
 
       <Card title="Change history" meta={String(term.change_history.length)}>
         {term.change_history.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No changes recorded</p>
+          <p className="m-text-body m-ink-3">No changes recorded</p>
         ) : (
           <DataTable columns={changeCols} getRowId={(r) => r.id} data={term.change_history} height="auto" />
         )}

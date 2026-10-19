@@ -179,11 +179,6 @@ export const TOURS: readonly TourDef[] = [
         body: "Pages are grouped by what you do. Press [ to collapse this bar when you need the room.",
       },
       {
-        target: "run-selector", placement: "bottom",
-        title: "Run selector",
-        body: "Every figure belongs to a run. Pick a different run here and the whole page follows it.",
-      },
-      {
         target: "command-palette", placement: "bottom",
         title: "Search and jump",
         body: "Press the command key and K to jump to any page, object or rule without using the menu.",

@@ -59,12 +59,12 @@ export function Discovered({ variants, onCreate }: { variants: ProcessVariant[];
   if (!groups.length) return null;
   return (
     <Card title="Discovered, unmapped" padding="sm">
-      <ul className="flex flex-col gap-3" id="discovered" aria-label="Discovered, unmapped" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      <ul className="flex flex-col gap-3 [list-style:none] [margin:0] [padding:0]" id="discovered" aria-label="Discovered, unmapped">
         {groups.map((g) => (
           <li key={g.process_id} className="flex flex-col gap-1">
-            <div className="flex items-baseline justify-between gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>
+            <div className="flex items-baseline justify-between gap-2 m-text-body m-ink">
               <span>{NAMES[g.process_id] ?? <Mono>{g.process_id}</Mono>}</span>
-              <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+              <span className="m-text-meta m-ink-2">
                 {g.count.toLocaleString()} variants, {g.tables.length} {g.tables.length === 1 ? "step" : "steps"}
               </span>
             </div>

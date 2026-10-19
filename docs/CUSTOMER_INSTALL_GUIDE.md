@@ -323,6 +323,22 @@ docker pull ghcr.io/vantax-org/meridian-ollama:latest
 
 4. **Check firewall rules** — ports 3000 and 8000 must be open
 
+### API logs "QueuePool limit ... reached"
+
+**Problem**: Pages return errors under load, or the live job stream drops after about 30 seconds, and `docker compose logs api` shows `QueuePool limit of size ... overflow ... reached`.
+
+**Cause**: Every API request in flight holds one database connection, and the pool ran out.
+
+**Solution**: Raise the pool in `.env` and restart the API (`docker compose restart api`). The three settings, with their defaults:
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `MERIDIAN_DB_POOL_SIZE` | `20` | Connections kept open by one API container |
+| `MERIDIAN_DB_MAX_OVERFLOW` | `20` | Extra connections opened under load and closed again when idle |
+| `MERIDIAN_DB_POOL_TIMEOUT` | `30` | Seconds a request waits for a free connection before it fails |
+
+Keep `POOL_SIZE + MAX_OVERFLOW` below the Postgres `max_connections` left after the workers (the default Postgres limit is 100).
+
 ---
 
 ## Security Best Practices

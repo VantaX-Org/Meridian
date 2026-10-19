@@ -14,9 +14,15 @@ export interface DrillTarget {
 
 export function buildDrillHref(target: DrillTarget & { run?: string }): string {
   const { object, dimension, ruleId, filters, run } = target;
-  const path = ruleId ? `/objects/${object}/rules/${ruleId}` : `/objects/${object}`;
+  const path = `/objects/${object}`;
   const params = new URLSearchParams();
   if (run) params.set("run", run);
+  // A rule drills straight to the object's records tab filtered to that check (the final URL; the old
+  // /objects/X/rules/Y route only redirects there and is kept for old links).
+  if (ruleId) {
+    params.set("tab", "records");
+    params.set("check_id", ruleId);
+  }
   // Dimension and filter drills list rules, so land on the object's rules tab, not its overview.
   if (!ruleId && (dimension || filters)) params.set("tab", "rules");
   if (dimension) params.set("dimension", dimension);

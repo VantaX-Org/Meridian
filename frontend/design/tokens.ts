@@ -45,10 +45,6 @@ export const mColor = {
     "var(--m-viz-9)",
     "var(--m-viz-10)",
   ] as const,
-  ember: "var(--m-ember)",
-  emberSoft: "var(--m-ember-soft)",
-  emberInk: "var(--m-ember-ink)",
-  emberOn: "var(--m-ember-on)",
   /** Domain solids. Resolve a module id through `domainOf` first. */
   dom: {
     material: "var(--m-dom-material)",
@@ -87,7 +83,7 @@ export const mColor = {
   seq: ["var(--m-seq-1)", "var(--m-seq-2)", "var(--m-seq-3)", "var(--m-seq-4)", "var(--m-seq-5)"] as const,
   /** Diverging ramp, negative end to positive end. */
   div: ["var(--m-div-neg-2)", "var(--m-div-neg-1)", "var(--m-div-mid)", "var(--m-div-pos-1)", "var(--m-div-pos-2)"] as const,
-  /** Hero surface inks and tone solids. The hero is dark in both themes. */
+  /** Hero zone inks and tones. The hero is a white sheet: these alias the ordinary surface, ink and status tokens. */
   hero: {
     bg: "var(--m-hero-bg)",
     bg2: "var(--m-hero-bg-2)",
@@ -173,7 +169,7 @@ export const mSpace = {
 } as const;
 
 // Mirrors tokens.css radii.
-export const mRadius = { control: 2, sheet: 0, tile: 0, pill: 999 } as const;
+export const mRadius = { control: 6, sheet: 8, tile: 0, pill: 999 } as const;
 
 export const mMotion = {
   duration: 120, slow: 240, draw: 480, count: 900, shimmer: 1400, staggerStep: 40, staggerBar: 20,

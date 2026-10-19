@@ -23,7 +23,7 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     const onDownloaded = vi.fn();
     renderWithQuery(<ScopePicker id="sys1" onDownloaded={onDownloaded} />);
 
-    const row = await screen.findByText("Material Master");
+    const row = await screen.findByText("Material master");
     fireEvent.click(row);
 
     const checkbox = await screen.findByRole("checkbox", { name: "Skip records flagged for deletion" });
@@ -38,7 +38,7 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     await waitFor(() => expect(onDownloaded).toHaveBeenCalledWith("dl-1")); // the page awaits this job by id
 
     // onSuccess clears the selection; re-pick the object before the second extraction.
-    fireEvent.click(await screen.findByText("Material Master"));
+    fireEvent.click(await screen.findByText("Material master"));
     const checkboxAgain = await screen.findByRole("checkbox", { name: "Skip records flagged for deletion" });
     fireEvent.click(checkboxAgain);
     expect(checkboxAgain).toBeChecked();
@@ -57,7 +57,7 @@ describe("ScopePicker", () => {
   it("clicking the checkbox text toggles the box", async () => {
     vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [object()] });
     renderWithQuery(<ScopePicker id="sys1" onDownloaded={vi.fn()} />);
-    fireEvent.click(await screen.findByText("Material Master"));
+    fireEvent.click(await screen.findByText("Material master"));
     const box = await screen.findByRole("checkbox", { name: "Skip records flagged for deletion" });
     fireEvent.click(screen.getByText("Skip records flagged for deletion"));
     expect(box).toBeChecked();

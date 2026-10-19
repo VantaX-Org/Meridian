@@ -24,18 +24,3 @@ rules:
   fix_map:
     __other__: Correct CONCUR_TRAVEL_REQUEST.START_DATE or CONCUR_TRAVEL_REQUEST.END_DATE so the pair is ordered.
   record_fix_template: CONCUR_TRAVEL_REQUEST.START_DATE is after CONCUR_TRAVEL_REQUEST.END_DATE.
-- id: DXI8e3f9fb2
-  enabled: false
-  field: CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT
-  check_class: cross_field_check
-  severity: high
-  dimension: validity
-  message: Total posted amount must not be negative
-  why_it_matters: CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT carries an amount the source system only ever returns unsigned.
-    A negative value cannot originate from the API, so it marks a sign-convention error in the extraction or the load.
-  rule_authority: sap_hard_constraint
-  sap_impact: Totals including TOTAL_POSTED_AMOUNT are understated, and the record reads as a credit where none exists.
-  fail_when: '`CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT` < 0'
-  fix_map:
-    __other__: CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT is negative; the source does not return negative amounts here.
-  record_fix_template: CONCUR_TRAVEL_REQUEST.TOTAL_POSTED_AMOUNT is negative.

@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type CellMeta, type PillTone, Input } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type CellMeta, type PillTone, Input, Status } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -34,7 +34,7 @@ import {
   updateExceptionRule,
 } from "@/lib/api/exceptions";
 import { apiErrorMessage, isNotFound } from "@/lib/error";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { formatInt, formatModuleName, labelOf } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, IssuesPanel, SapMonitorPanel } from "./inbox-panels";
@@ -45,7 +45,6 @@ const HOUR = 3_600_000;
 // Every status still waiting on a steward; the list endpoint filters one status at a time.
 const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
 const STATUS_TONE: Record<StewardshipStatus, PillTone> = { open: "neutral", in_progress: "at-risk", escalated: "no-go", resolved: "go" };
-const SEVERITY_TONE: Record<Severity, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral", warning: "at-risk" };
 const EXC_STATUS_TONE: Record<ExceptionStatus, PillTone> = { open: "neutral", investigating: "at-risk", pending_approval: "at-risk", resolved: "go", verified: "go", closed: "neutral" };
 const KINDS = [
   { value: "task", label: "Tasks" }, { value: "exception", label: "Exceptions" }, { value: "issues", label: "Issues" },
@@ -346,7 +345,7 @@ export default function InboxPage() {
       id: "task", header: "Task",
       cell: ({ row }) => {
         const focused = items[focusedIndex]?.id === row.original.id;
-        return <span>{focused ? "> " : ""}{labelOf(row.original.item_type)} <span style={{ color: "var(--m-ink-3)" }}>in {formatModuleName(row.original.domain)}, record {row.original.source_id}</span></span>;
+        return <span>{focused ? "> " : ""}{labelOf(row.original.item_type)} <span className="m-ink-3">in {formatModuleName(row.original.domain)}, record {row.original.source_id}</span></span>;
       },
     },
     { id: "sla", header: "SLA", accessorFn: (t) => slaOf(t, now).remaining ?? NO_DUE, cell: ({ row }) => { const s = slaOf(row.original, now); return <Pill tone={SLA_TONE[s.state]}>{slaText(s)}</Pill>; } },
@@ -375,10 +374,10 @@ export default function InboxPage() {
       id: "exception", header: "Exception",
       cell: ({ row }) => {
         const focused = excItems[focusedIndex]?.id === row.original.id;
-        return <span>{focused ? "> " : ""}{row.original.title} <span style={{ color: "var(--m-ink-3)" }}>in {row.original.category}</span></span>;
+        return <span>{focused ? "> " : ""}{row.original.title} <span className="m-ink-3">in {row.original.category}</span></span>;
       },
     },
-    { id: "severity", header: "Severity", accessorFn: (e) => e.severity, meta: { severity: true } satisfies CellMeta, cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity]}>{labelOf(row.original.severity)}</Pill> },
+    { id: "severity", header: "Severity", accessorFn: (e) => e.severity, meta: { severity: true } satisfies CellMeta, cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "status", header: "Status", accessorFn: (e) => e.status, cell: ({ row }) => <Pill tone={EXC_STATUS_TONE[row.original.status]}>{labelOf(row.original.status)}</Pill> },
     { id: "assignee", header: "Assignee", accessorFn: (e) => who(e.assigned_to), cell: ({ row }) => who(row.original.assigned_to) },
     {
@@ -419,7 +418,7 @@ export default function InboxPage() {
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.breached;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
   const header = (
-    <PageHeader title="Inbox" meta={`${openCount} open, ${overdue} overdue`} />
+    <PageHeader title="Inbox" meta={`${formatInt(openCount)} open, ${formatInt(overdue)} overdue`} />
   );
 
   if (kind === "issues" || kind === "sap" || kind === "approvals") {
@@ -549,7 +548,7 @@ export default function InboxPage() {
           >
             <div className="flex flex-col gap-3">
               <Field label="Reason">
-                <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }}
+                <textarea className="m-input [height:auto] [padding:6px_10px]"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={4}
@@ -577,7 +576,7 @@ export default function InboxPage() {
                   <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2">
                     <div className="flex flex-col">
                       <span className="m-text-body font-medium">{r.name}</span>
-                      <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{r.object_type}, {r.rule_type}</span>
+                      <span className="m-text-body m-ink-3">{r.object_type}, {r.rule_type}</span>
                     </div>
                     <Button variant="secondary" onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
                       {r.is_active ? "Disable" : "Enable"}
@@ -585,7 +584,7 @@ export default function InboxPage() {
                   </div>
                 ))}
                 {excRulesQ.data && excRulesQ.data.rules.length === 0 && (
-                  <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No exception rules yet.</span>
+                  <span className="m-text-body m-ink-3">No exception rules yet.</span>
                 )}
               </div>
               <div className="flex flex-col gap-2">
@@ -632,24 +631,28 @@ export default function InboxPage() {
   );
 }
 
-/** Replaces the legacy OwnerLadder (not in @/design) with a plain table. */
+/**
+ * Replaces the legacy OwnerLadder (not in @/design) with a plain table. Its counts come from the triage
+ * metrics, which span every queue (record issues as well as stewardship tasks), so the heading says so
+ * rather than reading as a breakdown of the inbox list.
+ */
 function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRungs>; aiAcceptance: number | null }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="m-text-body font-medium">Who holds the work</span>
+      <span className="m-text-body font-medium">Who holds the work across all queues</span>
       {rungs.length ? (
         <table className="w-full m-text-body">
           <tbody>
             {rungs.map((r) => (
-              <tr key={r.label}><td>{r.label}</td><td>{r.open} open</td><td>{r.breached} breached</td></tr>
+              <tr key={r.label}><td>{r.label}</td><td>{formatInt(r.open)} open across all queues</td><td>{formatInt(r.breached)} breached</td></tr>
             ))}
           </tbody>
         </table>
       ) : (
-        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Nobody holds open work.</span>
+        <span className="m-text-body m-ink-3">Nobody holds open work.</span>
       )}
       {aiAcceptance != null && (
-        <span className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
+        <span className="m-text-body m-ink-3">Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
       )}
     </div>
   );

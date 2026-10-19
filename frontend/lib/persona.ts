@@ -1,7 +1,12 @@
 import type { Role } from "@/hooks/use-role";
 
-/** rbac.md section 1.1 personas. `sap_basis` has no legacy role, so it is never derived here. */
-export type Persona = "lead" | "steward" | "analyst" | "process";
+/** The persona homes, one per "View as" option (rbac.md section 1.1). The analyst persona shares the lead home. */
+export type Persona = "lead" | "steward" | "basis" | "process";
+
+/** The home page's "View as" choices: exactly the personas, so no option lacks a persona or vice versa. */
+export const PERSONA_OPTIONS: { value: Persona; label: string }[] = [
+  { value: "lead", label: "Data lead" }, { value: "steward", label: "Steward" }, { value: "basis", label: "Basis" }, { value: "process", label: "Process owner" },
+];
 
 /**
  * The single legacy-role -> persona mapping (rbac.md 1.1). Wave 16 replaces
@@ -15,18 +20,17 @@ const PERSONA_BY_ROLE: Record<Role, Persona> = {
   viewer: "lead",
   steward: "steward",
   approver: "steward", // data_owner defaults to the steward home
-  analyst: "analyst",
-  ai_reviewer: "analyst",
+  analyst: "lead",
+  ai_reviewer: "lead",
   process_analyst: "process", // spec process-discovery section 6.1: a persona key, not a legacy role
+  sap_basis: "basis", // rbac.md 1.1: SAP Basis / integration admin
 };
 
 export function personaForRole(role: Role): Persona {
   return PERSONA_BY_ROLE[role];
 }
 
-const HOME_BY_PERSONA: Partial<Record<Persona, string>> = { steward: "/home/steward", process: "/home/process" };
-
-/** The home route for this role's persona. The analyst persona shares the lead home. */
+/** The home route for this role's persona. */
 export function homeHrefForRole(role: Role): string {
-  return HOME_BY_PERSONA[personaForRole(role)] ?? "/home/lead";
+  return `/home/${personaForRole(role)}`;
 }

@@ -7,7 +7,8 @@
   {
     "name": "fix-batch",
     "path": "/fix/B1",
-    "heading": "Fix"
+    "heading": "Fix",
+    "mocked": true
   },
   {
     "name": "inbox",
@@ -16,7 +17,7 @@
   },
   {
     "name": "systems-extraction",
-    "path": "/systems/s1/extractions/r1",
+    "path": "/systems/c7a18906-1555-40ba-a1b2-caf83188238e/extractions/64afe257-80b0-48b9-8b9a-397e29a7dfe6",
     "heading": "Systems"
   },
   {
@@ -27,7 +28,8 @@
   {
     "name": "migration-wave",
     "path": "/migration/w1",
-    "heading": "Migration"
+    "heading": "Migration",
+    "mocked": true
   },
   {
     "name": "admin-ai",
@@ -167,7 +169,10 @@
   {
     "name": "insights-process",
     "path": "/insights/process",
-    "heading": "Process readiness"
+    "heading": "Process readiness",
+    "knownBad": [
+      "/api/v1/business-process/"
+    ]
   },
   {
     "name": "insights-process-designer",
@@ -187,7 +192,11 @@
   {
     "name": "mdm",
     "path": "/mdm",
-    "heading": "Overview"
+    "heading": "Overview",
+    "knownBad": [
+      "/api/v1/analytics/mdm-health",
+      "/api/v1/stewardship?item_type=merge_decision"
+    ]
   },
   {
     "name": "mdm-glossary",
@@ -197,7 +206,8 @@
   {
     "name": "mdm-glossary-g1",
     "path": "/mdm/glossary/g1",
-    "heading": "Glossary"
+    "heading": "Glossary",
+    "mocked": true
   },
   {
     "name": "mdm-golden",
@@ -205,8 +215,8 @@
     "heading": "Golden records"
   },
   {
-    "name": "mdm-golden-v7",
-    "path": "/mdm/golden/4e620a34-6601-43b1-9ed4-5cf8b8a7e999",
+    "name": "mdm-golden-record",
+    "path": "/mdm/golden/d1a558fd-53e6-4789-8c64-cb3a5dbbf12e",
     "heading": "Golden records"
   },
   {
@@ -227,7 +237,10 @@
   {
     "name": "migration-dry-run",
     "path": "/migration/dry-run",
-    "heading": "Migration"
+    "heading": "Migration",
+    "knownBad": [
+      "/api/v1/migration/runs/"
+    ]
   },
   {
     "name": "objects",
@@ -235,19 +248,24 @@
     "heading": "Objects"
   },
   {
+    "name": "objects-material-run",
+    "path": "/objects?run=c1f752b7-ab20-441e-9b13-f47754f0e910",
+    "heading": "Objects"
+  },
+  {
     "name": "objects-material-master",
-    "path": "/objects/material_master",
-    "heading": "Material Master"
+    "path": "/objects/material_master?run=c1f752b7-ab20-441e-9b13-f47754f0e910",
+    "heading": "Material master"
   },
   {
     "name": "objects-material-master-record",
-    "path": "/objects/material_master/records/MATNR%3D000000000000000101%7CWERKS%3D3000",
-    "heading": "MATNR=000000000000000101|WERKS=3000"
+    "path": "/objects/material_master/records/MATNR%3DMAT00000010?run=c1f752b7-ab20-441e-9b13-f47754f0e910",
+    "heading": "MATNR=MAT00000010"
   },
   {
-    "name": "objects-material-master-rules-mm551",
-    "path": "/objects/material_master/rules/MM551",
-    "heading": "Material Master"
+    "name": "objects-material-master-rules-mm045",
+    "path": "/objects/material_master/rules/MM045?run=c1f752b7-ab20-441e-9b13-f47754f0e910",
+    "heading": "Material master"
   },
   {
     "name": "rules",
@@ -256,7 +274,7 @@
   },
   {
     "name": "rules-xrec001",
-    "path": "/rules/XREC001",
+    "path": "/rules/4c8451fe-9eb5-404d-b4c1-66cee407376c",
     "heading": "Rules"
   },
   {
@@ -290,13 +308,13 @@
     "heading": "Runs"
   },
   {
-    "name": "runs-r1",
-    "path": "/runs/65988d5a-0243-4f9b-bdff-52779e71c6ed",
+    "name": "runs-detail",
+    "path": "/runs/64afe257-80b0-48b9-8b9a-397e29a7dfe6",
     "heading": "Runs"
   },
   {
-    "name": "runs-r1-vs-r0",
-    "path": "/runs/65988d5a-0243-4f9b-bdff-52779e71c6ed/vs/6d1fefcc-cc7f-49ad-bd7b-3631fd3f4e03",
+    "name": "runs-compare",
+    "path": "/runs/ae5e43c7-e11d-4f1c-866d-6881cc3d50ce/vs/ff1ea64b-8968-4d18-ab04-fc15dadbe696",
     "heading": "Runs"
   },
   {
@@ -310,18 +328,18 @@
     "heading": "Systems"
   },
   {
-    "name": "systems-s1",
-    "path": "/systems/s1",
+    "name": "systems-detail",
+    "path": "/systems/c7a18906-1555-40ba-a1b2-caf83188238e",
+    "heading": "KMZ-SIM"
+  },
+  {
+    "name": "systems-detail-config",
+    "path": "/systems/c7a18906-1555-40ba-a1b2-caf83188238e?tab=config",
     "heading": "Systems"
   },
   {
-    "name": "systems-s1-config",
-    "path": "/systems/s1?tab=config",
-    "heading": "Systems"
-  },
-  {
-    "name": "systems-s1-custom-objects",
-    "path": "/systems/s1?tab=custom",
+    "name": "systems-detail-custom-objects",
+    "path": "/systems/c7a18906-1555-40ba-a1b2-caf83188238e?tab=custom",
     "heading": "Systems"
   },
   {
@@ -342,7 +360,8 @@
   {
     "name": "migration-wave-s4",
     "path": "/migration/w1?tab=s4",
-    "heading": "Migration"
+    "heading": "Migration",
+    "mocked": true
   },
   {
     "name": "docs",
@@ -358,5 +377,25 @@
     "name": "inbox-notifications",
     "path": "/inbox/notifications",
     "heading": "Notifications"
+  },
+  {
+    "name": "home",
+    "path": "/home",
+    "heading": "Home"
+  },
+  {
+    "name": "insights-trends",
+    "path": "/insights/trends",
+    "heading": "Trends"
+  },
+  {
+    "name": "insights-rules",
+    "path": "/insights/rules",
+    "heading": "Explore"
+  },
+  {
+    "name": "insights-progress",
+    "path": "/insights/progress",
+    "heading": "Progress"
   }
 ]

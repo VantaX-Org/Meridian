@@ -2,15 +2,17 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
+import * as settingsApi from "@/lib/api/settings";
 import * as versionsApi from "@/lib/api/versions";
 import { rulesFor80 } from "../../_components/rulesFor80";
 import RulesPage from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+let query = "run=v1";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/insights/rules",
-  useSearchParams: () => new URLSearchParams("run=v1"),
+  useSearchParams: () => new URLSearchParams(query),
 }));
 
 const row = (id: string, impact: number) => ({
@@ -37,11 +39,37 @@ describe("RulesPage", () => {
   it("renders the ranking with the 80 percent caption and no h1", async () => {
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [row("A1", 80), row("A2", 20)] });
     mount();
-    expect(await screen.findByText(/1 rule accounts for 80 % of impact/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 rule accounts for 80% of impact/)).toBeInTheDocument();
     expect(screen.getByRole("grid")).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /impact/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Explore" })).toBeInTheDocument();
+  });
+
+  it("shows the field, the cost at risk in the tenant currency and links Open records to the object's records tab", async () => {
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR", features: {} } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [{ ...row("A1", 80), cost_at_risk: 1250 }, row("A2", 20)] });
+    mount();
+    expect(await screen.findByRole("columnheader", { name: "Field" })).toBeInTheDocument();
+    expect(screen.getAllByText("MTART").length).toBeGreaterThan(0);
+    expect(await screen.findByRole("columnheader", { name: "Cost at risk (ZAR)" })).toBeInTheDocument();
+    expect(screen.getAllByText(/ZAR[\u00a0 ]?1[,. \u00a0]250/).length).toBeGreaterThan(0);
+    const links = screen.getAllByRole("link", { name: "Open records" });
+    expect(links[0]).toHaveAttribute("href", "/objects/material_master?tab=records&run=v1&check=A1");
+    expect(links[0].getAttribute("href")).not.toContain("/records?");
+    expect(screen.getByText("Impact by rule")).toBeInTheDocument();
+    // The shared tab strip and action bar come with the frame.
+    expect(screen.getByRole("link", { name: "Report library" })).toBeInTheDocument();
+  });
+
+  it("keeps the product's case in Impact by S/4 status", async () => {
+    query = "run=v1&axis=s4";
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [{ ...row("A1", 80), s4: "blocking" }] });
+    mount();
+    expect(await screen.findByText("Impact by S/4 status")).toBeInTheDocument();
+    expect(screen.queryByText(/Impact by s\/4/)).toBeNull();
+    expect(screen.getByText("1 rule would block an S/4 load")).toBeInTheDocument();
+    query = "run=v1";
   });
 
   it("shows the empty state", async () => {

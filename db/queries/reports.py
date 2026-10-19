@@ -3,9 +3,10 @@
 import uuid
 from typing import Optional
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.queries import set_tenant_context
 from db.schema import Report
 
 
@@ -15,7 +16,7 @@ async def create_report(
     version_id: uuid.UUID,
     report_json: dict,
 ) -> Report:
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
+    await set_tenant_context(db, tenant_id)
     report = Report(
         tenant_id=tenant_id,
         version_id=version_id,
@@ -23,6 +24,7 @@ async def create_report(
     )
     db.add(report)
     await db.commit()
+    await set_tenant_context(db, tenant_id)  # the commit released the connection
     await db.refresh(report)
     return report
 
@@ -32,7 +34,7 @@ async def get_report_by_version(
     tenant_id: uuid.UUID,
     version_id: uuid.UUID,
 ) -> Optional[Report]:
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
+    await set_tenant_context(db, tenant_id)
     result = await db.execute(
         select(Report).where(
             Report.tenant_id == tenant_id,
@@ -48,7 +50,7 @@ async def update_report_pdf_path(
     version_id: uuid.UUID,
     pdf_path: str,
 ) -> Optional[Report]:
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
+    await set_tenant_context(db, tenant_id)
     result = await db.execute(
         select(Report).where(
             Report.tenant_id == tenant_id,
@@ -59,5 +61,6 @@ async def update_report_pdf_path(
     if report:
         report.pdf_path = pdf_path
         await db.commit()
+        await set_tenant_context(db, tenant_id)  # the commit released the connection
         await db.refresh(report)
     return report

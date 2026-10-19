@@ -6,15 +6,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import {
-  Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, SeverityDot, Skeleton, Stat,
-  buildDrillHref, toast,
-} from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status } from "@/design";
 import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
 import { getRuleLineage } from "@/lib/api/lineage";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { ConditionList, ThresholdTable } from "../rule-ui";
@@ -105,7 +102,7 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
 function LineageRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt style={{ color: "var(--m-ink-3)" }}>{label}</dt>
+      <dt className="m-ink-3">{label}</dt>
       <dd className="text-right">{children}</dd>
     </div>
   );
@@ -133,7 +130,7 @@ function LineageAndOwnership({ checkId, builtIn }: { checkId: string; builtIn: b
 
   let body: ReactNode;
   if (!builtIn) {
-    body = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Lineage is shown for built-in rules only.</p>;
+    body = <p className="m-text-body m-ink-3">Lineage is shown for built-in rules only.</p>;
   } else if (q.isLoading) {
     body = <Skeleton height={96} />;
   } else if (q.isError || !q.data) {
@@ -216,7 +213,7 @@ export default function RulePage() {
       />
     );
   }
-  if (isError || !data) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+  if (isError || !data) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
 
   // Rule names are "{check id}: {message}"; data.id is the rules row UUID, not the check id.
   const checkId = data.name.split(":")[0];
@@ -226,7 +223,7 @@ export default function RulePage() {
       <PageHeader
         title={data.name}
         meta={<Mono>{ruleId}</Mono>}
-        status={<span className="inline-flex items-center gap-2"><SeverityDot severity={data.severity === "info" ? "low" : data.severity} />{labelOf(data.severity)}<Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill></span>}
+        status={<span className="inline-flex items-center gap-2"><Status kind="severity" value={data.severity} /><Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill></span>}
         actions={
           <Button variant={data.enabled ? "secondary" : "primary"} onClick={() => toggle.mutate(!data.enabled)} disabled={toggle.isPending}>
             {data.enabled ? "Disable rule" : "Enable rule"}
@@ -249,13 +246,13 @@ export default function RulePage() {
           />
         ) : undefined}
         overview={<>
-      {data.description ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{data.description}</p> : null}
+      {data.description ? <p className="m-text-body m-ink-3">{data.description}</p> : null}
 
       <dl className="m-text-body flex flex-col gap-1">
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Object</dt><dd>{formatModuleName(data.module)}</dd></div>
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>System</dt><dd>{labelOf(data.category)}</dd></div>
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? `, ${data.source_yaml}` : ""}</dd></div>
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Last run</dt><dd>{data.last_pass_rate != null ? <DrillLink object={data.module} ruleId={checkId}>{(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %</DrillLink> : "not run yet"}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">Object</dt><dd>{formatModuleName(data.module)}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">System</dt><dd>{labelOf(data.category)}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? `, ${data.source_yaml}` : ""}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">Last run</dt><dd>{data.last_pass_rate != null ? <DrillLink object={data.module} ruleId={checkId}>{(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %</DrillLink> : "not run yet"}</dd></div>
       </dl>
 
       {data.tags?.length ? <div className="flex flex-wrap gap-1">{data.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}

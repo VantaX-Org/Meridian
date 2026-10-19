@@ -220,6 +220,23 @@ const tallyFigureNumeric = mk(
   },
 );
 
+// DESIGN.md "No inline style": pages under app/ style through @/design components, tokens-backed utility classes
+// (.m-ink-3, m-text-*) and Tailwind classes, never a `style` prop. A computed value (a progress width, a domain
+// colour) goes through a design component or class that owns it (ProgressFill, .m-domain-stripe); design/ itself
+// may use `style`. The rule is scoped to app/** in eslint.config.mjs.
+const noInlineStyle = mk(
+  { style: "No inline style in app/. Use a design component, an m-* utility class or a Tailwind class (DESIGN.md, No inline style)." },
+  (context) => ({
+    JSXAttribute(node) {
+      if (node.name.type === "JSXIdentifier" && node.name.name === "style") context.report({ node, messageId: "style" });
+    },
+    JSXSpreadAttribute(node) {
+      const arg = node.argument;
+      if (arg.type === "ObjectExpression" && arg.properties.some((p) => keyName(p) === "style")) context.report({ node, messageId: "style" });
+    },
+  }),
+);
+
 const plugin = {
   meta: { name: "aurora-structure", version: "1.0.0" },
   rules: {
@@ -234,6 +251,7 @@ const plugin = {
     "url-is-state": urlIsState,
     "one-h1": oneH1,
     "tally-figure-numeric": tallyFigureNumeric,
+    "no-inline-style": noInlineStyle,
   },
 };
 

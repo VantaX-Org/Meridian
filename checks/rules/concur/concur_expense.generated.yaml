@@ -24,18 +24,3 @@ rules:
   fix_map:
     __other__: Correct CONCUR_REPORT.SUBMIT_DATE or CONCUR_REPORT.APPROVED_DATE so the pair is ordered.
   record_fix_template: CONCUR_REPORT.SUBMIT_DATE is after CONCUR_REPORT.APPROVED_DATE.
-- id: DXIc3a1c82c
-  enabled: false
-  field: CONCUR_REPORT.TOTAL
-  check_class: cross_field_check
-  severity: high
-  dimension: validity
-  message: Total must not be negative
-  why_it_matters: CONCUR_REPORT.TOTAL carries an amount the source system only ever returns unsigned. A negative value cannot
-    originate from the API, so it marks a sign-convention error in the extraction or the load.
-  rule_authority: sap_hard_constraint
-  sap_impact: Totals including TOTAL are understated, and the record reads as a credit where none exists.
-  fail_when: '`CONCUR_REPORT.TOTAL` < 0'
-  fix_map:
-    __other__: CONCUR_REPORT.TOTAL is negative; the source does not return negative amounts here.
-  record_fix_template: CONCUR_REPORT.TOTAL is negative.

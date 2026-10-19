@@ -31,10 +31,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs,
-  type GraphEdge, type GraphNode, type PillTone,
-} from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs, type GraphEdge, type GraphNode, Status } from "@/design";
+import { apiErrorState } from "@/lib/error";
 import { domainOf } from "@/design/tokens";
 import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
 import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
@@ -42,22 +40,31 @@ import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
-import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
-import { apiErrorMessage } from "@/lib/error";
+import { formatModuleName, labelOf, plural, relativeTime, formatDate } from "@/lib/format";
+import { miningWhy } from "./sentences";
+import { MineNow } from "../duplicates/mined-tabs";
+import { useInsightScope } from "../_components/useInsightScope";
 import { queryKeys } from "@/lib/query-keys";
 import type { RecordRelationship } from "@/types/api";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
-const pct = (share: number, digits = 1) => `${(share * 100).toFixed(digits)} %`;
+const pct = (share: number, digits = 1) => `${(share * 100).toFixed(digits)}%`;
+
+/** Mined pattern types as the steward reads them; never a module-style title case. */
+export const PATTERN_TYPE_LABEL: Record<string, string> = {
+  anomaly: "Anomaly",
+  drift: "Drift",
+  duplicate: "Duplicate",
+  pii: "PII",
+  dependency: "Field dependency",
+  value_set: "Value set",
+  format: "Format",
+  range: "Numeric range",
+};
+export const patternTypeLabel = (t: string) => PATTERN_TYPE_LABEL[t] ?? labelOf(t);
 // ponytail: carried from the legacy component — past ~80 edges the force layout is unreadable, the table lists all.
 const MAX_EDGES = 80;
 
-const SEVERITY_TONE: Record<MiningPattern["severity"], PillTone> = {
-  critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral",
-};
-const SEVERITY_LABEL: Record<MiningPattern["severity"], string> = {
-  critical: "Critical", high: "High", medium: "Medium", low: "Low",
-};
 
 function GraphTally() {
   const rel = useQuery({ queryKey: queryKeys.relationships({ include_inactive: true }), queryFn: () => getRelationships({ include_inactive: true }) });
@@ -121,7 +128,7 @@ function EntityLinks() {
   if (q.error) {
     return (
       <ErrorState
-        message={apiErrorMessage(q.error)}
+        {...apiErrorState(q.error)}
         onRetry={() => void q.refetch()}
       />
     );
@@ -130,7 +137,7 @@ function EntityLinks() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}.
         </p>
         {q.isLoading || dayOne.status === "loading" ? <Skeleton height={440} />
@@ -172,7 +179,7 @@ function Dependencies() {
   });
   const obj = profile.data?.object ?? object;
   const deps = useMemo(() => profile.data?.dependencies ?? [], [profile.data]);
-  const profileHref = `/data/runs/${vid}?tab=profile${obj ? `&object=${encodeURIComponent(obj)}` : ""}`;
+  const profileHref = `/runs/${vid}?tab=profile${obj ? `&object=${encodeURIComponent(obj)}` : ""}`;
 
   const { nodes, edges } = useMemo(() => {
     const top = [...deps].sort((a, b) => b.violations - a.violations).slice(0, MAX_EDGES);
@@ -221,12 +228,12 @@ function Dependencies() {
       </div>
       {profile.error ? (
         <ErrorState
-          message={apiErrorMessage(profile.error)}
+          {...apiErrorState(profile.error)}
           onRetry={() => void profile.refetch()}
         />
       ) : null}
       <div>
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           One field decides another in at least 99 % of records. Click a field to open its profile.
         </p>
         {profile.isLoading || systems.isLoading || versions.isLoading ? <Skeleton height={480} />
@@ -240,7 +247,7 @@ function Dependencies() {
 
 /* ---------------------------------------------------------------- Patterns */
 
-function Patterns() {
+function Patterns({ run }: { run?: string }) {
   const [type, setType] = useState("");
   const summary = useQuery({ queryKey: queryKeys.miningSummary(30), queryFn: () => getMiningSummary(30) });
   const patterns = useQuery({
@@ -251,9 +258,9 @@ function Patterns() {
 
   const columns = useMemo<ColumnDef<MiningPattern>[]>(() => [
     { id: "name", header: "Pattern", cell: ({ row }) => row.original.name },
-    { id: "type", header: "Type", cell: ({ row }) => <Pill>{row.original.pattern_type}</Pill> },
+    { id: "type", header: "Type", cell: ({ row }) => <Pill>{patternTypeLabel(row.original.pattern_type)}</Pill> },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity]}>{SEVERITY_LABEL[row.original.severity]}</Pill> },
+    { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "confidence", header: "Confidence", accessorFn: (p) => p.confidence, meta: { numeric: true, heat: "seq", heatRange: [0, 1] }, cell: ({ row }) => pct(row.original.confidence, 0) },
     { id: "occurrences", header: "Occurrences", cell: ({ row }) => row.original.occurrences.toLocaleString() },
     { id: "seen", header: "Last seen", cell: ({ row }) => relativeTime(row.original.last_seen) },
@@ -264,7 +271,7 @@ function Patterns() {
     const err = patterns.error ?? summary.error;
     return (
       <ErrorState
-        message={apiErrorMessage(err)}
+        {...apiErrorState(err)}
         onRetry={() => { void summary.refetch(); void patterns.refetch(); }}
       />
     );
@@ -274,8 +281,8 @@ function Patterns() {
       <Select
         label="Pattern type"
         placeholder="All types" value={type} onValueChange={setType}
-        options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: formatModuleName(t) }))} />
-      <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet." action={<Button render={<Link href="/runs">Open runs</Link>} />} />
+        options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: patternTypeLabel(t) }))} />
+      <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet" detail={run ? "Mining runs over a finished analysis; start it on the current run." : "Patterns are mined from a finished analysis."} action={<MineNow run={run} />} />
     </div>
   );
 }
@@ -283,15 +290,16 @@ function Patterns() {
 /* ---------------------------------------------------------------------- Table helper */
 
 /** `@/design`'s DataTable has no `empty` prop; this wraps it with the legacy loading/empty text. */
-function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty, action }: {
-  columns: ColumnDef<T>[]; data: T[]; getRowId: (row: T) => string; loading: boolean; empty: string; action: ReactNode;
+function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty, detail, action }: {
+  columns: ColumnDef<T>[]; data: T[]; getRowId: (row: T) => string; loading: boolean; empty: string; detail?: string; action: ReactNode;
 }) {
   if (loading) return <Skeleton height={200} />;
-  if (!data.length) return <EmptyState title={empty} action={action} />;
+  if (!data.length) return <EmptyState title={empty} detail={detail} action={action} />;
   return <DataTable<T> columns={columns} data={data} getRowId={getRowId} />;
 }
 
 export default function MiningPage() {
+  const { run } = useInsightScope();
   const [tabRaw, setTab] = useUrlState("tab", "");
   const TABS = ["links", "dependencies", "patterns"] as const;
   // Legacy bookmarks used ?lens=; honour it only when ?tab= is absent, through the same whitelist.
@@ -308,22 +316,26 @@ export default function MiningPage() {
   return (
     <InsightFrame
       title="Mining"
-      meta="Entity links, mined dependencies and mined patterns"
+      scope
+      meta="Links and patterns from every mined run; Mine now mines the run shown"
+      run={run}
       insight={{
         loading: rel.isLoading || sum.isLoading,
-        situation: { sentence: `${links.toLocaleString()} links across ${domains.toLocaleString()} entities`, tone: anomalies ? "at-risk" : "go" },
-        changed: { sentence: `${anomalies.toLocaleString()} new anomalies in the last 30 days` },
-        why: { sentence: `${inferred.toLocaleString()} of the links are inferred and ${patternsTotal.toLocaleString()} patterns are mined` },
+        situation: { sentence: links ? `${plural(links, "link")} across ${plural(domains, "entity", "entities")}` : "No links found yet", tone: anomalies ? "at-risk" : "go" },
+        changed: { sentence: anomalies ? `${plural(anomalies, "new anomaly", "new anomalies")} in the last 30 days` : "No new anomalies in the last 30 days" },
+        why: { sentence: miningWhy(links, inferred, patternsTotal) },
         next: anomalies
           ? { sentence: "Review the new anomalies", action: { label: "Open patterns", onClick: () => setTab("patterns") } }
-          : { sentence: "Review the entity links", action: { label: "Open links", onClick: () => setTab("links") } },
+          : links
+            ? { sentence: "Review the entity links", action: { label: "Open links", onClick: () => setTab("links") } }
+            : { sentence: "Mine the run to find links", action: { label: "Open links", onClick: () => setTab("links") } },
       }}
     >
       <GraphTally />
       <Tabs value={tab} onValueChange={setTab} items={[
         { value: "links", label: "Entity links", content: <EntityLinks /> },
         { value: "dependencies", label: "Mined dependencies", content: <Dependencies /> },
-        { value: "patterns", label: "Patterns", content: <Patterns /> },
+        { value: "patterns", label: "Patterns", content: <Patterns run={run} /> },
       ]} />
     </InsightFrame>
   );

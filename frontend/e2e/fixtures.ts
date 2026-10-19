@@ -1,11 +1,18 @@
 /**
  * Signed-in Aurora page with the API replayed from a recording.
  *
- * `e2e/fixtures/api.har` holds the API responses the routes in `routes.json`
- * made against the simulation stack (seeded tenant, no customer data).
- * Replaying it means the specs need no backend: the dev server serves the
- * pages, the HAR answers `/api/v1/*`, and the clock is pinned to the
- * recording time so relative durations and "last 24 h" figures are stable.
+ * `e2e/fixtures/api.har.gz` holds the API responses the routes in `routes.json`
+ * made against the simulation stack (seeded tenant, no customer data): one ECC
+ * system, 14 analysed objects across 31 runs, a 100k-row business partner run
+ * and a 25k-row material master run among them. Replaying it means the specs
+ * need no backend: the dev server serves the pages, the HAR answers `/api/v1/*`,
+ * and the clock is pinned to the recording time so relative durations and
+ * "last 24 h" figures are stable.
+ *
+ * The mocks below cover only what the recording cannot: data the seeded tenant
+ * does not hold (a migration wave, a fix batch, a glossary term, a steward's
+ * failing record), writes, and three backend defects that would otherwise put
+ * a page in its error state (each named where it is shimmed).
  *
  * Re-record after changing which endpoints a route calls:
  *   npm run e2e:record   (see e2e/record.mjs)
@@ -13,25 +20,45 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import zlib from "node:zlib";
 import { test as base, expect, type Page } from "@playwright/test";
 import routes from "./routes.json";
 import depth from "./fixtures/depth.json";
 import { mockRoutes18c } from "./fixtures/mocks-18c";
-import { permissionsPayload } from "./fixtures/legacy-permissions";
 
-export const HAR = path.join(__dirname, "fixtures", "api.har");
+export const HAR = path.join(__dirname, "fixtures", "api.har.gz");
 /** The instant the HAR was recorded; Date.now() in the page returns this. */
-export const RECORDED_AT = new Date("2026-10-02T14:13:00Z");
-export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string }> = routes;
+export const RECORDED_AT = new Date("2026-10-17T05:37:59.666Z");
+export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string; mocked?: boolean; knownBad?: string[] }> = routes;
 
-/** The recording is stored against http://localhost:3000; replay it on whatever origin the suite runs. */
+/** Ids as in the recording. */
+export const RECORDED = {
+  /** The one SAP system of the seeded tenant. */
+  systemId: "c7a18906-1555-40ba-a1b2-caf83188238e",
+  systemName: "KMZ-SIM",
+  /** The newest finished run: the default scope of every cross-object page without ?run=. */
+  latestRunId: "d3229ded-0708-4967-9dfb-1b7f4fada953",
+  /** The 100k-row business partner run (the run detail route). */
+  businessPartnerRunId: "64afe257-80b0-48b9-8b9a-397e29a7dfe6",
+  /** The 25k-row material master run (the object routes). */
+  materialRunId: "c1f752b7-ab20-441e-9b13-f47754f0e910",
+  /** Material master's critical failing rule and one of its failing records. */
+  materialRuleId: "MM045",
+  materialRecordKey: "MATNR=MAT00000010",
+  /** The two accounts payable runs the compare route opens. */
+  compareRunIds: ["ae5e43c7-e11d-4f1c-866d-6881cc3d50ce", "ff1ea64b-8968-4d18-ab04-fc15dadbe696"],
+  /** The earliest accounts payable run, which still exists in the sim; the steward mocks hang off it. */
+  vendorRunId: "65988d5a-0243-4f9b-bdff-52779e71c6ed",
+} as const;
+
+/** The recording is stored gzipped against http://localhost:3000; replay it on whatever origin the suite runs. */
 function harFor(origin: string): string {
   const out = path.join(__dirname, "..", "test-results", `api.${origin.replace(/\W+/g, "_")}.har`);
   if (!fs.existsSync(out)) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     // write then rename: a parallel worker must never read a half-written copy
     const tmp = `${out}.${process.pid}`;
-    fs.writeFileSync(tmp, fs.readFileSync(HAR, "utf8").replaceAll("http://localhost:3000/", `${origin}/`));
+    fs.writeFileSync(tmp, zlib.gunzipSync(fs.readFileSync(HAR)).toString("utf8").replaceAll("http://localhost:3000/", `${origin}/`));
     fs.renameSync(tmp, out);
   }
   return out;
@@ -50,53 +77,83 @@ export const test = base.extend<{ app: Page }>({
     // registered last so it wins: the job stream never ends and is not in the
     // recording; the 15 s poll covers the rail
     await page.route("**/api/v1/jobs/events", (r) => r.fulfill({ status: 204 }));
-    await mockInbox(page);
+    await mockDefects(page);
     await mockSteward(page);
     await mockDepth(page);
-    await mockMaterial(page);
-    await mockObjects(page);
-    await mockInsightsReadiness(page);
-    await mockFix(page);
-    await mockExtraction(page);
-    await mockUnrecorded(page);
-    await mockGapRoutes(page);
+    await mockFixBatch(page);
+    await mockWave(page);
+    await mockGlossaryTerm(page);
+    await mockWrites(page);
     await mockRoutes18c(page);
-    // Not in the recording (wave 16); the recorded user is an admin. Specs override it per role.
-    await page.route(/\/api\/v1\/me\/permissions/, (r) => r.fulfill(json(permissionsPayload("admin"))));
     await provide(page);
   },
 });
 
-/** Inbox endpoints that are not in the recording: three open tasks and matching metrics. */
-const INBOX_ITEMS = [
-  { id: "a1f0c2d4-0000-4000-8000-000000000001", item_type: "merge_decision", domain: "business_partner", priority: 1, status: "open", sla_state: "at_risk", source_id: "BP-0001" },
-  { id: "a1f0c2d4-0000-4000-8000-000000000002", item_type: "exception", domain: "material_master", priority: 2, status: "open", sla_state: "on_track", source_id: "MAT-0042" },
-  { id: "a1f0c2d4-0000-4000-8000-000000000003", item_type: "golden_record_review", domain: "accounts_payable", priority: 3, status: "open", sla_state: "on_track", source_id: "VND-0107" },
-].map((t) => ({
-  ...t, tenant_id: "e2e", due_at: null, assigned_to: null, sla_hours: 48, ai_recommendation: null, ai_confidence: null,
-  created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
-}));
-const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+export const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
 
-async function mockInbox(page: Page) {
-  await page.route(/\/api\/v1\/stewardship\?/, (r) =>
-    r.fulfill(json(new URL(r.request().url()).searchParams.get("status") === "open" ? { items: INBOX_ITEMS, total: INBOX_ITEMS.length } : { items: [], total: 0 })));
-  await page.route("**/api/v1/stewardship/metrics", (r) => r.fulfill(json({
-    items_by_type: { merge_decision: 1, exception: 1, golden_record_review: 1 }, items_by_status: { open: 3 },
-    avg_resolution_hours_by_type: { merge_decision: 6, exception: 12 }, backlog_total: 3, sla_compliance_rate: 0.92,
-    ai_acceptance_rate: null, steward_breakdown: [],
+/**
+ * Backend defects on the seeded stack (release 0.0.401), each recorded as a 500 or 404 and
+ * reported with the recording. Shimmed here so the specs test the page, not the defect:
+ *  - GET /analytics/mdm-health?days=56 → 500: `days` is bound as an integer into
+ *    `(:days || ' days')::interval` (api/routes/analytics.py).
+ *  - GET /stewardship?item_type=merge_decision… answered 500 on the /mdm page in two of six
+ *    recording passes (intermittent; the recording holds its 200 and no shim is needed).
+ *  - /migration/dry-run, opened with a data quality run's `?run=`, passes it to
+ *    GET /migration/runs/{id}, which knows only migration runs → 404 → error state.
+ *  - GET /business-process/{run}/controlling → 500: the SPRO registry has no entry for
+ *    controlling and spro_reader.read_config raises instead of answering empty
+ *    (api/routes/business_process.py); the same for every module outside the registry.
+ */
+async function mockDefects(page: Page) {
+  await page.route(/\/api\/v1\/analytics\/mdm-health(\?.*)?$/, (r) => r.fulfill(json({ data: [], days: 56 })));
+  const RUN = RECORDED.latestRunId;
+  await page.route(new RegExp(`/api/v1/business-process/${RUN}/controlling$`), (r) => r.fulfill(json({
+    version_id: RUN, module: "controlling",
+    processes: [{
+      l1_id: "R2R", l1_name: "Record to Report", l1_description: "Cost centre and cost element accounting", system: "ECC", readiness: "red",
+      l2_groups: [{
+        l2_id: "R2R-CC", l2_name: "Cost centre accounting", readiness: "red",
+        l3_processes: [{
+          l3_id: "R2R-CC-P1", l3_name: "Cost centre master", description: "Cost centre creation and maintenance", overall_readiness: "red",
+          l4_subprocesses: [{
+            l4_id: "R2R-CC-KS01", l4_name: "Create cost centre", tcode: "KS01", description: "Create a cost centre in a controlling area", config_dependency: null, step_status: "red",
+            activities: [{
+              l5_id: "R2R-CC-KS01-01", l5_name: "Enter person responsible", tcode: "KS01", description: "Name the person responsible for the cost centre",
+              check_ids: ["CO003"], activity_status: "red",
+              fields: [{
+                field: "CSKS.VERAK", check_id: "CO003", description: "Person responsible", mandatory: true, config_source: null, dq_status: "red",
+                pass_rate: 93.7, affected_count: 63, finding_message: "Person responsible is missing", config_dependency: null,
+              }],
+            }],
+          }],
+        }],
+      }],
+    }],
   })));
-  await page.route(/\/api\/v1\/triage\/metrics/, (r) => r.fulfill(json({
-    weeks: 8, backlog_by_owner: [], backlog_by_team: [], unassigned: 3, resolved_in_sla: 9, resolved_total: 10, sla_attainment_pct: 90,
-    mtta_hours: 2, mttr_hours: 9, breach_count: 1,
-    weekly: [{ week: "2026-09-28", opened: 5, resolved: 4, resolved_in_sla: 4, breached: 0 }],
+  const AT = "2026-10-16T05:17:46Z";
+  await page.route(new RegExp(`/api/v1/migration/runs/${RUN}$`), (r) => r.fulfill(json({
+    run: {
+      id: RUN, mode: "s4_dry_run", source_system_id: RECORDED.systemId, dest_system_id: null, source_version_id: RUN, target_release: "2023", target_connected: false,
+      modules: ["controlling"], status: "analysed", readiness_verdict: "conditional", readiness_score: 91.2, critical_count: 2,
+      records_total: 1240, records_blocked: 6, error_detail: null, created_at: AT, completed_at: AT,
+      gap_summary: { controlling: { records: 1240, blocked_records: 6, score: 91.2, verdict: "conditional", gaps: { target_mandatory: 4, length_truncation: 2 }, source_tables: ["CSKS", "CSKB"] } },
+    },
+    gap_breakdown: [{ module: "controlling", gap_type: "target_mandatory", severity: "high", grounded: false, n: 4, records: 4, fields: 1 }],
+    structural_critical: 0,
+  })));
+  await page.route(new RegExp(`/api/v1/migration/runs/${RUN}/records(\\?.*)?$`), (r) => r.fulfill(json({
+    total: 2,
+    rows: [
+      { module: "controlling", source_table: "CSKS", record_key: "KOSTL=1000|KOKRS=1000", status: "load_fail", reasons: ["Person responsible is mandatory in the target"] },
+      { module: "controlling", source_table: "CSKB", record_key: "KSTAR=400000|KOKRS=1000", status: "load_fail", reasons: ["Description is longer than the target field"] },
+    ],
   })));
 }
 
 /** The failing check and record the finding-detail and record routes open (ids as in the recording). */
 const FINDING_ID = "6d7b0459-08ca-4b11-90aa-c0524ae19064";
 const ISSUE_ID = "c6718ce8-8d5b-4432-933a-4df2b07ee9f0";
-const VERSION_ID = "65988d5a-0243-4f9b-bdff-52779e71c6ed";
+const VERSION_ID = RECORDED.vendorRunId;
 const MESSAGE = "Reconciliation account is not a vendor reconciliation account in this company code";
 const FINDING = {
   id: FINDING_ID, version_id: VERSION_ID, module: "accounts_payable", check_id: "XREC001", severity: "critical", dimension: "consistency",
@@ -125,7 +182,8 @@ async function mockSteward(page: Page) {
     const check = new URL(r.request().url()).searchParams.get("check_id");
     return check ? r.fulfill(json({ findings: check === FINDING.check_id ? [FINDING] : [], total: check === FINDING.check_id ? 1 : 0, filters_applied: {} })) : r.fallback();
   });
-  await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/[^/]+\/records/, (r) =>
+  // only XREC001: the material master records (MM045) are in the recording
+  await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/XREC001\/records/, (r) =>
     r.fulfill(json({ version_id: VERSION_ID, check_id: FINDING.check_id, total: 1, records: [{ record_key: ISSUE.record_key, grain: "LFB1", module: FINDING.module, field_values: { "LFB1.AKONT": "0000113100", "LFB1.LIFNR": "V3" } }] })));
   await page.route(`**/api/v1/issues/${ISSUE_ID}`, (r) =>
     r.fulfill(json({ issue: ISSUE, events: [], runs: [{ version_id: VERSION_ID, run_at: "2026-10-02T11:54:16Z", failing: true }] })));
@@ -141,74 +199,21 @@ async function mockSteward(page: Page) {
   await page.route("**/api/v1/dedup/preview", (r) => r.fulfill(json({
     merge_preview: { "LFA1.LIFNR": pair("V4", "V5"), "LFA1.NAME1": pair("Delta Supplies", "Epsilon Parts"), "LFA1.ORT01": pair("Cape Town", "Pretoria") },
   })));
-}
-
-/** Material 360 endpoints are not in the recording: two fictional materials, one with a supersession loop and one plain. */
-const MATERIAL = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "material-360.json"), "utf8")) as
-  Record<string, Record<string, unknown>>;
-
-async function mockMaterial(page: Page) {
-  await page.route(/\/api\/v1\/materials\/(\d+)(?:\/(findings|supersession|duplicates))?(?:\?|$)/, (r) => {
-    const [, id, sub] = /\/materials\/(\d+)(?:\/(\w+))?/.exec(new URL(r.request().url()).pathname) ?? [];
-    // SAP pads MATNR with leading zeros; the fixture is keyed by the bare number
-    const body = MATERIAL[String(Number(id))]?.[sub ?? "material"];
-    return body ? r.fulfill(json(body)) : r.fulfill({ status: 404, contentType: "application/json", body: '{"detail":"Not found"}' });
-  });
-}
-
-/**
- * Object endpoints are not in the recording: one object (material_master) with a
- * critical failing rule (MM551, reusing the material-360.json fixture's own failing
- * rule and record so the record fix sheet below renders real findings/supersession
- * data for free via mockMaterial) whose record leads to material 101.
- */
-const OBJECT_MATNR = "000000000000000101";
-const OBJECT_RECORD_KEY = `MATNR=${OBJECT_MATNR}|WERKS=3000`;
-const OBJECT_SUMMARY = {
-  module: "material_master", label: "Material master", composite_score: 72,
-  readiness: "fail" as const, failing_checks: 3, affected_records: 2,
-};
-
-async function mockObjects(page: Page) {
-  await page.route(/\/api\/v1\/objects\?/, (r) =>
-    r.fulfill(json({ run_id: VERSION_ID, objects: [OBJECT_SUMMARY] })));
-  await page.route(/\/api\/v1\/objects\/material_master(\?.*)?$/, (r) =>
-    r.fulfill(json({
-      ...OBJECT_SUMMARY,
-      dimension_scores: { consistency: 70, completeness: 80 },
-      rules: [
-        { check_id: "MM551", severity: "critical", dimension: "consistency", affected_count: 1, total_count: 418, pass_rate: 0.9976 },
-        { check_id: "MM132", severity: "medium", dimension: "completeness", affected_count: 1, total_count: 418, pass_rate: 0.9976 },
-      ],
-    })));
-  // The rules tab loads the per-rule trend batch; no prior runs means every trend reads "—".
-  await page.route(/\/api\/v1\/rules\/history(\?|$)/, (r) =>
-    r.fulfill(json({ version_id: VERSION_ID, module: "material_master", history: {} })));
-  await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/MM551\/records/, (r) =>
-    r.fulfill(json({
-      version_id: VERSION_ID, check_id: "MM551", total: 1,
-      records: [{ record_key: OBJECT_RECORD_KEY, grain: "MARC", module: "material_master", field_values: { "MARC.NFMAT": "000000000000000102" } }],
-    })));
-  // The fix sheet parses the composite record_key and asks for the bare MATNR with WERKS as ?plant=.
-  await page.route(new RegExp(`/api/v1/objects/material_master/records/${OBJECT_MATNR}(\\?|$)`), (r) =>
-    r.fulfill(json(MATERIAL[String(Number(OBJECT_MATNR))].material)));
-}
-
-/** Insights readiness endpoint is not in the recording: one no_go cell on material_master, for the drill-through journey. */
-async function mockInsightsReadiness(page: Page) {
-  await page.route(/\/api\/v1\/insights\/readiness(\?.*)?$/, (r) => r.fulfill(json({
-    version_id: VERSION_ID,
-    threshold: 90,
-    cells: [{ module: OBJECT_SUMMARY.module, wave: "wave_1", verdict: "no_go", blocker_count: 1, dqs: OBJECT_SUMMARY.composite_score,
-      score: 40, records_blocked: OBJECT_SUMMARY.affected_records }],
+  // the records tab's root cause panel; not in the recording
+  await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/[^/]+\/root-cause$/, (r) => r.fulfill(json({
+    version_id: RECORDED.materialRunId, check_id: RECORDED.materialRuleId, status: "computed", field: "MAKT.MAKTX", analysed: 1, total: 1,
+    origins: [{ origin: "migration", username: "LOADER", tcode: "LSMW", records: 1, share: 100 }],
+    summary: "Every failing record came in through the legacy migration load.", detail: "",
   })));
+  await page.route(/\/api\/v1\/config-pairing\/finding-context(\?.*)?$/, (r) => r.fulfill(json(null)));
 }
 
 /**
- * Fix queue endpoints are not in the recording: one batch ("B1", matching the
- * fix page's and this batch's existing Vitest fixture id) with one item.
+ * Fix batch "B1" (matching the fix page's and this batch's existing Vitest fixture id) with one
+ * item. The seeded queue carries no batches, so only the batch's own query is answered here;
+ * steward-accept-proposal.spec overrides the queue list to reach it.
  */
-const CLEANING_ITEM = {
+export const CLEANING_ITEM = {
   id: "cq1", object_type: "business_partner", status: "recommended", confidence: 0.92,
   record_key: "LIFNR=V9|BUKRS=2000", priority: 1, detected_at: "2026-10-01T09:00:00Z", applied_at: null,
   rollback_deadline: null, rule_id: "DUP001", batch_id: "B1", version_id: null, merge_preview: null,
@@ -216,101 +221,53 @@ const CLEANING_ITEM = {
   golden_record_exists: false,
 };
 
-async function mockFix(page: Page) {
-  await page.route(/\/api\/v1\/cleaning\/queue(\?.*)?$/, (r) =>
+async function mockFixBatch(page: Page) {
+  await page.route(/\/api\/v1\/cleaning\/queue\?(?=.*batch_id=B1)/, (r) =>
     r.fulfill(json({ items: [CLEANING_ITEM], total: 1, page: 1, per_page: 500 })));
   await page.route(/\/api\/v1\/cleaning\/approve\//, (r) =>
     r.fulfill(json({ id: CLEANING_ITEM.id, status: "approved" })));
 }
 
 /**
- * System "s1" and its one failed run "r1" are not in the recording — ids
- * match this page's and the extraction page's existing Vitest fixtures.
- */
-const SYSTEM_S1 = {
-  id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
-  base_url: null, company_id: null, auth_type: null, description: null, environment: "PRD", is_active: true,
-  health_status: "healthy", health_message: null, last_health_check: null, config_last_synced_at: null,
-  config_sync_status: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
-  last_sync_at: null, last_sync_status: null, discovery_status: null, discovered_at: null, sap_release: null,
-};
-const RUN_R1 = {
-  id: "r1", run_at: "2026-10-02T10:00:00Z", label: null, status: "failed", objects: ["material_master"],
-  scope: {}, records: {}, analysed_at: null, rule_set: null, baseline: false, analysable: false, dqs: {},
-  field_status: [], extraction_complete: false, coverage: { read: 0, issues: [] }, outliers: {},
-};
-
-async function mockExtraction(page: Page) {
-  await page.route(/\/api\/v1\/systems(\?.*)?$/, (r) => r.fulfill(json([SYSTEM_S1])));
-  await page.route("**/api/v1/connectivity/systems/s1/modules", (r) => r.fulfill(json([])));
-  await page.route("**/api/v1/systems/s1/versions", (r) => r.fulfill(json({ versions: [RUN_R1], download: null })));
-  await page.route("**/api/v1/runs/r1/steps", (r) => r.fulfill(json({
-    version_id: "r1",
-    steps: [
-      { step_number: 1, step_name: "extract_BUT000", status: "ok", started_at: "2026-10-02T10:00:00Z", finished_at: "2026-10-02T10:00:01Z", duration_ms: 1200, error_detail: null },
-      { step_number: 2, step_name: "extract_MARA", status: "failed", started_at: "2026-10-02T10:00:01Z", finished_at: "2026-10-02T10:00:01Z", duration_ms: 400, error_detail: "RFC_COMMUNICATION_FAILURE: connection reset" },
-    ],
-  })));
-}
-
-/**
- * Endpoints that the routes call but the recording does not hold. Without
- * these, the page falls into its ErrorState (with a Retry button) once the
- * query retries run out, and specs then test the error state, not the page.
+ * Migration wave "w1": the seeded tenant has no waves, so the wave list and its cockpit are mocked.
+ * The wave is on the latest run (controlling), whose S/4 readiness the recording holds.
  */
 const WAVE_W1 = {
-  id: "w1", name: "Wave 1", source_system_id: "s1", target_system_id: null, target_release: "S/4HANA 2023",
-  modules: [OBJECT_SUMMARY.module], target_date: null, stage: "mock1" as const, min_readiness: 90, min_dqs: null,
+  id: "w1", name: "Wave 1", source_system_id: RECORDED.systemId, target_system_id: null, target_release: "S/4HANA 2023",
+  modules: ["controlling"], target_date: null, stage: "mock1" as const, min_readiness: 90, min_dqs: null,
   signed_off_by: null, signed_off_at: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
 };
-async function mockUnrecorded(page: Page) {
-  // Lane 4: the notification bell and the server-side preferences are not in the recording.
-  await page.route(/\/api\/v1\/notifications\/unread-count(\?.*)?$/, (r) => r.fulfill(json({ count: 2 })));
-  await page.route(/\/api\/v1\/notifications(\?.*)?$/, (r) => r.fulfill(json({
-    total: 2,
-    items: [
-      { id: "n1", tenant_id: "e2e", user_id: null, type: "finding", title: "New critical finding in Business partner", body: "Two rules failed on the latest run", link: "/inbox", is_read: false, created_at: "2026-10-02T13:00:00Z" },
-      { id: "n2", tenant_id: "e2e", user_id: null, type: "warning", title: "Extraction finished with warnings", body: "One table was read partially", link: null, is_read: true, created_at: "2026-10-01T09:00:00Z" },
-    ],
-  })));
-  await page.route("**/api/v1/me/preferences", (r) => {
-    if (r.request().method() === "PATCH") return r.fulfill(json(r.request().postDataJSON() ?? {}));
-    return r.fulfill(json({}));
-  });
-  await page.route(/\/api\/v1\/insights\/impact(\?.*)?$/, (r) => r.fulfill(json({ version_id: VERSION_ID, rows: [] })));
-  await page.route(/\/api\/v1\/insights\/owners(\?.*)?$/, (r) => r.fulfill(json({ owners: [] })));
-  await page.route(/\/api\/v1\/insights\/exec(\?.*)?$/, (r) => r.fulfill(json({
-    version_id: VERSION_ID, narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
-  })));
-  await page.route(/\/api\/v1\/triage\/(teams|rules|sla-policies)(\?.*)?$/, (r) => r.fulfill(json([])));
-  await page.route(/\/api\/v1\/migration\/waves(\?.*)?$/, (r) => r.fulfill(json({ waves: [WAVE_W1] })));
+async function mockWave(page: Page) {
+  await page.route(/\/api\/v1\/migration\/waves(\?.*)?$/, (r) => (r.request().method() === "GET" ? r.fulfill(json({ waves: [WAVE_W1] })) : r.fallback()));
   await page.route("**/api/v1/migration/waves/w1/cockpit", (r) => r.fulfill(json({
-    wave: WAVE_W1, run_id: VERSION_ID, source_version_id: VERSION_ID, dest_system_type: "s4hana", verdict: "no_go",
-    score: OBJECT_SUMMARY.composite_score, records_total: 10, records_blocked: OBJECT_SUMMARY.affected_records,
-    objects: [{ module: OBJECT_SUMMARY.module, label: OBJECT_SUMMARY.label, verdict: "no_go", score: OBJECT_SUMMARY.composite_score,
-      records: 10, records_blocked: OBJECT_SUMMARY.affected_records, blocker_count: 1, dqs: OBJECT_SUMMARY.composite_score }],
+    wave: WAVE_W1, run_id: RECORDED.latestRunId, source_version_id: RECORDED.latestRunId, dest_system_type: "s4hana", verdict: "no_go",
+    score: 70, records_total: 1000, records_blocked: 63,
+    objects: [{ module: "controlling", label: "Controlling", verdict: "no_go", score: 70, records: 1000, records_blocked: 63, blocker_count: 1, dqs: 70 }],
     trend: [],
-    blockers: [{ module: OBJECT_SUMMARY.module, label: OBJECT_SUMMARY.label, gap_type: "target_mandatory", field: "MARA.MTART",
-      severity: "critical", records: OBJECT_SUMMARY.affected_records, gaps: 1 }],
+    blockers: [{ module: "controlling", label: "Controlling", gap_type: "target_mandatory", field: "CSKS.VERAK", severity: "critical", records: 63, gaps: 1 }],
   })));
 }
 
-/** Wave 18b gap-route endpoints that are not in the recording: empty but well-formed bodies. */
-async function mockGapRoutes(page: Page) {
-  const get = (re: RegExp, body: unknown) => page.route(re, (r) => (r.request().method() === "GET" ? r.fulfill(json(body)) : r.fallback()));
-  await get(/\/api\/v1\/analytics\/operational(\?.*)?$/, {
-    kpis: { throughput: 0, automation_rate: 0, mttr_hours: 0, sla_compliance_pct: 0, rejection_rate: 0, rollback_rate: 0, items_in_flight: 0, avg_queue_age_hours: 0 },
-    bottlenecks: [], capacity: { needed: 0, current: 0, surplus_deficit: 0, recommendation: "" },
-  });
-  await get(/\/api\/v1\/analytics\/(sprints|bottlenecks)(\?.*)?$/, { sprints: [], bottlenecks: [] });
-  await get(/\/api\/v1\/analytics\/roi(\?.*)?$/, { roi: { subscription_annual: 0, risk_mitigated: 0, roi_multiple: 0, payback_months: 0 }, cost_avoidance_history: [] });
-  await get(/\/api\/v1\/analytics\/mdm-health(\?.*)?$/, { data: [], days: 56 });
-  await get(/\/api\/v1\/audit\/llm(\?.*)?$/, { entries: [], total: 0, limit: 50, offset: 0, cache: [] });
-  await get(/\/api\/v1\/survivorship-rules(\?.*)?$/, { rules: [], total: 0 });
-  await get(/\/api\/v1\/alert-channels(\?.*)?$/, { channels: [] });
-  await get(/\/api\/v1\/settings\/cost-model(\?.*)?$/, { currency: "ZAR", severity: { critical: 100 }, modules: {}, rules: {}, features: {} });
-  await get(/\/api\/v1\/rule-authoring\/drafts(\?.*)?$/, { items: [] });
-  await get(/\/api\/v1\/jobs(\?.*)?$/, { jobs: [] });
+/** Glossary term "g1": the seeded glossary is empty, so the term detail route is mocked. */
+const AT = "2026-10-01T08:00:00Z";
+const TERM_G1 = {
+  id: "g1", sap_table: "LFB1", sap_field: "AKONT", technical_name: "LFB1.AKONT", business_name: "Reconciliation account", domain: "accounts_payable",
+  mandatory_for_s4hana: true, status: "active", ai_drafted: false, last_reviewed_at: AT, review_cycle_days: 180, linked_rules_count: 2,
+};
+async function mockGlossaryTerm(page: Page) {
+  await page.route(/\/api\/v1\/glossary\/g1$/, (r) => r.fulfill(json({
+    ...TERM_G1, business_definition: "General ledger account that mirrors every posting to the vendor.",
+    why_it_matters: "A wrong account breaks the sub-ledger reconciliation.", sap_impact: "Postings land on the wrong balance sheet line.",
+    approved_values: ["160000", "160100"], rule_authority: "Finance", data_steward_id: null, created_at: AT, updated_at: AT,
+    linked_rules: [{ rule_id: "XREC001", domain: "accounts_payable", pass_rate: 83.33, severity: "critical", affected_count: 1, total_count: 6 }],
+    change_history: [],
+  })));
+}
+
+/** Writes the recording cannot hold. */
+async function mockWrites(page: Page) {
+  await page.route("**/api/v1/me/preferences", (r) =>
+    r.request().method() === "PATCH" ? r.fulfill(json(r.request().postDataJSON() ?? {})) : r.fallback());
 }
 
 export { expect };

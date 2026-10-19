@@ -6,14 +6,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { HelpMenu, ShortcutSheet, TourHost, WhatsNew, startTour, useShortcutHotkey, useWhatsNew } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { getCatalogue } from "@/lib/api/process-discovery";
-import { getVersions } from "@/lib/api/versions";
+import { runListQuery } from "@/hooks/use-run-list";
+import { isFinished } from "@/lib/runs";
 import { getObjects } from "@/lib/api/v1/objects";
 import { resolveTourHref, type TourLinkSources } from "@/lib/help/tour-links";
 import { tourForPath } from "@/lib/help/tours";
 import { queryKeys } from "@/lib/query-keys";
 import { APP_VERSION } from "@/lib/version";
 
-const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || undefined;
 
 /**
@@ -37,8 +37,8 @@ export function HelpSlot() {
     return {
       run: async () => {
         if (run) return run;
-        const data = await qc.fetchQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
-        return data.versions.find((v) => FINISHED.has(v.status))?.id ?? null;
+        const data = await qc.fetchQuery(runListQuery());
+        return data.versions.find(isFinished)?.id ?? null;
       },
       system: async () => (await systems())[0]?.id ?? null,
       object: async () => {

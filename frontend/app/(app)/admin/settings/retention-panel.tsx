@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Pill, Skeleton, Switch } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Pill, Skeleton, Switch, Async } from "@/design";
 import {
   getPurgeLog, getRetention, getRetentionPreview, updateRetention,
   type PurgeLogEntry, type RetentionPolicy, type RetentionPreviewItem, type RowsByTable,
 } from "@/lib/api/retention";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -149,9 +149,7 @@ export function RetentionPanel() {
   return (
     <Card title="Retention" meta="How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task">
       <div className="flex flex-col gap-4">
-        {q.isLoading ? <Skeleton height={120} /> : q.isError ? (
-          <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
-        ) : (
+        <Async query={q} skeleton={120}>{(
           <>
             {statusLine ? (
               <Notice tone={enforcement?.enforced ? "warning" : "info"}>
@@ -175,34 +173,32 @@ export function RetentionPanel() {
               <Switch checked={keepBaseline} onCheckedChange={(v) => set({ keepBaseline: v })} label="Keep the baseline run" />
               <Button disabled={!dirty || invalid} pending={save.isPending} onClick={() => save.mutate()}>Save policy</Button>
             </div>
-            <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+            <p className="m-text-meta m-ink-3">
               Only archived runs are purged, never the baseline nor the newest runs of each system. Golden records, rules, glossary terms and contracts are never touched.
             </p>
           </>
-        )}
+        )}</Async>
 
         <div className="flex items-center justify-between gap-3">
-          <h3 className="font-semibold" style={{ fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" }}>Preview</h3>
+          <h3 className="font-semibold m-text-h">Preview</h3>
           <Button variant="secondary" pending={preview.isFetching} onClick={() => preview.refetch()}>Preview what would be purged</Button>
         </div>
         {preview.isFetching && !preview.data ? <Skeleton height={64} /> : isListFailure(preview) ? (
-          <ErrorState message={apiErrorMessage(preview.error)} onRetry={() => preview.refetch()} />
+          <ErrorState {...apiErrorState(preview.error)} onRetry={() => preview.refetch()} />
         ) : !preview.data ? (
-          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Run the preview to see what the policy selects now. Nothing is deleted by a preview.</p>
+          <p className="m-text-meta m-ink-3">Run the preview to see what the policy selects now. Nothing is deleted by a preview.</p>
         ) : preview.data.length === 0 ? (
           <EmptyState title="Nothing to purge" detail="No archived run is past the policy right now" action={<Button variant="ghost" onClick={() => preview.refetch()}>Check again</Button>} />
         ) : (
           <DataTable columns={previewColumns} data={preview.data} getRowId={(r) => r.version_id} tableId="retention-preview" hideToolbar />
         )}
 
-        <h3 className="font-semibold" style={{ fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" }}>Purge log</h3>
-        {log.isLoading ? <Skeleton height={64} /> : isListFailure(log) ? (
-          <ErrorState message={apiErrorMessage(log.error)} onRetry={() => log.refetch()} />
-        ) : !log.data?.length ? (
+        <h3 className="font-semibold m-text-h">Purge log</h3>
+        <Async query={log} skeleton={64} notFoundIsEmpty>{!log.data?.length ? (
           <EmptyState title="No purge yet" detail="Dry runs and purges appear here with the rows removed per table" action={<Button variant="ghost" onClick={() => log.refetch()}>Refresh</Button>} />
         ) : (
           <DataTable columns={logColumns} data={log.data} getRowId={(r) => r.id} tableId="purge-log" hideToolbar />
-        )}
+        )}</Async>
       </div>
     </Card>
   );

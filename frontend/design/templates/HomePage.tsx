@@ -4,15 +4,13 @@ import Link from "next/link";
 import { Button } from "../primitives/Button";
 import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
-import { Pill } from "../primitives/Pill";
-import { Stat } from "../primitives/Stat";
+import { Score } from "../primitives/Score";
 import { PageHeader } from "../primitives/PageHeader";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
-import { ErrorState } from "../primitives/ErrorState";
+import { Async, type AsyncState } from "../primitives/Async";
 import { PageFrame } from "./PageFrame";
 import { JourneyStepper } from "./JourneyStepper";
 import type { DayOneStep } from "../../hooks/use-day-one";
-import { relativeTime } from "../../lib/format";
 
 /** Situation sentence for a fresh install. */
 const NO_DATA_VERDICT = "No analysis yet. Connect a system and run the first extraction.";
@@ -23,6 +21,10 @@ export interface HomeVerdict {
   delta?: number | null;
   /** "vs {previous label}" next to the delta. */
   previousLabel?: string;
+  /** No earlier run in this run's lineage: the hint says so instead of comparing with another object. */
+  firstRun?: boolean;
+  /** The hint with `firstRun`; defaults to "First run for this object". */
+  firstRunLabel?: string;
   /** The narrative's first sentence: the verdict with the number that caused it. */
   sentence: string;
   /** "Capped at 70 by 3 critical rules ...", with DrillLinks; omitted when not capped. */
@@ -47,18 +49,37 @@ export interface HomeJourney {
 
 const row36 = Array.from({ length: 8 }, (_, i) => i);
 
+/** Hero, trend and dimensions, the work row, heatmap and objects: the data state's geometry. */
+const loadingSkeleton = (
+  <div className="flex flex-col gap-4" data-testid="home-loading">
+    <div className="m-hero"><Skeleton height={112} hero /></div>
+    <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
+      <div className="@5xl:col-span-7"><Skeleton height={200} /></div>
+      <div className="@5xl:col-span-5"><Skeleton height={200} /></div>
+    </div>
+    <div className="m-stat-grid">{Array.from({ length: 6 }, (_, i) => <StatSkeleton key={i} />)}</div>
+    <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
+      <div className="@5xl:col-span-7"><Skeleton height={232} /></div>
+      <div className="flex flex-col gap-1 @5xl:col-span-5">{row36.map((i) => <Skeleton key={i} height={30} />)}</div>
+    </div>
+  </div>
+);
+
 /**
  * The home page frame: header, verdict row, dimension strip, objects table beside the trend,
  * a work row and the persona's extra lists. Callers supply every data-specific piece; this
  * component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding,
+  state, verdict, run, scope, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding,
 }: {
   persona: string;
-  state: "loading" | "no-data" | "data" | "error";
+  /** "empty" is a fresh install (no analysis yet): the journey to a first score. */
+  state: AsyncState;
   verdict?: HomeVerdict;
   run?: HomeRunInfo | null;
+  /** Header meta in the data state: what the page's numbers belong to ("As of ..." or "Current state of ..."). */
+  scope?: ReactNode;
   journey?: HomeJourney;
   error?: { message: string; onRetry: () => void };
   /** Right of the trend (5/12): the dimension inline bars. */
@@ -76,39 +97,27 @@ export function HomePage({
   /** First-run tour offer and setup checklist (components/help/home-onboarding.tsx); shown once the page has loaded. */
   onboarding?: ReactNode;
 }) {
-  const runLabel = state === "data" && run ? `${/^run\b/i.test(run.label) ? "" : "Run "}${run.label}, ${relativeTime(run.runAt)}` : undefined;
   const header = (
     <PageHeader
       title="Home"
-      actions={state === "data" ? headerActions : undefined}
+      meta={state === "ready" ? scope : undefined}
+      actions={state === "ready" ? headerActions : undefined}
     />
   );
 
   return (
     <PageFrame gap={4}>
       {header}
-      {(state === "no-data" || state === "data") && onboarding}
+      {(state === "empty" || state === "ready") && onboarding}
 
-      {state === "error" && (
-        <ErrorState message={error?.message ?? "Could not reach the server."} onRetry={error?.onRetry} />
+      {/* Loading and error go through Async; empty (the journey) and ready are this template's own geometry. */}
+      {(state === "error" || state === "loading") && (
+        <Async state={state} error={{ message: error?.message ?? "Could not reach the server.", onRetry: error?.onRetry }} skeleton={loadingSkeleton}>
+          {null}
+        </Async>
       )}
 
-      {state === "loading" && (
-        <div className="flex flex-col gap-4" data-testid="home-loading">
-          <div className="m-hero"><Skeleton height={112} hero /></div>
-          <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
-            <div className="@5xl:col-span-7"><Skeleton height={200} /></div>
-            <div className="@5xl:col-span-5"><Skeleton height={200} /></div>
-          </div>
-          <div className="m-stat-grid">{Array.from({ length: 6 }, (_, i) => <StatSkeleton key={i} />)}</div>
-          <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
-            <div className="@5xl:col-span-7"><Skeleton height={232} /></div>
-            <div className="flex flex-col gap-1 @5xl:col-span-5">{row36.map((i) => <Skeleton key={i} height={30} />)}</div>
-          </div>
-        </div>
-      )}
-
-      {state === "no-data" && (
+      {state === "empty" && (
         <Card padding="lg" title="Get to your first score">
           <div className="flex flex-col gap-4">
             <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink-2)" }}>{NO_DATA_VERDICT}</p>
@@ -125,25 +134,18 @@ export function HomePage({
         </Card>
       )}
 
-      {state === "data" && verdict && (
+      {state === "ready" && verdict && (
         <section className="m-hero grid items-end gap-x-10 gap-y-6 md:grid-cols-[auto_1fr]" data-testid="home-verdict-row" data-tour="home-verdict">
-          <div data-testid="home-dqs" data-tour="home-score" style={{ width: 220 }}>
-            <Stat
-              hero
-              label="Data quality score"
-              help="dqs"
-              value={verdict.dqs ?? "—"}
-              decimals={1}
+          <div data-testid="home-dqs" data-tour="home-score">
+            <Score
+              size="hero"
+              value={verdict.dqs}
               versionId={run?.label}
-              hint={verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
-              delta={verdict.delta != null ? <Delta hero value={verdict.delta} /> : undefined}
+              hint={verdict.firstRun ? verdict.firstRunLabel ?? "First run for this object" : verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
+              delta={verdict.delta != null ? <Delta value={verdict.delta} /> : undefined}
             />
           </div>
           <div className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "64ch" }}>
-            <div className="flex flex-wrap items-center gap-2">
-              {verdict.capLine && <Pill ember>Capped</Pill>}
-              {runLabel && <span className="m-text-meta" style={{ color: "var(--m-hero-ink-3)" }}>{runLabel}</span>}
-            </div>
             <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>
             {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
             {verdict.action && (
@@ -155,14 +157,14 @@ export function HomePage({
         </section>
       )}
 
-      {state === "data" && (trend || dimensions) && (
+      {state === "ready" && (trend || dimensions) && (
         <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
           {trend && <div data-tour="home-trend" className={`min-w-0 ${dimensions ? "@5xl:col-span-7" : "@5xl:col-span-12"}`}>{trend}</div>}
           {dimensions && <div className={`min-w-0 ${trend ? "@5xl:col-span-5" : "@5xl:col-span-12"}`}>{dimensions}</div>}
         </div>
       )}
-      {state === "data" && work}
-      {state === "data" && (heatmap || objects) && (
+      {state === "ready" && work}
+      {state === "ready" && (heatmap || objects) && (
         <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
           {heatmap && <div className={`min-w-0 ${objects ? "@5xl:col-span-7" : "@5xl:col-span-12"}`}>{heatmap}</div>}
           {objects && <div className={`min-w-0 ${heatmap ? "@5xl:col-span-5" : "@5xl:col-span-12"}`}>{objects}</div>}

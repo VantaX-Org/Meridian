@@ -6,8 +6,12 @@ import * as insightsApi from "@/lib/api/insights";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as miningApi from "@/lib/api/mining";
+import * as learnedRulesApi from "@/lib/api/learnedRules";
 import { Toaster } from "@/design";
 import DuplicatesPage from "../page";
+
+// The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const push = vi.fn();
 const replace = vi.fn();
@@ -96,8 +100,15 @@ describe("DuplicatesPage mined tabs", () => {
     expect(await screen.findByText("BKLAS")).toBeInTheDocument();
     view.unmount();
     get.mockResolvedValue([]);
+    const houseRules = vi.spyOn(learnedRulesApi, "mineLearnedRules").mockResolvedValue({ queued: true });
+    const mine = vi.spyOn(miningApi, "runMining").mockResolvedValue({ task_id: "t1", version_id: "v1", include: ["relationship"] });
     renderWithQuery(<DuplicatesPage />);
     expect(await screen.findByText("No relationships mined")).toBeInTheDocument();
+    // With a run in scope the empty state starts the miner that fills this feed, not the learned-rules miner.
+    fireEvent.click(screen.getByRole("button", { name: "Mine now" }));
+    await waitFor(() => expect(mine).toHaveBeenCalledWith("v1", ["relationship"]));
+    expect(houseRules).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "Open runs" })).toBeNull();
   });
 });
 
@@ -171,6 +182,10 @@ describe("DuplicatesPage", () => {
 
     await waitFor(() => expect(createMergeProposals).toHaveBeenCalledWith([{ match_score_id: "ms-1", priority: 1 }]));
     expect(await screen.findByText(/created 1 merge proposal/i)).toBeInTheDocument();
+    // The toast's action opens the stewardship queue in the inbox, not the retired workbench.
+    fireEvent.click(await screen.findByRole("button", { name: "Review in the inbox" }));
+    expect(push).toHaveBeenCalledWith("/inbox?tab=queue");
+    expect(push).not.toHaveBeenCalledWith(expect.stringContaining("/workbench"));
   });
 
   it("disables the create-merge-proposal button when no pair has a usable id", async () => {

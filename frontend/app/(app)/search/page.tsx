@@ -13,7 +13,7 @@ import { exportFindings } from "@/lib/api/findings";
 import { getRules } from "@/lib/api/rules";
 import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
-import { getVersions } from "@/lib/api/versions";
+import { useRunList } from "@/hooks/use-run-list";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { rankResults, type SearchCandidate } from "@/lib/search";
 import { queryKeys } from "@/lib/query-keys";
@@ -27,7 +27,9 @@ export default function SearchPage() {
   const router = useRouter();
   const search = useSearchParams();
   const q = search.get("q") ?? "";
+  // Objects are listed for ?run=, else for the newest finished run ("latest", resolved by the objects API).
   const run = search.get("run") ?? "";
+  const objectsRun = run || "latest";
   const [draft, setDraft] = useState(q);
 
   const rules = useQuery({
@@ -46,11 +48,10 @@ export default function SearchPage() {
     queryFn: () => getCleaningQueue({ per_page: 100 }),
   });
   const objects = useQuery({
-    queryKey: queryKeys.objects(run),
-    queryFn: () => getObjects(run),
-    enabled: !!run,
+    queryKey: queryKeys.objects(objectsRun),
+    queryFn: () => getObjects(objectsRun),
   });
-  const runs = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
+  const runs = useRunList();
 
   const candidates = useMemo<SearchCandidate[]>(() => {
     const out: SearchCandidate[] = [];
@@ -71,7 +72,7 @@ export default function SearchPage() {
       out.push({ kind: "batch", id: batchId, label: `Batch ${batchId}`, href: `/fix/${batchId}` });
     }
     for (const o of objects.data?.objects ?? []) {
-      out.push({ kind: "object", id: o.module, label: o.label, href: `/objects/${o.module}?run=${run}` });
+      out.push({ kind: "object", id: o.module, label: o.label, href: run ? `/objects/${o.module}?run=${run}` : `/objects/${o.module}` });
     }
     for (const v of runs.data?.versions ?? []) {
       out.push({ kind: "run", id: v.id, label: v.label ?? v.id, href: `/runs/${v.id}` });
@@ -84,14 +85,14 @@ export default function SearchPage() {
     { format: "xlsx" as const, label: "Findings (.xlsx)", run: () => exportFindings("xlsx", { version_id: run || undefined }) },
   ];
   const loading = rules.isLoading || glossary.isLoading || systems.isLoading || batches.isLoading || runs.isLoading
-    || (!!run && objects.isLoading);
+    || objects.isLoading;
   const failedQuery = [rules, glossary, systems, batches, objects, runs].find((query) => isListFailure(query));
   const refetchAll = () => {
     void rules.refetch();
     void glossary.refetch();
     void systems.refetch();
     void batches.refetch();
-    if (run) void objects.refetch();
+    void objects.refetch();
     void runs.refetch();
   };
 
@@ -112,8 +113,7 @@ export default function SearchPage() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Object, rule, glossary term, batch or run id"
-              className="w-full rounded border px-4 py-3 m-text-h"
-              style={{ borderColor: "var(--m-line)" }}
+              className="w-full rounded border px-4 py-3 m-text-h [border-color:var(--m-line)]!"
             />
           </Field>
         </form>

@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, Skeleton, ExportMenu, Mono, Notice, Pill, type ExportOption } from "@/design";
+import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, Skeleton, Mono, Notice, Pill, type ExportOption } from "@/design";
 import {
   approveCleaning,
   bulkApprove,
@@ -19,7 +19,7 @@ import {
 } from "@/lib/api/cleaning";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCleaningReportUrl } from "@/lib/api/reports";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
@@ -40,7 +40,7 @@ function BatchAudit({ batchId }: { batchId: string }) {
     retry: false,
   });
   if (q.isLoading) return <Skeleton height={120} />;
-  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   const rows = q.data?.items ?? [];
   if (rows.length === 0) return <EmptyState title="No changes recorded" detail="Approvals, rejections and applied fixes on this batch are logged here." ghost="list" action={<Button variant="secondary" render={<Link href="/fix?tab=batches">Back to batches</Link>} />} />;
   return <DataTable columns={AUDIT_COLUMNS} data={rows} getRowId={(r) => r.id} tableId="batch-audit" exportName="batch-audit" height={360} />;
@@ -174,17 +174,13 @@ export default function BatchPage() {
               Accept {confident.length} at 85% or higher
             </Button>
           ) : null}
-          <ExportMenu
-            disabled={items.length === 0}
-            options={exportOptions}
-          />
         </div>
       }
       table={
         <div className="flex flex-col gap-3">
           {failure ? <Notice tone="danger">{failure}</Notice> : null}
           {data && data.total > items.length ? (
-            <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Showing the first {items.length.toLocaleString()} of {data.total.toLocaleString()} items in this batch.</p>
+            <p className="m-text-body m-ink-3">Showing the first {items.length.toLocaleString()} of {data.total.toLocaleString()} items in this batch.</p>
           ) : null}
           <DataTable columns={columns} data={items} getRowId={(row) => row.id} />
         </div>

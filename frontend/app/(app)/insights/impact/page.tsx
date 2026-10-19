@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat } from "@/design";
+import { Button, chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat, Status } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -18,12 +18,12 @@ import {
   type ProvenCostRow,
 } from "@/lib/api/insights";
 import { domainOf } from "@/design/tokens";
-import { labelOf } from "@/lib/format";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { getCostModel } from "@/lib/api/settings";
+import { labelOf, plural } from "@/lib/format";
+import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { CardSkeleton, InsightFrame, formatMoney, statusTone, useRunLabel } from "../_components/InsightFrame";
-import { InsightActions } from "../_components/InsightActions";
+import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 /** Real route for a single check/rule, independent of any module context —
@@ -46,7 +46,12 @@ function CheckChips({ ids }: { ids: string[] }) {
   );
 }
 
-const impactColumns: ColumnDef<ImpactRow>[] = [
+/** Rows with blocked records; a feature with nothing blocked carries no value at risk and is not listed. */
+export function impactRows(rows: ImpactRow[]): ImpactRow[] {
+  return rows.filter((r) => r.record_count > 0 || r.value_at_risk > 0);
+}
+
+const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
   {
     accessorKey: "feature",
     header: "Feature",
@@ -56,16 +61,19 @@ const impactColumns: ColumnDef<ImpactRow>[] = [
       </DrillLink>
     ),
   },
-  { accessorKey: "status", header: "Status", cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill> },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.status} /> },
   {
     accessorKey: "record_count",
     header: "Blocked records",
+    meta: { numeric: true },
     cell: ({ row }) => <DrillLink object={row.original.feature}>{row.original.record_count.toLocaleString()}</DrillLink>,
   },
   {
     accessorKey: "value_at_risk",
-    header: "Value at risk",
-    cell: ({ row }) => row.original.value_at_risk.toLocaleString(),
+    header: currency ? `Value at risk (${currency})` : "Value at risk",
+    meta: { numeric: true },
+    // A zero is "not priced", never a currency amount of nothing.
+    cell: ({ row }) => (row.original.value_at_risk > 0 ? formatMoney(row.original.value_at_risk, currency) : "—"),
   },
   {
     id: "causing_rules",
@@ -105,7 +113,7 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
   if (isListFailure(query)) {
     return (
       <ErrorState
-        message={apiErrorMessage(query.error)}
+        {...apiErrorState(query.error)}
         onRetry={() => query.refetch()}
       />
     );
@@ -150,22 +158,36 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
 function ImpactPanel({
   query,
   dayOne,
+  currency,
+  unpriced,
 }: {
   query: UseQueryResult<ImpactResponse, Error>;
   dayOne: ReturnType<typeof useDayOne>;
+  currency?: string | null;
+  /** True when the tenant's cost model prices no feature yet, so no value at risk can exist. */
+  unpriced: boolean;
 }) {
   if (query.isLoading || dayOne.status === "loading") return <Skeleton height={160} />;
   if (isListFailure(query)) {
     return (
       <ErrorState
-        message={apiErrorMessage(query.error)}
+        {...apiErrorState(query.error)}
         onRetry={() => query.refetch()}
       />
     );
   }
 
-  const rows = query.data?.rows ?? [];
+  const rows = impactRows(query.data?.rows ?? []);
   if (rows.length === 0) {
+    if (unpriced) {
+      return (
+        <EmptyState
+          title="No feature is priced yet"
+          detail="Value at risk multiplies blocked records by a value per record. Give each SAP feature a value under Admin, Settings."
+          action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
+        />
+      );
+    }
     return (
       <EmptyState
         title="No impact results yet"
@@ -174,7 +196,7 @@ function ImpactPanel({
       />
     );
   }
-  return <DataTable columns={impactColumns} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
+  return <DataTable columns={impactColumns(currency)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
 }
 
 export default function ImpactPage() {
@@ -190,11 +212,14 @@ export default function ImpactPage() {
     queryFn: () => getProvenCost({ version_id: run }),
   });
 
-  const runLabel = useRunLabel(impactQuery.data?.version_id);
-  const rows = impactQuery.data?.rows ?? [];
+  // The cost model says whether any feature is priced; without pricing, zero value at risk is expected, not a finding.
+  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
+  const unpriced = !!costModel.data && Object.keys(costModel.data.features ?? {}).length === 0;
+
+  const rows = impactRows(impactQuery.data?.rows ?? []);
   const top = [...rows].sort((x, y) => y.value_at_risk - x.value_at_risk)[0];
-  const currency = provenCostQuery.data?.currency;
-  const byFeature = rows.map((r) => ({ x: labelOf(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
+  const currency = provenCostQuery.data?.currency ?? costModel.data?.currency;
+  const byFeature = rows.filter((r) => r.value_at_risk > 0).map((r) => ({ x: labelOf(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
 
   // Each card follows its own query, so proven cost shows while a large impact query is still running.
   const state: "loading" | undefined = dayOne.status === "loading" ? "loading" : undefined;
@@ -202,8 +227,8 @@ export default function ImpactPage() {
   return (
     <InsightFrame
       title="Value at risk"
-      meta={runLabel}
-      actions={<InsightActions run={run} />}
+      scope
+      run={run}
       state={state}
       skeleton={
         <>
@@ -215,17 +240,21 @@ export default function ImpactPage() {
       insight={impactQuery.isError ? undefined : {
         loading: impactQuery.isLoading,
         situation: {
-          sentence: top ? `${formatMoney(top.value_at_risk, currency)} at risk in ${labelOf(top.feature)}, the largest of ${rows.length} blocked features` : "No feature carries value at risk",
-          tone: rows.length ? "at-risk" : "go",
+          sentence: top && top.value_at_risk > 0
+            ? `${formatMoney(top.value_at_risk, currency)} at risk in ${labelOf(top.feature)}, the largest of ${plural(rows.length, "blocked feature")}`
+            : rows.length ? `${plural(rows.length, "feature is", "features are")} blocked, but none is priced yet` : "No feature carries value at risk",
+          tone: top && top.value_at_risk > 0 ? "at-risk" : rows.length ? "at-risk" : "go",
         },
-        changed: { sentence: provenCostQuery.data ? `${provenCostQuery.data.rows.length} proven cost metrics found` : "—" },
+        changed: { sentence: provenCostQuery.data ? `${plural(provenCostQuery.data.rows.length, "proven cost metric")} found` : "—" },
         why: { sentence: "Value at risk is the blocked record count times the value per record" },
-        next: top
+        next: unpriced
+          ? { sentence: "Price the SAP features to see value at risk", action: { label: "Open settings", href: "/admin/settings" } }
+          : top
           ? { sentence: `Fix the rules behind ${labelOf(top.feature)}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run, s4: "yes" }) } }
           : { sentence: "Run an analysis", action: { label: "Open runs", href: "/runs" } },
       }}
     >
-      {rows.length > 0 && (
+      {byFeature.length > 0 && (
         <Card title="Cost by feature">
           <div role="img" aria-label={chartSummary(byFeature, "Value at risk by feature")}><Pareto data={byFeature} /></div>
         </Card>
@@ -234,7 +263,7 @@ export default function ImpactPage() {
         <ProvenCostPanel query={provenCostQuery} />
       </Card>
       <Card title="Features at risk">
-        <ImpactPanel query={impactQuery} dayOne={dayOne} />
+        <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} />
       </Card>
     </InsightFrame>
   );

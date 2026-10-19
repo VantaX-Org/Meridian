@@ -8,17 +8,11 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import {
-  Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip,
-  DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone, type HeatmapCell,
-  entityTabs, NextActions,
-  PageHeader,
-} from "@/design";
+import { Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip, DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type HeatmapCell, entityTabs, NextActions, PageHeader, Status, asyncStateOf } from "@/design";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { isListFailure } from "@/lib/error";
 import { exportFindings, getFindings, getFindingsAggregate, getScoreHistory, type FindingsAggregate } from "@/lib/api/findings";
 import { errorText } from "@/lib/api/remediation";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
@@ -29,23 +23,17 @@ import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/a
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, labelOf, runAxisLabels } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
-import { baselineRunId, previousRunId } from "@/lib/runs";
+import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
+import { latestFinishedRun, lineageChoices } from "@/lib/run-scope";
+import { RunScope } from "@/components/run-scope";
 import type { Finding, Version } from "@/types/api";
+import { clsx } from "clsx";
 
-const STATUS_TONE: Record<string, PillTone> = {
-  failed: "no-go",
-  agents_failed: "no-go",
-  complete: "go",
-  agents_complete: "go",
-  ai_enriched: "go",
-};
 
-const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk";
 
-const READINESS_TONE: Record<string, PillTone> = { pass: "go", warn: "at-risk", fail: "no-go" };
 
 const SEVERITY_OPTIONS = [
   { value: "", label: "All severities" },
@@ -62,7 +50,7 @@ const stepColumns: ColumnDef<RunStep>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => <Pill tone={statusTone(row.original.status)}>{labelOf(row.original.status)}</Pill>,
+    cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} />,
   },
   { accessorKey: "started_at", header: "Started", cell: ({ row }) => formatDate(row.original.started_at, "datetime") },
   {
@@ -80,7 +68,6 @@ const stepColumns: ColumnDef<RunStep>[] = [
 
 type History = UseQueryResult<Awaited<ReturnType<typeof getScoreHistory>>>;
 const FINDINGS_PAGE = 100;
-const sectionTitle = { fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" } as const;
 
 function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; history: History; onOpenSteps: () => void }) {
   const { can } = useRole();
@@ -106,7 +93,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
       id: "readiness",
       header: "Readiness",
       cell: ({ row }) =>
-        row.original.readiness ? <Pill tone={READINESS_TONE[row.original.readiness] ?? "neutral"}>{labelOf(row.original.readiness)}</Pill> : "—",
+        row.original.readiness ? <Status kind="verdict" value={row.original.readiness} /> : "—",
     },
     {
       accessorKey: "failing_checks",
@@ -140,7 +127,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
           rowHref={(o) => `/objects/${o.module}?run=${versionId}`}
         />
       }
-      state={objects.isLoading ? "loading" : isListFailure(objects) ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(objects, () => rows.length === 0, true)}
       emptyProps={{ title: "No objects scored", detail: "This run produced no object scores.", action: <Button onClick={onOpenSteps}>Open steps</Button> }}
       errorProps={{ message: errorText(objects.error), onRetry: () => objects.refetch() }}
     />
@@ -148,8 +135,12 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
 }
 
 function SummaryTab({
-  versionId, aggregate, history, systemId, versionLoading,
-}: { versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string; versionLoading: boolean }) {
+  versionId, aggregate, history, systemId, versionLoading, lineage,
+}: {
+  versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string; versionLoading: boolean;
+  /** Scored runs of this run's lineage (uploads of the same objects), used for the composite line when there is no system history. */
+  lineage: Version[];
+}) {
   const router = useRouter();
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
 
@@ -194,11 +185,13 @@ function SummaryTab({
     dimension,
   }));
 
-  const historyRows = [...(history.data?.history ?? [])].reverse();
-  const points = historyRows.flatMap((h) => {
-    const y = h.at_the_time.composite;
-    return y == null ? [] : [{ x: formatDate(h.run_at, "date"), y, runId: h.version_id }];
-  });
+  // The line is keyed by run id with the date as the tick (date and time when two runs share a day): a system's
+  // score history, or for an upload the scored runs of the same objects.
+  const historyRows = systemId != null
+    ? [...(history.data?.history ?? [])].reverse().map((h) => ({ id: h.version_id, run_at: h.run_at, composite: h.at_the_time.composite }))
+    : [...lineage].sort((a, b) => (a.run_at < b.run_at ? -1 : 1)).map((v) => ({ id: v.id, run_at: v.run_at, composite: overallDqs(v) }));
+  const ticks = runAxisLabels(historyRows);
+  const points = historyRows.flatMap((h) => (h.composite == null ? [] : [{ x: h.id, label: ticks.get(h.id), y: Math.round(h.composite * 10) / 10, runId: h.id }]));
   // Mark this run, and any run whose composite fell 5 points or more from the one before it.
   const annotations = points.flatMap((p, i): { x: string; label: string; kind: "event" | "change" }[] => {
     if (p.runId === versionId) return [{ x: p.x, label: "This run", kind: "event" as const }];
@@ -207,13 +200,14 @@ function SummaryTab({
 
   const severities = ["critical", "high", "medium", "low"] as const;
   const moduleByLabel = new Map(a.by_module.map((m) => [formatModuleName(m.module), m.module]));
+  // Each cell prints its finding count; the tint repeats the severity so colour is never the only signal.
   const heatCells: HeatmapCell[] = a.by_module.flatMap((m) =>
-    severities.map((sev): HeatmapCell => ({
-      row: formatModuleName(m.module),
-      col: labelOf(sev),
-      value: m[sev] === 0 ? "go" : sev === "critical" ? "no-go" : "at-risk",
-    })),
+    severities.map((sev): HeatmapCell => ({ row: formatModuleName(m.module), col: labelOf(sev), value: m[sev] })),
   );
+  const heatTone = (cell: HeatmapCell) => {
+    const sev = severities.find((s) => labelOf(s) === cell.col);
+    return cell.value === 0 ? "go" as const : sev === "critical" || sev === "high" ? "no-go" as const : "at-risk" as const;
+  };
 
   const presentModules = new Set(a.by_module.map((m) => m.module));
   const next = (prescriptive.data?.actions ?? []).filter((act) => !act.module || presentModules.has(act.module)).slice(0, 5).map((act) => ({
@@ -247,31 +241,33 @@ function SummaryTab({
             rows={a.by_module.map((m) => formatModuleName(m.module))}
             cols={severities.map(labelOf)}
             cells={heatCells}
+            tone={heatTone}
+            cellSize={40}
             onPointClick={(c) => router.push(`/runs/${versionId}?tab=findings&module=${moduleByLabel.get(c.row) ?? ""}&severity=${c.col.toLowerCase()}`)}
           />
         </Card>
       </div>
-      <section className="flex flex-col gap-2" data-testid="next-actions-slot" style={{ minHeight: prescriptive.isLoading ? 96 + 28 : undefined }}>
-        <h2 className="font-semibold" style={sectionTitle}>Next actions</h2>
+      <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
+        <h2 className="font-semibold m-text-h">Next actions</h2>
         {prescriptive.isLoading ? (
           <Skeleton height={96} />
         ) : next.length > 0 ? (
           <NextActions actions={next} />
         ) : (
-          <p className="text-sm" style={{ color: "var(--m-ink-muted)" }}>No next actions for this run</p>
+          <p className="text-sm m-ink-3">No next actions for this run</p>
         )}
       </section>
       <Card title="Composite over runs">
         {versionLoading || (systemId != null && history.isLoading) ? (
           <Skeleton height={240} />
-        ) : systemId == null || historyRows.length <= 1 ? (
+        ) : points.length <= 1 ? (
           <EmptyState
             title="Only one run so far"
-            detail="Scores over time appear after a second run."
-            action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Run analysis</Link>} />}
+            detail={systemId ? "Scores over time appear after a second run of this system." : "Scores over time appear after a second upload of the same objects."}
+            action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />}
           />
         ) : (
-          <Line data={points} annotations={annotations} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
+          <Line data={points} label="Composite over runs" annotations={annotations} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
         )}
       </Card>
     </div>
@@ -298,8 +294,7 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
       type="button"
       onClick={onRemove}
       aria-label={`Remove filter ${label}`}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors"
-      style={{ background: "var(--m-accent-soft)", color: "var(--m-accent)", fontSize: "var(--m-text-meta)" }}
+      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors [background:var(--m-accent-soft)]! m-ink-accent [font-size:var(--m-text-meta)]!"
     >
       {label}
       <span aria-hidden>×</span>
@@ -402,14 +397,14 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
       table={
         <div className="flex flex-col gap-2">
           <DataTable columns={columns} data={rows} getRowId={(f) => f.id} onRowClick={(f) => openFinding(f.id)} dataTour="finding-rows" />
-          <div style={{ minHeight: "var(--m-control-h)" }}>
+          <div className="[min-height:var(--m-control-h)]">
             {total > FINDINGS_PAGE ? (
               <Pager page={page} pageCount={Math.ceil(total / FINDINGS_PAGE)} onPageChange={setPage} pageSize={FINDINGS_PAGE} total={total} />
             ) : null}
           </div>
         </div>
       }
-      state={findings.isLoading ? "loading" : isListFailure(findings) ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={asyncStateOf(findings, () => rows.length === 0, true)}
       emptyProps={
         filtered
           ? { title: "No findings match", detail: "Try removing a filter.", action: <Button onClick={clearFilters}>Clear filters</Button> }
@@ -524,6 +519,10 @@ export default function RunDetailPage() {
   const v = version.data;
   const runs = scope.data?.versions ?? [];
   const prevId = v ? previousRunId(v, runs) : null;
+  // The other runs of this run's lineage, to switch to from the header; "Back to latest" when this is an older one.
+  const choices = v ? lineageChoices(v, runs) : [];
+  const latestOfLineage = latestFinishedRun(choices);
+  const runScope = { run: v, choices, latestId: latestOfLineage?.id, pinned: !!v && !!latestOfLineage && latestOfLineage.id !== v.id };
   const baseId = v ? baselineRunId(v, runs) : null;
   const stepRows = steps.data?.steps ?? [];
   const systemName = systems.data?.find((s) => s.id === systemId)?.name;
@@ -558,10 +557,17 @@ export default function RunDetailPage() {
   const header = v ? (
     <PageHeader
       title={v.label ?? formatDate(v.run_at, "datetime")}
-      meta={["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}
+      meta={
+        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>{["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}</span>
+          {(choices.length > 1 || runScope.pinned) && (
+            <RunScope scope={runScope} picker hrefFor={(id) => runPageHref(id ?? latestOfLineage?.id ?? versionId)} />
+          )}
+        </span>
+      }
       status={
         <>
-          <Pill tone={statusTone(v.status)}>{labelOf(v.status)}</Pill>
+          <Status kind="lifecycle" value={v.status} />
           {isBaseline ? <Pill>Baseline</Pill> : null}
         </>
       }
@@ -641,7 +647,7 @@ export default function RunDetailPage() {
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && isFinished(r)) : []} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {
@@ -656,14 +662,14 @@ export default function RunDetailPage() {
                     getRowId={(s) => String(s.step_number)}
                     renderDrawer={(s) => (
                       <div className="flex flex-col gap-2 p-4">
-                        <h2 className="font-semibold" style={sectionTitle}>{s.step_name}</h2>
-                        <Pill tone={statusTone(s.status)}>{labelOf(s.status)}</Pill>
-                        <p style={{ color: "var(--m-ink-2)" }}>{s.error_detail ?? "No error recorded"}</p>
+                        <h2 className="font-semibold m-text-h">{s.step_name}</h2>
+                        <Status kind="lifecycle" value={s.status} />
+                        <p className="m-ink-2">{s.error_detail ?? "No error recorded"}</p>
                       </div>
                     )}
                   />
                 }
-                state={steps.isLoading ? "loading" : isListFailure(steps) ? "error" : stepRows.length === 0 ? "empty" : undefined}
+                state={asyncStateOf(steps, () => stepRows.length === 0, true)}
                 emptyProps={{
                   title: "No steps recorded",
                   detail: "This run has no step history.",

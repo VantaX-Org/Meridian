@@ -6,7 +6,7 @@ import { Button, Card, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/
 import { useRole } from "@/hooks/use-role";
 import { getDoctor, type DoctorItem } from "@/lib/api/admin-doctor";
 import { getLicenceManifest } from "@/lib/api/licence";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { formatDate, labelOf, humanizeIds } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { AlertChannelsPanel } from "./alert-channels-panel";
@@ -41,7 +41,7 @@ export default function AdminSettingsPage() {
   if (licence.isError) {
     return (
       <div className="flex flex-col gap-6 p-6">
-        <ErrorState message={apiErrorMessage(licence.error)} onRetry={() => licence.refetch()} />
+        <ErrorState {...apiErrorState(licence.error)} onRetry={() => licence.refetch()} />
       </div>
     );
   }
@@ -58,10 +58,10 @@ export default function AdminSettingsPage() {
 
       <Card title="Deployment">
         <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
-          <dt style={{ color: "var(--m-ink-3)" }}>Tenant</dt><dd>{l?.company_name ?? "Not set"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Licence tier</dt><dd>{l?.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Licence status</dt><dd>{l ? labelOf(l.status) : "Loading"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Language model</dt><dd>{l?.llm_config ? `${l.llm_config.model}, tier ${l.llm_config.tier}` : "Not configured"}</dd>
+          <dt className="m-ink-3">Tenant</dt><dd>{l?.company_name ?? "Not set"}</dd>
+          <dt className="m-ink-3">Licence tier</dt><dd>{l?.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
+          <dt className="m-ink-3">Licence status</dt><dd>{l ? labelOf(l.status) : "Loading"}</dd>
+          <dt className="m-ink-3">Language model</dt><dd>{l?.llm_config ? `${l.llm_config.model}, tier ${l.llm_config.tier}` : "Not configured"}</dd>
         </dl>
       </Card>
 
@@ -69,7 +69,7 @@ export default function AdminSettingsPage() {
       {can("manage_settings") ? <RetentionPanel /> : null}
 
       {can("manage_system") && doctor.isError ? (
-        <ErrorState message={apiErrorMessage(doctor.error)} onRetry={() => doctor.refetch()} />
+        <ErrorState {...apiErrorState(doctor.error)} onRetry={() => doctor.refetch()} />
       ) : null}
       {can("manage_system") && doctor.data ? (
         <Card title="Health checks" meta={`Last checked ${formatDate(doctor.data.last_checked, "datetime")}`}>
@@ -88,9 +88,9 @@ export default function AdminSettingsPage() {
             {doctor.data.items.map((i) => (
               <li key={i.id} className="flex items-center gap-3">
                 <Pill tone={DOCTOR_TONE[i.status]}>{doctorLabel(i.label)}</Pill>
-                {i.detail ? <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{doctorDetail(i.detail)}</span> : null}
+                {i.detail ? <span className="m-text-meta m-ink-3">{doctorDetail(i.detail)}</span> : null}
                 {i.status !== "ok" && FIX_HREF[i.id] ? (
-                  <Link href={FIX_HREF[i.id]} className="m-text-meta underline" style={{ color: "var(--m-accent)" }}>Fix</Link>
+                  <Link href={FIX_HREF[i.id]} className="m-text-meta underline m-ink-accent">Fix</Link>
                 ) : null}
               </li>
             ))}

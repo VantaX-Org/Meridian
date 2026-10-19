@@ -1,31 +1,59 @@
 "use client";
 
-// Page frame for every insight page: header (title, run label, actions), the four-sentence
-// InsightHeader, then the cards.
+// Page frame for every insight page: header (title, run label, the shared action bar and the view
+// tabs), the four-sentence InsightHeader, then the cards. The spine is owned here so no page can
+// drop a piece of it.
 import type { ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, EmptyState, PageHeader, ErrorState, InsightHeader, Skeleton, type EmptyStateGhost, type PillTone, type InsightHeaderProps } from "@/design";
-import { getVersions } from "@/lib/api/versions";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Async, Card, PageHeader, InsightHeader, Select, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
+import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
+import { useRunListWith } from "@/hooks/use-run-list";
+import { RunScope } from "@/components/run-scope";
+import { stateScopeLine } from "@/lib/current-state";
+import { hrefWithRun, runChoiceLabels } from "@/lib/run-scope";
 import { formatDate } from "@/lib/format";
-import { queryKeys } from "@/lib/query-keys";
+import { InsightActions } from "./InsightActions";
 import { InsightTabs } from "./InsightViews";
+import { CURRENT_STATE_VIEWS, insightRunChoices } from "./scopeMode";
+import { useCurrentState } from "./useCurrentState";
+import { useInsightScope } from "./useInsightScope";
 
-/** Human label for a run id from the run list the shell already loads, never the raw id. */
+export { formatMoney } from "@/lib/format";
+
+/** Human label for a run id from the run list the shell already loads (or the run read by id), never the raw id. */
 export function useRunLabel(versionId?: string | null): string | undefined {
-  const { data } = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
-  const v = data?.versions.find((x) => x.id === versionId);
+  const { run: v } = useRunListWith(versionId);
   return v ? v.label || formatDate(v.run_at, "datetime") : undefined;
 }
 
 export interface InsightFrameProps {
   title: string;
-  /** Run label or one line of context. */
+  /** One line of context; with `scope` it follows the "As of" run line. */
   meta?: ReactNode;
+  /**
+   * The page takes its scope from `useInsightScope()`. In "run" mode its numbers come from the scoped run
+   * (`useInsightScope().run`): the header says "One run", names it ("As of ..."), offers the other runs of its
+   * lineage and the latest run of every other one, and "Back to latest" while `?run=` pins an older one. In
+   * "current" mode (a view in `CURRENT_STATE_VIEWS` without `?run=` or `?module=`) the header says "Current state
+   * of N objects, latest run <date>" and offers one run instead.
+   */
+  scope?: boolean;
+  /**
+   * The whole action slot. Leave it out and the frame renders the standard `InsightActions` bar for
+   * `run` and `module`, with `controls` (page-specific selects or buttons) in front of it.
+   */
   actions?: ReactNode;
+  controls?: ReactNode;
+  run?: string;
+  module?: string;
+  /** Extra export formats added before the failing-records list. */
+  exportOptions?: ExportOption[];
   insight?: InsightHeaderProps;
-  state?: "loading" | "empty" | "error";
+  /** The body's state (`Async`); default "ready". */
+  state?: AsyncState;
   emptyProps?: { title: string; detail?: string; action: ReactNode; ghost?: EmptyStateGhost };
-  errorProps?: { message: string; onRetry?: () => void };
+  errorProps?: AsyncError;
   /** Loading body shaped like the final cards so nothing shifts. */
   skeleton?: ReactNode;
   children?: ReactNode;
@@ -49,35 +77,103 @@ export function CardSkeleton({ height }: { height: number }) {
   );
 }
 
-/** Currency amounts use the code the API sends, in the viewer's locale. */
-export function formatMoney(n: number, currency?: string | null): string {
-  const base = { maximumFractionDigits: 0 };
-  try {
-    return currency
-      ? new Intl.NumberFormat(undefined, { ...base, style: "currency", currency, currencyDisplay: "code" }).format(n)
-      : new Intl.NumberFormat(undefined, base).format(n);
-  } catch {
-    return `${new Intl.NumberFormat(undefined, base).format(n)} ${currency ?? ""}`.trim();
-  }
+/**
+ * The one-run header line: "One run", "As of" the scoped run with a picker of its lineage and of every other
+ * lineage's latest run, "Back to latest" while pinned. On a view that can show the current state, the way back is
+ * "Back to current state" instead.
+ */
+function InsightRunScope() {
+  const { scope, explicit } = useInsightScope();
+  // Both hooks return null outside the App Router (unit tests, static export).
+  const pathname = usePathname() ?? "";
+  const search = useSearchParams();
+  const canShowCurrent = CURRENT_STATE_VIEWS.includes(pathname);
+  if (!scope.run) return null;
+  const choices = insightRunChoices(scope.run, scope.versions);
+  return (
+    <span data-testid="insight-scope" data-scope="run" className="inline-flex flex-wrap items-center gap-2">
+      <span className="font-medium m-ink">One run</span>
+      <RunScope
+        scope={{ run: scope.run, latestId: canShowCurrent ? undefined : scope.latestId, pinned: canShowCurrent ? false : scope.pinned, choices }}
+        picker
+        hrefFor={(id) => hrefWithRun(pathname, search, id)}
+      />
+      {canShowCurrent && explicit && (
+        <Link href={hrefWithRun(pathname, search, null)} className="m-ink-accent underline-offset-2 hover:underline">Back to current state</Link>
+      )}
+    </span>
+  );
 }
 
-export function InsightFrame({ title, meta, actions, insight, state, emptyProps, errorProps, skeleton, children }: InsightFrameProps) {
-  let body: ReactNode = children;
-  if (state === "loading") {
-    body = (
-      <div aria-busy="true" className="flex flex-col gap-4">
-        {skeleton ?? <CardSkeleton height={240} />}
-      </div>
-    );
-  } else if (state === "empty" && emptyProps) {
-    body = <EmptyState title={emptyProps.title} detail={emptyProps.detail} action={emptyProps.action} ghost={emptyProps.ghost ?? "chart"} />;
-  } else if (state === "error") {
-    body = <ErrorState message={errorProps?.message ?? "Something went wrong"} onRetry={errorProps?.onRetry} />;
-  }
+/** The current-state header line: what the numbers cover, and a picker that opens one run instead. */
+function InsightCurrentScope() {
+  const { objects, runs, newest } = useCurrentState();
+  const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const search = useSearchParams();
+  if (!newest) return null;
+  const labels = runChoiceLabels(runs);
   return (
-    <div className="mx-auto flex w-full flex-col" style={{ gap: "var(--m-section-gap)", padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
-      <PageHeader title={title} meta={meta} actions={actions} tabs={<InsightTabs />} />
-      {insight && state !== "empty" && state !== "error" && (
+    <span data-testid="insight-scope" data-scope="current" className="inline-flex flex-wrap items-center gap-2">
+      <span data-testid="run-scope">{stateScopeLine(objects.length, newest.run_at)}</span>
+      <Select
+        label="Showing"
+        value="current"
+        onValueChange={(id) => {
+          if (id && id !== "current") router.replace(hrefWithRun(pathname, search, id), { scroll: false });
+        }}
+        options={[{ value: "current", label: "Current state" }, ...runs.map((r) => ({ value: r.id, label: labels.get(r.id) ?? r.id }))]}
+        className="m-input inline-flex max-w-[320px] items-center justify-between gap-2"
+      />
+    </span>
+  );
+}
+
+/** The scope line of the header: the current state across objects, or one run. */
+function InsightScopeLine() {
+  const { mode } = useInsightScope();
+  return mode === "current" ? <InsightCurrentScope /> : <InsightRunScope />;
+}
+
+export { SLOW_LOAD_MESSAGE } from "@/design";
+
+export function InsightFrame({
+  title, meta, scope, actions, controls, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
+}: InsightFrameProps) {
+  // A skeleton that never resolves becomes an error with Retry after the shared timeout (inside Async); the
+  // header gives way with it.
+  const stuck = useLoadingTimeout(state === "loading");
+  // Empty without empty copy keeps the children (a page that renders its own empty cards).
+  const body = (
+    <Async
+      state={state === "empty" && !emptyProps ? "ready" : state}
+      skeleton={<div aria-busy="true" className="flex flex-col gap-4">{skeleton ?? <CardSkeleton height={240} />}</div>}
+      empty={emptyProps && { ...emptyProps, ghost: emptyProps.ghost ?? "chart" }}
+      error={errorProps ?? { message: "Something went wrong" }}
+    >
+      {children}
+    </Async>
+  );
+  const actionBar = actions ?? (
+    <div className="flex flex-wrap items-center gap-2">
+      {controls}
+      <InsightActions run={run} module={module} options={exportOptions} />
+    </div>
+  );
+  return (
+    <div className="mx-auto flex w-full flex-col [gap:var(--m-section-gap)] [padding:var(--m-page-pad)] [max-width:var(--m-page-max)]">
+      <PageHeader
+        title={title}
+        meta={scope ? (
+          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+            <InsightScopeLine />
+            {meta != null && meta !== "" && <span>{meta}</span>}
+          </span>
+        ) : meta}
+        actions={actionBar}
+        tabs={<InsightTabs />}
+      />
+      {insight && state !== "empty" && state !== "error" && !(state === "loading" && stuck) && (
         <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />
       )}
       {body}

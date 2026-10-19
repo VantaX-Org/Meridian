@@ -32,7 +32,7 @@ export function Card({
       }}
     >
       {hasHeader && (
-        <header className="flex items-center gap-3 mb-3">
+        <header className="flex items-center gap-3 mb-4">
           {title && <h2 className="m-text-h flex-1 font-semibold" style={{ color: "var(--m-ink)" }}>{title}</h2>}
           {meta && <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{meta}</span>}
           {actions}

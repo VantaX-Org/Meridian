@@ -6,10 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, Skeleton, Stat, toneOfTier, type ChartPoint,
-  type ExportOption, type HeatmapCell,
-} from "@/design";
+import { Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, Skeleton, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getCleansing, getHeatmap, getOverview, getRootCauses, getRuleRanking, getTrends, l1Label, type RuleRow,
@@ -17,25 +14,36 @@ import {
 import { getS4Readiness } from "@/lib/api/migration";
 import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
+import { scopeTrendRuns, trendPoints } from "./_components/trendLineage";
 import { Section } from "./_components/Section";
 import { InsightActions } from "./_components/InsightActions";
 import { useFindingOpener } from "./_components/FindingOpener";
 import { ruleColumns } from "./_components/RuleColumns";
 import { useInsightScope, withScope } from "./_components/useInsightScope";
+import { CurrentOverview } from "./_components/CurrentOverview";
 
 const VERDICT_SENTENCE: Record<string, string> = { go: "Ready to load", at_risk: "At risk", no_go: "Not ready" };
 
 
 const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));
 
+/**
+ * Without `?run=` or `?module=` the overview is the current state across objects (`CurrentOverview`); a `?run=`
+ * deep link, the header's run picker or an object filter shows one run, and the header says so.
+ */
 export default function InsightsOverviewPage() {
+  const { mode } = useInsightScope();
+  return mode === "current" ? <CurrentOverview /> : <RunOverview />;
+}
+
+function RunOverview() {
   const router = useRouter();
   const dayOne = useDayOne();
-  const { run, module, versions, resolving } = useInsightScope();
+  const { run, module, runs, versions, resolving } = useInsightScope();
   const finding = useFindingOpener(run);
   const on = !!run;
   const scope = { version_id: run, module };
@@ -49,12 +57,15 @@ export default function InsightsOverviewPage() {
   const s4 = useQuery({ queryKey: queryKeys.insights("s4-readiness", run), queryFn: () => getS4Readiness(run ?? ""), enabled: on });
 
   const o = ov.data;
-  const trendRuns = useMemo(() => trends.data?.runs ?? [], [trends.data]);
-  const trendX = (r: { label: string | null; run_at: string | null; version_id: string }) => r.label || (r.run_at ? formatDate(r.run_at) : r.version_id.slice(0, 8));
-  const trendPoints = useMemo<ChartPoint[]>(() => trendRuns.filter((r) => r.composite !== null).map((r) => ({ x: trendX(r), y: r.composite ?? 0 })), [trendRuns]);
-  const xOf = new Map(trendRuns.map((r) => [r.version_id, trendX(r)]));
-  const annotations = (trends.data?.annotations ?? []).flatMap((a) => (xOf.has(a.version_id) ? [{ x: xOf.get(a.version_id) as string, label: a.label, kind: a.kind }] : []));
+  // The trend follows this run's lineage only (its system, or uploads of the same objects), keyed by run id with
+  // the date as the tick, so a user-supplied run label never becomes an axis label.
+  const current = runs.find((r) => r.id === run);
+  const trendRuns = useMemo(() => scopeTrendRuns(trends.data?.runs ?? [], current, run), [trends.data, current, run]);
+  const trendLine = useMemo<ChartPoint[]>(() => trendPoints(trendRuns, (r) => r.composite), [trendRuns]);
+  const inTrend = new Set(trendRuns.map((r) => r.version_id));
+  const annotations = (trends.data?.annotations ?? []).flatMap((a) => (inTrend.has(a.version_id) ? [{ x: a.version_id, label: a.label, kind: a.kind }] : []));
   const thisRun = trendRuns.find((r) => r.version_id === run) ?? trendRuns[trendRuns.length - 1];
+  const trendNote = trendLine.length > 1 ? trendSentence(trendLine[0].y, trendLine[trendLine.length - 1].y, trendLine.length) : undefined;
   const dims = Object.entries(thisRun?.dimensions ?? {}).map(([d, y]) => ({ x: dimLabel(d), y, dimension: d }));
 
   const areas = s4.data?.areas ?? [];
@@ -87,57 +98,47 @@ export default function InsightsOverviewPage() {
   const loading = ov.isLoading;
   const fallback = (s: string) => (loading ? "Loading" : s);
   const nl = o?.narrative ?? [];
-  const runLabel = o?.run_label || (o?.run_at ? formatDate(o.run_at, "datetime") : undefined);
 
   return (
     <InsightFrame
       title="Insights"
-      meta={
-        <span className="inline-flex flex-wrap items-center gap-2">
-          {runLabel ? `As of ${runLabel}` : "Latest run"}
-          {module ? <Pill tone="info">{formatModuleName(module)}</Pill> : <span>Scope: all objects</span>}
-        </span>
-      }
+      scope
+      meta={module ? <Pill tone="info">{formatModuleName(module)}</Pill> : undefined}
       actions={<InsightActions run={run} module={module} options={exportOptions} />}
       insight={{
         hero: true,
         loading,
         lead: (
-          <div className="grid items-end gap-x-8 gap-y-4 sm:grid-cols-[auto_1fr]">
-            <div style={{ width: 200 }}>
-              <Stat
-                hero
-                label="Data quality score"
-                help="dqs"
+          <div className="m-hero-lead">
+            <Score
+                size="hero"
                 loading={loading}
-                value={o?.dqs.composite ?? "—"}
-                decimals={1}
+                value={o?.dqs.composite}
                 versionId={run}
                 href={withScope("/insights/trends", { run })}
                 tone={o?.dqs.tier === "go" ? "go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "no_go" ? "no-go" : undefined}
-                hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ?? "critical failures"}` : undefined}
-                delta={o?.dqs.delta != null ? <Delta hero value={o.dqs.delta} /> : undefined}
+                hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
+                delta={o?.dqs.delta != null ? <Delta value={o.dqs.delta} /> : undefined}
               />
-            </div>
             {loading && !o ? (
-              <div aria-hidden className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "48ch" }}>
+              <div aria-hidden className="m-hero-verdict">
                 <Skeleton hero width="70%" height={28} />
                 <Skeleton hero width="50%" height={14} />
               </div>
             ) : (
-            <div className="flex min-w-0 flex-col gap-1" style={{ maxWidth: "48ch" }}>
-              <span className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)", letterSpacing: "var(--m-tracking-title)" }}>
+            <div className="m-hero-verdict" data-testid="hero-verdict">
+              <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : "Not scored yet"}
               </span>
-              <span className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>
-                {o ? `${o.blockers.count} blocking ${o.blockers.count === 1 ? "gap" : "gaps"} across ${o.blockers.waves} ${o.blockers.waves === 1 ? "wave" : "waves"}` : " "}
+              <span className="m-text-body m-ink-2">
+                {o ? `${plural(o.blockers.count, "blocking gap")}${o.blockers.waves ? ` across ${plural(o.blockers.waves, "wave")}` : ""}` : " "}
               </span>
             </div>
             )}
           </div>
         ),
         stats: [
-          { label: "Blockers", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? `${o.blockers.waves} ${o.blockers.waves === 1 ? "wave" : "waves"}` : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
+          { label: "Blocking gaps", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
           { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ source: "rule", confidence: "high" }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
             label: "Value at risk, worst L1",
@@ -147,8 +148,8 @@ export default function InsightsOverviewPage() {
           },
         ],
         situation: { sentence: o ? `DQS ${o.dqs.composite ?? "not scored"}${o.dqs.tier ? `, ${labelOf(o.dqs.tier).toLowerCase()}` : ""}` : fallback("—"), tone: o?.dqs.tier === "no_go" ? "no-go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "go" ? "go" : undefined, href: withScope("/insights/trends", { run }) },
-        changed: { sentence: o?.dqs.delta != null ? `${o.dqs.delta > 0 ? "Up" : o.dqs.delta < 0 ? "Down" : "Level"} ${Math.abs(Math.round(o.dqs.delta * 10) / 10)} since the last run` : fallback("No earlier run") },
-        why: { sentence: o ? `${o.blockers.count} blocking ${o.blockers.count === 1 ? "gap" : "gaps"}` : fallback("—"), href: withScope("/insights/readiness", { run }) },
+        changed: { sentence: o?.dqs.delta != null ? deltaSentence(o.dqs.delta) : fallback("No earlier run") },
+        why: { sentence: o ? plural(o.blockers.count, "blocking gap") : fallback("—"), href: withScope("/insights/readiness", { run }) },
         next: { sentence: "Fix the highest-impact rules first", action: { label: "Open failing rules", href: withScope("/insights/rules", { run, module }) } },
       }}
       state={state}
@@ -183,25 +184,25 @@ export default function InsightsOverviewPage() {
         <div className="@5xl:col-span-6">
           <Section title="Root causes" height={264} query={causes} meta={causes.data ? `${Math.min(5, causes.data.clusters.length)} of ${causes.data.clusters.length}` : undefined}>
             {(causes.data?.clusters.length ?? 0) === 0 ? (
-              <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No failing fields in this run.</p>
+              <p className="m-text-body m-ink-3">No failing fields in this run.</p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {[...(causes.data?.clusters ?? [])].sort((a, b) => b.impact - a.impact).slice(0, 5).map((c) => {
                   const where = c.table && c.field ? `${c.table}.${c.field}` : null;
                   return (
-                    <li key={c.key} className="m-card-sm flex flex-col gap-1" style={{ background: "var(--m-surface)", borderRadius: "var(--m-radius-sheet)", padding: "var(--m-space-3)" }}>
+                    <li key={c.key} className="m-card-sm flex flex-col gap-1 [background:var(--m-surface)] [border-radius:var(--m-radius-sheet)] [padding:var(--m-space-3)]">
                       <span className="font-medium">
                         {where ? `${where} fails on ${c.records.toLocaleString()}${c.records_estimated ? " (estimated)" : ""} records` : `${formatModuleName(c.module)}: ${c.records.toLocaleString()} records without a known field`}
                       </span>
-                      <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                      <span className="m-text-meta m-ink-3">
                         {`${c.rules.length} ${c.rules.length === 1 ? "rule" : "rules"}, ${labelOf(c.dimension).toLowerCase()}, ${labelOf(c.severity).toLowerCase()}`}
                       </span>
-                      <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                      <span className="m-text-meta m-ink-3">
                         {`Impact ${c.impact.toLocaleString()}${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
                       </span>
                       <span className="flex gap-3 m-text-body">
                         <Link href={withScope("/insights/rules", { run, module: c.module, field: c.field ?? undefined })} className="underline-offset-2 hover:underline">Open rules</Link>
-                        <Link href={withScope(`/objects/${c.module}/records`, { run, check_id: c.rules[0] })} className="underline-offset-2 hover:underline">Open records</Link>
+                        <Link href={withScope(`/objects/${c.module}`, { tab: "records", run, check: c.rules[0] })} className="underline-offset-2 hover:underline">Open records</Link>
                       </span>
                     </li>
                   );
@@ -221,15 +222,15 @@ export default function InsightsOverviewPage() {
         </div>
 
         <div className="@5xl:col-span-8">
-          <Section title="Trend" height={240} query={trends}>
-            {trendPoints.length < 2 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>A trend needs at least two scored runs.</p> : (
-              <Line data={trendPoints} label="Composite score per run" annotations={annotations} />
+          <Section title="Trend" height={240} query={trends} meta={trendNote}>
+            {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs at least two scored runs of this object.</p> : (
+              <Line data={trendLine} label="Composite score per run" annotations={annotations} />
             )}
           </Section>
         </div>
         <div className="@5xl:col-span-4">
           <Section title="Dimensions" height={280} query={trends}>
-            {dims.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No dimension scores in this run.</p>
+            {dims.length === 0 ? <p className="m-text-body m-ink-3">No dimension scores in this run.</p>
               : dims.length < 3 ? <Bar data={dims} label="Dimension scores, this run" height={160} />
               : <Radar data={dims} label="Dimension scores, this run" />}
           </Section>
@@ -237,7 +238,7 @@ export default function InsightsOverviewPage() {
 
         <div className="@5xl:col-span-12">
           <Section title="Object heatmap" height={320} query={heat}>
-            {heatRows.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No object scores in this run.</p> : (
+            {heatRows.length === 0 ? <p className="m-text-body m-ink-3">No object scores in this run.</p> : (
               <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
                 <Heatmap
                   rows={heatRows.map((r) => formatModuleName(r.module))}
@@ -262,7 +263,7 @@ export default function InsightsOverviewPage() {
 
         <div className="@5xl:col-span-6">
           <Section title="S/4 migration" height={240} query={s4} meta={s4.data ? `${blocking.toLocaleString()} blocking, ${warning.toLocaleString()} warning` : undefined}>
-            {areas.length === 0 ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No S/4 areas assessed.</p> : (
+            {areas.length === 0 ? <p className="m-text-body m-ink-3">No S/4 areas assessed.</p> : (
               <>
                 <Bar
                   data={areas.filter((a) => a.failing > 0).map((a) => ({ x: a.label, y: a.blocking_failing }))}
@@ -270,7 +271,7 @@ export default function InsightsOverviewPage() {
                   height={200}
                   onPointClick={(p) => router.push(withScope("/insights/readiness", { run, area: areas.find((a) => a.label === p.x)?.area }))}
                 />
-                <p className="mt-2 m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                <p className="mt-2 m-text-body m-ink-2">
                   {`${blocking.toLocaleString()} blocking and ${warning.toLocaleString()} warning failing rules. `}
                   <Link href={withScope("/insights/readiness", { run })} className="underline-offset-2 hover:underline">Open readiness</Link>
                 </p>

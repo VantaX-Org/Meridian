@@ -2745,3 +2745,122 @@ rules:
     fix_map:
       __other__: Archive and delete the company code data (SARA, FI_ACCRECV).
     record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: flagged for deletion, no open items.'
+  - id: AR267
+    field: BSID.WRBTR
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: (`BSID.WRBTR` == 0) & (`BSID.DMBTR` != 0)
+    severity: high
+    dimension: accuracy
+    message: Open customer item has a company-code amount but zero in document currency
+    why_it_matters: The document currency amount is what the invoice actually says; the local amount is that amount
+      translated, so a zero document amount against a non-zero local amount means the translation ran without its
+      source. This is the mirror of AR057 and the blind spot it leaves - the item reconciles in local currency while
+      carrying no original invoice value.
+    rule_authority: sap_hard_constraint
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    sap_impact: Foreign-currency valuation (FAGL_FCV) and the dunning run compute from a missing document amount;
+      the customer statement cannot be reconciled against the item.
+    fix_map:
+      __other__: Check the document currency and rate on the posting date (OB08 / FB03); reverse and re-post the document
+        with the invoice amount in document currency.
+    record_fix_template: Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}
+      - document amount {BSID.WRBTR} is zero but the local amount is {BSID.DMBTR}.
+  - id: AR268
+    field: BSID.WAERS
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: '`BSID.WAERS`.isna() | (`BSID.WAERS` == "")'
+    severity: high
+    dimension: accuracy
+    message: Open customer item has no document currency
+    why_it_matters: Every open item carries the currency of the document it came from; it is what the amounts are
+      denominated in and what revaluation, dunning and the customer statement read. An item with no currency has amounts
+      that cannot be interpreted - they may be read as local currency when they are not.
+    rule_authority: sap_hard_constraint
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    sap_impact: Foreign-currency valuation (FAGL_FCV) skips or misvalues the item; the dunning run cannot decide whether
+      the item needs a currency translation.
+    fix_map:
+      __other__: Read the document in FB03 and set the document currency, or reverse and re-post it.
+    record_fix_template: Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}
+      - no document currency.
+  - id: AR269
+    field: BSID.DMBTR
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: (`BSID.DMBTR` == 0) & (`BSID.WRBTR` == 0)
+    severity: medium
+    dimension: validity
+    message: Open customer item is worth nothing in both local and document currency
+    why_it_matters: A zero-value open item is not a real receivable. It is usually the residue of a partially reversed
+      or copied document, and it stays open forever because clearing it changes no balance. The mirror check exists
+      for vendors as AP206; this is its customer-side counterpart.
+    rule_authority: best_practice
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    sap_impact: Zero-value items inflate the open-item count in FBL5N and the dunning run; they never clear, so they
+      distort ageing and the receivables turnover figures.
+    fix_map:
+      __other__: Inspect the item in FB03. If it is a leftover, clear it against a zero-value clearing document or
+        reverse the original and re-post correctly.
+    record_fix_template: Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}
+      - zero in both document and local currency.
+  - id: AR270
+    field: BSID.BLART
+    check_class: referential_check
+    severity: high
+    dimension: validity
+    message: Open customer item's document type is not a defined FI document type (T003)
+    why_it_matters: BLART decides the number range, which account types a document may post to,
+      and the reversal behaviour. fi_gl checks it on the document header and accounts_payable on
+      the open vendor item; an open customer item carries the same field and had no rule, so a
+      value loaded from outside the system would leave an item whose document type does not
+      exist. FBL5N then cannot resolve its label and the item has no defined reversal path.
+    rule_authority: sap_hard_constraint
+    sap_impact: The item cannot be reversed or cleared through the standard transaction and its
+      document type does not resolve in FBL5N. Programs that branch on BLART fall back to
+      defaults for it.
+    fix_map:
+      __blank__: BLART is mandatory at posting. A blank value means a corrupt item - raise it with
+        functional support rather than editing the secondary index.
+      __other__: Document type '{invalid_value}' is not in T003. Correct it in the source document,
+        or configure it in SPRO > Financial Accounting > Financial Accounting Global Settings >
+        Document > Document Types (OBA7).
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR}
+      item {BSID.BUZEI}: document type ''{actual_value}'' is not in T003.'
+    s4_area: credit_management
+    s4_impact: warning
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+  - id: AR271
+    field: BSID.ZTERM
+    check_class: referential_check
+    reference_table: T052
+    reference_field: ZTERM
+    severity: medium
+    dimension: validity
+    message: Open customer item's payment terms are not defined in T052
+    why_it_matters: ZTERM on an open customer item sets its baseline date, its cash-discount windows and its net due
+      date, so it is what the dunning run and the receipt forecast read. The customer master's terms are checked,
+      but the terms carried on the item were not, and the item is what those programs use. An undefined value leaves
+      the due date uncomputable, so the item is dunned late or the discount is miscalculated. As with AP288, the DDIC
+      gives BSID.ZTERM no check table while KNB1.ZTERM carries T052, so this rule states its reference explicitly.
+    rule_authority: sap_hard_constraint
+    sap_impact: The dunning run cannot compute a due date for the item and the receipt forecast mis-dates it, so the
+      customer is dunned on the wrong day or the discount is wrong.
+    fix_map:
+      __blank__: A blank ZTERM inherits the customer master's terms and is legitimate - only a populated value is
+        judged here.
+      __other__: Payment terms '{invalid_value}' are not in T052. Correct the item's terms, or create them in SPRO
+        > Financial Accounting > Accounts Receivable and Accounts Payable > Business Transactions > Outgoing Invoices/Credit
+        Memos > Maintain Terms of Payment (OBB8).
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}:
+      payment terms ''{actual_value}'' are not in T052.'
+    s4_area: credit_management
+    s4_impact: warning
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR

@@ -18,7 +18,7 @@ export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDe
       {/* An element trigger (Button, etc.) becomes the trigger itself; wrapping it would nest a button in a button. */}
       {isValidElement(trigger) ? <BaseMenu.Trigger render={trigger as ReactElement<Record<string, unknown>>} /> : <BaseMenu.Trigger>{trigger}</BaseMenu.Trigger>}
       <BaseMenu.Portal>
-        <BaseMenu.Positioner>
+        <BaseMenu.Positioner className="z-50">
           <BaseMenu.Popup className="m-popup">
             {items.map((item) =>
               item.checked === undefined ? (

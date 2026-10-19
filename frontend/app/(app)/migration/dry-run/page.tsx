@@ -4,9 +4,8 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Mono, Pill, ReportPage, Skeleton, Stat } from "@/design";
+import { Button, DataTable, Mono, Pill, ReportPage, Skeleton, Stat, Status } from "@/design";
 import { getDryRunRecords, getMigrationRun, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
-import { VERDICT_LABEL, VERDICT_TONE } from "@/lib/migration-verdict";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -95,9 +94,9 @@ export default function DryRunPage() {
     ? Object.entries(run.gap_summary ?? {}).map(([module, summary]) => {
         const verdict = FROM_ENGINE[summary.verdict];
         return (
-          <Pill key={module} tone={VERDICT_TONE[verdict]}>
-            {formatModuleName(module)}: {VERDICT_LABEL[verdict]}
-          </Pill>
+          <span key={module} className="inline-flex items-center gap-1">
+            {formatModuleName(module)} <Status kind="verdict" value={verdict} />
+          </span>
         );
       })
     : [];

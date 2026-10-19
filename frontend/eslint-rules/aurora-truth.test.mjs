@@ -59,4 +59,10 @@ assert.equal(count("no-forbidden-glyphs", 'const q = "?a=1&b=2";', "/lib/nav.ts"
 assert.equal(count("no-forbidden-glyphs", 'const q = "a & b";', "/app/x.ts"), 0, "outside lib and components only JSX is judged");
 assert.equal(count("no-forbidden-glyphs", "const a = <p>a & b</p>;", "/app/x.tsx"), 1);
 
+
+// no-inline-style (scoped to app/** in eslint.config.mjs)
+assert.equal(count("no-inline-style", 'const a = <p style={{ color: "var(--m-ink-3)" }}>x</p>;'), 1);
+assert.equal(count("no-inline-style", 'const a = <Link style={linkStyle} href="/x">x</Link>;'), 1);
+assert.equal(count("no-inline-style", "const a = <p {...{ style: s }}>x</p>;"), 1);
+assert.equal(count("no-inline-style", 'const a = <p className="m-ink-3">x</p>;'), 0);
 console.log("aurora-truth tests: all passed");

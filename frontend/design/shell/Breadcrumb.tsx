@@ -25,6 +25,28 @@ export function useBreadcrumbScope(parts: readonly string[]) {
   }, [key]);
 }
 
+/** A detail page's own heading (a system's name) with the list page it belongs to as the crumb before it. */
+export interface BreadcrumbTitle { label: string; parent: Crumb }
+let detailTitle: BreadcrumbTitle | null = null;
+const titleListeners = new Set<() => void>();
+function setDetailTitle(next: BreadcrumbTitle | null) {
+  detailTitle = next;
+  titleListeners.forEach((l) => l());
+}
+/**
+ * Publishes the current entity's name as the page's h1 (for routes the URL alone cannot name, such as
+ * /systems/[id]), with its list page as the crumb before it. Cleared on unmount; null publishes nothing.
+ */
+export function useBreadcrumbTitle(title: BreadcrumbTitle | null) {
+  const label = title?.label ?? "";
+  const parentLabel = title?.parent.label ?? "";
+  const parentHref = title?.parent.href ?? "";
+  useEffect(() => {
+    setDetailTitle(label ? { label, parent: { label: parentLabel, href: parentHref } } : null);
+    return () => setDetailTitle(null);
+  }, [label, parentLabel, parentHref]);
+}
+
 function Dot() {
   return <span aria-hidden="true" className="shrink-0 rounded-full" style={{ width: 3, height: 3, background: "var(--m-ink-4)" }} />;
 }
@@ -47,10 +69,12 @@ function Overflow({ crumbs }: { crumbs: Crumb[] }) {
  * one document heading from this one place; no per-page title prop needed.
  */
 export function Breadcrumb() {
-  const { crumbs } = useDrill();
+  const { crumbs: drill } = useDrill();
   const scopeParts = useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; }, () => scope, () => scope);
+  const detail = useSyncExternalStore((cb) => { titleListeners.add(cb); return () => { titleListeners.delete(cb); }; }, () => detailTitle, () => null);
   const pathname = usePathname();
   const pageDrawsTitle = usePageTitleIsShown();
+  const crumbs: Crumb[] = drill.length > 0 ? drill : detail ? [detail.parent, { label: detail.label, href: pathname }] : [];
   const title = crumbs.length > 0 ? crumbs[crumbs.length - 1]!.label : getPageTitle(pathname);
   const leadingCrumbs = crumbs.slice(0, -1);
   const hidden = leadingCrumbs.slice(0, Math.max(0, leadingCrumbs.length - MAX_LEADING));

@@ -43,11 +43,12 @@ describe("primitives", () => {
     expect(container.querySelector(".m-stat-edge")).toBeInTheDocument();
     expect(container.querySelector(".m-stat-hero")).toBeInTheDocument();
   });
-  it("Pill solid has no dot, ember keeps one", () => {
+  it("Pill solid has no dot, soft verdict keeps one", () => {
     const { container, rerender } = render(<Pill tone="no-go" variant="solid">Fail</Pill>);
     expect(container.querySelector(".m-pill-solid-no-go")).toBeInTheDocument();
-    rerender(<Pill ember>Live</Pill>);
-    expect(container.querySelector(".m-pill-ember")).toBeInTheDocument();
+    expect(container.querySelector(".m-pill-dot")).toBeNull();
+    rerender(<Pill tone="at-risk">Capped</Pill>);
+    expect(container.querySelector(".m-pill-at-risk .m-pill-dot")).toBeInTheDocument();
   });
   it("Badge critical", () => {
     render(<Badge count={3} tone="critical" />);
@@ -58,8 +59,8 @@ describe("primitives", () => {
     expect(container.firstChild).toHaveClass("m-delta-up", "m-delta-good");
     rerender(<Delta value={2} invert />);
     expect(container.firstChild).toHaveClass("m-delta-up", "m-delta-bad");
-    rerender(<Delta value={1} hero />);
-    expect(container.firstChild).toHaveClass("m-delta-hero");
+    rerender(<Delta value={0} />);
+    expect(container.firstChild).toHaveClass("m-delta-flat", "m-delta-zero");
   });
   it("DomainChip resolves a module id", () => {
     render(<DomainChip moduleId="vendor_master" />);

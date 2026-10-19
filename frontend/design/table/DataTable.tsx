@@ -97,8 +97,8 @@ export interface RowPrefetch {
 }
 
 // Fallbacks when the --m-row-h tokens cannot be read (tests, SSR); tokens.css owns the real values.
-const ROW_H_FALLBACK = 36;
-const ROW_H_DENSE_FALLBACK = 30;
+const ROW_H_FALLBACK = 40;
+const ROW_H_DENSE_FALLBACK = 32;
 const VIRTUALIZE_ABOVE = 200;
 
 /** True while the page is being printed: paper needs every row, not the virtualised window. */
@@ -347,7 +347,7 @@ export function DataTable<T>({
           <Popover.Root>
             <Popover.Trigger className="m-btn m-btn-secondary m-btn-sm">Views{views.length > 0 ? ` (${views.length})` : ""}</Popover.Trigger>
             <Popover.Portal>
-              <Popover.Positioner sideOffset={4}>
+              <Popover.Positioner sideOffset={4} className="z-50">
                 <Popover.Popup className="m-popup min-w-56 p-2">
                   {views.length === 0 && <p className="py-1" style={{ color: "var(--m-ink-3)" }}>No saved views yet.</p>}
                   {views.map((v) => (

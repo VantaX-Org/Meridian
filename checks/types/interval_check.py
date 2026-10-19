@@ -15,8 +15,19 @@ OPEN = pd.Timestamp("2262-04-11")  # pandas' ceiling stands in for 99991231
 
 
 def _date(s: pd.Series) -> pd.Series:
-    s = s.astype("string").str.strip().str.replace("-", "", regex=False).str[:8]
-    return pd.to_datetime(s.where(s != "99991231", "22620411"), format="%Y%m%d", errors="coerce")
+    """YYYYMMDD / YYYY-MM-DD text, or an already-typed datetime column (parquet), as
+    tz-naive ``datetime64[ns]``. One resolution on both sides: a ``datetime64[s]`` column
+    and a parsed ``[ns]`` one cannot be compared, nor can either against an empty
+    group result."""
+    if pd.api.types.is_datetime64_any_dtype(s):
+        d = pd.to_datetime(s, errors="coerce")
+        if getattr(d.dt, "tz", None) is not None:
+            d = d.dt.tz_localize(None)
+        d = d.mask(d > OPEN, OPEN)
+    else:
+        s = s.astype("string").str.strip().str.replace("-", "", regex=False).str[:8]
+        d = pd.to_datetime(s.where(s != "99991231", "22620411"), format="%Y%m%d", errors="coerce")
+    return d.astype("datetime64[ns]")
 
 
 class IntervalCheck(BaseCheck):
@@ -41,7 +52,10 @@ class IntervalCheck(BaseCheck):
         keys = df[r["group_by"]].astype("string").apply(lambda s: s.str.strip()).fillna("")
         group = keys.apply(lambda row: "|".join(row), axis=1) if len(df) else pd.Series(dtype="string")
         work = pd.DataFrame({"g": group, "s": start, "e": end})[valid].sort_values(["g", "s", "e"])
-        prev_end = work.groupby("g")["e"].transform(lambda e: e.cummax().shift())
+        if len(work):
+            prev_end = work.groupby("g")["e"].transform(lambda e: e.cummax().shift()).astype("datetime64[ns]")
+        else:  # transform on no rows yields an untyped empty result the datetime compare rejects
+            prev_end = pd.Series(pd.NaT, index=work.index, dtype="datetime64[ns]")
         overlap = work["s"] <= prev_end
         if r.get("mode") == "open_ended_only":
             # group_by is coarser than the interval's natural key (e.g. USERID alone, with

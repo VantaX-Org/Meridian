@@ -42,7 +42,7 @@ export function Select({
         <ChevronDown size={14} className="shrink-0" />
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
-        <BaseSelect.Positioner>
+        <BaseSelect.Positioner className="z-50">
           <BaseSelect.Popup
             className="m-popup"
           >

@@ -77,6 +77,48 @@ describe("system detail page", () => {
     expect(box).not.toBeChecked();
   });
 
+  it("writes the system type as its product name and says runs come from uploads when nothing was extracted", async () => {
+    mockHappyPath();
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText(/ECC, PRD/)).toBeInTheDocument());
+    expect(screen.queryByText(/Ecc/)).toBeNull();
+    expect(screen.getAllByText("Runs come from uploads").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Nothing extracted yet")).toBeNull();
+    expect(screen.queryByText(/0 of /)).toBeNull();
+  });
+
+  it("shows the score once, in the ring, not again as a numeral beside it", async () => {
+    mockHappyPath();
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    const ring = await screen.findByRole("img", { name: "Score 70" });
+    const stat = ring.closest("a");
+    expect(stat).toHaveTextContent("DQS");
+    expect(stat).not.toHaveTextContent("70.0");
+  });
+
+  it("links each run on the Runs tab to its extraction log, a failed one by why it failed", async () => {
+    tab = "runs";
+    mockHappyPath();
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [
+        { id: "r2", run_at: "2026-10-02T00:00:00Z", label: null, status: "failed", objects: ["material_master"], scope: {}, records: {}, analysed_at: null, rule_set: null, baseline: false, analysable: false, dqs: {} },
+        { id: "r1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } },
+      ] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    expect(await screen.findByRole("link", { name: "Why it failed" })).toHaveAttribute("href", "/systems/s1/extractions/r2");
+    expect(screen.getByRole("link", { name: "Extraction log" })).toHaveAttribute("href", "/systems/s1/extractions/r1");
+  });
+
   it("shows the system role in the header", async () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);
@@ -127,7 +169,7 @@ describe("system detail page", () => {
       vi.spyOn(systemObjectsApi, "startDownload").mockResolvedValue({ job_id: "dl-9", status: "queued" });
       renderWithQuery(<SystemPage />);
       fireEvent.click((await screen.findAllByText("Extract"))[0]);
-      fireEvent.click(await screen.findByText("Material Master"));
+      fireEvent.click(await screen.findByText("Material master"));
       fireEvent.click(screen.getByText("Extract 1 object"));
       fireEvent.click(await screen.findByText("Confirm"));
       await waitFor(() => expect(systemObjectsApi.startDownload).toHaveBeenCalled());
@@ -152,7 +194,7 @@ describe("system detail page", () => {
       vi.spyOn(systemObjectsApi, "startDownload").mockResolvedValue({ job_id: "dl-9", status: "queued" });
       renderWithQuery(<SystemPage />);
       fireEvent.click((await screen.findAllByText("Extract"))[0]);
-      fireEvent.click(await screen.findByText("Material Master"));
+      fireEvent.click(await screen.findByText("Material master"));
       fireEvent.click(screen.getByText("Extract 1 object"));
       versions.mockResolvedValue({
         versions: [],

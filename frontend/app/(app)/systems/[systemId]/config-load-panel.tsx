@@ -10,10 +10,10 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, DrillLink, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, type PillTone } from "@/design";
+import { Button, Card, DrillLink, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, type PillTone, ProgressFill } from "@/design";
 import { getConfigLoad, startConfigLoad, type AreaObject, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemType } from "@/types/api";
@@ -55,42 +55,36 @@ function AreaRows({ systemId, areas }: { systemId: string; areas: LoadArea[] }) 
   if (!areas.length) return null;
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>By area</h3>
+      <h3 className="m-text-body font-medium m-ink">By area</h3>
       {areas.map((a) => {
         const linkObject = a.status === "loaded" ? a.objects[0]?.object : undefined;
         return (
           <Card key={a.area} padding="sm">
             <div className="flex items-center justify-between">
               {linkObject ? (
-                <Link href={`/systems/${systemId}?tab=health&part=config&table=${encodeURIComponent(linkObject)}`} className="m-text-body underline" style={{ color: "var(--m-ink)" }}>
+                <Link href={`/systems/${systemId}?tab=health&part=config&table=${encodeURIComponent(linkObject)}`} className="m-text-body underline m-ink">
                   {a.label}
                 </Link>
               ) : (
-                <span className="m-text-body" style={{ color: "var(--m-ink)" }}>{a.label}</span>
+                <span className="m-text-body m-ink">{a.label}</span>
               )}
               <div className="flex items-center gap-2">
-                <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{a.tables_done} of {a.tables_total}</span>
+                <span className="m-text-body m-ink-2">{a.tables_done} of {a.tables_total}</span>
                 <Pill tone={AREA_TONE[a.status]}>{AREA_LABEL[a.status]}</Pill>
               </div>
             </div>
             {a.status === "running" || a.status === "waiting" ? (
-              <div className="h-1 rounded overflow-hidden" style={{ background: "var(--m-line)" }}>
-                <div
-                  className="h-full"
-                  style={{
-                    background: "var(--m-accent)",
-                    width: `${a.tables_total ? Math.round((a.tables_done / a.tables_total) * 100) : 0}%`,
-                  }}
-                />
+              <div className="h-1 rounded overflow-hidden [background:var(--m-line)]">
+                <ProgressFill value={a.tables_total ? Math.round((a.tables_done / a.tables_total) * 100) : 0} />
               </div>
             ) : null}
             {a.status === "loaded" ? (
-              <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{areaFoundText(a)}</p>
+              <p className="m-text-body m-ink-2">{areaFoundText(a)}</p>
             ) : null}
             {a.objects
               .filter((o) => o.state === "failed" || o.cause)
               .map((o) => (
-                <p key={o.object} className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+                <p key={o.object} className="m-text-body m-ink-2">
                   <Mono>{o.object}</Mono>: {areaObjectText(o)}
                 </p>
               ))}
@@ -178,18 +172,18 @@ function Result({ systemId, load, retry, retrying, canLoad }: { systemId: string
           Configuration loaded with gaps. {load.areas_loaded} of {load.areas_total} areas loaded. Rules that depend on the others apply by default.
         </Notice>
       ) : null}
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body m-ink-2">
         Loaded {relativeTime(load.finished_at ?? load.created_at)}.
       </p>
       <dl className="grid grid-cols-2 gap-2 m-text-body">
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Objects with rows</dt><dd><DrillLink href={`/systems/${systemId}?tab=objects`}>{(s.loaded ?? 0).toLocaleString()}</DrillLink></dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Objects with no rows</dt><dd><DrillLink href={`/systems/${systemId}?tab=objects`}>{(s.empty ?? 0).toLocaleString()}</DrillLink></dd></div>
+        <div><dt className="m-ink-2">Objects with rows</dt><dd><DrillLink href={`/systems/${systemId}?tab=objects`}>{(s.loaded ?? 0).toLocaleString()}</DrillLink></dd></div>
+        <div><dt className="m-ink-2">Objects with no rows</dt><dd><DrillLink href={`/systems/${systemId}?tab=objects`}>{(s.empty ?? 0).toLocaleString()}</DrillLink></dd></div>
         <div>
-          <dt style={{ color: "var(--m-ink-2)" }}>Processes derived</dt>
+          <dt className="m-ink-2">Processes derived</dt>
           <dd>{load.flows_derived ? <Link href="/insights/process?tab=readiness" className="underline">View in Process</Link> : "None"}</dd>
         </div>
         {load.areas.length ? (
-          <div><dt style={{ color: "var(--m-ink-2)" }}>Areas loaded</dt><dd>{load.areas_loaded} of {load.areas_total}</dd></div>
+          <div><dt className="m-ink-2">Areas loaded</dt><dd>{load.areas_loaded} of {load.areas_total}</dd></div>
         ) : null}
       </dl>
       {load.areas.length ? (
@@ -197,17 +191,17 @@ function Result({ systemId, load, retry, retrying, canLoad }: { systemId: string
       ) : (
         <>
           {failed.slice(0, MAX_FAILED_ROWS).map((o) => (
-            <p key={o.object} className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+            <p key={o.object} className="m-text-body m-ink-2">
               Could not read <Mono>{o.object}</Mono>.{o.detail ? ` ${o.detail}` : ""}
             </p>
           ))}
           {failed.length > MAX_FAILED_ROWS ? (
-            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>and {failed.length - MAX_FAILED_ROWS} more.</p>
+            <p className="m-text-body m-ink-2">and {failed.length - MAX_FAILED_ROWS} more.</p>
           ) : null}
         </>
       )}
       {na ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body m-ink-2">
           Not available from this system: {na} {na === 1 ? "object" : "objects"}. Nothing to fix.
         </p>
       ) : null}
@@ -224,20 +218,20 @@ export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: s
   let body: React.ReactNode;
   if (status === "not_available") {
     body = (
-      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body m-ink-2">
         Not available from this system. {hasNoConfig(systemType) ? "SAP BTP has no business configuration to read; rules apply by default." : "It exposes no configuration to read; rules apply by default."}
       </p>
     );
   } else if (isLoading) {
     body = <Skeleton height={96} />;
   } else if (error) {
-    body = <ErrorState message={apiErrorMessage(error)} onRetry={() => void refetch()} />;
+    body = <ErrorState {...apiErrorState(error)} onRetry={() => void refetch()} />;
   } else if (status === "loading") {
     body = (
       <div className="flex flex-col gap-3">
         <div role="status" aria-live="polite" className="flex items-center gap-2">
           <Pill tone="neutral">{job?.stage ?? "Reading"}</Pill>
-          <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
+          <p className="m-text-body m-ink-2">
             {job?.message || "Reading configuration"}. You can leave this page; loading continues in the background.
           </p>
         </div>

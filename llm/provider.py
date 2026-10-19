@@ -307,6 +307,16 @@ def is_llm_disabled() -> bool:
     return os.getenv("LLM_PROVIDER", "ollama").strip().lower() in ("none", "off", "")
 
 
+def llm_is_noop() -> bool:
+    """True when there is no usable LLM: the provider is 'none' (env or admin config) or
+    cannot be built. Callers with a deterministic path decide once, up front, instead of
+    failing per call on the ``_NoopLLM`` sentinel."""
+    if is_llm_disabled():
+        return True
+    llm = get_llm_safe()
+    return llm is None or isinstance(llm, _NoopLLM)
+
+
 def _bind_max_tokens(llm, max_tokens: int):
     """Bind a per-call output cap onto an arbitrary chat model.
 

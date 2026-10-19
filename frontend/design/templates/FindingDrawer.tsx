@@ -12,9 +12,10 @@ import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
 import { Mono } from "../primitives/Mono";
 import { SeverityDot } from "../primitives/SeverityDot";
-import { Pill, type PillTone } from "../primitives/Pill";
+import { Pill } from "../primitives/Pill";
+import { Status } from "../primitives/Status";
 import { ExportMenu } from "../primitives/ExportMenu";
-import { isSeverity, type Severity } from "../tokens";
+import { isSeverity } from "../tokens";
 import { buildDrillHref } from "../shell/DrillLink";
 import { exportFindingRecords, getFinding } from "@/lib/api/findings";
 import { createBatch } from "@/lib/api/remediation";
@@ -22,12 +23,11 @@ import { useRole } from "@/hooks/use-role";
 import { getFindingImpact } from "@/lib/api/analytics";
 import { getConfigRootCause, type RootCauseType } from "@/lib/api/config-intelligence";
 import { queryKeys } from "@/lib/query-keys";
-import { apiErrorMessage } from "@/lib/error";
-import { labelOf, checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/format";
+import { apiErrorState } from "@/lib/error";
+import { checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/format";
 
 const heading = "m-text-body font-semibold";
 // Pill has no high tone: high shares the at-risk fill with medium.
-const SEVERITY_PILL: Record<Severity, PillTone> = { critical: "no-go", high: "at-risk", medium: "at-risk", low: "neutral", pass: "go" };
 const dim = { color: "var(--m-ink-3)" } as const;
 
 /** getFinding (lib/api/findings.ts) throws a plain Error rather than a 404 when the id doesn't match any finding in scope. */
@@ -113,7 +113,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
       ) : isFindingNotFound(findingQuery.error) || !findingQuery.data ? (
         <EmptyState title="Finding not found." detail="It may belong to a run that has since been deleted." />
       ) : findingQuery.isError ? (
-        <ErrorState message={apiErrorMessage(findingQuery.error)} onRetry={() => findingQuery.refetch()} />
+        <ErrorState {...apiErrorState(findingQuery.error)} onRetry={() => findingQuery.refetch()} />
       ) : (
         (() => {
           const finding = findingQuery.data;
@@ -130,7 +130,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                 <h3 className={heading} style={{ color: "var(--m-ink)" }}>What failed</h3>
                 <div className="flex items-center gap-2 m-text-body">
                   {isSeverity(finding.severity) && <SeverityDot severity={finding.severity} />}
-                  {isSeverity(finding.severity) && <Pill tone={SEVERITY_PILL[finding.severity]} variant="solid">{labelOf(finding.severity)}</Pill>}
+                  {isSeverity(finding.severity) && <Status kind="severity" value={finding.severity} variant="solid" />}
                   <Mono>{finding.check_id}</Mono>
                   <span style={dim}>{formatModuleName(finding.module)}</span>
                 </div>
