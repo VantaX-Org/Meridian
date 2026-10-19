@@ -114,9 +114,12 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined): Col
       const id = row.original.blocking_rule_id;
       if (!id) return "—";
       return (
-        <DrillLink href={`/objects/${row.original.module}?${run ? `run=${run}&` : ""}tab=records&check_id=${encodeURIComponent(id)}`}>
-          <Mono>{id}</Mono>
-        </DrillLink>
+        // One line per row: a long check id is cut with an ellipsis and named in full by its title.
+        <span className="block max-w-[200px] truncate whitespace-nowrap" title={id} data-testid="blocking-rule-id">
+          <DrillLink href={`/objects/${row.original.module}?${run ? `run=${run}&` : ""}tab=records&check_id=${encodeURIComponent(id)}`}>
+            <Mono>{id}</Mono>
+          </DrillLink>
+        </span>
       );
     },
   },
@@ -214,9 +217,10 @@ export default function ObjectsPage() {
     .filter((o) => !dimension || o.worst_dimension === dimension)
     .filter((o) => !owner || o.owner === owner)
     .sort(worstFirst);
-  const distinct = (pick: (o: ObjectRow) => string | null | undefined) =>
-    [...new Set(objects.map(pick).filter((v): v is string => !!v))].sort().map((v) => ({ value: v, label: v }));
-  const dimensionOptions = distinct((o) => o.worst_dimension);
+  const distinct = (pick: (o: ObjectRow) => string | null | undefined, label: (v: string) => string = (v) => v) =>
+    [...new Set(objects.map(pick).filter((v): v is string => !!v))].sort().map((v) => ({ value: v, label: label(v) }));
+  // Chips name the dimension ("Accuracy"); the URL keeps the raw id (`?dimension=accuracy`).
+  const dimensionOptions = distinct((o) => o.worst_dimension, formatModuleName);
   const ownerOptions = distinct((o) => o.owner);
   const setParam = (key: string, next: string | null) => {
     const params = new URLSearchParams(search.toString());

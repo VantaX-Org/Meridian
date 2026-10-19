@@ -1,5 +1,5 @@
 // frontend/app/(app)/objects/[object]/__tests__/page.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
@@ -235,6 +235,19 @@ describe("ObjectDetailPage", () => {
     renderWithQuery(<ObjectDetailPage />);
     await waitFor(() => expect(screen.getByText("mm_bad_uom")).toBeInTheDocument());
     expect(screen.queryByText("mm_missing_desc")).not.toBeInTheDocument();
+  });
+
+  it("names dimensions in sentence case on the rules tab and keeps the raw id in the URL", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=rules");
+    replace.mockClear();
+    renderWithQuery(<ObjectDetailPage />);
+    const group = await screen.findByRole("group", { name: "Dimension" });
+    expect(within(group).getAllByRole("button").map((b) => b.textContent).sort()).toEqual(["Accuracy", "Completeness"]);
+    expect(within(group).queryByRole("button", { name: "accuracy" })).toBeNull();
+    expect(screen.getAllByRole("cell", { name: "Completeness" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("cell", { name: "completeness" })).toBeNull();
+    fireEvent.click(within(group).getByRole("button", { name: "Accuracy" }));
+    expect(replace.mock.calls.at(-1)?.[0]).toContain("dimension=accuracy");
   });
 
   it("offers to clear the dimension filter when it matches no rules", async () => {
