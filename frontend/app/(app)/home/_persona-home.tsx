@@ -22,6 +22,7 @@ import { useRole } from "@/hooks/use-role";
 import { exportFindings } from "@/lib/api/findings";
 import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
+import { RouteInsight } from "@/components/insight/route-insight";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
   runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, trend, readinessOf,
@@ -143,6 +144,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         }}
         lists={lists}
         onboarding={<HomeOnboarding />}
+        cells={<RouteInsight />}
       />
     );
   }
@@ -400,6 +402,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       work={work}
       lists={lists}
       onboarding={<HomeOnboarding />}
+      cells={<RouteInsight />}
       headerActions={<>
         <RunAnalysis />
         <Select

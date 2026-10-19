@@ -94,9 +94,9 @@ describe("ExecPage", () => {
     // Not the page-level empty state: the hero carries the score and the first-run sentence.
     expect(await screen.findByText("First scored run")).toBeInTheDocument();
     expect(screen.queryByText("No executive summary yet")).toBeNull();
-    expect(screen.getByText("No readiness waves are defined yet")).toBeInTheDocument();
+    expect(screen.getByText("No waves set up yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open migration cockpit" })).toHaveAttribute("href", "/migration");
-    expect(screen.getAllByText("No owner is scored yet").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Nobody owns an issue yet").length).toBeGreaterThan(0);
     // ROI without any cost avoided says so instead of "0x" and "0 months".
     expect(await screen.findByText("No cost avoided yet")).toBeInTheDocument();
     expect(screen.queryByText("0x")).toBeNull();

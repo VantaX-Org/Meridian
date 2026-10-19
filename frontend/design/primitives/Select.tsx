@@ -1,8 +1,8 @@
 "use client";
 
 import { Select as BaseSelect } from "@base-ui/react/select";
-import { ChevronDown, Check } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { IconCheck, IconChevronDown } from "../icons";
 
 export interface SelectOption {
   value: string;
@@ -39,7 +39,7 @@ export function Select({
         className={className ?? "m-input inline-flex items-center justify-between gap-2 min-w-[160px]"}
       >
         <BaseSelect.Value placeholder={placeholder} className="min-w-0 truncate" />
-        <ChevronDown size={14} className="shrink-0" />
+        <IconChevronDown size={14} className="shrink-0" />
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
         <BaseSelect.Positioner className="z-50">
@@ -53,7 +53,7 @@ export function Select({
                 className="m-popup-item"
               >
                 <BaseSelect.ItemText>{o.label}</BaseSelect.ItemText>
-                <BaseSelect.ItemIndicator><Check size={14} /></BaseSelect.ItemIndicator>
+                <BaseSelect.ItemIndicator><IconCheck size={14} /></BaseSelect.ItemIndicator>
               </BaseSelect.Item>
             ))}
           </BaseSelect.Popup>

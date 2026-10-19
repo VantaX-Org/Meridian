@@ -6,8 +6,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
-import { Button, ConfirmDialog, DataTable, Drawer, Field, Input, Mono, Notice, Select, Stat } from "@/design";
+import { Button, ConfirmDialog, DataTable, Drawer, Field, Input, Mono, Notice, Select, Stat, IconDraft } from "@/design";
 import {
   createRuleDraft, deleteRuleDraft, dryRunRuleDraft, generateRuleDraft, publishRuleDraft, updateRuleDraft,
   type RuleDraftDryRun,
@@ -137,7 +136,7 @@ export function DraftDrawer({ draft, open, onOpenChange }: { draft: RuleDraft | 
                   pending={generate.isPending}
                   disabled={prompt.trim().length < 5 || !form.module.trim()}
                 >
-                  <Sparkles size={14} aria-hidden /> Generate with AI
+                  <IconDraft size={14} /> Generate with AI
                 </Button>
                 {!form.module.trim() ? <span className="m-text-meta m-ink-3">Choose an object first</span> : null}
               </div>

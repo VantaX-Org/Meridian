@@ -1,13 +1,13 @@
 "use client";
 
 import type { KeyboardEvent } from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
 import { useAuroraPrefs, type Theme } from "@/hooks/use-theme";
+import { IconMonitor, IconMoon, IconSun, type Icon } from "@/design";
 
-const OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "system", label: "System", icon: Monitor },
-  { value: "dark", label: "Dark", icon: Moon },
+const OPTIONS: { value: Theme; label: string; icon: Icon }[] = [
+  { value: "light", label: "Light", icon: IconSun },
+  { value: "system", label: "System", icon: IconMonitor },
+  { value: "dark", label: "Dark", icon: IconMoon },
 ];
 
 /** Light / System / Dark segmented control. Choice is stored per browser by useAuroraPrefs. */

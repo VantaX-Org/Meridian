@@ -5,9 +5,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async } from "@/design";
+import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
@@ -106,7 +105,7 @@ function UsersView() {
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Menu
-            trigger={<button aria-label={`Actions for ${row.original.name}`}><MoreHorizontal size={16} aria-hidden /></button>}
+            trigger={<button aria-label={`Actions for ${row.original.name}`}><IconMore size={16} /></button>}
             items={[{ label: "Edit", onSelect: () => setEditing(row.original) }]}
           />
         </span>

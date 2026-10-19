@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Popover } from "@base-ui/react/popover";
-import { Bell } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useJobs } from "../../hooks/use-jobs";
 import { getNotifications, getUnreadCount, markAllNotificationsRead, markNotificationRead } from "../../lib/api/notifications";
@@ -15,6 +14,7 @@ import { Button } from "../primitives/Button";
 import { IconButton } from "../primitives/IconButton";
 import { Pill, type PillTone } from "../primitives/Pill";
 import { Skeleton } from "../primitives/Skeleton";
+import { IconBell } from "../icons";
 
 /** Pill tone per notification type: warnings read as at-risk, approvals as info, everything else neutral. */
 const TONE: Record<NotificationType, PillTone> = {
@@ -132,7 +132,7 @@ export function NotificationBell() {
     <Popover.Root open={open} onOpenChange={setOpen}>
       <div style={{ position: "relative" }}>
         <Popover.Trigger render={<IconButton aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} />}>
-          <Bell size={16} aria-hidden />
+          <IconBell size={16} />
         </Popover.Trigger>
         {unread > 0 && (
           <span aria-hidden="true" className="pointer-events-none absolute" style={{ top: -4, right: -4 }}>

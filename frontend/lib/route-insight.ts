@@ -57,11 +57,11 @@ export function showsRouteInsight(pathname: string): boolean {
 }
 
 const FRESH: Record<Section, string> = {
-  home: "No analysis has run yet, so there is no score to report.",
-  objects: "No objects to show until the first analysis has run.",
+  home: "Nothing has been analysed yet, so there is no score to show.",
+  objects: "Objects appear here once the first run has finished.",
   runs: "No runs yet. Each analysis you start is listed here with its score.",
   rules: "Rules are ready and will be evaluated on the first run.",
-  insights: "Insights are built from a finished run, and none exists yet.",
+  insights: "Insights come from a finished run, and there is none yet.",
   mdm: "Golden records appear once a run has found duplicates to match.",
   inbox: "Your inbox is empty. Items arrive when a run finds records to steward.",
   fix: "No fix batches yet. Batches are built from findings that have a safe correction.",
@@ -73,7 +73,7 @@ const FRESH: Record<Section, string> = {
 };
 
 const FRESH_WHY: Record<Section, string> = {
-  home: "Until data is analysed, go-live readiness is unknown.",
+  home: "Until a run has finished, nobody can say whether this data is ready for go-live.",
   objects: "Object health drives which data blocks go-live.",
   runs: "Run history is how you prove the score is improving.",
   rules: "Rule coverage decides what gets checked at all.",
@@ -100,7 +100,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
       : { sentence: FRESH[section], href: "/systems" };
     return {
       situation,
-      changed: { sentence: "Nothing has changed yet. Change appears after the second run.", href: "/runs" },
+      changed: { sentence: "Nothing has changed yet. Change shows once a second run has finished.", href: "/runs" },
       why: { sentence: FRESH_WHY[section], href: "/home" },
       next,
     };
@@ -110,7 +110,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   const delta = dqs !== null && f.prevDqs !== null ? Math.round((dqs - f.prevDqs) * 10) / 10 : null;
   const base = `/objects${q(f.runId)}`;
   const worst = f.worst;
-  const score = dqs === null ? "The score is not available for this run" : `Data quality score is ${Math.round(dqs)}`;
+  const score = dqs === null ? "This run has no score yet" : `Quality is at ${Math.round(dqs)}`;
 
   let situation = `${score}, with ${n(f.total)} findings across ${n(f.affected)} records.`;
   if (section === "systems") situation = `${n(f.systems)} system${f.systems === 1 ? "" : "s"} connected. ${score}.`;
@@ -121,32 +121,32 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   const moves = mv && mv.count > 0 ? `${n(mv.count)} object${mv.count === 1 ? "" : "s"} moved${mv.biggest ? `; biggest: ${mv.biggest.label} ${mv.biggest.change > 0 ? "+" : "-"}${Math.abs(mv.biggest.change)}` : ""}.` : null;
   const scoreChanged =
     f.firstRun
-      ? "First run for this object. Change appears after the next run."
+      ? "This is the first run of this object, so there is nothing to compare with yet."
       : delta === null
-      ? "No earlier run to compare against yet."
+      ? "There is no earlier run to compare with yet."
       : delta === 0
-        ? "Score is unchanged since the previous run."
-        : `Score ${delta > 0 ? "rose" : "fell"} ${Math.abs(delta)} points since the previous run.`;
+        ? "Nothing has moved since the last run."
+        : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points since the last run.`;
 
-  const changed = moves ? (delta === null || delta === 0 ? moves : `${scoreChanged.replace(/ since the previous run\.$/, "")}; ${moves}`) : scoreChanged;
+  const changed = moves ? (delta === null || delta === 0 ? moves : `${scoreChanged.replace(/ since the last run\.$/, "")}; ${moves}`) : scoreChanged;
 
   const why =
     f.critical > 0
-      ? `${n(f.critical)} critical finding${f.critical === 1 ? "" : "s"} hold the score down and can stop go-live.`
+      ? `${n(f.critical)} critical finding${f.critical === 1 ? " is" : "s are"} capping the score and could stop go-live.`
       : f.total > 0
-        ? "No critical findings, so the score is not capped."
-        : "No findings in this run.";
+        ? "Nothing critical, so nothing caps the score."
+        : "This run found nothing wrong.";
 
   // Held until the cost model names the currency, so the sentence never reads as a bare number.
   const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` About ${formatMoney(Math.round(f.costAtRisk), f.currency)} is at risk.` : "";
   const next =
     worst && f.total > 0
       ? {
-          sentence: `${worst.label} needs attention first: ${n(worst.findings)} findings${worst.critical ? `, ${n(worst.critical)} critical` : ""}.`,
+          sentence: `Start with ${worst.label}: ${n(worst.findings)} findings${worst.critical ? `, ${n(worst.critical)} of them critical` : ""}.`,
           href: `/objects/${worst.module}${q(f.runId)}`,
           action: { label: "Open object", href: `/objects/${worst.module}${q(f.runId)}` },
         }
-      : { sentence: "Review the objects to confirm nothing needs attention.", href: base };
+      : { sentence: "Have a look over the objects; nothing stands out.", href: base };
 
   return {
     situation: { sentence: situation, href: f.runId ? `/runs/${f.runId}` : "/runs", tone: tone(dqs) },

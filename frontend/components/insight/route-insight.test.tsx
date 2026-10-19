@@ -87,7 +87,7 @@ describe("RouteInsight lineage", () => {
       { id: "co", status: "complete", metadata: { modules: ["controlling"] } } as never,
     ];
     mount();
-    expect(await screen.findByText(/First run for this object/)).toBeTruthy();
+    expect(await screen.findByText(/first run of this object/)).toBeTruthy();
     expect(m.compare).not.toHaveBeenCalled();
   });
 
@@ -101,8 +101,8 @@ describe("RouteInsight lineage", () => {
     m.compare.mockResolvedValue({ v1: { id: "co1" }, v2: { id: "co2" }, delta: {}, checks: {} });
     mount();
     // (60 + 90) / 2 = 75 against (50 + 90) / 2 = 70; the aggregate's own composite (70) is not used
-    expect(await screen.findByText(/Data quality score is 75/)).toBeTruthy();
-    expect(screen.getByText(/Score rose 5 points since the previous run/)).toBeTruthy();
+    expect(await screen.findByText(/Quality is at 75/)).toBeTruthy();
+    expect(screen.getByText(/Up 5 points since the last run/)).toBeTruthy();
     await waitFor(() => expect(m.compare).toHaveBeenCalledWith("co1", "co2"));
   });
 

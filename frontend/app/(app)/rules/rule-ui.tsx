@@ -5,8 +5,7 @@
  */
 
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
-import { Mono } from "@/design";
+import { Mono, IconClose } from "@/design";
 import { checkClassLabel } from "@/lib/format";
 
 export type FilterChip = { key: string; label: string; clear: () => void };
@@ -24,7 +23,7 @@ export function FilterChips({ chips, onClearAll }: { chips: FilterChip[]; onClea
           aria-label={`Remove filter ${c.label}`}
           className="m-text-meta m-motion-colors inline-flex items-center gap-1 px-2 [height:24px]! [border-radius:var(--m-radius-control)]! [background:var(--m-accent-soft)]! m-ink"
         >
-          {c.label}<X size={12} aria-hidden />
+          {c.label}<IconClose size={12} />
         </button>
       )) : null}
       {chips.length ? <button type="button" onClick={onClearAll} className="m-text-meta px-1 m-ink-accent">Clear all</button> : null}

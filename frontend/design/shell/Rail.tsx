@@ -5,13 +5,13 @@ import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, PanelLeft } from "lucide-react";
 import { getShellCounts } from "../../lib/api/shell";
 import { getSystems } from "../../lib/api/connectivity";
 import { queryKeys } from "../../lib/query-keys";
 import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
-import { MeridianMark } from "../../components/meridian/icons";
+import { MeridianMark } from "../icons/Mark";
+import { IconChevronRight, IconPanel } from "../icons";
 import { activeHref, flattenNav, resolveNavHref, type NavItem } from "../../lib/nav";
 import { mMotion } from "../tokens";
 import { Badge } from "../primitives/Badge";
@@ -338,7 +338,7 @@ export function Rail() {
         className="m-motion-fade shrink-0 flex items-center justify-center rounded mr-1"
         style={{ width: 20, height: 20, color: "var(--m-ink-3)" }}
       >
-        <ChevronRight size={14} style={{ transform: isOpen ? "rotate(90deg)" : "none" }} />
+        <IconChevronRight size={14} style={{ transform: isOpen ? "rotate(90deg)" : "none" }} />
       </button>
     );
 
@@ -432,7 +432,7 @@ export function Rail() {
           />
         }
       >
-        <PanelLeft size={ICON_SIZE} style={{ color: "var(--m-ink-3)" }} aria-hidden />
+        <IconPanel size={ICON_SIZE} style={{ color: "var(--m-ink-3)" }} />
         {expanded && <span className="m-text-body font-medium">Collapse</span>}
       </Tooltip>
 

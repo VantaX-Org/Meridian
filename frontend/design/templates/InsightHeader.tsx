@@ -29,6 +29,10 @@ export interface InsightHeaderProps {
   stats?: (Pick<StatProps, "label" | "value" | "hint" | "tone" | "decimals" | "versionId"> & { to?: string })[];
   /** Hero only: the verdict (typographic score and sentence) that leads the band; the stats sit beside it. */
   lead?: ReactNode;
+  /** Inside another sheet (the Home hero): the four cells under a hairline, no border or background of their own. */
+  embedded?: boolean;
+  /** Hero only: the score band alone, without the four cells (they are set in the page's margin instead). */
+  bare?: boolean;
 }
 
 const HERO_TONE: Record<PillTone, string> = {
@@ -42,7 +46,7 @@ const HERO_TONE: Record<PillTone, string> = {
 /** Stat columns beside a lead: a row of their own while stacked, three abreast once the lead sits beside them. */
 const HERO_STAT_COLS: Record<number, string> = {
   3: "@3xl:grid-cols-3",
-  4: "@3xl:grid-cols-4 @7xl:grid-cols-3",
+  4: "@3xl:grid-cols-4 @7xl:grid-cols-2",
 };
 
 const TONE: Record<PillTone, string> = {
@@ -69,11 +73,11 @@ function Cell({ label, cell, loading, hero, children }: { label: string; cell: I
   );
 }
 
-export function InsightHeader({ situation, changed, why, next, aiSummary, loading, hero, stats, lead }: InsightHeaderProps) {
+export function InsightHeader({ situation, changed, why, next, aiSummary, loading, hero, stats, lead, embedded, bare }: InsightHeaderProps) {
   const a = next.action;
-  if (aiSummary) {
+  if (aiSummary && !bare) {
     return (
-      <section aria-label="Insight" className="m-motion-rise" style={{ background: "var(--m-sheet)", borderTop: "1px solid var(--m-line-strong)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-3) 0" }}>
+      <section aria-label="Insight" className={embedded ? "m-hero-cells" : "m-motion-rise"} style={embedded ? undefined : { background: "var(--m-sheet)", borderTop: "1px solid var(--m-line-strong)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-3) 0" }}>
         <AiSummary {...aiSummary} />
       </section>
     );
@@ -81,13 +85,13 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
   return (
     <section
       aria-label="Insight"
-      className={hero ? "m-hero m-motion-rise" : "m-motion-rise"}
-      style={hero ? undefined : { background: "var(--m-sheet)", border: "1px solid var(--m-line)", borderRadius: "var(--m-radius-sheet)", padding: "var(--m-space-3) var(--m-space-4)" }}
+      className={hero ? "m-hero m-motion-rise" : embedded ? "m-hero-cells" : "m-motion-rise"}
+      style={hero || embedded ? undefined : { background: "var(--m-sheet)", border: "1px solid var(--m-line)", borderRadius: "var(--m-radius-sheet)", padding: "var(--m-space-3) var(--m-space-4)" }}
     >
       {hero && (lead || (stats && stats.length > 0)) && (
         // Lead and stats sit side by side only where both fit (a wide container); below it they stack, the lead
         // on its own row, so the verdict never paints over a stat or wraps into a narrow column.
-        <div className={lead ? "mb-6 grid gap-8 @7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @7xl:items-end" : "mb-6"}>
+        <div className={lead ? `${bare ? "" : "mb-6 "}grid gap-8 @7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @7xl:items-end` : bare ? "" : "mb-6"}>
           {lead && <div data-testid="insight-hero-lead" className="min-w-0">{lead}</div>}
           {stats && stats.length > 0 && (
             <div className={`m-motion-stagger grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 ${lead ? HERO_STAT_COLS[Math.min(stats.length, 4)] ?? "" : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
@@ -97,7 +101,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
           )}
         </div>
       )}
-      <div className="m-motion-stagger grid gap-4 md:grid-cols-4 @5xl:grid-cols-4">
+      {!bare && <div className="m-motion-stagger grid gap-4 md:grid-cols-4 @5xl:grid-cols-4">
         <Cell label="Situation" cell={situation} loading={loading} hero={hero} />
         <Cell label="What changed" cell={changed} loading={loading} hero={hero} />
         <Cell label="Why it matters" cell={why} loading={loading} hero={hero} />
@@ -113,7 +117,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
             </span>
           )}
         </Cell>
-      </div>
+      </div>}
     </section>
   );
 }

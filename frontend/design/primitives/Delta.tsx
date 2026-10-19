@@ -9,13 +9,13 @@ export function Delta({ value, run, invert = false }: { value: number; run?: str
   const good = invert ? value < 0 : value > 0;
   const bad = invert ? value > 0 : value < 0;
   const tone = good ? "good" : bad ? "bad" : "zero";
-  const sign = dir === "down" ? "-" : dir === "up" ? "+" : "";
+  const sign = dir === "down" ? "-" : dir === "up" ? "+" : "±";
   return (
     <span
       className={clsx("m-delta m-numeric", `m-delta-${dir}`, `m-delta-${tone}`)}
       title={run ? `vs ${run}` : undefined}
     >
-      <span className="m-delta-arrow" aria-hidden="true" />
+      {dir !== "flat" && <span className="m-delta-arrow" aria-hidden="true" />}
       {sign}
       {Math.abs(value).toFixed(1)}
     </span>

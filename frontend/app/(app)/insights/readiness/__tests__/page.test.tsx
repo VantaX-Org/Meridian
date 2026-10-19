@@ -66,7 +66,7 @@ describe("ReadinessPage", () => {
       areas: [{ area: "bp", label: "Business partner / CVI", simplification_item: null, rules: 5, evaluated: 5, failing: 3, failing_records: 9, blocking_failing: 2, warning_failing: 1, status: "x", checks: [] }],
     });
     renderWithQuery(<ReadinessPage />);
-    expect(await screen.findByText("No readiness waves yet")).toBeInTheDocument();
+    expect(await screen.findByText("No waves yet")).toBeInTheDocument();
     // The grid's empty state and the header's next step both lead to the migration cockpit.
     const links = screen.getAllByRole("link", { name: "Create wave" });
     expect(links.length).toBeGreaterThan(0);
@@ -77,21 +77,21 @@ describe("ReadinessPage", () => {
     // Without waves the blockers table lists the failing S/4 areas instead of an empty line.
     expect(await screen.findByRole("columnheader", { name: "S/4 area" })).toBeInTheDocument();
     expect(screen.getByText("Business partner / CVI")).toBeInTheDocument();
-    expect(screen.getByText(/2 rules would block an S\/4 load; no wave is defined yet/)).toBeInTheDocument();
+    expect(screen.getByText(/2 rules would block an S\/4 load, and no wave is set up yet/)).toBeInTheDocument();
   });
 
   it("shows the no-data empty state only when there is no run at all", async () => {
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: null, threshold: 70, cells: [], configured: true });
     renderWithQuery(<ReadinessPage />);
     // The route carries run=v1, so the S/4 strip is scoped to it and the page is not empty; the grid carries the wave empty state.
-    expect(await screen.findByText("No readiness waves yet")).toBeInTheDocument();
+    expect(await screen.findByText("No waves yet")).toBeInTheDocument();
   });
 
   it("shows a not-configured empty state when readiness waves aren't set", async () => {
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: null, threshold: 70, cells: [], configured: false });
     renderWithQuery(<ReadinessPage />);
-    await waitFor(() => expect(screen.getByText(/readiness waves not set/i)).toBeInTheDocument());
-    expect(screen.getByText(/settings > alert thresholds/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/readiness is not set up yet/i)).toBeInTheDocument());
+    expect(screen.getAllByText(/scoring and alerts/i).length).toBeGreaterThan(0);
   });
 
   it("shows an error state when the request fails", async () => {
@@ -110,7 +110,7 @@ describe("ReadinessPage", () => {
     const retry = await screen.findByRole("button", { name: /retry/i });
     fireEvent.click(retry);
 
-    await waitFor(() => expect(screen.getByText("No readiness waves yet")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("No waves yet")).toBeInTheDocument());
     expect(getReadiness).toHaveBeenCalledTimes(2);
   });
 

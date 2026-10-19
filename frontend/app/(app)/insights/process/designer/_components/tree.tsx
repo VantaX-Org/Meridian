@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
-import { Button, IconButton, Input, Mono } from "@/design";
+import { Button, IconButton, Input, Mono, IconArrowDown, IconArrowUp, IconPencil, IconPlus, IconTrash } from "@/design";
 import type { DqColour } from "@/types/process-model";
 import { childrenOf, type Doc, type Level, type TreeItem } from "./doc";
 
@@ -108,11 +107,11 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
                   </span>
                 ) : renaming === id || !canDesign ? null : (
                   <span className="m-designer__actions">
-                    <IconButton size="sm" aria-label={`Rename ${r.item.name}`} onClick={() => guard(() => setRenaming(id))}><Pencil size={14} aria-hidden /></IconButton>
-                    {r.level < 4 ? <IconButton size="sm" aria-label={`Add child to ${r.item.name}`} onClick={() => guard(() => { actions.add(id); toggle(id, true); })}><Plus size={14} aria-hidden /></IconButton> : null}
-                    <IconButton size="sm" aria-label={`Move ${r.item.name} up`} disabled={r.index === 0} onClick={() => guard(() => actions.move(id, -1))}><ArrowUp size={14} aria-hidden /></IconButton>
-                    <IconButton size="sm" aria-label={`Move ${r.item.name} down`} disabled={r.index === r.count - 1} onClick={() => guard(() => actions.move(id, 1))}><ArrowDown size={14} aria-hidden /></IconButton>
-                    <IconButton size="sm" aria-label={`Delete ${r.item.name}`} onClick={() => guard(() => setConfirm(id))}><Trash2 size={14} aria-hidden /></IconButton>
+                    <IconButton size="sm" aria-label={`Rename ${r.item.name}`} onClick={() => guard(() => setRenaming(id))}><IconPencil size={14} /></IconButton>
+                    {r.level < 4 ? <IconButton size="sm" aria-label={`Add child to ${r.item.name}`} onClick={() => guard(() => { actions.add(id); toggle(id, true); })}><IconPlus size={14} /></IconButton> : null}
+                    <IconButton size="sm" aria-label={`Move ${r.item.name} up`} disabled={r.index === 0} onClick={() => guard(() => actions.move(id, -1))}><IconArrowUp size={14} /></IconButton>
+                    <IconButton size="sm" aria-label={`Move ${r.item.name} down`} disabled={r.index === r.count - 1} onClick={() => guard(() => actions.move(id, 1))}><IconArrowDown size={14} /></IconButton>
+                    <IconButton size="sm" aria-label={`Delete ${r.item.name}`} onClick={() => guard(() => setConfirm(id))}><IconTrash size={14} /></IconButton>
                   </span>
                 )}
               </div>

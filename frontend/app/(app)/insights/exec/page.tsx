@@ -131,9 +131,9 @@ export default function ExecPage() {
           { label: "Owners improved", value: up, to: "/insights/owners" },
           { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: "/insights/owners" },
         ] : undefined,
-        situation: { sentence: data?.narrative || (cells.length ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go` : "No readiness waves are defined yet"), tone: noGo ? "no-go" : "go" },
-        changed: { sentence: owners.length === 0 ? "No owner is scored yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
-        why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "No value at risk", href: "/insights/impact" },
+        situation: { sentence: data?.narrative || (cells.length ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go` : "No waves set up yet"), tone: noGo ? "no-go" : "go" },
+        changed: { sentence: owners.length === 0 ? "Nobody owns an issue yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
+        why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "Nothing is priced at risk yet", href: "/insights/impact" },
         next: noGo
           ? { sentence: "Clear the no-go cells first", action: { label: "Open readiness", href: withScope("/insights/readiness", { run }) } }
           : { sentence: "Share the board pack", action: { label: "Open reports", href: withScope("/insights/reports", { run }) } },

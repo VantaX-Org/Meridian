@@ -8,22 +8,22 @@
 
 :root {
   /* ---------- Surfaces (light: off-white canvas, white cards) ---------- */
-  --m-canvas: #F7F8FA;          /* page background */
+  --m-canvas: #F6F5F2;          /* page background: paper */
   --m-sheet: #FFFFFF;           /* cards, tables, forms, popovers */
-  --m-sheet-raised: #F1F3F6;    /* table header rows, hover rows, inset wells */
-  --m-sheet-sunken: #E9ECF0;    /* code/sample wells, bar tracks, ghost shapes */
+  --m-sheet-raised: #F1F0EC;    /* table header rows, hover rows, inset wells */
+  --m-sheet-sunken: #E7E5E0;    /* code/sample wells, bar tracks, ghost shapes */
   --m-rail: #FFFFFF;            /* sidebar background: a light sheet */
   --m-rail-hover: var(--m-sheet-raised);
   --m-rail-edge: var(--m-line); /* rail right rule */
-  --m-line: #E3E6EB;            /* hairline borders (1px) */
-  --m-line-strong: #C5CBD3;     /* input borders, table head rule */
+  --m-line: #E3E1DB;            /* hairline borders (1px) */
+  --m-line-strong: #C7C4BD;     /* input borders, table head rule */
   --m-scrim: rgb(17 20 24 / 0.36);
 
   /* ---------- Ink ---------- */
-  --m-ink: #161A21;             /* 17:1 on sheet */
-  --m-ink-2: #474F5C;
-  --m-ink-3: #5A6371;           /* minimum for body text on every surface */
-  --m-ink-4: #A7AEB9;           /* disabled, decorative only; never for text */
+  --m-ink: #17181B;             /* 17:1 on sheet */
+  --m-ink-2: #474A51;
+  --m-ink-3: #5B5F67;           /* minimum for body text on every surface */
+  --m-ink-4: #A8A8AC;           /* disabled, decorative only; never for text */
   --m-ink-on-accent: #FFFFFF;
 
   /* ---------- Accent: deep blue. Interaction only (selection, focus, links, primary button) ---------- */
@@ -141,6 +141,7 @@
   --m-space-5: 20px; --m-space-6: 24px; --m-space-8: 32px; --m-space-10: 40px;
   --m-space-12: 48px; --m-space-16: 64px; --m-space-24: 96px;
   --m-page-max: 1600px;
+  --m-margin-w: 280px;          /* the Datum's margin column */
   --m-page-max-reading: 760px;
   --m-page-pad-sm: 16px;
   --m-page-pad: var(--m-space-8);
@@ -469,6 +470,7 @@
   --m-section-gap: var(--m-space-6);
   --m-page-pad: var(--m-space-10);
   --m-page-max: 1800px;
+  --m-margin-w: 340px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -503,7 +505,7 @@
 .m-score-bar { position: relative; display: block; width: 100%; height: 8px; border-radius: var(--m-radius-pill); background: var(--m-dqs-track); overflow: hidden; }
 .m-score-bar .m-bar-fill { border-radius: var(--m-radius-pill); }
 /* Score size="hero": wide enough for the numeral and its delta chip; grows with the content rather than clipping it. */
-.m-score-hero { min-width: 260px; width: max-content; max-width: 360px; }
+.m-score-hero { min-width: 260px; width: 100%; }
 .m-fade-bottom { background-image: var(--m-grad-fade-bottom); }
 
 .m-lift, .m-lift-sm { transition: transform var(--m-motion-duration) var(--m-ease-spring), box-shadow var(--m-motion-duration) var(--m-ease), background-color var(--m-motion-duration) var(--m-ease); }
@@ -536,7 +538,6 @@
 .m-delta-arrow { width: 0; height: 0; border-left: 3px solid transparent; border-right: 3px solid transparent; flex-shrink: 0; }
 .m-delta-up .m-delta-arrow { border-bottom: 4px solid currentColor; }
 .m-delta-down .m-delta-arrow { border-top: 4px solid currentColor; }
-.m-delta-flat .m-delta-arrow { border-left: 3px solid currentColor; border-right: 0; border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
 .m-delta-good { background: var(--m-pass-soft); color: var(--m-pass-ink); }
 .m-delta-bad { background: var(--m-critical-soft); color: var(--m-critical-ink); }
 .m-delta-zero { background: var(--m-sheet-sunken); color: var(--m-ink-2); }
@@ -578,6 +579,8 @@
 /* Stat edge: 2 px rule over the column's left hairline */
 .m-stat-edge { position: absolute; top: 0; bottom: 0; left: -1px; width: 2px; background: var(--m-line-strong); }
 .m-stat-hero { background: transparent; box-shadow: none; border-left: 0; padding-left: 0; color: var(--m-ink); }
+/* A stat tile carrying the Rule grows to fit it. */
+.m-stat-ruled { height: auto; min-height: var(--m-stat-h); padding-bottom: var(--m-space-3); }
 .m-stat-hero .m-stat-edge { display: none; }   /* the score bar carries the tone */
 
 /* DataTable severity bar: inset shadow on the first cell, no layout shift */
@@ -643,5 +646,37 @@
    verdict into a word-per-line column beside a wide score. */
 .m-hero-lead { display: flex; flex-wrap: wrap; align-items: flex-end; column-gap: var(--m-space-8); row-gap: var(--m-space-4); min-width: 0; }
 .m-hero-verdict { display: flex; flex-direction: column; gap: var(--m-space-1); flex: 1 1 18rem; min-width: 0; max-width: 48ch; }
+/* ---------- The Datum: one meridian line between the figures and their margin ---------- */
+.m-datum { display: grid; gap: var(--m-space-6); align-items: start; }
+.m-datum-margin { position: relative; border-left: 1px solid var(--m-line-strong); padding-left: var(--m-space-5); }
+.m-datum-margin::before { content: ""; position: absolute; left: -2px; top: 0; width: 3px; height: 28px; background: var(--m-accent); }
+@container (min-width: 64rem) {
+  .m-datum[data-margin="true"] { grid-template-columns: minmax(0, 1fr) var(--m-margin-w); gap: var(--m-space-8); }
+  .m-datum-margin { order: 1; min-height: 100%; }
+}
+.m-margin { position: sticky; top: var(--m-space-4); display: flex; flex-direction: column; gap: var(--m-space-5); }
+.m-margin-note { display: flex; flex-direction: column; gap: var(--m-space-1); }
+.m-margin-label { display: inline-flex; align-items: center; gap: var(--m-space-2); font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 500; color: var(--m-ink-3); }
+.m-margin-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+/* The home hero's four sentences sit under the verdict, behind one hairline, with no sheet of their own. */
+.m-hero-cells { border-top: 1px solid var(--m-line); padding-top: var(--m-space-4); margin-top: var(--m-space-2); }
+/* Journey: four stations on one rail. A done station is filled in the pass hue, the current one ringed in the accent. */
+.m-journey { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; }
+.m-journey-station { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--m-space-3); padding: 0 var(--m-space-2); text-align: center; }
+.m-journey-station::before { content: ""; position: absolute; top: 21px; left: -50%; width: 100%; height: 2px; background: var(--m-line); }
+.m-journey-station:first-child::before { display: none; }
+.m-journey-station[data-link="done"]::before { background: var(--m-pass); }
+.m-journey-dot { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: var(--m-sheet); box-shadow: inset 0 0 0 1.5px var(--m-line-strong); color: var(--m-ink-3); }
+.m-journey-station[data-state="done"] .m-journey-dot { background: var(--m-pass); box-shadow: none; color: var(--m-pass-on); }
+.m-journey-station[data-state="current"] .m-journey-dot { background: var(--m-accent-soft); box-shadow: inset 0 0 0 2px var(--m-accent); color: var(--m-accent-ink); }
+.m-journey-label { font-size: var(--m-text-meta); line-height: var(--m-leading-meta); color: var(--m-ink-3); }
+.m-journey-station[data-state="done"] .m-journey-label { color: var(--m-ink-2); }
+.m-journey-station[data-state="current"] .m-journey-label { color: var(--m-ink); font-weight: 500; }
+.m-journey-step { display: flex; flex-direction: column; gap: var(--m-space-2); margin-top: var(--m-space-6); padding-top: var(--m-space-5); border-top: 1px solid var(--m-line); }
+/* Choice chips: one pressed option per group (a filter row), a pill that fills with the accent tint when chosen. */
+.m-choice { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: var(--m-radius-pill); border: 1px solid var(--m-line); background: var(--m-sheet); color: var(--m-ink-2); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); font-weight: 500; cursor: pointer; transition: color var(--m-motion-duration) var(--m-motion-ease-out), background-color var(--m-motion-duration) var(--m-motion-ease-out), border-color var(--m-motion-duration) var(--m-motion-ease-out); }
+.m-choice:hover { background: var(--m-sheet-raised); color: var(--m-ink); border-color: var(--m-line-strong); }
+.m-choice[aria-pressed="true"] { background: var(--m-accent-soft); color: var(--m-accent-ink); border-color: var(--m-accent); }
+.m-choice:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
 /* ProgressFill: the accent fill inside a caller-owned progress track. */
 .m-progress-fill { display: block; height: 100%; background: var(--m-accent); }

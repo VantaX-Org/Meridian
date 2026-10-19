@@ -2,8 +2,7 @@
 
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
-import { Button, Field, Pill, Select } from "@/design";
+import { Button, Field, Pill, Select, IconClose } from "@/design";
 import { getSystemModules } from "@/lib/api/connectivity";
 import type { GrantInput, Role } from "@/lib/api/roles";
 
@@ -44,7 +43,7 @@ export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, pr
           <li key={g.id} className="inline-flex items-center gap-1">
             <Pill>{g.role_key}, {scopeLabel(g.system_id, g.module, systems)}</Pill>
             <button type="button" aria-label={`Remove ${g.role_key} ${scopeLabel(g.system_id, g.module, systems)}`} disabled={busy} onClick={() => onRemove(g)}>
-              <X size={14} aria-hidden />
+              <IconClose size={14} />
             </button>
           </li>
         ))}
