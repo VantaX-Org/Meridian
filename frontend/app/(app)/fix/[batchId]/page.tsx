@@ -6,7 +6,9 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, Skeleton, Mono, Notice, Pill, type ExportOption } from "@/design";
+import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, PageHeader, Skeleton, Mono, Notice, Stat, Status, type CellMeta, type ExportOption } from "@/design";
+import { ProposalCell, proposalOf } from "@/components/fix/proposal";
+import { RuleCell } from "@/components/fix/rule-cell";
 import {
   approveCleaning,
   bulkApprove,
@@ -20,7 +22,7 @@ import {
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCleaningReportUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
-import { formatDate, labelOf } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
 import { GatedPrimary } from "@/components/gated-primary";
@@ -60,6 +62,7 @@ export default function BatchPage() {
     queryFn: () => getCleaningQueue({ batch_id: batchId, per_page: 100 }),
   });
   const items = useMemo(() => data?.items ?? [], [data]);
+  const ranked = useMemo(() => [...items].sort((x, y) => y.confidence - x.confidence), [items]);
   const confident = useMemo(() => items.filter((i) => i.confidence >= HIGH_CONFIDENCE), [items]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: queryKeys.batch(batchId) });
@@ -98,22 +101,24 @@ export default function BatchPage() {
   });
   const columns: ColumnDef<CleaningQueueItem>[] = [
     { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
-    { accessorKey: "rule_id", header: "Rule", cell: ({ row }) => row.original.rule_id ?? "—" },
+    { id: "rule", accessorFn: (i) => i.rule_id ?? "", header: "Rule", cell: ({ row }) => (row.original.rule_id ? <RuleCell id={row.original.rule_id} /> : <span className="m-ink-3">—</span>) },
+    { id: "proposed", header: "Proposed value", enableSorting: false, cell: ({ row }) => <ProposalCell proposal={proposalOf(row.original)} /> },
     {
       accessorKey: "confidence",
       header: "Confidence",
+      meta: { numeric: true } satisfies CellMeta,
       cell: ({ row }) => `${Math.round(row.original.confidence * 100)}%`,
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <Pill tone="neutral">{labelOf(row.original.status)}</Pill>,
+      cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} />,
     },
     {
       id: "actions",
       header: "",
       cell: ({ row }) => (
-        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
           <GatedPrimary kind="approve" allowed={canApprove} variant="secondary" onClick={() => approve.mutate(row.original.id)}>Approve</GatedPrimary>
           {canApprove ? (
             <Button variant="ghost" onClick={() => reject.mutate({ id: row.original.id, reason: "steward rejected" })}>
@@ -153,7 +158,24 @@ export default function BatchPage() {
     },
   ];
 
+  const objectName = items[0] ? formatModuleName(items[0].object_type) : null;
+  const meanConfidence = items.length ? items.reduce((n, i) => n + i.confidence, 0) / items.length : null;
+
   return (
+    <div className="flex flex-col gap-4">
+    <PageHeader
+      title={`Batch ${batchId}`}
+      meta={items.length ? `${items.length.toLocaleString()} proposal${items.length === 1 ? "" : "s"}${objectName ? ` for ${objectName}` : ""}` : undefined}
+      actions={canApprove ? (
+        <Button
+          variant="primary"
+          disabled={confident.length === 0 || acceptHighConfidence.isPending}
+          onClick={() => acceptHighConfidence.mutate()}
+        >
+          Accept {confident.length} at 85% or higher
+        </Button>
+      ) : undefined}
+    />
     <EntityTabs entityType="cleaning" entityId={batchId} audit={<BatchAudit batchId={batchId} />} exportOptions={exportOptions} overview={
     <ExplorerPage
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
@@ -163,29 +185,24 @@ export default function BatchPage() {
         action: <Button render={<Link href="/fix?tab=batches">All batches</Link>} />,
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
-      summary={
-        <div className="flex items-center gap-3">
-          {canApprove ? (
-            <Button
-              variant="primary"
-              disabled={confident.length === 0 || acceptHighConfidence.isPending}
-              onClick={() => acceptHighConfidence.mutate()}
-            >
-              Accept {confident.length} at 85% or higher
-            </Button>
-          ) : null}
+      summary={items.length > 0 ? (
+        <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,360px))]">
+          <Stat label="Records" value={(data?.total ?? items.length).toLocaleString()} />
+          <Stat label="Mean confidence" value={meanConfidence != null ? `${Math.round(meanConfidence * 100)}%` : "—"} />
+          <Stat label="At 85% or higher" value={confident.length.toLocaleString()} tone={confident.length > 0 ? "go" : undefined} hint="ready to accept" />
         </div>
-      }
+      ) : undefined}
       table={
         <div className="flex flex-col gap-3">
           {failure ? <Notice tone="danger">{failure}</Notice> : null}
           {data && data.total > items.length ? (
-            <p className="m-text-body m-ink-3">Showing the first {items.length.toLocaleString()} of {data.total.toLocaleString()} items in this batch.</p>
+            <p className="m-text-body m-ink-3">{items.length.toLocaleString()} of {data.total.toLocaleString()} items in this batch are listed</p>
           ) : null}
-          <DataTable columns={columns} data={items} getRowId={(row) => row.id} />
+          <DataTable columns={columns} data={ranked} getRowId={(row) => row.id} />
         </div>
       }
     />
     } />
+    </div>
   );
 }

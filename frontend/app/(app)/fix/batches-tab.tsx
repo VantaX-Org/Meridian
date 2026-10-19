@@ -164,7 +164,12 @@ export function BatchesTab() {
       id: "compare",
       header: "",
       enableSorting: false,
-      cell: ({ row }) => <BeforeAfter batch={row.original} monitor={monitor.data?.items ?? []} />,
+      cell: ({ row }) => (
+        <span className="inline-flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+          <BeforeAfter batch={row.original} monitor={monitor.data?.items ?? []} />
+          <Link href={`?tab=batches&batch=${row.original.id}`} aria-label={`Review ${row.original.name}`} className="m-ink-accent">Review</Link>
+        </span>
+      ),
     },
   ];
 
@@ -175,37 +180,17 @@ export function BatchesTab() {
     <div className="flex flex-col gap-6">
       <MonitorSummaryNotice />
 
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-6 m-motion-stagger" data-tour="fix-batches">
-          <Link href="?tab=batches&status=draft" className="text-left">
-            <Stat label="Draft batches" value={counts.draft}
-              delta={counts.draft ? "Waiting for proposals to be accepted and approved." : "No batches in draft."} />
-          </Link>
-          <Link href="?tab=batches&status=approved" className="text-left">
-            <Stat label="Waiting for export" value={counts.approved} tone={counts.approved ? "at-risk" : "go"}
-              delta={counts.approved
-                ? <Pill tone="at-risk">Approved but not exported yet.</Pill>
-                : "Nothing waiting for export."} />
-          </Link>
-          <Link href="?tab=batches&status=exported" className="text-left">
-            <Stat label="Still failing after export" value={stillFailing} tone={stillFailing ? "no-go" : "go"}
-              delta={stillFailing
-                ? <Pill tone="at-risk">Exported records that were checked again and still fail.</Pill>
-                : "No exported record is still failing."} />
-          </Link>
-        </div>
-        <p className="m-text-body m-ink-2">
-          {q.data
-            ? `${batches.length.toLocaleString()} fix batch${batches.length === 1 ? "" : "es"}. ${counts.draft} draft, ${counts.approved} waiting for export.`
-            : null}
-        </p>
+      <div className="m-stat-grid m-motion-stagger @5xl:[grid-template-columns:repeat(3,minmax(0,360px))]" data-tour="fix-batches">
+        <Link href="?tab=batches&status=draft" className="text-left">
+          <Stat label="Draft batches" value={counts.draft} hint={counts.draft ? "waiting for proposals to be accepted and approved" : "none in draft"} />
+        </Link>
+        <Link href="?tab=batches&status=approved" className="text-left">
+          <Stat label="Waiting for export" value={counts.approved} tone={counts.approved ? "at-risk" : "go"} hint={counts.approved ? "approved, not exported yet" : "nothing waiting"} />
+        </Link>
+        <Link href="?tab=batches&status=exported" className="text-left">
+          <Stat label="Still failing after export" value={stillFailing} tone={stillFailing ? "no-go" : "go"} hint={stillFailing ? "exported records that fail again" : "none still failing"} />
+        </Link>
       </div>
-
-      {status ? (
-        <Notice action={<Button variant="ghost" onClick={() => setStatus("")}>Show all</Button>}>
-          Showing {STATUS_LABEL[status].toLowerCase()} batches only.
-        </Notice>
-      ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Search">

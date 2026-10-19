@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Select, Skeleton, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
+import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -19,7 +19,7 @@ import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
 import { formatDate, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { isFinished, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
+import { isFinished, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 
@@ -57,34 +57,58 @@ function RunRowProgress({ id }: { id: string }) {
 /** The value the user must type to purge a run: its label, or its id when it has none (api/routes/retention.py). */
 const confirmValueOf = (v: Version) => v.label ?? v.id;
 
-function makeColumns(systemName: Map<string, string>, allVersions: Version[], onDelete?: (v: Version) => void): ColumnDef<Version>[] {
-  const actions: ColumnDef<Version>[] = onDelete ? [{
-    id: "actions",
-    header: "",
-    enableSorting: false,
-    cell: ({ row }) => (row.original.metadata?.archived ? (
-      <Button variant="ghost" aria-label={`Delete ${runName(row.original)} permanently`} onClick={(e) => { e.stopPropagation(); onDelete(row.original); }}>
-        Delete permanently
-      </Button>
-    ) : null),
-  }] : [];
+/** The day a run started, as the ledger prints it (the shared date formatter, so it follows the viewer's time zone). */
+const dayLabel = (v: Version) => formatDate(v.run_at, "date");
+
+function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): ColumnDef<Version>[] {
   return [
-    { id: "label", accessorFn: runName, header: "Run" },
+    {
+      // The ledger is grouped by day: the label sits on the first run of each day and is blank under it.
+      id: "day",
+      accessorFn: (v) => v.run_at,
+      header: "Day",
+      size: 120,
+      enableSorting: false,
+      cell: ({ row, table }) => {
+        const rows = table.getRowModel().rows;
+        const at = rows.findIndex((r) => r.id === row.id);
+        const prev = at > 0 ? rows[at - 1].original : null;
+        return prev && dayLabel(prev) === dayLabel(row.original) ? null : <span className="m-ink-2 whitespace-nowrap">{dayLabel(row.original)}</span>;
+      },
+    },
+    {
+      id: "label",
+      accessorFn: runName,
+      header: "Run",
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-2" title={formatDate(row.original.run_at, "datetime")}>
+          <span>{runName(row.original)}</span>
+          {row.original.metadata?.baseline === true ? <Pill>Baseline</Pill> : null}
+          {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
+        </span>
+      ),
+    },
+    {
+      id: "lineage",
+      header: "Lineage",
+      size: 110,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const series = lineageSeries(row.original, allVersions);
+        return series.length > 1 ? <Sparkline data={series} width={88} height={22} /> : <span className="m-ink-3">—</span>;
+      },
+    },
     {
       id: "status",
       accessorFn: (v) => v.status,
       header: "Status",
       cell: ({ row }) => (
-        <span className="inline-flex gap-1">
-          <Status kind="lifecycle" value={row.original.status} variant="solid" />
-          {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
+        <span className="inline-flex items-center gap-2">
+          <Status kind="lifecycle" value={row.original.status} />
           {IN_PROGRESS.has(row.original.status) ? <RunRowProgress id={row.original.id} /> : null}
         </span>
       ),
     },
-    { id: "run_at", accessorFn: (v) => v.run_at, header: "Started", cell: ({ row }) => formatDate(row.original.run_at, "datetime") },
-    { id: "system", accessorFn: (v) => systemName.get(v.metadata?.system_id ?? "") ?? "—", header: "System" },
-    { id: "objects", accessorFn: (v) => v.metadata?.modules?.length ?? 0, header: "Objects", meta: { numeric: true, heat: "seq" } satisfies CellMeta },
     {
       id: "dqs",
       accessorFn: (v) => overallDqs(v) ?? -1,
@@ -96,7 +120,7 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[], on
         const before = prev ? overallDqs(prev) : null;
         return (
           <span className="inline-flex items-center gap-2">
-            <DrillLink href={`/runs/${row.original.id}`}>{dqs.toFixed(1)}</DrillLink>
+            <Score value={dqs} size="sm"><DrillLink href={`/runs/${row.original.id}`}>{dqs.toFixed(1)}</DrillLink></Score>
             {before !== null ? <Delta value={Math.round((dqs - before) * 10) / 10} /> : null}
           </span>
         );
@@ -105,12 +129,21 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[], on
     { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical", size: 90, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => row.original.severity_counts ? row.original.severity_counts.critical.toLocaleString() : "—" },
     { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 80, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => row.original.severity_counts ? row.original.severity_counts.high.toLocaleString() : "—" },
     {
-      id: "baseline",
-      header: "Baseline",
-      accessorFn: (v) => (v.metadata?.baseline === true ? "Baseline" : ""),
-      cell: ({ row }) => (row.original.metadata?.baseline === true ? <Pill>Baseline</Pill> : null),
+      id: "open",
+      header: "",
+      size: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <span className="inline-flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          {onDelete && row.original.metadata?.archived ? (
+            <Button variant="ghost" aria-label={`Delete ${runName(row.original)} permanently`} onClick={() => onDelete(row.original)}>
+              Delete permanently
+            </Button>
+          ) : null}
+          <Link href={`/runs/${row.original.id}`} aria-label={`Open ${runName(row.original)}`} className="m-ink-accent">Open</Link>
+        </span>
+      ),
     },
-    ...actions,
   ];
 }
 
@@ -188,8 +221,8 @@ export default function RunsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Version | null>(null);
   const canPurge = can("manage_settings");
   const columns = useMemo(
-    () => makeColumns(systemName, allVersions, canPurge ? setDeleteTarget : undefined),
-    [systemName, allVersions, canPurge],
+    () => makeColumns(allVersions, canPurge ? setDeleteTarget : undefined),
+    [allVersions, canPurge],
   );
   // The upload scope has no system_id to filter by, so only real systems are offered.
   const systemOptions = useMemo(() => {
@@ -200,7 +233,11 @@ export default function RunsPage() {
   const headVersions = useMemo(() => head.data?.versions ?? [], [head.data]);
   const headScoped = useMemo(() => (system ? headVersions.filter((v) => v.metadata?.system_id === system) : headVersions), [headVersions, system]);
   const failedCount = headScoped.filter((v) => toLifecycle(v.status) === "failed").length;
-  const rows = failedOnly ? scoped.filter((v) => toLifecycle(v.status) === "failed") : scoped;
+  // Newest first, so the day groups of the ledger read top-down.
+  const rows = useMemo(
+    () => [...(failedOnly ? scoped.filter((v) => toLifecycle(v.status) === "failed") : scoped)].sort((a, b) => (a.run_at < b.run_at ? 1 : a.run_at > b.run_at ? -1 : 0)),
+    [scoped, failedOnly],
+  );
 
   const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 ? "empty" : undefined;
 
@@ -285,17 +322,28 @@ export default function RunsPage() {
 
   const summary = all.isLoading || head.isLoading ? (
     <div className="flex flex-col gap-4" aria-busy="true">
-      <div className="m-stat-grid"><StatSkeleton /><StatSkeleton /></div>
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
         <Skeleton height="var(--m-leading-section)" />
-        <Skeleton height={160} />
+        <Skeleton height={120} />
       </div>
+      <div className="m-stat-grid"><StatSkeleton /><StatSkeleton /></div>
     </div>
   ) : (
     <div className="flex flex-col gap-4">
+      <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
+        <h2 className="font-semibold m-text-h">
+          {`Score per run, ${systemName.get(chartScope) ?? "latest system"}`}
+        </h2>
+        {points.length > 1 ? (
+          <Line data={points} height={120} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
+        ) : (
+          <div className="flex items-center justify-center text-sm [height:120px] [background:var(--m-sheet-sunken)] m-ink-3">
+            Trend appears after two runs
+          </div>
+        )}
+      </div>
       {rows.length > 0 || headScoped.length > 0 ? (
-        <div className="m-stat-grid m-motion-stagger">
-          <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > headVersions.length ? `latest ${headVersions.length} used for the figures below` : undefined} />
+        <div className="m-stat-grid m-motion-stagger @5xl:[grid-template-columns:repeat(2,minmax(0,360px))]">
           <Stat
             label="Latest DQS"
             help="dqs"
@@ -306,21 +354,10 @@ export default function RunsPage() {
             hint={delta === null ? "No earlier run" : "vs previous"}
             href={latest ? `/runs/${latest.id}` : undefined}
           />
+          <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > headVersions.length ? `latest ${headVersions.length} used for the figures above` : undefined} />
           {failedCount > 0 ? <Stat label="Failed runs" hint={`in the latest ${PAGE_SIZE}`} value={failedCount.toLocaleString()} tone="no-go" href="/runs?status=failed" /> : null}
         </div>
       ) : null}
-      <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
-        <h2 className="font-semibold m-text-h">
-          {`Score per run, ${systemName.get(chartScope) ?? "latest system"}`}
-        </h2>
-        {points.length > 1 ? (
-          <Line data={points} height={160} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
-        ) : (
-          <div className="flex items-center justify-center text-sm [height:160px] [background:var(--m-sheet-sunken)] m-ink-3">
-            Trend appears after two runs
-          </div>
-        )}
-      </div>
     </div>
   );
 

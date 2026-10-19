@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as exceptions from "@/lib/api/exceptions";
@@ -77,5 +77,66 @@ describe("InboxPage show all", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Clear search" }));
     await waitFor(() => expect(screen.queryByText("No exceptions in this view")).toBeNull());
     expect(screen.getByLabelText("Search exceptions")).toHaveValue("");
+  });
+});
+
+const task = (id: string, domain: string, over: Record<string, unknown> = {}) => ({
+  id, tenant_id: "t", item_type: "exception", source_id: `rec-${id}`, domain, priority: 1,
+  due_at: null, assigned_to: null, status: "open", sla_hours: null,
+  created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: "approve", ai_confidence: 0.9, ...over,
+});
+
+describe("InboxPage workbench", () => {
+  const mountTasks = () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("a", "material_master"), task("b", "business_partner")] : [],
+      total: p?.status === "open" ? 2 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+  };
+
+  it("lists the tasks on the left and the selected one on the right, with its one decision", async () => {
+    mountTasks();
+    const list = await screen.findByRole("list", { name: "Tasks" });
+    expect(list.querySelectorAll("li")).toHaveLength(2);
+    const detail = screen.getByRole("region", { name: "Selected item" });
+    // The first task is open until another is picked.
+    expect(detail).toHaveTextContent("rec-a");
+    expect(within(detail).getByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(within(detail).getByRole("link", { name: "Open record" })).toHaveAttribute("href", "/objects/material_master/records/rec-a");
+    fireEvent.click(within(list).getByRole("button", { name: /Exception in Business partner/ }));
+    expect(screen.getByRole("region", { name: "Selected item" })).toHaveTextContent("rec-b");
+  });
+
+  it("offers the bulk actions once a row is ticked", async () => {
+    mountTasks();
+    expect(screen.queryByTestId("inbox-bulk")).toBeNull();
+    fireEvent.click(await screen.findByLabelText("Select Exception rec-a"));
+    const bar = await screen.findByTestId("inbox-bulk");
+    expect(bar).toHaveTextContent("1 selected");
+    expect(within(bar).getByRole("button", { name: "Reject with reason" })).toBeInTheDocument();
+  });
+
+  it("shows the selected exception with its severity and SLA", async () => {
+    nav.qs = "kind=exception";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    vi.spyOn(exceptions, "getExceptionMetrics").mockResolvedValue({ open_count: 1, overdue_count: 1 } as never);
+    vi.spyOn(exceptions, "getExceptions").mockResolvedValue({
+      exceptions: [{ id: "e1", title: "Duplicate vendor", category: "master_data", type: "t", severity: "critical", status: "open", assigned_to: null, sla_deadline: "2000-01-01T00:00:00Z", escalation_tier: 0, description: "Two vendors share a tax number", created_at: "2026-01-01T00:00:00Z", source_system: null, estimated_impact_zar: null }],
+      total: 1,
+    } as never);
+    renderWithQuery(<InboxPage />);
+    const detail = await screen.findByRole("region", { name: "Selected item" });
+    expect(detail).toHaveTextContent("Duplicate vendor");
+    expect(detail).toHaveTextContent("Critical");
+    expect(detail).toHaveTextContent("over");
+    expect(within(detail).getByRole("button", { name: "Resolve" })).toBeInTheDocument();
   });
 });

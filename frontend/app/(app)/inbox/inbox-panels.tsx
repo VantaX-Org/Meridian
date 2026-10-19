@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Button, DataTable, EmptyState, ErrorState, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone, Input, Status } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, ExportMenu, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone, Input, Status } from "@/design";
+import { Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { getSAPMonitor } from "@/lib/api/exceptions";
@@ -60,16 +61,20 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
           <textarea className="m-input [height:auto] [padding:6px_10px]" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
         </Field>
       ) : null}
-      {can("analyse") ? <Button variant="secondary" disabled={!text.trim() || post.isPending} onClick={() => post.mutate()}>Post comment</Button> : null}
+      {can("analyse") ? <div><Button variant="secondary" disabled={!text.trim() || post.isPending} onClick={() => post.mutate()}>Post comment</Button></div> : null}
     </div>
   );
 }
+
+const issueTone = (sev: string): WorkbenchTone => (sev === "critical" || sev === "high" || sev === "medium" ? sev : "low");
 
 export function IssuesPanel() {
   const { can } = useRole();
   const qc = useQueryClient();
   const [status, setStatus] = useState<IssueStatus | "">("");
   const [search, setSearch] = useState("");
+  const [picked, setPicked] = useState<string | null>(null);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const filter = { status: status || undefined, search: search.trim() || undefined };
   const q = useQuery({ queryKey: ["issues", "list", filter], queryFn: () => getIssues({ ...filter, limit: 200 }), retry: false });
   const bulk = useMutation({
@@ -77,17 +82,22 @@ export function IssuesPanel() {
     onSuccess: (r) => { toast.success(`${r.updated} issues updated`); void qc.invalidateQueries({ queryKey: ["issues"] }); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
-  const cols = useMemo<ColumnDef<RecordIssue, unknown>[]>(() => [
-    { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "check", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { id: "record", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
-    { id: "sev", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
-    { id: "status", header: "Status", cell: ({ row }) => labelOf(row.original.status) },
-    { id: "sla", header: "SLA", cell: ({ row }) => row.original.sla_state ? <Pill tone={SLA_TONE[row.original.sla_state] ?? "neutral"}>{labelOf(row.original.sla_state)}</Pill> : "—" },
-    { id: "assignee", header: "Assignee", cell: ({ row }) => row.original.assignee_email ?? "Unassigned" },
-    { id: "seen", header: "Last seen", cell: ({ row }) => relativeTime(row.original.last_seen_at) },
-  ], []);
-  const items = q.data?.items ?? [];
+  const items = useMemo(() => q.data?.items ?? [], [q.data]);
+  // The first issue is open until another is picked, so the right pane is never empty beside a full list.
+  const selected = items.find((i) => i.id === picked) ?? items[0];
+  const rows = useMemo<WorkbenchItem[]>(() => items.map((i) => ({
+    id: i.id,
+    label: `${i.check_id} ${i.record_key}`,
+    title: <>{i.check_id} in {formatModuleName(i.module)}</>,
+    meta: `${i.record_key}, ${labelOf(i.status)}, ${i.assignee_email ?? "Unassigned"}, seen ${relativeTime(i.last_seen_at)}`,
+    aside: i.sla_state ? <Pill tone={SLA_TONE[i.sla_state] ?? "neutral"}>{labelOf(i.sla_state)}</Pill> : undefined,
+    tone: issueTone(i.severity),
+  })), [items]);
+  const onCheck = (id: string, on: boolean) => setChecked((prev) => {
+    const next = new Set(prev);
+    if (on) next.add(id); else next.delete(id);
+    return next;
+  });
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-4">
@@ -99,20 +109,31 @@ export function IssuesPanel() {
         <Field label="Search">
           <Input aria-label="Search issues" value={search} onChange={(e) => setSearch(e.target.value)} />
         </Field>
+        <ExportMenu options={[{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", filter) }]} />
       </div>
       <Panel q={q}>
         {items.length === 0 ? (
           <EmptyState title="No record issues" detail="Issues open when an analysis finds a failing SAP record, and close when it passes." action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />
         ) : (
-          <DataTable columns={cols} data={items} getRowId={(i) => i.id} height={460} exportName="record-issues"
-            exportOptions={[{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", filter) }]}
-            renderDrawer={(i) => <IssueThread issue={i} />}
-            bulkActions={(sel) => can("view") ? (
-              <div className="flex gap-2">
-                <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: sel.map((i) => i.id), status: "in_progress" })}>Start work</Button>
-                <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: sel.map((i) => i.id), status: "resolved" })}>Resolve</Button>
-              </div>
-            ) : null} />
+          <Workbench
+            items={rows}
+            selectedId={selected?.id ?? null}
+            onSelect={setPicked}
+            checked={checked}
+            onCheck={onCheck}
+            listLabel="Issues"
+            bulk={(ids) => can("view") ? (
+              <>
+                <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "in_progress" })}>Start work</Button>
+                <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "resolved" })}>Resolve</Button>
+              </>
+            ) : null}
+            detail={selected ? (
+              <Card title={`${selected.check_id} in ${formatModuleName(selected.module)}`} meta={<Status kind="severity" value={selected.severity} />}>
+                <IssueThread key={selected.id} issue={selected} />
+              </Card>
+            ) : null}
+          />
         )}
       </Panel>
     </div>
@@ -130,6 +151,8 @@ export function SapMonitorPanel() {
     { id: "status", header: "Status", cell: ({ row }) => labelOf(row.original.status) },
     { id: "source", header: "Source", cell: ({ row }) => row.original.source_system ?? "—" },
     { id: "when", header: "Raised", cell: ({ row }) => relativeTime(row.original.created_at) },
+    // The click reaches the row, which opens the signal's detail.
+    { id: "review", header: "", enableSorting: false, size: 90, cell: ({ row }) => <Button variant="ghost" aria-label={`Review ${row.original.title}`}>Review</Button> },
   ], []);
   const list = q.data?.exceptions ?? [];
   return (

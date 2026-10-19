@@ -30,6 +30,10 @@ vi.mock("@/lib/api/versions", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/versions")>("@/lib/api/versions");
   return { ...actual, getVersions: vi.fn().mockResolvedValue({ versions: [] }) };
 });
+vi.mock("@/lib/api/rules", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/rules")>("@/lib/api/rules");
+  return { ...actual, getRules: vi.fn().mockResolvedValue({ rules: [{ id: "MM045", name: "Base unit is mandatory" }], total: 1, limit: 1000, offset: 0 }) };
+});
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
 vi.mock("@/lib/api/remediation", async () => {
@@ -63,6 +67,30 @@ describe("FixPage", () => {
     await userEvent.click(cell);
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/fix/B1"));
+  });
+
+  it("ranks the proposals by records affected: object, rule with its words, records, confidence, proposed value and one Review link", async () => {
+    vi.mocked(getCleaningQueue).mockResolvedValue({
+      items: [
+        item({ id: "1", batch_id: "B1", rule_id: "BP019", object_type: "business_partner", confidence: 0.6 }),
+        item({ id: "2", rule_id: "MM045", confidence: 0.9, record_data_before: { MEINS: "" }, record_data_after: { MEINS: "EA" } }),
+        item({ id: "3", rule_id: "MM045", confidence: 0.8, record_key: "100002", record_data_before: { MEINS: "" }, record_data_after: { MEINS: "EA" } }),
+      ],
+      total: 3, page: 1, per_page: 100,
+    });
+    renderWithQuery(<FixPage />);
+
+    const review = await screen.findByRole("link", { name: "Review MM045 in batch B1" });
+    expect(review).toHaveAttribute("href", "/fix/B1");
+    const row = review.closest("tr") as HTMLElement;
+    // Two records and the proposed value of the group; the rule's words arrive from the rules list.
+    expect(row).toHaveTextContent("Material master");
+    expect(row).toHaveTextContent("2");
+    expect(row).toHaveTextContent("85%");
+    expect(row).toHaveTextContent("EA");
+    await waitFor(() => expect(row).toHaveTextContent("Base unit is mandatory"));
+    // The two-record rule ranks above the one-record rule.
+    expect(screen.getAllByRole("row")[1]).toBe(row);
   });
 
   it("shows an empty state when there are no batches", async () => {

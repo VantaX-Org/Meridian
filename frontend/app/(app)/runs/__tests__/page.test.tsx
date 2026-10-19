@@ -98,6 +98,20 @@ describe("RunsPage", () => {
     expect(screen.getByText("Score per run, ECC Prod")).toBeInTheDocument();
   });
 
+  it("groups the ledger by day, newest first: the day is printed on the first run of each day only, and each row ends in Open", async () => {
+    const sameDay = version({ id: "v2b", label: "Oct 8 evening", run_at: "2026-10-08T18:00:00Z", dqs_summary: { material_master: dqs(73.1) } });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [older, newer, sameDay] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    const body = screen.getAllByRole("row").slice(1);
+    expect(body.map((r) => r.textContent)).toEqual([
+      expect.stringContaining("8 Oct 2026"), expect.not.stringContaining("8 Oct 2026"), expect.stringContaining("1 Oct 2026"),
+    ]);
+    expect(body[0]).toHaveTextContent("Oct 8 evening");
+    expect(screen.getByRole("link", { name: "Open Oct 8 upload" })).toHaveAttribute("href", "/runs/v2");
+  });
+
   it("compares the newer run against the older one when two rows are selected", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);

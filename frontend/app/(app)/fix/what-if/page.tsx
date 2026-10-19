@@ -5,11 +5,12 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall, asyncStateOf } from "@/design";
+import { Button, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall, asyncStateOf } from "@/design";
 import { createSimulation, getSimulation, isSimulationResult } from "@/lib/api/simulation";
 import { getVersions } from "@/lib/api/versions";
 import { isFinished } from "@/lib/runs";
 import { apiErrorMessage } from "@/lib/error";
+import { formatModuleName } from "@/lib/format";
 import { useSearchParams } from "next/navigation";
 import { usePermissions } from "@/lib/permissions";
 import { CreateBatchFromSimulation, RuleImpact } from "./rule-impact";
@@ -39,7 +40,7 @@ export default function WhatIfPage() {
   const running = !!simId && !final && !sim.isError;
 
   const controls = (
-    <div className="flex gap-2">
+    <div className="flex items-center gap-2">
       {runs.length > 0 && <Select label="Analysis run" value={versionId} onValueChange={(v) => { setPicked(v); setSimId(null); }} options={runs.map((r) => ({ value: r.id, label: r.label ?? r.id }))} placeholder="Run" />}
       {can("analyse") && <Button pending={run.isPending || running} disabled={!versionId} onClick={() => run.mutate()}>Run simulation</Button>}
       {can("apply") && result ? <CreateBatchFromSimulation simulation={result} /> : null}
@@ -47,28 +48,43 @@ export default function WhatIfPage() {
   );
 
   const o = result?.dqs.overall;
+  const delta = o && o.before != null && o.after != null ? Math.round((o.after - o.before) * 10) / 10 : null;
   return (
     <ReportPage
+      title="What-if"
+      meta="Apply every rule fix to a copy of a run and compare the score before and after"
+      exportMenu={controls}
       state={asyncStateOf(versions, () => runs.length === 0, true)}
       emptyProps={{ title: "No finished run to simulate", detail: "Run an analysis, then come back to see what the fixes would be worth.", ghost: "chart" }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
-      narrative={controls}
+      narrative={
+        result && o && delta != null
+          ? `Applying every fix would move the score from ${(o.before ?? 0).toFixed(1)} to ${(o.after ?? 0).toFixed(1)}, resolving ${result.findings.resolved.toLocaleString()} findings across ${result.records.resolved.toLocaleString()} records.`
+          : "Pick a run and press Run simulation. Nothing is written to your system."
+      }
       charts={
         result && o ? (
-          <>
-            <Card title="Score before"><Stat label="Data quality score" value={o.before ?? 0} decimals={1} /></Card>
-            <Card title="Score after"><Stat label="Data quality score" value={o.after ?? 0} decimals={1} tone={(o.after ?? 0) >= (o.before ?? 0) ? "go" : "at-risk"} delta={o.before != null && o.after != null ? <Delta value={o.after - o.before} /> : undefined} /></Card>
-            <Card title="Change by module">
+          <div className="flex flex-col gap-4">
+            <div className="m-stat-grid">
+              <Stat label="Score before" value={o.before ?? 0} decimals={1} />
+              <Stat label="Score after" value={o.after ?? 0} decimals={1} tone={(o.after ?? 0) >= (o.before ?? 0) ? "go" : "at-risk"} delta={delta != null ? <Delta value={delta} /> : undefined} />
+              <Stat label="Findings resolved" value={result.findings.resolved.toLocaleString()} />
+              <Stat label="Findings introduced" value={result.findings.introduced.toLocaleString()} />
+              <Stat label="Cells changed" value={result.fixes.cells_changed.toLocaleString()} />
+              <Stat label="Records fixed" value={result.records.resolved.toLocaleString()} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h2 className="font-semibold m-text-h">Score change by object</h2>
               <Waterfall
                 label="Score change by module"
                 data={[
                   { x: "Before", y: o.before ?? 0, total: true },
-                  ...result.dqs.modules.map((m) => ({ x: m.module, y: m.delta ?? 0 })),
+                  ...result.dqs.modules.map((m) => ({ x: formatModuleName(m.module), y: m.delta ?? 0 })),
                   { x: "After", y: o.after ?? 0, total: true },
                 ]}
               />
-            </Card>
-          </>
+            </div>
+          </div>
         ) : failed ? (
           <ErrorState title="Simulation did not produce fixes" message={failed.error} onRetry={() => run.mutate()} />
         ) : sim.isError ? (
@@ -77,19 +93,7 @@ export default function WhatIfPage() {
           <EmptyState title={running ? "Simulating" : "No simulation yet"} detail={running ? "Applying every rule fix to a copy of the data." : "Pick a run and press Run simulation. Nothing is written to your system"} ghost="ring" />
         )
       }
-      tables={
-        result ? (
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Stat label="Findings resolved" value={result.findings.resolved} />
-              <Stat label="Findings introduced" value={result.findings.introduced} />
-              <Stat label="Cells changed" value={result.fixes.cells_changed} />
-              <Stat label="Records fixed" value={result.records.resolved} />
-            </div>
-            <RuleImpact result={result} />
-          </div>
-        ) : undefined
-      }
+      tables={result ? <RuleImpact result={result} /> : undefined}
     />
   );
 }
