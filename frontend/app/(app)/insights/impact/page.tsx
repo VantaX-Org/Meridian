@@ -245,10 +245,10 @@ export default function ImpactPage() {
             : rows.length ? `${plural(rows.length, "feature is", "features are")} blocked, but none is priced yet` : "No feature carries value at risk",
           tone: top && top.value_at_risk > 0 ? "at-risk" : rows.length ? "at-risk" : "go",
         },
-        changed: { sentence: provenCostQuery.data ? `${plural(provenCostQuery.data.rows.length, "proven cost metric")} found` : "—" },
-        why: { sentence: "Value at risk is the blocked record count times the value per record" },
+        changed: { sentence: provenCostQuery.data ? `${plural(provenCostQuery.data.rows.length, "cost metric is", "cost metrics are")} backed by documents` : "—" },
+        why: { sentence: "Value at risk is what the blocked records are worth: their count times the value of each" },
         next: unpriced
-          ? { sentence: "Price the SAP features to see value at risk", action: { label: "Open settings", href: "/admin/settings" } }
+          ? { sentence: "Give each SAP feature a value and the defects get a price", action: { label: "Open settings", href: "/admin/settings" } }
           : top
           ? { sentence: `Fix the rules behind ${labelOf(top.feature)}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run, s4: "yes" }) } }
           : { sentence: "Run an analysis", action: { label: "Open runs", href: "/runs" } },

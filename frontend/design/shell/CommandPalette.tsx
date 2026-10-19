@@ -3,9 +3,9 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
 import { DomainChip } from "../primitives/DomainChip";
 import { parsePalette, type GrammarContext } from "@/lib/palette-grammar";
+import { IconSearch } from "../icons";
 
 const noSubscribe = () => () => {};
 const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
@@ -64,7 +64,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
         style={{ height: "var(--m-control-h)", borderColor: "var(--m-line-strong)", background: "var(--m-sheet)", color: "var(--m-ink-3)", borderRadius: "var(--m-radius-control)" }}
       >
         <span className="flex items-center gap-2">
-          <Search size={14} aria-hidden />
+          <IconSearch size={14} />
           <span className="hidden xl:inline">Search or jump to…</span>
         </span>
         <kbd className="m-kbd hidden xl:inline-flex">{isMac ? "⌘K" : "Ctrl K"}</kbd>

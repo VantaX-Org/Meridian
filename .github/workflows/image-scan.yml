@@ -14,6 +14,7 @@ on:
     paths:
       - "docker/Dockerfile.*"
       - "requirements.txt"
+      - "requirements.lock"
       - "frontend/package-lock.json"
       - ".github/workflows/image-scan.yml"
   push:
@@ -21,6 +22,7 @@ on:
     paths:
       - "docker/Dockerfile.*"
       - "requirements.txt"
+      - "requirements.lock"
       - "frontend/package-lock.json"
   schedule:
     - cron: "0 5 * * 1"

@@ -48,7 +48,8 @@ jobs:
             "pydantic>=2.0.0" \
             "pydantic-settings>=2.7.0" \
             "jellyfish>=1.0.0" \
-            "thefuzz>=0.22.0"
+            "thefuzz>=0.22.0" \
+            -c requirements.lock
 
       - name: Run perf test (400k rows)
         # -s so the print() line with the timings shows up in the log.

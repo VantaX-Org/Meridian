@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from typing import Any, Optional
 from uuid import UUID
 
@@ -17,54 +18,135 @@ logger = logging.getLogger("meridian.sync_trigger")
 
 router = APIRouter(prefix="/api/v1/sync-trigger", tags=["sync_trigger"])
 
-# All 35 modules grouped by category
-MODULE_REGISTRY: dict[str, dict[str, str]] = {
-    # ECC
-    "business_partner": {"category": "ECC", "label": "Business Partner"},
-    "material_master": {"category": "ECC", "label": "Material Master"},
-    "fi_gl": {"category": "ECC", "label": "FI / General Ledger"},
-    "accounts_payable": {"category": "ECC", "label": "Accounts Payable"},
-    "accounts_receivable": {"category": "ECC", "label": "Accounts Receivable"},
-    "asset_accounting": {"category": "ECC", "label": "Asset Accounting"},
-    "hcm": {"category": "ECC", "label": "HCM Personnel Administration"},
-    "mm_purchasing": {"category": "ECC", "label": "MM Purchasing"},
-    "plant_maintenance": {"category": "ECC", "label": "Plant Maintenance"},
-    "production_planning": {"category": "ECC", "label": "Production Planning"},
-    "quality_management": {"category": "ECC", "label": "Quality Management"},
-    "project_system": {"category": "ECC", "label": "Project System"},
-    "sd_customer_master": {"category": "ECC", "label": "SD Customer Master"},
-    "sd_sales_orders": {"category": "ECC", "label": "SD Sales Orders"},
-    "controlling": {"category": "ECC", "label": "Controlling"},
-    "interface_health": {"category": "ECC", "label": "Interface Health (IDoc)"},
-    "s4_readiness": {"category": "ECC", "label": "S/4HANA Readiness"},
-    "banking_tax": {"category": "ECC", "label": "Banking & Tax Master Data"},
+# Display name of every module id: the one Python copy of frontend/lib/format.ts MODULE_LABELS, cased by
+# frontend/DESIGN.md "Object names" (sentence case, SAP acronyms upper case, eWMS with a lower-case e).
+# tests/test_module_labels.py fails when the two maps differ.
+MODULE_LABELS: dict[str, str] = {
+    # ECC and S/4HANA
+    "business_partner": "Business partner",
+    "material_master": "Material master",
+    "fi_gl": "FI general ledger",
+    "accounts_payable": "Accounts payable",
+    "accounts_receivable": "Accounts receivable",
+    "asset_accounting": "Asset accounting",
+    "controlling": "Controlling",
+    "hcm": "HCM personnel administration",
+    "mm_purchasing": "MM purchasing",
+    "plant_maintenance": "Plant maintenance",
+    "production_planning": "Production planning",
+    "project_system": "Project system",
+    "quality_management": "Quality management",
+    "sd_customer_master": "SD customer master",
+    "sd_sales_orders": "SD sales orders",
+    "interface_health": "Interface health (IDoc)",
+    "s4_readiness": "S/4HANA readiness",
+    "banking_tax": "Banking and tax master data",
+    "s4hc_master_data": "BP roles, CVI and product valuation",
     # SuccessFactors
-    "employee_central": {"category": "SuccessFactors", "label": "Employee Central"},
-    "compensation": {"category": "SuccessFactors", "label": "Compensation"},
-    "benefits": {"category": "SuccessFactors", "label": "Benefits"},
-    "payroll_integration": {"category": "SuccessFactors", "label": "Payroll Integration"},
-    "performance_goals": {"category": "SuccessFactors", "label": "Performance & Goals"},
-    "succession_planning": {"category": "SuccessFactors", "label": "Succession Planning"},
-    "recruiting_onboarding": {"category": "SuccessFactors", "label": "Recruiting & Onboarding"},
-    "learning_management": {"category": "SuccessFactors", "label": "Learning Management"},
-    "time_attendance": {"category": "SuccessFactors", "label": "Time & Attendance"},
-    # Warehouse / MDG
-    "ewms_stock": {"category": "Warehouse", "label": "eWMS Stock"},
-    "ewms_transfer_orders": {"category": "Warehouse", "label": "eWMS Transfer Orders"},
-    "batch_management": {"category": "Warehouse", "label": "Batch Management"},
-    "mdg_master_data": {"category": "Warehouse", "label": "MDG Master Data"},
-    "grc_compliance": {"category": "Warehouse", "label": "GRC Compliance"},
-    "fleet_management": {"category": "Warehouse", "label": "Fleet Management"},
-    "transport_management": {"category": "Warehouse", "label": "Transport Management"},
-    "wm_interface": {"category": "Warehouse", "label": "WM Interface"},
-    "cross_system_integration": {"category": "Warehouse", "label": "Cross-System Integration"},
-    # S/4HANA Cloud, Concur, Ariba
-    "s4hc_master_data": {"category": "S/4HANA Cloud", "label": "BP Roles, CVI & Product Valuation"},
-    "concur_expense": {"category": "Concur", "label": "Expense Reports"},
-    "concur_users": {"category": "Concur", "label": "Users & Cost Objects"},
-    "ariba_supplier": {"category": "Ariba", "label": "Suppliers"},
-    "ariba_contracts": {"category": "Ariba", "label": "Contracts"},
-    "ariba_procurement": {"category": "Ariba", "label": "Purchase Orders & Invoices"},
+    "employee_central": "Employee central",
+    "compensation": "Compensation",
+    "benefits": "Benefits",
+    "payroll_integration": "Payroll integration",
+    "performance_goals": "Performance and goals",
+    "succession_planning": "Succession planning",
+    "recruiting_onboarding": "Recruiting and onboarding",
+    "learning_management": "Learning management",
+    "time_attendance": "Time and attendance",
+    # Warehouse
+    "ewms_stock": "eWMS stock",
+    "ewms_transfer_orders": "eWMS transfer orders",
+    "batch_management": "Batch management",
+    "mdg_master_data": "MDG master data",
+    "grc_compliance": "GRC compliance",
+    "fleet_management": "Fleet management",
+    "transport_management": "Transport management",
+    "wm_interface": "WM interface",
+    "cross_system_integration": "Cross-system integration",
+    # Concur and Ariba
+    "concur_expense": "Concur expense reports",
+    "concur_travel": "Concur travel",
+    "concur_users": "Concur users and cost objects",
+    "ariba_supplier": "Ariba suppliers",
+    "ariba_contracts": "Ariba contracts",
+    "ariba_procurement": "Ariba purchase orders and invoices",
+    "ariba_spend": "Ariba spend",
+    # Extraction-only and cross-cutting
+    "process_discovery": "Process discovery",
+    "process_events_sfx": "SuccessFactors process events",
+    "process_events_arb": "Ariba process events",
+    "process_events_cnq": "Concur process events",
+    "s4_load_sim": "S/4HANA load simulation",
+    "proven_cost": "Proven cost",
+    "pii": "PII",
+}
+
+
+def module_label(module: str) -> str:
+    """Name a module id as frontend/lib/format.ts formatModuleName does: "fi_gl" -> "FI general ledger".
+
+    An id missing from MODULE_LABELS is sentence-cased ("new_module" -> "New module").
+    """
+    if module in MODULE_LABELS:
+        return MODULE_LABELS[module]
+    s = re.sub(r"_+", " ", module).strip()
+    return s[:1].upper() + s[1:]
+
+
+# The modules a sync can be triggered for, grouped by category
+_MODULE_CATEGORIES: dict[str, str] = {
+    # ECC
+    "business_partner": "ECC",
+    "material_master": "ECC",
+    "fi_gl": "ECC",
+    "accounts_payable": "ECC",
+    "accounts_receivable": "ECC",
+    "asset_accounting": "ECC",
+    "hcm": "ECC",
+    "mm_purchasing": "ECC",
+    "plant_maintenance": "ECC",
+    "production_planning": "ECC",
+    "quality_management": "ECC",
+    "project_system": "ECC",
+    "sd_customer_master": "ECC",
+    "sd_sales_orders": "ECC",
+    "controlling": "ECC",
+    "interface_health": "ECC",
+    "s4_readiness": "ECC",
+    "banking_tax": "ECC",
+    # SuccessFactors
+    "employee_central": "SuccessFactors",
+    "compensation": "SuccessFactors",
+    "benefits": "SuccessFactors",
+    "payroll_integration": "SuccessFactors",
+    "performance_goals": "SuccessFactors",
+    "succession_planning": "SuccessFactors",
+    "recruiting_onboarding": "SuccessFactors",
+    "learning_management": "SuccessFactors",
+    "time_attendance": "SuccessFactors",
+    # Warehouse
+    "ewms_stock": "Warehouse",
+    "ewms_transfer_orders": "Warehouse",
+    "batch_management": "Warehouse",
+    "mdg_master_data": "Warehouse",
+    "grc_compliance": "Warehouse",
+    "fleet_management": "Warehouse",
+    "transport_management": "Warehouse",
+    "wm_interface": "Warehouse",
+    "cross_system_integration": "Warehouse",
+    # S/4HANA Cloud
+    "s4hc_master_data": "S/4HANA Cloud",
+    # Concur
+    "concur_expense": "Concur",
+    "concur_users": "Concur",
+    # Ariba
+    "ariba_supplier": "Ariba",
+    "ariba_contracts": "Ariba",
+    "ariba_procurement": "Ariba",
+}
+
+MODULE_REGISTRY: dict[str, dict[str, str]] = {
+    module_id: {"category": category, "label": MODULE_LABELS[module_id]}
+    for module_id, category in _MODULE_CATEGORIES.items()
 }
 
 
@@ -91,7 +173,7 @@ async def list_modules(
     tenant_id: UUID = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_session),
 ) -> list[ModuleStatus]:
-    """Return all 35 modules with their latest analysis status."""
+    """Return every triggerable module with its latest analysis status."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
     # Fetch the latest version per module from analysis_versions

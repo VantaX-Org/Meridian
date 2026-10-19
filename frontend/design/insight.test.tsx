@@ -13,22 +13,22 @@ const cell = (s: string) => ({ sentence: s, href: "/x" });
 describe("AiSummary", () => {
   it("shows the deterministic fallback when the LLM is not ok, even with model text", () => {
     render(<AiSummary llmOk={false} text="model words" fallback="rule words" />);
-    expect(screen.getByText(/AI summary off/)).toBeTruthy();
+    expect(screen.getByText(/the model is off/)).toBeTruthy();
     expect(screen.getByText("rule words")).toBeTruthy();
     expect(screen.queryByText("model words")).toBeNull();
   });
   it("shows model text and the aggregates-only footer when ok", () => {
     render(<AiSummary llmOk text="model words" fallback="rule words" findingsCount={12} runId="r1" />);
     expect(screen.getByText("model words")).toBeTruthy();
-    expect(screen.getByText(/Generated from 12 findings/)).toBeTruthy();
+    expect(screen.getByText(/Written from 12 findings/)).toBeTruthy();
     expect(screen.getByText(/aggregates only/)).toBeTruthy();
   });
-  it("treats unknown health as off and offers thumbs only with a handler", () => {
+  it("treats unknown health as off and offers feedback only with a handler", () => {
     const onFeedback = vi.fn();
     const { rerender } = render(<AiSummary llmOk={undefined} text="t" fallback="f" />);
     expect(screen.getByText("f")).toBeTruthy();
     rerender(<AiSummary llmOk text="t" fallback="f" onFeedback={onFeedback} />);
-    fireEvent.click(screen.getByLabelText("Helpful"));
+    fireEvent.click(screen.getByRole("button", { name: "Helpful" }));
     expect(onFeedback).toHaveBeenCalledWith("up");
   });
 });

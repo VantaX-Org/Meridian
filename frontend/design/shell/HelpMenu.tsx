@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { HelpCircle } from "lucide-react";
 import { IconButton } from "../primitives/IconButton";
 import { Menu, type MenuItemDef } from "../primitives/Menu";
 import { Dialog } from "../primitives/Dialog";
 import { Button } from "../primitives/Button";
 import { Textarea } from "../primitives/Textarea";
+import { IconHelp } from "../icons";
 
 export const DEFAULT_SUPPORT_EMAIL = "support@meridian.local";
 
@@ -86,7 +86,7 @@ export function HelpMenu({ hasTour, onTour, onShortcuts, onWhatsNew, hasNew, onD
       <Menu
         trigger={
           <IconButton aria-label={hasNew ? "Help, there is something new" : "Help"} data-tour="help-menu" style={{ position: "relative" }}>
-            <HelpCircle size={16} aria-hidden />
+            <IconHelp size={16} />
             {hasNew && <span aria-hidden data-testid="help-dot" className="absolute rounded-full" style={{ top: 6, right: 6, width: 6, height: 6, background: "var(--m-accent)" }} />}
           </IconButton>
         }

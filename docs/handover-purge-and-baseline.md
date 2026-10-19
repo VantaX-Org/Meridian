@@ -20,6 +20,57 @@ tenant. The remaining 119 are concentrated where the tenant does not serve the d
 Decide these before the purge, because the baselines are the handover evidence and a
 re-baseline costs another full run per object.
 
+## 0b. Run the preflight before you start anything
+
+```bash
+ssh meridian
+python3 /opt/meridian/scripts/handover_preflight.py      # add --json for machines
+```
+
+Every line must be PASS. It tests the things that fail *silently* and cost hours — the checks time
+limit, a worker on an older image than the API, an analysis stuck `running` and holding the single
+checks slot, rule packs that do not load, and **whether each system actually accepts a logon**.
+
+That last one matters most. `connections` proves credentials are *present*; `systems reachable`
+proves they *work* by logging on the way an extraction will. On this deployment those two lines
+read:
+
+```
+[PASS] connections        2 system(s); missing credentials: none
+[FAIL] systems reachable  Sanbox (KMZ): RFC_LOGON_FAILURE ... "too many failed attempts" ... (SU01)
+```
+
+Credentials present, account locked. Without this check the only way to find out is to launch a
+baseline and watch it die at the first logon.
+
+**If `systems reachable` says the SAP user is locked**, an SAP basis administrator must unlock it
+(transaction **SU01**) or reset the password. Meridian will not retry — deliberately, because each
+attempt extends the lock.
+
+### Do not kill an extraction
+
+An extraction holds SAP sessions. Abrupt termination leaves them dangling, and SAP counts an
+uncleaned session against the user exactly like a failed logon — which is how the sandbox account
+was locked twice.
+
+```bash
+docker restart docker-worker-1                 # SIGTERM: sessions close cleanly. USE THIS.
+docker exec docker-worker-1 celery -A workers.celery_app revoke <task-id> --terminate
+kill -9 <pid>                                  # NEVER. Sessions are orphaned and the user locks.
+```
+
+The connector also refuses any logon for 15 minutes after a lock reply, allows only one extraction
+per version (so a redelivered task exits instead of re-reading), and closes sessions on
+SIGTERM/SIGINT/SIGHUP. A successful logon clears the cooldown immediately, so an unlock takes
+effect at once.
+
+### If an extraction stops for memory
+
+A table is written only if it fits in 55% of available memory. When it does not, the run stops with
+`ExtractionMemoryError` naming what it needed and what was available — **it does not get OOM-killed**,
+because an OOM kill cannot be caught and would leave the sessions open and lock the user. Raise the
+worker's memory on the host, or narrow the object's rules, then run again.
+
 ## 1. Take a database dump
 
 The purge is not reversible.

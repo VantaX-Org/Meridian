@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { MeridianMark } from "../components/meridian/icons";
+import { MeridianMark } from "../design/icons/Mark";
 
 describe("MeridianMark", () => {
   it("renders the two-tone variant without any literal hex colours", () => {

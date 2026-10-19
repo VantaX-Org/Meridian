@@ -107,7 +107,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
         isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : row.original.severity,
     },
     { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => row.original.dimension ?? "—" },
+    { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
     {
       accessorKey: "affected_count",
       header: "Records failing",
@@ -147,7 +147,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   }
   if (batch.isError) return <ErrorState {...apiErrorState(batch.error)} onRetry={() => batch.refetch()} />;
 
-  const dimensions = [...new Set(data.rules.map((r) => r.dimension).filter((d): d is string => !!d))].map((d) => ({ value: d, label: d }));
+  const dimensions = [...new Set(data.rules.map((r) => r.dimension).filter((d): d is string => !!d))].map((d) => ({ value: d, label: formatModuleName(d) }));
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-4">
@@ -215,7 +215,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   if (!data) return null;
 
   const dimensionPoints = Object.entries(data.dimension_scores).map(([dimension, score]) => ({
-    x: dimension,
+    x: formatModuleName(dimension),
     y: score,
     dimension,
   }));
@@ -225,7 +225,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="m-stat-grid">
-        <Stat label="DQS" help="dqs" value={data.composite_score != null ? String(data.composite_score) : "—"} />
+        <Stat label="DQS" help="dqs" value={data.composite_score != null ? String(data.composite_score) : "—"} bar={data.composite_score ?? undefined} rule={{}} />
         <Stat label="Failing checks" value={data.failing_checks.toLocaleString()} href={rulesHref} />
         <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         <Stat label="Affected records" value={data.affected_records.toLocaleString()} href={`/objects/${object}?run=${run}&tab=records`} />

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Info } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { GLOSSARY, type GlossaryKey } from "@/lib/help/glossary";
 import { Card } from "./Card";
 import { Tooltip } from "./Tooltip";
+import { IconInfo } from "../icons";
 
 /**
  * A 14px info button for a glossary term. Hover or focus shows the short
@@ -28,7 +28,7 @@ export function HelpHint({ term, onHero = false }: { term: GlossaryKey; /** Hero
           />
         }
       >
-        <Info size={14} aria-hidden />
+        <IconInfo size={14} />
       </Tooltip>
       <Popover.Portal>
         <Popover.Positioner sideOffset={8} className="z-50">

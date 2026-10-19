@@ -1,13 +1,13 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { apiErrorMessage } from "../../lib/error";
 import { useRole } from "../../hooks/use-role";
 import { Button } from "./Button";
 import { Menu } from "./Menu";
+import { IconChevronDown } from "../icons";
 
 export type ExportFormat = "xlsx" | "csv" | "pdf" | "json";
 
@@ -110,7 +110,7 @@ export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
       trigger={
         <Button variant="secondary" className={triggerClassName} disabled={disabled || busy} aria-busy={busy}>
           {label}
-          {!busy && <ChevronDown size={14} />}
+          {!busy && <IconChevronDown size={14} />}
         </Button>
       }
       items={[

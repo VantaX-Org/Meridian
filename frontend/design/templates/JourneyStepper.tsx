@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { Check } from "lucide-react";
 import { Button } from "../primitives/Button";
 import { useJobs } from "../../hooks/use-jobs";
 import type { DayOneStep } from "../../hooks/use-day-one";
+import { IconCheck, IconGauge, IconGear, IconImport, IconServer, type Icon } from "../icons";
 
-interface Step {
+interface Station {
   label: string;
   done: boolean;
+  icon: Icon;
 }
 
-/** The day-one onboarding ladder (spec 9.2): System connected → Configuration loaded → Extraction run → Analysis complete. */
+/**
+ * The day-one ladder: four stations on one rail (System connected, Configuration loaded, Data extracted,
+ * First score). Done stations are filled, the current one is ringed in the accent, and the step under the
+ * rail says what to do now and offers the one button that does it.
+ */
 export function JourneyStepper({
   systemsConnected,
   configLoaded,
@@ -28,53 +33,28 @@ export function JourneyStepper({
   const { active } = useJobs();
   const runningJob = active[0];
 
-  const steps: Step[] = [
-    { label: "System connected", done: systemsConnected },
-    { label: "Configuration loaded", done: configLoaded },
-    { label: "Extraction run", done: extracted },
-    { label: "Analysis complete", done: complete },
+  const stations: Station[] = [
+    { label: "System connected", done: systemsConnected, icon: IconServer },
+    { label: "Configuration loaded", done: configLoaded, icon: IconGear },
+    { label: "Data extracted", done: extracted, icon: IconImport },
+    { label: "First score", done: complete, icon: IconGauge },
   ];
-  const currentIndex = steps.findIndex((s) => !s.done);
+  const currentIndex = stations.findIndex((s) => !s.done);
 
   return (
-    <div className="flex flex-col gap-4" style={{ maxWidth: 480 }}>
-      <ol className="flex items-start">
-        {steps.map((s, i) => {
-          const isCurrent = i === currentIndex;
-          const isDone = s.done;
+    <div className="flex flex-col">
+      <ol className="m-journey">
+        {stations.map((s, i) => {
+          const state = s.done ? "done" : i === currentIndex ? "current" : "todo";
+          const Glyph = s.icon;
           return (
-            <li key={s.label} className="flex flex-1 flex-col items-center gap-2 text-center">
-              <div className="flex w-full items-center">
-                {i > 0 && (
-                  <span
-                    className="flex-1"
-                    style={{ height: 2, background: steps[i - 1].done ? "var(--m-pass)" : "var(--m-line)" }}
-                  />
-                )}
-                {i === 0 && <span className="flex-1" />}
-              </div>
-              <span
-                aria-hidden
-                data-tone={isDone ? "pass" : undefined}
-                className={isCurrent ? "m-motion-rise" : undefined}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: isDone ? "var(--m-pass)" : isCurrent ? "var(--m-accent-soft)" : "transparent",
-                  border: isDone ? "none" : `1px solid ${isCurrent ? "var(--m-accent)" : "var(--m-line-strong)"}`,
-                  color: isDone ? "var(--m-pass-on)" : isCurrent ? "var(--m-accent)" : "var(--m-ink-3)",
-                }}
-              >
-                {isDone ? <Check size={14} /> : i + 1}
+            <li key={s.label} className="m-journey-station" data-state={state} data-link={i > 0 && stations[i - 1].done ? "done" : undefined}>
+              <span aria-hidden className={`m-journey-dot${state === "current" ? " m-motion-rise" : ""}`}>
+                {s.done ? <IconCheck size={18} strokeWidth={2} /> : <Glyph size={18} />}
               </span>
-              <span className="m-text-meta" style={{ color: isCurrent ? "var(--m-ink)" : "var(--m-ink-3)" }}>
+              <span className="m-journey-label">
                 {s.label}
+                <span className="sr-only">{s.done ? ", done" : state === "current" ? ", current step" : ", to do"}</span>
               </span>
             </li>
           );
@@ -82,12 +62,12 @@ export function JourneyStepper({
       </ol>
 
       {step && (
-        <div data-testid="day-one-step" className="flex flex-col gap-2 border-t pt-4" style={{ borderColor: "var(--m-line)" }}>
-          <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>{step.label}</p>
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{step.detail}</p>
+        <div data-testid="day-one-step" className="m-journey-step">
+          <p className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{step.label}</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-2)", maxWidth: "56ch" }}>{step.detail}</p>
           {step.key === "running" && runningJob ? (
             <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
-              {runningJob.label} — {runningJob.status} ({runningJob.percent}%)
+              {runningJob.label}: {runningJob.status}, {runningJob.percent}%
             </p>
           ) : !step.actionable || !step.href ? null : (
             <Button render={<Link href={step.href}>{step.label}</Link>} className="self-start" />

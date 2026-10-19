@@ -11,6 +11,7 @@ on:
   pull_request:
     paths:
       - "requirements.txt"
+      - "requirements.lock"
       - "frontend/package.json"
       - "frontend/package-lock.json"
       - "cloudflare/*/package.json"

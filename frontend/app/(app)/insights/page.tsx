@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, Card, DataTable, Delta, Funnel, Heatmap, Line, Pill, Radar, Skeleton, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
+import { Bar, Button, Card, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getCleansing, getHeatmap, getOverview, getRootCauses, getRuleRanking, getTrends, l1Label, type RuleRow,
@@ -25,6 +25,7 @@ import { useFindingOpener } from "./_components/FindingOpener";
 import { ruleColumns } from "./_components/RuleColumns";
 import { useInsightScope, withScope } from "./_components/useInsightScope";
 import { CurrentOverview } from "./_components/CurrentOverview";
+import { CleansingFunnel, RootCauseList, S4Chart, s4Totals } from "./_components/RunAnalyses";
 
 const VERDICT_SENTENCE: Record<string, string> = { go: "Ready to load", at_risk: "At risk", no_go: "Not ready" };
 
@@ -69,8 +70,7 @@ function RunOverview() {
   const dims = Object.entries(thisRun?.dimensions ?? {}).map(([d, y]) => ({ x: dimLabel(d), y, dimension: d }));
 
   const areas = s4.data?.areas ?? [];
-  const blocking = areas.map((a) => a.blocking_failing).reduce((a, b) => a + b, 0);
-  const warning = areas.map((a) => Math.max(0, a.failing - a.blocking_failing)).reduce((a, b) => a + b, 0);
+  const { blocking, warning } = s4Totals(areas);
 
   const heatRows = [...(heat.data?.rows ?? [])].sort((a, b) => a.group.localeCompare(b.group) || a.module.localeCompare(b.module));
   const heatDims = heat.data?.dimensions ?? [];
@@ -183,32 +183,7 @@ function RunOverview() {
 
         <div className="@5xl:col-span-6">
           <Section title="Root causes" height={264} query={causes} meta={causes.data ? `${Math.min(5, causes.data.clusters.length)} of ${causes.data.clusters.length}` : undefined}>
-            {(causes.data?.clusters.length ?? 0) === 0 ? (
-              <p className="m-text-body m-ink-3">No failing fields in this run.</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {[...(causes.data?.clusters ?? [])].sort((a, b) => b.impact - a.impact).slice(0, 5).map((c) => {
-                  const where = c.table && c.field ? `${c.table}.${c.field}` : null;
-                  return (
-                    <li key={c.key} className="m-card-sm flex flex-col gap-1 [background:var(--m-surface)] [border-radius:var(--m-radius-sheet)] [padding:var(--m-space-3)]">
-                      <span className="font-medium">
-                        {where ? `${where} fails on ${c.records.toLocaleString()}${c.records_estimated ? " (estimated)" : ""} records` : `${formatModuleName(c.module)}: ${c.records.toLocaleString()} records without a known field`}
-                      </span>
-                      <span className="m-text-meta m-ink-3">
-                        {`${c.rules.length} ${c.rules.length === 1 ? "rule" : "rules"}, ${labelOf(c.dimension).toLowerCase()}, ${labelOf(c.severity).toLowerCase()}`}
-                      </span>
-                      <span className="m-text-meta m-ink-3">
-                        {`Impact ${c.impact.toLocaleString()}${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
-                      </span>
-                      <span className="flex gap-3 m-text-body">
-                        <Link href={withScope("/insights/rules", { run, module: c.module, field: c.field ?? undefined })} className="underline-offset-2 hover:underline">Open rules</Link>
-                        <Link href={withScope(`/objects/${c.module}`, { tab: "records", run, check: c.rules[0] })} className="underline-offset-2 hover:underline">Open records</Link>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <RootCauseList clusters={causes.data?.clusters ?? []} run={run} empty="No failing fields in this run." />
           </Section>
         </div>
 
@@ -263,36 +238,12 @@ function RunOverview() {
 
         <div className="@5xl:col-span-6">
           <Section title="S/4 migration" height={240} query={s4} meta={s4.data ? `${blocking.toLocaleString()} blocking, ${warning.toLocaleString()} warning` : undefined}>
-            {areas.length === 0 ? <p className="m-text-body m-ink-3">No S/4 areas assessed.</p> : (
-              <>
-                <Bar
-                  data={areas.filter((a) => a.failing > 0).map((a) => ({ x: a.label, y: a.blocking_failing }))}
-                  label="Blocking failing rules per S/4 area"
-                  height={200}
-                  onPointClick={(p) => router.push(withScope("/insights/readiness", { run, area: areas.find((a) => a.label === p.x)?.area }))}
-                />
-                <p className="mt-2 m-text-body m-ink-2">
-                  {`${blocking.toLocaleString()} blocking and ${warning.toLocaleString()} warning failing rules. `}
-                  <Link href={withScope("/insights/readiness", { run })} className="underline-offset-2 hover:underline">Open readiness</Link>
-                </p>
-              </>
-            )}
+            <S4Chart areas={areas} run={run} />
           </Section>
         </div>
         <div className="@5xl:col-span-6">
           <Section title="Cleansing opportunity" height={240} query={cleanse}>
-            <div aria-label="Cleansing funnel, failing records to applied fixes" role="group">
-              <Funnel
-                stages={(cleanse.data?.steps ?? []).map((s) => ({ label: s.label, value: s.records }))}
-                onStageClick={(st) => {
-                  const key = cleanse.data?.steps.find((s) => s.label === st.label)?.key;
-                  router.push(fixHref({ status: key ?? "" }));
-                }}
-              />
-            </div>
-            <div className="mt-3">
-              <Button variant="secondary" render={<Link href={fixHref({ source: "rule", confidence: "high" })}>Create remediation batch</Link>} />
-            </div>
+            <CleansingFunnel steps={cleanse.data?.steps ?? []} run={run} />
           </Section>
         </div>
 

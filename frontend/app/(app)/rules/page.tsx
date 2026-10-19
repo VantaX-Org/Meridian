@@ -365,7 +365,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
                 <Rows items={[
                   ["Object", formatModuleName(selected.module)],
                   ["System", CATEGORY_LABEL[selected.category] ?? selected.category],
-                  ["Source", selected.source === "yaml" ? `Built-in${selected.source_yaml ? `, ${selected.source_yaml}` : ""}` : labelOf(SOURCE_LABEL[selected.source] ?? selected.source)],
+                  ["Source", selected.source === "yaml" ? <span key="src">Built-in{selected.source_yaml ? <>, <span className="m-mono">{selected.source_yaml}</span></> : null}</span> : labelOf(SOURCE_LABEL[selected.source] ?? selected.source)],
                   ["Authority", authority(selected) === "shipped" ? "SAP standard (shipped)" : "Customer configured"],
                   ["State", <Pill key="s" tone={selected.enabled ? "go" : "neutral"}>{labelOf(selected.enabled ? "enabled" : "disabled")}</Pill>],
                   ["Updated", formatDate(selected.updated_at, "datetime")],

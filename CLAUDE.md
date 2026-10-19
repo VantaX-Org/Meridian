@@ -256,12 +256,12 @@ disagree, follow DESIGN.md.
   charts, table, shell and page templates. There is no second library and
   no legacy shell; `components/aurora`, `components/ui-core`,
   `components/shell` and `lib/aurora` were retired.
-- **Direction**: calm enterprise. Cool off-white canvas (`#F7F8FA`), white
-  cards with 1px hairline borders and an 8px radius, near-black ink, slightly
-  roomy density (40px table rows, 24px card padding). Light is the default;
-  dark is a full alternative in neutral graphite under `[data-theme="dark"]`.
-  No dark hero blocks: the score is a plain large number plus one horizontal
-  bar on a white card.
+- **Direction**: "The Instrument". One datum line per page (`Datum`: figures
+  left, the four explaining sentences as marginalia right, `Margin`), one
+  ruler for every score (`Rule`, three sizes, one geometry), paper in light
+  (`#F6F5F2` canvas, white sheets, hairlines, near-black ink) and lab in dark
+  (neutral graphite under `[data-theme="dark"]`). No dark hero blocks, no
+  gradients, no glow. Icons are Meridian's own set in `design/icons`.
 - **Colour**: one deep blue accent `--m-accent` (`#1F4FD8`, lightened in
   dark) is interaction only (primary button, links, selection, focus). Hue
   otherwise means defect status: red / amber / green (critical, high, medium,

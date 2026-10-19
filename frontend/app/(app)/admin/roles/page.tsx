@@ -4,9 +4,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs } from "@/design";
+import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, IconMore } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantsPicker, scopeLabel } from "@/components/admin/grants-picker";
 import { InviteForm } from "@/components/admin/invite-form";
@@ -88,7 +87,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
         if (!r.built_in) items.push({ label: "Edit", onSelect: () => setEditing(r) }, { label: "Delete", onSelect: () => setDeleting(r) });
         return (
           <span onClick={(e) => e.stopPropagation()}>
-            <Menu trigger={<button aria-label={`Actions for ${r.name}`}><MoreHorizontal size={16} aria-hidden /></button>} items={items} />
+            <Menu trigger={<button aria-label={`Actions for ${r.name}`}><IconMore size={16} /></button>} items={items} />
           </span>
         );
       },

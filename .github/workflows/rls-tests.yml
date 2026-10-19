@@ -26,6 +26,7 @@ on:
       - "api/routes/record_issues.py"
       - "api/routes/versions.py"
       - "requirements.txt"
+      - "requirements.lock"
       - ".github/workflows/rls-tests.yml"
   push:
     branches: [main]
@@ -78,7 +79,7 @@ jobs:
           python -m pip install --upgrade pip
           # Pinned app requirements (the record-lifecycle tests exercise the API
           # routes through asyncpg and the worker service through psycopg2).
-          pip install -r requirements.txt "pytest>=8.0.0" "pytest-asyncio>=0.24.0"
+          pip install -r requirements.txt "pytest>=8.0.0" "pytest-asyncio>=0.24.0" -c requirements.lock
 
       - name: Run database integration tests
         run: pytest -v tests/test_rls_integration.py tests/test_record_issues_pg.py tests/test_triage_sla_pg.py tests/test_exception_rules_pg.py

@@ -54,6 +54,21 @@ const eslintConfig = defineConfig([
       "**/*.spec.{ts,tsx}",
     ],
   },
+  // DESIGN.md §3 "Icons": every glyph comes from design/icons. No third-party icon library.
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [
+          { name: "lucide-react", message: "Use the Meridian icon set in @/design (design/icons)." },
+          { name: "@heroicons/react", message: "Use the Meridian icon set in @/design (design/icons)." },
+          { name: "react-icons", message: "Use the Meridian icon set in @/design (design/icons)." },
+          { name: "@phosphor-icons/react", message: "Use the Meridian icon set in @/design (design/icons)." },
+        ],
+        patterns: ["lucide-react/*", "@heroicons/react/*", "react-icons/*", "@tabler/icons-react*"],
+      }],
+    },
+  },
   // DESIGN.md "No inline style": no `style` prop anywhere under app/ (design/ owns every style).
   {
     files: ["app/**/*.{ts,tsx}"],

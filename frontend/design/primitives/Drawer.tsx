@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
-import { X } from "lucide-react";
 import { IconButton } from "./IconButton";
+import { IconClose } from "../icons";
 
 /**
  * 480w sheet. Floats 8px inset with sheet radius at >= lg, flush full-height below.
@@ -35,7 +35,7 @@ export function Drawer({
               {subtitle && <div className="m-text-meta truncate" style={{ color: "var(--m-ink-3)" }}>{subtitle}</div>}
             </div>
             <BaseDrawer.Close render={<IconButton aria-label="Close" size="sm" />}>
-              <X size={16} />
+              <IconClose size={16} />
             </BaseDrawer.Close>
           </div>
           <div className="flex-1 overflow-auto p-5">{children}</div>

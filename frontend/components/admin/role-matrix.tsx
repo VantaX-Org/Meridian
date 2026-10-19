@@ -1,7 +1,6 @@
 "use client";
 
-import { Lock } from "lucide-react";
-import { Tooltip } from "@/design";
+import { Tooltip, IconLock } from "@/design";
 import type { Matrix, Pair } from "@/lib/api/roles";
 
 /** Resources that ignore scope (rbac.md §2.3). */
@@ -46,7 +45,7 @@ export function RoleMatrix({ matrix, onChange, label, scoped = false }: { matrix
                 {scoped && TENANT_WIDE.has(r) ? (
                   <span className="ml-1 align-middle">
                     <Tooltip label="Tenant-wide; scope does not apply." render={<button type="button" aria-label="Tenant-wide; scope does not apply." />}>
-                      <Lock size={12} aria-hidden />
+                      <IconLock size={12} />
                     </Tooltip>
                   </span>
                 ) : null}

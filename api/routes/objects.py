@@ -24,6 +24,7 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
+from api.routes.sync_trigger import module_label
 from api.services.rbac import require_permission, scope_from_path
 from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config, tier
 
@@ -31,8 +32,9 @@ router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
 
 
 def _label(module: str) -> str:
-    """Match frontend/lib/format.ts:formatModuleName — title-case each underscore word."""
-    return " ".join(w.capitalize() for w in module.split("_"))
+    """The module's display name from MODULE_LABELS (the same names as frontend/lib/format.ts formatModuleName);
+    an unknown id is sentence-cased. The list, detail and CSV/XLSX exports all take their label from here."""
+    return module_label(module)
 
 
 class ObjectSummaryOut(BaseModel):

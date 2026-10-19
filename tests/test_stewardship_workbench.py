@@ -389,7 +389,7 @@ def test_frontend_nav_has_stewardship():
     """The shared nav (sidebar + ⌘K) has the steward inbox as its own section."""
     content = Path("frontend/lib/nav.ts").read_text(encoding="utf-8")
     import re
-    assert re.search(r'href: "/inbox",[^{}]*?label: "Inbox",\s*icon: InboxIcon', content)
+    assert re.search(r'href: "/inbox",[^{}]*?label: "Inbox",\s*icon: IconInbox', content)
     assert 'href: "/stewardship"' not in content
 
 

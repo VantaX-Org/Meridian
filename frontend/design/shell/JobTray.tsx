@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity } from "lucide-react";
 import { useJobs, useJobStream } from "../../hooks/use-jobs";
 import { onJobTrayOpen } from "../../lib/job-tray-bus";
 import { IconButton } from "../primitives/IconButton";
 import { Drawer } from "../primitives/Drawer";
 import { JobProgress } from "./JobProgress";
+import { IconActivity } from "../icons";
 
 export function JobTray() {
   useJobStream();
@@ -18,7 +18,7 @@ export function JobTray() {
     <>
       <div style={{ position: "relative" }}>
         <IconButton aria-label={active.length > 0 ? `Jobs, ${active.length} running` : "Jobs"} onClick={() => setOpen(true)}>
-          <Activity size={16} aria-hidden />
+          <IconActivity size={16} />
         </IconButton>
         {active.length > 0 && (
           <span

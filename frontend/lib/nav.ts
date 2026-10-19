@@ -17,44 +17,19 @@
  * `anyOf` also holds, so legacy roles see the same nav as before (proved by
  * nav-identity.test.ts); the pair only narrows custom and persona roles.
  */
-import type { CSSProperties, JSX } from "react";
-import type { LucideIcon } from "lucide-react";
+import type { Icon } from "@/design/icons";
 import {
-  ArrowLeftRight,
-  Compass,
-  Flag,
-  LayoutDashboard,
-  TrendingUp,
-  Users,
-  BarChart3,
-  Boxes,
-  ChevronRight,
-  Eraser,
-  History,
-  Home,
-  Inbox as InboxIcon,
-  ListChecks,
-  ShieldAlert,
-  Sliders,
-  UserCog,
-  Workflow,
-} from "lucide-react";
-import {
-  BookIcon,
-  ContractIcon,
-  DatabaseIcon,
-  ServerIcon,
-  SettingsIcon,
-  UploadIcon,
-} from "@/components/meridian/nav-icons";
+  IconActivity, IconBell, IconBook, IconBranch, IconChart, IconCompass, IconContract, IconCube, IconDatabase, IconDraft,
+  IconEraser, IconFlag, IconFunnel, IconGauge, IconGear, IconHistory, IconHome, IconImport, IconInbox, IconKey, IconLayers,
+  IconList, IconLog, IconMapping, IconMerge, IconMigration, IconModel, IconPeople, IconProcess, IconRules, IconServer,
+  IconShieldAlert, IconSliders, IconTrend, IconUserShield,
+} from "@/design/icons";
 import type { Role } from "@/hooks/use-role";
 import { homeHrefForRole } from "@/lib/persona";
 
 export { homeHrefForRole };
 
-export type NavIcon =
-  | LucideIcon
-  | ((props: { size?: number; className?: string; style?: CSSProperties }) => JSX.Element);
+export type NavIcon = Icon;
 
 /** A (resource, action) pair from rbac.py RESOURCES × ACTIONS. */
 export interface Requirement {
@@ -104,15 +79,15 @@ export const SETTINGS_PERMISSIONS = [
 ] as const;
 
 export const SETTINGS_ITEMS: readonly NavItem[] = [
-  { href: "/admin/triage", requires: req("rules", "edit"), label: "Triage", icon: ChevronRight, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
-  { href: "/admin/mappings", requires: req("extraction", "edit"), label: "Field mapping", icon: ChevronRight, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
-  { href: "/admin/ai", requires: req("llm", "admin"), label: "AI settings", icon: ChevronRight, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
+  { href: "/admin/triage", requires: req("rules", "edit"), label: "Triage", icon: IconFunnel, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
+  { href: "/admin/mappings", requires: req("extraction", "edit"), label: "Field mapping", icon: IconMapping, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
+  { href: "/admin/ai", requires: req("llm", "admin"), label: "AI settings", icon: IconModel, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
   // rules/edit is here only so the legacy steward keeps Settings › Licence: no legacy role is granted
   // licence/view (it is in NO_VIEW), and the steward reaches Settings through manage_rules alone.
-  { href: "/admin/notifications", requires: req("rules", "admin"), label: "Notifications", icon: ChevronRight, anyOf: ["manage_settings"], keywords: "alerts channels slack teams email webhook digest" },
-  { href: "/admin/jobs", requires: req("analysis", "view"), label: "Jobs", icon: ChevronRight, anyOf: ["view"], keywords: "history extraction analysis uploads running failed" },
-  { href: "/admin/reference", requires: req("systems", "view"), label: "Reference data", icon: ChevronRight, anyOf: ["view"], keywords: "postal codes bic directory lists" },
-  { href: "/admin/licence", requires: [req("licence", "view"), req("licence", "admin"), req("rules", "edit")], label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
+  { href: "/admin/notifications", requires: req("rules", "admin"), label: "Notifications", icon: IconBell, anyOf: ["manage_settings"], keywords: "alerts channels slack teams email webhook digest" },
+  { href: "/admin/jobs", requires: req("analysis", "view"), label: "Jobs", icon: IconActivity, anyOf: ["view"], keywords: "history extraction analysis uploads running failed" },
+  { href: "/admin/reference", requires: req("systems", "view"), label: "Reference data", icon: IconList, anyOf: ["view"], keywords: "postal codes bic directory lists" },
+  { href: "/admin/licence", requires: [req("licence", "view"), req("licence", "admin"), req("rules", "edit")], label: "Licence", icon: IconKey, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
 
 /**
@@ -129,36 +104,36 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "Home",
     items: [
-      { href: "/home/lead", requires: req("analysis", "view"), label: "Home", icon: Home, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
+      { href: "/home/lead", requires: req("analysis", "view"), label: "Home", icon: IconHome, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
     ],
   },
   {
     group: "Systems",
     items: [
-      { href: "/systems", requires: req("systems", "view"), label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects health sync jobs download history schedule" },
-      { href: "/import", requires: req("extraction", "create"), label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
-      { href: "/migration", requires: req("analysis", "run"), label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
+      { href: "/systems", requires: req("systems", "view"), label: "Systems", icon: IconServer, keywords: "sap connect ecc s4hana discover objects health sync jobs download history schedule" },
+      { href: "/import", requires: req("extraction", "create"), label: "Import file", icon: IconImport, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
+      { href: "/migration", requires: req("analysis", "run"), label: "Migration", icon: IconMigration, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
     ],
   },
   {
     group: "Objects",
     items: [
-      { href: "/objects", requires: req("findings", "view"), label: "Objects", icon: Boxes, licenceKey: "findings", keywords: "checks critical severity findings" },
+      { href: "/objects", requires: req("findings", "view"), label: "Objects", icon: IconCube, licenceKey: "findings", keywords: "checks critical severity findings" },
     ],
   },
   {
     group: "Runs",
     items: [
-      { href: "/runs", requires: req("analysis", "view"), label: "Runs", icon: History, licenceKey: "versions", keywords: "compare history snapshots baseline" },
+      { href: "/runs", requires: req("analysis", "view"), label: "Runs", icon: IconHistory, licenceKey: "versions", keywords: "compare history snapshots baseline" },
     ],
   },
   {
     group: "Fix",
     anyOf: ["approve", "apply"],
     items: [
-      { href: "/fix", requires: req("fixes", "view"), label: "Fix", icon: Eraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "cleaning corrections proposals apply batches",
+      { href: "/fix", requires: req("fixes", "view"), label: "Fix", icon: IconEraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "cleaning corrections proposals apply batches",
         children: [
-          { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: Eraser, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after" },
+          { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: IconBranch, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after" },
         ],
       },
     ],
@@ -171,13 +146,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         href: "/inbox",
         requires: req("stewardship", "view"),
         label: "Inbox",
-        icon: InboxIcon,
+        icon: IconInbox,
         licenceKey: "findings",
         anyOf: ["view"],
         badgeKey: "inbox",
         keywords: "workbench queue triage tasks stewardship steward team assign sla metrics failing records issues",
         children: [
-          { href: "/inbox?kind=exception", requires: req("stewardship", "view"), label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla exception" },
+          { href: "/inbox?kind=exception", requires: req("stewardship", "view"), label: "Exceptions", icon: IconShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla exception" },
         ],
       },
     ],
@@ -190,14 +165,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         href: "/insights",
         requires: req("reports", "view"),
         label: "Insights",
-        icon: BarChart3,
+        icon: IconChart,
         keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
         children: [
-          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: LayoutDashboard, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
-          { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: TrendingUp, keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
-          { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: Compass, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
-          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: Flag, keywords: "waves go no-go blockers process l1 l5 ptp otc migration", aliases: ["/insights/process"] },
-          { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: Users, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
+          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
+          { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: IconTrend, keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
+          { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: IconCompass, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
+          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers process l1 l5 ptp otc migration", aliases: ["/insights/process"] },
+          { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: IconPeople, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
         ],
       },
     ],
@@ -206,18 +181,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Process",
     anyOf: ["view"],
     items: [
-      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: Workflow, keywords: "process discovery mining as-is l1 l5 variants conformance signavio bpmn" },
-      { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: History, keywords: "process discovery run incremental extraction" },
+      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: IconProcess, keywords: "process discovery mining as-is l1 l5 variants conformance signavio bpmn" },
+      { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, keywords: "process discovery run incremental extraction" },
     ],
   },
   {
     group: "MDM",
     items: [
-      { href: "/mdm", requires: req("mdm", "view"), label: "Overview", icon: DatabaseIcon, keywords: "mdm health score trend" },
-      { href: "/mdm/survivorship", requires: req("mdm", "view"), label: "Survivorship", icon: Sliders, keywords: "survivorship rules golden source precedence" },
-      { href: "/mdm/golden", requires: req("mdm", "view"), label: "Golden records", icon: DatabaseIcon, keywords: "master mdm" },
-      { href: "/mdm/glossary", requires: req("glossary", "view"), label: "Glossary", icon: BookIcon, keywords: "terms business" },
-      { href: "/mdm/match-rules", requires: req("mdm", "view"), label: "Match rules", icon: Sliders, keywords: "tuning constraints" },
+      { href: "/mdm", requires: req("mdm", "view"), label: "Overview", icon: IconDatabase, keywords: "mdm health score trend" },
+      { href: "/mdm/survivorship", requires: req("mdm", "view"), label: "Survivorship", icon: IconSliders, keywords: "survivorship rules golden source precedence" },
+      { href: "/mdm/golden", requires: req("mdm", "view"), label: "Golden records", icon: IconLayers, keywords: "master mdm" },
+      { href: "/mdm/glossary", requires: req("glossary", "view"), label: "Glossary", icon: IconBook, keywords: "terms business" },
+      { href: "/mdm/match-rules", requires: req("mdm", "view"), label: "Match rules", icon: IconMerge, keywords: "tuning constraints" },
     ],
   },
   {
@@ -227,13 +202,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         href: "/rules",
         requires: req("rules", "view"),
         label: "Rules",
-        icon: ListChecks,
+        icon: IconRules,
         keywords: "rules checks catalogue yaml contracts scoring alerts",
         children: [
-          { href: "/rules/contracts", requires: req("contracts", "view"), label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
-          { href: "/rules/drafts", requires: req("rules", "edit"), label: "Drafts", icon: ListChecks, anyOf: ["manage_rules"], keywords: "rule authoring draft" },
-          { href: "/rules/dictionary", requires: req("rules", "view"), label: "Data dictionary", icon: BookIcon, anyOf: ["view"], keywords: "ddic fields dictionary" },
-          { href: "/rules/scoring", requires: req("rules", "view"), label: "Scoring and alerts", icon: Sliders, anyOf: ["view"], keywords: "weights thresholds" },
+          { href: "/rules/contracts", requires: req("contracts", "view"), label: "Contracts", icon: IconContract, licenceKey: "contracts", keywords: "data contracts sla" },
+          { href: "/rules/drafts", requires: req("rules", "edit"), label: "Drafts", icon: IconDraft, anyOf: ["manage_rules"], keywords: "rule authoring draft" },
+          { href: "/rules/dictionary", requires: req("rules", "view"), label: "Data dictionary", icon: IconBook, anyOf: ["view"], keywords: "ddic fields dictionary" },
+          { href: "/rules/scoring", requires: req("rules", "view"), label: "Scoring and alerts", icon: IconSliders, anyOf: ["view"], keywords: "weights thresholds" },
         ],
       },
     ],
@@ -244,9 +219,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     // rules/edit keeps the legacy steward's Admin › Settings nav.
     requiresAny: [req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"), req("rules", "edit")],
     items: [
-      { href: "/admin/users", requires: req("users", "admin"), label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
-      { href: "/admin/audit", requires: [req("audit", "view"), req("users", "admin")], label: "Audit log", icon: UserCog, anyOf: ["view_audit", "manage_users"], keywords: "audit log ai decisions role changes" },
-      { href: "/admin/settings", requires: req("rules", "view"), label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
+      { href: "/admin/users", requires: req("users", "admin"), label: "Users and audit", icon: IconUserShield, anyOf: ["manage_users"], keywords: "admin users roles audit" },
+      { href: "/admin/audit", requires: [req("audit", "view"), req("users", "admin")], label: "Audit log", icon: IconLog, anyOf: ["view_audit", "manage_users"], keywords: "audit log ai decisions role changes" },
+      { href: "/admin/settings", requires: req("rules", "view"), label: "Settings", icon: IconGear, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
   },
 ];
