@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Score, Skeleton, Stat, Status, emptyExportOptions, type PillTone, type Verdict } from "@/design";
+import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Score, Skeleton, Stat, emptyExportOptions, type PillTone, type Verdict } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { usePermissions, useSystemScope } from "@/lib/permissions";
@@ -136,9 +136,9 @@ export default function SystemsPage() {
         const verdict = HEALTH_VERDICT[h];
         return (
           <span className="inline-flex flex-col items-start">
-            {verdict ? <Status kind="verdict" value={verdict} /> : <Pill tone="neutral">{HEALTH_LABEL[h]}</Pill>}
+            <Pill tone={verdict ?? "neutral"}>{HEALTH_LABEL[h]}</Pill>
             <span className="m-text-meta m-ink-3">
-              {h !== "healthy" && verdict ? `${HEALTH_LABEL[h]}, ` : ""}{row.original.last_health_check ? `checked ${relativeTime(row.original.last_health_check)}` : verdict ? "never checked" : ""}
+              {row.original.last_health_check ? `Checked ${relativeTime(row.original.last_health_check)}` : verdict ? "Never checked" : ""}
             </span>
           </span>
         );
