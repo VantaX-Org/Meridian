@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Card, DataTable, Delta, Heatmap, Line, Pill, Radar, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
+import { Bar, Button, Card, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getCleansing, getHeatmap, getOverview, getRootCauses, getRuleRanking, getTrends, l1Label, type RuleRow,
@@ -89,10 +89,12 @@ function RunOverview() {
   const fixHref = (extra: Record<string, string>) => withScope("/fix", { run, ...extra });
 
   const fixColumns: ColumnDef<RuleRow>[] = ruleColumns(run, true);
+  // Only the run scope gates the page; each section follows its own query, so a slow or failed overview
+  // leaves the hero blank with a retry and the other sections still render.
+  const ovFailed = isListFailure(ov);
   const state: "loading" | "empty" | "error" | undefined =
-    resolving || ov.isLoading || dayOne.status === "loading" ? "loading"
-    : isListFailure(ov) ? "error"
-    : !run || !o ? "empty" : undefined;
+    resolving || dayOne.status === "loading" ? "loading"
+    : !run || (ov.isSuccess && !o) ? "empty" : undefined;
   const loading = ov.isLoading;
   const fallback = (s: string) => (loading ? "Loading" : s);
   const nl = o?.narrative ?? [];
@@ -118,14 +120,21 @@ function RunOverview() {
                 hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
                 delta={o?.dqs.delta != null ? <Delta value={o.dqs.delta} /> : undefined}
               />
+            {loading && !o ? (
+              <div aria-hidden className="m-hero-verdict">
+                <Skeleton hero width="70%" height={28} />
+                <Skeleton hero width="50%" height={14} />
+              </div>
+            ) : (
             <div className="m-hero-verdict" data-testid="hero-verdict">
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
-                {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : loading ? "Scoring" : "Not scored yet"}
+                {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : "Not scored yet"}
               </span>
               <span className="m-text-body m-ink-2">
                 {o ? `${plural(o.blockers.count, "blocking gap")}${o.blockers.waves ? ` across ${plural(o.blockers.waves, "wave")}` : ""}` : " "}
               </span>
             </div>
+            )}
           </div>
         ),
         stats: [
@@ -150,9 +159,14 @@ function RunOverview() {
         ghost: "table",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
-      errorProps={{ message: apiErrorMessage(ov.error), onRetry: () => { void ov.refetch(); void versions.refetch(); } }}
     >
       <div className="grid gap-4 @5xl:grid-cols-12" data-testid="insights-overview">
+        {ovFailed && (
+          <div role="alert" className="@5xl:col-span-12 flex items-center gap-3 m-text-body">
+            <span>{`The score did not load. ${apiErrorMessage(ov.error)}`}</span>
+            <Button variant="secondary" onClick={() => { void ov.refetch(); void versions.refetch(); }}>Retry</Button>
+          </div>
+        )}
         {nl.length > 0 && (
           <div className="@5xl:col-span-12">
             <Card title="Summary">

@@ -32,9 +32,10 @@ export function apiErrorReason(error: unknown): string | null {
   return null;
 }
 
-/** `apiErrorDetail(error) ?? "Could not reach the server."` as one call. */
+/** The API's detail, else a gateway-timeout sentence for 502–504, else "Could not reach the server." */
 export function apiErrorMessage(error: unknown): string {
-  return apiErrorDetail(error) ?? "Could not reach the server.";
+  const status = isAxiosError(error) ? error.response?.status ?? 0 : 0;
+  return apiErrorDetail(error) ?? (status >= 502 && status <= 504 ? "The server is busy and did not answer in time. Try again." : "Could not reach the server.");
 }
 
 /**

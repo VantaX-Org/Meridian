@@ -168,7 +168,7 @@ export default function RulesPage() {
       ) : (
         <>
           {pareto.length > 0 && (
-            <Card title={`Impact by ${axisInTitle}`} meta={axis === "rule" ? `${plural(n80, "rule accounts", "rules account")} for 80% of impact` : `${n80} of ${groups.length} account for 80% of impact`}>
+            <Card title={`Impact by ${axisInTitle}`} meta={axis === "rule" ? `${plural(n80, "rule accounts", "rules account")} for 80% of impact` : `${n80} of ${groups.length} ${n80 === 1 ? "accounts" : "account"} for 80% of impact`}>
               <Pareto data={pareto} label={`Impact by ${axisInTitle}, top 20`} height={220} />
             </Card>
           )}
