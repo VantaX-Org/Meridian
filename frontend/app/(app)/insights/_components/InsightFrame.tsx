@@ -6,7 +6,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Async, Card, PageHeader, InsightHeader, Select, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
+import { Async, Card, Datum, Margin, PageHeader, InsightHeader, Select, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { RunScope } from "@/components/run-scope";
@@ -45,6 +45,8 @@ export interface InsightFrameProps {
    */
   actions?: ReactNode;
   controls?: ReactNode;
+  /** A row of page-specific controls under the tabs (a baseline picker, a window select), kept out of the action bar. */
+  toolbar?: ReactNode;
   run?: string;
   module?: string;
   /** Extra export formats added before the failing-records list. */
@@ -138,7 +140,7 @@ function InsightScopeLine() {
 export { SLOW_LOAD_MESSAGE } from "@/design";
 
 export function InsightFrame({
-  title, meta, scope, actions, controls, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
+  title, meta, scope, actions, controls, toolbar, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
 }: InsightFrameProps) {
   // A skeleton that never resolves becomes an error with Retry after the shared timeout (inside Async); the
   // header gives way with it.
@@ -154,6 +156,7 @@ export function InsightFrame({
       {children}
     </Async>
   );
+  const showInsight = !!insight && state !== "empty" && state !== "error" && !(state === "loading" && stuck);
   const actionBar = actions ?? (
     <div className="flex flex-wrap items-center gap-2">
       {controls}
@@ -173,10 +176,13 @@ export function InsightFrame({
         actions={actionBar}
         tabs={<InsightTabs />}
       />
-      {insight && state !== "empty" && state !== "error" && !(state === "loading" && stuck) && (
-        <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />
-      )}
-      {body}
+      {toolbar && <div className="flex flex-wrap items-end gap-2">{toolbar}</div>}
+      <Datum margin={showInsight ? <Margin {...insight} loading={insight.loading ?? state === "loading"} /> : undefined}>
+        <div className="flex flex-col [gap:var(--m-section-gap)]">
+          {showInsight && insight.hero && <InsightHeader {...insight} bare loading={insight.loading ?? state === "loading"} />}
+          {body}
+        </div>
+      </Datum>
     </div>
   );
 }

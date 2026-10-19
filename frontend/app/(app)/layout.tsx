@@ -20,7 +20,6 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { PermissionsProvider } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
-import { RouteInsight } from "@/components/insight/route-insight";
 import { HelpSlot } from "@/components/help/help-slot";
 import { reportClientError } from "@/lib/client-errors";
 
@@ -131,7 +130,6 @@ function Chrome({ children }: { children: ReactNode }) {
             userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
           <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
-            <Suspense fallback={null}><RouteInsight /></Suspense>
             <RootPageFrame>{children}</RootPageFrame>
           </main>
         </div>

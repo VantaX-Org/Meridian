@@ -10,6 +10,7 @@ import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { Async, type AsyncState } from "../primitives/Async";
 import { PageFrame } from "./PageFrame";
 import { JourneyStepper } from "./JourneyStepper";
+import { Datum } from "./Datum";
 import type { DayOneStep } from "../../hooks/use-day-one";
 
 /** Situation sentence for a fresh install. */
@@ -71,7 +72,7 @@ const loadingSkeleton = (
  * component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, scope, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding,
+  state, verdict, run, scope, journey, error, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding, cells,
 }: {
   persona: string;
   /** "empty" is a fresh install (no analysis yet): the journey to a first score. */
@@ -96,6 +97,8 @@ export function HomePage({
   headerActions?: ReactNode;
   /** First-run tour offer and setup checklist (components/help/home-onboarding.tsx); shown once the page has loaded. */
   onboarding?: ReactNode;
+  /** The four sentences (situation, what changed, why, do next): the page's margin, beside the figures. */
+  cells?: ReactNode;
 }) {
   const header = (
     <PageHeader
@@ -108,7 +111,8 @@ export function HomePage({
   return (
     <PageFrame gap={4}>
       {header}
-      {(state === "empty" || state === "ready") && onboarding}
+      <Datum margin={state === "loading" || state === "error" ? undefined : cells}>
+      <div className="flex flex-col" style={{ gap: "var(--m-space-4)" }}>
 
       {/* Loading and error go through Async; empty (the journey) and ready are this template's own geometry. */}
       {(state === "error" || state === "loading") && (
@@ -119,7 +123,7 @@ export function HomePage({
 
       {state === "empty" && (
         <Card padding="lg" title="Get to your first score">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink-2)" }}>{NO_DATA_VERDICT}</p>
             {journey && (
               <JourneyStepper
@@ -133,9 +137,10 @@ export function HomePage({
           </div>
         </Card>
       )}
+      {state === "empty" && onboarding}
 
       {state === "ready" && verdict && (
-        <section className="m-hero grid items-end gap-x-10 gap-y-6 md:grid-cols-[auto_1fr]" data-testid="home-verdict-row" data-tour="home-verdict">
+        <section className="m-hero grid items-start gap-x-10 gap-y-6 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]" data-testid="home-verdict-row" data-tour="home-verdict">
           <div data-testid="home-dqs" data-tour="home-score">
             <Score
               size="hero"
@@ -145,7 +150,7 @@ export function HomePage({
               delta={verdict.delta != null ? <Delta value={verdict.delta} /> : undefined}
             />
           </div>
-          <div className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "64ch" }}>
+          <div className="flex min-w-0 flex-col gap-2 md:pt-6" style={{ maxWidth: "64ch" }}>
             <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>
             {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
             {verdict.action && (
@@ -156,6 +161,7 @@ export function HomePage({
           </div>
         </section>
       )}
+      {state === "ready" && onboarding}
 
       {state === "ready" && (trend || dimensions) && (
         <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
@@ -171,6 +177,8 @@ export function HomePage({
         </div>
       )}
       {lists}
+      </div>
+      </Datum>
     </PageFrame>
   );
 }

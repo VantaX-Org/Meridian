@@ -225,7 +225,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="m-stat-grid">
-        <Stat label="DQS" help="dqs" value={data.composite_score != null ? String(data.composite_score) : "—"} />
+        <Stat label="DQS" help="dqs" value={data.composite_score != null ? String(data.composite_score) : "—"} bar={data.composite_score ?? undefined} rule={{}} />
         <Stat label="Failing checks" value={data.failing_checks.toLocaleString()} href={rulesHref} />
         <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         <Stat label="Affected records" value={data.affected_records.toLocaleString()} href={`/objects/${object}?run=${run}&tab=records`} />

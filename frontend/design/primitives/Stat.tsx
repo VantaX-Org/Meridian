@@ -8,6 +8,7 @@ import { Counter } from "./Counter";
 import { HelpHint } from "./HelpHint";
 import type { GlossaryKey } from "@/lib/help/glossary";
 import { Sparkline } from "../charts/Sparkline";
+import { Rule } from "./Rule";
 import { usePrefetch } from "../hooks/usePrefetch";
 import { dqsBand, type DomainKey } from "../tokens";
 import type { Verdict } from "./Status";
@@ -44,6 +45,8 @@ export interface StatProps {
   hero?: boolean;
   /** Score bar: one horizontal bar under the value, filled to this percent (0 to 100), in the `tone` or the DQS band hue. */
   bar?: number;
+  /** With `bar`: draw the Rule (target and cap ticks, 0 to 100 labels) instead of the plain bar. */
+  rule?: { target?: number; cap?: number };
   /** Sparkline under the value, drawn when at least 3 points. */
   spark?: number[];
   /** Count the value up from 0. Needs a numeric `value`. Default on for `hero`, off otherwise. */
@@ -59,7 +62,7 @@ export interface StatProps {
 }
 
 /** KPI tile. */
-export function Stat({ label, value, delta, hint, href, onClick, tone, domain, hero = false, bar, spark, countUp, versionId, decimals = 0, loading, help }: StatProps) {
+export function Stat({ label, value, delta, hint, href, onClick, tone, domain, hero = false, bar, rule, spark, countUp, versionId, decimals = 0, loading, help }: StatProps) {
   const prefetch = usePrefetch(href);
   const edge = tone ? (hero ? HERO_TONE[tone] : `var(--m-${tone})`) : domain ? `var(--m-dom-${domain})` : undefined;
   const animate = (countUp ?? hero) && typeof value === "number";
@@ -102,7 +105,12 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
           <Sparkline data={spark.map((y, x) => ({ x: String(x), y }))} width={60} height={16} color={sparkColor} />
         </span>
       )}
-      {bar != null && !loading && (
+      {bar != null && rule && !loading && (
+        <span className="block" style={{ margin: hero ? "var(--m-space-3) 0 var(--m-space-1)" : "var(--m-space-2) 0 0" }}>
+          <Rule size={hero ? "hero" : "row"} width={hero ? undefined : "100%"} value={bar} target={rule.target} cap={rule.cap} tone={tone ? BAR_TONE[tone] : undefined} label={label} />
+        </span>
+      )}
+      {bar != null && !rule && !loading && (
         <span aria-hidden className="m-score-bar" style={{ margin: "var(--m-space-2) 0 var(--m-space-1)" }}>
           <span className="m-bar-fill" data-tone={tone ? BAR_TONE[tone] : dqsBand(bar, DQS_BANDS)} style={{ width: `${Math.min(100, Math.max(0, bar))}%` }} />
         </span>
@@ -112,7 +120,7 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
       )}
     </>
   );
-  const cls = clsx("m-stat relative flex flex-col overflow-hidden", hero && "m-stat-hero", interactive && "m-stat-link m-motion-colors");
+  const cls = clsx("m-stat relative flex flex-col overflow-hidden", hero && "m-stat-hero", !hero && rule && bar != null && "m-stat-ruled", interactive && "m-stat-link m-motion-colors");
   const minHeight = undefined;
   const tile = href
     ? <Link href={href} className={cls} style={{ minHeight }} {...prefetch}>{body}</Link>

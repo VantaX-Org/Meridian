@@ -43,6 +43,7 @@ export * from "./hooks/useLoadingTimeout";
 export * from "./primitives/SeverityDot";
 export * from "./primitives/AiSummary";
 export * from "./primitives/Score";
+export * from "./primitives/Rule";
 export * from "./primitives/DimensionBars";
 
 export * from "./table/DataTable";
@@ -71,6 +72,8 @@ export * from "./templates/RecordPage";
 export * from "./templates/ReportPage";
 export * from "./templates/FindingDrawer";
 export * from "./templates/InsightHeader";
+export * from "./templates/Margin";
+export * from "./templates/Datum";
 export * from "./templates/NextActions";
 export * from "./templates/EntityTabs";
 

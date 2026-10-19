@@ -300,6 +300,8 @@ export default function RunsPage() {
             label="Latest DQS"
             help="dqs"
             value={latest && latestDqs !== null ? latestDqs.toFixed(1) : "—"}
+            bar={latest && latestDqs !== null ? latestDqs : undefined}
+            rule={{}}
             delta={delta !== null ? <Delta value={delta} /> : undefined}
             hint={delta === null ? "No earlier run" : "vs previous"}
             href={latest ? `/runs/${latest.id}` : undefined}

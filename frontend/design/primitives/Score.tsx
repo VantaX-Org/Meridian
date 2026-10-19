@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import type { GlossaryKey } from "@/lib/help/glossary";
-import { ScoreRing, type ScoreBands } from "./ScoreRing";
+import { ScoreRing, DEFAULT_SCORE_BANDS as BANDS, type ScoreBands } from "./ScoreRing";
+import { Rule } from "./Rule";
 import { ScoreExplainer, type ScoreExplanation } from "./ScoreExplainer";
 import { Stat } from "./Stat";
 import type { Verdict } from "./Status";
@@ -60,6 +61,7 @@ export function Score({ value, size = "md", cap, criticals, bands, explain, chil
           help={help ?? "dqs"}
           value={value ?? "—"}
           bar={value ?? undefined}
+          rule={{ target: (bands ?? BANDS).target, cap: capped ? cap : undefined }}
           decimals={1}
           versionId={versionId}
           loading={loading}
@@ -75,7 +77,7 @@ export function Score({ value, size = "md", cap, criticals, bands, explain, chil
   if (size === "sm") {
     return (
       <span className="inline-flex items-center gap-2">
-        <ScoreRing score={value} size={16} bands={bands} />
+        <Rule size="inline" value={value} cap={cap} bands={bands} />
         <span className="m-numeric">{children ?? value.toFixed(1)}</span>
       </span>
     );

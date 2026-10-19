@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { usePathname, useSearchParams } from "next/navigation";
-import { InsightHeader } from "@/design";
+import { Margin } from "@/design";
 import { useDayOne } from "@/hooks/use-day-one";
 import { getLlmHealth } from "@/lib/api/analytics";
 import { getSystems } from "@/lib/api/connectivity";
@@ -20,7 +20,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { buildInsight, sectionOf, showsRouteInsight, type InsightFacts } from "@/lib/route-insight";
 
 
-/** The insight banner above the persona homes. Every other page starts with its own title. */
+/** The four sentences inside the persona home hero (situation, what changed, why it matters, do next). Every other page carries its own InsightHeader. */
 export function RouteInsight() {
   const pathname = usePathname();
   const run = useSearchParams().get("run") ?? undefined;
@@ -105,8 +105,8 @@ export function RouteInsight() {
   const aiOn = hasRun && llmOn && (execQ.isLoading || !!execQ.data?.narrative);
 
   return (
-    <div className="@container mx-auto w-full" style={{ padding: "16px var(--m-page-pad) 0", maxWidth: "var(--m-page-max)" }}>
-      <InsightHeader
+    <div className="min-w-0">
+      <Margin
         {...cells}
         aiSummary={aiOn ? {
           llmOk: true,

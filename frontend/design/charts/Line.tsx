@@ -33,6 +33,31 @@ export function lastTickMargin(lastLabel: string | undefined): number {
   return Math.max(5, Math.min(96, Math.ceil(((lastLabel ?? "").length * 6.8) / 2) - 16));
 }
 
+/**
+ * The y window the data sits in, on tens, never below 0 or above 100 and at least 20 wide, so a score that holds
+ * at 72 reads as a line through the middle of the chart, not a hairline over an empty block. The target line
+ * stays inside the window when one is set.
+ */
+export function yDomain(values: readonly number[], target?: number): [number, number] {
+  const all = target == null ? values : [...values, target];
+  if (all.length === 0) return [0, 100];
+  const lo = Math.min(...all);
+  const hi = Math.max(...all);
+  const min = Math.max(0, Math.floor((lo - 8) / 10) * 10);
+  const max = Math.min(100, Math.ceil((hi + 4) / 10) * 10);
+  return [Math.min(min, Math.max(0, max - 20)), Math.max(max, Math.min(100, min + 20))];
+}
+
+/**
+ * A tick reads short: no year when every point shares one, minutes not seconds, no "#2" twin suffix. The tooltip
+ * keeps the full label.
+ */
+export function tickText(label: string, dropYear: boolean): string {
+  let s = label.replace(/ #\d+$/, "");
+  if (dropYear) s = s.replace(/ \d{4}(?=,|$)/, "");
+  return s.replace(/(\d{1,2}:\d{2}):\d{2}/, "$1");
+}
+
 export function Line({
   data,
   onPointClick,
@@ -77,15 +102,18 @@ export function Line({
     for (const p of multi ? multi.flatMap((sr) => sr.data) : data) if (p.label) m.set(p.x, p.label);
     return (x: string | number) => m.get(x) ?? String(x);
   }, [multi, data, xDomain]);
-  const rightMargin = lastTickMargin(rows.length ? labelOf(rows[rows.length - 1].x) : undefined);
+  const years = new Set(rows.map((r) => /\b(\d{4})\b/.exec(labelOf(r.x))?.[1]).filter(Boolean));
+  const tickOf = (x: string | number) => tickText(labelOf(x), years.size === 1);
+  const rightMargin = lastTickMargin(rows.length ? tickOf(rows[rows.length - 1].x) : undefined);
+  const domain = yDomain(rows.flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").map(([, v]) => Number(v))).filter(Number.isFinite), dqsThreshold);
   const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
   return (
     <div role="img" aria-label={chartSummary(summaryData, label)}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows} accessibilityLayer={false} margin={{ top: 5, right: rightMargin, bottom: 5, left: 5 }}>
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" vertical={false} />
-        <XAxis dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={labelOf} minTickGap={24} padding={X_PADDING} interval="preserveStartEnd" />
-        <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} domain={[0, 100]} />
+        <XAxis dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={tickOf} minTickGap={24} padding={X_PADDING} interval="preserveStartEnd" />
+        <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} domain={domain} tickCount={5} />
         <Tooltip content={<ChartTooltip />} cursor={false} labelFormatter={(x) => labelOf(x as string | number)} />
         {dqsThreshold !== undefined && (
           <ReferenceLine
@@ -96,7 +124,7 @@ export function Line({
           />
         )}
         {/* Area under the first series only. */}
-        <Area type="monotone" dataKey="s0" stroke="none" fill={chartTheme.area} isAnimationActive={false} activeDot={false} legendType="none" tooltipType="none" />
+        <Area type="monotone" dataKey="s0" baseValue={domain[0]} stroke="none" fill={chartTheme.area} isAnimationActive={false} activeDot={false} legendType="none" tooltipType="none" />
         {annotations?.map((a) => (
           <ReferenceLine
             key={`${a.x}-${a.label}`}

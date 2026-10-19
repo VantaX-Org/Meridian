@@ -14,10 +14,11 @@ export const authLinkClass = "m-text-body m-ink-accent hover:underline";
 
 const appVersion = process.env.NEXT_PUBLIC_APP_VERSION;
 
-const FACTS = ["Your SAP data stays on this server", "Every score links to its rules and records"];
+const FACTS = ["Your SAP data never leaves this server", "Deterministic checks, no guesswork", "Go or no-go per object, per wave"];
 
-// The ScoreRing geometry (270 degree arc, open at 12 o'clock) as a brand instrument. Decorative: it carries no data.
-const RING = 320;
+// The brand arc as an instrument: the 270 degree gauge, open at 12 o'clock, with the meridian tick at the top.
+// Decorative: it carries no data, and the words sit under it rather than across it.
+const RING = 200;
 const STROKE = 6;
 const R = (RING - STROKE) / 2;
 const CIRC = 2 * Math.PI * R;
@@ -27,16 +28,16 @@ function Instrument() {
   const c = RING / 2;
   const arc = { strokeDasharray: `${ARC} ${CIRC}` };
   return (
-    <div className="relative" style={{ width: RING, height: RING }}>
-      <svg width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`} aria-hidden="true" className="absolute inset-0">
-        <circle cx={c} cy={c} r={R} fill="none" stroke="var(--m-hero-line)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(-45 ${c} ${c})`} {...arc} />
-        <circle className="m-motion-draw" cx={c} cy={c} r={R} fill="none" stroke="var(--m-accent)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(-45 ${c} ${c})`}
+    <div className="flex flex-col items-center gap-8">
+      <svg width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`} aria-hidden="true">
+        <circle cx={c} cy={c} r={R} fill="none" stroke="var(--m-sheet-sunken)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(135 ${c} ${c})`} {...arc} />
+        <circle className="m-motion-draw" cx={c} cy={c} r={R} fill="none" stroke="var(--m-accent)" strokeWidth={STROKE} strokeLinecap="round" transform={`rotate(135 ${c} ${c})`}
           style={{ "--m-draw-length": ARC } as CSSProperties} {...arc} />
-        <line x1={c} x2={c} y1={STROKE / 2} y2={RING - STROKE / 2} stroke="var(--m-hero-ink)" strokeOpacity={0.4} strokeWidth={1} />
+        <line x1={c} x2={c} y1={0} y2={STROKE * 3} stroke="var(--m-ink)" strokeWidth={2} strokeLinecap="round" />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-14 text-center">
-        <p className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>SAP data quality, measured.</p>
-        <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>Readiness, findings and fixes in one place.</p>
+      <div className="flex max-w-[36ch] flex-col items-center gap-2 text-center">
+        <p className="font-semibold" style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", letterSpacing: "var(--m-tracking-title)", color: "var(--m-ink)" }}>SAP data quality, measured.</p>
+        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>One score per object, every number traced to the rule and the records behind it.</p>
       </div>
     </div>
   );
@@ -47,15 +48,15 @@ export function AuthFrame({ title, lead, children }: { title: string; lead?: Rea
     <main className="grid min-h-screen grid-rows-[200px_1fr] lg:grid-cols-[clamp(440px,45%,620px)_1fr] lg:grid-rows-1" style={{ background: "var(--m-canvas)" }}>
       <aside className="m-brand-panel m-motion-stagger flex flex-col justify-between" style={{ padding: 32 }}>
         <div className="flex items-center gap-2.5">
-          <MeridianMark size={32} variant="mono" style={{ color: "var(--m-hero-ink)" }} />
+          <MeridianMark size={32} />
           <span className="font-semibold" style={{ fontSize: "var(--m-text-title)", color: "var(--m-hero-ink)" }}>Meridian</span>
         </div>
         <div className="hidden flex-col items-center gap-8 lg:flex">
           <Instrument />
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-3">
+          <ul className="flex flex-col gap-2">
             {FACTS.map((f) => (
-              <li key={f} className="m-text-body flex items-start gap-2" style={{ color: "var(--m-hero-ink-2)" }}>
-                <span aria-hidden className="mt-1.5 shrink-0" style={{ width: 6, height: 6, background: "var(--m-accent)" }} />
+              <li key={f} className="m-text-body flex items-center gap-3" style={{ color: "var(--m-ink-2)" }}>
+                <span aria-hidden className="shrink-0" style={{ width: 16, height: 2, background: "var(--m-accent)" }} />
                 {f}
               </li>
             ))}

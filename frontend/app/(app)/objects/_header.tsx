@@ -1,4 +1,4 @@
-/** Removable-style filter chips: one pressed button per option. */
+/** One pressed chip per option; pressing the chosen one again clears the filter. */
 export function FilterChips<T extends string>({ label, value, options, onChange }: {
   label: string; value: T | null; options: { value: T; label: string }[]; onChange: (next: T | null) => void;
 }) {
@@ -9,7 +9,7 @@ export function FilterChips<T extends string>({ label, value, options, onChange 
         <button
           key={o.value}
           type="button"
-          className={`m-btn m-btn-sm ${value === o.value ? "m-btn-secondary" : "m-btn-ghost"}`}
+          className="m-choice"
           aria-pressed={value === o.value}
           onClick={() => onChange(value === o.value ? null : o.value)}
         >

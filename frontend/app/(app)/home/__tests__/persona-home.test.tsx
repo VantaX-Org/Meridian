@@ -19,6 +19,7 @@ import StewardHomePage from "../steward/page";
 import BasisHomePage from "../basis/page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("@/components/insight/route-insight", () => ({ RouteInsight: () => null }));
 const nav = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams(nav.search) }));
 

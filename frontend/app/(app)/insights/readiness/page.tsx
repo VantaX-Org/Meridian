@@ -102,15 +102,15 @@ export default function ReadinessPage() {
 
   const waveEmpty = !configured ? (
     <EmptyState
-      title="Readiness waves not set"
-      detail="Set readiness waves under Rules, Scoring and alerts (Settings > Alert Thresholds), then create a wave in the migration cockpit."
+      title="Readiness is not set up yet"
+      detail="Set the readiness thresholds under Scoring and alerts, then group the objects you move together into a wave in the migration cockpit."
       action={<Button render={<Link href="/rules/scoring">Scoring and alerts</Link>} />}
       ghost="grid"
     />
   ) : (
     <EmptyState
-      title="No readiness waves yet"
-      detail="A wave groups the objects you move together; create one in the migration cockpit and the grid scores each object per wave."
+      title="No waves yet"
+      detail="A wave is the set of objects you move together. Create one in the migration cockpit and every object in it gets a go or no-go here."
       action={<Button render={<Link href="/migration">Create wave</Link>} />}
       ghost="grid"
     />
@@ -125,11 +125,11 @@ export default function ReadinessPage() {
         situation: {
           sentence: cells.length
             ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go`
-            : s4.data ? `${plural(blockingGaps, "rule")} would block an S/4 load; no wave is defined yet` : "No readiness waves are defined yet",
+            : s4.data ? `${plural(blockingGaps, "rule")} would block an S/4 load, and no wave is set up yet` : "No waves set up yet",
           tone: noGo || blockingGaps ? "no-go" : "go",
         },
         changed: { sentence: s4.data ? `${blockingGaps.toLocaleString()} blocking and ${warningGaps.toLocaleString()} warning rules fail` : "Blocking rules are being counted", href: withScope("/insights/rules", { run, s4: "yes" }) },
-        why: { sentence: cells.length ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `, against a threshold of ${data.threshold}%` : ""}` : "Without a wave, no object has a go or no-go verdict" },
+        why: { sentence: cells.length ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `, against a threshold of ${data.threshold}%` : ""}` : "Until there is a wave, no object gets a go or no-go" },
         next: worst
           ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: withScope(`/objects/${worst.module}`, { run, tab: "rules", blocking: "true" }) } }
           : cells.length

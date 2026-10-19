@@ -19,7 +19,6 @@ import { apiErrorMessage, apiErrorReason, isListFailure, isNotFound } from "@/li
 import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { lineageOf, SCORE_HISTORY_LIMIT } from "@/lib/runs";
-import { InsightActions } from "../_components/InsightActions";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
 import { useFindingOpener } from "../_components/FindingOpener";
@@ -114,8 +113,8 @@ export default function ProgressPage() {
       title="Progress"
       scope
       meta={v1 && v2 ? `compared with ${label(v1)}` : undefined}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
+      toolbar={
+        <>
           <Select
             label="Compare with"
             value={baseline ?? ""}
@@ -123,16 +122,12 @@ export default function ProgressPage() {
             options={[{ value: "", label: "Pinned baseline or previous run" }, ...comparableRuns.map((r) => ({ value: r.id, label: `${optionLabels.get(r.id) ?? formatDate(r.run_at, "datetime")}${r.metadata?.baseline ? " (baseline)" : ""}` }))]}
           />
           {can("analyse") && run ? <Button variant="secondary" onClick={() => pin.mutate()} pending={pin.isPending}>Pin as baseline</Button> : null}
-          <InsightActions
-            run={run}
-            module={module}
-            options={run ? [
-              { format: "pdf", label: "Proof of progress (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(run, baseline), `progress_${run}.pdf`) },
-              { format: "xlsx", label: "Comparison workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module, compare: baseline }), `comparison_${run}.xlsx`) },
-            ] : []}
-          />
-        </div>
+        </>
       }
+      exportOptions={run ? [
+        { format: "pdf", label: "Proof of progress (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(run, baseline), `progress_${run}.pdf`) },
+        { format: "xlsx", label: "Comparison workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module, compare: baseline }), `comparison_${run}.xlsx`) },
+      ] : []}
       insight={{
         hero: true,
         stats: [

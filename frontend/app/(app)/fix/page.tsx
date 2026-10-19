@@ -56,7 +56,7 @@ function CleaningQueueTab() {
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : batches.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No cleaning proposals",
-        detail: dayOne.step?.detail ?? "Proposals are generated when a run finishes and rules find fixable values.",
+        detail: dayOne.step?.detail ?? "When a run finds values a rule can correct, the proposals land here.",
         action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
