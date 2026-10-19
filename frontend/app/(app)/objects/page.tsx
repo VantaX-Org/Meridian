@@ -2,11 +2,12 @@
 "use client";
 
 import { type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DimensionStrip, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ScoreBands, Status, Score } from "@/design";
+import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, ObjectMap, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ObjectMapItem, type ScoreBands, Status, Score } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -14,7 +15,6 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { DIMENSIONS } from "@/lib/home-metrics";
 import { stateScopeLine } from "@/lib/current-state";
 import { formatModuleName } from "@/lib/format";
 import { bySeverity } from "../_severity-sort";
@@ -36,10 +36,13 @@ const drill = (o: ObjectRow, run: string | undefined, n: number | string) => (
   <DrillLink object={o.module} run={run === "latest" ? undefined : run} filters={{ tab: "rules" }}>{n}</DrillLink>
 );
 
-const RANK: Record<string, number> = { fail: 0, warn: 1, pass: 2 };
-/** Worst readiness first, then DQS ascending; unscored objects last. */
-const worstFirst = (a: ObjectRow, b: ObjectRow) =>
-  (RANK[a.readiness ?? ""] ?? 3) - (RANK[b.readiness ?? ""] ?? 3) || (a.composite_score ?? 101) - (b.composite_score ?? 101);
+/** Findings that block a load: failing critical and high checks (absent on older backends, which rank on records alone). */
+const blockingOf = (o: ObjectRow) => (o.critical_checks ?? 0) + (o.high_checks ?? 0);
+/** The ledger's order: most blocking findings, then most records affected, then lowest DQS; unscored objects last. */
+const ranked = (a: ObjectRow, b: ObjectRow) =>
+  blockingOf(b) - blockingOf(a) || (b.affected_records ?? 0) - (a.affected_records ?? 0) || (a.composite_score ?? 101) - (b.composite_score ?? 101);
+
+const MAP_VERDICT = { fail: "no-go", warn: "at-risk", pass: "go" } as const;
 
 const READINESS_FILTER = [
   { value: "fail", label: "No-go" },
@@ -51,16 +54,42 @@ type ReadinessFilter = (typeof READINESS_FILTER)[number]["value"];
 const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 
 /** Optional enrichment columns appear only when some row carries the field (older backends omit them). */
-const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[]): ColumnDef<ObjectRow>[] => {
+const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[], openHref: (o: ObjectRow) => string): ColumnDef<ObjectRow>[] => {
   const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 1);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
-  const hasSev = objects.some((o) => o.critical_checks != null);
-  const hasDims = objects.some((o) => o.dimension_scores && Object.keys(o.dimension_scores).length > 0);
-  return allColumns(run, bands).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (c.id !== "dimensions" || hasDims) && ((c.id !== "critical" && c.id !== "high") || hasSev));
+  return allColumns(run, bands, openHref).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking));
 };
 
-const allColumns = (run: string | undefined, bands: ScoreBands | undefined): ColumnDef<ObjectRow>[] => [
+const allColumns = (run: string | undefined, bands: ScoreBands | undefined, openHref: (o: ObjectRow) => string): ColumnDef<ObjectRow>[] => [
   { accessorKey: "label", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={row.original.label} /> },
+  {
+    id: "blocking_rule",
+    header: "Blocking rule",
+    enableSorting: false,
+    size: 280,
+    cell: ({ row }) => {
+      const id = row.original.blocking_rule_id;
+      if (!id) return "—";
+      const words = row.original.blocking_rule_name;
+      return (
+        // One line per row: a long check id or name is cut with an ellipsis; the id names the rule in full by its title.
+        <span className="block max-w-[280px] truncate whitespace-nowrap" title={id} data-testid="blocking-rule-id">
+          <DrillLink href={`/objects/${row.original.module}?${run ? `run=${run}&` : ""}tab=records&check_id=${encodeURIComponent(id)}`}>
+            <Mono>{id}</Mono>
+          </DrillLink>
+          {words && words !== id ? <span className="m-ink-2">{" "}{words}</span> : null}
+        </span>
+      );
+    },
+  },
+  {
+    id: "affected_records",
+    accessorFn: (o) => o.affected_records ?? -1,
+    header: "Records",
+    size: 110,
+    meta: { numeric: true } satisfies CellMeta,
+    cell: ({ row }) => (row.original.affected_records == null ? "—" : drill(row.original, run, row.original.affected_records.toLocaleString())),
+  },
   {
     accessorKey: "composite_score",
     header: "DQS",
@@ -76,23 +105,13 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined): Col
     id: "readiness",
     // Severity-mapped value drives the row bar; the cell still shows the verdict word.
     accessorFn: (o) => (o.readiness === "fail" ? "critical" : o.readiness === "warn" ? "medium" : o.readiness === "pass" ? "pass" : ""),
-    header: "Readiness",
+    header: "Verdict",
     sortingFn: bySeverity,
     meta: { severity: true } satisfies CellMeta,
     cell: ({ row }) => {
       const readiness = row.original.readiness;
       if (!readiness) return "—";
       return <Status kind="verdict" value={readiness} variant="solid" />;
-    },
-  },
-  {
-    id: "dimensions",
-    header: "Dimensions",
-    enableSorting: false,
-    size: 96,
-    cell: ({ row }) => {
-      const scores = row.original.dimension_scores ?? {};
-      return <DimensionStrip items={DIMENSIONS.map((d) => ({ key: d, label: formatModuleName(d), score: scores[d] ?? null }))} />;
     },
   },
   {
@@ -108,31 +127,20 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined): Col
     },
   },
   {
-    id: "blocking_rule",
-    header: "Blocking rule",
-    cell: ({ row }) => {
-      const id = row.original.blocking_rule_id;
-      if (!id) return "—";
-      return (
-        // One line per row: a long check id is cut with an ellipsis and named in full by its title.
-        <span className="block max-w-[200px] truncate whitespace-nowrap" title={id} data-testid="blocking-rule-id">
-          <DrillLink href={`/objects/${row.original.module}?${run ? `run=${run}&` : ""}tab=records&check_id=${encodeURIComponent(id)}`}>
-            <Mono>{id}</Mono>
-          </DrillLink>
-        </span>
-      );
-    },
-  },
-  { id: "critical", accessorFn: (o) => o.critical_checks ?? -1, header: "Critical", size: 90, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.critical_checks == null ? "—" : drill(row.original, run, row.original.critical_checks)) },
-  { id: "high", accessorFn: (o) => o.high_checks ?? -1, header: "High", size: 80, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.high_checks == null ? "—" : drill(row.original, run, row.original.high_checks)) },
-  { accessorKey: "failing_checks", header: "Failing checks", size: 120, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => drill(row.original, run, row.original.failing_checks) },
-  {
-    id: "affected_records",
-    accessorFn: (o) => o.affected_records ?? -1,
-    header: "Affected records",
-    size: 130,
-    meta: { numeric: true } satisfies CellMeta,
-    cell: ({ row }) => (row.original.affected_records == null ? "—" : drill(row.original, run, row.original.affected_records.toLocaleString())),
+    id: "open",
+    header: "Action",
+    enableSorting: false,
+    size: 72,
+    cell: ({ row }) => (
+      <Link
+        href={openHref(row.original)}
+        className="m-text-meta font-medium m-ink-accent-ink hover:underline"
+        aria-label={`Open ${row.original.label}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        Open
+      </Link>
+    ),
   },
 ];
 
@@ -216,7 +224,7 @@ export default function ObjectsPage() {
     .filter((o) => !readiness || o.readiness === readiness)
     .filter((o) => !dimension || o.worst_dimension === dimension)
     .filter((o) => !owner || o.owner === owner)
-    .sort(worstFirst);
+    .sort(ranked);
   const distinct = (pick: (o: ObjectRow) => string | null | undefined, label: (v: string) => string = (v) => v) =>
     [...new Set(objects.map(pick).filter((v): v is string => !!v))].sort().map((v) => ({ value: v, label: label(v) }));
   // Chips name the dimension ("Accuracy"); the URL keeps the raw id (`?dimension=accuracy`).
@@ -233,8 +241,7 @@ export default function ObjectsPage() {
     return q ? `/objects?${q}` : "/objects";
   };
   const bands = current ? currentQ.bands : data?.thresholds;
-  const columns = makeColumns(current ? undefined : runId, bands, objects); // React Compiler memoizes on run and thresholds
-
+  
   const notReady = objects.filter((o) => o.readiness === "fail").length; // matches the ?readiness=fail drill
   // Per run, the API's count; across the current state, each object's failing critical and high checks at its run
   // (the same definition, summed over the objects instead of one run).
@@ -244,18 +251,19 @@ export default function ObjectsPage() {
       : undefined
     : data?.blocking_findings_total;
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
-  const worst = objects.reduce<ObjectRow | null>((w, o) => (o.affected_records != null && (w === null || o.affected_records > (w.affected_records ?? -1)) ? o : w), null);
+  const recordsAffected = objects.reduce((n, o) => n + (o.affected_records ?? 0), 0);
   const atRisk = objects.filter((o) => o.readiness === "warn").length;
   const go = objects.filter((o) => o.readiness === "pass").length;
-  const summary = objects.length > 0 && (
+  // The map already draws the object count, each object's records and its verdict tint, so the stats here carry
+  // what it does not: how many objects sit in each verdict, and the totals behind the ledger.
+  const stats = objects.length > 0 && (
     <div className="flex flex-col gap-3">
       <div className="m-stat-grid m-motion-stagger">
-        <Stat label="Objects" value={objects.length} hint={current ? "each at its latest run" : "in this run"} href={listHref()} />
         <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="Not ready" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
         <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" />
-        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Most affected" value={worst?.affected_records != null ? worst.affected_records.toLocaleString() : "—"} hint={worst ? `records in ${worst.label}` : undefined} />}
+        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />
@@ -267,6 +275,22 @@ export default function ObjectsPage() {
 
   // Current state: the object page without ?run= opens the object's own latest run.
   const objectHref = (row: ObjectRow) => `/objects/${row.module}?${current ? "" : `run=${runId ?? run}&`}tab=rules`;
+  // "Open" lands on the workbench with the object's blocking rule selected.
+  const openHref = (row: ObjectRow) =>
+    `/objects/${row.module}?${current ? "" : `run=${runId ?? run}&`}${row.blocking_rule_id ? `rule=${encodeURIComponent(row.blocking_rule_id)}` : ""}`.replace(/[?&]$/, "");
+  const columns = makeColumns(current ? undefined : runId, bands, objects, openHref); // React Compiler memoizes on run and thresholds
+
+  // The map is drawn from the rows the ledger shows: the same filters, the same objects.
+  const mapItems: ObjectMapItem[] = shownObjs.map((o) => ({
+    id: o.module,
+    label: o.label,
+    href: openHref(o),
+    score: o.composite_score,
+    records: o.affected_records ?? 0,
+    verdict: o.readiness ? MAP_VERDICT[o.readiness] : "neutral",
+    meta: o.blocking_rule_id ?? (o.affected_records != null ? `${o.affected_records.toLocaleString()} records` : undefined),
+  }));
+  const map = shownObjs.length > 0 && <ObjectMap items={mapItems} columns={12} rowHeight={44} />;
 
   return (
     <ExplorerPage
@@ -279,7 +303,8 @@ export default function ObjectsPage() {
           actions={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
         />
       }
-      summary={summary || undefined}
+      summary={map || undefined}
+      strip={stats || undefined}
       table={
         <DataTable
           columns={columns}

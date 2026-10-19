@@ -68,7 +68,7 @@ describe("ObjectDetailPage", () => {
     ], total: 4 });
     const getObject = vi.spyOn(objectsApi, "getObject").mockResolvedValue(OBJECT);
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByText("72.5")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
     expect(getObject).toHaveBeenCalledWith("material_master", "mm-latest");
     expect(getObject).not.toHaveBeenCalledWith("material_master", "bp-new");
     // The header names the run, offers its lineage, and nothing is pinned, so there is no "Back to latest".
@@ -119,10 +119,30 @@ describe("ObjectDetailPage", () => {
     expect(screen.queryByText(/could not reach the server/i)).toBeNull();
   });
 
-  it("renders the overview tab's stats and dimension chart", async () => {
+  it("renders the overview workbench: the score, the stats, the failing rules ranked by records and the dimension bars", async () => {
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByText("72.5")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
     expect(screen.getByText("Material master")).toBeInTheDocument();
+    for (const label of ["Failing checks", "Blocking rules", "Records affected", "Auto-fixable"]) expect(await screen.findByText(label)).toBeInTheDocument();
+    const rules = await screen.findAllByTestId("workbench-rule-row");
+    expect(rules.map((r) => r.textContent)).toEqual([expect.stringContaining("mm_missing_desc"), expect.stringContaining("mm_bad_uom")]);
+    expect(rules[0]).toHaveAttribute("aria-current", "true");
+    expect(screen.getByTestId("dimension-bars")).toBeInTheDocument();
+  });
+
+  it("selects a rule from ?rule= and fetches that rule's failing records; selecting writes the URL", async () => {
+    searchParams = new URLSearchParams("run=v1&rule=mm_bad_uom");
+    const records = vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
+      version_id: "v1", check_id: "mm_bad_uom", total: 1,
+      records: [{ record_key: "MATNR=7", grain: "MATNR", module: "material_master", field_values: null }],
+    });
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("MATNR=7")).toBeInTheDocument();
+    expect(records).toHaveBeenCalledWith("v1", "mm_bad_uom", { limit: 50, offset: 0 });
+    const rows = screen.getAllByTestId("workbench-rule-row");
+    expect(rows[1]).toHaveAttribute("aria-current", "true");
+    expect(rows[0]).toHaveAttribute("href", "/objects/material_master?run=v1&rule=mm_missing_desc");
+    expect(screen.getByRole("link", { name: "Propose fix" })).toHaveAttribute("href", "/objects/material_master/records/MATNR%3D7?run=v1");
   });
 
   it("lists rules on the rules tab and navigates to the records tab on row click", async () => {
@@ -408,7 +428,8 @@ describe("ObjectDetailPage keyboard and gating", () => {
     expect(push).toHaveBeenCalledWith("/objects/material_master/records/K1?run=v1");
   });
 
-  it("does not fetch records without check_id", async () => {
+  it("does not fetch records on the Records tab without check_id", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=records");
     const spy = vi.spyOn(versionsApi, "getFindingRecords");
     renderWithQuery(<ObjectDetailPage />);
     await screen.findByText("Material master");
@@ -430,7 +451,7 @@ describe("ObjectDetailPage keyboard and gating", () => {
 
   it("shows the header counts and affected records from a complete payload", async () => {
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByText("Affected records")).toBeInTheDocument();
+    expect(await screen.findByText("Records affected")).toBeInTheDocument();
     expect(screen.getByText("120")).toBeInTheDocument();
     expect(await screen.findByText(/1 failing checks, 120 affected records/)).toBeInTheDocument();
   });
@@ -441,7 +462,7 @@ describe("ObjectDetailPage keyboard and gating", () => {
     });
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("No dimension scores")).toBeInTheDocument();
-    expect(screen.getByText("Affected records")).toBeInTheDocument();
+    expect(screen.getByText("Records affected")).toBeInTheDocument();
   });
 });
 
