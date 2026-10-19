@@ -91,7 +91,13 @@ export default function TrendsPage() {
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
           <Card title="Composite score" meta={narrative}>
-            <Line data={composite} xDomain={domain} label="Composite score per run" annotations={annotations} onPointClick={openRun} />
+            <Line data={composite} xDomain={domain} label="Composite score per run" annotations={annotations} onPointClick={openRun} height={200} />
+          </Card>
+        </div>
+        <div className="@5xl:col-span-12">
+          <Card title="Rules that moved most" meta="Ranked by impact on the score">
+            <DataTable columns={movedCols} data={movedRows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
+            {finding.drawer}
           </Card>
         </div>
         {DIMENSIONS.map((d) => {
@@ -118,10 +124,6 @@ export default function TrendsPage() {
           </Card>
         </div>
       </div>
-      <Card title="Rules that moved most">
-        <DataTable columns={movedCols} data={movedRows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
-        {finding.drawer}
-      </Card>
     </InsightFrame>
   );
 }

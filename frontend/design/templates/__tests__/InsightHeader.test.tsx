@@ -25,16 +25,20 @@ describe("InsightHeader", () => {
     expect(screen.queryByText("E")).toBeNull();
   });
 
-  it("stacks the lead above the stats until the container is wide enough for both side by side", () => {
-    const stats = ["A", "B", "C"].map((label, i) => ({ label, value: i }));
-    render(<InsightHeader {...cells} hero lead={<p>Fail</p>} stats={stats} />);
+  it("sets the lead beside a 2 by 2 of stats once the container is wide enough, and the four cells under a hairline", () => {
+    const stats = ["A", "B", "C", "D"].map((label, i) => ({ label, value: i }));
+    const { container } = render(<InsightHeader {...cells} hero lead={<p>Fail</p>} stats={stats} />);
     const lead = screen.getByTestId("insight-hero-lead");
     const band = lead.parentElement!;
-    // Side by side only from the 7xl container size; below it one column, so the verdict never paints over a stat.
-    expect(band.className).toContain("@7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]");
+    // Side by side from the 4xl container size; below it one column, so the verdict never paints over a stat.
+    expect(band.className).toContain("@4xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]");
     expect(band.className).not.toMatch(/(^|\s)@5xl:grid-cols/);
     expect(lead).toHaveClass("min-w-0");
-    expect(screen.getByTestId("insight-hero-stats").className).toContain("@3xl:grid-cols-3");
+    expect(screen.getByTestId("insight-hero-stats").className).toContain("grid-cols-2");
+    // the four cells share the one sheet, behind a hairline of their own
+    const hairline = container.querySelector(".m-hero > .m-hero-cells");
+    expect(hairline).not.toBeNull();
+    expect(hairline!.children).toHaveLength(4);
   });
 
   it("prints hero numbers with thousands separators", () => {

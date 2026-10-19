@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, Card, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
+import { Bar, Button, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getCleansing, getHeatmap, getOverview, getRootCauses, getRuleRanking, getTrends, l1Label, type RuleRow,
@@ -97,7 +97,6 @@ function RunOverview() {
     : !run || (ov.isSuccess && !o) ? "empty" : undefined;
   const loading = ov.isLoading;
   const fallback = (s: string) => (loading ? "Loading" : s);
-  const nl = o?.narrative ?? [];
 
   return (
     <InsightFrame
@@ -160,93 +159,80 @@ function RunOverview() {
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
     >
-      <div className="grid gap-4 @5xl:grid-cols-12" data-testid="insights-overview">
+      <div className="flex flex-col [gap:var(--m-section-gap)]" data-testid="insights-overview">
         {ovFailed && (
-          <div role="alert" className="@5xl:col-span-12 flex items-center gap-3 m-text-body">
+          <div role="alert" className="flex items-center gap-3 m-text-body">
             <span>{`The score did not load. ${apiErrorMessage(ov.error)}`}</span>
             <Button variant="secondary" onClick={() => { void ov.refetch(); void versions.refetch(); }}>Retry</Button>
           </div>
         )}
-        {nl.length > 0 && (
-          <div className="@5xl:col-span-12">
-            <Card title="Summary">
-              <ul className="flex flex-col gap-1">
-                {nl.map((l) => (
-                  <li key={l.text} className="m-text-body">
-                    {l.href ? <Link href={withScope(l.href, { run, module })} className="underline-offset-2 hover:underline">{l.text}</Link> : l.text}
-                  </li>
-                ))}
-              </ul>
-            </Card>
+
+        {/* The ledger: the failing rules ranked by what moves the score, each with its one action. */}
+        <Section
+          title="Fix first" height={264} query={rules}
+          meta="Ranked by impact on the score"
+          actions={<Link href={withScope("/insights/rules", { run, module })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}
+        >
+          <DataTable columns={fixColumns} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
+        </Section>
+
+        <div className="grid gap-4 @5xl:grid-cols-12">
+          <div className="@5xl:col-span-8">
+            <Section title="Trend" height={180} query={trends} meta={trendNote}>
+              {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs at least two scored runs of this object.</p> : (
+                <Line data={trendLine} label="Composite score per run" annotations={annotations} height={180} />
+              )}
+            </Section>
           </div>
-        )}
+          <div className="@5xl:col-span-4">
+            <Section title="Dimensions" height={180} query={trends}>
+              {dims.length === 0 ? <p className="m-text-body m-ink-3">No dimension scores in this run.</p>
+                : dims.length < 3 ? <Bar data={dims} label="Dimension scores, this run" height={140} />
+                : <Radar data={dims} label="Dimension scores, this run" height={200} />}
+            </Section>
+          </div>
 
-        <div className="@5xl:col-span-6">
-          <Section title="Root causes" height={264} query={causes} meta={causes.data ? `${Math.min(5, causes.data.clusters.length)} of ${causes.data.clusters.length}` : undefined}>
-            <RootCauseList clusters={causes.data?.clusters ?? []} run={run} empty="No failing fields in this run." />
-          </Section>
-        </div>
+          <div className="@5xl:col-span-4">
+            <Section title="Root causes" height={200} query={causes} meta={causes.data ? `${Math.min(5, causes.data.clusters.length)} of ${causes.data.clusters.length}` : undefined}>
+              <RootCauseList clusters={causes.data?.clusters ?? []} run={run} empty="No failing fields in this run." />
+            </Section>
+          </div>
+          <div className="@5xl:col-span-4">
+            <Section title="S/4 migration" height={200} query={s4} meta={s4.data ? `${blocking.toLocaleString()} blocking, ${warning.toLocaleString()} warning` : undefined}>
+              <S4Chart areas={areas} run={run} />
+            </Section>
+          </div>
+          <div className="@5xl:col-span-4">
+            <Section title="Cleansing opportunity" height={200} query={cleanse}>
+              <CleansingFunnel steps={cleanse.data?.steps ?? []} run={run} />
+            </Section>
+          </div>
 
-        <div className="@5xl:col-span-6">
-          <Section
-            title="Fix first" height={264} query={rules}
-            actions={<Link href={withScope("/insights/rules", { run, module })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}
-          >
-            <DataTable columns={fixColumns} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
-          </Section>
+          <div className="@5xl:col-span-12">
+            <Section title="Object heatmap" height={240} query={heat}>
+              {heatRows.length === 0 ? <p className="m-text-body m-ink-3">No object scores in this run.</p> : (
+                <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
+                  <Heatmap
+                    rows={heatRows.map((r) => formatModuleName(r.module))}
+                    cols={heatDims.map(dimLabel)}
+                    cells={heatCells}
+                    tone={tierOf}
+                    cellSize={32}
+                    rowHref={(row) => {
+                      const m = heatRows.find((r) => formatModuleName(r.module) === row);
+                      return m ? withScope(`/objects/${m.module}`, { run }) : "/objects";
+                    }}
+                    onPointClick={(cell) => {
+                      const m = heatRows.find((r) => formatModuleName(r.module) === cell.row);
+                      const d = heatDims.find((x) => dimLabel(x) === cell.col);
+                      if (m) router.push(withScope(`/objects/${m.module}`, { run, dimension: d && d !== "composite" ? d : undefined }));
+                    }}
+                  />
+                </div>
+              )}
+            </Section>
+          </div>
         </div>
-
-        <div className="@5xl:col-span-8">
-          <Section title="Trend" height={240} query={trends} meta={trendNote}>
-            {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs at least two scored runs of this object.</p> : (
-              <Line data={trendLine} label="Composite score per run" annotations={annotations} />
-            )}
-          </Section>
-        </div>
-        <div className="@5xl:col-span-4">
-          <Section title="Dimensions" height={280} query={trends}>
-            {dims.length === 0 ? <p className="m-text-body m-ink-3">No dimension scores in this run.</p>
-              : dims.length < 3 ? <Bar data={dims} label="Dimension scores, this run" height={160} />
-              : <Radar data={dims} label="Dimension scores, this run" />}
-          </Section>
-        </div>
-
-        <div className="@5xl:col-span-12">
-          <Section title="Object heatmap" height={320} query={heat}>
-            {heatRows.length === 0 ? <p className="m-text-body m-ink-3">No object scores in this run.</p> : (
-              <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
-                <Heatmap
-                  rows={heatRows.map((r) => formatModuleName(r.module))}
-                  cols={heatDims.map(dimLabel)}
-                  cells={heatCells}
-                  tone={tierOf}
-                  cellSize={40}
-                  rowHref={(row) => {
-                    const m = heatRows.find((r) => formatModuleName(r.module) === row);
-                    return m ? withScope(`/objects/${m.module}`, { run }) : "/objects";
-                  }}
-                  onPointClick={(cell) => {
-                    const m = heatRows.find((r) => formatModuleName(r.module) === cell.row);
-                    const d = heatDims.find((x) => dimLabel(x) === cell.col);
-                    if (m) router.push(withScope(`/objects/${m.module}`, { run, dimension: d && d !== "composite" ? d : undefined }));
-                  }}
-                />
-              </div>
-            )}
-          </Section>
-        </div>
-
-        <div className="@5xl:col-span-6">
-          <Section title="S/4 migration" height={240} query={s4} meta={s4.data ? `${blocking.toLocaleString()} blocking, ${warning.toLocaleString()} warning` : undefined}>
-            <S4Chart areas={areas} run={run} />
-          </Section>
-        </div>
-        <div className="@5xl:col-span-6">
-          <Section title="Cleansing opportunity" height={240} query={cleanse}>
-            <CleansingFunnel steps={cleanse.data?.steps ?? []} run={run} />
-          </Section>
-        </div>
-
       </div>
       {finding.drawer}
     </InsightFrame>

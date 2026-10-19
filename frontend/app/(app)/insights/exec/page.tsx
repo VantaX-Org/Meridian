@@ -155,6 +155,11 @@ export default function ExecPage() {
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
+          <Section title="Fix first" height={240} query={rules} meta="Ranked by impact on the score" actions={<Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}>
+            <DataTable columns={ruleColumns(run, true)} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
+          </Section>
+        </div>
+        <div className="@5xl:col-span-12">
           <Card title="Readiness by wave" meta={cells.length ? `${noGo} no-go, ${cells.length - noGo} ready` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open readiness</Link>}>
             {cells.length === 0 && (
               <EmptyState variant="inline" title="No readiness waves yet" detail="Create a wave in the migration cockpit to score objects per wave." action={<Link href="/migration" className="underline-offset-2 hover:underline">Open migration cockpit</Link>} />
@@ -195,11 +200,6 @@ export default function ExecPage() {
           </div>
         )}
         <div className={l1Tabs.length > 0 ? "@5xl:col-span-5" : "@5xl:col-span-12"}>
-          <Section title="Fix first" height={240} query={rules} meta="Select a rule to see the records, the fix and the root cause" actions={<Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}>
-            <DataTable columns={ruleColumns(run, true)} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
-          </Section>
-        </div>
-        <div className="@5xl:col-span-12">
           <Card title="Owners" actions={<Link href={withScope("/insights/owners", { run })} className="m-text-body underline-offset-2 hover:underline">Open owners</Link>}>
             {owners.length === 0 ? (
               <EmptyState variant="inline" title="No owner is scored yet" detail="Owners appear once findings are assigned." action={<Link href="/inbox" className="underline-offset-2 hover:underline">Open inbox</Link>} />

@@ -9,7 +9,7 @@
  */
 
 import Link from "next/link";
-import { useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, Drawer, EmptyState, ErrorState, Input, LineageChart, type LineageChartEdge, type LineageChartNode, Card, Mono, Select, Skeleton, Status, Async } from "@/design";
@@ -153,6 +153,8 @@ export default function LineagePage() {
     };
   }, [graphQ.data, worst]);
 
+  const trace = useCallback((id: string) => { setDraft(id); setFocus(id); setSelId(id); }, []);
+
   const columns = useMemo<ColumnDef<ImpactRow>[]>(() => [
     { id: "name", header: "Name", accessorFn: (r) => r.label, size: 280, cell: ({ row }) => <span className="whitespace-nowrap">{row.original.label}</span> },
     { id: "type", header: "Type", accessorFn: (r) => TYPE_LABEL[r.type], size: 120 },
@@ -179,9 +181,12 @@ export default function LineagePage() {
       id: "worst", header: "Severity", accessorFn: (r) => r.worst_severity ?? "", size: 110,
       cell: ({ row }) => row.original.worst_severity ? <Status kind="severity" value={row.original.worst_severity} /> : null,
     },
-  ], [latest, moduleByCheck]);
+    {
+      id: "action", header: "", enableSorting: false, size: 80,
+      cell: ({ row }) => <button type="button" className="m-ink-accent underline-offset-2 hover:underline" onClick={(e) => { e.stopPropagation(); trace(row.original.id); }}>Trace</button>,
+    },
+  ], [latest, moduleByCheck, trace]);
 
-  const trace = (id: string) => { setDraft(id); setFocus(id); setSelId(id); };
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (draft.trim()) { setFocus(draft.trim()); setSelId(null); } };
 
   if (modelQ.isLoading) return <InsightFrame title="Lineage" state="loading" />;

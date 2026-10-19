@@ -40,6 +40,12 @@ const findingColumns: ColumnDef<Finding>[] = [
   { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module) },
   { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
   { accessorKey: "affected_count", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.affected_count.toLocaleString() },
+  {
+    id: "action", header: "", enableSorting: false,
+    cell: ({ row }) => (
+      <Link href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: row.original.version_id })} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline-offset-2 hover:underline">Open</Link>
+    ),
+  },
 ];
 
 export function CurrentOverview() {
@@ -174,131 +180,113 @@ export function CurrentOverview() {
       }}
       errorProps={{ message: apiErrorMessage(bandsQ.error) }}
     >
-      <div className="grid gap-4 @5xl:grid-cols-12" data-testid="insights-overview">
-        <div className="@5xl:col-span-12">
-          <Card title="Summary" meta="Every object at its latest run">
-            <ul className="flex flex-col gap-1">
-              <li className="m-text-body"><Link href={objectsHref({ readiness: "fail" })} className="underline-offset-2 hover:underline">{verdictSentence(rows)}</Link></li>
-              <li className="m-text-body">
-                {blocking
-                  ? `${plural(blocking, "critical or high finding fails", "critical or high findings fail")} in ${plural(withBlocking, "object")}.`
-                  : "No critical or high finding fails."}
-              </li>
-              {worst && worst.composite_score != null && (
-                <li className="m-text-body">
-                  <Link href={worstHref} className="underline-offset-2 hover:underline">{`${worst.label} scores lowest, at ${worst.composite_score.toFixed(1)}.`}</Link>
-                </li>
+      <div className="flex flex-col [gap:var(--m-section-gap)]" data-testid="insights-overview">
+        {/* The ledger: the failing rules ranked by impact, each object at its latest run, each with its one action. */}
+        <Section
+          title="Fix first" height={264} query={findingsQ}
+          meta="Highest-impact failing rules, each object at its latest run"
+          actions={<Link href={objectsHref()} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}
+        >
+          <DataTable
+            columns={findingColumns}
+            data={fixFirst}
+            getRowId={(f) => f.id}
+            onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
+            hideToolbar dense height="auto"
+          />
+        </Section>
+
+        <div className="grid gap-4 @5xl:grid-cols-12">
+          <div className="@5xl:col-span-8">
+            <Card title="Trend" meta={trendNote}>
+              {series.length < 2 ? <p className="m-text-body m-ink-3">A trend needs at least two scored runs.</p> : (
+                <Line data={series} label="DQS of all objects over runs" dqsThreshold={bands?.target} height={180} />
               )}
-            </ul>
-          </Card>
-        </div>
+            </Card>
+          </div>
+          <div className="@5xl:col-span-4">
+            <Card title="Dimensions" meta="Mean over the objects">
+              {dims.length === 0 ? <p className="m-text-body m-ink-3">No dimension scores yet.</p>
+                : dims.length < 3 ? <Bar data={dims} label="Dimension scores, all objects" height={140} />
+                : <Radar data={dims} label="Dimension scores, all objects" height={200} />}
+            </Card>
+          </div>
 
-        <div className="@5xl:col-span-6">
-          <Section
-            title="Fix first" height={264} query={findingsQ}
-            meta="Highest-impact failing rules, each object at its latest run"
-            actions={<Link href={objectsHref()} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}
-          >
-            <DataTable
-              columns={findingColumns}
-              data={fixFirst}
-              getRowId={(f) => f.id}
-              onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
-              hideToolbar dense height="auto"
-            />
-          </Section>
-        </div>
+          <div className="@5xl:col-span-4">
+            <Section
+              title="Root causes" height={200} query={causesQ}
+              meta={causesQ.data ? `${Math.min(5, clusters.length)} of ${clusters.length}, each object at its latest run` : undefined}
+            >
+              <RootCauseList clusters={clusters} empty="No failing fields in any object's latest run." />
+            </Section>
+          </div>
+          <div className="@5xl:col-span-4">
+            <Section title="S/4 migration" height={200} query={s4Q} meta={s4Q.data ? `${s4.blocking.toLocaleString()} blocking, ${s4.warning.toLocaleString()} warning` : undefined}>
+              <S4Chart areas={s4Q.data?.areas ?? []} />
+            </Section>
+          </div>
+          <div className="@5xl:col-span-4">
+            <Section title="Cleansing opportunity" height={200} query={cleanseQ} meta="Each object at its latest run">
+              <CleansingFunnel steps={cleanseQ.data?.steps ?? []} />
+            </Section>
+          </div>
 
-        <div className="@5xl:col-span-6">
-          <Section
-            title="Root causes" height={264} query={causesQ}
-            meta={causesQ.data ? `${Math.min(5, clusters.length)} of ${clusters.length}, each object at its latest run` : undefined}
-          >
-            <RootCauseList clusters={clusters} empty="No failing fields in any object's latest run." />
-          </Section>
-        </div>
+          <div className="@5xl:col-span-6">
+            <Section title="Value at risk" height={120} query={ovQ} meta="Worst L1 process; never summed across L1s">
+              {ov?.value_at_risk.worst_l1 ? (
+                <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
+                  <Stat
+                    label={`Worst L1, ${l1Label(ov.value_at_risk.worst_l1)}`}
+                    value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
+                    href="/insights/impact"
+                  />
+                  <Stat label="Features blocked" value={ov.value_at_risk.features_blocked} href="/insights/impact" />
+                </div>
+              ) : (
+                <p className="m-text-body m-ink-3">No priced feature is affected.</p>
+              )}
+            </Section>
+          </div>
+          <div className="@5xl:col-span-6">
+            <Card title="Runs" meta="One run's analysis">
+              <ul className="flex flex-col gap-2" data-testid="per-run-list">
+                {perRun.slice(0, 6).map(({ run, own }) => (
+                  <li key={run.id} className="flex flex-wrap items-baseline justify-between gap-x-3 m-text-body">
+                    <Link href={withScope("/insights", { run: run.id })} className="underline-offset-2 hover:underline">{runScopeLabel(run)}</Link>
+                    <span className="m-text-meta m-ink-3">{own.length === 1 ? formatModuleName(own[0].module) : plural(own.length, "object")}</span>
+                  </li>
+                ))}
+              </ul>
+              {perRun.length > 6 && (
+                <p className="mt-2 m-text-meta m-ink-3">{`${plural(perRun.length - 6, "more run")} in the Showing picker above.`}</p>
+              )}
+            </Card>
+          </div>
 
-        <div className="@5xl:col-span-6">
-          <Section title="S/4 migration" height={240} query={s4Q} meta={s4Q.data ? `${s4.blocking.toLocaleString()} blocking, ${s4.warning.toLocaleString()} warning` : undefined}>
-            <S4Chart areas={s4Q.data?.areas ?? []} />
-          </Section>
-        </div>
-        <div className="@5xl:col-span-6">
-          <Section title="Cleansing opportunity" height={240} query={cleanseQ} meta="Each object at its latest run">
-            <CleansingFunnel steps={cleanseQ.data?.steps ?? []} />
-          </Section>
-        </div>
-
-        <div className="@5xl:col-span-6">
-          <Section title="Value at risk" height={120} query={ovQ} meta="Worst L1 process; never summed across L1s">
-            {ov?.value_at_risk.worst_l1 ? (
-              <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
-                <Stat
-                  label={`Worst L1, ${l1Label(ov.value_at_risk.worst_l1)}`}
-                  value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
-                  href="/insights/impact"
-                />
-                <Stat label="Features blocked" value={ov.value_at_risk.features_blocked} href="/insights/impact" />
-              </div>
-            ) : (
-              <p className="m-text-body m-ink-3">No priced feature is affected.</p>
-            )}
-          </Section>
-        </div>
-        <div className="@5xl:col-span-6">
-          <Card title="Runs" meta="One run's analysis">
-            <ul className="flex flex-col gap-2" data-testid="per-run-list">
-              {perRun.slice(0, 6).map(({ run, own }) => (
-                <li key={run.id} className="flex flex-wrap items-baseline justify-between gap-x-3 m-text-body">
-                  <Link href={withScope("/insights", { run: run.id })} className="underline-offset-2 hover:underline">{runScopeLabel(run)}</Link>
-                  <span className="m-text-meta m-ink-3">{own.length === 1 ? formatModuleName(own[0].module) : plural(own.length, "object")}</span>
-                </li>
-              ))}
-            </ul>
-            {perRun.length > 6 && (
-              <p className="mt-2 m-text-meta m-ink-3">{`${plural(perRun.length - 6, "more run")} in the Showing picker above.`}</p>
-            )}
-          </Card>
-        </div>
-
-        <div className="@5xl:col-span-8">
-          <Card title="Trend" meta={trendNote}>
-            {series.length < 2 ? <p className="m-text-body m-ink-3">A trend needs at least two scored runs.</p> : (
-              <Line data={series} label="DQS of all objects over runs" dqsThreshold={bands?.target} />
-            )}
-          </Card>
-        </div>
-        <div className="@5xl:col-span-4">
-          <Card title="Dimensions" meta="Mean over the objects">
-            {dims.length === 0 ? <p className="m-text-body m-ink-3">No dimension scores yet.</p>
-              : dims.length < 3 ? <Bar data={dims} label="Dimension scores, all objects" height={160} />
-              : <Radar data={dims} label="Dimension scores, all objects" />}
-          </Card>
-        </div>
-
-        <div className="@5xl:col-span-12">
-          <Card title="Object heatmap" meta="Each object at its latest run">
-            {heatCells.length === 0 ? <p className="m-text-body m-ink-3">No object scores yet.</p> : (
-              <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
-                <Heatmap
-                  rows={heatRows.map((r) => r.label)}
-                  cols={DIMENSIONS.map(formatModuleName)}
-                  cells={heatCells.map((c) => ({ row: c.row, col: c.col, value: c.value }))}
-                  tone={(c) => heatTone.get(`${c.row}:${c.col}`)}
-                  cellSize={40}
-                  rowHref={(row) => {
-                    const r = heatRows.find((x) => x.label === row);
-                    return r ? withScope(`/objects/${r.module}`, { run: r.run_id }) : "/objects";
-                  }}
-                  onPointClick={(cell) => {
-                    const r = heatRows.find((x) => x.label === cell.row);
-                    const d = DIMENSIONS.find((x) => formatModuleName(x) === cell.col);
-                    if (r) router.push(buildDrillHref({ object: r.module, dimension: d, run: r.run_id }));
-                  }}
-                />
-              </div>
-            )}
-          </Card>
+          <div className="@5xl:col-span-12">
+            <Card title="Object heatmap" meta="Each object at its latest run">
+              {heatCells.length === 0 ? <p className="m-text-body m-ink-3">No object scores yet.</p> : (
+                <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
+                  <Heatmap
+                    rows={heatRows.map((r) => r.label)}
+                    cols={DIMENSIONS.map(formatModuleName)}
+                    cells={heatCells.map((c) => ({ row: c.row, col: c.col, value: c.value }))}
+                    tone={(c) => heatTone.get(`${c.row}:${c.col}`)}
+                    cellSize={32}
+                    rowHref={(row) => {
+                      const r = heatRows.find((x) => x.label === row);
+                      return r ? withScope(`/objects/${r.module}`, { run: r.run_id }) : "/objects";
+                    }}
+                    onPointClick={(cell) => {
+                      const r = heatRows.find((x) => x.label === cell.row);
+                      const d = DIMENSIONS.find((x) => formatModuleName(x) === cell.col);
+                      if (r) router.push(buildDrillHref({ object: r.module, dimension: d, run: r.run_id }));
+                    }}
+                  />
+                </div>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
     </InsightFrame>

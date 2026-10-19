@@ -44,5 +44,12 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
       cell: ({ row }) => (row.original.delta_affected === null ? "—" : `${row.original.delta_affected > 0 ? "+" : ""}${n(row.original.delta_affected)}`),
     });
   }
+  if (compact) {
+    // The ledger's one action: the rule on its object.
+    cols.push({
+      id: "action", header: "", enableSorting: false,
+      cell: ({ row }) => <Link href={objectHref(row.original)} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline-offset-2 hover:underline">Open</Link>,
+    });
+  }
   return cols;
 }

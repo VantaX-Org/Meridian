@@ -55,17 +55,17 @@ export function s4Totals(areas: readonly S4Area[]): { blocking: number; warning:
 export function S4Chart({ areas, run }: { areas: S4Area[]; run?: string }) {
   const router = useRouter();
   if (areas.length === 0) return <p className="m-text-body m-ink-3">No S/4 areas assessed.</p>;
-  const { blocking, warning } = s4Totals(areas);
+  const failing = areas.filter((a) => a.failing > 0);
   return (
     <>
       <Bar
-        data={areas.filter((a) => a.failing > 0).map((a) => ({ x: a.label, y: a.blocking_failing }))}
+        data={failing.map((a) => ({ x: a.label, y: a.blocking_failing }))}
         label="Blocking failing rules per S/4 area"
-        height={200}
+        // One row per area so the labels never collide, however many areas fail.
+        height={Math.max(160, failing.length * 24)}
         onPointClick={(p) => router.push(withScope("/insights/readiness", { run, area: areas.find((a) => a.label === p.x)?.area }))}
       />
-      <p className="mt-2 m-text-body m-ink-2">
-        {`${blocking.toLocaleString()} blocking and ${warning.toLocaleString()} warning failing rules. `}
+      <p className="mt-2 m-text-body">
         <Link href={withScope("/insights/readiness", { run })} className="underline-offset-2 hover:underline">Open readiness</Link>
       </p>
     </>

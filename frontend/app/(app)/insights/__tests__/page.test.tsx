@@ -54,10 +54,12 @@ afterEach(() => {
 });
 
 describe("InsightsOverviewPage", () => {
-  it("renders the narrative, one hero and no in-page h1", async () => {
+  it("renders one hero, no in-page h1 and no summary card restating the hero", async () => {
     mockAll();
     mount();
-    expect(await screen.findByText("Four blocking gaps remain.")).toBeInTheDocument();
+    expect(await screen.findByTestId("hero-verdict")).toBeInTheDocument();
+    expect(screen.queryByText("Four blocking gaps remain.")).toBeNull();
+    expect(screen.queryByText("Summary", { selector: "h2, h3, [class*=title]" })).toBeNull();
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getAllByTestId("insight-hero-stats")).toHaveLength(1);
     expect(screen.getByRole("link", { name: /^Reports/ })).toBeInTheDocument();
@@ -94,7 +96,7 @@ describe("InsightsOverviewPage", () => {
     vi.spyOn(insightsApi, "getRootCauses").mockRejectedValue(new Error("network error"));
     mount();
     expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
-    expect(screen.getByText("Four blocking gaps remain.")).toBeInTheDocument();
+    expect(screen.getByTestId("hero-verdict")).toBeInTheDocument();
   });
 
   it("keeps the other sections when the overview fails", async () => {
