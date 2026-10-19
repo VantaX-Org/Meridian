@@ -13,6 +13,7 @@ export function roundedDelta(before: number, after: number): number {
  * (sap/extraction_registry.py). Wording follows api/routes/sync_trigger.py MODULE_REGISTRY, cased by the object-name
  * convention in DESIGN.md: sentence case, SAP acronyms upper case (FI, MM, SD, HCM, MDG, GRC, WM, BP, CVI, PII, IDoc,
  * S/4HANA), eWMS with its lower-case e, product names as SAP writes them (Concur, Ariba, SuccessFactors), "and" for "&".
+ * The backend's copy is api/routes/sync_trigger.py MODULE_LABELS; tests/test_module_labels.py fails when they differ.
  */
 export const MODULE_LABELS: Record<string, string> = {
   // ECC and S/4HANA

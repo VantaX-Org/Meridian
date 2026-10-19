@@ -131,7 +131,78 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
       ],
       total: 3,
     } as never);
+    const scope = { version_id: null, scope: "current" as const, version_ids: ["co2", "mm1", "ap1"], objects: [] };
+    vi.spyOn(insightsApi, "getCurrentOverview").mockResolvedValue({
+      ...overview, ...scope, previous_version_id: null,
+      auto_fixable: { records: 64, failing_records: 128, pct: 50, high_confidence: 10 },
+      value_at_risk: { worst_l1: "order_to_cash", worst_l1_amount: 7000, currency: "ZAR", features_blocked: 2 },
+    });
+    vi.spyOn(insightsApi, "getCurrentRootCauses").mockResolvedValue({
+      ...scope,
+      clusters: [
+        { key: "controlling:CSKS.KOSTL", kind: "field", module: "controlling", table: "CSKS", field: "KOSTL", rules: ["CO001"], dimension: "completeness", severity: "critical", records: 40, records_estimated: false, impact: 90, auto_fix_pct: null, origin: { status: "not_computed", top: null, share: null }, version_id: "co2" },
+        { key: "material_master:MARA.MATKL", kind: "field", module: "material_master", table: "MARA", field: "MATKL", rules: ["MM045"], dimension: "validity", severity: "high", records: 12, records_estimated: false, impact: 30, auto_fix_pct: 25, origin: { status: "not_computed", top: null, share: null }, version_id: "mm1" },
+      ],
+    });
+    vi.spyOn(insightsApi, "getCurrentCleansing").mockResolvedValue({
+      ...scope, currency: "ZAR", by_module: [], by_rule: [],
+      steps: [
+        { key: "failing", label: "Failing records", records: 128 }, { key: "proposed", label: "With a proposed value", records: 64 },
+        { key: "high", label: "High confidence", records: 10 }, { key: "approved", label: "Approved", records: 2 }, { key: "applied", label: "Applied", records: 1 },
+      ],
+    });
+    vi.spyOn(migrationApi, "getCurrentS4Readiness").mockResolvedValue({
+      ...scope, status: "red", ready: false, rules: 4, evaluated: 3, failing: 3, failing_records: 9, blocking_failing: 2, warning_failing: 1,
+      areas: [{ area: "cvi", label: "Customer vendor integration", simplification_item: null, rules: 4, evaluated: 3, failing: 3, failing_records: 9, blocking_failing: 2, warning_failing: 1, status: "red", checks: [] }],
+    });
   }
+
+  it("reads root causes, S/4, cleansing, auto-fixable and value at risk for the current state", async () => {
+    query = "";
+    mockCurrent();
+    mount();
+    // root causes of the current state, each linking into the run it was computed in
+    const records = await screen.findAllByRole("link", { name: "Open records" });
+    expect(records.map((a) => a.getAttribute("href"))).toEqual([
+      "/objects/controlling?tab=records&run=co2&check=CO001",
+      "/objects/material_master?tab=records&run=mm1&check=MM045",
+    ]);
+    expect(screen.getByText("2 of 2, each object at its latest run")).toBeInTheDocument();
+    // S/4 totals and the readiness link carry no run
+    expect(await screen.findByText("2 blocking, 1 warning")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open readiness" })).toHaveAttribute("href", "/insights/readiness");
+    // the cleansing funnel and its batch link carry no run
+    expect(screen.getByRole("group", { name: /Cleansing funnel/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Create remediation batch" })).toHaveAttribute("href", "/fix?source=rule&confidence=high");
+    // auto-fixable records in the hero, value at risk of the worst L1 only
+    expect(screen.getByText("Auto-fixable records")).toBeInTheDocument();
+    expect(screen.getByText("50% of failing records")).toBeInTheDocument();
+    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Worst L1, Order to cash")).toBeInTheDocument();
+    // only the scope=current wrappers are read, never the one-run ones
+    expect(insightsApi.getCurrentOverview).toHaveBeenCalledWith();
+    expect(migrationApi.getS4Readiness).not.toHaveBeenCalled();
+    expect(insightsApi.getCleansing).not.toHaveBeenCalled();
+    // the per-run card is reduced to links
+    expect(screen.queryByText("Analysed per run")).toBeNull();
+    expect(within(screen.getByTestId("per-run-list")).getAllByRole("link").length).toBe(3);
+  });
+
+  it("shows an honest error in each current-state card when its endpoint fails, and keeps the page", async () => {
+    query = "";
+    mockCurrent();
+    for (const fn of ["getCurrentOverview", "getCurrentRootCauses", "getCurrentCleansing"] as const) {
+      vi.spyOn(insightsApi, fn).mockRejectedValue(new Error("network error"));
+    }
+    vi.spyOn(migrationApi, "getCurrentS4Readiness").mockRejectedValue(new Error("network error"));
+    mount();
+    expect(await screen.findByText(/^Root causes did not load/)).toBeInTheDocument();
+    expect(await screen.findByText(/^S\/4 migration did not load/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Cleansing opportunity did not load/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Value at risk did not load/)).toBeInTheDocument();
+    // the hero still reads the current state from the runs' scores
+    expect(screen.getByText("DQS 75.0 across 3 objects, at risk")).toBeInTheDocument();
+    expect(screen.getByTestId("per-run-list")).toBeInTheDocument();
+  });
 
   it("describes every object at its latest run, never the newest run alone", async () => {
     query = "";

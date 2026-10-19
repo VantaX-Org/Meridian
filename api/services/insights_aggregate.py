@@ -151,10 +151,24 @@ def _score_sentence(dqs: dict, deltas: dict) -> str:
     return head + tail + "."
 
 
-def narrative(*, run_id: str, dqs: dict, deltas: dict, blockers: dict, conc: Optional[tuple[str, float]],
+def _href(path: str, run_id: Optional[str], extra: str = "") -> str:
+    """``path`` scoped to ``run_id`` (none: the current state, no ``run``), plus ``extra`` query pairs."""
+    q = "&".join(x for x in (f"run={run_id}" if run_id else "", extra) if x)
+    return f"{path}?{q}" if q else path
+
+
+def _current_score_sentence(dqs: dict) -> str:
+    comp = dqs["composite"]
+    return "No object has been scored yet." if comp is None else \
+        f"The data quality score across objects, each at its latest run, is {comp:.1f}."
+
+
+def narrative(*, run_id: Optional[str], dqs: dict, deltas: dict, blockers: dict, conc: Optional[tuple[str, float]],
               wave_names: list[str], auto: dict, top_cluster: Optional[dict]) -> list[dict]:
-    """At most four sentences, always in the same order, from the figures alone."""
-    out = [{"text": _score_sentence(dqs, deltas), "href": f"/insights/trends?run={run_id}"}]
+    """At most four sentences, always in the same order, from the figures alone. ``run_id`` None: the
+    current state across objects, so the score sentence names no run and the links carry no ``run``."""
+    score = _score_sentence(dqs, deltas) if run_id else _current_score_sentence(dqs)
+    out = [{"text": score, "href": _href("/insights/trends", run_id)}]
     n = blockers["count"]
     if n:
         s = f"{n} blocking {'rule fails' if n == 1 else 'rules fail'}"
@@ -162,20 +176,20 @@ def narrative(*, run_id: str, dqs: dict, deltas: dict, blockers: dict, conc: Opt
             s += f", holding up {wave_names[0]}" + (f" and {len(wave_names) - 1} more" if len(wave_names) > 1 else "")
         if conc:
             s += f"; {conc[1] * 100:.0f}% sit in {fmt_module(conc[0])}"
-        out.append({"text": s + ".", "href": f"/insights/readiness?run={run_id}"})
+        out.append({"text": s + ".", "href": _href("/insights/readiness", run_id)})
     else:
-        out.append({"text": "No blocking rule fails.", "href": f"/insights/readiness?run={run_id}"})
+        out.append({"text": "No blocking rule fails.", "href": _href("/insights/readiness", run_id)})
     if auto["pct"] is not None:
         out.append({"text": f"{auto['pct']:.0f}% of failing records have a proposed fix, "
                             f"{auto['high_confidence']:,} at high confidence.",
-                    "href": f"/insights/rules?run={run_id}&auto_fixable=true"})
+                    "href": _href("/insights/rules", run_id, "auto_fixable=true")})
     if top_cluster:
         label = f"{fmt_module(top_cluster['module'])} {top_cluster['field']}" if top_cluster["field"] \
             else f"{fmt_module(top_cluster['module'])} rules with no named field"
         out.append({"text": f"The largest root cause is {label}, across {len(top_cluster['rules'])} "
                             f"{'rule' if len(top_cluster['rules']) == 1 else 'rules'}.",
-                    "href": f"/insights/rules?run={run_id}"
-                            + (f"&field={top_cluster['table']}.{top_cluster['field']}" if top_cluster["table"] else "")})
+                    "href": _href("/insights/rules", run_id,
+                                  f"field={top_cluster['table']}.{top_cluster['field']}" if top_cluster["table"] else "")})
     return out[:NARRATIVE_MAX]
 
 
@@ -212,7 +226,7 @@ def overview_from(data: dict) -> dict:
     clusters = data.get("clusters") or cluster_findings(findings, data["fixes_by_check"])
     worst, amount = worst_l1(data["impact_rows"])
     blockers = {"count": len(bl), "previous": None if prev_bl is None else len(prev_bl), "waves": len(wave_names)}
-    run_id = str(v["id"])
+    run_id = str(v["id"]) if v.get("id") else None
     return {
         "version_id": run_id, "run_label": v.get("label"),
         "run_at": v["run_at"].isoformat() if v.get("run_at") else None,
@@ -548,6 +562,148 @@ def cleansing(s: Session, tid: str, vid: Optional[str], module: Optional[str]) -
         "by_module": [{"module": m, "failing": n, "proposed": proposed_by_module.get(m, 0),
                        "high": high_by_module.get(m, 0)} for m, n in sorted(fail_by_module.items())],
         "by_rule": by_rule,
+    }
+
+
+# ── current state: every object at the latest finished run of its lineage ────
+#
+# The run set is ``api.routes.findings._latest_version_ids`` (the latest complete run per lineage, the set
+# GET /findings/aggregate reads by default), passed in by the route. Dedupe: an object (a module) measured by
+# more than one of those runs, e.g. accounts_payable read from a system and also uploaded, is taken once, from
+# the newest of them (``run_at``, then id); its findings, fixes, queue and root causes come from that run only.
+# A run "measures" an object when the module is in its ``dqs_summary`` or it has findings for it. This is the
+# frontend's ``stateObjects``/``currentObjectRows`` rule (frontend/lib/current-state.ts).
+
+_CURRENT_OBJECTS_SQL = """
+    SELECT DISTINCT ON (module) module, id::text AS version_id FROM (
+        SELECT av.id, av.run_at, k.module FROM analysis_versions av
+         CROSS JOIN LATERAL jsonb_object_keys(CASE WHEN jsonb_typeof(av.dqs_summary) = 'object'
+                                                   THEN av.dqs_summary ELSE '{}'::jsonb END) AS k(module)
+         WHERE av.tenant_id = :t AND av.id = ANY(CAST(:ids AS uuid[]))
+        UNION
+        SELECT av.id, av.run_at, f.module FROM analysis_versions av
+          JOIN findings f ON f.version_id = av.id AND f.tenant_id = :t
+         WHERE av.tenant_id = :t AND av.id = ANY(CAST(:ids AS uuid[]))
+    ) x
+     WHERE CAST(:m AS text) IS NULL OR module = CAST(:m AS text)
+     ORDER BY module, run_at DESC, id DESC"""
+
+
+def current_objects(s: Session, tid: str, version_ids: list, module: Optional[str] = None) -> list[dict]:
+    """``[{module, version_id}]``, ordered by module: each object once, from the newest of ``version_ids`` (the
+    current runs) that measured it (see the rule above). ``module`` keeps only that object."""
+    if not version_ids:
+        return []
+    return _all(s, _CURRENT_OBJECTS_SQL, t=tid, ids=[str(i) for i in version_ids], m=module)
+
+
+def _current_runs(s: Session, tid: str, objects: list[dict]) -> list[dict]:
+    """The runs that own at least one current object, newest first."""
+    ids = sorted({o["version_id"] for o in objects})
+    if not ids:
+        return []
+    return _all(s, "SELECT id, label, run_at, dqs_summary, metadata FROM analysis_versions "
+                   "WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) ORDER BY run_at DESC, id DESC",
+                t=tid, ids=ids)
+
+
+def _scope_fields(objects: list[dict], runs: list[dict]) -> dict:
+    return {"scope": "current", "version_ids": [str(r["id"]) for r in runs],
+            "objects": [{"module": o["module"], "version_id": o["version_id"]} for o in objects]}
+
+
+def _current_impact_rows(s: Session, tid: str, runs: list[dict], cost_model: dict) -> list[dict]:
+    """Priced config-impact rows of the current runs. ``config_impact_results`` is per run and feature, not per
+    object, so a feature computed by more than one current run is taken once, from the newest of them (the same
+    newer-run-wins rule as an object)."""
+    out: dict[str, dict] = {}
+    for r in runs:  # newest first
+        for row in load_impact_rows(s, tid, str(r["id"]), cost_model):
+            out.setdefault(row["feature"], row)
+    return sorted(out.values(), key=lambda r: r["feature"])
+
+
+def _sum_by(rows: list[dict[str, int]]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for d in rows:
+        for k, n in d.items():
+            out[k] = out.get(k, 0) + n
+    return out
+
+
+def _per_object(s: Session, tid: str, objects: list[dict]) -> tuple[dict[str, list[dict]], dict[str, dict[str, int]]]:
+    """Each object's findings and proposed fixes, from its own run only."""
+    findings_of = {o["module"]: load_run_findings(s, tid, o["version_id"], o["module"]) for o in objects}
+    fixes_of = {o["module"]: load_fixes_by_check(s, tid, o["version_id"], o["module"]) for o in objects}
+    return findings_of, fixes_of
+
+
+def _current_clusters(s: Session, tid: str, objects: list[dict], findings_of: dict[str, list[dict]],
+                      fixes_of: dict[str, dict[str, int]]) -> list[dict]:
+    """Root-cause clusters over the objects, each from its object's own run (a cluster never spans objects), the
+    worst CLUSTER_LIMIT overall. Each cluster carries the ``version_id`` it was computed in."""
+    out = []
+    for o in objects:
+        for c in load_clusters(s, tid, o["version_id"], o["module"], findings_of[o["module"]], fixes_of[o["module"]]):
+            out.append({**c, "version_id": o["version_id"]})
+    out.sort(key=lambda c: (-c["impact"], c["key"]))
+    return out[:CLUSTER_LIMIT]
+
+
+def current_overview(s: Session, tid: str, version_ids: list, module: Optional[str]) -> dict:
+    """The overview over the current state. No single previous run exists for a set of lineages, so
+    ``previous_version_id``, ``dqs.previous``, ``dqs.delta`` and ``blockers.previous`` are None."""
+    objects = current_objects(s, tid, version_ids, module)
+    runs = _current_runs(s, tid, objects)
+    summaries = {str(r["id"]): r.get("dqs_summary") or {} for r in runs}
+    merged = {o["module"]: summaries[o["version_id"]][o["module"]] for o in objects
+              if o["module"] in summaries.get(o["version_id"], {})}
+    findings_of, fixes_of = _per_object(s, tid, objects)
+    cost_model = load_cost_model(s, tid)
+    out = overview_from({
+        "version": {"id": None, "label": None, "run_at": runs[0]["run_at"] if runs else None, "dqs_summary": merged},
+        "previous": None, "module": module, "findings": [f for o in objects for f in findings_of[o["module"]]],
+        "previous_findings": [], "scoring": load_scoring(s, tid), "waves": load_waves(s, tid),
+        "fixes_by_check": _sum_by(list(fixes_of.values())),
+        "fix_records": sum(load_fix_records(s, tid, o["version_id"], o["module"]) for o in objects),
+        "high_confidence": sum(load_high_confidence(s, tid, o["version_id"], o["module"]) for o in objects),
+        "impact_rows": _current_impact_rows(s, tid, runs, cost_model), "currency": tenant_currency(cost_model),
+        "clusters": _current_clusters(s, tid, objects, findings_of, fixes_of),
+    })
+    return {**out, **_scope_fields(objects, runs)}
+
+
+def current_root_causes(s: Session, tid: str, version_ids: list, module: Optional[str]) -> dict:
+    objects = current_objects(s, tid, version_ids, module)
+    findings_of, fixes_of = _per_object(s, tid, objects)
+    clusters = _current_clusters(s, tid, objects, findings_of, fixes_of)
+    for c in clusters:
+        c.pop("worst_rule", None)
+    return {"version_id": None, **_scope_fields(objects, _current_runs(s, tid, objects)), "clusters": clusters}
+
+
+def current_cleansing(s: Session, tid: str, version_ids: list, module: Optional[str]) -> dict:
+    """The cleansing funnel over the current state: each object's counts from its own run (``cleansing`` scoped
+    to that run and object), summed. A rule belongs to one object, so per-rule rows never double count."""
+    objects = current_objects(s, tid, version_ids, module)
+    parts = [p for o in objects if (p := cleansing(s, tid, o["version_id"], o["module"]))]
+    steps = cleansing_steps(0, 0, 0, 0, 0)
+    for p in parts:
+        for st, add in zip(steps, p["steps"]):
+            st["records"] += add["records"]
+    by_rule: dict[str, dict] = {}
+    for p in parts:
+        for r in p["by_rule"]:
+            row = by_rule.setdefault(r["check_id"], {"check_id": r["check_id"], "proposed": 0, "high": 0, "auto": False})
+            row["proposed"] += r["proposed"]
+            row["high"] += r["high"]
+            row["auto"] = row["auto"] or r["auto"]
+    return {
+        "version_id": None, **_scope_fields(objects, _current_runs(s, tid, objects)),
+        "currency": tenant_currency(load_cost_model(s, tid)),
+        "steps": steps,
+        "by_module": sorted((m for p in parts for m in p["by_module"]), key=lambda m: m["module"]),
+        "by_rule": sorted(by_rule.values(), key=lambda r: (-r["proposed"], r["check_id"]))[:20],
     }
 
 

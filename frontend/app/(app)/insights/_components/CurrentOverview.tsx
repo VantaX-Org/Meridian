@@ -2,16 +2,18 @@
 
 // The Insights overview without `?run=` or `?module=`: the current state across objects, every object at the latest
 // finished run of its lineage (lib/current-state.ts), the same set the homes and /objects summarise. Every number
-// here is computed from those runs' scores or read from an endpoint that answers the current state itself; the
-// analyses the API computes for one run at a time (root causes, S/4 migration, the cleansing funnel, value at risk)
-// are offered per run instead of being shown for the newest run under a cross-object header.
+// here is computed from those runs' scores or read from an endpoint that answers the current state itself: root
+// causes, S/4 migration, the cleansing funnel, auto-fixable records and value at risk come from the `scope=current`
+// endpoints, which take each object once from the newest run that measured it. The Runs card opens one run.
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, buildDrillHref, Card, DataTable, Delta, Heatmap, Line, Mono, Radar, Score, Status } from "@/design";
+import { Bar, buildDrillHref, Card, DataTable, Delta, Heatmap, Line, Mono, Radar, Score, Stat, Status } from "@/design";
 import { getFindings } from "@/lib/api/findings";
+import { getCurrentCleansing, getCurrentOverview, getCurrentRootCauses, l1Label } from "@/lib/api/insights";
+import { getCurrentS4Readiness } from "@/lib/api/migration";
 import { getObjects } from "@/lib/api/v1/objects";
 import { blockingTotal, runObjectsName, stateDqs, stateObjects, stateRows, stateSeries, stateSummary, tierOf } from "@/lib/current-state";
 import { DIMENSIONS, dimensionHeatmapCells, runCap, runDimensions, worstObjectsFirst } from "@/lib/home-metrics";
@@ -23,7 +25,8 @@ import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Finding } from "@/types/api";
-import { InsightFrame } from "./InsightFrame";
+import { InsightFrame, formatMoney } from "./InsightFrame";
+import { CleansingFunnel, RootCauseList, S4Chart, s4Totals } from "./RunAnalyses";
 import { InsightActions } from "./InsightActions";
 import { Section } from "./Section";
 import { useCurrentState } from "./useCurrentState";
@@ -52,6 +55,17 @@ export function CurrentOverview() {
     queryFn: () => getFindings({ sort: "impact", limit: 100 }),
     enabled: !!newest,
   });
+
+  // The analyses the API computes per run, asked for the current state (`scope=current`): the same runs, each object
+  // once from the newest run that measured it, as `stateObjects` takes them here.
+  const ovQ = useQuery({ queryKey: queryKeys.insights("overview", "current"), queryFn: () => getCurrentOverview(), enabled: !!newest });
+  const causesQ = useQuery({ queryKey: queryKeys.insights("root-causes", "current"), queryFn: () => getCurrentRootCauses(), enabled: !!newest });
+  const cleanseQ = useQuery({ queryKey: queryKeys.insights("cleansing", "current"), queryFn: () => getCurrentCleansing(), enabled: !!newest });
+  const s4Q = useQuery({ queryKey: queryKeys.insights("s4-readiness", "current"), queryFn: () => getCurrentS4Readiness(), enabled: !!newest });
+  const ov = ovQ.data;
+  const s4 = s4Totals(s4Q.data?.areas ?? []);
+  // A module-scoped user sees only in-scope objects, as everywhere on this page.
+  const clusters = (causesQ.data?.clusters ?? []).filter((c) => !modules || modules.has(c.module));
 
   const merged = stateSummary(objects);
   const rows = stateRows(objects, bands, null, finished);
@@ -132,6 +146,12 @@ export function CurrentOverview() {
           { label: "Blocking findings", value: newest ? blocking : "—", hint: blocking ? "critical and high" : "none", tone: newest ? (blocking ? "no-go" : "go") : undefined, to: objectsHref({ readiness: "fail" }), versionId: newest?.id },
           { label: "Objects not ready", value: newest ? notReady.length : "—", hint: `of ${rows.length}`, tone: newest ? (notReady.length ? "no-go" : "go") : undefined, to: objectsHref({ readiness: "fail" }), versionId: newest?.id },
           { label: "Worst object", value: worst?.composite_score != null ? worst.composite_score.toFixed(1) : "—", hint: worst?.label, to: worstHref },
+          {
+            label: "Auto-fixable records",
+            value: ov ? ov.auto_fixable.records : "—",
+            hint: ov?.auto_fixable.pct != null ? `${Math.round(ov.auto_fixable.pct)}% of failing records` : undefined,
+            to: withScope("/fix", { source: "rule", confidence: "high" }),
+          },
         ],
         situation: {
           sentence: dqs != null ? `DQS ${dqs.toFixed(1)} across ${plural(measured, "object")}${tier ? `, ${VERDICT[tier].toLowerCase()}` : ""}` : loading ? "Loading" : "—",
@@ -190,9 +210,44 @@ export function CurrentOverview() {
         </div>
 
         <div className="@5xl:col-span-6">
-          <Card title="Analysed per run" meta="Root causes, S/4 migration, cleansing and value at risk">
-            <p className="m-text-body m-ink-2">These are computed for one run at a time. Open a run to see them for its objects.</p>
-            <ul className="mt-3 flex flex-col gap-2" data-testid="per-run-list">
+          <Section
+            title="Root causes" height={264} query={causesQ}
+            meta={causesQ.data ? `${Math.min(5, clusters.length)} of ${clusters.length}, each object at its latest run` : undefined}
+          >
+            <RootCauseList clusters={clusters} empty="No failing fields in any object's latest run." />
+          </Section>
+        </div>
+
+        <div className="@5xl:col-span-6">
+          <Section title="S/4 migration" height={240} query={s4Q} meta={s4Q.data ? `${s4.blocking.toLocaleString()} blocking, ${s4.warning.toLocaleString()} warning` : undefined}>
+            <S4Chart areas={s4Q.data?.areas ?? []} />
+          </Section>
+        </div>
+        <div className="@5xl:col-span-6">
+          <Section title="Cleansing opportunity" height={240} query={cleanseQ} meta="Each object at its latest run">
+            <CleansingFunnel steps={cleanseQ.data?.steps ?? []} />
+          </Section>
+        </div>
+
+        <div className="@5xl:col-span-6">
+          <Section title="Value at risk" height={120} query={ovQ} meta="Worst L1 process; never summed across L1s">
+            {ov?.value_at_risk.worst_l1 ? (
+              <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
+                <Stat
+                  label={`Worst L1, ${l1Label(ov.value_at_risk.worst_l1)}`}
+                  value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
+                  href="/insights/impact"
+                />
+                <Stat label="Features blocked" value={ov.value_at_risk.features_blocked} href="/insights/impact" />
+              </div>
+            ) : (
+              <p className="m-text-body m-ink-3">No priced feature is affected.</p>
+            )}
+          </Section>
+        </div>
+        <div className="@5xl:col-span-6">
+          <Card title="Runs" meta="One run's analysis">
+            <ul className="flex flex-col gap-2" data-testid="per-run-list">
               {perRun.slice(0, 6).map(({ run, own }) => (
                 <li key={run.id} className="flex flex-wrap items-baseline justify-between gap-x-3 m-text-body">
                   <Link href={withScope("/insights", { run: run.id })} className="underline-offset-2 hover:underline">{runScopeLabel(run)}</Link>

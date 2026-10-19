@@ -93,7 +93,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     expect(screen.getByText("Controlling")).toBeInTheDocument();
     expect(screen.queryByText("Material master")).toBeNull();
     expect(bodyRows()).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "accuracy", pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accuracy", pressed: true })).toBeInTheDocument();
   });
 
   it("lists a run's objects from its summary when its list cannot be read", async () => {

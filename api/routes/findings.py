@@ -6,7 +6,7 @@ from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import case, func, or_, select, text
+from sqlalchemy import case, func, or_, select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.services.run_lineage import lineage_sql
 
@@ -634,19 +634,45 @@ class S4Readiness(BaseModel):
     blocking_failing: int
     warning_failing: int
     areas: list[S4Area]
+    # scope=current only: "current", and the runs the objects were read from (newest first); None for one run.
+    scope: Optional[Literal["current"]] = None
+    version_ids: Optional[list[str]] = None
 
 
 @router.get("/findings/s4-readiness", response_model=S4Readiness)
 async def s4_readiness(
     version_id: Optional[str] = Query(None),
+    scope: Literal["run", "current"] = Query("run", description="current: every object at the latest complete "
+                                                                "run of its lineage; no version_id"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ) -> S4Readiness:
     """S/4HANA conversion readiness of one analysis (default: the latest), per
-    simplification area: rules, failing records, blocking vs warning, green/amber/red."""
+    simplification area: rules, failing records, blocking vs warning, green/amber/red.
+    ``scope=current``: the current state instead, every object at the latest complete run of its
+    lineage (``_latest_version_ids``), each object once from the newest run that measured it
+    (insights_aggregate.current_objects); ``version_id`` is then None."""
     from api.services.s4_readiness import membership, rollup
 
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    if scope == "current":
+        if version_id:
+            raise HTTPException(status_code=422, detail="version_id and scope=current are exclusive")
+        from api.services.insights_aggregate import current_objects
+
+        ids = await _latest_version_ids(db, tenant)
+        objects = await db.run_sync(lambda s: current_objects(s, str(tenant.id), ids))
+        pairs = [(uuid.UUID(o["version_id"]), o["module"]) for o in objects]
+        rows = [] if not pairs else (await db.execute(
+            select(Finding.check_id, Finding.module, Finding.severity, Finding.affected_count,
+                   Finding.pass_rate, Finding.details)
+            .where(Finding.tenant_id == tenant.id, tuple_(Finding.version_id, Finding.module).in_(pairs),
+                   Finding.check_id.in_(list(membership()))))).mappings().all()
+        runs = (await db.execute(text(
+            "SELECT id::text FROM analysis_versions WHERE tenant_id = :tid AND id = ANY(CAST(:ids AS uuid[])) "
+            "ORDER BY run_at DESC, id DESC"),
+            {"tid": str(tenant.id), "ids": sorted({str(v) for v, _ in pairs})})).scalars().all() if pairs else []
+        return S4Readiness(version_id=None, scope="current", version_ids=list(runs), **rollup([dict(r) for r in rows]))
     if version_id:
         try:
             vid = uuid.UUID(version_id)

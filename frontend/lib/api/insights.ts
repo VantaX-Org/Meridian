@@ -374,3 +374,43 @@ export async function getCleansing(params?: { version_id?: string; module?: stri
   const { data } = await apiClient.get<CleansingResponse>("/api/v1/insights/cleansing", { params });
   return data;
 }
+
+/* ─── Current state (`scope=current`): every object at the latest finished run of its lineage ─── */
+
+/**
+ * What a `scope=current` answer was computed over: the API reads the latest complete run of each lineage
+ * (`_latest_version_ids`, as `GET /findings/aggregate`) and takes each object once, from the newest of those runs
+ * that measured it (the `stateObjects` rule of `lib/current-state.ts`). `version_ids` are the runs that supply an
+ * object, newest first; `objects` pairs each object with its run.
+ */
+export interface CurrentScope {
+  version_id: null;
+  scope: "current";
+  version_ids: string[];
+  objects: { module: string; version_id: string }[];
+}
+
+/** The overview of the current state. No single earlier run exists, so `dqs.previous`, `dqs.delta` and `blockers.previous` are null. */
+export type CurrentOverviewResponse = Omit<OverviewResponse, "version_id" | "previous_version_id"> & CurrentScope & { previous_version_id: null };
+
+/** Root causes of the current state: each cluster is one object's, computed in that object's run. */
+export interface CurrentRootCausesResponse extends CurrentScope {
+  clusters: (RootCauseCluster & { version_id: string })[];
+}
+
+export type CurrentCleansingResponse = Omit<CleansingResponse, "version_id"> & CurrentScope;
+
+export async function getCurrentOverview(params?: { module?: string }): Promise<CurrentOverviewResponse> {
+  const { data } = await apiClient.get<CurrentOverviewResponse>("/api/v1/insights/overview", { params: { ...params, scope: "current" } });
+  return data;
+}
+
+export async function getCurrentRootCauses(params?: { module?: string }): Promise<CurrentRootCausesResponse> {
+  const { data } = await apiClient.get<CurrentRootCausesResponse>("/api/v1/insights/root-causes", { params: { ...params, scope: "current" } });
+  return data;
+}
+
+export async function getCurrentCleansing(params?: { module?: string }): Promise<CurrentCleansingResponse> {
+  const { data } = await apiClient.get<CurrentCleansingResponse>("/api/v1/insights/cleansing", { params: { ...params, scope: "current" } });
+  return data;
+}
