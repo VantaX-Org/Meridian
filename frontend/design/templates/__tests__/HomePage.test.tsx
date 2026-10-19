@@ -63,9 +63,48 @@ describe("HomePage data state", () => {
     expect(container.querySelector("svg[role=img]")).toBeNull();
   });
 
-  it("omits the objects column when there is no objects slot", () => {
+  it("gives the trend the whole closing row when there is no heatmap", () => {
     render(<HomePage persona="basis" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} trend={<div data-testid="t" />} />);
     expect(screen.getByTestId("t").parentElement?.className).toContain("@5xl:col-span-12");
+    expect(screen.getByTestId("home-trend")).toBeInTheDocument();
+  });
+
+  it("puts the aside and the dimension bars right of the score in the hero, and nothing there without them", () => {
+    const { rerender } = render(
+      <HomePage persona="lead" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} aside={<div data-testid="map" />} dimensions={<div data-testid="dims" />} />,
+    );
+    const hero = screen.getByTestId("home-verdict-row");
+    const aside = screen.getByTestId("home-hero-aside");
+    expect(hero).toContainElement(aside);
+    expect(aside).toContainElement(screen.getByTestId("map"));
+    expect(aside).toContainElement(screen.getByTestId("dims"));
+    expect(screen.getByTestId("home-dqs").parentElement?.className).toContain("@4xl:col-span-7");
+    expect(aside.className).toContain("@4xl:col-span-5");
+    rerender(<HomePage persona="lead" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} />);
+    expect(screen.queryByTestId("home-hero-aside")).toBeNull();
+  });
+
+  it("orders hero, four sentences, ledger, onboarding, work row, then trend beside the heatmap, then lists", () => {
+    render(
+      <HomePage
+        persona="lead"
+        state="ready"
+        verdict={{ dqs: 70, sentence: "x" }}
+        run={run}
+        cells={<div data-testid="cells" />}
+        objects={<div data-testid="ledger" />}
+        onboarding={<div data-testid="onboarding" />}
+        work={<div data-testid="work" />}
+        trend={<div data-testid="trend" />}
+        heatmap={<div data-testid="heat" />}
+        lists={<div data-testid="lists" />}
+      />,
+    );
+    const order = ["home-verdict-row", "cells", "ledger", "onboarding", "work", "trend", "heat", "lists"].map((id) => screen.getByTestId(id));
+    order.slice(1).forEach((el, i) => expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy());
+    expect(screen.getByTestId("trend").parentElement?.className).toContain("@5xl:col-span-6");
+    expect(screen.getByTestId("heat").parentElement?.className).toContain("@5xl:col-span-6");
+    expect(screen.getByTestId("trend").parentElement?.parentElement).toBe(screen.getByTestId("heat").parentElement?.parentElement);
   });
 
   it("loading shows skeletons only", () => {

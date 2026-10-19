@@ -76,7 +76,7 @@ describe("PersonaHomePage 404 handling", () => {
 });
 
 describe("PersonaHomePage data layout", () => {
-  it("shows the run DQS, six linked dimension stats and a worst-first objects table", async () => {
+  it("shows the run DQS, six linked dimension stats and the ledger of what moves the score", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
 
     renderWithQuery(<LeadHomePage />);
@@ -84,10 +84,79 @@ describe("PersonaHomePage data layout", () => {
     const dims = await screen.findByTestId("home-dimensions");
     expect(dims.querySelectorAll("a[href*='dimension=']")).toHaveLength(6);
     expect(screen.getByTestId("home-verdict-row")).toBeInTheDocument();
-    expect(screen.getByText("Objects, worst first")).toBeInTheDocument();
+    expect(screen.getByText("What moves the score")).toBeInTheDocument();
     expect(screen.getAllByText("Material master").length).toBeGreaterThan(0);
     // No count tile is a button wrapping a link.
     expect(document.querySelector("button a")).toBeNull();
+  });
+});
+
+describe("PersonaHomePage Brief geometry", () => {
+  const SECOND = { ...LATEST.dqs_summary!.material_master, composite_score: 95 };
+  const two: Version = { ...LATEST, dqs_summary: { material_master: LATEST.dqs_summary!.material_master, controlling: SECOND }, metadata: { modules: ["material_master", "controlling"], file_name: "f.csv", row_count: 5000, object_rows: { material_master: 4000, controlling: 1000 } } };
+  const find = (check_id: string, module: string, extra: Record<string, unknown> = {}) => ({ id: `${module}-${check_id}`, version_id: "v1", check_id, module, severity: "critical", details: { message: "Material description is missing." }, ...extra });
+
+  beforeEach(() => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [two] });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS });
+  });
+
+  it("puts the object map and the dimension bars in the hero, beside the score", async () => {
+    renderWithQuery(<LeadHomePage />);
+    const hero = await screen.findByTestId("home-verdict-row");
+    const aside = screen.getByTestId("home-hero-aside");
+    expect(hero).toContainElement(aside);
+    expect(hero).toContainElement(screen.getByTestId("home-dqs"));
+    expect(aside).toContainElement(screen.getByLabelText("Objects by records and verdict"));
+    expect(aside).toContainElement(screen.getByTestId("home-dimensions"));
+    // a tile per object: the score, the records the run holds for it, opening the object at its run
+    const tile = screen.getByRole("link", { name: "Material master, 72.5, 4,000 records" });
+    expect(tile).toHaveAttribute("href", "/objects/material_master?run=v1");
+    expect(screen.getByRole("link", { name: "Controlling, 95.0, 1,000 records" })).toBeInTheDocument();
+  });
+
+  it("sets the ledger after the four sentences and the hero, and ranks it by records affected", async () => {
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+      version_ids: ["v1"], total: 2, affected_records: 120, severity: { critical: 0, high: 2, medium: 0, low: 0 }, by_module: [
+        { module: "material_master", findings: 1, affected: 120, critical: 0, high: 1, medium: 0, low: 0, avg_pass_rate: 0.9 },
+        { module: "controlling", findings: 1, affected: 900, critical: 0, high: 1, medium: 0, low: 0, avg_pass_rate: 0.9 },
+      ], by_dimension: [], avg_pass_rate: 0.9, dqs: { composite: 80, dimension_scores: {}, modules: {} }, previous_dqs: null,
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindingsAggregate>>);
+    renderWithQuery(<LeadHomePage />);
+    await screen.findByTestId("home-verdict-row");
+    const ledger = await screen.findByText("What moves the score");
+    expect(screen.getByTestId("home-verdict-row").compareDocumentPosition(ledger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await waitFor(() => {
+      const rows = screen.getAllByRole("row").slice(1);
+      expect(rows[0]).toHaveTextContent("Controlling");
+      expect(rows[1]).toHaveTextContent("Material master");
+    });
+    for (const h of ["Object", "Blocking rule", "Records affected", "DQS", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All 2 objects" })).toHaveAttribute("href", "/objects");
+  });
+
+  it("names the blocking rule as an id plus words and ends the row with one action, Fix when a proposal exists else Open", async () => {
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [
+        find("MM-001", "material_master", { record_fixes: [{ record_id: "1" }] }),
+        find("CO-002", "controlling", { details: { message: "Cost centre has no external code" } }),
+      ],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+    renderWithQuery(<LeadHomePage />);
+    const link = await screen.findByRole("link", { name: "MM-001" });
+    expect(link.closest("tr")).toHaveTextContent("Material description is missing");
+    expect(screen.getByRole("link", { name: "Fix Material master" })).toHaveAttribute("href", "/fix?module=material_master");
+    expect(screen.getByRole("link", { name: "Open Controlling" })).toHaveAttribute("href", "/objects/controlling?run=v1");
+    expect(screen.queryByRole("link", { name: "Fix Controlling" })).toBeNull();
+  });
+
+  it("keeps the onboarding as one row under the ledger, before the work row", async () => {
+    renderWithQuery(<LeadHomePage />);
+    const ledger = await screen.findByText("What moves the score");
+    const work = screen.getByText("Objects not ready");
+    expect(ledger.compareDocumentPosition(work) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("home-trend")).toBeInTheDocument();
   });
 });
 

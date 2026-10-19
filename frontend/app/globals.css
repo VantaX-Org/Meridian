@@ -274,14 +274,14 @@
 
   /* ---------- The object map (design/charts/ObjectMap.tsx): area is records, colour is verdict ---------- */
   .m-omap { display: grid; grid-auto-flow: dense; gap: 4px; margin: 0; padding: 0; list-style: none; }
-  .m-omap-tile { display: flex; flex-direction: column; justify-content: space-between; height: 100%; padding: 8px 10px; border-radius: var(--m-radius-control); border: 1px solid var(--m-line); background: var(--m-sheet-raised); color: var(--m-ink); text-decoration: none; min-width: 0; overflow: hidden; }
+  .m-omap-tile { display: flex; flex-direction: column; justify-content: space-between; height: 100%; padding: 6px 8px; border-radius: var(--m-radius-control); border: 1px solid var(--m-line); background: var(--m-sheet-raised); color: var(--m-ink); text-decoration: none; min-width: 0; overflow: hidden; }
   .m-omap-tile[data-verdict="no-go"] { background: var(--m-no-go-soft); border-color: var(--m-no-go); }
   .m-omap-tile[data-verdict="at-risk"] { background: var(--m-at-risk-soft); border-color: var(--m-at-risk); }
   .m-omap-tile[data-verdict="go"] { background: var(--m-go-soft); border-color: var(--m-go); }
   .m-omap-tile[data-verdict="info"] { background: var(--m-info-soft); border-color: var(--m-info); }
   a.m-omap-tile:hover { box-shadow: var(--m-elev-card); }
   a.m-omap-tile:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
-  .m-omap-label { font-weight: 600; font-size: var(--m-text-body); line-height: var(--m-leading-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-omap-label { font-weight: 600; font-size: var(--m-text-body); line-height: var(--m-leading-body); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
   .m-omap-meta { font-size: var(--m-text-meta); line-height: var(--m-leading-meta); color: var(--m-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .m-omap-score { align-self: flex-end; font-weight: 700; line-height: 1; letter-spacing: var(--m-tracking-tight); }
 

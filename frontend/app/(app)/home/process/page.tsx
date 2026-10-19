@@ -68,7 +68,6 @@ export default function ProcessHomePage() {
   return (
     <PageFrame>
       <PageHeader title="Home" meta={`${system.name}, ${rows.length} processes`} actions={<SystemSelect value={system.id} onValueChange={setSystem} systems={list} />} />
-      <HomeOnboarding />
       <div className="grid grid-cols-2 gap-4">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />
         <Stat label="Median fitness" help="fitness" value={fmtFitness(h.fitness)}
@@ -77,6 +76,7 @@ export default function ProcessHomePage() {
       <Card title="Processes" padding="sm">
         <DataTable columns={columns(system.id, can("run_process_discovery"))} data={rows} getRowId={(r) => r.l1} height="auto" dense hideToolbar tableId="home-processes" />
       </Card>
+      <HomeOnboarding />
       <Card title="Latest runs">
         {runs.isError
           ? <ErrorState {...apiErrorState(runs.error)} onRetry={() => runs.refetch()} />
