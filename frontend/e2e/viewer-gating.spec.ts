@@ -25,13 +25,13 @@ const PRIMARY = /^(approve|write back|sign off|extract( now)?)\b/i;
 
 /**
  * Routes where a viewer still sees a control whose label starts with a mutating verb on the
- * recording (release 0.0.401). Each is a navigation link or an onboarding item, not a write,
+ * recording (release 0.0.449). Each is a navigation link or an onboarding item, not a write,
  * but the brief allows none; they are reported as gating gaps and expected to fail here until
  * the pages hide them for viewers (the test then flips to an unexpected pass).
  */
 const KNOWN_GAPS: Record<string, string> = {
   "/runs": "\"Run analysis\" link to the system page is not gated by can(\"analyse\")",
-  "/insights": "\"Create remediation batch\" link shows for a viewer",
+  "/insights": "the current-state overview's \"Cleansing opportunity\" funnel shows its \"Create remediation batch\" link (to /fix) for a viewer",
   "/insights/readiness": "\"Create wave\" link shows for a viewer",
   [`/runs/${RECORDED.businessPartnerRunId}`]: "\"Import file\" action in the single-run empty state shows for a viewer",
   [`/systems/${RECORDED.systemId}`]: "the Objects tab's per-object \"Extract\" links show for a viewer (the Extract primary itself is disabled)",
