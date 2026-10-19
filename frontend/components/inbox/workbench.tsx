@@ -50,7 +50,7 @@ export function Workbench({
             {bulk(ticked)}
           </div>
         ) : null}
-        <ul className="flex flex-col [max-height:calc(100vh-260px)] overflow-y-auto" aria-label={listLabel}>
+        <ul className="flex flex-col [max-height:calc(100vh-260px)] overflow-y-auto" aria-label={listLabel} data-tour="inbox-queue">
           {items.map((item) => {
             const selected = item.id === selectedId;
             return (

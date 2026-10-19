@@ -55,6 +55,10 @@ const VIEWS = [
   { value: "all", label: "All open" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" },
   { value: "breached", label: "SLA breached" }, { value: "today", label: "Due today" }, { value: "escalated", label: "Escalated" },
 ];
+const VIEW_BANNER: Record<string, string> = {
+  mine: "tasks assigned to me", unassigned: "unassigned tasks", breached: "tasks with a breached SLA",
+  today: "tasks due today", escalated: "escalated tasks", all: "all tasks",
+};
 /** Stands in for "no due date" so those tasks sort last. */
 const NO_DUE = Number.MAX_SAFE_INTEGER;
 const BULK_CONFIDENCE = 0.85;
@@ -354,7 +358,7 @@ export default function InboxPage() {
       id: t.id,
       label: `${labelOf(t.item_type)} ${t.source_id}`,
       title: <>{labelOf(t.item_type)} in {formatModuleName(t.domain)}</>,
-      meta: `Record ${t.source_id}, P${t.priority}, ${who(t.assigned_to)}, ${span(now - Date.parse(t.created_at))} old`,
+      meta: `${who(t.assigned_to)}, P${t.priority}, record ${t.source_id}, ${span(now - Date.parse(t.created_at))} old`,
       aside: <Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>,
       tone: SLA_BAR[sla.state],
     };
@@ -470,7 +474,9 @@ export default function InboxPage() {
             />
           </Field>
           {!isExceptions && (view !== "all" || type !== "all") && (
-            <Button variant="ghost" onClick={() => showAll(false)}>Show all</Button>
+            <Notice action={<Button variant="ghost" onClick={() => showAll(false)}>Show all</Button>}>
+              Showing {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null].filter(Boolean).join(", ")} only.
+            </Notice>
           )}
           {rollbackNote && <Notice tone="danger">{rollbackNote}</Notice>}
         </div>

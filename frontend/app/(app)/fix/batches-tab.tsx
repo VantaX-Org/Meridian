@@ -179,6 +179,11 @@ export function BatchesTab() {
   return (
     <div className="flex flex-col gap-6">
       <MonitorSummaryNotice />
+      {status ? (
+        <Notice action={<Button variant="ghost" onClick={() => setStatus("")}>Show all</Button>}>
+          Showing {STATUS_LABEL[status].toLowerCase()} batches only.
+        </Notice>
+      ) : null}
 
       <div className="m-stat-grid m-motion-stagger @5xl:[grid-template-columns:repeat(3,minmax(0,360px))]" data-tour="fix-batches">
         <Link href="?tab=batches&status=draft" className="text-left">

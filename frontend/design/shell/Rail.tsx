@@ -110,11 +110,6 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
     };
   }, [moreOpen]);
 
-  // A navigation closes the panel.
-  useEffect(() => {
-    setMoreOpen(false);
-  }, [pathname, searchParams]);
-
   const isActive = (item: NavItem) => item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref);
 
   const renderPill = (item: NavItem) => {
