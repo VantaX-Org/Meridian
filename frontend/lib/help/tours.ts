@@ -174,9 +174,9 @@ export const TOURS: readonly TourDef[] = [
     oneShot: true,
     steps: [
       {
-        target: "rail", placement: "right",
+        target: "rail", placement: "bottom",
         title: "Navigation",
-        body: "Pages are grouped by what you do. Press [ to collapse this bar when you need the room.",
+        body: "The places you go most are the pills; everything else is under More.",
       },
       {
         target: "command-palette", placement: "bottom",

@@ -1,4 +1,4 @@
-# Meridian design system: "The Instrument", styled Isora
+# Meridian design system: "The Instrument", drawn on the Canvas
 
 Source of truth for the visual layer. Values live in `frontend/design/tokens.css`, the only file that may hold colour, shadow, blur or motion literals. When this file and the code disagree, the code is right and this file needs updating.
 
@@ -6,12 +6,12 @@ Source of truth for the visual layer. Values live in `frontend/design/tokens.css
 
 Every data product on the market is cards on a canvas. Meridian is an instrument. Its mark is a measuring arc crossed by a meridian line, and that is the layout grammar: **one datum line per page, one ruler for every number, and the explanation written in the margin.**
 
-1. **The Datum.** A page is two columns with one vertical line, the meridian, between them: the figures, charts and tables on the left; the margin on the right. The line carries a short accent tick at its top. Below the container's reading width the margin stacks first, so the explanation is still read before the figures. `Datum` draws it; `PageFrame` and the insight frame use it.
+1. **The work surface.** There is no sidebar. The index bar (`Rail`) is one row: the brand, the six places a person goes as pills (Home, Objects, Fix, Inbox, Runs, Insights, Systems) with live counts, "More" for every other page grouped as the nav defines them, and search, notifications, help and the user on the right. Under it the scope bar (`TopBar`) carries the page's h1 (the Breadcrumb) and the scope parts a page publishes. A page is then one column: the figure that answers its question first, the ledger of what moves it second, and the one action that follows. Nothing is shown twice.
 2. **The Rule.** One primitive draws every score: a ruler from 0 to 100 with the measured value as a filled run and a needle, the target as a tick, and the cap (a critical finding holding the score down) as a second tick with the measured value ghosted beyond it. The same geometry at three sizes: `hero` (the score sheet, labelled 0, Target and 100), `row` (a table cell beside the numeral) and `inline` (a mark in a sentence). A reader learns the instrument once. The 270 degree arc (`ScoreRing`) remains for the brand and the detail header; it is never beside a Rule for the same number.
-3. **The margin.** The four sentences of a page (situation, what changed, why it matters, do next) are marginalia, not a banner: `Margin` sets them in the Datum's right column, each with a tone dot and at most one action, sticky while the figures scroll. Numbers left, meaning right, always in the same place.
-4. **Isora surfaces.** Light is a cool blue-grey canvas (`#F5F7F8`) with white sheets: one hairline, a 12px radius and one soft shadow (`--m-elev-card`) under every card and the score sheet, slate-navy ink (`#26394B`). Dark is the same system in blue-slate graphite with no card shadow. Both come from one token set and both are first class. No gradients, no glow, no blur.
-5. **One accent.** Steel blue (`#336F96`; sky blue `#84BADA` in dark) marks interaction only: the primary button, links, selection, focus, the datum's tick. The sky-blue family (`#E7F1F7`, `#A8CEE3`, `#84BADA`) is the sequential ramp and chart series 1. Hue otherwise means defect state: red, amber and green, plus an info blue for neutral notices; severity is colour plus shape, never colour alone.
-6. **Type.** Inter for words and figures (400, 500, 600), tabular numerals, 14px body on a 4px grid; JetBrains Mono for SAP identifiers only. Sentence case everywhere.
+3. **The four sentences.** Situation, what changed, why it matters, do next: `InsightHeader` sets them in one row under the figure (embedded in the Home hero, with the score band on an insight page), each with a tone bar and at most one action. They are never a card of their own and never repeated by a summary card below.
+4. **Canvas surfaces.** Light is a bright blue-grey canvas (`#F4F6F8`) with white sheets: one hairline, a 16px radius and one soft shadow (`--m-elev-card`) under every card and the score sheet, near-black ink (`#1A2233`), soft tints for state (red, amber, green, blue) and pill-shaped controls. Dark is the same drawing in blue graphite with no card shadow. Both come from one token set and both are first class. No gradients, no glow, no blur.
+5. **One accent.** Cobalt (`#2563EB`; `#7FA8FF` in dark) marks interaction only: the primary button, links, selection, focus, the active pill. The cobalt family (`#E8F1FF`, `#BFD6FF`, `#7FA8FF`) is the sequential ramp and chart series 1. Hue otherwise means defect state: red, amber and green, plus an info blue for neutral notices; severity is colour plus shape, never colour alone. The object map (`ObjectMap`) draws every object as a tile whose area is its record count and whose tint is its verdict.
+6. **Type.** Manrope for words and figures (400 to 800), tabular numerals, 14px body on a 4px grid, the score numeral at 120px on Home; JetBrains Mono for SAP identifiers only. Sentence case everywhere.
 7. **Icons.** Meridian's own set (`design/icons`), one 24 grid and one 1.6 stroke; nothing from a library, nothing decorative, no sparkle anywhere.
 8. **Motion is measurement.** 120, 240 or 480 ms, ease-out; a draw-in settles like a needle, a count-up eases like a gauge, nothing bounces. Zero under `prefers-reduced-motion`.
 9. **Every number opens the rows behind it** (`DrillLink`, `Stat href`), **the URL is state**, and **speed is a feature**: skeletons in the final geometry, virtualised tables above 200 rows, prefetch on hover.
@@ -25,17 +25,17 @@ Light values on `:root`, dark under `[data-theme="dark"]` and under `prefers-col
 
 | Token | Light | Dark |
 |---|---|---|
-| `--m-canvas` | `#F5F7F8` | `#0F161C` |
-| `--m-sheet` | `#FFFFFF` | `#16202A` |
-| `--m-sheet-raised` | `#EEF2F5` | `#1D2935` |
-| `--m-rail` | `#FFFFFF` | `#121B23` |
-| `--m-ink`, `-2`, `-3` | `#26394B`, `#3E5468`, `#4C6479` | `#E6EDF2`, `#B3C2CF`, `#97A9B8` |
-| `--m-line`, `--m-line-strong` | `#E0E7EC`, `#C3CED7` | `#263442`, `#364758` |
-| `--m-accent`, `-soft`, `-ink` | `#336F96`, `#E7F1F7`, `#27587A` | `#84BADA`, `#1B3140`, `#A8CEE3` |
-| `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` | `#C02630`, `#B34A0B`, `#8A6100`, `#5A6371`, `#1A7A47` | `#F0737C`, `#EE965A`, `#E2BE5C`, `#A3ABB7`, `#5CC78C` |
-| `--m-info` | `#2659C9` | `#7FA2F3` |
+| `--m-canvas` | `#F4F6F8` | `#0F1420` |
+| `--m-sheet` | `#FFFFFF` | `#171D2B` |
+| `--m-sheet-raised` | `#EEF1F5` | `#1F2635` |
+| `--m-rail` | `#FFFFFF` | `#141A27` |
+| `--m-ink`, `-2`, `-3` | `#1A2233`, `#3F4A5C`, `#5A6578` | `#E8ECF3`, `#B6BFCE`, `#98A3B5` |
+| `--m-line`, `--m-line-strong` | `#E6EAF0`, `#CBD2DC` | `#2A3344`, `#3B475C` |
+| `--m-accent`, `-soft`, `-ink` | `#2563EB`, `#E8F1FF`, `#1B4FD6` | `#7FA8FF`, `#1C2A4A`, `#9DBDFF` |
+| `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` | `#C62828`, `#A64D07`, `#9A5B00`, `#5A6578`, `#1B7544` | `#F0737C`, `#EE965A`, `#E2BE5C`, `#A3ABB7`, `#5CC78C` |
+| `--m-info` | `#2563EB` | `#7FA2F3` |
 
-Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is medium, `--m-no-go` is critical. `--m-hero-*` alias sheet, ink, line and the status hues. Other groups: DQS bands and caps, chart series `--m-viz-*`, space (4px grid), radii (`--m-radius-control` 8px, `-sheet` 12px, `-tile` 0, `-pill`), tracking (`--m-tracking-tight` on hero and stat numerals, `--m-tracking-title`), elevation (`m-elev-1..3`, `--m-elev-card`, `--m-elev-focus`), motion (`--m-motion-*`), layout (`--m-page-pad`, `--m-page-max`, `--m-margin-w`, `--m-rail-w`, `--m-topbar-h`, `--m-row-h`, `--m-control-h`).
+Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is medium, `--m-no-go` is critical. `--m-hero-*` alias sheet, ink, line and the status hues. Other groups: DQS bands and caps, chart series `--m-viz-*`, space (4px grid), radii (`--m-radius-control` 10px, `-sheet` 16px, `-tile` 0, `-pill`), tracking (`--m-tracking-tight` on hero and stat numerals, `--m-tracking-title`), elevation (`m-elev-1..3`, `--m-elev-card`, `--m-elev-focus`), motion (`--m-motion-*`), layout (`--m-page-pad`, `--m-page-max`, `--m-topbar-h`, `--m-scopebar-h`, `--m-row-h`, `--m-control-h`).
 
 Type scale (px, size/line): label 11/14, meta 12/16, body 14/20, heading 15/22, page title 22/28, stat 26/32, hero score 64/64 (88/88 in presentation mode). The root font size is 14px. Use the `m-text-*` utility classes, never `text-[Npx]` literals in pages.
 
@@ -47,13 +47,15 @@ Contrast: `npm run check:contrast` fails unless ink on every surface, accent on 
 
 All in `@/design`; there is no second library. Pages compose these and draw nothing of their own.
 
-- **Datum**: the page composition. `<Datum margin={<Margin .../>}>{figures}</Datum>`: a two-column grid above the container's reading width (`minmax(0,1fr) var(--m-margin-w)`), the meridian line as the margin's left edge with the accent tick at its top; stacked below it, margin first. `HomePage` and `InsightFrame` compose it; a page never draws the line itself.
-- **Margin**: the four sentences as marginalia (`situation`, `changed`, `why`, `next`, the same cells as `InsightHeader`), each a micro label with a tone dot and a body sentence, the last with at most one small button. With `aiSummary` the model's paragraph replaces the four; the sentences are never shown twice. Sticky inside the Datum.
+- **Rail** (the index bar) and **TopBar** (the scope bar): the shell's two rows, rendered once by the (app) layout. A page never draws navigation. The "More" panel is a disclosure of plain links grouped by nav group, closed by Escape, a click outside or focus leaving it.
+- **ObjectMap** (`design/charts/ObjectMap.tsx`): one tile per object, area by record count, tint by verdict, the score as the numeral; every tile opens its object. Home and the Objects list draw it beside the ledger.
+- **Ledger**: a `DataTable` whose rows are ranked by what moves the score (records affected, then severity) and whose last column is the row's one action as a link ("Fix", "Assign", "Open"). The blocking rule sits in the row as `Mono` id plus plain words.
+- **Workbench**: an object's detail is a split pane (`grid-template-columns: 400px minmax(0,1fr)`): the failing rules ranked by records on the left, each a selectable row with a severity bar; the selected rule's records on the right with filter chips, bulk selection and the rule's one action. The dimension bars are a strip under the rules, not a chart of their own.
 - **Rule**: the one instrument for a score (`value`, `target`, `cap`, `bands`, `size`). `hero` is a full-width ruler with ticks every 10, the measured run in the band hue, the needle in ink, "0", "Target 90" and "100" beneath (the end label yields when the target or cap sits near it), the cap as a red tick with a dashed ghost of the measured value beyond it. `row` is 96 by 12 for a table cell, `inline` 56 by 8 for a sentence; `width` stretches a row across a stat tile. The whole ruler is one `role="img"` naming the value, cap and target.
 - **PageHeader**: `<h1>` title 22/28 semibold, one-line meta, optional status `Pill`, actions (one primary `Button` at most), tabs. Every page uses it.
 - **Button**: primary, secondary, ghost, danger (confirm dialogs only). `pending` shows the inline dot and disables the button. Use `render={<Link>}` for navigation, never a button inside an anchor.
-- **Field** with a control, **Select**, **Combobox**, **Checkbox**, **Menu**: 34px controls (`--m-control-h`), 8px radius, labels 12/16 medium, helper and error text under the control, never inside the label.
-- **Card**: white sheet, 1px `--m-line` border on every side, `--m-radius-sheet` (12px), the `--m-elev-card` shadow, `--m-card-pad` (24px), optional title 15/22, meta and actions. Replaces every hand-rolled `rounded border` box.
+- **Field** with a control, **Select**, **Combobox**, **Checkbox**, **Menu**: 34px controls (`--m-control-h`), 10px radius, labels 12/16 medium, helper and error text under the control, never inside the label.
+- **Card**: white sheet, 1px `--m-line` border on every side, `--m-radius-sheet` (16px), the `--m-elev-card` shadow, `--m-card-pad` (24px), optional title 15/22, meta and actions. Replaces every hand-rolled `rounded border` box.
 - **Notice**: tinted note with a 3px tone bar (info, warning, danger, success). Replaces raw alert boxes.
 - **Status**: the one status vocabulary (see "Status vocabulary" below). `<Status kind="verdict" value={api.verdict} />` renders the pill with the canonical label and tone; callers pass the API value and never write the label.
 - **Pill, Badge, SeverityDot**: `Pill` is a free label (a tag, a role, "Baseline", a count sentence) in `neutral`, `info` or a verdict tone; when the text is a verdict, a severity or a lifecycle stage it is a `Status` instead. `Badge` is a count only (`tone="critical"` for counts of failing items). Pills are sentence case with no full stop.
@@ -94,12 +96,12 @@ Copy: no full stops in table cells, pills, tile labels or hints; no "Showing X."
 ## 4. Brand
 
 - **Mark**: a 270 degree arc, open at the top, crossed by a vertical meridian line, on a 32 grid, stroke 3, round caps. The arc is ink, the line is the accent. In the app it is the inline SVG `MeridianMark` (`components/meridian/icons.tsx`).
-- **Wordmark**: the word "Meridian" type-set in Inter 600, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
+- **Wordmark**: the word "Meridian" type-set in Manrope 700, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
 - **Assets** in `public/brand/` (see its README): marks, outlined lockups, PWA icons from `npm run brand:rasterise`. Colours are in `brand.json`. `app/apple-icon.tsx` draws the two-tone mark on a plain canvas tile and `app/opengraph-image.tsx` a white sheet on the canvas with the lockup; both read `design/brand/images.tsx`, which mirrors `brand.json`. There is no cover gradient anywhere.
 - **Favicon**: `app/icon.svg` (stroke 3.5, ink and accent from `brand.json`, follows the OS colour scheme) with `app/icon.png` fallback. **Open Graph image**: `app/opengraph-image.tsx`, lockup plus "SAP data quality, measured".
 - **Signed-out pages** (`components/auth/auth-frame.tsx`): a white brand panel (`.m-brand-panel`: lockup, the decorative score-ring instrument in the accent, two facts) beside one 400px card on the canvas with an `<h1>`, the form and the version string beneath.
 - **Journey** (`JourneyStepper`): four stations on one rail (System connected, Configuration loaded, Data extracted, First score) with the set's icons; done stations fill in the pass hue, the current one is ringed in the accent, and the step under the rail says what to do now with its one button.
-- **Rail** (`design/shell/Rail.tsx`): a light sheet with a hairline right edge. Each item shows its icon and text label, expanded by default (collapsed to icons below 1024px or when the user collapses it with the button or `[`). The active item is a soft blue tint with blue ink.
+- **Index bar** (`design/shell/Rail.tsx`): a white row with a hairline under it. The primary pills sit on a raised track; the active pill is a white sheet with the card shadow; Fix carries its count as a critical badge, Inbox as a neutral one; Systems carries the worst health as a pip. Below 1024px the pill strip scrolls sideways.
 
 ## Object names
 An object (a module id such as `fi_gl`) is shown by its name from `formatModuleName` (`lib/format.ts`), never by an API `label` and never by title-casing the id; `lib/api/v1/objects.ts` renames the objects API's rows on read. `MODULE_LABELS` holds a name for every module with a rule file under `checks/rules/` and every module `sap/extraction_registry.py` extracts, worded as `api/routes/sync_trigger.py` `MODULE_REGISTRY` and cased by one convention:

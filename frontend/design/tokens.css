@@ -2,38 +2,38 @@
  * The only file that may contain colour, shadow, gradient, blur, radius,
  * motion or duration literals. `npm run lint:tokens` enforces this.
  * Every token has a light value (:root) and a dark value ([data-theme="dark"]).
- * Direction: "Isora". A cool blue-grey canvas (#F5F7F8), white sheets with a hairline and one soft shadow, deep
- * slate-navy ink, one steel-blue accent for interaction, sky-blue ramps, hue otherwise for defect status.
+ * Direction: "Canvas". A bright blue-grey canvas (#F4F6F8), white 16px sheets with one soft shadow, near-black
+ * ink, one cobalt accent for interaction, cobalt ramps, hue otherwise for defect status.
  */
 
 :root {
   /* ---------- Surfaces (light: off-white canvas, white cards) ---------- */
-  --m-canvas: #F5F7F8;          /* page background: paper */
+  --m-canvas: #F4F6F8;          /* page background: paper */
   --m-sheet: #FFFFFF;           /* cards, tables, forms, popovers */
-  --m-sheet-raised: #EEF2F5;    /* table header rows, hover rows, inset wells */
-  --m-sheet-sunken: #E3E9EE;    /* code/sample wells, bar tracks, ghost shapes */
+  --m-sheet-raised: #EEF1F5;    /* table header rows, hover rows, inset wells */
+  --m-sheet-sunken: #E4E8EE;    /* code/sample wells, bar tracks, ghost shapes */
   --m-rail: #FFFFFF;            /* sidebar background: a light sheet */
   --m-rail-hover: var(--m-sheet-raised);
   --m-rail-edge: var(--m-line); /* rail right rule */
-  --m-line: #E0E7EC;            /* hairline borders (1px) */
-  --m-line-strong: #C3CED7;     /* input borders, table head rule */
-  --m-scrim: rgb(38 57 75 / 0.40);
+  --m-line: #E6EAF0;            /* hairline borders (1px) */
+  --m-line-strong: #CBD2DC;     /* input borders, table head rule */
+  --m-scrim: rgb(26 34 51 / 0.40);
 
   /* ---------- Ink ---------- */
-  --m-ink: #26394B;             /* 17:1 on sheet */
-  --m-ink-2: #3E5468;
-  --m-ink-3: #4C6479;           /* minimum for body text on every surface */
-  --m-ink-4: #9AA4AD;           /* disabled, decorative only; never for text */
+  --m-ink: #1A2233;             /* 17:1 on sheet */
+  --m-ink-2: #3F4A5C;
+  --m-ink-3: #5A6578;           /* minimum for body text on every surface */
+  --m-ink-4: #9AA3B2;           /* disabled, decorative only; never for text */
   --m-ink-on-accent: #FFFFFF;
 
   /* ---------- Accent: deep blue. Interaction only (selection, focus, links, primary button) ---------- */
-  --m-accent: #336F96;
-  --m-accent-hover: #2B5F80;
-  --m-accent-active: #234F6B;
-  --m-accent-soft: #E7F1F7;     /* selected row, active nav */
-  --m-accent-soft-2: #D3E6F1;   /* selected + hover */
-  --m-accent-ink: #27587A;      /* accent used as text on soft tint */
-  --m-accent-ring: rgb(51 111 150 / 0.30);
+  --m-accent: #2563EB;
+  --m-accent-hover: #1D4ED8;
+  --m-accent-active: #1E40AF;
+  --m-accent-soft: #E8F1FF;     /* selected row, active nav */
+  --m-accent-soft-2: #D6E4FF;   /* selected + hover */
+  --m-accent-ink: #1B4FD6;      /* accent used as text on soft tint */
+  --m-accent-ring: rgb(37 99 235 / 0.30);
 
   /* ---------- Hero zones are white sheets: these names alias the ordinary surface and ink tokens ---------- */
   --m-hero-bg: var(--m-sheet);
@@ -51,12 +51,12 @@
 
   /* ---------- Status scale (hue means defect state; never the accent hue) ----------
      Red: critical. Amber: high (deep) and medium. Slate: low. Green: pass. Info is the blue notice tone. */
-  --m-critical: #C02630;        --m-critical-soft: #FDEDEE;   --m-critical-ink: #9A1D26;   --m-critical-on: #FFFFFF;
-  --m-high: #B34A0B;            --m-high-soft: #FDF0E6;       --m-high-ink: #8C3A08;       --m-high-on: #FFFFFF;
-  --m-medium: #8A6100;          --m-medium-soft: #FBF3DC;     --m-medium-ink: #694A00;     --m-medium-on: #FFFFFF;
-  --m-low: #5A6371;             --m-low-soft: #EEF0F3;        --m-low-ink: #464E5B;        --m-low-on: #FFFFFF;
-  --m-pass: #1A7A47;            --m-pass-soft: #E7F5EC;       --m-pass-ink: #135C35;       --m-pass-on: #FFFFFF;
-  --m-info: #2659C9;            --m-info-soft: #EDF2FC;       --m-info-ink: #1C46A3;       --m-info-on: #FFFFFF;
+  --m-critical: #C62828;        --m-critical-soft: #FDECEC;   --m-critical-ink: #B3261E;   --m-critical-on: #FFFFFF;
+  --m-high: #A64D07;            --m-high-soft: #FFF3E0;       --m-high-ink: #8A4505;       --m-high-on: #FFFFFF;
+  --m-medium: #9A5B00;          --m-medium-soft: #FFF8E6;     --m-medium-ink: #7A4800;     --m-medium-on: #FFFFFF;
+  --m-low: #5A6578;             --m-low-soft: #EEF1F5;        --m-low-ink: #46505F;        --m-low-on: #FFFFFF;
+  --m-pass: #1B7544;            --m-pass-soft: #E7F7EE;       --m-pass-ink: #15603A;       --m-pass-on: #FFFFFF;
+  --m-info: #2563EB;            --m-info-soft: #E8F1FF;       --m-info-ink: #1B4FD6;       --m-info-on: #FFFFFF;
 
   /* Readiness verdicts reuse the status scale */
   --m-go: var(--m-pass);        --m-go-soft: var(--m-pass-soft);        --m-go-ink: var(--m-pass-ink);        --m-go-on: var(--m-pass-on);
@@ -85,7 +85,7 @@
   --m-dom-on: #FFFFFF;
 
   /* ---------- Charts: ten muted categorical hues, ramps. Series 1 is a quiet blue ---------- */
-  --m-viz-1: #336F96;
+  --m-viz-1: #2563EB;
   --m-viz-2: #2E8257;
   --m-viz-3: #A17A22;
   --m-viz-4: #2F7D8E;
@@ -95,7 +95,7 @@
   --m-viz-8: #5E7E2F;
   --m-viz-9: #3B6E9C;
   --m-viz-10: #8C5096;
-  --m-viz-1-fill: rgb(51 111 150 / 0.16);
+  --m-viz-1-fill: rgb(37 99 235 / 0.14);
   --m-viz-2-fill: rgb(46 130 87 / 0.14);
   --m-viz-3-fill: rgb(161 122 34 / 0.14);
   --m-viz-4-fill: rgb(47 125 142 / 0.14);
@@ -108,10 +108,10 @@
   --m-viz-grid: var(--m-line);
   --m-viz-axis: var(--m-ink-3);
   --m-viz-threshold: var(--m-ink-2);
-  --m-viz-area: rgb(51 111 150 / 0.12);
-  --m-viz-tooltip-bg: #26394B;
+  --m-viz-area: rgb(37 99 235 / 0.10);
+  --m-viz-tooltip-bg: #1A2233;
   --m-viz-tooltip-ink: #FFFFFF;
-  --m-seq-1: #E7F1F7; --m-seq-2: #A8CEE3; --m-seq-3: #84BADA; --m-seq-4: #336F96; --m-seq-5: #26394B;
+  --m-seq-1: #E8F1FF; --m-seq-2: #BFD6FF; --m-seq-3: #7FA8FF; --m-seq-4: #2563EB; --m-seq-5: #1E3A8A;
   --m-div-neg-2: #B5373F; --m-div-neg-1: #F2C3C6; --m-div-mid: #E9ECF0; --m-div-pos-1: #BFE2CB; --m-div-pos-2: #22744A;
 
   /* ---------- Gradients: flat everywhere. The only ramps are functional (fade, count settle). ---------- */
@@ -119,11 +119,11 @@
   --m-grad-count-settle: linear-gradient(90deg, var(--m-accent-soft) 0%, transparent 100%);
 
   /* ---------- Type ---------- */
-  --m-font-ui: var(--font-ui, "Inter", system-ui, sans-serif);
+  --m-font-ui: var(--font-ui, "Manrope", system-ui, sans-serif);
   --m-font-sans: var(--m-font-ui);
   --m-font-mono: var(--font-jbm, "JetBrains Mono", ui-monospace, monospace);
 
-  --m-text-hero: 64px;      --m-leading-hero: 64px;      /* the score: a plain large number */
+  --m-text-hero: 96px;      --m-leading-hero: 88px;      /* the score: a plain large number */
   --m-text-verdict: 22px;   --m-leading-verdict: 30px;   /* verdict sentence */
   --m-text-verdict-num: 40px; --m-leading-verdict-num: 44px; /* verdict number */
   --m-text-title: 22px;     --m-leading-title: 28px;     /* page title, auth h1, record key */
@@ -141,21 +141,21 @@
   --m-space-5: 20px; --m-space-6: 24px; --m-space-8: 32px; --m-space-10: 40px;
   --m-space-12: 48px; --m-space-16: 64px; --m-space-24: 96px;
   --m-page-max: 1600px;
-  --m-margin-w: 280px;          /* the Datum's margin column */
   --m-page-max-reading: 760px;
   --m-page-pad-sm: 16px;
   --m-page-pad: var(--m-space-8);
 
   /* ---------- Shape ---------- */
-  --m-radius-control: 8px;      /* buttons, inputs, menu items */
-  --m-radius-sheet: 12px;       /* cards, tables, dialogs, the score sheet */
+  --m-radius-control: 10px;      /* buttons, inputs, menu items */
+  --m-radius-sheet: 16px;       /* cards, tables, dialogs, the score sheet */
   --m-radius-tile: 0px;         /* KPI columns (ruled, not boxed) */
   --m-radius-pill: 999px;
   --m-border: 1px;
   --m-rail-group-pad: 16px 16px 4px;
   --m-rail-w: 240px;
   --m-rail-w-collapsed: 56px;
-  --m-topbar-h: 52px;
+  --m-topbar-h: 60px;
+  --m-scopebar-h: 44px;
   --m-row-h: 40px;
   --m-row-h-dense: 32px;
   --m-control-h: 34px;
@@ -174,9 +174,9 @@
   /* ---------- Elevation (three levels + focus) ---------- */
   --m-elev-0: none;
   --m-elev-1: 0 0 0 1px var(--m-line);                                    /* flat card: hairline only */
-  --m-elev-card: 0 1px 2px rgb(38 57 75 / 0.04), 0 2px 8px rgb(38 57 75 / 0.04); /* the soft lift under every sheet (cards, hero) */
-  --m-elev-2: 0 0 0 1px var(--m-line), 0 4px 12px rgb(38 57 75 / 0.10);     /* menu, popover, tooltip, hover lift */
-  --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(38 57 75 / 0.16);    /* drawer, dialog, palette */
+  --m-elev-card: 0 1px 2px rgb(26 34 51 / 0.04), 0 8px 24px rgb(26 34 51 / 0.05); /* the soft lift under every sheet (cards, hero) */
+  --m-elev-2: 0 0 0 1px var(--m-line), 0 4px 12px rgb(26 34 51 / 0.10);     /* menu, popover, tooltip, hover lift */
+  --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(26 34 51 / 0.16);    /* drawer, dialog, palette */
   --m-ring: 0 0 0 2px var(--m-accent);                                      /* selection outline */
   --m-elev-focus: 0 0 0 2px var(--m-sheet), 0 0 0 4px var(--m-accent);
   --m-elev-accent: none;                                               /* primary button */
@@ -201,34 +201,34 @@
 
 /* ---------- Dark: neutral graphite ---------- */
 [data-theme="dark"] {
-  --m-canvas: #0F161C;
-  --m-sheet: #16202A;
-  --m-sheet-raised: #1D2935;
-  --m-sheet-sunken: #0A1015;
-  --m-rail: #121B23;
+  --m-canvas: #0F1420;
+  --m-sheet: #171D2B;
+  --m-sheet-raised: #1F2635;
+  --m-sheet-sunken: #0B0F18;
+  --m-rail: #141A27;
   --m-rail-edge: var(--m-line);
   --m-rail-hover: var(--m-sheet-raised);
-  --m-line: #263442;
-  --m-line-strong: #364758;
+  --m-line: #2A3344;
+  --m-line-strong: #3B475C;
   --m-scrim: rgb(0 0 0 / 0.6);
-  --m-ink: #E6EDF2;
-  --m-ink-2: #B3C2CF;
-  --m-ink-3: #97A9B8;
-  --m-ink-4: #4C5E6E;
-  --m-ink-on-accent: #0A1015;
-  --m-accent: #84BADA;
-  --m-accent-hover: #A8CEE3;
-  --m-accent-active: #6AA9CF;
-  --m-accent-soft: #1B3140;
-  --m-accent-soft-2: #223E52;
-  --m-accent-ink: #A8CEE3;
-  --m-accent-ring: rgb(132 186 218 / 0.40);
-  --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #0F161C;
-  --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #0F161C;
-  --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #0F161C;
-  --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #0F161C;
-  --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F161C;
-  --m-info: #7FA2F3; --m-info-soft: #1B3140; --m-info-ink: #AFC4F8; --m-info-on: #0F161C;
+  --m-ink: #E8ECF3;
+  --m-ink-2: #B6BFCE;
+  --m-ink-3: #98A3B5;
+  --m-ink-4: #4D586B;
+  --m-ink-on-accent: #0B0F18;
+  --m-accent: #7FA8FF;
+  --m-accent-hover: #9DBDFF;
+  --m-accent-active: #6A96F7;
+  --m-accent-soft: #1C2A4A;
+  --m-accent-soft-2: #24365F;
+  --m-accent-ink: #9DBDFF;
+  --m-accent-ring: rgb(127 168 255 / 0.40);
+  --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #0F1420;
+  --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #0F1420;
+  --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #0F1420;
+  --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #0F1420;
+  --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F1420;
+  --m-info: #7FA2F3; --m-info-soft: #1C2A4A; --m-info-ink: #AFC4F8; --m-info-on: #0F1420;
   --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
   --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
   --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
@@ -238,8 +238,8 @@
   --m-dom-plant: #A0BE86; --m-dom-plant-soft: #212A1B; --m-dom-plant-ink: #C1D5B0;
   --m-dom-asset: #D39E84; --m-dom-asset-soft: #33241D; --m-dom-asset-ink: #E3BDAA;
   --m-dom-other: #A6AEBA; --m-dom-other-soft: #23272D; --m-dom-other-ink: #C4CAD3;
-  --m-dom-on: #0F161C;
-  --m-viz-1: #84BADA;
+  --m-dom-on: #0F1420;
+  --m-viz-1: #7FA8FF;
   --m-viz-2: #6CC594;
   --m-viz-3: #D3B466;
   --m-viz-4: #72B7C6;
@@ -249,7 +249,7 @@
   --m-viz-8: #A2C27C;
   --m-viz-9: #81AEDA;
   --m-viz-10: #C99BD1;
-  --m-viz-1-fill: rgb(132 186 218 / 0.15);
+  --m-viz-1-fill: rgb(127 168 255 / 0.15);
   --m-viz-2-fill: rgb(108 197 148 / 0.15);
   --m-viz-3-fill: rgb(211 180 102 / 0.15);
   --m-viz-4-fill: rgb(114 183 198 / 0.15);
@@ -259,12 +259,12 @@
   --m-viz-8-fill: rgb(162 194 124 / 0.15);
   --m-viz-9-fill: rgb(129 174 218 / 0.15);
   --m-viz-10-fill: rgb(201 155 209 / 0.15);
-  --m-viz-area: rgb(132 186 218 / 0.14);
-  --m-viz-tooltip-bg: #E6EDF2;
-  --m-viz-tooltip-ink: #0F161C;
-  --m-seq-1: #182633; --m-seq-2: #22384A; --m-seq-3: #2F5570; --m-seq-4: #84BADA; --m-seq-5: #C9E2F0;
-  --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #1D2935; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
-  --m-grad-fade-bottom: linear-gradient(180deg, rgb(22 32 42 / 0) 0%, var(--m-sheet) 100%);
+  --m-viz-area: rgb(127 168 255 / 0.14);
+  --m-viz-tooltip-bg: #E8ECF3;
+  --m-viz-tooltip-ink: #0F1420;
+  --m-seq-1: #182036; --m-seq-2: #22304F; --m-seq-3: #2F4A80; --m-seq-4: #7FA8FF; --m-seq-5: #C7D9FF;
+  --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #1F2635; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
+  --m-grad-fade-bottom: linear-gradient(180deg, rgb(23 29 43 / 0) 0%, var(--m-sheet) 100%);
   --m-elev-card: none;
   --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
   --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
@@ -276,34 +276,34 @@
 /* System preference when no explicit theme is set. Generated from the dark block above: keep value for value. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --m-canvas: #0F161C;
-    --m-sheet: #16202A;
-    --m-sheet-raised: #1D2935;
-    --m-sheet-sunken: #0A1015;
-    --m-rail: #121B23;
+    --m-canvas: #0F1420;
+    --m-sheet: #171D2B;
+    --m-sheet-raised: #1F2635;
+    --m-sheet-sunken: #0B0F18;
+    --m-rail: #141A27;
     --m-rail-edge: var(--m-line);
     --m-rail-hover: var(--m-sheet-raised);
-    --m-line: #263442;
-    --m-line-strong: #364758;
+    --m-line: #2A3344;
+    --m-line-strong: #3B475C;
     --m-scrim: rgb(0 0 0 / 0.6);
-    --m-ink: #E6EDF2;
-    --m-ink-2: #B3C2CF;
-    --m-ink-3: #97A9B8;
-    --m-ink-4: #4C5E6E;
-    --m-ink-on-accent: #0A1015;
-    --m-accent: #84BADA;
-    --m-accent-hover: #A8CEE3;
-    --m-accent-active: #6AA9CF;
-    --m-accent-soft: #1B3140;
-    --m-accent-soft-2: #223E52;
-    --m-accent-ink: #A8CEE3;
-    --m-accent-ring: rgb(132 186 218 / 0.40);
-    --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #0F161C;
-    --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #0F161C;
-    --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #0F161C;
-    --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #0F161C;
-    --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F161C;
-    --m-info: #7FA2F3; --m-info-soft: #1B3140; --m-info-ink: #AFC4F8; --m-info-on: #0F161C;
+    --m-ink: #E8ECF3;
+    --m-ink-2: #B6BFCE;
+    --m-ink-3: #98A3B5;
+    --m-ink-4: #4D586B;
+    --m-ink-on-accent: #0B0F18;
+    --m-accent: #7FA8FF;
+    --m-accent-hover: #9DBDFF;
+    --m-accent-active: #6A96F7;
+    --m-accent-soft: #1C2A4A;
+    --m-accent-soft-2: #24365F;
+    --m-accent-ink: #9DBDFF;
+    --m-accent-ring: rgb(127 168 255 / 0.40);
+    --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #0F1420;
+    --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #0F1420;
+    --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #0F1420;
+    --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #0F1420;
+    --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F1420;
+    --m-info: #7FA2F3; --m-info-soft: #1C2A4A; --m-info-ink: #AFC4F8; --m-info-on: #0F1420;
     --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
     --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
     --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
@@ -313,8 +313,8 @@
     --m-dom-plant: #A0BE86; --m-dom-plant-soft: #212A1B; --m-dom-plant-ink: #C1D5B0;
     --m-dom-asset: #D39E84; --m-dom-asset-soft: #33241D; --m-dom-asset-ink: #E3BDAA;
     --m-dom-other: #A6AEBA; --m-dom-other-soft: #23272D; --m-dom-other-ink: #C4CAD3;
-    --m-dom-on: #0F161C;
-    --m-viz-1: #84BADA;
+    --m-dom-on: #0F1420;
+    --m-viz-1: #7FA8FF;
     --m-viz-2: #6CC594;
     --m-viz-3: #D3B466;
     --m-viz-4: #72B7C6;
@@ -324,7 +324,7 @@
     --m-viz-8: #A2C27C;
     --m-viz-9: #81AEDA;
     --m-viz-10: #C99BD1;
-    --m-viz-1-fill: rgb(132 186 218 / 0.15);
+    --m-viz-1-fill: rgb(127 168 255 / 0.15);
     --m-viz-2-fill: rgb(108 197 148 / 0.15);
     --m-viz-3-fill: rgb(211 180 102 / 0.15);
     --m-viz-4-fill: rgb(114 183 198 / 0.15);
@@ -334,12 +334,12 @@
     --m-viz-8-fill: rgb(162 194 124 / 0.15);
     --m-viz-9-fill: rgb(129 174 218 / 0.15);
     --m-viz-10-fill: rgb(201 155 209 / 0.15);
-    --m-viz-area: rgb(132 186 218 / 0.14);
-    --m-viz-tooltip-bg: #E6EDF2;
-    --m-viz-tooltip-ink: #0F161C;
-    --m-seq-1: #182633; --m-seq-2: #22384A; --m-seq-3: #2F5570; --m-seq-4: #84BADA; --m-seq-5: #C9E2F0;
-    --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #1D2935; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
-    --m-grad-fade-bottom: linear-gradient(180deg, rgb(22 32 42 / 0) 0%, var(--m-sheet) 100%);
+    --m-viz-area: rgb(127 168 255 / 0.14);
+    --m-viz-tooltip-bg: #E8ECF3;
+    --m-viz-tooltip-ink: #0F1420;
+    --m-seq-1: #182036; --m-seq-2: #22304F; --m-seq-3: #2F4A80; --m-seq-4: #7FA8FF; --m-seq-5: #C7D9FF;
+    --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #1F2635; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
+    --m-grad-fade-bottom: linear-gradient(180deg, rgb(23 29 43 / 0) 0%, var(--m-sheet) 100%);
     --m-elev-card: none;
   --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
     --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
@@ -460,7 +460,7 @@
 
 /* ---------- Presentation: `?present=1` fills a boardroom screen; type and the hero step up one size. ---------- */
 [data-present="1"] {
-  --m-text-hero: 88px;        --m-leading-hero: 88px;
+  --m-text-hero: 120px;       --m-leading-hero: 108px;
   --m-text-stat: 34px;        --m-leading-stat: 40px;
   --m-text-verdict-num: 56px; --m-leading-verdict-num: 60px;
   --m-text-title: 24px;       --m-leading-title: 30px;
@@ -473,7 +473,6 @@
   --m-section-gap: var(--m-space-6);
   --m-page-pad: var(--m-space-10);
   --m-page-max: 1800px;
-  --m-margin-w: 340px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -649,18 +648,6 @@
    verdict into a word-per-line column beside a wide score. */
 .m-hero-lead { display: flex; flex-wrap: wrap; align-items: flex-end; column-gap: var(--m-space-8); row-gap: var(--m-space-4); min-width: 0; }
 .m-hero-verdict { display: flex; flex-direction: column; gap: var(--m-space-1); flex: 1 1 18rem; min-width: 0; max-width: 48ch; }
-/* ---------- The Datum: one meridian line between the figures and their margin ---------- */
-.m-datum { display: grid; gap: var(--m-space-6); align-items: start; }
-.m-datum-margin { position: relative; border-left: 1px solid var(--m-line-strong); padding-left: var(--m-space-5); }
-.m-datum-margin::before { content: ""; position: absolute; left: -2px; top: 0; width: 3px; height: 28px; background: var(--m-accent); }
-@container (min-width: 64rem) {
-  .m-datum[data-margin="true"] { grid-template-columns: minmax(0, 1fr) var(--m-margin-w); gap: var(--m-space-8); }
-  .m-datum-margin { order: 1; min-height: 100%; }
-}
-.m-margin { position: sticky; top: var(--m-space-4); display: flex; flex-direction: column; gap: var(--m-space-5); }
-.m-margin-note { display: flex; flex-direction: column; gap: var(--m-space-1); }
-.m-margin-label { display: inline-flex; align-items: center; gap: var(--m-space-2); font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 500; color: var(--m-ink-3); }
-.m-margin-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 /* The home hero's four sentences sit under the verdict, behind one hairline, with no sheet of their own. */
 .m-hero-cells { border-top: 1px solid var(--m-line); padding-top: var(--m-space-4); margin-top: var(--m-space-2); }
 /* Journey: four stations on one rail. A done station is filled in the pass hue, the current one ringed in the accent. */

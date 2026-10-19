@@ -1,9 +1,9 @@
 {
-  "accent": "#336F96",
-  "accentDark": "#84BADA",
-  "canvas": "#F5F7F8",
-  "canvasDark": "#0F161C",
-  "ink": "#26394B",
-  "inkDark": "#E6EDF2",
-  "ink2": "#3E5468"
+  "accent": "#2563EB",
+  "accentDark": "#7FA8FF",
+  "canvas": "#F4F6F8",
+  "canvasDark": "#0F1420",
+  "ink": "#1A2233",
+  "inkDark": "#E8ECF3",
+  "ink2": "#3F4A5C"
 }

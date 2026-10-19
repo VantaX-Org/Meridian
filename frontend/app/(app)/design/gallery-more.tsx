@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, Card, DataTable, Datum, Dialog, Drawer, EmptyState, ErrorState, Field, Heatmap, ICONS, InsightHeader, Input, Line, Margin, Notice, PageHeader, Radar, Rule, Score, Select, Sparkline, Tabs, Waterfall,
+  Bar, Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Heatmap, ICONS, InsightHeader, Input, Line, Notice, PageHeader, Radar, Rule, Score, Select, Sparkline, Tabs, Waterfall,
   type ChartPoint } from "@/design";
 
 const SERIES: ChartPoint[] = [
@@ -49,18 +49,6 @@ export function GalleryMore() {
             <Score size="sm" value={55.1} />
             <Score size="sm" value={95} />
           </div>
-        </div>
-      </Card>
-      <Card title="The Datum and the margin" meta="Figures left, meaning right, one meridian between them" padding="sm">
-        <div className="@container">
-          <Datum margin={<Margin
-            situation={{ sentence: "Quality is at 72, with 2,661 findings across 343,209 records.", tone: "at-risk", href: "#" }}
-            changed={{ sentence: "Up 1.2 points since the last run." , tone: "go" }}
-            why={{ sentence: "163 critical findings are capping the score and could stop go-live.", tone: "no-go" }}
-            next={{ sentence: "Start with Employee central: 376 findings, 27 of them critical.", action: { label: "Open object" } }}
-          />}>
-            <Card title="Figures"><Line data={SERIES} height={120} label="Line" /></Card>
-          </Datum>
         </div>
       </Card>
       <Card title="Page header" padding="sm">

@@ -10,7 +10,6 @@ import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { Async, type AsyncState } from "../primitives/Async";
 import { PageFrame } from "./PageFrame";
 import { JourneyStepper } from "./JourneyStepper";
-import { Datum } from "./Datum";
 import type { DayOneStep } from "../../hooks/use-day-one";
 
 /** Situation sentence for a fresh install. */
@@ -97,7 +96,7 @@ export function HomePage({
   headerActions?: ReactNode;
   /** First-run tour offer and setup checklist (components/help/home-onboarding.tsx); shown once the page has loaded. */
   onboarding?: ReactNode;
-  /** The four sentences (situation, what changed, why, do next): the page's margin, beside the figures. */
+  /** The four sentences (situation, what changed, why, do next), set under the hero. */
   cells?: ReactNode;
 }) {
   const header = (
@@ -111,7 +110,6 @@ export function HomePage({
   return (
     <PageFrame gap={4}>
       {header}
-      <Datum margin={state === "loading" || state === "error" ? undefined : cells}>
       <div className="flex flex-col" style={{ gap: "var(--m-space-4)" }}>
 
       {/* Loading and error go through Async; empty (the journey) and ready are this template's own geometry. */}
@@ -161,6 +159,7 @@ export function HomePage({
           </div>
         </section>
       )}
+      {state === "ready" && cells}
       {state === "ready" && onboarding}
 
       {state === "ready" && (trend || dimensions) && (
@@ -178,7 +177,6 @@ export function HomePage({
       )}
       {lists}
       </div>
-      </Datum>
     </PageFrame>
   );
 }

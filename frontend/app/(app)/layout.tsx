@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Breadcrumb, Button, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart } from "@/design";
+import { Breadcrumb, Button, JobTray, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart } from "@/design";
 import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
@@ -117,22 +117,20 @@ function Chrome({ children }: { children: ReactNode }) {
   const present = useSearchParams().get("present") === "1";
   if (present) return <Presentation>{children}</Presentation>;
   return (
-      <div className="flex h-screen m-print-flow">
-        <Suspense fallback={<div className="[width:240px]" />}>
-          <Rail />
-        </Suspense>
-        <div className="flex flex-col flex-1 overflow-hidden m-print-flow">
-          <JobProgressBar />
-          <TopBar
+      <div className="flex h-screen flex-col m-print-flow">
+        <JobProgressBar />
+        <Suspense fallback={<div className="[height:var(--m-topbar-h)]" />}>
+          <Rail
             commandPalette={<CommandPaletteSlot />}
             helpMenu={<HelpSlot />}
-            notifications={<NotificationBell />}
-            userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
+            notifications={<><JobTray /><NotificationBell /></>}
+            userMenu={<UserMenu />}
           />
-          <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
-            <RootPageFrame>{children}</RootPageFrame>
-          </main>
-        </div>
+        </Suspense>
+        <TopBar trailing={<ScopedPill />} />
+        <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
+          <RootPageFrame>{children}</RootPageFrame>
+        </main>
       </div>
   );
 }

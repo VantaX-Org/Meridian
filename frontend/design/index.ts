@@ -64,6 +64,7 @@ export * from "./charts/Legend";
 export * from "./charts/HoverBar";
 export * from "./charts/Funnel";
 export * from "./charts/Pareto";
+export * from "./charts/ObjectMap";
 
 export * from "./templates/HomePage";
 export * from "./templates/JourneyStepper";
@@ -72,8 +73,6 @@ export * from "./templates/RecordPage";
 export * from "./templates/ReportPage";
 export * from "./templates/FindingDrawer";
 export * from "./templates/InsightHeader";
-export * from "./templates/Margin";
-export * from "./templates/Datum";
 export * from "./templates/NextActions";
 export * from "./templates/EntityTabs";
 

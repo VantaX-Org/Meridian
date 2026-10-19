@@ -245,6 +245,46 @@
 
   .m-card-flush { padding: 0; overflow: hidden; }
 
+  /* ---------- The index bar (design/shell/Rail.tsx) and the scope bar (TopBar.tsx) ---------- */
+  .m-topnav { display: flex; align-items: center; gap: var(--m-space-5); height: var(--m-topbar-h); padding: 0 var(--m-space-6); background: var(--m-rail); border-bottom: 1px solid var(--m-rail-edge); flex-shrink: 0; }
+  .m-topnav-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: var(--m-text-section); line-height: var(--m-leading-section); color: var(--m-ink); text-decoration: none; }
+  .m-topnav-nav { min-width: 0; flex: 1; overflow-x: auto; scrollbar-width: none; }
+  .m-topnav-list { display: flex; align-items: center; gap: 2px; margin: 0; padding: 4px; list-style: none; background: var(--m-sheet-raised); border-radius: var(--m-radius-pill); width: max-content; }
+  .m-topnav-link { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--m-radius-pill); color: var(--m-ink-2); font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 600; text-decoration: none; white-space: nowrap; border: 0; background: transparent; cursor: pointer; }
+  .m-topnav-link:hover { color: var(--m-ink); }
+  .m-topnav-link[aria-current="page"], .m-topnav-link[data-active="true"] { background: var(--m-sheet); color: var(--m-ink); box-shadow: var(--m-elev-card); }
+  .m-topnav-link:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
+  .m-topnav-right { display: flex; align-items: center; gap: var(--m-space-2); margin-left: auto; white-space: nowrap; }
+  .m-topnav-more { position: absolute; top: calc(100% + 8px); left: 0; z-index: 50; min-width: 600px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m-space-4); padding: var(--m-space-4); background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); }
+  .m-topnav-group { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .m-topnav-group-label { font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; color: var(--m-ink-3); padding: 4px 8px; }
+  .m-topnav-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--m-radius-control); color: var(--m-ink-2); font-size: var(--m-text-body); font-weight: 500; text-decoration: none; min-width: 0; }
+  .m-topnav-item:hover { background: var(--m-sheet-raised); color: var(--m-ink); }
+  .m-topnav-item[aria-current="page"] { background: var(--m-accent-soft); color: var(--m-accent-ink); }
+  .m-topnav-item:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
+  .m-scopebar { display: flex; align-items: center; gap: var(--m-space-3); min-height: var(--m-scopebar-h); padding: 0 var(--m-space-6); background: var(--m-canvas); border-bottom: 1px solid var(--m-line); flex-shrink: 0; }
+  .m-scopebar-trailing { display: flex; align-items: center; gap: var(--m-space-2); margin-left: auto; white-space: nowrap; }
+  /* Nothing to show (the h1 is screen-reader-only and the page published no crumb or scope): the bar takes no room. */
+  .m-scopebar:not(:has(nav a, nav [data-testid="crumb-scope"], nav h1:not(.sr-only), .m-scopebar-trailing > *)) { min-height: 0; height: 0; padding: 0; border: 0; }
+  @media (max-width: 1023px) {
+    .m-topnav { padding: 0 var(--m-space-4); gap: var(--m-space-3); }
+    .m-topnav-more { min-width: 0; width: calc(100vw - 32px); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .m-scopebar { padding: 0 var(--m-space-4); }
+  }
+
+  /* ---------- The object map (design/charts/ObjectMap.tsx): area is records, colour is verdict ---------- */
+  .m-omap { display: grid; grid-auto-flow: dense; gap: 4px; margin: 0; padding: 0; list-style: none; }
+  .m-omap-tile { display: flex; flex-direction: column; justify-content: space-between; height: 100%; padding: 8px 10px; border-radius: var(--m-radius-control); border: 1px solid var(--m-line); background: var(--m-sheet-raised); color: var(--m-ink); text-decoration: none; min-width: 0; overflow: hidden; }
+  .m-omap-tile[data-verdict="no-go"] { background: var(--m-no-go-soft); border-color: var(--m-no-go); }
+  .m-omap-tile[data-verdict="at-risk"] { background: var(--m-at-risk-soft); border-color: var(--m-at-risk); }
+  .m-omap-tile[data-verdict="go"] { background: var(--m-go-soft); border-color: var(--m-go); }
+  .m-omap-tile[data-verdict="info"] { background: var(--m-info-soft); border-color: var(--m-info); }
+  a.m-omap-tile:hover { box-shadow: var(--m-elev-card); }
+  a.m-omap-tile:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
+  .m-omap-label { font-weight: 600; font-size: var(--m-text-body); line-height: var(--m-leading-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-omap-meta { font-size: var(--m-text-meta); line-height: var(--m-leading-meta); color: var(--m-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-omap-score { align-self: flex-end; font-weight: 700; line-height: 1; letter-spacing: var(--m-tracking-tight); }
+
   .m-page { width: 100%; margin-inline: auto; padding: var(--m-page-pad); max-width: var(--m-page-max); container-type: inline-size; }
   @media (max-width: 1023px) { .m-page { padding: var(--m-page-pad-sm); } }
   .m-reading { max-width: var(--m-page-max-reading); }
