@@ -56,3 +56,41 @@ def test_no_keys_concatenates_sideways():
     right = _frame(Y=[3, 4])
     out = _join_group(left, right, [])
     assert list(out.columns) == ["X", "Y"] and len(out) == 2
+
+
+# ── the memory guard: fail cleanly rather than be OOM-killed ───────────────────────────────────
+def test_the_guard_refuses_an_allocation_that_would_not_fit(monkeypatch):
+    """An OOM kill is SIGKILL: no finally, no close(), so SAP locks the user on dangling sessions."""
+    from sap.rfc import ExtractionMemoryError, require_memory
+
+    monkeypatch.setattr("sap.rfc.available_memory_bytes", lambda: 2 * 1024**3)  # 2 GB free
+    with pytest.raises(ExtractionMemoryError) as exc:
+        require_memory(10 * 1024**3, "storing MARC")
+    assert "lock the user" in str(exc.value)
+    assert "MARC" in str(exc.value)
+
+
+def test_the_guard_allows_an_allocation_that_fits(monkeypatch):
+    from sap.rfc import require_memory
+
+    monkeypatch.setattr("sap.rfc.available_memory_bytes", lambda: 20 * 1024**3)
+    require_memory(5 * 1024**3, "storing MARC")  # must not raise
+
+
+def test_the_guard_does_not_block_when_memory_is_unknown(monkeypatch):
+    """No /proc/meminfo (macOS, a stripped image): never block an extraction over it."""
+    from sap.rfc import require_memory
+
+    monkeypatch.setattr("sap.rfc.available_memory_bytes", lambda: None)
+    require_memory(10**18, "anything")  # must not raise
+
+
+def test_the_join_checks_memory_before_the_fallback_copy(monkeypatch):
+    """The fallback merge allocates a second whole frame - that check must come first."""
+    from sap.rfc import ExtractionMemoryError
+
+    monkeypatch.setattr("sap.rfc.available_memory_bytes", lambda: 1)  # nothing available
+    left = pd.DataFrame({"K": ["a", "b"], "X": [1, 2]})
+    right = pd.DataFrame({"K": ["b", "a"], "Y": [20, 10]})  # misaligned -> fallback path
+    with pytest.raises(ExtractionMemoryError):
+        _join_group(left, right, ["K"])

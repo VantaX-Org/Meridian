@@ -222,6 +222,11 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
             def store(table: str, df, entry: dict) -> None:
                 """One data table, straight to the bundle: the frame is dropped once uploaded."""
+                # Refuse a write that would risk an OOM kill: SIGKILL cannot be caught, so the
+                # SAP sessions would be left dangling and SAP would lock the user.
+                from sap.rfc import require_memory
+                require_memory(int(df.memory_usage(deep=True).sum()), f"storing {table}")
+
                 buf = io.BytesIO()
                 # arrow-backed strings, converted ONE COLUMN AT A TIME.
                 #

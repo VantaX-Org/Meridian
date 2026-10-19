@@ -70,6 +70,40 @@ def clear_logon_block(params) -> None:
     _LOGON_BLOCKED.pop(_logon_key(params), None)
 
 
+class ExtractionMemoryError(RuntimeError):
+    """Raised instead of letting the process be OOM-killed.
+
+    An OOM kill is SIGKILL: no `finally`, no `close()`. The RFC sessions are left dangling, and
+    SAP counts an uncleaned session against the user exactly as it counts a failed logon - which
+    is how the sandbox user was locked twice. Failing cleanly keeps the sessions closable, so the
+    account cannot be locked by running out of memory.
+    """
+
+
+def available_memory_bytes() -> int | None:
+    """MemAvailable from /proc/meminfo, or None where it cannot be read."""
+    try:
+        with open("/proc/meminfo", encoding="ascii") as f:
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
+def require_memory(needed: int, what: str, fraction: float = 0.55) -> None:
+    """Refuse an allocation that would risk an OOM kill, before making it."""
+    avail = available_memory_bytes()
+    if avail is None or needed <= avail * fraction:
+        return
+    raise ExtractionMemoryError(
+        f"{what} needs about {needed / 1e9:.1f} GB and only {avail / 1e9:.1f} GB is available "
+        f"(limit {int(fraction * 100)}%). Stopping before the allocation: an OOM kill cannot be "
+        f"caught, so it would leave the SAP sessions open and lock the user. Raise the worker's "
+        f"memory, or narrow the object's rules, and run again.")
+
+
 def _join_group(merged, part, keys: list[str]):
     """Add ``part``'s columns to ``merged`` without allocating a second whole frame.
 
@@ -93,6 +127,10 @@ def _join_group(merged, part, keys: list[str]):
                 if col not in merged.columns:
                     merged[col] = part[col].to_numpy()
             return merged
+    # The fallback allocates a second whole frame. Check before doing it rather than being killed
+    # mid-allocation, which would leave the SAP sessions dangling.
+    require_memory(int(merged.memory_usage(deep=True).sum()) + int(part.memory_usage(deep=True).sum()),
+                   "joining RFC field groups for a wide table")
     if keys:
         return merged.merge(part, on=keys, how="outer")
     return pd.concat([merged, part], axis=1)
