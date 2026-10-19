@@ -123,10 +123,17 @@ def _join_group(merged, part, keys: list[str]):
         except Exception:
             same = False
         if same:
+            # Build the combined frame in ONE allocation from the underlying arrays, which are
+            # views - no copy of the data. Assigning the columns one at a time
+            # (`merged[col] = part[col].to_numpy()`) instead makes pandas consolidate blocks on
+            # every assignment, copying the whole frame repeatedly: on MARC (18.3M rows, 98
+            # fields in groups) that is what pushed an 18 GB frame past 30 GB and got the worker
+            # OOM-killed, with the store() guard never reached because the crash came first.
+            data = {c: merged[c].to_numpy() for c in merged.columns}
             for col in part.columns:
-                if col not in merged.columns:
-                    merged[col] = part[col].to_numpy()
-            return merged
+                if col not in data:
+                    data[col] = part[col].to_numpy()
+            return pd.DataFrame(data, copy=False)
     # The fallback allocates a second whole frame. Check before doing it rather than being killed
     # mid-allocation, which would leave the SAP sessions dangling.
     require_memory(int(merged.memory_usage(deep=True).sum()) + int(part.memory_usage(deep=True).sum()),

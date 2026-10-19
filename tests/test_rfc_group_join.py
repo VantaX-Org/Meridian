@@ -94,3 +94,21 @@ def test_the_join_checks_memory_before_the_fallback_copy(monkeypatch):
     right = pd.DataFrame({"K": ["b", "a"], "Y": [20, 10]})  # misaligned -> fallback path
     with pytest.raises(ExtractionMemoryError):
         _join_group(left, right, ["K"])
+
+
+def test_the_aligned_path_does_not_copy_the_columns():
+    """The joined frame must share its data with the inputs, not copy it.
+
+    Assigning columns one at a time into `merged` makes pandas consolidate blocks on each
+    assignment, copying the whole frame repeatedly. On MARC (18.3M rows) that is what pushed an
+    18 GB frame past a 30 GB box. Views keep the peak at roughly one frame.
+    """
+    import numpy as np
+
+    keys = ["K"]
+    left = pd.DataFrame({"K": ["a", "b"], "X": [1, 2]})
+    right = pd.DataFrame({"K": ["a", "b"], "Y": [3, 4]})
+    out = _join_group(left, right, keys)
+    assert out["X"].to_numpy().base is not None or np.shares_memory(out["X"].to_numpy(),
+                                                                   left["X"].to_numpy()), \
+        "the joined column should be a view of the input, not a copy"
