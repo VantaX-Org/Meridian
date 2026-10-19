@@ -57,6 +57,9 @@
   --m-low: #5A6578;             --m-low-soft: #EEF1F5;        --m-low-ink: #46505F;        --m-low-on: #FFFFFF;
   --m-pass: #1B7544;            --m-pass-soft: #E7F7EE;       --m-pass-ink: #15603A;       --m-pass-on: #FFFFFF;
   --m-info: #2563EB;            --m-info-soft: #E8F1FF;       --m-info-ink: #1B4FD6;       --m-info-on: #FFFFFF;
+  /* Fills: the vivid version of each hue for rulers, bars, rings and chart marks (never text). */
+  --m-critical-fill: #E5484D;   --m-high-fill: #F97316;       --m-medium-fill: #F5A524;    --m-low-fill: #8B95A5;
+  --m-pass-fill: #22A06B;       --m-info-fill: #3B82F6;
 
   /* Readiness verdicts reuse the status scale */
   --m-go: var(--m-pass);        --m-go-soft: var(--m-pass-soft);        --m-go-ink: var(--m-pass-ink);        --m-go-on: var(--m-pass-on);
@@ -117,6 +120,7 @@
   /* ---------- Gradients: flat everywhere. The only ramps are functional (fade, count settle). ---------- */
   --m-grad-fade-bottom: linear-gradient(180deg, rgb(255 255 255 / 0) 0%, var(--m-sheet) 100%);
   --m-grad-count-settle: linear-gradient(90deg, var(--m-accent-soft) 0%, transparent 100%);
+  --m-grad-hero: radial-gradient(120% 90% at 100% 0%, rgb(37 99 235 / 0.09) 0%, rgb(37 99 235 / 0) 60%);
 
   /* ---------- Type ---------- */
   --m-font-ui: var(--font-ui, "Manrope", system-ui, sans-serif);
@@ -126,7 +130,7 @@
   --m-text-hero: 96px;      --m-leading-hero: 88px;      /* the score: a plain large number */
   --m-text-verdict: 22px;   --m-leading-verdict: 30px;   /* verdict sentence */
   --m-text-verdict-num: 40px; --m-leading-verdict-num: 44px; /* verdict number */
-  --m-text-title: 22px;     --m-leading-title: 28px;     /* page title, auth h1, record key */
+  --m-text-title: 28px;     --m-leading-title: 34px;     /* page title, auth h1, record key */
   --m-text-stat: 26px;      --m-leading-stat: 32px;      /* KPI value */
   --m-text-section: 15px;   --m-leading-section: 22px;   /* h2, drawer title */
   --m-text-body: 14px;      --m-leading-body: 20px;
@@ -229,6 +233,7 @@
   --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #0F1420;
   --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F1420;
   --m-info: #7FA2F3; --m-info-soft: #1C2A4A; --m-info-ink: #AFC4F8; --m-info-on: #0F1420;
+  --m-critical-fill: #FF6B6B; --m-high-fill: #FB923C; --m-medium-fill: #FBBF24; --m-low-fill: #6B7A8F; --m-pass-fill: #34D399; --m-info-fill: #60A5FA;
   --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
   --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
   --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
@@ -265,6 +270,7 @@
   --m-seq-1: #182036; --m-seq-2: #22304F; --m-seq-3: #2F4A80; --m-seq-4: #7FA8FF; --m-seq-5: #C7D9FF;
   --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #1F2635; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
   --m-grad-fade-bottom: linear-gradient(180deg, rgb(23 29 43 / 0) 0%, var(--m-sheet) 100%);
+  --m-grad-hero: radial-gradient(120% 90% at 100% 0%, rgb(127 168 255 / 0.14) 0%, rgb(127 168 255 / 0) 60%);
   --m-elev-card: none;
   --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
   --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
@@ -304,6 +310,7 @@
     --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #0F1420;
     --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F1420;
     --m-info: #7FA2F3; --m-info-soft: #1C2A4A; --m-info-ink: #AFC4F8; --m-info-on: #0F1420;
+  --m-critical-fill: #FF6B6B; --m-high-fill: #FB923C; --m-medium-fill: #FBBF24; --m-low-fill: #6B7A8F; --m-pass-fill: #34D399; --m-info-fill: #60A5FA;
     --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
     --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
     --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
@@ -340,6 +347,7 @@
     --m-seq-1: #182036; --m-seq-2: #22304F; --m-seq-3: #2F4A80; --m-seq-4: #7FA8FF; --m-seq-5: #C7D9FF;
     --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #1F2635; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
     --m-grad-fade-bottom: linear-gradient(180deg, rgb(23 29 43 / 0) 0%, var(--m-sheet) 100%);
+  --m-grad-hero: radial-gradient(120% 90% at 100% 0%, rgb(127 168 255 / 0.14) 0%, rgb(127 168 255 / 0) 60%);
     --m-elev-card: none;
   --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
     --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
@@ -499,7 +507,7 @@
 
 /* ---------- Colour-pass utilities (hero, depth, tone, domain, heat) ---------- */
 /* The score sheet: a white card like any other, a plain large number and one horizontal bar. */
-.m-hero { position: relative; color: var(--m-ink); padding: var(--m-hero-pad); background-color: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); box-shadow: var(--m-elev-card); }
+.m-hero { position: relative; color: var(--m-ink); padding: var(--m-hero-pad); background-color: var(--m-sheet); background-image: var(--m-grad-hero); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); box-shadow: var(--m-elev-card); }
 .m-brand-panel { position: relative; color: var(--m-ink); padding: 48px; background-color: var(--m-sheet); border-right: 1px solid var(--m-line); }
 .m-ghost-bg { background-color: transparent; border: 1px dashed var(--m-line); border-radius: var(--m-radius-sheet); }
 .m-meridian-line { position: relative; height: 1px; background: var(--m-line); }
@@ -519,20 +527,20 @@
 .m-pulse-once { fill: var(--m-glow-critical-fill); animation: m-pulse-once var(--m-motion-draw) var(--m-ease-out) 1 both; }
 
 /* Pill, solid variant: the row's primary verdict. */
-.m-pill-solid-go { background: var(--m-go); color: var(--m-go-on); }
-.m-pill-solid-at-risk { background: var(--m-at-risk); color: var(--m-at-risk-on); }
-.m-pill-solid-no-go { background: var(--m-no-go); color: var(--m-no-go-on); }
-.m-pill-solid-info { background: var(--m-info); color: var(--m-info-on); }
-.m-pill-solid-neutral { background: var(--m-low); color: var(--m-low-on); }
+.m-pill-solid-go { background: var(--m-go-soft); color: var(--m-go-ink); font-weight: 600; }
+.m-pill-solid-at-risk { background: var(--m-at-risk-soft); color: var(--m-at-risk-ink); font-weight: 600; }
+.m-pill-solid-no-go { background: var(--m-no-go-soft); color: var(--m-no-go-ink); font-weight: 600; }
+.m-pill-solid-info { background: var(--m-info-soft); color: var(--m-info-ink); font-weight: 600; }
+.m-pill-solid-neutral { background: var(--m-low-soft); color: var(--m-low-ink); font-weight: 600; }
 /* Pill, severity tones (Status kind="severity"): the severity hue's soft tint and ink; the SeverityDot carries the shape. */
 .m-pill-critical { background: var(--m-critical-soft); color: var(--m-critical-ink); }
 .m-pill-high { background: var(--m-high-soft); color: var(--m-high-ink); }
 .m-pill-medium { background: var(--m-medium-soft); color: var(--m-medium-ink); }
 .m-pill-low { background: var(--m-low-soft); color: var(--m-low-ink); }
-.m-pill-solid-critical { background: var(--m-critical); color: var(--m-critical-on); }
-.m-pill-solid-high { background: var(--m-high); color: var(--m-high-on); }
-.m-pill-solid-medium { background: var(--m-medium); color: var(--m-medium-on); }
-.m-pill-solid-low { background: var(--m-low); color: var(--m-low-on); }
+.m-pill-solid-critical { background: var(--m-critical-soft); color: var(--m-critical-ink); font-weight: 600; }
+.m-pill-solid-high { background: var(--m-high-soft); color: var(--m-high-ink); font-weight: 600; }
+.m-pill-solid-medium { background: var(--m-medium-soft); color: var(--m-medium-ink); font-weight: 600; }
+.m-pill-solid-low { background: var(--m-low-soft); color: var(--m-low-ink); font-weight: 600; }
 .m-badge-critical { background: var(--m-critical); color: var(--m-critical-on); }
 
 /* Delta chip */
@@ -586,20 +594,20 @@
 .m-stat-hero .m-stat-edge { display: none; }   /* the score bar carries the tone */
 
 /* DataTable severity bar: inset shadow on the first cell, no layout shift */
-.m-bar-fill[data-tone="pass"] { background: var(--m-pass); }
-.m-bar-fill[data-tone="medium"] { background: var(--m-medium); }
-.m-bar-fill[data-tone="high"] { background: var(--m-high); }
-.m-bar-fill[data-tone="critical"] { background: var(--m-critical); }
+.m-bar-fill[data-tone="pass"] { background: var(--m-pass-fill); }
+.m-bar-fill[data-tone="medium"] { background: var(--m-medium-fill); }
+.m-bar-fill[data-tone="high"] { background: var(--m-high-fill); }
+.m-bar-fill[data-tone="critical"] { background: var(--m-critical-fill); }
 .m-bar-fill[data-step="1"] { background: var(--m-seq-1); }
 .m-bar-fill[data-step="2"] { background: var(--m-seq-2); }
 .m-bar-fill[data-step="3"] { background: var(--m-seq-3); }
 .m-bar-fill[data-step="4"] { background: var(--m-seq-4); }
 .m-bar-fill[data-step="5"] { background: var(--m-seq-5); }
-.m-row-severity-critical > :first-child { box-shadow: inset 3px 0 0 var(--m-critical); }
-.m-row-severity-high > :first-child { box-shadow: inset 3px 0 0 var(--m-high); }
-.m-row-severity-medium > :first-child { box-shadow: inset 3px 0 0 var(--m-medium); }
-.m-row-severity-low > :first-child { box-shadow: inset 3px 0 0 var(--m-low); }
-.m-row-severity-pass > :first-child { box-shadow: inset 3px 0 0 var(--m-pass); }
+.m-row-severity-critical > :first-child { box-shadow: inset 3px 0 0 var(--m-critical-fill); }
+.m-row-severity-high > :first-child { box-shadow: inset 3px 0 0 var(--m-high-fill); }
+.m-row-severity-medium > :first-child { box-shadow: inset 3px 0 0 var(--m-medium-fill); }
+.m-row-severity-low > :first-child { box-shadow: inset 3px 0 0 var(--m-low-fill); }
+.m-row-severity-pass > :first-child { box-shadow: inset 3px 0 0 var(--m-pass-fill); }
 
 /* Heat cells: seq and div ramps with paired ink */
 .m-heat-seq-1 { background: var(--m-seq-1); color: var(--m-ink); }

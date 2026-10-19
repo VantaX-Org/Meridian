@@ -29,10 +29,10 @@ export const mColor = {
   vizArea: "var(--m-viz-area)",
   vizTooltipBg: "var(--m-viz-tooltip-bg)",
   vizTooltipInk: "var(--m-viz-tooltip-ink)",
-  critical: "var(--m-critical)",
-  high: "var(--m-high)",
-  medium: "var(--m-medium)",
-  pass: "var(--m-pass)",
+  critical: "var(--m-critical-fill)",
+  high: "var(--m-high-fill)",
+  medium: "var(--m-medium-fill)",
+  pass: "var(--m-pass-fill)",
   viz: [
     "var(--m-viz-1)",
     "var(--m-viz-2)",
@@ -214,7 +214,7 @@ export const severityColor: Record<Severity, string> = {
   critical: mColor.critical,
   high: mColor.high,
   medium: mColor.medium,
-  low: "var(--m-low)",
+  low: "var(--m-low-fill)",
   pass: mColor.pass,
 };
 

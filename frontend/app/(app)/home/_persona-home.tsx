@@ -340,7 +340,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       meta: `${records.toLocaleString()} records`,
     };
   });
-  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={44} /> : undefined;
+  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} /> : undefined;
 
   const heatRows = scored.slice(0, TABLE_ROWS);
   const heatCells = dimensionHeatmapCells(heatRows, merged, bands);
