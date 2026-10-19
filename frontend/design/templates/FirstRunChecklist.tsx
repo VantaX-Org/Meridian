@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Check } from "lucide-react";
 import { Button } from "../primitives/Button";
 import { Card } from "../primitives/Card";
+import { IconCheck } from "../icons";
 
 export interface ChecklistItem {
   id: string;
@@ -44,7 +44,7 @@ export function FirstRunChecklist({ items, onDismiss }: { items: ChecklistItem[]
                 boxShadow: `inset 0 0 0 1.5px ${item.done ? "var(--m-pass)" : "var(--m-line-strong)"}`,
               }}
             >
-              {item.done && <Check size={12} strokeWidth={3} />}
+              {item.done && <IconCheck size={12} strokeWidth={3} />}
             </span>
             <Link href={item.href} style={{ color: item.done ? "var(--m-ink-3)" : "var(--m-accent)" }}>
               {item.label}

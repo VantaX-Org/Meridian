@@ -2,8 +2,8 @@
 
 // frontend/design/primitives/AiSummary.tsx
 import type { ReactNode } from "react";
-import { Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
-import { IconButton } from "./IconButton";
+import { IconList } from "../icons";
+import { Button } from "./Button";
 import { Skeleton } from "./Skeleton";
 import { Mono } from "./Mono";
 
@@ -17,17 +17,18 @@ export interface AiSummaryProps {
   findingsCount?: number;
   runId?: string;
   loading?: boolean;
-  /** Thumbs are shown only when a handler is passed. */
+  /** Feedback buttons are shown only when a handler is passed. */
   onFeedback?: (vote: "up" | "down") => void;
 }
 
+/** A summary paragraph, labelled by its source. Model text reads like every other sentence on the page: no sparkle, no badge. */
 export function AiSummary({ text, llmOk, fallback, findingsCount, runId, loading, onFeedback }: AiSummaryProps) {
   const on = llmOk === true && !!text;
   return (
     <details open className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
       <summary className="inline-flex cursor-pointer items-center gap-2" style={{ color: on ? "var(--m-ink)" : "var(--m-ink-3)" }}>
-        <Sparkles size={14} aria-hidden />
-        <span>{on || loading ? "AI summary from deterministic findings" : "AI summary off — showing the deterministic summary"}</span>
+        <IconList size={14} />
+        <span>{on || loading ? "Summary, written by the model from the findings" : "Summary from the findings (the model is off)"}</span>
       </summary>
       <div className="mt-2">
         {loading ? (
@@ -39,15 +40,17 @@ export function AiSummary({ text, llmOk, fallback, findingsCount, runId, loading
           <p style={{ color: "var(--m-ink)" }}>{on ? text : fallback}</p>
         )}
         {on && !loading && (
-          <p className="mt-1 m-text-label" style={{ color: "var(--m-ink-3)" }}>
-            Generated from {findingsCount ?? 0} findings{runId ? <> in run <Mono>{runId}</Mono></> : null}. The model saw aggregates only.
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 m-text-label" style={{ color: "var(--m-ink-3)" }}>
+            <span>
+              Written from {findingsCount ?? 0} findings{runId ? <> in run <Mono>{runId}</Mono></> : null}. The model saw aggregates only.
+            </span>
             {onFeedback && (
-              <span className="ml-2 inline-flex gap-1">
-                <IconButton aria-label="Helpful" onClick={() => onFeedback("up")}><ThumbsUp size={14} aria-hidden /></IconButton>
-                <IconButton aria-label="Not helpful" onClick={() => onFeedback("down")}><ThumbsDown size={14} aria-hidden /></IconButton>
+              <span className="inline-flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => onFeedback("up")}>Helpful</Button>
+                <Button variant="ghost" size="sm" onClick={() => onFeedback("down")}>Not helpful</Button>
               </span>
             )}
-          </p>
+          </div>
         )}
       </div>
     </details>

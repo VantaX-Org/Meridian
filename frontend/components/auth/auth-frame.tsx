@@ -6,9 +6,8 @@
  */
 
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
-import { Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { MeridianMark } from "@/components/meridian/icons";
+import { IconEye, IconEyeOff, MeridianMark } from "@/design";
 
 export const authFormClass = "flex flex-col gap-4";
 export const authLinkClass = "m-text-body m-ink-accent hover:underline";
@@ -99,7 +98,7 @@ export function PasswordField({ label, value, onChange, autoComplete, helper, er
           onClick={() => setShow((v) => !v)}
           className="m-motion-colors absolute right-1 top-1 inline-flex size-6 items-center justify-center hover:[background:var(--m-sheet-raised)]"
           style={{ color: "var(--m-ink-2)", borderRadius: "var(--m-radius-control)" }}>
-          {show ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
+          {show ? <IconEyeOff size={16} /> : <IconEye size={16} />}
         </button>
       </div>
       {error ? <p id={noteId} className="m-field-error">{error}</p>

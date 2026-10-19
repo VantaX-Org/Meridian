@@ -6,8 +6,7 @@ import {
   type Edge, type Node, type NodeChange,
 } from "@xyflow/react";
 import { useMemo, useState, type KeyboardEvent } from "react";
-import { LayoutGrid, Plus, Trash2 } from "lucide-react";
-import { Button, IconButton } from "@/design";
+import { Button, IconButton, IconGrid, IconPlus, IconTrash } from "@/design";
 import type { DomainKey } from "@/design/tokens";
 import type { ActivityOverlay, L4, NodeType } from "@/types/process-model";
 import { layoutDiagram, SIZE } from "./layout";
@@ -109,13 +108,13 @@ function CanvasInner(p: CanvasProps) {
   return (
     <div className="m-designer__canvas-wrap" onKeyDown={onKeyDown}>
       {p.canDesign !== false ? <div className="flex flex-wrap items-center gap-2 mb-2" role="toolbar" aria-label="Diagram tools">
-        <Button variant="secondary" onClick={guard(() => p.onAdd("task"))}><Plus size={14} aria-hidden /> Add activity</Button>
+        <Button variant="secondary" onClick={guard(() => p.onAdd("task"))}><IconPlus size={14} /> Add activity</Button>
         <Button variant="secondary" onClick={guard(() => p.onAdd("exclusiveGateway"))}>Add gateway</Button>
         <Button variant="secondary" onClick={guard(() => p.onAdd("endEvent"))}>Add event</Button>
-        <Button variant="secondary" onClick={guard(p.onLayout)}><LayoutGrid size={14} aria-hidden /> Auto-layout</Button>
+        <Button variant="secondary" onClick={guard(p.onLayout)}><IconGrid size={14} /> Auto-layout</Button>
         <Button variant={connectMode ? "primary" : "secondary"} aria-pressed={connectMode}
           onClick={() => (p.editable ? setConnectMode((v) => !v) : p.onBlocked())}>Connect mode</Button>
-        <IconButton aria-label="Delete selected" disabled={!selNode && !selFlow} onClick={remove}><Trash2 size={16} aria-hidden /></IconButton>
+        <IconButton aria-label="Delete selected" disabled={!selNode && !selFlow} onClick={remove}><IconTrash size={16} /></IconButton>
         {askDelete ? (
           <span className="inline-flex items-center gap-2 m-text-body m-ink-2" role="alertdialog" aria-label="Delete activity">
             Also delete the activity?

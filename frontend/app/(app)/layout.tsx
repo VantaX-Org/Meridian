@@ -4,13 +4,12 @@ import type { ReactNode } from "react";
 import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Breadcrumb, Button, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill } from "@/design";
+import { Breadcrumb, Button, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart } from "@/design";
 import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
 import { useJobs } from "@/hooks/use-jobs";
 import { VIEWS } from "@/app/(app)/insights/_components/InsightViews";
-import { BarChart3 } from "lucide-react";
 import { usePreferencesSync } from "@/hooks/use-preferences";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
@@ -43,7 +42,7 @@ function CommandPaletteSlot() {
   const insightsGroup = groups.find((g) => g.items.some((i) => i.href === "/insights"))?.group;
   const viewTabs = insightsGroup
     ? VIEWS.flatMap((v) => v.tabs.filter(([href]) => href.startsWith("/insights") && !seen.has(href)).map(([href, label]) => ({
-        label: `${v.label}: ${label}`, href, group: insightsGroup, icon: <BarChart3 size={16} aria-hidden />, shortcut: undefined,
+        label: `${v.label}: ${label}`, href, group: insightsGroup, icon: <IconChart size={16} />, shortcut: undefined,
       })))
     : [];
   const items = [...navItems, ...viewTabs];

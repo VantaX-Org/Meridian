@@ -2,8 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
-import { Button, DataTable, EmptyState, IconButton } from "@/design";
+import { Button, DataTable, EmptyState, IconButton, IconArrowDown, IconArrowUp } from "@/design";
 import type { DqColour } from "@/types/process-model";
 import { activitiesUnder, childrenOf, type Doc, type Level, type TreeItem } from "./doc";
 import type { TreeActions } from "./tree";
@@ -46,8 +45,8 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
       const r = row.original;
       return (
         <span className="inline-flex items-center gap-1">
-          <IconButton size="sm" disabled={r.index === 0} aria-label={`Move ${r.item.name} up`} onClick={() => guard(() => actions.move(r.item.id, -1))}><ArrowUp size={14} aria-hidden /></IconButton>
-          <IconButton size="sm" disabled={r.index === r.count - 1} aria-label={`Move ${r.item.name} down`} onClick={() => guard(() => actions.move(r.item.id, 1))}><ArrowDown size={14} aria-hidden /></IconButton>
+          <IconButton size="sm" disabled={r.index === 0} aria-label={`Move ${r.item.name} up`} onClick={() => guard(() => actions.move(r.item.id, -1))}><IconArrowUp size={14} /></IconButton>
+          <IconButton size="sm" disabled={r.index === r.count - 1} aria-label={`Move ${r.item.name} down`} onClick={() => guard(() => actions.move(r.item.id, 1))}><IconArrowDown size={14} /></IconButton>
         </span>
       );
     } },

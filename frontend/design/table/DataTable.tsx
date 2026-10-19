@@ -12,7 +12,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { QueryKey } from "@tanstack/react-query";
 import { Popover } from "@base-ui/react/popover";
@@ -41,6 +40,7 @@ export function heatClass(mode: "seq" | "div", value: unknown, range: readonly [
   return mode === "seq" ? `m-heat-seq-${step}` : `m-heat-div-${DIV_STEPS[step - 1]}`;
 }
 import { canBulkEdit, usePermissionsContext } from "../../lib/permissions";
+import { IconArrowDown, IconArrowUp, IconChevronRight } from "../icons";
 
 export interface DataTableProps<T> {
   columns: ColumnDef<T>[];
@@ -204,7 +204,7 @@ export function DataTable<T>({
         aria-expanded={!!expanded[row.id]}
         onClick={(e) => { e.stopPropagation(); setExpanded((x) => ({ ...x, [row.id]: !x[row.id] })); }}
       >
-        <ChevronRight size={16} aria-hidden style={{ transform: expanded[row.id] ? "rotate(90deg)" : undefined }} className="m-motion-colors" />
+        <IconChevronRight size={16} style={{ transform: expanded[row.id] ? "rotate(90deg)" : undefined }} className="m-motion-colors" />
       </button>
     ),
     enableSorting: false,
@@ -425,7 +425,7 @@ export function DataTable<T>({
                           className="flex items-center gap-1 select-none"
                         >
                           {flexRender(h.column.columnDef.header, h.getContext())}
-                          {sorted === "asc" ? <ArrowUp size={12} aria-hidden /> : sorted === "desc" ? <ArrowDown size={12} aria-hidden /> : null}
+                          {sorted === "asc" ? <IconArrowUp size={12} /> : sorted === "desc" ? <IconArrowDown size={12} /> : null}
                           {headHeat && <span aria-hidden className={`m-legend-strip m-legend-strip-${headHeat} ml-1`} />}
                         </button>
                       ) : (

@@ -1,5 +1,7 @@
 // frontend/design/index.ts
 export * from "./tokens";
+export * from "./icons";
+export * from "./icons/Mark";
 
 export * from "./primitives/Button";
 export * from "./primitives/IconButton";

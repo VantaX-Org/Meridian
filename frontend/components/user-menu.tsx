@@ -2,16 +2,14 @@
 
 import { Menu } from "@base-ui/react/menu";
 import Link from "next/link";
-import { Check, LogOut, Settings } from "lucide-react";
-import { Mono, Pill } from "@/design";
+import { Mono, Pill, IconCheck, IconGear, IconLogOut, IconMonitor, IconMoon, IconSun, type Icon } from "@/design";
 import { useAuth } from "@/context/auth-context";
-import { Monitor, Moon, Sun } from "lucide-react";
 import { useAuroraPrefs, type Theme } from "@/hooks/use-theme";
 
-const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "system", label: "System", icon: Monitor },
-  { value: "dark", label: "Dark", icon: Moon },
+const THEMES: { value: Theme; label: string; icon: Icon }[] = [
+  { value: "light", label: "Light", icon: IconSun },
+  { value: "system", label: "System", icon: IconMonitor },
+  { value: "dark", label: "Dark", icon: IconMoon },
 ];
 
 function initials(name: string, email: string): string {
@@ -55,7 +53,7 @@ export function UserMenu() {
                 >
                   <Icon size={14} aria-hidden style={{ color: "var(--m-ink-3)" }} />
                   <span className="flex-1">{label}</span>
-                  <Menu.RadioItemIndicator><Check size={14} aria-hidden style={{ color: "var(--m-accent)" }} /></Menu.RadioItemIndicator>
+                  <Menu.RadioItemIndicator><IconCheck size={14} style={{ color: "var(--m-accent)" }} /></Menu.RadioItemIndicator>
                 </Menu.RadioItem>
               ))}
             </Menu.RadioGroup>
@@ -65,7 +63,7 @@ export function UserMenu() {
               className="m-motion-colors flex cursor-pointer items-center gap-2 px-3 m-text-body data-[highlighted]:bg-[var(--m-sheet-raised)]"
               style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-control)" }}
             >
-              <Settings size={14} aria-hidden style={{ color: "var(--m-ink-3)" }} />
+              <IconGear size={14} style={{ color: "var(--m-ink-3)" }} />
               Preferences
             </Menu.Item>
             <Menu.Item
@@ -73,7 +71,7 @@ export function UserMenu() {
               className="m-motion-colors flex cursor-pointer items-center gap-2 px-3 m-text-body data-[highlighted]:bg-[var(--m-sheet-raised)]"
               style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-control)" }}
             >
-              <LogOut size={14} aria-hidden style={{ color: "var(--m-ink-3)" }} />
+              <IconLogOut size={14} style={{ color: "var(--m-ink-3)" }} />
               Sign out
             </Menu.Item>
           </Menu.Popup>

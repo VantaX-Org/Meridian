@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Heatmap, InsightHeader, Input, Line, Notice, PageHeader, Radar, Select, Sparkline, Tabs, Waterfall,
+  Bar, Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Heatmap, ICONS, InsightHeader, Input, Line, Notice, PageHeader, Radar, Select, Sparkline, Tabs, Waterfall,
   type ChartPoint } from "@/design";
 
 const SERIES: ChartPoint[] = [
@@ -29,6 +29,16 @@ export function GalleryMore() {
   const [drawer, setDrawer] = useState(false);
   return (
     <>
+      <Card title="Icons" meta={`${Object.keys(ICONS).length} glyphs on one 24 grid, one 1.6 stroke, currentColor`} padding="sm">
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-1">
+          {Object.entries(ICONS).map(([name, Icon]) => (
+            <li key={name} className="m-ink-2 flex flex-col items-center gap-1.5 py-3">
+              <Icon size={20} />
+              <span className="m-text-micro m-ink-3">{name}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
       <Card title="Page header" padding="sm">
         <PageHeader title="Page title" meta="One line of context" actions={<Button variant="secondary">Action</Button>} />
       </Card>

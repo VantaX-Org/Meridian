@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Check } from "lucide-react";
 import { Button } from "../primitives/Button";
 import { useJobs } from "../../hooks/use-jobs";
 import type { DayOneStep } from "../../hooks/use-day-one";
+import { IconCheck } from "../icons";
 
 interface Step {
   label: string;
@@ -71,7 +71,7 @@ export function JourneyStepper({
                   color: isDone ? "var(--m-pass-on)" : isCurrent ? "var(--m-accent)" : "var(--m-ink-3)",
                 }}
               >
-                {isDone ? <Check size={14} /> : i + 1}
+                {isDone ? <IconCheck size={14} /> : i + 1}
               </span>
               <span className="m-text-meta" style={{ color: isCurrent ? "var(--m-ink)" : "var(--m-ink-3)" }}>
                 {s.label}
