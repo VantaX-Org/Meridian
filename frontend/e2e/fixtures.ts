@@ -28,7 +28,7 @@ import { mockRoutes18c } from "./fixtures/mocks-18c";
 
 export const HAR = path.join(__dirname, "fixtures", "api.har.gz");
 /** The instant the HAR was recorded; Date.now() in the page returns this. */
-export const RECORDED_AT = new Date("2026-10-17T05:37:59.666Z");
+export const RECORDED_AT = new Date("2026-10-19T04:21:43.777Z");
 export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string; mocked?: boolean; knownBad?: string[] }> = routes;
 
 /** Ids as in the recording. */
