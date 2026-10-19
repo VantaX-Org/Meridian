@@ -239,7 +239,7 @@
   .m-skip-link { position: fixed; left: -9999px; top: var(--m-space-2); z-index: 100; display: inline-flex; align-items: center; height: var(--m-control-h); padding: 0 var(--m-space-3); border-radius: var(--m-radius-control); background: var(--m-accent); color: var(--m-ink-on-accent); font-size: var(--m-text-body); font-weight: 500; text-decoration: none; }
   .m-skip-link:focus { left: var(--m-space-2); outline: none; box-shadow: var(--m-elev-focus); }
 
-  .m-card { background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); padding: var(--m-card-pad); }
+  .m-card { background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); padding: var(--m-card-pad); box-shadow: var(--m-elev-card); }
   .m-card-sm { padding: var(--m-card-pad-sm); }
   .m-card-lg { padding: var(--m-card-pad-lg); }
 
