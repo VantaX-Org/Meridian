@@ -27,8 +27,8 @@ ENV SAPNWRFC_HOME=/opt/nwrfcsdk
 ENV LD_LIBRARY_PATH=/opt/nwrfcsdk/lib:${LD_LIBRARY_PATH}
 
 # Install Python dependencies first (layer cache)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.txt -c requirements.lock \
     && if [ "$INSTALL_PYRFC" = "true" ]; then pip install --no-cache-dir "pyrfc>=3.1.0"; fi
 
 # Copy application source
