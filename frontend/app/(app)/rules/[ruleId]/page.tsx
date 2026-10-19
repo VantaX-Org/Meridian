@@ -251,7 +251,7 @@ export default function RulePage() {
       <dl className="m-text-body flex flex-col gap-1">
         <div className="flex justify-between"><dt className="m-ink-3">Object</dt><dd>{formatModuleName(data.module)}</dd></div>
         <div className="flex justify-between"><dt className="m-ink-3">System</dt><dd>{labelOf(data.category)}</dd></div>
-        <div className="flex justify-between"><dt className="m-ink-3">Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? `, ${data.source_yaml}` : ""}</dd></div>
+        <div className="flex justify-between"><dt className="m-ink-3">Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? <>, <Mono>{data.source_yaml}</Mono></> : null}</dd></div>
         <div className="flex justify-between"><dt className="m-ink-3">Last run</dt><dd>{data.last_pass_rate != null ? <DrillLink object={data.module} ruleId={checkId}>{(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %</DrillLink> : "not run yet"}</dd></div>
       </dl>
 
