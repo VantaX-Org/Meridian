@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Pill, Skeleton, Switch, Async } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Pill, Skeleton, Switch, Async } from "@/design";
 import {
   getPurgeLog, getRetention, getRetentionPreview, updateRetention,
   type PurgeLogEntry, type RetentionPolicy, type RetentionPreviewItem, type RowsByTable,
 } from "@/lib/api/retention";
+import { SettingsSection } from "@/components/mdm/ledger";
 import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -147,8 +148,7 @@ export function RetentionPanel() {
   })();
 
   return (
-    <Card title="Retention" meta="How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task">
-      <div className="flex flex-col gap-4">
+    <SettingsSection title="Retention" hint="How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task">
         <Async query={q} skeleton={120}>{(
           <>
             {statusLine ? (
@@ -188,18 +188,17 @@ export function RetentionPanel() {
         ) : !preview.data ? (
           <p className="m-text-meta m-ink-3">Run the preview to see what the policy selects now. Nothing is deleted by a preview.</p>
         ) : preview.data.length === 0 ? (
-          <EmptyState title="Nothing to purge" detail="No archived run is past the policy right now" action={<Button variant="ghost" onClick={() => preview.refetch()}>Check again</Button>} />
+          <EmptyState variant="inline" title="Nothing to purge" detail="No archived run is past the policy right now" action={<Button variant="ghost" onClick={() => preview.refetch()}>Check again</Button>} />
         ) : (
           <DataTable columns={previewColumns} data={preview.data} getRowId={(r) => r.version_id} tableId="retention-preview" hideToolbar />
         )}
 
         <h3 className="font-semibold m-text-h">Purge log</h3>
         <Async query={log} skeleton={64} notFoundIsEmpty>{!log.data?.length ? (
-          <EmptyState title="No purge yet" detail="Dry runs and purges appear here with the rows removed per table" action={<Button variant="ghost" onClick={() => log.refetch()}>Refresh</Button>} />
+          <EmptyState variant="inline" title="No purge yet" detail="Dry runs and purges appear here with the rows removed per table" action={<Button variant="ghost" onClick={() => log.refetch()}>Refresh</Button>} />
         ) : (
           <DataTable columns={logColumns} data={log.data} getRowId={(r) => r.id} tableId="purge-log" hideToolbar />
         )}</Async>
-      </div>
-    </Card>
+    </SettingsSection>
   );
 }

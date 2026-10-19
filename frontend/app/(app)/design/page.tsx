@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** Storybook-free visual check (spec section 13). Static, no data, behind sign-in; served in production so the Aurora specs can cover it. */
 export default function DesignGalleryPage() {
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader title="Design gallery" meta="Light and dark side by side" />
       <div className="grid gap-4 xl:grid-cols-2">
       {(["light", "dark"] as const).map((theme) => (

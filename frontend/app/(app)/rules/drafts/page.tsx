@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ExplorerPage, Mono, PageHeader, asyncStateOf } from "@/design";
+import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getRuleDrafts, type RuleDraft } from "@/lib/api/rules";
 import { formatDate, formatModuleName } from "@/lib/format";
@@ -24,16 +25,16 @@ export default function RuleDraftsPage() {
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{String(row.original.proposed_rule.field ?? "—")}</Mono> },
     { id: "why", header: "Why", cell: ({ row }) => row.original.rationale ?? "—" },
     { id: "at", header: "Saved", cell: ({ row }) => formatDate(row.original.created_at, "date") },
+    actionColumn((d) => <RowButton onClick={() => setSelected(d)}>Open</RowButton>),
   ], []);
   const items = q.data ?? [];
   const newDraft = canManage ? <Button onClick={() => setSelected("new")}>New draft</Button> : undefined;
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Rule drafts" meta="Edit, dry run and publish rules before they run" actions={newDraft} />}
-        toolbarEnd={<Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />}
+        header={<PageHeader title="Rule drafts" meta="Edit, dry run and publish rules before they run" actions={<><Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />{newDraft}</>} />}
         state={asyncStateOf(q, () => items.length === 0, true)}
-        emptyProps={{ title: "No drafts", detail: "Start a draft, or let AI write the first version", ghost: "table", action: newDraft ?? <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
+        emptyProps={{ title: "No drafts", detail: "Start a draft, or let the model write the first version", ghost: "table", action: newDraft ?? <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
         errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
         table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} onRowClick={(r) => setSelected(r)} tableId="rule-drafts" />}
       />

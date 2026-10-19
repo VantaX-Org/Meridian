@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status } from "@/design";
+import { Button, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status } from "@/design";
+import { LedgerHead, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
   createRule, createTeam, deleteRule, deleteSlaPolicy, deleteTeam, getRules, getSlaPolicies, getTeams, getTriageSettings,
@@ -53,7 +54,12 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
 }
 
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return <Card title={title} actions={action}>{children}</Card>;
+  return (
+    <section aria-label={title}>
+      <LedgerHead title={title} action={action} />
+      {children}
+    </section>
+  );
 }
 
 export default function AdminTriagePage() {
@@ -68,7 +74,7 @@ export default function AdminTriagePage() {
 
   if (teams.isError || ruleQ.isError || sla.isError || usersQ.isError) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4">
         <ErrorState
           message={errText(teams.error ?? ruleQ.error ?? sla.error ?? usersQ.error, "Triage could not be read")}
           onRetry={() => { teams.refetch(); ruleQ.refetch(); sla.refetch(); usersQ.refetch(); }}
@@ -78,7 +84,7 @@ export default function AdminTriagePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6" aria-busy={teams.isLoading || undefined}>
+    <div className="flex flex-col gap-4" aria-busy={teams.isLoading || undefined}>
       <PageHeader title="Triage" meta="Who gets new issues, how long they have, and the calendar the clocks run on" />
 
       <div className="flex gap-4">
@@ -118,11 +124,11 @@ function TeamsSection({ write }: { write: boolean }) {
     { id: "members", header: "Members", cell: ({ row }) => <span title={row.original.member_ids.map((id) => users.find((u) => u.id === id)?.name ?? id).join(", ")}>{row.original.member_ids.length}</span> },
     { id: "open", header: "Open items", cell: ({ row }) => row.original.open_items },
     {
-      id: "act", header: "",
+      id: "act", header: "Action",
       cell: ({ row }) => write ? (
         <span className="flex gap-2">
-          <Button variant="ghost" onClick={() => setEditing(row.original)}>Edit</Button>
-          <Button variant="ghost" onClick={() => setDeleting(row.original)}>Delete</Button>
+          <RowButton onClick={() => setEditing(row.original)}>Edit</RowButton>
+          <RowButton onClick={() => setDeleting(row.original)}>Delete</RowButton>
         </span>
       ) : null,
     },
@@ -256,13 +262,13 @@ function RulesSection({ write }: { write: boolean }) {
     { id: "to", header: "Assigns to", cell: ({ row }) => target(row.original) },
     { id: "on", header: "Enabled", cell: ({ row }) => <input type="checkbox" checked={row.original.enabled} disabled={!write} onChange={() => toggle.mutate(row.original)} aria-label={`${row.original.name} enabled`} /> },
     {
-      id: "act", header: "",
+      id: "act", header: "Action",
       cell: ({ row }) => write ? (
         <span className="flex gap-1">
-          <Button variant="ghost" disabled={row.index === 0} onClick={() => swap(row.index, row.index - 1)}>Up</Button>
-          <Button variant="ghost" disabled={row.index === sorted.length - 1} onClick={() => swap(row.index, row.index + 1)}>Down</Button>
-          <Button variant="ghost" onClick={() => setEditing(row.original)}>Edit</Button>
-          <Button variant="ghost" onClick={() => setDeleting(row.original)}>Delete</Button>
+          <RowButton disabled={row.index === 0} onClick={() => swap(row.index, row.index - 1)}>Up</RowButton>
+          <RowButton disabled={row.index === sorted.length - 1} onClick={() => swap(row.index, row.index + 1)}>Down</RowButton>
+          <RowButton onClick={() => setEditing(row.original)}>Edit</RowButton>
+          <RowButton onClick={() => setDeleting(row.original)}>Delete</RowButton>
         </span>
       ) : null,
     },
@@ -384,11 +390,11 @@ function PoliciesSection({ write }: { write: boolean }) {
     { id: "hrs", header: "Hours", cell: ({ row }) => (row.original.business_hours ? "Business hours" : "Calendar hours") },
     { id: "src", header: "Source", cell: ({ row }) => (row.original.is_default ? <Pill tone="neutral">Default</Pill> : "Saved") },
     {
-      id: "act", header: "",
+      id: "act", header: "Action",
       cell: ({ row }) => write ? (
         <span className="flex gap-1">
-          <Button variant="ghost" onClick={() => setEditing(row.original)}>{row.original.is_default ? "Override" : "Edit"}</Button>
-          {row.original.id ? <Button variant="ghost" onClick={() => setDeleting(row.original)}>Delete</Button> : null}
+          <RowButton onClick={() => setEditing(row.original)}>{row.original.is_default ? "Override" : "Edit"}</RowButton>
+          {row.original.id ? <RowButton onClick={() => setDeleting(row.original)}>Delete</RowButton> : null}
         </span>
       ) : null,
     },

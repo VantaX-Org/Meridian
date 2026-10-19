@@ -85,7 +85,7 @@ export default function AdminAuditPage() {
     );
   }
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader title="Audit log" meta="Who did what, AI calls and role changes" />
       <Tabs
         value={["log", "ai", "roles"].includes(tab) ? tab : "log"}

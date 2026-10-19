@@ -6,7 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore } from "@/design";
+import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore } from "@/design";
+import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
@@ -40,25 +41,30 @@ export default function AdminUsersPage() {
   const tab = (["users", "roles", "audit"] as string[]).includes(tabRaw) ? tabRaw : "users";
   const { can, loading } = useRole();
   const canManage = can("manage_users");
+  const [invite, setInvite] = useState(false);
 
   // Grants fail closed while loading; a refusal must not flash before they arrive.
-  if (loading) return <div className="p-6" aria-busy="true"><Skeleton height={320} /></div>;
+  if (loading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (!canManage) {
     return (
-      <div className="p-6">
+      <div>
         <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or review the audit log." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <PageHeader title="Users" meta="Who can sign in, with which role, and what they did" />
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Users"
+        meta="Who can sign in, with which role, and what they did"
+        actions={tab === "users" ? <Button onClick={() => setInvite(true)}>Invite user</Button> : undefined}
+      />
       <Tabs
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "users", label: "Users", content: <UsersView /> },
+          { value: "users", label: "Users", content: <UsersView invite={invite} setInvite={setInvite} /> },
           { value: "roles", label: "Roles", content: <RolesView /> },
           { value: "audit", label: "Audit log", content: <AuditView /> },
         ]}
@@ -70,9 +76,8 @@ export default function AdminUsersPage() {
   // mounts, so a tab switch needs no URL state to work correctly.
 }
 
-function UsersView() {
+function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: boolean) => void }) {
   const qc = useQueryClient();
-  const [invite, setInvite] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
@@ -101,7 +106,7 @@ function UsersView() {
     { id: "login", header: "Last sign-in", cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
     { id: "since", header: "Member since", cell: ({ row }) => relativeTime(row.original.created_at) },
     {
-      id: "actions", header: "",
+      id: "actions", header: "Action",
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Menu
@@ -115,23 +120,23 @@ function UsersView() {
 
   return (
     <div className="flex flex-col gap-4 pt-4">
-      <div className="flex justify-end gap-2">
-        <ExportMenu
-          options={[{
-            format: "csv",
-            label: "Export users",
-            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, role: u.role, active: u.is_active, last_login: u.last_login ?? "" }))),
-          }]}
-        />
-        <Button onClick={() => setInvite(true)}>Invite user</Button>
-      </div>
-
       <div className="flex gap-4">
         <Stat label="Never signed in" value={usersQ.isLoading ? undefined : neverSignedIn} />
       </div>
 
       <Async query={usersQ} skeleton={240}>{users.length ? (
-        <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowClick={(u) => setEditing(u)} />
+        <DataTable
+          columns={columns}
+          data={users}
+          getRowId={(u) => u.id}
+          onRowClick={(u) => setEditing(u)}
+          tableId="admin-users"
+          exportOptions={[{
+            format: "csv",
+            label: "Export users",
+            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, role: u.role, active: u.is_active, last_login: u.last_login ?? "" }))),
+          }]}
+        />
       ) : (
         <EmptyState title="No users yet" detail="Invite the first steward or analyst." action={<Button onClick={() => setInvite(true)}>Invite user</Button>}/>
       )}</Async>
@@ -180,13 +185,15 @@ function RolesView() {
       {matrixQ.isError ? (
         <ErrorState {...apiErrorState(matrixQ.error)} onRetry={() => matrixQ.refetch()} />
       ) : matrix ? (
-        <Card title="Role matrix" padding="sm">
+        <section aria-label="Role matrix">
+          <LedgerHead title="Role matrix" />
           <DataTable columns={matrixCols} data={ROLES} getRowId={(r) => r} />
-        </Card>
+        </section>
       ) : <Skeleton height={240} />}
-      <Card title="Who holds each role" padding="sm">
+      <section aria-label="Who holds each role">
+        <LedgerHead title="Who holds each role" />
         <DataTable columns={holderCols} data={ROLES.filter((r) => users.some((u) => u.role === r))} getRowId={(r) => r} />
-      </Card>
+      </section>
     </div>
   );
 }

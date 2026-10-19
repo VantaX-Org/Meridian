@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/design";
+import { Button, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/design";
+import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useAuth } from "@/context/auth-context";
 import { useUpdateModal } from "@/context/update-modal-context";
 import { getLicenceManifest } from "@/lib/api/licence";
@@ -20,7 +21,7 @@ export default function AdminLicencePage() {
   const days = l?.days_remaining;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Licence"
         meta="Granted by Meridian HQ; plan changes and invoices are managed there"
@@ -44,44 +45,44 @@ export default function AdminLicencePage() {
       ) : null}
 
       {l ? (
-        <Card title="Licence detail">
-          <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
-            <dt className="m-ink-3">Tenant</dt><dd>{l.company_name ?? "Not set"}</dd>
-            <dt className="m-ink-3">Tier</dt><dd>{l.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
-            <dt className="m-ink-3">Status</dt><dd>{labelOf(l.status)}</dd>
-            <dt className="m-ink-3">Seats</dt><dd>{seats ? String(seats) : "Unlimited"}</dd>
-            <dt className="m-ink-3">Days remaining</dt><dd className={days !== undefined && days !== null && days < 30 ? "[color:var(--m-medium)]" : undefined}>{days ?? "—"}</dd>
-            <dt className="m-ink-3">Renews</dt><dd>{l.expiry_date ? formatDate(l.expiry_date) : "Not set"}</dd>
-            <dt className="m-ink-3">Last validated</dt><dd>{l.last_validated ? formatDate(l.last_validated, "datetime") : "Not validated yet"}</dd>
-            <dt className="m-ink-3">Language-model tier</dt><dd>{l.llm_config ? `tier ${l.llm_config.tier}, ${l.llm_config.model}` : "Not set"}</dd>
-          </dl>
-        </Card>
-      ) : null}
+        <SettingsSheet>
+          <SettingsSection title="Licence detail">
+            <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
+              <dt className="m-ink-3">Tenant</dt><dd>{l.company_name ?? "Not set"}</dd>
+              <dt className="m-ink-3">Tier</dt><dd>{l.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
+              <dt className="m-ink-3">Status</dt><dd>{labelOf(l.status)}</dd>
+              <dt className="m-ink-3">Seats</dt><dd>{seats ? String(seats) : "Unlimited"}</dd>
+              <dt className="m-ink-3">Days remaining</dt><dd className={days !== undefined && days !== null && days < 30 ? "[color:var(--m-medium)]" : undefined}>{days ?? "—"}</dd>
+              <dt className="m-ink-3">Renews</dt><dd>{l.expiry_date ? formatDate(l.expiry_date) : "Not set"}</dd>
+              <dt className="m-ink-3">Last validated</dt><dd>{l.last_validated ? formatDate(l.last_validated, "datetime") : "Not validated yet"}</dd>
+              <dt className="m-ink-3">Language-model tier</dt><dd>{l.llm_config ? `tier ${l.llm_config.tier}, ${l.llm_config.model}` : "Not set"}</dd>
+            </dl>
+          </SettingsSection>
 
-      {l ? (
-        <Card title="Modules" meta={all ? "every SAP module" : `${modules.length} enabled`}>
-          <div className="flex gap-2 flex-wrap">
-            {all ? <Pill tone="go">all modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
-            {!all && !modules.length ? (
-              <p className="m-text-body m-ink-3">
-                {l.valid === null ? "Modules follow the licence once Meridian HQ has validated it." : "No modules enabled on this licence"}
-              </p>
-            ) : null}
-          </div>
-        </Card>
-      ) : null}
+          <SettingsSection title="Modules" meta={all ? "every SAP module" : `${modules.length} enabled`}>
+            <div className="flex gap-2 flex-wrap">
+              {all ? <Pill tone="go">all modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
+              {!all && !modules.length ? (
+                <p className="m-text-body m-ink-3">
+                  {l.valid === null ? "Modules follow the licence once Meridian HQ has validated it." : "No modules enabled on this licence"}
+                </p>
+              ) : null}
+            </div>
+          </SettingsSection>
 
-      {features.length ? (
-        <Card title="Features">
-          <div className="flex gap-2 flex-wrap">
-            {features.map(([k, v]) => (
-              <Pill key={k} tone={v ? "go" : "neutral"}>{k.replace(/_/g, " ")}{v ? "" : ", off"}</Pill>
-            ))}
-          </div>
-        </Card>
-      ) : null}
+          {features.length ? (
+            <SettingsSection title="Features">
+              <div className="flex gap-2 flex-wrap">
+                {features.map(([k, v]) => (
+                  <Pill key={k} tone={v ? "go" : "neutral"}>{k.replace(/_/g, " ")}{v ? "" : ", off"}</Pill>
+                ))}
+              </div>
+            </SettingsSection>
+          ) : null}
 
-      <PlatformVersion />
+          <PlatformVersion />
+        </SettingsSheet>
+      ) : null}
     </div>
   );
 }
@@ -94,7 +95,7 @@ function PlatformVersion() {
   if (!isAdmin) return null;
   const s = q.data;
   return (
-    <Card title="Platform version" meta={s ? <Pill tone={s.update_available ? "at-risk" : "go"}>{s.update_available ? `${s.latest_version} available` : "up to date"}</Pill> : undefined}>
+    <SettingsSection title="Platform version" meta={s ? <Pill tone={s.update_available ? "at-risk" : "go"}>{s.update_available ? `${s.latest_version} available` : "up to date"}</Pill> : undefined}>
       {q.isLoading ? (
         <Skeleton height={48} />
       ) : q.isError || !s ? (
@@ -114,6 +115,6 @@ function PlatformVersion() {
           ) : null}
         </div>
       )}
-    </Card>
+    </SettingsSection>
   );
 }

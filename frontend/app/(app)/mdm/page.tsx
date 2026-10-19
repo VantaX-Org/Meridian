@@ -1,10 +1,13 @@
 "use client";
 
-/** MDM › Overview: health ring, trend line and the numbers behind the score. */
+/** MDM › Overview: the MDM health figure with its four inputs, then the match work waiting on a steward. */
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, EmptyState, ExplorerPage, Line, PageHeader, Stat, Score } from "@/design";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Button, Card, DataTable, ExplorerPage, Line, PageHeader, Pill, Stat, type CellMeta } from "@/design";
+import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { getMdmHealth } from "@/lib/api/analytics";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { getQueueItems } from "@/lib/api/stewardship";
@@ -12,46 +15,63 @@ import { formatModuleName, relativeTime } from "@/lib/format";
 import type { StewardshipQueueItem } from "@/types/api";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 
-const itemLabel = (t: string) => t.replace(/_/g, " ");
+const itemLabel = (t: string) => {
+  const s = t.replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
 
-/** A short list of open stewardship items; a region-empty line, never a card, when there are none. */
-function QueuePanel({ title, items, total, empty }: { title: string; items: StewardshipQueueItem[] | undefined; total: number; empty: string }) {
-  return (
-    <Card title={title} actions={<Link href="/inbox" className="m-text-meta m-ink-accent-ink">{total > (items?.length ?? 0) ? `Open all ${total.toLocaleString()}` : "Open inbox"}</Link>}>
-      {items && items.length > 0 ? (
-        <ul className="flex flex-col">
-          {items.map((i) => (
-            <li key={i.id} className="flex items-baseline justify-between gap-3 py-1 m-text-body [border-top:1px_solid_var(--m-line)]!">
-              <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                <span>{formatModuleName(i.domain)}</span>
-                <span className="m-text-meta m-ink-3">{itemLabel(i.item_type)}</span>
-              </span>
-              <span className="m-text-meta shrink-0 m-ink-3">{i.due_at ? `due ${relativeTime(i.due_at)}` : `opened ${relativeTime(i.created_at)}`}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="m-text-body m-ink-3">{empty}</p>
-      )}
-    </Card>
-  );
-}
+/** Match decisions come first (they move the golden records), then the earliest due. */
+const matchFirst = (a: StewardshipQueueItem, b: StewardshipQueueItem) =>
+  Number(b.item_type === "merge_decision") - Number(a.item_type === "merge_decision") ||
+  (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999");
+
+const columns: ColumnDef<StewardshipQueueItem>[] = [
+  { id: "item", header: "Work", cell: ({ row }) => (row.original.item_type === "merge_decision" ? <Pill tone="info">{itemLabel(row.original.item_type)}</Pill> : itemLabel(row.original.item_type)) },
+  { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.domain) },
+  { id: "due", header: "Due", meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.due_at ? relativeTime(row.original.due_at) : `Opened ${relativeTime(row.original.created_at)}`) },
+  actionColumn((r) => <RowLink href={`/inbox?type=${encodeURIComponent(r.item_type)}`}>Open</RowLink>),
+];
 
 export default function MdmOverviewPage() {
   const dash = useQuery({ queryKey: ["mdm", "dashboard"], queryFn: getMdmDashboard });
   const health = useQuery({ queryKey: ["mdm", "health"], queryFn: () => getMdmHealth() });
   const queue = useQuery({ queryKey: ["mdm", "queue-open"], queryFn: () => getQueueItems({ status: "open", limit: 10 }), meta: { ignoreError: true } });
-  const merges = useQuery({ queryKey: ["mdm", "queue-merge"], queryFn: () => getQueueItems({ status: "open", item_type: "merge_decision", limit: 8 }), meta: { ignoreError: true } });
   const m = dash.data?.latest ?? null;
   const trend = dash.data?.trend ?? [];
   const points = health.data?.data ?? [];
+  const items = useMemo(() => [...(queue.data?.items ?? [])].sort(matchFirst), [queue.data]);
+  const total = queue.data?.total ?? 0;
   const failed = isListFailure(dash) ? dash : isListFailure(health) ? health : null;
-  const state = dash.isLoading || health.isLoading ? "loading" : failed ? "error" : !m && points.length === 0 ? "empty" : undefined;
+  const state = dash.isLoading || health.isLoading ? "loading" : failed ? "error" : !m && points.length === 0 && items.length === 0 ? "empty" : undefined;
+  const tone = m ? (m.mdm_health_score >= 85 ? "go" : m.mdm_health_score >= 60 ? "at-risk" : "no-go") : undefined;
+  const verdict = m ? (m.mdm_health_score >= 85 ? "Healthy" : m.mdm_health_score >= 60 ? "Needs attention" : "Unhealthy") : null;
 
   return (
     <ExplorerPage
-      header={<PageHeader title="MDM overview" meta={m ? `${m.golden_record_count.toLocaleString()} golden records` : undefined} />}
-      toolbarEnd={<Button variant="secondary" render={<Link href="/mdm/survivorship">Survivorship rules</Link>} />}
+      header={
+        <PageHeader
+          title="MDM overview"
+          meta={m ? `${m.golden_record_count.toLocaleString()} golden records, ${m.backlog_count.toLocaleString()} waiting on a steward` : undefined}
+          actions={<Button variant="secondary" render={<Link href="/mdm/survivorship">Survivorship rules</Link>} />}
+        />
+      }
+      summary={m ? (
+        <section aria-label="MDM health" className="m-hero m-motion-rise">
+          <div className="grid gap-8 @7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @7xl:items-end">
+            <div className="m-hero-lead">
+              <div className="m-score-hero" data-testid="score-hero">
+                <Stat hero label="MDM health" value={m.mdm_health_score} bar={m.mdm_health_score} rule={{ target: 85 }} tone={tone} versionId={m.snapshot_date} hint={verdict ?? undefined} />
+              </div>
+            </div>
+            <div className="m-motion-stagger grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 @3xl:grid-cols-4 @7xl:grid-cols-2">
+              <Stat label="Coverage" value={`${m.golden_record_coverage_pct}%`} href="/mdm/golden" hint="Weight 40%" spark={trend.map((t) => t.golden_record_coverage_pct)} />
+              <Stat label="Match confidence" value={`${Math.round(m.avg_match_confidence * 100)}%`} href="/mdm/match-rules" hint="Weight 30%" spark={trend.map((t) => t.avg_match_confidence * 100)} />
+              <Stat label="Steward SLA" value={`${m.steward_sla_compliance_pct}%`} href="/inbox" hint="Weight 20%" spark={trend.map((t) => t.steward_sla_compliance_pct)} />
+              <Stat label="Source consistency" value={`${m.source_consistency_pct}%`} href="/mdm/golden" hint="Weight 10%" spark={trend.map((t) => t.source_consistency_pct)} />
+            </div>
+          </div>
+        </section>
+      ) : undefined}
       state={state}
       emptyProps={{
         title: "No MDM health snapshot",
@@ -61,57 +81,25 @@ export default function MdmOverviewPage() {
       }}
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void dash.refetch(); void health.refetch(); } }}
       table={
-        <div className="flex flex-col gap-4">
-          <div className="grid gap-4 @5xl:grid-cols-12">
-            <div className="@5xl:col-span-3">
-              <Card title="MDM health">{m ? <Score
-                value={m.mdm_health_score}
-                explain={{
-                  band: m.mdm_health_score >= 85 ? { label: "Healthy", tone: "go" } : m.mdm_health_score >= 60 ? { label: "Needs attention", tone: "at-risk" } : { label: "Unhealthy", tone: "no-go" },
-                  // Fixed weights from api/services/mdm_scoring.py; the snapshot carries the four inputs.
-                  dimensions: [
-                    { name: "Golden record coverage", weight: 0.4, score: m.golden_record_coverage_pct },
-                    { name: "Match confidence", weight: 0.3, score: m.avg_match_confidence * 100 },
-                    { name: "Steward SLA", weight: 0.2, score: m.steward_sla_compliance_pct },
-                    { name: "Source consistency", weight: 0.1, score: m.source_consistency_pct },
-                  ],
-                  rules: [],
-                  historyHref: "/mdm",
-                }}
-              /> : <EmptyState title="No current snapshot" detail="The first snapshot is taken after golden records are built." action={<Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} />} />}</Card>
-            </div>
-            <div className="@5xl:col-span-5">
-              <Card title="Health over time">
-                {points.length === 0 ? <EmptyState title="No history yet" detail="Each snapshot adds a point to this line." action={<Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} />} /> : <Line data={points.map((p) => ({ x: p.snapshot_date, y: p.mdm_health_score }))} label="MDM health score" height={160} />}
-              </Card>
-            </div>
-            {m && (
-              <div className="grid grid-cols-2 content-start gap-3 @5xl:col-span-4">
-                <Stat label="Golden records" help="goldenRecord" value={m.golden_record_count.toLocaleString()} href="/mdm/golden" spark={trend.map((t) => t.golden_record_count)} />
-                <Stat label="Coverage" value={`${m.golden_record_coverage_pct}%`} href="/mdm/golden" spark={trend.map((t) => t.golden_record_coverage_pct)} />
-                <Stat label="Match confidence" value={`${Math.round(m.avg_match_confidence * 100)}%`} href="/mdm/match-rules" spark={trend.map((t) => t.avg_match_confidence * 100)} />
-                <Stat label="Steward SLA" value={`${m.steward_sla_compliance_pct}%`} href="/inbox" spark={trend.map((t) => t.steward_sla_compliance_pct)} />
-              </div>
-            )}
-          </div>
-          {m && (
-            <div className="m-stat-grid">
-              <Stat label="Source consistency" value={`${m.source_consistency_pct}%`} href="/mdm/golden" spark={trend.map((t) => t.source_consistency_pct)} />
-              <Stat label="Backlog" value={m.backlog_count.toLocaleString()} href="/inbox" spark={trend.map((t) => t.backlog_count)} />
-              <Stat label="Sync coverage" value={`${m.sync_coverage_pct}%`} href="/systems" spark={trend.map((t) => t.sync_coverage_pct)} />
-              <Stat label="Active systems" value={dash.data?.active_systems_count ?? 0} href="/systems" />
-            </div>
-          )}
-          <div className="grid gap-4 @5xl:grid-cols-12">
-            <div className="@5xl:col-span-7">
-              <QueuePanel title="Stewardship queue" items={queue.data?.items} total={queue.data?.total ?? 0} empty="No open stewardship items." />
-            </div>
-            <div className="@5xl:col-span-5">
-              <QueuePanel title="Match clusters awaiting review" items={merges.data?.items} total={merges.data?.total ?? 0} empty="No match clusters awaiting review." />
-            </div>
-          </div>
-        </div>
+        <section aria-label="Match work">
+          <LedgerHead title="Match work" meta={total > items.length ? `${items.length.toLocaleString()} of ${total.toLocaleString()} open` : `${total.toLocaleString()} open`} action={<Link href="/inbox" className="m-text-meta m-ink-accent-ink hover:underline">Open inbox</Link>} />
+          <DataTable
+            columns={columns}
+            data={items}
+            getRowId={(r) => r.id}
+            hideToolbar
+            hideSearch
+            height="auto"
+            tableId="mdm-match-work"
+            emptyMessage="No open match work"
+          />
+        </section>
       }
+      aside={state || points.length === 0 ? undefined : (
+        <Card title="Health over time" meta="Snapshots">
+          <Line data={points.map((p) => ({ x: p.snapshot_date, y: p.mdm_health_score }))} label="MDM health score" height={140} />
+        </Card>
+      )}
     />
   );
 }

@@ -10,7 +10,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Radar, Select, Skeleton, Score } from "@/design";
+import { Button, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Radar, Select, Skeleton, Score } from "@/design";
+import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getCostModel, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
@@ -41,7 +42,7 @@ export default function ScoringPage() {
   const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings });
   if (!settings.data) {
     return (
-      <div className="flex flex-col gap-4 p-6">
+      <div className="flex flex-col gap-4">
         <PageHeader title="Scoring and alerts" />
         {settings.isError ? (
           <Notice tone="danger">Settings could not be loaded. Try again in a moment.</Notice>
@@ -112,7 +113,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader title="Scoring and alerts" meta="Score weights, alert thresholds and who is told" />
       {!write ? <Notice tone="info">These settings are read only for your role</Notice> : null}
 
@@ -153,7 +154,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         <Radar label="Latest score per dimension" data={DIMS.filter((d) => scores[d] != null).map((d) => ({ x: d[0].toUpperCase() + d.slice(1), y: scores[d] }))} />
       ) : null}
 
-      <Card title="Dimension weights"><div className="flex flex-col gap-3">
+      <SettingsSheet>
+      <SettingsSection title="Dimension weights">
         <p className="m-text-body m-ink-3">
           The score is each measured dimension times its weight. One critical finding caps it at 85, two or more at 70. The cap is fixed.
         </p>
@@ -181,9 +183,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
             {!sumOk ? <span className="m-text-meta m-ink-3">Weights sum to {sum.toFixed(2)}. Adjust them to 1.00 to save.</span> : null}
           </div>
         ) : null}
-      </div></Card>
+      </SettingsSection>
 
-      <Card title="When to alert"><div className="flex flex-col gap-3">
+      <SettingsSection title="When to alert">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveThresholds.mutate(); }}>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Critical findings">
@@ -234,9 +236,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           </div>
           {write ? <div><Button type="submit" disabled={saveThresholds.isPending}>Save thresholds</Button></div> : null}
         </form>
-      </div></Card>
+      </SettingsSection>
 
-      <Card title="Planner assumptions"><div className="flex flex-col gap-3">
+      <SettingsSection title="Planner assumptions">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); savePlanner.mutate(); }}>
           <p className="m-text-body m-ink-3">
             The next-sprint planner ranks open work by severity-weighted records per hour. Effort comes from these figures.
@@ -270,9 +272,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           </div>
           {write ? <div><Button type="submit" disabled={savePlanner.isPending}>Save assumptions</Button></div> : null}
         </form>
-      </div></Card>
+      </SettingsSection>
 
-      <Card title="Reports by email and Teams"><div className="flex flex-col gap-3">
+      <SettingsSection title="Reports by email and Teams">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveNotify.mutate(); }}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Email">
@@ -295,8 +297,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           </fieldset>
           {write ? <div><Button type="submit" disabled={saveNotify.isPending}>Save notifications</Button></div> : null}
         </form>
-      </div></Card>
+      </SettingsSection>
       <CostModelCard write={write} />
+      </SettingsSheet>
     </div>
   );
 }
@@ -316,7 +319,7 @@ function CostModelCard({ write }: { write: boolean }) {
   if (!q.data) return <Skeleton height={64} />;
   const sev = { ...q.data.severity, ...draft };
   return (
-    <Card title={`Cost model (${q.data.currency})`}><div className="flex flex-col gap-3">
+    <SettingsSection title={`Cost model (${q.data.currency})`}>
       <p className="m-text-body m-ink-3">What one blocked record costs, by severity.</p>
       {Object.keys(sev).length === 0 && <EmptyState title="No severity costs set" detail="Enter a cost per blocked record to value findings" />}
       <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(q.data); }}>
@@ -327,6 +330,6 @@ function CostModelCard({ write }: { write: boolean }) {
         ))}
         {write && Object.keys(sev).length > 0 && <Button type="submit" disabled={m.isPending}>Save cost model</Button>}
       </form>
-    </div></Card>
+    </SettingsSection>
   );
 }

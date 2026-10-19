@@ -6,7 +6,9 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Select, asyncStateOf } from "@/design";
+import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Pill, Select, asyncStateOf, type CellMeta } from "@/design";
+import { actionColumn, RowLink } from "@/components/mdm/ledger";
+import { formatModuleName } from "@/lib/format";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getGlossaryTerms } from "@/lib/api/glossary";
 import { apiErrorMessage } from "@/lib/error";
@@ -20,13 +22,16 @@ const STATUS_OPTIONS = [
   { value: "deprecated", label: "Deprecated" },
 ];
 
+const STATUS_LABEL: Record<string, string> = { active: "Active", under_review: "Under review", deprecated: "Deprecated" };
+
 const columns: ColumnDef<GlossaryTermSummary>[] = [
   { accessorKey: "business_name", header: "Term" },
-  { accessorKey: "domain", header: "Domain" },
-  { accessorKey: "status", header: "Status" },
+  { id: "domain", header: "Object", accessorFn: (t) => formatModuleName(t.domain) },
+  { id: "status", header: "Status", accessorFn: (t) => t.status, cell: ({ row }) => <Pill tone={row.original.status === "deprecated" ? "neutral" : "info"}>{STATUS_LABEL[row.original.status] ?? row.original.status.replace(/_/g, " ")}</Pill> },
   { id: "s4", header: "S/4HANA mandatory", cell: ({ row }) => (row.original.mandatory_for_s4hana ? "Yes" : "") },
-  { id: "drafted", header: "Definition", cell: ({ row }) => (row.original.ai_drafted ? "AI draft" : "Steward") },
-  { accessorKey: "linked_rules_count", header: "Rules" },
+  { id: "drafted", header: "Definition", cell: ({ row }) => (row.original.ai_drafted ? "Model draft" : "Steward") },
+  { accessorKey: "linked_rules_count", header: "Rules", size: 80, meta: { numeric: true } satisfies CellMeta },
+  actionColumn((t) => <RowLink href={`/mdm/glossary/${t.id}`}>Open</RowLink>),
 ];
 
 export default function GlossaryPage() {

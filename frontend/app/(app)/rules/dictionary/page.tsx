@@ -8,6 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, DataTable, ExplorerPage, Field, Input, Mono, Notice, PageHeader } from "@/design";
 import { getDdicFields, type DdicField } from "@/lib/api/rules";
+import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 
 export default function RuleDictionaryPage() {
@@ -21,6 +22,7 @@ export default function RuleDictionaryPage() {
     { id: "domain", header: "Domain", cell: ({ row }) => row.original.domain ?? "—" },
     { id: "de", header: "Data element", cell: ({ row }) => row.original.data_element ?? "—" },
     { id: "len", header: "Length", cell: ({ row }) => row.original.length ?? "—" },
+    actionColumn((f) => <RowLink href={`/search?q=${encodeURIComponent(`${f.table}.${f.field}`)}`}>Find rules</RowLink>),
   ], []);
   const items = (q.data ?? []).filter((f) => !f.missing);
   return (

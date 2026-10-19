@@ -49,7 +49,7 @@ export function UserMenu() {
                   value={value}
                   closeOnClick={false}
                   className="m-motion-colors flex cursor-pointer items-center gap-2 px-3 m-text-body data-[highlighted]:bg-[var(--m-sheet-raised)]"
-                  style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-control)" }}
+                  style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-pill)" }}
                 >
                   <Icon size={14} aria-hidden style={{ color: "var(--m-ink-3)" }} />
                   <span className="flex-1">{label}</span>
@@ -61,7 +61,7 @@ export function UserMenu() {
             <Menu.Item
               render={<Link href="/me/preferences" />}
               className="m-motion-colors flex cursor-pointer items-center gap-2 px-3 m-text-body data-[highlighted]:bg-[var(--m-sheet-raised)]"
-              style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-control)" }}
+              style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-pill)" }}
             >
               <IconGear size={14} style={{ color: "var(--m-ink-3)" }} />
               Preferences
@@ -69,7 +69,7 @@ export function UserMenu() {
             <Menu.Item
               onClick={logout}
               className="m-motion-colors flex cursor-pointer items-center gap-2 px-3 m-text-body data-[highlighted]:bg-[var(--m-sheet-raised)]"
-              style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-control)" }}
+              style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-pill)" }}
             >
               <IconLogOut size={14} style={{ color: "var(--m-ink-3)" }} />
               Sign out

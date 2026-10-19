@@ -5,7 +5,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async } from "@/design";
+import { Button, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async } from "@/design";
+import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
 import { apiErrorMessage } from "@/lib/error";
@@ -50,7 +51,7 @@ const baseColumns: ColumnDef<FieldMapping, unknown>[] = [
   { id: "label", header: "Customer label", cell: ({ row }) => <DraftInput m={row.original} field="customer_label" label="customer label" /> },
   { id: "notes", header: "Notes", cell: ({ row }) => <DraftInput m={row.original} field="notes" label="notes" /> },
   { id: "state", header: "State", cell: ({ row }) => <Pill tone={row.original.is_mapped ? "go" : "neutral"}>{row.original.is_mapped ? "Mapped" : "Not mapped"}</Pill> },
-  { id: "save", header: "", cell: ({ row }) => <SaveCell m={row.original} /> },
+  { id: "save", header: "Action", cell: ({ row }) => <SaveCell m={row.original} /> },
 ];
 
 export default function AdminMappingsPage() {
@@ -79,7 +80,7 @@ export default function AdminMappingsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader title="Field mapping" meta="Imported files are matched on these customer columns" />
       <Notice tone="info">A standard field with no customer column is skipped by every check that needs it.</Notice>
 
@@ -114,11 +115,12 @@ export default function AdminMappingsPage() {
             <EmptyState title="No field mappings" detail="Import a file to map its columns." action={<Button render={<Link href="/import">Import file</Link>} />} />
           )
         ) : (
-          <Card title={`${object ? formatModuleName(object) : "All objects"}`} meta={`${mapped} of ${shown.length} mapped`} padding="sm">
+          <section aria-label="Field mappings">
+            <LedgerHead title={`${object ? formatModuleName(object) : "All objects"}`} meta={`${mapped} of ${shown.length} mapped`} />
             <DraftsContext.Provider value={ctx}>
               <DataTable columns={columns} data={shown} getRowId={(m) => m.id} />
             </DraftsContext.Provider>
-          </Card>
+          </section>
         )}</Async>
     </div>
   );

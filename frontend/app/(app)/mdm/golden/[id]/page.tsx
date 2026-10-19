@@ -6,10 +6,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, DataTable, Dialog, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, DataTable, Dialog, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { LedgerHead } from "@/components/mdm/ledger";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
@@ -22,12 +23,13 @@ type Hist = { id: string; changed_at: string; change_type: string; changed_by?: 
 type FieldRow = { field: string; value: unknown };
 type SourceRow = { system: string; value: unknown; confidence: number; ai: string | null | undefined };
 
+const STATUS_LABEL: Record<string, string> = { candidate: "Candidate", pending_review: "Pending review", golden: "Golden", superseded: "Superseded" };
 const show = (v: unknown) => (v == null ? "None" : String(v));
 
 const relCols: ColumnDef<Rel>[] = [
   { id: "type", header: "Relationship", accessorFn: (r) => r.relationship_type.replace(/_/g, " ") },
   { id: "to", header: "To", cell: ({ row }) => <Mono>{row.original.to_key}</Mono> },
-  { id: "domain", header: "Domain", accessorFn: (r) => formatModuleName(r.to_domain) },
+  { id: "domain", header: "Object", accessorFn: (r) => formatModuleName(r.to_domain) },
 ];
 const histCols: ColumnDef<Hist>[] = [
   { id: "when", header: "When", accessorFn: (e) => e.changed_at },
@@ -42,7 +44,7 @@ const sourceCols: ColumnDef<SourceRow>[] = [
   { id: "system", header: "System", cell: ({ row }) => <Mono>{row.original.system}</Mono> },
   { id: "value", header: "Value", accessorFn: (r) => show(r.value) },
   { id: "conf", header: "Confidence", accessorFn: (r) => `${Math.round(r.confidence * 100)}%` },
-  { id: "ai", header: "AI recommendation", accessorFn: (r) => r.ai ?? "None" },
+  { id: "ai", header: "Model recommendation", accessorFn: (r) => r.ai ?? "None" },
 ];
 
 export default function MasterRecordPage() {
@@ -88,7 +90,7 @@ export default function MasterRecordPage() {
 
   if (recordQuery.isLoading) {
     return (
-      <div className="flex flex-col gap-2 p-6">
+      <div className="flex flex-col gap-2">
         <Skeleton height={32} />
         <Skeleton height={120} />
       </div>
@@ -96,7 +98,7 @@ export default function MasterRecordPage() {
   }
   if (recordQuery.isError) {
     return (
-      <div className="p-6">
+      <div>
         <ErrorState
           {...apiErrorState(recordQuery.error)}
           onRetry={() => void recordQuery.refetch()}
@@ -131,27 +133,29 @@ export default function MasterRecordPage() {
     <RecordPage recordKey={record.sap_object_key} object={record.domain} status={status}>
       <EntityTabs entityType="master-records" entityId={id}
         related={<>
-      <Card title="Related records" meta={String(relationships.length)}>
+      <section aria-label="Related records">
+        <LedgerHead title="Related records" meta={String(relationships.length)} />
         {relationships.length === 0 ? (
           <p className="m-text-body m-ink-3">No related records found</p>
         ) : (
           <DataTable columns={relCols} getRowId={(r) => r.id} data={relationships as Rel[]} height="auto" />
         )}
-      </Card>
+      </section>
         </>}
         history={<>
-      <Card title="History" meta={String(history.length)}>
+      <section aria-label="History">
+        <LedgerHead title="History" meta={String(history.length)} />
         {history.length === 0 ? (
           <p className="m-text-body m-ink-3">No changes recorded</p>
         ) : (
           <DataTable columns={histCols} getRowId={(r) => r.id} data={history as Hist[]} height="auto" />
         )}
-      </Card>
+      </section>
         </>}
         overview={<>
       <section className="flex items-center gap-2">
         <Pill tone={record.status === "golden" ? "go" : record.status === "superseded" ? "no-go" : "at-risk"}>
-          {record.status.replace("_", " ")}
+          {STATUS_LABEL[record.status] ?? record.status.replace(/_/g, " ")}
         </Pill>
         <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
         {canApprove ? (
@@ -188,21 +192,23 @@ export default function MasterRecordPage() {
         </div>
       </Dialog>
 
-      <Card title="Golden fields" meta={String(fields.length)}>
+      <section aria-label="Golden fields">
+        <LedgerHead title="Golden fields" meta={String(fields.length)} />
         {fields.length === 0 ? (
           <p className="m-text-body m-ink-3">No golden fields recorded</p>
         ) : (
           <DataTable columns={fieldCols} getRowId={(r) => r.field} data={fieldRows} height="auto" />
         )}
-      </Card>
+      </section>
 
-      <Card title="Source contributions" meta={String(sources.length)}>
+      <section aria-label="Source contributions">
+        <LedgerHead title="Source contributions" meta={String(sources.length)} />
         {sources.length === 0 ? (
           <p className="m-text-body m-ink-3">No sources recorded</p>
         ) : (
           <DataTable columns={sourceCols} getRowId={(r) => r.system} data={sourceRows} height="auto" />
         )}
-      </Card>
+      </section>
 
         </>}
       />
