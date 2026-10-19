@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, DataTable, ExplorerPage, PageHeader, Select } from "@/design";
+import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { getSystems } from "@/lib/api/connectivity";
 import { getReferenceLists, type ReferenceList } from "@/lib/api/system-objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -32,7 +33,7 @@ export default function ReferenceAdminPage() {
       state={systems.isLoading || (!!id && q.isLoading) ? "loading" : failed ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No reference data loaded", detail: list.length === 0 ? "Connect a system first." : "Upload postal codes or a BIC directory from the system page.", action: <Link href="/systems"><Button>{list.length === 0 ? "Connect a system" : "Open systems"}</Button></Link> }}
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void systems.refetch(); void q.refetch(); } }}
-      table={<DataTable columns={columns} data={rows} getRowId={(r) => r.kind} />}
+      table={<DataTable columns={[...columns, actionColumn<ReferenceList>(() => (id ? <RowLink href={`/systems/${id}`}>Open system</RowLink> : null))]} data={rows} getRowId={(r) => r.kind} />}
     />
   );
 }

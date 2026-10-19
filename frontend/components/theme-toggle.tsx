@@ -31,7 +31,7 @@ export function ThemeToggle() {
       aria-label="Theme"
       onKeyDown={onKeyDown}
       className="inline-flex items-center gap-0.5 p-0.5"
-      style={{ height: "var(--m-control-h)", background: "var(--m-sheet-sunken)", borderRadius: "var(--m-radius-control)" }}
+      style={{ height: "var(--m-control-h)", background: "var(--m-sheet-sunken)", borderRadius: "var(--m-radius-pill)" }}
     >
       {OPTIONS.map(({ value, label, icon: Icon }) => {
         const selected = theme === value;
@@ -46,7 +46,7 @@ export function ThemeToggle() {
             onClick={() => setTheme(value)}
             className={`m-motion-colors inline-flex h-full items-center gap-1 px-2 m-text-meta font-medium ${selected ? "m-elev-1" : ""}`}
             style={{
-              borderRadius: "var(--m-radius-control)",
+              borderRadius: "var(--m-radius-pill)",
               background: selected ? "var(--m-sheet)" : "transparent",
               color: selected ? "var(--m-ink)" : "var(--m-ink-3)",
             }}

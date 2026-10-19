@@ -42,8 +42,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             </p>
             <div className="m-ge-actions">
               <button type="button" className="m-ge-btn m-ge-btn-primary" onClick={() => reset()}>Try again</button>
-              <a href="/home" className="m-ge-btn m-ge-btn-secondary">Go home</a>
-              <button type="button" className="m-ge-btn m-ge-btn-ghost" onClick={copyDetails}>Copy details</button>
+              <a href="/home" className="m-ge-link">Go home</a>
+              <button type="button" className="m-ge-link" onClick={copyDetails}>Copy details</button>
               <span role="status" className="m-ge-status">
                 {copied === "done" ? "Details copied" : copied === "failed" ? "Could not copy details" : ""}
               </span>

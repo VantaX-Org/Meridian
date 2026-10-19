@@ -198,9 +198,13 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
     { id: "dq_defects", header: "DQ defects", meta: { numeric: true }, accessorFn: (r) => r.dq_defects ?? -1, cell: ({ row: { original: r } }) => <DqDefects n={r.dq_defects} versionId={r.dq_version_id} /> },
     { id: "finished", header: "Last run", accessorFn: (r) => r.last_run?.finished_at ?? "", cell: ({ row: { original: r } }) => (
         r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Not run yet") },
+    { id: "open", header: "", size: 80, enableSorting: false, cell: ({ row: { original: r } }) => (
+        <Link href={href(r)} className="m-ink-accent-ink underline" aria-label={`Open ${r.name}`} onClick={(e) => e.stopPropagation()}>Open</Link>) },
   ];
   const router = useRouter();
-  return <DataTable columns={columns} data={rows} getRowId={(r) => r.l1} height="auto" hideToolbar
+  // Lowest fitness first: the process furthest from its model leads; not-discovered processes follow.
+  const ranked = [...rows].sort((a, b) => (a.last_run?.fitness ?? 2) - (b.last_run?.fitness ?? 2));
+  return <DataTable columns={columns} data={ranked} getRowId={(r) => r.l1} height="auto" hideToolbar
     onRowClick={(r) => router.push(href(r))} rowHref={href} tableId="process-catalogue" dataTour="process-catalogue" exportName="process-catalogue" />;
 }
 
@@ -220,6 +224,8 @@ export function RunsTable({ runs, jobs, systemName, hideToolbar }: {
         ? fmtSeconds((Date.parse(row.original.finished_at) - Date.parse(row.original.started_at)) / 1000) : "—") },
     { id: "cases", header: "Cases", cell: ({ row }) => fmtCount(row.original.stats?.cases) },
     { accessorKey: "coverage", header: "Coverage", cell: ({ row }) => (row.original.coverage ? <CoveragePill coverage={row.original.coverage} /> : "—") },
+    { id: "open", header: "", size: 80, enableSorting: false, cell: ({ row }) => (
+        <Link href={`/process/runs/${row.original.id}`} className="m-ink-accent-ink underline" aria-label={`Open run ${row.original.l1}`}>Open</Link>) },
   ];
   return <DataTable columns={columns} data={runs} getRowId={(r) => r.id} height="auto" hideToolbar={hideToolbar}
     tableId="process-runs" exportName="process-discovery-runs" />;

@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, ExportMenu, Field, Pill, emptyExportOptions } from "@/design";
+import { DataTable, ExplorerPage, ExportMenu, Field, Input, PageHeader, Pill, emptyExportOptions } from "@/design";
+import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { getCleaningQueue } from "@/lib/api/cleaning";
 import { getGlossaryTerms } from "@/lib/api/glossary";
 import { exportFindings } from "@/lib/api/findings";
@@ -18,9 +19,14 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { rankResults, type SearchCandidate } from "@/lib/search";
 import { queryKeys } from "@/lib/query-keys";
 
+const KIND_LABEL: Record<SearchCandidate["kind"], string> = {
+  object: "Object", material: "Material", rule: "Rule", batch: "Batch", run: "Run", glossary: "Glossary term",
+};
+
 const columns: ColumnDef<SearchCandidate>[] = [
-  { accessorKey: "kind", header: "Type" },
+  { id: "kind", header: "Type", size: 160, accessorFn: (c) => c.kind, cell: ({ row }) => <Pill tone="neutral">{KIND_LABEL[row.original.kind]}</Pill> },
   { accessorKey: "label", header: "Result" },
+  actionColumn((c) => <RowLink href={c.href} label={`Open ${c.label}`}>Open</RowLink>),
 ];
 
 export default function SearchPage() {
@@ -98,7 +104,13 @@ export default function SearchPage() {
 
   return (
     <ExplorerPage
-      summary={<ExportMenu options={!q || results.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
+      header={
+        <PageHeader
+          title="Search"
+          meta={q ? `${results.length.toLocaleString()} ${results.length === 1 ? "result" : "results"} for "${q}"` : "Objects, rules, glossary terms, batches and runs"}
+          actions={<ExportMenu options={!q || results.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
+        />
+      }
       filterBar={
         <div className="flex flex-col gap-2">
         <form
@@ -109,11 +121,11 @@ export default function SearchPage() {
           }}
         >
           <Field label="Search">
-            <input
+            <Input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Object, rule, glossary term, batch or run id"
-              className="w-full rounded border px-4 py-3 m-text-h [border-color:var(--m-line)]!"
+              className="[min-width:320px]"
             />
           </Field>
         </form>

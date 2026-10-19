@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Margin } from "@/design";
+import { InsightHeader } from "@/design";
 import { useDayOne } from "@/hooks/use-day-one";
 import { getLlmHealth } from "@/lib/api/analytics";
 import { getSystems } from "@/lib/api/connectivity";
@@ -106,7 +106,7 @@ export function RouteInsight() {
 
   return (
     <div className="min-w-0">
-      <Margin
+      <InsightHeader
         {...cells}
         aiSummary={aiOn ? {
           llmOk: true,

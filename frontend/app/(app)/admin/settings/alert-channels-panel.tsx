@@ -4,11 +4,12 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, Field, Input, Notice, Pill, Select, Async } from "@/design";
+import { Button, DataTable, EmptyState, Field, Input, Notice, Pill, Select, Async } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest,
 } from "@/lib/api/notifications";
+import { SettingsSection } from "@/components/mdm/ledger";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -62,7 +63,7 @@ export function AlertChannelsPanel() {
     { id: "digest", header: "Digest", cell: ({ row }) => DIGEST_LABEL[row.original.digest] },
     { id: "crit", header: "Critical findings", cell: ({ row }) => (row.original.immediate_critical ? <Pill tone="go">Immediate</Pill> : <Pill tone="neutral">In digest</Pill>) },
     {
-      id: "act", header: "",
+      id: "act", header: "Action",
       cell: ({ row }) => {
         const c = row.original;
         return (
@@ -87,10 +88,9 @@ export function AlertChannelsPanel() {
   const canAdd = target.trim().length >= 3 && !secretTooShort && !neverFires && !create.isPending;
 
   return (
-    <Card title="Alert channels" meta="Each system is compared with its own previous run. Alerts carry counts, rule ids and links, never record values">
-      <div className="flex flex-col gap-3">
+    <SettingsSection title="Alert channels" hint="Each system is compared with its own previous run. Alerts carry counts, rule ids and links, never record values">
         <Async query={q} skeleton={64} notFoundIsEmpty>{!q.data?.length ? (
-          <EmptyState title="No alert channel yet" detail="Add Slack, Teams, email or a signed webhook below" action={<Button onClick={() => targetRef.current?.querySelector("input")?.focus()}>Add channel</Button>} />
+          <EmptyState variant="inline" title="No alert channel yet" detail="Add Slack, Teams, email or a signed webhook below" action={<Button onClick={() => targetRef.current?.querySelector("input")?.focus()}>Add channel</Button>} />
         ) : (
           <DataTable columns={columns} data={q.data} getRowId={(c) => c.id} />
         )}</Async>
@@ -118,7 +118,6 @@ export function AlertChannelsPanel() {
           <Button disabled={!canAdd} onClick={() => create.mutate()}>Add channel</Button>
         </div>
         {neverFires ? <Notice tone="warning">Choose a digest or immediate delivery</Notice> : null}
-      </div>
-    </Card>
+    </SettingsSection>
   );
 }

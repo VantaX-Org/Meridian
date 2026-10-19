@@ -45,11 +45,12 @@ function Instrument() {
 
 export function AuthFrame({ title, lead, children }: { title: string; lead?: ReactNode; children: ReactNode }) {
   return (
-    <main className="grid min-h-screen grid-rows-[200px_1fr] lg:grid-cols-[clamp(440px,45%,620px)_1fr] lg:grid-rows-1" style={{ background: "var(--m-canvas)" }}>
-      <aside className="m-brand-panel m-motion-stagger flex flex-col justify-between" style={{ padding: 32 }}>
+    <main className="grid min-h-screen grid-rows-[auto_1fr] gap-4 p-4 lg:grid-cols-[clamp(440px,45%,620px)_1fr] lg:grid-rows-1" style={{ background: "var(--m-canvas)" }}>
+      {/* The brand panel is a sheet like every card: white, 16px radius, one soft shadow. */}
+      <aside className="m-card m-motion-stagger flex flex-col justify-between gap-8 p-8">
         <div className="flex items-center gap-2.5">
           <MeridianMark size={32} />
-          <span className="font-semibold" style={{ fontSize: "var(--m-text-title)", color: "var(--m-hero-ink)" }}>Meridian</span>
+          <span className="font-semibold" style={{ fontSize: "var(--m-text-title)", color: "var(--m-ink)" }}>Meridian</span>
         </div>
         <div className="hidden flex-col items-center gap-8 lg:flex">
           <Instrument />
@@ -66,7 +67,7 @@ export function AuthFrame({ title, lead, children }: { title: string; lead?: Rea
       </aside>
       <div className="relative flex flex-col items-center justify-center px-4 py-12">
         <div className="m-motion-stagger flex w-full max-w-[400px] flex-col gap-2">
-          <div className="m-card m-motion-rise flex w-full flex-col gap-4 p-6 min-[480px]:p-8 [&_.m-btn]:h-10 [&_.m-input]:h-10">
+          <div className="m-card m-motion-rise flex w-full flex-col gap-4 p-6 min-[480px]:p-8 [&_.m-btn]:h-10 [&_.m-btn]:rounded-[var(--m-radius-pill)] [&_.m-input]:h-10">
             <h1 className="font-semibold" style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", color: "var(--m-ink)" }}>{title}</h1>
             {lead ? <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{lead}</p> : null}
             {children}

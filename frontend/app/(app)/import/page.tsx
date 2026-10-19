@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Skeleton, Stat, type PillTone, PageFrame, Status, ProgressFill } from "@/design";
+import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Score, Skeleton, type PillTone, PageFrame, Status, ProgressFill } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
@@ -102,9 +102,10 @@ export default function ImportPage() {
     },
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
     { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <DrillLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</DrillLink> : "") },
-    { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink>; } },
+    { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <Score size="sm" value={d}><DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink></Score>; } },
     { id: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
     { id: "when", header: "Imported", cell: ({ row }) => relativeTime(row.original.run_at) },
+    { id: "open", header: "", size: 80, cell: ({ row }) => <Link href={`/runs/${row.original.id}`} className="m-ink-accent-ink underline">Open</Link> },
   ], []);
   const mapColumns = useMemo<ColumnDef<MatchResponse["mappings"][number]>[]>(() => [
     { id: "source", header: "Your column", cell: ({ row }) => row.original.source_column },
@@ -112,6 +113,10 @@ export default function ImportPage() {
     { id: "confidence", header: "Confidence", cell: ({ row }) => `${Math.round(row.original.confidence * 100)}%` },
     { id: "match", header: "Match", cell: ({ row }) => <Pill tone={confidenceTone(row.original.confidence)}>{labelOf(row.original.match_type)}</Pill> },
   ], []);
+  const rankedMappings = useMemo(
+    () => [...(match?.mappings ?? [])].sort((a, b) => Number(!!a.target_field) - Number(!!b.target_field) || a.confidence - b.confidence),
+    [match],
+  );
   const versions = (recent.data?.versions ?? []).filter((v) => v.metadata?.source !== "extraction");
 
   const fileNote = matchMut.isPending ? "Reading the columns"
@@ -128,82 +133,69 @@ export default function ImportPage() {
         meta="Check how columns map to standard SAP fields, then run the analysis, and every import becomes a version"
         actions={canUpload ? <Button variant="primary" onClick={() => inputRef.current?.click()}>Choose file</Button> : undefined}
       />
-      {systemsQ.data?.length ? (
-        <Notice>
-          {systemsQ.data.length} SAP {systemsQ.data.length === 1 ? "system is" : "systems are"} connected. Pulling objects straight
-          from a system keeps versions comparable run to run; file imports suit one-off assessments.{" "}
-          <Link href="/systems" className="underline">Download from the source</Link>
-        </Notice>
-      ) : null}
-      {versions.length > 0 ? (
-        <div className="flex gap-6">
-          <Stat label="Last import" value={relativeTime(versions[0].run_at)} href={`/runs/${versions[0].id}`} />
-        </div>
-      ) : null}
 
-      <label
-        className={clsx("block cursor-pointer [&>section]:border-dashed! [&>section]:border-(--m-line-strong)!", dragging && "[outline:2px_solid_var(--m-accent)]")}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); if (canUpload) pick(e.dataTransfer.files?.[0] ?? null); }}
-      >
-        <input ref={inputRef} type="file" accept={ACCEPT} disabled={!canUpload} onChange={(e) => pick(e.target.files?.[0] ?? null)} hidden />
-        <Card padding="lg">
-          <div className="flex flex-col gap-2 text-center">
+      <Card padding="lg">
+        <div className="flex flex-col [gap:var(--m-section-gap)]">
+          <label
+            className={clsx(
+              "flex cursor-pointer flex-col items-center gap-2 px-6 py-10 text-center [border:1px_dashed_var(--m-line-strong)] [border-radius:var(--m-radius-sheet)]",
+              dragging && "[outline:2px_solid_var(--m-accent)]",
+            )}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); if (canUpload) pick(e.dataTransfer.files?.[0] ?? null); }}
+          >
+            <input ref={inputRef} type="file" accept={ACCEPT} disabled={!canUpload} onChange={(e) => pick(e.target.files?.[0] ?? null)} hidden />
             <strong className="m-text-h">{file ? file.name : canUpload ? "Drop a CSV or XLSX, or choose a file" : "Importing needs the upload permission"}</strong>
             <span className="m-text-body m-ink-3">{file ? fileNote : "CSV, TSV, XLSX, XLS, JSON or Parquet, up to 2 GB"}</span>
-          </div>
-        </Card>
-      </label>
+          </label>
 
-      <div className="flex flex-col gap-1 [min-height:28px]">
-        {running || (run.isPending && !job) ? (<>
-          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="[height:2px] [background:var(--m-line)]">
-            <ProgressFill value={pct} />
-          </div>
-          <p className="m-text-meta m-ink-3">{job ? stepLabel(job.step) : `Uploading ${uploadPct}%`}</p>
-        </>) : null}
-      </div>
-      {job?.error ? <Notice tone="danger">Analysis failed: {job.error}</Notice> : null}
-      {job?.status === "completed" ? <Link href={`/runs/${job.versionId}`} className="underline">Open the run</Link> : null}
+          {running || (run.isPending && !job) ? (
+            <div className="flex flex-col gap-1">
+              <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="[height:2px] [background:var(--m-line)]">
+                <ProgressFill value={pct} />
+              </div>
+              <p className="m-text-meta m-ink-3">{job ? stepLabel(job.step) : `Uploading ${uploadPct}%`}</p>
+            </div>
+          ) : null}
+          {job?.error ? <Notice tone="danger">Analysis failed: {job.error}</Notice> : null}
+          {job?.status === "completed" ? <Link href={`/runs/${job.versionId}`} className="underline">Open the run</Link> : null}
 
-      {match ? (
-        <Card title={`Column mapping${match.mappings.length ? `, ${mapped} of ${match.mappings.length} mapped` : ""}`}
-          actions={
-            <>
-              <Button variant="ghost" onClick={clear}>Clear</Button>
-              <Button onClick={() => run.mutate()} disabled={!canRun}>{run.isPending ? `Uploading ${uploadPct}%` : job ? "Imported" : "Run import"}</Button>
-            </>
-          }
-        >
-          <div className="flex flex-col gap-3">
-          <div className="flex gap-2" role="group" aria-label="Object">
-            {match.available_modules.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => setTargetModule(m.value)}
-                aria-pressed={targetModule === m.value}
-                className="px-2 py-0.5 m-text-meta rounded-full border m-ink [border-color:var(--m-line)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[color:var(--m-accent)]"
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-          {noHeaders ? (
-            <Notice tone="warning">Columns cannot be previewed for this format. Pick the object above; the columns are read from the file when it imports</Notice>
+          {match ? (
+            <section className="flex flex-col gap-3" aria-label="Column mapping">
+              <header className="flex items-center gap-3">
+                <h2 className="m-text-h flex-1 font-semibold m-ink">{`Column mapping${match.mappings.length ? `, ${mapped} of ${match.mappings.length} mapped` : ""}`}</h2>
+                <Button variant="ghost" onClick={clear}>Clear</Button>
+                <Button onClick={() => run.mutate()} disabled={!canRun}>{run.isPending ? `Uploading ${uploadPct}%` : job ? "Imported" : "Run import"}</Button>
+              </header>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Object">
+                {match.available_modules.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setTargetModule(m.value)}
+                    aria-pressed={targetModule === m.value}
+                    className="px-2 py-0.5 m-text-meta rounded-full border m-ink [border-color:var(--m-line)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[color:var(--m-accent)]"
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              {noHeaders ? (
+                <Notice tone="warning">Columns cannot be previewed for this format. Pick the object above; the columns are read from the file when it imports</Notice>
+              ) : null}
+              {match.unmapped_required.length ? (
+                <Notice tone="warning">{match.unmapped_required.length} required fields have no column: {match.unmapped_required.join(", ")}. Checks that need them are skipped</Notice>
+              ) : null}
+              {match.mappings.length ? (
+                <DataTable columns={mapColumns} data={rankedMappings.slice(0, 14)} getRowId={(m) => m.source_column} />
+              ) : null}
+            </section>
           ) : null}
-          {match.unmapped_required.length ? (
-            <Notice tone="warning">{match.unmapped_required.length} required fields have no column: {match.unmapped_required.join(", ")}. Checks that need them are skipped</Notice>
-          ) : null}
-          {match.mappings.length ? (
-            <DataTable columns={mapColumns} data={match.mappings.slice(0, 14)} getRowId={(m) => m.source_column} />
-          ) : null}
-          </div>
-        </Card>
-      ) : null}
+        </div>
+      </Card>
 
-      <Card title="Recent imports">
+      <Card title="Recent imports" meta={versions.length ? `${versions.length.toLocaleString()} files` : undefined}>
         {recent.isLoading ? (
           <div className="flex flex-col gap-1" aria-busy="true">
             {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} height={36} />)}
@@ -224,6 +216,14 @@ export default function ImportPage() {
           />
         )}
       </Card>
+
+      {systemsQ.data?.length ? (
+        <Notice>
+          {systemsQ.data.length} SAP {systemsQ.data.length === 1 ? "system is" : "systems are"} connected. Pulling objects straight
+          from a system keeps versions comparable run to run; file imports suit one-off assessments.{" "}
+          <Link href="/systems" className="underline">Download from the source</Link>
+        </Notice>
+      ) : null}
     </PageFrame>
   );
 }

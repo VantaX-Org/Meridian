@@ -48,6 +48,9 @@ export function PilotTab({ id }: { id: string }) {
     { id: "status", header: "Status", cell: ({ row }) => row.original.needs_tuning
       ? <Pill tone="at-risk">Needs tuning</Pill>
       : row.original.rated ? <Pill tone="go">On target</Pill> : <Pill>Too few reviews</Pill> },
+    { id: "open", header: "", size: 80, cell: ({ row }) => (
+      <Link href={`/findings?${new URLSearchParams({ check_id: row.original.check_id, module: row.original.module })}`} className="m-ink-accent-ink underline">Open</Link>
+    ) },
   ], []);
 
   const missedCols = useMemo<ColumnDef<KnownIssue, unknown>[]>(() => [
@@ -61,18 +64,16 @@ export function PilotTab({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="m-stat-grid">
           <Stat label="Precision" href={`/systems/${id}?tab=pilot#rules`} value={p?.precision == null ? "—" : `${(p.precision * 100).toFixed(1)}%`}
-            delta={p ? `${n(p.reviewed - p.false_positives)} of ${n(p.reviewed)} reviewed issues were real.` : "No issues reviewed yet."} />
+            delta={p ? `${n(p.reviewed - p.false_positives)} of ${n(p.reviewed)} reviewed issues were real` : "No issues reviewed yet"} />
           <Stat label="Recall" href={`/systems/${id}?tab=pilot#missed`} value={rec?.recall == null ? "—" : `${(rec.recall * 100).toFixed(1)}%`}
-            delta={rec?.known ? `${n(rec.caught)} of ${n(rec.known)} known issues were caught.` : "No known issues uploaded."} />
+            delta={rec?.known ? `${n(rec.caught)} of ${n(rec.known)} known issues were caught` : "No known issues uploaded"} />
           <Stat label="Rules to tune" href={`/systems/${id}?tab=pilot#rules`} value={n(tuning)}
-            delta={tuning ? `${n(tuning)} of ${n(data?.rules.length ?? 0)} rules are below target.` : "No rule is below target."} />
+            delta={tuning ? `${n(tuning)} of ${n(data?.rules.length ?? 0)} rules are below target` : "No rule is below target"} />
           <Stat label="Known issues missed" href={`/systems/${id}?tab=pilot#missed`} value={n(rec?.missed_total ?? 0)}
-            delta={rec?.known ? `${n(rec.missed_total)} of ${n(rec.known)} were not flagged.` : "Upload known issues to measure recall."} />
-        </div>
-      </Card>
+            delta={rec?.known ? `${n(rec.missed_total)} of ${n(rec.known)} were not flagged` : "Upload known issues to measure recall"} />
+      </div>
 
       <Card title="Precision per rule" meta={`${data?.rules.length ?? 0} rules`}>
         <p className={`${note} mt-1 m-ink-2`} id="rules">
@@ -80,7 +81,7 @@ export function PilotTab({ id }: { id: string }) {
           issues are reviewed, and needs tuning below {pct(p?.target ?? 0.9)}.
         </p>
         {data?.rules.length ? (
-          <DataTable columns={ruleCols} data={data.rules} getRowId={(r) => `${r.module}/${r.check_id}`} height={420} />
+          <DataTable columns={ruleCols} data={[...data.rules].sort((a, b) => Number(b.needs_tuning) - Number(a.needs_tuning) || b.false_positive - a.false_positive)} getRowId={(r) => `${r.module}/${r.check_id}`} height={420} />
         ) : (
           <EmptyState title="No record issues yet" detail="Run an analysis of this system first."
             action={<Button render={<Link href="/analyse">Run analysis</Link>} />} />

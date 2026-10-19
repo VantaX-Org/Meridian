@@ -1,25 +1,20 @@
 "use client";
 
 import { Breadcrumb } from "./Breadcrumb";
-import { JobTray } from "./JobTray";
 import { Suspense, type ReactNode } from "react";
 
-export function TopBar({ commandPalette, notifications, helpMenu, userMenu }: { commandPalette?: ReactNode; notifications?: ReactNode; helpMenu?: ReactNode; userMenu?: ReactNode }) {
+/**
+ * The scope bar under the index bar: the page's single h1 (the Breadcrumb) with the crumbs and scope parts a
+ * page publishes beside it, and on the right whatever the layout passes (the scoped-access pill). On a page
+ * that draws its own title and publishes nothing, the bar collapses to nothing but the hidden h1 (CSS :has).
+ */
+export function TopBar({ trailing }: { trailing?: ReactNode }) {
   return (
-    <header
-      className="z-20 flex shrink-0 items-center justify-between gap-2 m-print-hide"
-      style={{ height: "var(--m-topbar-h)", padding: "0 24px", background: "var(--m-canvas)", borderBottom: "1px solid var(--m-line)" }}
-    >
+    <div className="m-scopebar m-print-hide">
       <Suspense fallback={null}>
         <Breadcrumb />
       </Suspense>
-      <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-        <div data-tour="command-palette" className="flex items-center">{commandPalette}</div>
-        <JobTray />
-        {notifications}
-        <Suspense fallback={null}>{helpMenu}</Suspense>
-        {userMenu}
-      </div>
-    </header>
+      <div className="m-scopebar-trailing">{trailing}</div>
+    </div>
   );
 }

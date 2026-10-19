@@ -6,7 +6,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, ConfirmDialog, DataTable, EmptyState, Menu, Pill, type PillTone, Async } from "@/design";
+import { Button, ConfirmDialog, DataTable, EmptyState, Menu, Pill, type PillTone, Async } from "@/design";
+import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { allowedVersionTargets, transitionRuleVersion, type RuleVersionState } from "@/lib/api/rule-authoring";
 import { getRuleVersions, type RuleVersion } from "@/lib/api/rules";
@@ -46,7 +47,7 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
     { id: "approved", header: "Approved", cell: ({ row }) => (row.original.approved_at ? `${row.original.approved_by ?? ""} ${formatDate(row.original.approved_at, "date")}`.trim() : "—") },
     {
       id: "transition",
-      header: "",
+      header: "Action",
       cell: ({ row }) => {
         const v = row.original;
         const targets = allowedVersionTargets(v.state);
@@ -66,7 +67,8 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
 
   const versions = q.data?.versions ?? [];
   return (
-    <Card title="Versions" meta="A new version applies from the next analysis run">
+    <section aria-label="Versions">
+      <LedgerHead title="Versions" meta="A new version applies from the next analysis run" />
       <Async query={q} skeleton={96}>{versions.length === 0 ? (
         <EmptyState
           variant="inline"
@@ -86,6 +88,6 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
         pending={move.isPending}
         onConfirm={() => retiring && move.mutate({ version: retiring.version, to: "retired" })}
       />
-    </Card>
+    </section>
   );
 }

@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, Select, Skeleton, Sparkline, Stat, type HeatmapCell, Status, Score } from "@/design";
+import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score } from "@/design";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
@@ -25,7 +25,7 @@ import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { RouteInsight } from "@/components/insight/route-insight";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, trend, readinessOf,
+  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import {
@@ -33,7 +33,7 @@ import {
   type StateRow,
 } from "@/lib/current-state";
 import { formatDate, formatModuleName, plural, round1, shortCapReason } from "@/lib/format";
-import { previousInLineage, runPageHref, sameLineage } from "@/lib/runs";
+import { previousInLineage, runPageHref } from "@/lib/runs";
 import { hrefWithRun } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -42,14 +42,14 @@ import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
 import type { Version } from "@/types/api";
 
+/** The ledger shows this many objects, then a link to all of them; the heatmap draws the same rows. */
 const TABLE_ROWS = 8;
 
 // Chart bundles load after first paint; the skeleton has the chart's final height.
-const Line = dynamic(() => import("@/design/charts/Line").then((m) => m.Line), { ssr: false, loading: () => <Skeleton height={160} /> });
-const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={TABLE_ROWS * 28 + 32} /> });
-
-const READINESS_SEVERITY = { fail: "critical", warn: "medium", pass: "pass" } as const;
-
+const TREND_HEIGHT = 140;
+const HEAT_CELL = 24;
+const Line = dynamic(() => import("@/design/charts/Line").then((m) => m.Line), { ssr: false, loading: () => <Skeleton height={TREND_HEIGHT} /> });
+const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={TABLE_ROWS * (HEAT_CELL + 4) + 32} /> });
 
 
 /** Header label for a run: never a raw id (same formula as the run selector). */
@@ -63,7 +63,8 @@ function WorkRow({ children }: { children: ReactNode }) {
 /** Failed or degraded: "unknown" means not tested yet, which is not a failure. */
 const isFailing = (s: { health_status?: string | null }) => s.health_status != null && s.health_status !== "healthy" && s.health_status !== "unknown";
 
-type ObjectRow = StateRow & { blocking?: string; trend: { x: string; y: number }[] };
+/** A ledger row: the object's state row, the rule blocking it (id and plain words) and whether the rule's records can be fixed by a proposal. */
+type ObjectRow = StateRow & { blocking?: string; blockingWords?: string; fixable: boolean };
 
 /** Shared by the persona pages (lead/steward/basis): fetches every source the home page needs in parallel
  * and hands the derived pieces to the `HomePage` frame. Without `?run=` every number is the current state: each
@@ -231,37 +232,61 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
 
   const dims = runDimensions(merged);
   const dimensionStrip = (
-    <Card title="Dimensions" padding="sm">
-      <div data-testid="home-dimensions">
-        <DimensionBars
-          label="Dimension scores"
-          items={DIMENSIONS.map((d) => ({
-            key: d,
-            label: formatModuleName(d),
-            score: dims?.[d] ?? null,
-            href: dims?.[d] == null ? undefined : objectsHref({ dimension: d }),
-          }))}
-        />
-      </div>
-    </Card>
+    <div data-testid="home-dimensions">
+      <h2 className="m-text-meta m-ink-3 pb-1">Dimensions</h2>
+      <DimensionBars
+        label="Dimension scores"
+        items={DIMENSIONS.map((d) => ({
+          key: d,
+          label: formatModuleName(d),
+          score: dims?.[d] ?? null,
+          href: dims?.[d] == null ? undefined : objectsHref({ dimension: d }),
+        }))}
+      />
+    </div>
   );
 
-  // Each object's highest-impact critical finding, else the first rule its cap reason names.
+  // Each object's blocking rule: its highest-impact critical finding, else the first rule its cap reason names, else the
+  // rule the objects list names. The words are the finding's own message, else the objects list's rule name.
   const blockingByModule = new Map<string, string>();
   for (const f of findings) if (f.severity === "critical" && !blockingByModule.has(f.module)) blockingByModule.set(f.module, f.check_id);
   for (const r of reasonRules) if (!blockingByModule.has(r.module)) blockingByModule.set(r.module, r.check_id);
-  const rows: ObjectRow[] = worstObjectsFirst(role === "steward" ? objects.filter((o) => o.failing_checks > 0) : objects)
-    .slice(0, TABLE_ROWS)
-    .map((o) => {
-      const source = runOf.get(o.module);
-      return { ...o, blocking: blockingByModule.get(o.module), trend: source ? objectTrend(sameLineage(source, finished), o.module) : [] };
-    });
+  const listed = new Map((objectsQ.data?.objects ?? []).map((o) => [o.module, o]));
+  for (const [module, o] of listed) if (o.blocking_rule_id && !blockingByModule.has(module)) blockingByModule.set(module, o.blocking_rule_id);
+  const findingOf = (module: string, checkId: string) => findings.find((f) => f.module === module && f.check_id === checkId);
+  const wordsOf = (module: string, checkId: string): string | undefined => {
+    const words = findingOf(module, checkId)?.details?.message ?? (listed.get(module)?.blocking_rule_id === checkId ? listed.get(module)?.blocking_rule_name : undefined);
+    return words?.replace(/\.$/, "") || undefined;
+  };
+  const isFixable = (module: string, checkId: string | undefined): boolean => {
+    const f = checkId ? findingOf(module, checkId) : undefined;
+    return !!f && (Object.keys(f.value_fix_map ?? {}).length > 0 || (f.record_fixes ?? []).length > 0);
+  };
+  // The ledger: what moves the score, ranked by records affected (an object whose records are not attributed sorts last), then by score.
+  const ranked = (role === "steward" ? objects.filter((o) => o.failing_checks > 0) : objects)
+    .filter((o) => o.composite_score !== null)
+    .sort((a, b) => (b.affected_records ?? -1) - (a.affected_records ?? -1) || (a.composite_score ?? 0) - (b.composite_score ?? 0));
+  const rows: ObjectRow[] = ranked.slice(0, TABLE_ROWS).map((o) => {
+    const blocking = blockingByModule.get(o.module);
+    return { ...o, blocking, blockingWords: blocking ? wordsOf(o.module, blocking) : undefined, fixable: isFixable(o.module, blocking) };
+  });
+  const objectHref = (o: Pick<StateRow, "module" | "run_id">) => `/objects/${o.module}?run=${o.run_id}`;
 
   const columns: ColumnDef<ObjectRow>[] = [
     {
       accessorKey: "label", header: "Object",
-      cell: ({ row: { original: o } }) => <span className="inline-flex items-center gap-2">{o.label}<DomainChip moduleId={o.module} /></span>,
+      cell: ({ row: { original: o } }) => <span className="inline-flex items-center gap-2 whitespace-nowrap">{o.label}<DomainChip moduleId={o.module} /></span>,
     },
+    {
+      id: "blocking", header: "Blocking rule", enableSorting: false,
+      cell: ({ row: { original: o } }) => o.blocking ? (
+        <span className="inline-flex min-w-0 items-baseline gap-2">
+          <DrillLink href={buildDrillHref({ object: o.module, ruleId: o.blocking, run: o.run_id })}><Mono>{o.blocking}</Mono></DrillLink>
+          {o.blockingWords && <span className="m-ink-3 truncate [max-width:46ch]" title={o.blockingWords}>{o.blockingWords}</span>}
+        </span>
+      ) : "—",
+    },
+    { accessorKey: "affected_records", header: "Records affected", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
     {
       id: "dqs", header: "DQS", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
@@ -270,54 +295,66 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       ),
     },
     {
-      id: "readiness", header: "Readiness", meta: { severity: true },
-      accessorFn: (o) => (o.readiness ? READINESS_SEVERITY[o.readiness] : ""),
-      cell: ({ row: { original: o } }) => {
-        return o.readiness ? <Status kind="verdict" value={o.readiness} variant="solid" /> : <Pill>Not analysed</Pill>;
-      },
+      id: "readiness", header: "Verdict",
+      accessorFn: (o) => o.composite_score ?? -1,
+      cell: ({ row: { original: o } }) => o.composite_score === null ? <Pill>Not analysed</Pill> : <Status kind="verdict" value={readinessOf(o.composite_score, bands)} />,
     },
     {
-      id: "blocking", header: "Blocking rule", enableSorting: false,
-      cell: ({ row: { original: o } }) => o.blocking
-        ? <DrillLink href={buildDrillHref({ object: o.module, ruleId: o.blocking, run: o.run_id })}><Mono>{o.blocking}</Mono></DrillLink>
-        : "—",
+      id: "action", header: "", enableSorting: false,
+      cell: ({ row: { original: o } }) => o.fixable
+        ? <Link href={`/fix?module=${o.module}`} className="m-ink-accent" aria-label={`Fix ${o.label}`}>Fix</Link>
+        : <Link href={objectHref(o)} className="m-ink-accent" aria-label={`Open ${o.label}`}>Open</Link>,
     },
-    { accessorKey: "affected_records", header: "Affected", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
-    { id: "trend", header: "Trend", enableSorting: false, meta: { numeric: true }, cell: ({ row: { original: o } }) => <span className="flex justify-end"><Sparkline data={o.trend} width={60} height={16}/></span> },
   ];
 
   const objectsCard = role === "basis" ? undefined : (
-    <Card title="Objects, worst first" padding="sm">
+    <Card title="What moves the score" meta="Ranked by records affected" padding="sm">
       <DataTable
         columns={columns}
         data={rows}
         getRowId={(o) => o.module}
-        onRowClick={(o) => router.push(`/objects/${o.module}?run=${o.run_id}`)}
-        rowHref={(o) => `/objects/${o.module}?run=${o.run_id}`}
+        onRowClick={(o) => router.push(objectHref(o))}
+        rowHref={objectHref}
         height="auto"
         dense
+        hideSearch
         hideToolbar
         tableId="home-objects"
       />
       <div className="m-text-body px-3 pt-2">
-        <Link href={objectsHref()} className="m-ink-accent">All objects</Link>
+        <Link href={objectsHref()} className="m-ink-accent">All {objects.length.toLocaleString()} objects</Link>
       </div>
     </Card>
   );
+
+  // The object map: one tile per object, its area the records, its colour the verdict, its number the score.
+  const mapItems = objects.map((o) => {
+    const records = objectRecords(runOf.get(o.module), o.module, o.affected_records);
+    return {
+      id: o.module,
+      label: o.label,
+      href: objectHref(o),
+      score: o.composite_score,
+      records,
+      verdict: o.composite_score == null ? ("neutral" as const) : readinessOf(o.composite_score, bands),
+      meta: `${records.toLocaleString()} records`,
+    };
+  });
+  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} /> : undefined;
 
   const heatRows = scored.slice(0, TABLE_ROWS);
   const heatCells = dimensionHeatmapCells(heatRows, merged, bands);
   // The grid prints each score and tints it by readiness: the number carries the meaning, the hue repeats it.
   const heatTone = new Map(heatCells.map((c) => [`${c.row}:${c.col}`, c.tone]));
   const trendCard = (
-      <Card title="Score over runs" meta={pinned ? "Runs of the same source" : "All objects, each at its latest run by then"}>
+      <Card title="Score over runs" meta={pinned ? "Runs of the same source" : "All objects, each at its latest run by then"} padding="sm">
         {trendPoints.length < 2 ? (
-          <div className="[min-height:160px]"><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
+          <div className="[min-height:140px]"><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
         ) : (
           <Line
             data={trendPoints}
             onPointClick={(point) => { if (point.runId) router.push(runPageHref(point.runId)); }}
-            height={160}
+            height={TREND_HEIGHT}
             dqsThreshold={bands?.target}
             label={pinned ? "DQS over runs" : "DQS of all objects over runs"}
           />
@@ -325,13 +362,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       </Card>
   );
   const heatmapCard = role !== "basis" && heatCells.length > 0 ? (
-        <Card title="Dimensions by object">
+        <Card title="Dimensions by object" padding="sm">
           <Heatmap
             rows={heatRows.map((o) => o.label)}
             cols={DIMENSIONS.map(formatModuleName)}
             cells={heatCells.map((c) => ({ row: c.row, col: c.col, value: c.value }))}
             tone={(c) => heatTone.get(`${c.row}:${c.col}`)}
-            cellSize={32}
+            cellSize={HEAT_CELL}
             onPointClick={(cell: HeatmapCell) => {
               const object = heatRows.find((o) => o.label === cell.row);
               const dimension = DIMENSIONS.find((d) => formatModuleName(d) === cell.col);
@@ -395,6 +432,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           hrefFor={(id) => hrefWithRun(`/home/${role}`, search, id)}
         />
       ) : <span data-testid="run-scope">{stateScopeLine(objects.length, newest.run_at)}</span>}
+      aside={objectMap}
       dimensions={dimensionStrip}
       objects={objectsCard}
       trend={trendCard}

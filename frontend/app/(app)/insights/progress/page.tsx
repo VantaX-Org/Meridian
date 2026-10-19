@@ -8,7 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Delta, DrillLink, Mono, Select, Sparkline, Stat, Status } from "@/design";
+import { Button, Card, DataTable, Delta, DrillLink, Mono, Select, Sparkline, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { compareRecords, compareVersions, pinBaseline, type RecordDiffCheck } from "@/lib/api/versions";
@@ -77,6 +77,7 @@ export default function ProgressPage() {
     { accessorKey: "now", header: "Now", meta: { numeric: true }, cell: ({ row }) => round1(row.original.now) },
     { accessorKey: "change", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={round1(row.original.change)} /> },
     { id: "series", header: "All runs", enableSorting: false, cell: ({ row }) => (row.original.series.length > 1 ? <Sparkline data={row.original.series.map((y, i) => ({ x: String(i), y }))} width={96} height={20} /> : "—") },
+    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <Link href={withScope(`/objects/${row.original.module}`, { run })} className="m-ink-accent underline-offset-2 hover:underline">Open</Link> },
   ], [run]);
 
   // Only rules evaluated in both runs can be said to have moved; the rest are counted, not listed.
@@ -90,7 +91,11 @@ export default function ProgressPage() {
     { accessorKey: "resolved", header: "Fixed", meta: { numeric: true }, cell: ({ row }) => row.original.resolved.toLocaleString() },
     { accessorKey: "new", header: "New", meta: { numeric: true }, cell: ({ row }) => row.original.new.toLocaleString() },
     { accessorKey: "persisting", header: "Still failing", meta: { numeric: true }, cell: ({ row }) => row.original.persisting.toLocaleString() },
-  ], []);
+    {
+      id: "action", header: "", enableSorting: false,
+      cell: ({ row }) => <Link href={withScope(`/objects/${row.original.module}`, { run, tab: "rules", check: row.original.check_id })} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline-offset-2 hover:underline">Open</Link>,
+    },
+  ], [run]);
 
   const t = recs.data?.totals;
   const noEarlier = cmp.isError && (apiErrorReason(cmp.error) === "no_baseline" || (isNotFound(cmp.error) && !baseline) || /earlier run|different systems/i.test(apiErrorMessage(cmp.error)));
@@ -157,14 +162,10 @@ export default function ProgressPage() {
         {rows.length === 0 ? <p className="m-text-body m-ink-3">No object is scored in both runs.</p>
           : <DataTable columns={objectColumns} data={rows} getRowId={(r) => r.module} hideToolbar dense height="auto" />}
       </Card>
-      <Section title="Rules that moved" height={240} query={recs} meta={`Fixed, new and still-failing records per rule, worst movers first${notInBoth ? `. ${plural(notInBoth, "rule was", "rules were")} not evaluated in both runs and ${notInBoth === 1 ? "is" : "are"} left out` : ""}`}>
+      <Section title="Rules that moved" height={240} query={recs} meta={`${cmp.data ? `${plural(cmp.data.checks.newly_failing.length, "rule")} newly failing, ${cmp.data.checks.fixed.length.toLocaleString()} fixed. ` : ""}Worst movers first${notInBoth ? `. ${plural(notInBoth, "rule was", "rules were")} not evaluated in both runs and ${notInBoth === 1 ? "is" : "are"} left out` : ""}`}>
         {moved.length === 0 ? <p className="m-text-body m-ink-3">No rule changed its failing records.</p>
           : <DataTable columns={movedColumns} data={moved} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />}
       </Section>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Newly failing rules" value={cmp.data?.checks.newly_failing.length ?? "—"} tone={cmp.data?.checks.newly_failing.length ? "no-go" : "go"} href={withScope("/insights/rules", { run })} />
-        <Stat label="Rules fixed" value={cmp.data?.checks.fixed.length ?? "—"} tone={cmp.data?.checks.fixed.length ? "go" : undefined} href={withScope("/insights/rules", { run })} />
-      </div>
       {finding.drawer}
     </InsightFrame>
   );

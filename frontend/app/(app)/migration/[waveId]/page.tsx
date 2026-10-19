@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Bar, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Skeleton, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel } from "@/design";
+import Link from "next/link";
+import { Bar, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Skeleton, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel, toVerdict } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
@@ -34,6 +35,9 @@ const objectColumns = (run: string | null): ColumnDef<WaveObject>[] => {
   { id: "blocked", header: "Records blocked", cell: ({ row }) => drill(row.original.module, "records", row.original.records_blocked.toLocaleString()) },
   { id: "gaps", header: "Blocking gaps", cell: ({ row }) => drill(row.original.module, "rules", row.original.blocker_count.toLocaleString()) },
   { id: "dqs", header: "DQS", cell: ({ row }) => (row.original.dqs == null ? "—" : drill(row.original.module, "overview", row.original.dqs.toFixed(1))) },
+  { id: "open", header: "", size: 80, cell: ({ row }) => (
+      <Link href={run ? `/objects/${row.original.module}?run=${run}` : `/objects/${row.original.module}`} className="m-ink-accent-ink underline" onClick={(e) => e.stopPropagation()}>Open</Link>
+    ) },
   ];
 };
 
@@ -47,7 +51,7 @@ export default function WaveCockpitPage() {
   const signoff = useMutation({
     mutationFn: () => signoffWave(waveId),
     onSuccess: () => {
-      toast.success("Wave signed off.");
+      toast.success("Wave signed off");
       void qc.invalidateQueries({ queryKey: queryKeys.migrationCockpit(waveId) });
       void qc.invalidateQueries({ queryKey: queryKeys.migrationWaves() });
     },
@@ -72,6 +76,9 @@ export default function WaveCockpitPage() {
     x: statusLabel("verdict", v), y: c.objects.filter((o) => o.verdict === v).length,
   }));
 
+  // Most records blocked first: what moves the wave's readiness.
+  const ranked = [...c.objects].sort((a, b) => b.records_blocked - a.records_blocked || b.blocker_count - a.blocker_count);
+
   const exportOptions: ExportOption[] = [
     { format: "pdf", label: "Readiness report (PDF)", run: () => downloadWaveReport(waveId, "pdf") },
     { format: "xlsx", label: "Readiness report (Excel)", run: () => downloadWaveReport(waveId, "xlsx") },
@@ -91,7 +98,7 @@ export default function WaveCockpitPage() {
   const tab = rawTab === "objects" ? "overview" : rawTab;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col [gap:var(--m-section-gap)]">
       <PageHeader
         title={w.name}
         status={<Status kind="verdict" value={c.verdict} />}
@@ -105,20 +112,29 @@ export default function WaveCockpitPage() {
           </>
         }
       />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Verdict" value={<Status kind="verdict" value={c.verdict} />} href={`/migration/${waveId}?tab=overview`} />
-        <Stat label="Readiness" href={`/migration/${waveId}?tab=overview`} value={pct(c.score)} delta={`minimum ${w.min_readiness}%`} />
+      <div className="grid grid-cols-1 [gap:var(--m-section-gap)] @3xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]" data-testid="wave-figure">
+        <Stat
+          label="Readiness"
+          href={`/migration/${waveId}?tab=overview`}
+          value={pct(c.score)}
+          bar={c.score ?? undefined}
+          rule={{ target: w.min_readiness }}
+          tone={toVerdict(c.verdict)}
+          delta={`minimum ${w.min_readiness}%`}
+        />
         <Stat label="Records blocked" href={`/migration/${waveId}?tab=blockers`} value={c.records_blocked.toLocaleString()}
               delta={`of ${c.records_total.toLocaleString()}`} />
         <Stat label="Trend" href={run ? `/runs/${run}` : undefined} value={<Line data={c.trend.map((p) => ({ x: formatDate(p.completed_at, "date"), y: p.score }))} />} />
       </div>
-      {c.objects.length ? <Bar label="Objects by readiness verdict" height={120} data={funnel} /> : null}
       <Tabs
         value={tab}
         onValueChange={(v) => router.replace(`/migration/${waveId}?tab=${v}`)}
         items={[
           { value: "overview", label: "Overview", content: c.objects.length ? (
-              <DataTable columns={objectColumns(run)} data={c.objects} getRowId={(o) => o.module} />
+              <div className="flex flex-col [gap:var(--m-section-gap)]">
+                <DataTable columns={objectColumns(run)} data={ranked} getRowId={(o) => o.module} />
+                <Bar label="Objects by readiness verdict" height={96} data={funnel} />
+              </div>
             ) : <EmptyState title="Add modules to this wave to see its objects." /> },
           { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} blockers={c.blockers} /> },
           { value: "mapping", label: "Mapping", content: (

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, ConfirmDialog, DataTable, Delta, Stat, Status } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Delta, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getOwners, getReadiness, type OwnerCardResponse } from "@/lib/api/insights";
 import { sendOwnerDigests } from "@/lib/api/owners";
@@ -23,7 +23,9 @@ const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
   { accessorKey: "score", header: "Score", meta: { numeric: true, heat: "seq", heatRange: [0, 100] } },
   { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true } },
+  { accessorKey: "delta", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
   { accessorKey: "fixed_since_baseline", header: "Fixed since baseline", meta: { numeric: true } },
+  { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline-offset-2 hover:underline">Open</Link> },
 ];
 
 /** Writes the digest notification now. `owner` undefined sends to everyone. */
@@ -43,7 +45,6 @@ function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend
   return (
     <Card title={owner.owner} padding="md">
     <div data-testid="owner-card" className="flex flex-col gap-3">
-      <Stat label="Score" value={owner.score} delta={<Delta value={owner.delta} />} href="/inbox" />
       <div className="flex gap-2 m-text-body">
         {Object.entries(owner.open_by_severity).map(([severity, count]) => (
           <Status key={severity} kind="severity" value={severity} count={count} />
@@ -83,7 +84,8 @@ export default function OwnersPage() {
   const threshold = readiness.data?.threshold;
   const below = typeof threshold === "number" ? owners.filter((o) => o.score < threshold).length : undefined;
   const openTotal = owners.reduce((n, o) => n + Object.values(o.open_by_severity).reduce((a, b) => a + b, 0), 0);
-  const worst = [...owners].sort((x, y) => x.score - y.score)[0];
+  const ranked = [...owners].sort((x, y) => x.score - y.score);
+  const worst = ranked[0];
 
   return (
     <InsightFrame
@@ -111,14 +113,14 @@ export default function OwnersPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
+      <Card title="Score by owner" meta="Lowest first" dataTour="owners">
+        <DataTable columns={scoreColumns} data={ranked} getRowId={(o) => o.owner} hideToolbar dense height="auto" />
+      </Card>
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-        {owners.map((owner) => (
+        {ranked.map((owner) => (
           <OwnerCard key={owner.owner} owner={owner} canSend={canSend} send={send} />
         ))}
       </div>
-      <Card title="Score by owner" dataTour="owners">
-        <DataTable columns={scoreColumns} data={owners} getRowId={(o) => o.owner} hideToolbar dense height="auto" />
-      </Card>
       <ConfirmDialog
         open={confirmAll}
         onOpenChange={setConfirmAll}

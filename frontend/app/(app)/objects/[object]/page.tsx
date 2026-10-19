@@ -1,12 +1,12 @@
 // frontend/app/(app)/objects/[object]/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity, entityTabs, Status } from "@/design";
+import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
@@ -14,33 +14,25 @@ import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
-import { exportObject, getObject, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
+import { Workbench } from "./_workbench";
+import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
+import { exportObject, getObject, type ObjectDetail, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
 import { exportFindingRecords, getScoreHistory } from "@/lib/api/findings";
+import { getSettings } from "@/lib/api/settings";
 import { SCORE_HISTORY_LIMIT } from "@/lib/runs";
-import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
+import { getVersion } from "@/lib/api/versions";
 import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
 import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName } from "@/lib/format";
 
-const PAGE_SIZE = 50;
-/** Page-level and tab-level hooks share these keys; a fresh window stops the tab remount refetching. */
-const STALE_MS = 30_000;
 const RULE_HISTORY_RUNS = 8;
-
 const TAB_KEYS = ["overview", "rules", "fields", "records"] as const;
 const SEVERITIES = ["critical", "high", "medium", "low"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }));
-const isBlocking = (r: ObjectRule) => r.severity === "critical" || r.severity === "high";
 
-const objectQuery = (object: string, run: string) => ({
-  queryKey: queryKeys.object(object, run),
-  queryFn: () => getObject(object, run),
-  enabled: !!run,
-  staleTime: STALE_MS,
-});
 const historyQuery = (object: string, run: string) => ({
   queryKey: queryKeys.ruleHistoryBatch(run, object),
   queryFn: () => getRuleHistoryBatch({ version_id: run, module: object, limit_runs: RULE_HISTORY_RUNS }),
@@ -48,8 +40,33 @@ const historyQuery = (object: string, run: string) => ({
   staleTime: STALE_MS,
 });
 
-const fixSheetHref = (object: string, run: string, key: string) =>
-  `/objects/${object}/records/${encodeURIComponent(key)}?run=${run}`;
+/**
+ * The object's DQS as the md ring. Once the object and the tenant's weights have loaded, the ring opens the
+ * breakdown (weighted dimensions, costliest rules); until then, or without weights, it is the plain ring.
+ */
+function ObjectScore({ summary, detail }: { summary: ObjectSummary; detail: ObjectDetail | undefined }) {
+  const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings, retry: false, meta: { ignoreError: true } });
+  const score = summary.composite_score;
+  if (score == null) return null;
+  const weights = settings.data?.dqs_weights as Record<string, number> | undefined;
+  const measured = detail && weights ? Object.entries(detail.dimension_scores).filter(([d]) => weights[d] != null) : [];
+  if (!detail || !weights || measured.length === 0) return <Score value={score} />;
+  const total = measured.reduce((n, [d]) => n + weights[d], 0) || 1;
+  const tone = summary.readiness === "pass" ? "go" : summary.readiness === "warn" ? "at-risk" : summary.readiness === "fail" ? "no-go" : "neutral";
+  const failing = detail.rules.filter((r) => r.affected_count > 0).sort((a, b) => b.affected_count - a.affected_count).slice(0, 5);
+  return (
+    <Score
+      value={score}
+      explain={{
+        band: { label: tone === "go" ? "On target" : tone === "at-risk" ? "Needs attention" : tone === "no-go" ? "Below floor" : "Scored", tone },
+        dimensions: measured.map(([d, v]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score: v })),
+        // weight descends with rank so the explainer's recordsFailed * weight sort keeps the records order
+        rules: failing.map((r, i, all) => ({ ruleId: r.check_id, object: detail.module, recordsFailed: r.affected_count, weight: (all.length - i) / all.length })),
+        historyHref: `/objects/${detail.module}?tab=history`,
+      }}
+    />
+  );
+}
 
 /** The field's most common value shape (highest share), or "—" when none was profiled. */
 function topShape(shapes: ShapeCount[]): string {
@@ -206,62 +223,12 @@ function HistoryTab({ object, run }: { object: string; run: string }) {
   );
 }
 
-function OverviewTab({ object, run }: { object: string; run: string }) {
-  const router = useRouter();
-  const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
-
-  if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
-  if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
-  if (!data) return null;
-
-  const dimensionPoints = Object.entries(data.dimension_scores).map(([dimension, score]) => ({
-    x: formatModuleName(dimension),
-    y: score,
-    dimension,
-  }));
-  const blockingRules = data.rules.filter((r) => isBlocking(r) && r.affected_count > 0).length;
-  const rulesHref = `/objects/${object}?run=${run}&tab=rules`;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="m-stat-grid">
-        <Stat label="DQS" help="dqs" value={data.composite_score != null ? String(data.composite_score) : "—"} bar={data.composite_score ?? undefined} rule={{}} />
-        <Stat label="Failing checks" value={data.failing_checks.toLocaleString()} href={rulesHref} />
-        <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
-        <Stat label="Affected records" value={data.affected_records.toLocaleString()} href={`/objects/${object}?run=${run}&tab=records`} />
-      </div>
-      <Card title="Score by dimension">
-        {dimensionPoints.length === 0 ? (
-          <EmptyState
-            variant="inline"
-            title="No dimension scores"
-            detail="This run produced no per-dimension scores for this object."
-            action={<Button render={<Link href={rulesHref}>Open rules</Link>} />}
-          />
-        ) : (
-          <Bar
-            data={dimensionPoints}
-            onPointClick={(p) => router.push(`${rulesHref}&dimension=${p.dimension ?? ""}`)}
-          />
-        )}
-      </Card>
-    </div>
-  );
-}
-
 const profileQuery = (object: string, run: string) => ({
   queryKey: queryKeys.versionProfileByVersion(run, object),
   queryFn: () => getProfileByVersion(run, object),
   enabled: !!run,
   staleTime: STALE_MS,
 });
-const recordsQuery = (run: string, checkId: string, page: number) => ({
-  queryKey: [...queryKeys.rule(checkId, run), page],
-  queryFn: () => getFindingRecords(run, checkId, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
-  enabled: !!run && !!checkId,
-  staleTime: STALE_MS,
-});
-
 function FieldsTab({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery(profileQuery(object, run));
 
@@ -321,65 +288,8 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
   const router = useRouter();
   const [page, setPage] = useState(1);
   const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, checkId, page));
-  // `f` opens the fix sheet of the row DataTable's keyboard cursor is on (aria-activedescendant), else the first row.
-  const firstKey = data?.records[0]?.record_key;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (e.key !== "f" || e.repeat || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable],[role=dialog]")) return;
-      const rowId = document.querySelector("[role=grid][aria-activedescendant]")?.getAttribute("aria-activedescendant");
-      const key = (rowId ? document.getElementById(rowId)?.querySelector<HTMLElement>("[data-fix]")?.dataset.fix : undefined) ?? firstKey;
-      if (key) router.push(fixSheetHref(object, run, key));
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [firstKey, object, run, router]);
-
-  // Spec §5.2: one mono column per field_values key, unioned across the current page of records.
-  const fieldValueKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const r of data?.records ?? []) {
-      if (r.field_values) for (const k of Object.keys(r.field_values)) keys.add(k);
-    }
-    return [...keys];
-  }, [data]);
-
-  const columns = useMemo<ColumnDef<FindingRecord>[]>(
-    () => [
-      { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
-      { accessorKey: "grain", header: "Grain", cell: ({ row }) => row.original.grain ?? "—" },
-      { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
-      ...fieldValueKeys.map((key): ColumnDef<FindingRecord> => ({
-        id: `field_values.${key}`,
-        header: key,
-        cell: ({ row }) => {
-          const value = row.original.field_values?.[key];
-          return value == null ? "—" : <Mono>{value}</Mono>;
-        },
-      })),
-      {
-        id: "fix",
-        header: "Fix sheet",
-        cell: ({ row }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            render={
-              <Link
-                href={fixSheetHref(object, run, row.original.record_key)}
-                data-fix={row.original.record_key}
-                aria-label={`Open fix sheet for ${row.original.record_key}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                Open fix sheet
-              </Link>
-            }
-          />
-        ),
-      },
-    ],
-    [object, run, fieldValueKeys],
-  );
+  useFixShortcut(object, run, data?.records[0]?.record_key);
+  const columns = useRecordColumns(object, run, data?.records);
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
@@ -481,10 +391,10 @@ export default function ObjectDetailPage() {
 
   if (!run && scope.resolving) {
     return (
-      <div className="flex flex-col gap-4 p-6" aria-busy="true">
+      <PageFrame gap={4} aria-busy="true">
         <PageHeader title={formatModuleName(object)} />
         <Skeleton height={240} />
-      </div>
+      </PageFrame>
     );
   }
   if (!run) {
@@ -502,7 +412,7 @@ export default function ObjectDetailPage() {
   if (scope.explicit && ((shownRun && runLacksObject(shownRun, object)) || isNotFound(objectError))) {
     const name = formatModuleName(object);
     return (
-      <div className="flex flex-col gap-4 p-6">
+      <PageFrame gap={4}>
         <PageHeader title={name} />
         <EmptyState
           title={`${name} is not in this run`}
@@ -515,7 +425,7 @@ export default function ObjectDetailPage() {
             )
           }
         />
-      </div>
+      </PageFrame>
     );
   }
 
@@ -543,11 +453,18 @@ export default function ObjectDetailPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <PageFrame gap={4}>
       <PageHeader
         title={summary?.label ?? formatModuleName(object)}
         meta={meta}
-        status={summary?.readiness ? <Status kind="verdict" value={summary.readiness} /> : null}
+        status={
+          summary && (summary.composite_score != null || summary.readiness) ? (
+            <span className="inline-flex items-center gap-3">
+              {summary.composite_score != null ? <ObjectScore summary={summary} detail={data} /> : null}
+              {summary.readiness ? <Status kind="verdict" value={summary.readiness} /> : null}
+            </span>
+          ) : null
+        }
         actions={
           <>
             <OwnerPicker kind="object" refId={object} />
@@ -559,7 +476,7 @@ export default function ObjectDetailPage() {
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "overview", label: "Overview", content: <OverviewTab object={object} run={run} /> },
+          { value: "overview", label: "Overview", content: <Workbench object={object} run={run} /> },
           { value: "rules", label: "Rules", content: <RulesTab object={object} run={run} /> },
           { value: "fields", label: "Fields", content: <FieldsTab object={object} run={run} /> },
           {
@@ -578,6 +495,6 @@ export default function ObjectDetailPage() {
           ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, history: <HistoryTab object={object} run={run} /> }),
         ]}
       />
-    </div>
+    </PageFrame>
   );
 }

@@ -19,7 +19,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Button, Card, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Button, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import { isCompleteVersion, useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -208,6 +209,18 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
   );
 }
 
+interface BlockingRow { id: string; severity: ReturnType<typeof sev>; checkId: string; title: string; gate: string; affected: number; href?: string }
+const blockingColumns: ColumnDef<BlockingRow>[] = [
+  { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
+  { id: "finding", header: "Finding", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.title}>{row.original.title}</span> },
+  { id: "gate", header: "Gate", accessorFn: (b) => b.gate },
+  { accessorKey: "affected", header: "Records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
+  {
+    id: "action", header: "", enableSorting: false,
+    cell: ({ row }) => (row.original.href ? <Link href={row.original.href} className="m-ink-accent underline-offset-2 hover:underline">Fix</Link> : null),
+  },
+];
+
 function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
   const sorted = useMemo(
     () => [...results].sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.total_affected_records - a.total_affected_records),
@@ -269,7 +282,6 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   // Derived once here so the page frame's four sentences can be published from an effect below.
   const all = useMemo(() => (l1 ? fields(l1) : []), [l1]);
   const pct = score(all);
-  const passing = all.filter((f) => f.dq_status === "green").length;
   const blocking = red(all);
   const gates = useMemo<{ l3: BusinessProcessL3; score: number; blocking: number }[]>(() => (l1 ? l1.l2_groups.flatMap((l2) =>
     l2.l3_processes.map((l3) => {
@@ -374,41 +386,26 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         </span>
       </div>
 
-      <div className="flex gap-6 flex-wrap">
-        <Stat label="Fields passing" value={`${passing} / ${all.length}`} delta={`${pct}%`} />
-        <Stat label="Blocking fields" value={blocking} href={`/objects/${object}`} />
-        <Stat label="Gates blocked" value={blockedGates} />
-        <Stat label="Records failing" value={failing.toLocaleString()} href={`/objects/${object}`} />
-      </div>
-
-      <Card title="Gates" meta={l1.l1_name}>
-        <ul className="flex flex-col gap-2">
-          {gates.map((g) => (
-            <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
-              <Pill tone={g.blocking ? "no-go" : g.score >= 90 ? "go" : "at-risk"}>
-                {g.blocking ? "Blocked" : g.score >= 90 ? "Ready" : "At risk"}
-              </Pill>
-              <span className="flex-1">{g.l3.l3_name}</span>
-              <span className="m-text-body">{g.score}%</span>
-            </li>
-          ))}
-        </ul>
+      {/* The ledger: the blocking findings ranked by records affected, each with its one action. */}
+      <Card title="Blocking findings" meta={blockingFindings.length > 10 ? `Top 10 of ${blockingFindings.length.toLocaleString()}` : undefined}>
+        {blockingFindings.length ? (
+          <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar dense height="auto" />
+        ) : <EmptyState title="Nothing blocks go-live" />}
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card title="Blocking findings">
-          {blockingFindings.length ? (
-            <ul className="flex flex-col gap-2">
-              {blockingFindings.slice(0, 10).map((b) => (
-                <li key={b.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
-                  <Status kind="severity" value={b.severity} />
-                  <span className="flex-1">{b.href ? <Link className="underline" href={b.href}>{b.title}</Link> : b.title}</span>
-                  <span className="m-text-body m-ink-2">{b.gate}</span>
-                  <span className="m-text-body">{records(b.affected)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <EmptyState title="Nothing blocks go-live" />}
+        <Card title="Gates" meta={l1.l1_name}>
+          <ul className="flex flex-col gap-2">
+            {gates.map((g) => (
+              <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
+                <Pill tone={g.blocking ? "no-go" : g.score >= 90 ? "go" : "at-risk"}>
+                  {g.blocking ? "Blocked" : g.score >= 90 ? "Ready" : "At risk"}
+                </Pill>
+                <span className="flex-1">{g.l3.l3_name}</span>
+                <span className="m-text-body">{g.score}%</span>
+              </li>
+            ))}
+          </ul>
         </Card>
         <Card title="Recommendations">
           {recommendations.length ? (
@@ -537,29 +534,24 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
         <ErrorState message={(graphQ.error as Error).message} onRetry={() => void graphQ.refetch()} />
       ) : (
         <>
-          <div className="flex gap-6 flex-wrap">
-            <Stat label="Steps mapped" value={activities.length} />
-            <Stat label="Blocked" value={blockedSteps} onClick={bottlenecks[0] ? () => setNode(bottlenecks[0].id) : undefined} />
-            <Stat label="Degraded" value={degradedSteps} />
-            <Stat label="Variants" help="variant" value={variants.length} />
-          </div>
-
           {activities.length ? (
-            <Graph nodes={graphNodes} edges={graphEdges} onNodeClick={setNode} height={420} />
+            <Graph nodes={graphNodes} edges={graphEdges} onNodeClick={setNode} height={320} />
           ) : <EmptyState title="No mined activities for this module" action={openLink("Open runs", "/runs")} />}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card title="Failing steps">
+            <Card title="Failing steps" meta={bottlenecks.length > 8 ? `Top 8 of ${bottlenecks.length.toLocaleString()}` : undefined}>
               {bottlenecks.length ? (
-                <ol className="flex flex-col gap-2">
-                  {bottlenecks.slice(0, 8).map((b) => (
-                    <li key={b.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
-                      <Status kind="verdict" value={b.step_status} />
-                      <span className="flex-1">{b.label}</span>
-                      <span className="m-text-body">{records(b.affected_records)}</span>
-                    </li>
-                  ))}
-                </ol>
+                <DataTable
+                  columns={[
+                    { id: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.step_status} /> },
+                    { id: "step", header: "Step", accessorFn: (b) => b.label },
+                    { id: "records", header: "Records", meta: { numeric: true }, accessorFn: (b) => b.affected_records, cell: ({ row }) => records(row.original.affected_records) },
+                    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <button type="button" className="m-ink-accent underline-offset-2 hover:underline" onClick={() => setNode(row.original.id)}>Open</button> },
+                  ] as ColumnDef<(typeof bottlenecks)[number]>[]}
+                  data={bottlenecks.slice(0, 8)}
+                  getRowId={(b) => b.id}
+                  hideToolbar dense height="auto"
+                />
               ) : <EmptyState title="Every step passes its checks" action={openLink("Open rules", "/rules")} />}
             </Card>
             <Card title="Variants">

@@ -103,3 +103,18 @@ export function runSeries(runs: Version[], max = 6): RunSeries[] {
     .sort((a, b) => (a.points[a.points.length - 1].x < b.points[b.points.length - 1].x ? 1 : -1))
     .slice(0, max);
 }
+
+/**
+ * The score history a run's row draws as a sparkline: the DQS of every finished, scored run of `current`'s lineage
+ * up to and including `current`, oldest first, at most `max` points (the newest ones).
+ */
+export function lineageSeries(current: Version, runs: Version[], max = 12): { x: string; y: number }[] {
+  const lineage = lineageOf(current);
+  const points: { x: string; y: number }[] = [];
+  for (const r of runs) {
+    if (lineageOf(r) !== lineage || !isFinished(r) || r.run_at > current.run_at) continue;
+    const y = overallDqs(r);
+    if (y !== null) points.push({ x: r.run_at, y: Math.round(y * 10) / 10 });
+  }
+  return points.sort((a, b) => (a.x < b.x ? -1 : 1)).slice(-max);
+}

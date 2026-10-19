@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status } from "@/design";
+import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status } from "@/design";
 import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
@@ -14,6 +14,7 @@ import { getRuleLineage } from "@/lib/api/lineage";
 import { apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { ConditionList, ThresholdTable } from "../rule-ui";
 import { RuleVersions } from "./rule-versions";
 
@@ -73,10 +74,12 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
           "—"
         ),
     },
+    actionColumn((s) => <RowLink href={`/systems/${s.system_id}?tab=health`}>Open</RowLink>),
   ];
 
   return (
-    <Card title="Where it applies">
+    <section aria-label="Where it applies">
+      <LedgerHead title="Where it applies" meta={systems.length ? `${systems.length.toLocaleString()} ${systems.length === 1 ? "system" : "systems"}` : undefined} />
       {q.isLoading ? (
         <Skeleton height={120} />
       ) : q.isError ? (
@@ -95,7 +98,7 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
           onRowClick={(s) => router.push(`/systems/${s.system_id}?tab=health`)}
         />
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -198,7 +201,7 @@ export default function RulePage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4 p-6" aria-busy="true">
+      <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton height={120} />
         <Skeleton height={96} />
         <Skeleton height={320} />
@@ -217,18 +220,20 @@ export default function RulePage() {
 
   // Rule names are "{check id}: {message}"; data.id is the rules row UUID, not the check id.
   const checkId = data.name.split(":")[0];
+  const rate = data.last_pass_rate == null ? null : data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title={data.name}
         meta={<Mono>{ruleId}</Mono>}
         status={<span className="inline-flex items-center gap-2"><Status kind="severity" value={data.severity} /><Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill></span>}
-        actions={
-          <Button variant={data.enabled ? "secondary" : "primary"} onClick={() => toggle.mutate(!data.enabled)} disabled={toggle.isPending}>
+        actions={<>
+          <Button variant="secondary" onClick={() => toggle.mutate(!data.enabled)} disabled={toggle.isPending}>
             {data.enabled ? "Disable rule" : "Enable rule"}
           </Button>
-        }
+          <Button render={<Link href={buildDrillHref({ object: data.module, ruleId: checkId })}>See failing records</Link>} />
+        </>}
       />
       <EntityTabs entityType="rules" entityId={data.id}
         exportOptions={[{ format: "xlsx", label: "Rule run history (.xlsx)", run: () => exportRuleHistory(ruleId, "xlsx") }]}
@@ -246,13 +251,23 @@ export default function RulePage() {
           />
         ) : undefined}
         overview={<>
+      <div className="m-stat-grid">
+        <Stat
+          label="Last pass rate"
+          href={buildDrillHref({ object: data.module, ruleId: checkId })}
+          value={rate != null ? `${rate.toFixed(1)} %` : "—"}
+          bar={rate ?? undefined}
+          rule={rate != null ? { target: 100 } : undefined}
+        />
+        <Stat label="Last run" value={formatDate(data.last_run_at, "datetime")} href={buildDrillHref({ object: data.module, ruleId: checkId })} />
+      </div>
+
       {data.description ? <p className="m-text-body m-ink-3">{data.description}</p> : null}
 
       <dl className="m-text-body flex flex-col gap-1">
         <div className="flex justify-between"><dt className="m-ink-3">Object</dt><dd>{formatModuleName(data.module)}</dd></div>
         <div className="flex justify-between"><dt className="m-ink-3">System</dt><dd>{labelOf(data.category)}</dd></div>
         <div className="flex justify-between"><dt className="m-ink-3">Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? <>, <Mono>{data.source_yaml}</Mono></> : null}</dd></div>
-        <div className="flex justify-between"><dt className="m-ink-3">Last run</dt><dd>{data.last_pass_rate != null ? <DrillLink object={data.module} ruleId={checkId}>{(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %</DrillLink> : "not run yet"}</dd></div>
       </dl>
 
       {data.tags?.length ? <div className="flex flex-wrap gap-1">{data.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}
@@ -264,14 +279,6 @@ export default function RulePage() {
       <RuleVersions ruleId={checkId} />
 
       <Card title="Pass rate over runs"><div className="flex flex-col gap-2">
-        <div className="flex gap-6">
-          <Stat
-            label="Last pass rate"
-            href={buildDrillHref({ object: data.module, ruleId: checkId })}
-            value={data.last_pass_rate != null ? `${(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %` : "—"}
-          />
-          <Stat label="Last run" value={formatDate(data.last_run_at, "datetime")} href={buildDrillHref({ object: data.module, ruleId: checkId })} />
-        </div>
         {history.isLoading ? (
           <Skeleton height={120} />
         ) : !history.data || history.data.runs.length === 0 ? (
@@ -293,9 +300,6 @@ export default function RulePage() {
       {conditionList(data.conditions).length ? <Card title="Conditions"><ConditionList conditions={conditionList(data.conditions)} /></Card> : null}
       {data.thresholds ? <Card title="Thresholds"><ThresholdTable thresholds={data.thresholds} /></Card> : null}
 
-      <p className="m-text-body">
-        <DrillLink object={data.module} ruleId={checkId}>See failing records</DrillLink>
-      </p>
       </>} />
     </div>
   );

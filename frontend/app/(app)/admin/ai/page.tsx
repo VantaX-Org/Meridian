@@ -3,7 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, ErrorState, Field, Notice, PageHeader, Select, Skeleton, Input } from "@/design";
+import { Button, ErrorState, Field, Notice, PageHeader, Select, Skeleton, Input } from "@/design";
+import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
   getLLMConfig,
@@ -29,7 +30,7 @@ export default function AdminAIPage() {
 
   if (!allowed) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4">
         {note("Administrators change the language model. Ask an administrator to change the provider, model or endpoint.")}
       </div>
     );
@@ -37,7 +38,7 @@ export default function AdminAIPage() {
 
   if (providers.isError || config.isError) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4">
         <ErrorState
           {...apiErrorState(providers.error ?? config.error)}
           onRetry={() => { providers.refetch(); config.refetch(); }}
@@ -48,11 +49,11 @@ export default function AdminAIPage() {
 
   const c = config.data;
   const loading = config.isLoading;
-  if (loading) return <div aria-busy="true" className="flex flex-col gap-6 p-6"><Skeleton height={240} /></div>;
+  if (loading) return <div aria-busy="true" className="flex flex-col gap-4"><Skeleton height={240} /></div>;
   const provider = c ? providers.data?.[c.provider]?.label || c.provider || null : null;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader title="AI" meta="The language model that writes narrative and remediation proposals" />
 
       <div className="flex gap-4">
@@ -113,7 +114,8 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
   const num = (v: string) => (v === "" ? undefined : Number(v));
 
   return (
-    <Card title="Provider" meta={config.source === "database" ? "Set here" : "From environment"}>
+    <SettingsSheet>
+    <SettingsSection title="Provider" meta={config.source === "database" ? "Set here" : "From environment"}>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Provider">
@@ -192,6 +194,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
           Last changed {formatDate(config.updated_at, "datetime")} by {config.updated_by ?? "—"}
         </p>
       ) : null}
-    </Card>
+    </SettingsSection>
+    </SettingsSheet>
   );
 }

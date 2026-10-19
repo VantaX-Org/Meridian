@@ -1,6 +1,6 @@
 // frontend/design/shell/Rail.test.tsx
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 let pathname = "/systems";
@@ -38,22 +38,18 @@ function renderRail() {
   );
 }
 
-describe("Rail", () => {
+describe("Rail (the index bar)", () => {
   beforeEach(() => {
     pathname = "/systems";
     searchParams = new URLSearchParams("");
-    window.sessionStorage.clear();
-    // Rail defaults to expanded at narrow widths only when no stored preference exists;
-    // force a wide viewport so these tests see the same expanded-by-default start state
-    // regardless of the ≥1024px default-expanded rule.
-    Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1440 });
   });
 
-  it("never carries the page's ?run= onto a rail link", async () => {
+  it("never carries the page's ?run= onto a nav link", async () => {
     pathname = "/objects/material_master";
     searchParams = new URLSearchParams("run=v-old&tab=rules");
     const { container } = renderRail();
     await screen.findByRole("link", { name: "Runs" });
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     const hrefs = [...container.querySelectorAll("a[href]")].map((a) => a.getAttribute("href") ?? "");
     expect(hrefs.length).toBeGreaterThan(5);
     expect(hrefs.filter((h) => /[?&]run=/.test(h))).toEqual([]);
@@ -63,106 +59,50 @@ describe("Rail", () => {
     renderRail();
     const current = await screen.findAllByRole("link", { current: "page" });
     expect(current).toHaveLength(1);
-    expect(current[0]).toHaveAccessibleName("Systems");
-  });
-
-  it("shows a badge only for an item with a positive live count", async () => {
-    renderRail();
-    const fix = await screen.findByRole("link", { name: "Fix" });
-    expect(await within(fix).findByText("3")).toBeInTheDocument();
-    const runs = screen.getByRole("link", { name: "Runs" });
-    expect(within(runs).queryByText(/^\d+$/)).not.toBeInTheDocument();
+    expect(current[0]).toHaveTextContent("Systems");
   });
 
   it("renders the Fix queue count as a critical badge inside a data-severity element", async () => {
     renderRail();
-    const fix = await screen.findByRole("link", { name: "Fix" });
-    const badge = await within(fix).findByText("3");
-    expect(badge).toHaveClass("m-badge-critical");
-    expect(badge.closest("[data-severity]")).toHaveAttribute("data-severity", "critical");
+    const fix = await screen.findByRole("link", { name: /^Fix/ });
+    const badge = await screen.findByText("3");
+    expect(fix).toContainElement(badge);
+    expect(badge.closest("[data-severity='critical']")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Inbox" })).not.toHaveTextContent("0");
   });
 
-  it("every nav href is unique in the flattened rail", async () => {
-    renderRail();
-    // Scoped to the nav-items list: the brand mark above it is a separate
-    // "go home" shortcut that deliberately shares the Home item's href.
-    const navItems = await screen.findByTestId("rail-nav-items");
-    const links = await within(navItems).findAllByRole("link");
-    const hrefs = links.map((l) => l.getAttribute("href"));
-    expect(hrefs.length).toBe(new Set(hrefs).size);
+  it("every nav href is unique across the pills and the More panel", async () => {
+    const { container } = renderRail();
+    await screen.findByRole("link", { name: "Runs" });
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    const hrefs = [...container.querySelectorAll("nav a[href]")].map((a) => a.getAttribute("href") ?? "");
+    expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 
-  it("collapses to icon-only rows with no section labels, hiding item text", async () => {
+  it("the More panel opens on click, holds the pages that are not pills, and closes on Escape", async () => {
     renderRail();
-    const toggle = await screen.findByRole("button", { name: "Collapse navigation" });
-    toggle.click();
-    expect(await screen.findByRole("button", { name: "Expand navigation" })).toBeInTheDocument();
-    expect(screen.queryByText("Systems")).not.toBeInTheDocument();
-    expect(screen.queryByText("Home")).not.toBeInTheDocument();
-    // the link is still reachable by its accessible name even with the text node hidden
-    expect(screen.getByRole("link", { name: "Systems" })).toBeInTheDocument();
+    const button = await screen.findByRole("button", { name: "More" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("group", { name: "More pages" })).toBeNull();
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    const panel = screen.getByRole("group", { name: "More pages" });
+    expect(panel).toHaveTextContent("Glossary");
+    expect(panel).toHaveTextContent("Rules");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("group", { name: "More pages" })).toBeNull();
   });
 
-  it("brand home link keeps its accessible name in both rail states", async () => {
+  it("the More button reads as active when the current page lives inside it", async () => {
+    pathname = "/mdm/glossary";
     renderRail();
-    expect(await screen.findByRole("link", { name: "Meridian" })).toHaveAttribute("href", expect.stringContaining("/home/"));
-    (await screen.findByRole("button", { name: "Collapse navigation" })).click();
-    await screen.findByRole("button", { name: "Expand navigation" });
-    expect(screen.getByRole("link", { name: "Meridian" })).toBeInTheDocument();
+    const button = await screen.findByRole("button", { name: "More" });
+    expect(button).toHaveAttribute("data-active", "true");
+    expect(screen.queryAllByRole("link", { current: "page" })).toHaveLength(0);
   });
 
-  it("persists the collapsed state to sessionStorage and restores it on remount", async () => {
-    const { unmount } = renderRail();
-    const toggle = await screen.findByRole("button", { name: "Collapse navigation" });
-    toggle.click();
-    expect(window.sessionStorage.getItem("meridian:rail:open")).toBe("collapsed");
-    unmount();
-
+  it("brand home link keeps its accessible name", async () => {
     renderRail();
-    expect(await screen.findByRole("button", { name: "Expand navigation" })).toBeInTheDocument();
-  });
-
-  it("clicking a parent row's own link navigates, without being hijacked to toggle its children", async () => {
-    renderRail();
-    const parent = await screen.findByRole("link", { name: "Insights" });
-    const chevron = screen.getByRole("button", { name: "Expand Insights" });
-    // A navigating anchor — no preventDefault/toggle side-channel on the row itself.
-    expect(parent).toHaveAttribute("href");
-    expect(parent.tagName).toBe("A");
-
-    // Clicking the row's own link must not toggle the children open: the
-    // chevron is the only control wired to toggleParent.
-    fireEvent.click(parent);
-    expect(chevron).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "Readiness" })).not.toBeInTheDocument();
-
-    // Clicking the chevron does toggle the children, and does not navigate
-    // (preventDefault + stopPropagation on the chevron's own handler).
-    fireEvent.click(chevron);
-    expect(chevron).toHaveAttribute("aria-expanded", "true");
-    expect(await screen.findByRole("link", { name: "Readiness" })).toBeInTheDocument();
-  });
-
-  it("exposes a separate chevron button to expand/collapse a parent's children", async () => {
-    renderRail();
-    const toggleButton = await screen.findByRole("button", { name: /Expand Insights|Collapse Insights/ });
-    expect(toggleButton).toHaveAttribute("aria-expanded");
-    expect(toggleButton).toHaveAttribute("aria-controls");
-  });
-
-  it("collapsed flyout: ArrowRight opens and focuses the first child link, Escape closes and refocuses the trigger", async () => {
-    renderRail();
-    const collapse = await screen.findByRole("button", { name: "Collapse navigation" });
-    collapse.click();
-    const trigger = await screen.findByRole("link", { name: "Insights" });
-    trigger.focus();
-    fireEvent.keyDown(trigger, { key: "ArrowRight" });
-
-    const firstChild = await screen.findByRole("link", { name: "Summary" });
-    expect(firstChild).toHaveFocus();
-
-    fireEvent.keyDown(firstChild, { key: "Escape" });
-    expect(screen.queryByRole("link", { name: "Summary" })).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
+    expect(await screen.findByRole("link", { name: "Meridian" })).toBeInTheDocument();
   });
 });

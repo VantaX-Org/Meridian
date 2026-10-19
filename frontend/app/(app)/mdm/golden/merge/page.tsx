@@ -8,8 +8,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Card, DataTable, EmptyState, ErrorState, Mono, PageHeader, Skeleton } from "@/design";
+import { DataTable, EmptyState, ErrorState, Mono, PageHeader, Skeleton } from "@/design";
 import type { ColumnDef } from "@tanstack/react-table";
+import { LedgerHead } from "@/components/mdm/ledger";
 import { getMasterRecord } from "@/lib/api/master-records";
 import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -35,7 +36,7 @@ export default function GoldenRecordMergePage() {
   }
   if (query.isLoading) {
     return (
-      <div className="flex flex-col gap-2 p-6">
+      <div className="flex flex-col gap-2">
         <Skeleton height={32} />
         <Skeleton height={120} />
       </div>
@@ -43,7 +44,7 @@ export default function GoldenRecordMergePage() {
   }
   if (query.isError) {
     return (
-      <div className="p-6">
+      <div>
         <ErrorState
           {...apiErrorState(query.error)}
           onRetry={() => void query.refetch()}
@@ -85,19 +86,20 @@ export default function GoldenRecordMergePage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title={`Merge conflicts for ${record.sap_object_key}`}
         meta="Field-by-field comparison of the golden value against every contributing source"
         actions={<Link href={`/mdm/golden/${record.id}`} className="m-text-body m-ink-accent">Back to record</Link>}
       />
-      <Card title="Field comparison" meta={String(fields.length)}>
+      <section aria-label="Field comparison">
+        <LedgerHead title="Field comparison" meta={String(fields.length)} />
         {fields.length === 0 ? (
           <p className="m-text-body m-ink-3">No golden fields to compare</p>
         ) : (
           <DataTable columns={cols} getRowId={(r) => r.field} data={rows} height="auto" />
         )}
-      </Card>
+      </section>
       <Link href="/insights/duplicates" className="m-text-body m-ink-accent">
         Review other merge candidates in duplicates
       </Link>

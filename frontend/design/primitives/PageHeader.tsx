@@ -22,7 +22,7 @@ export function PageHeader({ title, meta, status, actions, tabs }: PageHeaderPro
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex items-center gap-3">
-            <h2 className="m-text-title font-semibold" style={{ color: "var(--m-ink)", letterSpacing: "var(--m-tracking-title)" }}>{title}</h2>
+            <h2 className="m-text-title font-bold" style={{ color: "var(--m-ink)", letterSpacing: "var(--m-tracking-title)" }}>{title}</h2>
             {status}
           </div>
           {meta != null && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{meta}</p>}

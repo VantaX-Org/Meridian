@@ -12,12 +12,15 @@ import {
   type ZAnomaly, type ZAnomalyVerdict, type ZDormant, type ZDrift, type ZGhost, type ZRegistryEntry,
 } from "@/lib/api/z-objects";
 import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { MappingSection, RegistryEditor, ReportDialog, RulesSection } from "./z-object-panels";
 import { useRerun } from "./use-rerun";
+import { useRowDrawer } from "./row-drawer";
 
 const n = (v: number) => v.toLocaleString();
+const SEVERITY_ORDER = ["critical", "high", "medium", "low"];
 const dash = (v: string | null | undefined) => v ?? "—";
+const day = (v: string | null | undefined) => (v ? formatDate(v, "date") : "—");
 const analyseAction = <Button render={<Link href="/analyse">Run an analysis</Link>} />;
 
 function Feed<T>({ q, children }: { q: UseQueryResult<T>; children: (data: T) => ReactNode }) {
@@ -66,14 +69,18 @@ function RegistrySection() {
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "std", header: "Standard equivalent", cell: ({ row }) => dash(row.original.standard_equivalent) },
     { id: "tx", header: "Transactions", cell: ({ row }) => n(row.original.transaction_count_total) },
-    { id: "last", header: "Last active", cell: ({ row }) => dash(row.original.last_active_date) },
+    { id: "last", header: "Last active", cell: ({ row }) => day(row.original.last_active_date) },
     { id: "status", header: "Status", cell: ({ row }) => <Pill tone={row.original.status === "active" ? "go" : "at-risk"}>{labelOf(row.original.status)}</Pill> },
   ], []);
+  const { open, drawer, column } = useRowDrawer<ZRegistryEntry>("Custom object", (e) => <ProfileDetail entry={e} />);
+  const withOpen = useMemo(() => [...cols, column], [cols, column]);
   return (
     <Feed q={q}>
       {(d) => d.entries.length === 0 ? <EmptyState title="No custom objects registered" detail="Custom Z objects appear once an analysis finds them." action={analyseAction} /> : (
-        <DataTable columns={cols} data={d.entries} getRowId={(e) => e.id} height={420} exportName="z-object-registry"
-          renderDrawer={(e) => <ProfileDetail entry={e} />} />
+        <>
+          <DataTable columns={withOpen} data={[...d.entries].sort((a, b) => b.transaction_count_total - a.transaction_count_total)} getRowId={(e) => e.id} height={420} exportName="z-object-registry" onRowClick={open} />
+          {drawer}
+        </>
       )}
     </Feed>
   );
@@ -118,7 +125,7 @@ function AnomaliesSection() {
   return (
     <Feed q={q}>
       {(d) => d.anomalies.length === 0 ? <EmptyState title="No anomalies detected" detail="The latest analysis found no anomalous custom objects." action={analyseAction} /> : (
-        <DataTable columns={cols} data={d.anomalies} getRowId={(a) => a.id ?? `${a.object_name}/${a.anomaly_type}`} height={380} exportName="z-object-anomalies" />
+        <DataTable columns={cols} data={[...d.anomalies].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity) || b.deviation_pct - a.deviation_pct)} getRowId={(a) => a.id ?? `${a.object_name}/${a.anomaly_type}`} height={380} exportName="z-object-anomalies" />
       )}
     </Feed>
   );
@@ -131,7 +138,7 @@ function GhostSection() {
     { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "field", header: "Source field", cell: ({ row }) => <Mono>{row.original.source_field}</Mono> },
-    { id: "last", header: "Last active", cell: ({ row }) => dash(row.original.last_active_date) },
+    { id: "last", header: "Last active", cell: ({ row }) => day(row.original.last_active_date) },
   ], []);
   return <Feed q={q}>{(d) => d.length === 0 ? <EmptyState title="No ghost objects" detail="The latest analysis found no unused custom objects." action={analyseAction} /> : <DataTable columns={cols} data={d} getRowId={(g) => `${g.object_name}/${g.source_field}`} height={360} exportName="z-object-ghost" />}</Feed>;
 }
@@ -142,7 +149,7 @@ function DormantSection() {
     { id: "name", header: "Object", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
     { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "last", header: "Last active", cell: ({ row }) => dash(row.original.last_active_date) },
+    { id: "last", header: "Last active", cell: ({ row }) => day(row.original.last_active_date) },
     { id: "months", header: "Months inactive", cell: ({ row }) => n(row.original.months_inactive) },
   ], []);
   return <Feed q={q}>{(d) => d.length === 0 ? <EmptyState title="No dormant objects" detail="The latest analysis found no dormant custom objects." action={analyseAction} /> : <DataTable columns={cols} data={d} getRowId={(g) => g.object_name} height={360} exportName="z-object-dormant" />}</Feed>;
@@ -155,7 +162,7 @@ function DriftSection() {
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "field", header: "Source field", cell: ({ row }) => <Mono>{row.original.source_field}</Mono> },
     { id: "change", header: "Change", cell: ({ row }) => <Pill>{labelOf(row.original.change_type)}</Pill> },
-    { id: "when", header: "First detected", cell: ({ row }) => dash(row.original.first_detected) },
+    { id: "when", header: "First detected", cell: ({ row }) => day(row.original.first_detected) },
   ], []);
   return <Feed q={q}>{(d) => d.length === 0 ? <EmptyState title="No drift in custom objects" detail="Custom objects are unchanged since the previous run." action={analyseAction} /> : <DataTable columns={cols} data={d} getRowId={(g) => `${g.object_name}/${g.source_field}/${g.change_type}`} height={360} exportName="z-object-drift" />}</Feed>;
 }

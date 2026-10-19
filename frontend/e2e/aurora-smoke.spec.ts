@@ -13,8 +13,8 @@ for (const r of ROUTES) {
     app.on("pageerror", (e) => errors.push(e.message));
     await app.goto(r.path, { waitUntil: "load" });
     await expect(app.getByRole("heading", { level: 1, name: r.heading })).toBeVisible();
-    // the rail and the Jobs button are the shell's constant chrome
-    await expect(app.getByRole("navigation").filter({ has: app.getByRole("button", { name: /(collapse|expand) navigation/i }) })).toBeVisible();
+    // the index bar and the Jobs button are the shell's constant chrome
+    await expect(app.getByRole("navigation", { name: "Main" })).toBeVisible();
     // the shell's Jobs button ("Jobs" or "Jobs, 2 running"), not Basis home's "Jobs running" stat
     await expect(app.getByRole("button", { name: /^jobs(, \d+ running)?$/i })).toBeVisible();
     expect(errors).toEqual([]);

@@ -6,7 +6,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Async, Card, Datum, Margin, PageHeader, InsightHeader, Select, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
+import { Async, Card, PageHeader, InsightHeader, Select, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { RunScope } from "@/components/run-scope";
@@ -177,12 +177,10 @@ export function InsightFrame({
         tabs={<InsightTabs />}
       />
       {toolbar && <div className="flex flex-wrap items-end gap-2">{toolbar}</div>}
-      <Datum margin={showInsight ? <Margin {...insight} loading={insight.loading ?? state === "loading"} /> : undefined}>
-        <div className="flex flex-col [gap:var(--m-section-gap)]">
-          {showInsight && insight.hero && <InsightHeader {...insight} bare loading={insight.loading ?? state === "loading"} />}
-          {body}
-        </div>
-      </Datum>
+      <div className="flex flex-col [gap:var(--m-section-gap)]">
+        {showInsight && <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />}
+        {body}
+      </div>
     </div>
   );
 }

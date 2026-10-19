@@ -11,9 +11,6 @@
  * - `ProcessGraph` (aurora, nodes carry `kind`/`alignment` styling) is
  *   replaced by @/design's force-directed `Graph`, which only varies node
  *   size — the kind/alignment visual encoding is dropped.
- * - `Tally`'s per-figure href/verdict/tone is replaced by plain @/design
- *   `Stat` cells (label/value only); the "click to view" affordance and the
- *   loading/error-retry wiring on each figure are dropped.
  * - The lens switch is now `?tab=` (controlled Tabs, whitelisted). A legacy
  *   `?lens=` is honoured only when `?tab=` is absent.
  * - The "domain" filter under Entity links, and the system/version/object
@@ -31,7 +28,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs, type GraphEdge, type GraphNode, Status } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Tabs, type GraphEdge, type GraphNode, Status } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import { domainOf } from "@/design/tokens";
 import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
@@ -65,25 +62,6 @@ export const patternTypeLabel = (t: string) => PATTERN_TYPE_LABEL[t] ?? labelOf(
 // ponytail: carried from the legacy component — past ~80 edges the force layout is unreadable, the table lists all.
 const MAX_EDGES = 80;
 
-
-function GraphTally() {
-  const rel = useQuery({ queryKey: queryKeys.relationships({ include_inactive: true }), queryFn: () => getRelationships({ include_inactive: true }) });
-  const sum = useQuery({ queryKey: queryKeys.miningSummary(30), queryFn: () => getMiningSummary(30) });
-  const rels = rel.data?.relationships ?? [];
-  const domains = new Set(rels.flatMap((r) => [r.from_domain, r.to_domain])).size;
-  const anomalies = sum.data?.new_anomalies ?? 0;
-  return (
-    <div className="flex flex-row gap-8">
-      <Stat label="Entities" loading={rel.isLoading} value={domains} />
-      <Stat label="Links" loading={rel.isLoading} value={(rel.data?.total ?? rels.length)}
-        delta={`${rels.filter((r) => r.ai_inferred).length.toLocaleString()} inferred`} />
-      <Stat label="Patterns" loading={sum.isLoading} value={(sum.data?.total_patterns ?? 0)}
-        delta={`${(sum.data?.stable_patterns ?? 0).toLocaleString()} stable`} />
-      <Stat label="New anomalies" loading={sum.isLoading} value={anomalies}
-        delta="Seen in the last 30 days" />
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------ Entity links */
 
@@ -140,8 +118,8 @@ function EntityLinks() {
         <p className="m-text-body m-ink-2">
           Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}.
         </p>
-        {q.isLoading || dayOne.status === "loading" ? <Skeleton height={440} />
-          : nodes.length ? <Graph nodes={nodes} edges={edges} height={440} onNodeClick={(id) => setDomain(id === domain ? "" : id)} />
+        {q.isLoading || dayOne.status === "loading" ? <Skeleton height={320} />
+          : nodes.length ? <Graph nodes={nodes} edges={edges} height={320} onNodeClick={(id) => setDomain(id === domain ? "" : id)} />
           : (
             <EmptyState
               title="No relationships recorded yet"
@@ -236,8 +214,8 @@ function Dependencies() {
         <p className="m-text-body m-ink-2">
           One field decides another in at least 99 % of records. Click a field to open its profile.
         </p>
-        {profile.isLoading || systems.isLoading || versions.isLoading ? <Skeleton height={480} />
-          : nodes.length ? <Graph nodes={nodes} edges={edges} height={480} onNodeClick={() => router.push(profileHref)} />
+        {profile.isLoading || systems.isLoading || versions.isLoading ? <Skeleton height={320} />
+          : nodes.length ? <Graph nodes={nodes} edges={edges} height={320} onNodeClick={() => router.push(profileHref)} />
           : <EmptyState title="No candidate rules in this object's data" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
       </div>
       <DataTableWithMaybeEmpty columns={columns} data={deps} getRowId={(d) => `${d.determinant}>${d.dependent}`} loading={profile.isLoading} empty="No candidate rules." action={<Button render={<Link href="/runs">Open runs</Link>} />} />
@@ -331,7 +309,6 @@ export default function MiningPage() {
             : { sentence: "Mine the run to find links", action: { label: "Open links", onClick: () => setTab("links") } },
       }}
     >
-      <GraphTally />
       <Tabs value={tab} onValueChange={setTab} items={[
         { value: "links", label: "Entity links", content: <EntityLinks /> },
         { value: "dependencies", label: "Mined dependencies", content: <Dependencies /> },

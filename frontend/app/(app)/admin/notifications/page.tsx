@@ -7,11 +7,12 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, Dialog, ExplorerPage, Field, PageHeader, Pill, Select, Input, asyncStateOf } from "@/design";
+import { Button, DataTable, Dialog, ExplorerPage, Field, Menu, PageHeader, Pill, Select, Input, asyncStateOf } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest,
 } from "@/lib/api/notifications";
+import { actionColumn } from "@/components/mdm/ledger";
 import { apiErrorMessage } from "@/lib/error";
 import { usePermissions } from "@/lib/permissions";
 import { email, length, oneOf, pattern, required, url, useFormErrors, type Schema } from "@/lib/forms";
@@ -84,15 +85,15 @@ export default function NotificationsAdminPage() {
     { accessorKey: "digest", header: "Digest" },
     { id: "crit", header: "Critical alerts", cell: ({ row }) => (row.original.immediate_critical ? "Sent at once" : "In digest") },
     { id: "on", header: "Status", cell: ({ row }) => <Pill tone={row.original.enabled ? "go" : "at-risk"}>{row.original.enabled ? "On" : "Off"}</Pill> },
-    ...(canEdit ? [{
-      id: "act", header: "",
-      cell: ({ row }: { row: { original: AlertChannel } }) => (
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => test.mutate(row.original.id)}>Send test</Button>
-          <Button variant="secondary" onClick={() => setRemoving(row.original)}>Remove</Button>
-        </div>
-      ),
-    } satisfies ColumnDef<AlertChannel>] : []),
+    ...(canEdit ? [actionColumn<AlertChannel>((c) => (
+      <Menu
+        trigger={<button type="button" aria-label={`Actions for ${c.kind} channel`} className="m-text-body font-medium m-ink-accent-ink hover:underline">Manage</button>}
+        items={[
+          { label: "Send test", onSelect: () => test.mutate(c.id) },
+          { label: "Remove", onSelect: () => setRemoving(c) },
+        ]}
+      />
+    ))] : []),
   ];
   const items = q.data ?? [];
   return (

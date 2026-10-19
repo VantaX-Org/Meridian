@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input, PageFrame } from "@/design";
+import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
   createMatchRule, deleteMatchRule, getMatchRules, simulateMatchRules, updateMatchRule,
@@ -108,13 +109,14 @@ function RulesTab() {
   });
 
   const columns = useMemo<ColumnDef<MatchRule>[]>(() => [
-    { id: "domain", header: "Domain", cell: ({ row }) => formatModuleName(row.original.domain) },
+    { id: "domain", header: "Object", cell: ({ row }) => formatModuleName(row.original.domain) },
     { id: "field", header: "Field", cell: ({ row }) => row.original.field },
     { id: "type", header: "Match", cell: ({ row }) => MATCH_TYPES.find((t) => t.value === row.original.match_type)?.label ?? row.original.match_type },
     { id: "weight", header: "Weight", cell: ({ row }) => row.original.weight.toFixed(2) },
     { id: "threshold", header: "Threshold", cell: ({ row }) => `${Math.round(row.original.threshold * 100)}%` },
-    { id: "active", header: "State", cell: ({ row }) => <Pill tone={row.original.active ? "go" : "neutral"}>{row.original.active ? "active" : "off"}</Pill> },
-  ], []);
+    { id: "active", header: "State", cell: ({ row }) => <Pill tone={row.original.active ? "go" : "neutral"}>{row.original.active ? "Active" : "Off"}</Pill> },
+    actionColumn((r) => <RowButton label={`${write ? "Edit" : "View"} ${r.field}`} onClick={() => { setEditing(r); setDraft({ ...r }); }}>{write ? "Edit" : "View"}</RowButton>),
+  ], [write]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -328,15 +330,11 @@ function ConstraintsTab() {
 
   const columns = useMemo<ColumnDef<PairConstraint>[]>(() => [
     { id: "kind", header: "Kind", cell: ({ row }) => KINDS.find((k) => k.value === row.original.kind)?.label ?? row.original.kind },
-    { id: "domain", header: "Domain", cell: ({ row }) => formatModuleName(row.original.domain) },
+    { id: "domain", header: "Object", cell: ({ row }) => formatModuleName(row.original.domain) },
     { id: "a", header: "Record A", cell: ({ row }) => row.original.key_lo },
     { id: "b", header: "Record B", cell: ({ row }) => row.original.key_hi },
     { id: "reason", header: "Reason", cell: ({ row }) => row.original.reason ?? "None given" },
-    {
-      id: "clear", header: "", cell: ({ row }) => write ? (
-        <Button variant="secondary" disabled={clear.isPending} onClick={() => clear.mutate(row.original)}>Clear</Button>
-      ) : null,
-    },
+    actionColumn((c) => (write ? <RowButton disabled={clear.isPending} onClick={() => clear.mutate(c)}>Clear</RowButton> : null)),
   ], [write, clear]);
 
   return (

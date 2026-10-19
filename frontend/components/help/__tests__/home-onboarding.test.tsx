@@ -1,28 +1,85 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeOnboarding } from "../home-onboarding";
 
-let allowed = true;
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => allowed }) }));
-vi.mock("@/hooks/use-first-run-checklist", () => ({
-  useFirstRunChecklist: () => ({ loading: false, items: [{ id: "batch", label: "Create a first fix batch", done: false, href: "/fix" }] }),
+const state = vi.hoisted(() => ({ allowed: true, tourDone: false, dismissed: false, activeTour: null as string | null, items: [] as { id: string; label: string; done: boolean; href: string }[] }));
+const actions = vi.hoisted(() => ({ startTour: vi.fn(), markTourDone: vi.fn(), dismissChecklist: vi.fn() }));
+
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => state.allowed }) }));
+vi.mock("@/hooks/use-first-run-checklist", () => ({ useFirstRunChecklist: () => ({ loading: false, items: state.items }) }));
+vi.mock("@/lib/help/storage", () => ({
+  dismissChecklist: actions.dismissChecklist,
+  isChecklistDismissed: () => state.dismissed,
+  isTourDone: () => state.tourDone,
+  markTourDone: actions.markTourDone,
+  subscribeStorage: () => () => {},
 }));
-vi.mock("@/lib/help/storage", () => ({ dismissChecklist: vi.fn(), isChecklistDismissed: () => false, subscribeStorage: () => () => {} }));
 vi.mock("@/design", () => ({
-  TourOffer: () => null,
-  FirstRunChecklist: ({ items }: { items: { label: string }[] }) => <ul>{items.map((i) => <li key={i.label}>{i.label}</li>)}</ul>,
+  startTour: actions.startTour,
+  useActiveTourId: () => state.activeTour,
+  Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => <button type="button" onClick={onClick}>{children}</button>,
 }));
+
+const item = (id: string, label: string, done = false) => ({ id, label, done, href: `/${id}` });
+
+beforeEach(() => {
+  Object.assign(state, { allowed: true, tourDone: true, dismissed: false, activeTour: null, items: [item("fix", "Create a first fix batch")] });
+  vi.clearAllMocks();
+});
 
 describe("HomeOnboarding", () => {
   it("shows the setup checklist to whoever manages systems", () => {
-    allowed = true;
     render(<HomeOnboarding />);
     expect(screen.getByText("Create a first fix batch")).toBeInTheDocument();
+    expect(screen.getByText("0 of 1 done")).toBeInTheDocument();
   });
 
   it("hides it from everyone else, viewers included", () => {
-    allowed = false;
-    render(<HomeOnboarding />);
+    state.allowed = false;
+    const { container } = render(<HomeOnboarding />);
     expect(screen.queryByText("Create a first fix batch")).toBeNull();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("names the first two open steps in one row and counts the rest", () => {
+    state.items = [item("system", "Connect a system", true), item("a", "Step a"), item("b", "Step b"), item("c", "Step c"), item("d", "Step d")];
+    render(<HomeOnboarding />);
+    expect(screen.getByRole("link", { name: "Step a" })).toHaveAttribute("href", "/a");
+    expect(screen.getByRole("link", { name: "Step b" })).toBeInTheDocument();
+    expect(screen.queryByText("Step c")).toBeNull();
+    expect(screen.getByText("and 2 more")).toBeInTheDocument();
+    expect(screen.queryByText("Connect a system")).toBeNull();
+    expect(screen.getByTestId("home-onboarding").children).toHaveLength(1);
+  });
+
+  it("dismisses the checklist", () => {
+    render(<HomeOnboarding />);
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(actions.dismissChecklist).toHaveBeenCalled();
+  });
+
+  it("offers the first-run tour beside the checklist in the same row", () => {
+    state.tourDone = false;
+    render(<HomeOnboarding />);
+    expect(screen.getAllByTestId("home-onboarding")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Take the tour" }));
+    expect(actions.startTour).toHaveBeenCalledWith("first-run");
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }));
+    expect(actions.markTourDone).toHaveBeenCalledWith("first-run");
+  });
+
+  it("shows nothing once the tour is done and the checklist dismissed, or every step is done", () => {
+    state.dismissed = true;
+    expect(render(<HomeOnboarding />).container).toBeEmptyDOMElement();
+    state.dismissed = false;
+    state.items = [item("fix", "Create a first fix batch", true)];
+    expect(render(<HomeOnboarding />).container).toBeEmptyDOMElement();
+  });
+
+  it("does not offer the tour while one is running", () => {
+    state.tourDone = false;
+    state.activeTour = "first-run";
+    render(<HomeOnboarding />);
+    expect(screen.queryByRole("button", { name: "Take the tour" })).toBeNull();
   });
 });

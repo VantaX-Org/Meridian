@@ -256,13 +256,14 @@ disagree, follow DESIGN.md.
   charts, table, shell and page templates. There is no second library and
   no legacy shell; `components/aurora`, `components/ui-core`,
   `components/shell` and `lib/aurora` were retired.
-- **Direction**: "The Instrument". One datum line per page (`Datum`: figures
-  left, the four explaining sentences as marginalia right, `Margin`), one
-  ruler for every score (`Rule`, three sizes, one geometry), styled Isora:
-  a cool blue-grey canvas (`#F5F7F8`), white sheets with a hairline, 12px
-  radius and one soft shadow, slate-navy ink (`#26394B`); blue-slate graphite
-  under `[data-theme="dark"]`. No dark hero blocks, no gradients, no glow. Icons are Meridian's own set in `design/icons`.
-- **Colour**: one steel blue accent `--m-accent` (`#336F96`, sky blue in
+- **Direction**: "The Instrument" on the Canvas. No sidebar: an index bar of
+  pills (`Rail`) and a scope bar (`TopBar`); one ruler for every score
+  (`Rule`), the four sentences in one row (`InsightHeader`), the object map
+  (`ObjectMap`), ranked ledgers and a split-pane object workbench; a bright
+  blue-grey canvas (`#F4F6F8`), white 16px sheets with one soft shadow,
+  near-black ink (`#1A2233`); blue graphite under `[data-theme="dark"]`. No
+  dark hero blocks, no gradients, no glow. Icons are Meridian's own set in `design/icons`.
+- **Colour**: one cobalt accent `--m-accent` (`#2563EB`, lighter in
   dark) is interaction only (primary button, links, selection, focus). Hue
   otherwise means defect status: red / amber / green (critical, high, medium,
   low and no-go, at-risk, go map onto these) plus info blue for neutral
@@ -270,7 +271,7 @@ disagree, follow DESIGN.md.
   SAP object) and chart series (`--m-viz-*`) are muted families; each family
   never borrows another's tokens. The amber "ember" signal and hero
   gradients are retired. No glass, gradients or backdrop blur.
-- **Type**: Inter for UI and numerals, 14px body,
+- **Type**: Manrope for UI and numerals, 14px body,
   tabular figures (no serif anywhere); JetBrains Mono for SAP identifiers only
   (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both
   loaded with `next/font`. Sentence case.

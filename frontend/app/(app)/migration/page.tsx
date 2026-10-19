@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
-import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat, Status, asyncStateOf } from "@/design";
+import Link from "next/link";
+import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat, Status, asyncStateOf, statusLabel } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
@@ -27,7 +28,7 @@ export default function MigrationPage() {
   const run = useMutation({
     mutationFn: (id: string) => runWave(id),
     onSuccess: () => {
-      toast.success("Run queued. Readiness updates when it completes.");
+      toast.success("Run queued, readiness updates when it completes");
       void qc.invalidateQueries({ queryKey: queryKeys.migrationWaves() });
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
@@ -40,7 +41,7 @@ export default function MigrationPage() {
         modules: wave.modules,
       }),
     onSuccess: (data) => {
-      toast.success("Dry run queued.");
+      toast.success("Dry run queued");
       void qc.invalidateQueries({ queryKey: queryKeys.migrationWaves() });
       router.push(`/migration/dry-run?run=${data.run_id}`);
     },
@@ -70,24 +71,28 @@ export default function MigrationPage() {
       cell: ({ row }) => <Sparkline data={(row.original.trend ?? []).map((y, x) => ({ x, y }))} />,
     },
     {
-      id: "actions", header: "",
-      cell: ({ row }) =>
-        can("analyse") ? (
-          <div className="flex gap-2">
-            <Button variant="secondary" disabled={run.isPending}
-                    onClick={(e) => { e.stopPropagation(); run.mutate(row.original.id); }}>
-              Run now
-            </Button>
-            <Button variant="secondary" disabled={dryRun.isPending}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (row.original.source_system_id) dryRun.mutate(row.original);
-                      else toast.error("Set a source system for this wave first.");
-                    }}>
-              Dry run (S/4 load)
-            </Button>
-          </div>
-        ) : null,
+      id: "actions", header: "", size: 340,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+          {can("analyse") ? (
+            <>
+              <Button variant="ghost" size="sm" disabled={run.isPending}
+                      onClick={(e) => { e.stopPropagation(); run.mutate(row.original.id); }}>
+                Run now
+              </Button>
+              <Button variant="ghost" size="sm" disabled={dryRun.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (row.original.source_system_id) dryRun.mutate(row.original);
+                        else toast.error("Set a source system for this wave first");
+                      }}>
+                Dry run (S/4 load)
+              </Button>
+            </>
+          ) : null}
+          <Link href={`/migration/${row.original.id}`} className="m-ink-accent-ink underline" onClick={(e) => e.stopPropagation()}>Open</Link>
+        </div>
+      ),
     },
   ];
 
@@ -97,7 +102,10 @@ export default function MigrationPage() {
   const atRiskWaves = data.filter((w) => verdictOf(w) === "at_risk");
   const noGoWaves = data.filter((w) => verdictOf(w) === "no_go");
   const verdict = rawVerdict === "go" || rawVerdict === "at_risk" || rawVerdict === "no_go" ? rawVerdict : "";
-  const shownWaves = verdict ? data.filter((w) => verdictOf(w) === verdict) : data;
+  const VERDICT_RANK: Record<string, number> = { no_go: 0, at_risk: 1, go: 2 };
+  // Worst first, then the lowest readiness: the waves that need a hand lead the ledger.
+  const shownWaves = (verdict ? data.filter((w) => verdictOf(w) === verdict) : data).sort((a, b) =>
+    (VERDICT_RANK[verdictOf(a) ?? ""] ?? 3) - (VERDICT_RANK[verdictOf(b) ?? ""] ?? 3) || (a.last_score ?? 101) - (b.last_score ?? 101));
   const [goCount, atRiskCount, noGoCount] = [goWaves.length, atRiskWaves.length, noGoWaves.length];
   const createButton = can("analyse") ? <Button onClick={() => setCreating(true)}>Create wave</Button> : undefined;
   return (
@@ -109,18 +117,16 @@ export default function MigrationPage() {
             <Stat label="Waves" help="wave" value={data.length} />
             <Stat label="Go" value={goCount} tone="go" href="/migration?verdict=go" />
             <Stat label="At risk" value={atRiskCount} tone={atRiskCount > 0 ? "at-risk" : undefined} href="/migration?verdict=at_risk" />
-            <Stat label="No go" value={noGoCount} tone={noGoCount > 0 ? "no-go" : undefined} href="/migration?verdict=no_go" />
+            <Stat label="No-go" value={noGoCount} tone={noGoCount > 0 ? "no-go" : undefined} href="/migration?verdict=no_go" />
           </div>
         ) : undefined}
         filterBar={
-          <div className="flex items-center justify-between gap-2 m-text-body">
-            {verdict ? (
-              <span className="flex items-center gap-2">
-                <span className="m-ink-2">Showing {verdict.replace("_", " ")} waves.</span>
-                <Button variant="secondary" onClick={() => setVerdict("")}>Show all waves</Button>
-              </span>
-            ) : <span />}
-          </div>
+          verdict ? (
+            <div className="flex items-center gap-2 m-text-body">
+              <Pill tone="neutral">{statusLabel("verdict", verdict)}</Pill>
+              <Button variant="ghost" onClick={() => setVerdict("")}>Clear filter</Button>
+            </div>
+          ) : undefined
         }
         table={<DataTable columns={columns} data={shownWaves} getRowId={(w) => w.id}
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}

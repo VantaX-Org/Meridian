@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -11,24 +10,21 @@ import { queryKeys } from "../../lib/query-keys";
 import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
 import { MeridianMark } from "../icons/Mark";
-import { IconChevronRight, IconPanel } from "../icons";
-import { activeHref, flattenNav, resolveNavHref, type NavItem } from "../../lib/nav";
-import { mMotion } from "../tokens";
+import { IconChevronDown } from "../icons";
+import { activeHref, flattenNav, resolveNavHref, type NavGroup, type NavItem } from "../../lib/nav";
 import { Badge } from "../primitives/Badge";
-import { domainOf, mColor } from "../tokens";
-
-/** Object-page nav items (`/objects/<module>`) carry a 6px swatch in their owning domain colour. */
-function objectDomainColor(href: string): string | undefined {
-  const m = /^\/objects\/([^/?]+)/.exec(href);
-  return m ? mColor.dom[domainOf(m[1])] : undefined;
-}
 import { Skeleton } from "../primitives/Skeleton";
-import { Tooltip } from "../primitives/Tooltip";
 
-const RAIL_KEY = "meridian:rail:open";
-const FLYOUT_PANEL_ID = "rail-flyout-panel";
-const RAIL_WIDTH_EXPANDED = 240;
-const RAIL_WIDTH_COLLAPSED = 56;
+/**
+ * The index bar: the product's top row. The brand, the six places a person goes (Home, Objects, Fix, Inbox,
+ * Runs, Insights, Systems) as one pill strip with live counts, a "More" disclosure holding every other
+ * visible page grouped as the nav defines them, and the shell's controls on the right (search, jobs,
+ * notifications, help, the user). It replaces the sidebar: there is no collapsed state and no flyout.
+ * Links never carry `?run=`: each section opens on its own latest run (lib/run-scope.ts).
+ */
+
+const PRIMARY = ["/home/lead", "/objects", "/fix", "/inbox", "/runs", "/insights", "/systems"] as const;
+const MORE_PANEL_ID = "topnav-more";
 const ICON_SIZE = 16;
 
 /** Worst system health across all connected systems, for the Systems item's pip. Null when there are no systems at all. */
@@ -45,61 +41,40 @@ const HEALTH_PIP_COLOR: Record<"critical" | "high" | "pass", string> = {
   pass: "var(--m-pass)",
 };
 
-function HealthPip({ tone }: { tone: "critical" | "high" | "pass" }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="absolute rounded-full"
-      style={{
-        width: 6,
-        height: 6,
-        top: -2,
-        right: -2,
-        background: HEALTH_PIP_COLOR[tone],
-        border: "1.5px solid var(--m-sheet)",
-      }}
-    />
-  );
+/** The "More" panel's groups: every visible item that is not a primary pill, with its children, under its nav group. */
+function moreGroups(groups: readonly NavGroup[]): { group: string; items: NavItem[] }[] {
+  const primary = new Set<string>(PRIMARY);
+  return groups
+    .map((g) => ({
+      group: g.group,
+      items: g.items.flatMap((i) => (primary.has(i.href) ? [...(i.children ?? [])] : [i, ...(i.children ?? [])])),
+    }))
+    .filter((g) => g.items.length > 0);
 }
 
-/** Flat, in-render-order list of hrefs: top-level items, then each expanded parent's children. */
-function visibleOrder(items: readonly NavItem[], openParents: ReadonlySet<string>): string[] {
-  const out: string[] = [];
-  for (const item of items) {
-    out.push(item.href);
-    if (item.children?.length && openParents.has(item.href)) {
-      for (const child of item.children) out.push(child.href);
-    }
-  }
-  return out;
+export interface RailProps {
+  commandPalette?: ReactNode;
+  notifications?: ReactNode;
+  helpMenu?: ReactNode;
+  userMenu?: ReactNode;
 }
 
-export function Rail() {
+export function Rail({ commandPalette, notifications, helpMenu, userMenu }: RailProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const groups = useVisibleNav();
   const navLoading = useNavLoading();
   const { role } = useRole();
-  const navRef = useRef<HTMLElement>(null);
-  const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
-
-  // Rail links never carry ?run=: each section opens on its own latest run (lib/run-scope.ts).
-
-  const [expanded, setExpanded] = useState(true);
-  const [openParents, setOpenParents] = useState<Set<string>>(new Set());
-  const [flyoutHref, setFlyoutHref] = useState<string | null>(null);
-  const [flyoutRect, setFlyoutRect] = useState<{ top: number; left: number } | null>(null);
-  const flyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flyoutTriggerRef = useRef<HTMLElement | null>(null);
-  const flyoutPanelRef = useRef<HTMLDivElement>(null);
-  const focusFlyoutFirstRef = useRef(false);
+  const moreRef = useRef<HTMLLIElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const { data: counts } = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, refetchInterval: 60_000 });
   const { data: systems } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const healthTone = worstHealth(systems);
-  const systemsTooltipLabel = systems?.length
+  const healthLabel = systems?.length
     ? `${systems.filter((s) => s.health_status !== "unreachable" && s.health_status !== "auth_failed" && s.health_status !== "degraded").length} of ${systems.length} systems healthy`
-    : null;
+    : undefined;
 
   const flatItems = useMemo(() => flattenNav(groups.flatMap((g) => g.items)), [groups]);
   const activeItemHref = useMemo(
@@ -107,381 +82,140 @@ export function Rail() {
     [pathname, searchParams, flatItems],
   );
 
-  // Auto-open a parent group whose route is active — either because a child is the
-  // active item, or because the parent itself is (e.g. navigating straight to /inbox).
-  useEffect(() => {
-    const parent = groups
-      .flatMap((g) => g.items)
-      .find((i) => i.children?.length && (i.href === activeItemHref || i.children.some((c) => c.href === activeItemHref)));
-    if (parent) setOpenParents((prev) => (prev.has(parent.href) ? prev : new Set(prev).add(parent.href)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when the active item actually changes
-  }, [activeItemHref]);
+  const topLevel = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  const primaryItems = useMemo(
+    () => PRIMARY.map((href) => topLevel.find((i) => i.href === href)).filter((i): i is NavItem => !!i),
+    [topLevel],
+  );
+  const more = useMemo(() => moreGroups(groups), [groups]);
+  const moreActive = more.some((g) => g.items.some((i) => i.href === activeItemHref));
 
+  // The panel closes on Escape, on a click outside it and when focus leaves it.
   useEffect(() => {
-    let stored: string | null = null;
-    try {
-      stored = window.sessionStorage.getItem(RAIL_KEY);
-    } catch {
-      /* storage blocked: fall through to the width default */
-    }
-    if (stored === "collapsed" || stored === "expanded") setExpanded(stored === "expanded");
-    // Labels show by default; only a narrow window starts collapsed to icons.
-    else setExpanded(window.innerWidth >= 1024);
-  }, []);
-
-  // "[" toggles the rail, like a shortcut — ignored while typing or with a modifier held.
-  useEffect(() => {
-    const onKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key !== "[" || e.metaKey || e.ctrlKey || e.altKey) return;
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target as HTMLElement | null)?.isContentEditable) return;
-      toggle();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- toggle closes over current `expanded` via its own state setter
-  }, []);
-
-  const toggle = () => {
-    setExpanded((prev) => {
-      const next = !prev;
-      try {
-        window.sessionStorage.setItem(RAIL_KEY, next ? "expanded" : "collapsed");
-      } catch {
-        /* storage blocked: the toggle still works for this session */
+    if (!moreOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMoreOpen(false);
+        moreButtonRef.current?.focus();
       }
-      return next;
-    });
-    closeFlyout();
-  };
-
-  const toggleParent = (href: string) => {
-    setOpenParents((prev) => {
-      const next = new Set(prev);
-      if (next.has(href)) next.delete(href);
-      else next.add(href);
-      return next;
-    });
-  };
-
-  const openFlyout = (href: string, el: HTMLElement, focusFirst = false) => {
-    if (flyoutTimer.current) clearTimeout(flyoutTimer.current);
-    flyoutTriggerRef.current = el;
-    const show = () => {
-      const rect = el.getBoundingClientRect();
-      setFlyoutRect({ top: rect.top, left: rect.right + 8 });
-      setFlyoutHref(href);
-      focusFlyoutFirstRef.current = focusFirst;
     };
-    // Keyboard-triggered opens (ArrowRight) show immediately so focus can move in;
-    // hover opens keep the debounce so a passing mouse doesn't flash every flyout.
-    if (focusFirst) show();
-    else flyoutTimer.current = setTimeout(show, mMotion.duration);
-  };
+    const onClick = (e: globalThis.MouseEvent) => {
+      if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [moreOpen]);
 
-  const closeFlyout = (immediate = false) => {
-    if (flyoutTimer.current) clearTimeout(flyoutTimer.current);
-    if (immediate) {
-      setFlyoutHref(null);
-      return;
-    }
-    flyoutTimer.current = setTimeout(() => setFlyoutHref(null), mMotion.duration);
-  };
+  const isActive = (item: NavItem) => item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref);
 
-  // Escape closes the collapsed flyout and returns focus to whichever row opened it.
-  const closeFlyoutAndRefocus = () => {
-    closeFlyout(true);
-    flyoutTriggerRef.current?.focus();
-  };
-
-  useEffect(() => {
-    if (flyoutHref && focusFlyoutFirstRef.current) {
-      focusFlyoutFirstRef.current = false;
-      flyoutPanelRef.current?.querySelector<HTMLElement>("a")?.focus();
-    }
-  }, [flyoutHref]);
-
-  const order = useMemo(() => visibleOrder(flatTopLevel(groups), openParents), [groups, openParents]);
-  const [focusedHref, setFocusedHref] = useState<string | null>(null);
-  useEffect(() => {
-     
-    if (activeItemHref && order.includes(activeItemHref)) setFocusedHref(activeItemHref);
-  }, [activeItemHref, order]);
-
-  const moveFocus = (fromHref: string, delta: 1 | -1) => {
-    const i = order.indexOf(fromHref);
-    if (i === -1) return;
-    const nextHref = order[(i + delta + order.length) % order.length];
-    if (!nextHref) return;
-    setFocusedHref(nextHref);
-    linkRefs.current.get(nextHref)?.focus();
-  };
-
-  const onItemKeyDown = (item: NavItem, e: KeyboardEvent<HTMLAnchorElement>) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      moveFocus(item.href, 1);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      moveFocus(item.href, -1);
-    } else if (e.key === "ArrowRight" && item.children?.length) {
-      e.preventDefault();
-      if (expanded) setOpenParents((prev) => new Set(prev).add(item.href));
-      else openFlyout(item.href, e.currentTarget, true);
-    } else if (e.key === "ArrowLeft" && item.children?.length && openParents.has(item.href)) {
-      e.preventDefault();
-      setOpenParents((prev) => {
-        const next = new Set(prev);
-        next.delete(item.href);
-        return next;
-      });
-    } else if (e.key === "Escape" && !expanded && flyoutHref === item.href) {
-      e.preventDefault();
-      closeFlyoutAndRefocus();
-    }
-  };
-
-  const renderRow = (item: NavItem, depth: 0 | 1) => {
-    const linkHref = resolveNavHref(item.href, role);
-    const active = item.href === activeItemHref;
+  const renderPill = (item: NavItem) => {
+    const active = isActive(item);
     const count = item.badgeKey ? counts?.[item.badgeKey] ?? 0 : 0;
-    const hasChildren = depth === 0 && !!item.children?.length;
-    const isOpen = openParents.has(item.href);
     const showPip = item.href === "/systems" && healthTone !== null;
-    const swatch = objectDomainColor(item.href);
-    const iconSpan = (
-      <span className="relative inline-flex shrink-0" style={{ color: active ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}>
-        <item.icon size={ICON_SIZE} />
-        {swatch && <span aria-hidden="true" data-testid="rail-domain-swatch" className="absolute" style={{ width: 6, height: 6, bottom: -2, right: -2, background: swatch }} />}
-        {showPip && healthTone && <HealthPip tone={healthTone} />}
-        {!expanded && !showPip && count > 0 && (
-          <span
-            aria-hidden="true"
-            className="absolute rounded-full"
-            style={{ width: 6, height: 6, top: -2, right: -2, background: "var(--m-accent)", border: "1.5px solid var(--m-sheet)" }}
-          />
-        )}
-      </span>
-    );
-
-    const label = (
-      <>
-        {showPip && expanded ? <Tooltip label={systemsTooltipLabel ?? item.label} side="right" render={<span />}>{iconSpan}</Tooltip> : iconSpan}
-        {expanded && <span className="flex-1 truncate" style={depth === 1 ? { fontSize: 12, lineHeight: "16px" } : undefined}>{item.label}</span>}
-        {expanded && count > 0 && (
-          <span key={count} className="m-motion-rise" data-severity={item.badgeKey === "fix" ? "critical" : undefined}>
-            <Badge count={count} inverted={active && item.badgeKey !== "fix"} tone={item.badgeKey === "fix" ? "critical" : undefined} />
-          </span>
-        )}
-        {expanded && item.shortcut && (
-          <span className="m-text-meta" style={{ color: active ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}>
-            {item.shortcut}
-          </span>
-        )}
-      </>
-    );
-
-    const childrenId = `rail-children-${item.href}`;
-    const showChevronButton = hasChildren && expanded;
-
-    const rowWrapperClassName = "m-motion-colors group relative flex items-center hover:bg-[var(--m-rail-hover)]";
-    // Calm enterprise: the active row is a soft blue tint with blue ink; every row is the same height.
-    const rowWrapperStyle = {
-      height: depth === 0 ? 34 : 30,
-      margin: "0 8px",
-      borderRadius: "var(--m-radius-control)",
-      background: active ? "var(--m-accent-soft)" : undefined,
-    };
-
-    const link = (
-      <Link
-        ref={(el) => {
-          if (el) linkRefs.current.set(item.href, el);
-          else linkRefs.current.delete(item.href);
-        }}
-        key={item.href}
-        href={linkHref}
-        aria-label={item.label}
-        aria-current={active ? "page" : undefined}
-        aria-expanded={!expanded && hasChildren ? flyoutHref === item.href : undefined}
-        aria-controls={!expanded && hasChildren ? FLYOUT_PANEL_ID : undefined}
-        tabIndex={item.href === (focusedHref ?? order[0]) ? 0 : -1}
-        onFocus={() => setFocusedHref(item.href)}
-        onKeyDown={(e) => onItemKeyDown(item, e)}
-        onMouseEnter={(e) => {
-          if (!expanded) openFlyout(item.href, e.currentTarget);
-        }}
-        onMouseLeave={() => closeFlyout()}
-        className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full m-text-body m-rail-link"
-        style={{
-          ["--m-rail-fg" as string]: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
-          fontWeight: active ? 600 : 500,
-          paddingLeft: expanded && depth === 1 ? 28 : undefined,
-          justifyContent: expanded ? "flex-start" : "center",
-        }}
-      >
-        {label}
-      </Link>
-    );
-
-    const chevronButton = showChevronButton && (
-      <button
-        type="button"
-        aria-expanded={isOpen}
-        aria-controls={childrenId}
-        aria-label={isOpen ? `Collapse ${item.label}` : `Expand ${item.label}`}
-        onClick={(e: ReactMouseEvent<HTMLButtonElement>) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleParent(item.href);
-        }}
-        className="m-motion-fade shrink-0 flex items-center justify-center rounded mr-1"
-        style={{ width: 20, height: 20, color: "var(--m-ink-3)" }}
-      >
-        <IconChevronRight size={14} style={{ transform: isOpen ? "rotate(90deg)" : "none" }} />
-      </button>
-    );
-
-    const row = (
-      <div className={rowWrapperClassName} style={rowWrapperStyle}>
-        {link}
-        {chevronButton}
-      </div>
-    );
-
-    if (expanded) {
-      return (
-        <li key={item.href}>
-          {row}
-          {hasChildren && isOpen && (
-            <ul id={childrenId} className="m-motion-fade flex flex-col mt-0.5">
-              {item.children!.map((child) => (
-                renderRow(child, 1)
-              ))}
-            </ul>
-          )}
-        </li>
-      );
-    }
-
-    // Collapsed: a child-less item gets a simple right-side tooltip; a parent gets the hover/focus flyout below.
     return (
-      <li key={item.href} className="relative">
-        {hasChildren ? row : <Tooltip label={showPip ? systemsTooltipLabel ?? item.label : item.label} side="right" render={<div />}>{row}</Tooltip>}
+      <li key={item.href}>
+        <Link
+          href={resolveNavHref(item.href, role)}
+          aria-current={active ? "page" : undefined}
+          aria-label={showPip && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
+          className="m-topnav-link"
+        >
+          <span className="relative inline-flex shrink-0">
+            <item.icon size={ICON_SIZE} />
+            {showPip && healthTone && (
+              <span
+                aria-hidden="true"
+                className="absolute rounded-full"
+                style={{ width: 6, height: 6, top: -2, right: -2, background: HEALTH_PIP_COLOR[healthTone], border: "1.5px solid var(--m-sheet)" }}
+              />
+            )}
+          </span>
+          <span>{item.label}</span>
+          {count > 0 && (
+            <span key={count} className="m-motion-rise" data-severity={item.badgeKey === "fix" ? "critical" : undefined}>
+              <Badge count={count} tone={item.badgeKey === "fix" ? "critical" : undefined} />
+            </span>
+          )}
+        </Link>
       </li>
     );
   };
 
-  const flyoutItem = flyoutHref ? flatTopLevel(groups).find((i) => i.href === flyoutHref) : null;
-
   return (
-    <nav
-      ref={navRef}
-      aria-label="Main"
-      data-tour="rail"
-      className="m-motion-width flex flex-col h-full overflow-y-auto shrink-0"
-      style={{ width: expanded ? RAIL_WIDTH_EXPANDED : RAIL_WIDTH_COLLAPSED, background: "var(--m-rail)", borderRight: "1px solid var(--m-rail-edge)" }}
-    >
-      <Link
-        href={resolveNavHref("/home/lead", role)}
-        aria-label="Meridian"
-        className="flex items-center gap-2 shrink-0 font-semibold"
-        style={{ height: "var(--m-topbar-h)", paddingLeft: expanded ? 16 : 0, justifyContent: expanded ? "flex-start" : "center", color: "var(--m-ink)" }}
-      >
-        <MeridianMark size={22} variant="two-tone" aria-hidden />
-        {expanded && <span className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Meridian</span>}
+    <header className="m-topnav m-print-hide" data-tour="rail">
+      <Link href={resolveNavHref("/home/lead", role)} aria-label="Meridian" className="m-topnav-brand">
+        <MeridianMark size={24} variant="two-tone" aria-hidden />
+        <span className="hidden sm:inline">Meridian</span>
       </Link>
 
-      <div data-testid="rail-nav-items" aria-busy={navLoading || undefined} className="flex-1 flex flex-col pb-2">
+      <nav aria-label="Main" className="m-topnav-nav">
         {/* Waits for /me/permissions: showing the anyOf-only nav first would flash items the grants then hide. */}
-        {navLoading && (
-          <div className="flex flex-col gap-3" style={{ padding: expanded ? "20px 16px" : "20px 0", alignItems: expanded ? "stretch" : "center" }}>
-            {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} width={expanded ? 180 : 32} height={20} />)}
+        {navLoading ? (
+          <div className="flex items-center gap-2" aria-busy="true">
+            {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} width={84} height={28} />)}
           </div>
-        )}
-        {!navLoading && groups.map((group) => (
-          <div key={group.group} className="flex flex-col gap-0.5">
-            {expanded ? (
-              group.items.length === 1 && group.items[0]?.label === group.group ? (
-                <div aria-hidden="true" style={{ height: 8 }} />
-              ) : (
-                <p className="m-text-label font-medium" style={{ color: "var(--m-ink-3)", padding: "var(--m-rail-group-pad)" }}>
-                  {group.group}
-                </p>
-              )
-            ) : (
-              <div aria-hidden="true" style={{ height: 8, margin: "4px 0" }}>
-                <div style={{ width: 24, height: 1, margin: "4px auto", background: "var(--m-line)" }} />
-              </div>
+        ) : (
+          <ul data-testid="rail-nav-items" className="m-topnav-list">
+            {primaryItems.map(renderPill)}
+            {more.length > 0 && (
+              <li ref={moreRef} className="relative">
+                <button
+                  ref={moreButtonRef}
+                  type="button"
+                  className="m-topnav-link"
+                  data-active={moreActive || undefined}
+                  aria-expanded={moreOpen}
+                  aria-controls={MORE_PANEL_ID}
+                  onClick={() => setMoreOpen((o) => !o)}
+                >
+                  <span>More</span>
+                  <IconChevronDown size={14} style={{ transform: moreOpen ? "rotate(180deg)" : undefined }} />
+                </button>
+                {moreOpen && (
+                  <div
+                    id={MORE_PANEL_ID}
+                    role="group"
+                    aria-label="More pages"
+                    className="m-topnav-more m-elev-2 m-motion-scale-in"
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null) && e.relatedTarget !== moreButtonRef.current) setMoreOpen(false);
+                    }}
+                  >
+                    {more.map((g) => (
+                      <div key={g.group} className="m-topnav-group">
+                        <span className="m-topnav-group-label">{g.group}</span>
+                        {g.items.map((item) => (
+                          <Link
+                            key={item.href}
+                            href={resolveNavHref(item.href, role)}
+                            aria-current={item.href === activeItemHref ? "page" : undefined}
+                            className="m-topnav-item"
+                            onClick={() => setMoreOpen(false)}
+                          >
+                            <item.icon size={ICON_SIZE} />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </li>
             )}
-            <ul className="flex flex-col gap-0.5">{group.items.map((item) => renderRow(item, 0))}</ul>
-          </div>
-        ))}
+          </ul>
+        )}
+      </nav>
+
+      <div className="m-topnav-right">
+        <div data-tour="command-palette" className="flex items-center">{commandPalette}</div>
+        {notifications}
+        {helpMenu}
+        {userMenu}
       </div>
-
-      <Tooltip
-        label={expanded ? "Collapse [" : "Expand ["}
-        side="right"
-        render={
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={expanded ? "Collapse navigation" : "Expand navigation"}
-            className="m-motion-colors flex items-center gap-2 shrink-0 hover:bg-[var(--m-rail-hover)]"
-            style={{ height: 40, margin: "0 8px 8px", padding: "0 8px", borderRadius: "var(--m-radius-control)", color: "var(--m-ink-2)", justifyContent: expanded ? "flex-start" : "center" }}
-          />
-        }
-      >
-        <IconPanel size={ICON_SIZE} style={{ color: "var(--m-ink-3)" }} />
-        {expanded && <span className="m-text-body font-medium">Collapse</span>}
-      </Tooltip>
-
-      {!expanded && flyoutItem && flyoutRect && (
-        // Disclosure panel, not a menu: plain links you can Tab through, not an
-        // arrow-key-driven menu widget. Escape closes and refocuses the row that
-        // opened it; focus (or a click) leaving the panel closes it too.
-        <div
-          ref={flyoutPanelRef}
-          id={FLYOUT_PANEL_ID}
-          role="group"
-          aria-label={flyoutItem.label}
-          onMouseEnter={() => flyoutTimer.current && clearTimeout(flyoutTimer.current)}
-          onMouseLeave={() => closeFlyout()}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              closeFlyoutAndRefocus();
-            }
-          }}
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) closeFlyout(true);
-          }}
-          className="m-motion-scale-in m-elev-2 fixed z-50 min-w-[200px]"
-          style={{ top: flyoutRect.top, left: flyoutRect.left, padding: 6, borderRadius: "var(--m-radius-sheet)", background: "var(--m-sheet)" }}
-        >
-          <p className="px-2 py-1 m-text-label font-medium" style={{ color: "var(--m-ink-3)" }}>
-            {flyoutItem.label}
-          </p>
-          {(flyoutItem.children?.length ? flyoutItem.children : [flyoutItem]).map((child) => (
-            <Link
-              key={child.href}
-              href={resolveNavHref(child.href, role)}
-              className="m-motion-colors flex items-center h-8 px-2 m-text-body font-medium hover:bg-[var(--m-rail-hover)]"
-              style={{
-                borderRadius: "var(--m-radius-control)",
-                background: child.href === activeItemHref ? "var(--m-accent-soft)" : undefined,
-                color: child.href === activeItemHref ? "var(--m-accent-ink)" : "var(--m-ink-2)",
-              }}
-            >
-              {child.label}
-            </Link>
-          ))}
-        </div>
-      )}
-    </nav>
+    </header>
   );
-}
-
-function flatTopLevel(groups: readonly { items: readonly NavItem[] }[]): NavItem[] {
-  return groups.flatMap((g) => g.items);
 }

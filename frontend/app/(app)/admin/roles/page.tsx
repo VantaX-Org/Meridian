@@ -33,10 +33,10 @@ export default function AdminRolesPage() {
   const tab = (TABS as readonly string[]).includes(raw) ? raw : "roles";
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
 
-  if (loading) return <div className="p-6" aria-busy="true"><Skeleton height={320} /></div>;
+  if (loading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (!can("manage_users")) {
     return (
-      <div className="p-6">
+      <div>
         <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or grants." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
@@ -44,7 +44,7 @@ export default function AdminRolesPage() {
   const roles = rolesQ.data ?? [];
   const custom = roles.filter((r) => !r.built_in).length;
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4">
       <PageHeader title="Roles and access" meta={`${roles.length} roles, ${custom} custom`} />
       <Notice tone="info">Built-in roles are read-only, clone one to change it. Grant a role at a system or module to scope it, so people get the least access that lets them work.</Notice>
       <Tabs

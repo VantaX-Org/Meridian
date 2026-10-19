@@ -226,17 +226,28 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(document.querySelector(".recharts-wrapper")).toBeInTheDocument());
   });
 
-  it("prints the finding count in every heatmap cell with the severity as its tone", async () => {
+  it("ranks the objects of the run in a ledger with their finding counts and one Open action", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
-      ...EMPTY_AGGREGATE, total: 7,
-      by_module: [{ module: "material_master", findings: 7, critical: 2, high: 0, medium: 5, low: 0, affected_records: 9 }] as never,
+      ...EMPTY_AGGREGATE, total: 9,
+      by_module: [
+        { module: "controlling", findings: 2, critical: 0, high: 1, medium: 1, low: 0, affected: 3, avg_pass_rate: 0.9 },
+        { module: "material_master", findings: 7, critical: 2, high: 0, medium: 5, low: 0, affected: 9, avg_pass_rate: 0.8 },
+      ] as never,
+    });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v2",
+      objects: [{ module: "material_master", label: "Material master", composite_score: 71.2, readiness: "fail", failing_checks: 3, affected_records: 9, blocking_rule_id: "mm_missing_desc", blocking_rule_name: "Description missing" }],
     });
     renderWithQuery(<RunDetailPage />);
-    const critical = await screen.findByLabelText("Material master Critical: 2, no go");
-    expect(critical).toHaveTextContent("2");
-    expect(screen.getByLabelText("Material master High: 0, go")).toHaveTextContent("0");
-    expect(screen.getByLabelText("Material master Medium: 5, at risk")).toHaveTextContent("5");
+    const open = await screen.findByRole("link", { name: "Open Material master" });
+    expect(open).toHaveAttribute("href", "/objects/material_master?run=v2");
+    const row = open.closest("tr") as HTMLElement;
+    // Ranked by records affected: material master (9) before controlling (3).
+    expect(screen.getAllByRole("row")[1]).toBe(row);
+    expect(row).toHaveTextContent("mm_missing_desc");
+    expect(row).toHaveTextContent("Description missing");
+    expect(screen.getByRole("link", { name: "2" })).toHaveAttribute("href", "/runs/v2?tab=findings&module=material_master&severity=critical");
   });
 
   it("draws the composite line for an upload from the scored runs of the same objects, keyed by run id", async () => {

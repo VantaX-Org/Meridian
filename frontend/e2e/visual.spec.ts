@@ -116,7 +116,8 @@ test.describe("visual — overlays", () => {
     await open(app, "/rules", "Rules");
     await app.getByRole("combobox").first().click();
     await popup(app, "listbox");
-    await app.locator("main table").last().locator("tbody tr").first().click();
+    // the rule ledger is the first table on the page; coverage by object follows it
+    await app.locator("main table").first().locator("tbody tr").first().click();
     await popup(app, "dialog");
   });
 

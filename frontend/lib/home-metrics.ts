@@ -184,6 +184,19 @@ export function worstObjectsFirst<T extends Pick<ObjectSummary, "composite_score
     .sort((a, b) => (a.composite_score ?? 0) - (b.composite_score ?? 0));
 }
 
+/**
+ * How many records an object holds, the area of its tile on the object map: what the run downloaded for it
+ * (`object_rows`), else the upload's row count when the run holds only that object, else the records its findings
+ * affect. 0 when none of these is known (the map still gives the tile one cell).
+ */
+export function objectRecords(run: Pick<Version, "metadata"> | undefined, module: string, affected?: number | null): number {
+  const meta = run?.metadata;
+  const downloaded = meta?.object_rows?.[module];
+  if (downloaded != null && downloaded > 0) return downloaded;
+  if (meta?.row_count != null && meta.row_count > 0 && (meta.modules ?? []).length <= 1) return meta.row_count;
+  return affected ?? 0;
+}
+
 /** One object's `composite_score` across every finished run it appears in, oldest first. */
 export function objectTrend(versions: Version[], module: string): { x: string; y: number }[] {
   return versions

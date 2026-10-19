@@ -35,6 +35,7 @@ describe("systems list page", () => {
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 4 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("BW Slow")).toBeInTheDocument());
     expect(screen.getByText("PO Down")).toBeInTheDocument();
@@ -50,10 +51,30 @@ describe("systems list page", () => {
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 2 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
     expect(screen.queryByText("BW Down")).not.toBeInTheDocument();
     currentSearch = "";
+  });
+
+  it("counts the systems by health in a row of tiles above the ledger", async () => {
+    const mk = (id: string, name: string, h: string) => ({ ...SYSTEM, id, name, health_status: h }) as SAPSystemExtended;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM, mk("s2", "BW Slow", "degraded"), mk("s3", "PO Down", "unreachable"), mk("s4", "CRM Locked", "auth_failed")]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 4 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    const tiles = await screen.findByTestId("systems-health");
+    await waitFor(() => expect(tiles).toHaveTextContent(/Healthy\s*1/));
+    expect(tiles).toHaveTextContent(/Degraded\s*1/);
+    expect(tiles).toHaveTextContent(/Unreachable\s*2/);
+    // worst first: the ledger leads with the systems that need a hand
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    const names = screen.getAllByRole("row").map((r) => r.textContent ?? "");
+    expect(names.findIndex((t) => t.includes("PO Down"))).toBeLessThan(names.findIndex((t) => t.includes("ECC Prod")));
+    expect(screen.getAllByRole("link", { name: /^Open / })).toHaveLength(4);
   });
 
   it("renders systems once loaded", async () => {
@@ -61,6 +82,7 @@ describe("systems list page", () => {
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText("Manual only")).toBeInTheDocument());
@@ -69,6 +91,7 @@ describe("systems list page", () => {
   it("shows a retryable error when systems fail to load", async () => {
     const spy = vi.spyOn(connectivityApi, "getSystems").mockRejectedValue(new Error("network down"));
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
@@ -88,6 +111,7 @@ describe("systems list page", () => {
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([PROFILE]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText(/3 Jan 2026, 00:00 SAST/)).toBeInTheDocument());
   });
@@ -106,6 +130,7 @@ describe("systems list page", () => {
     });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("+0.2")).toBeInTheDocument());
   });
@@ -124,6 +149,7 @@ describe("systems list page", () => {
     });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("80.0")).toBeInTheDocument());
     expect(screen.queryByLabelText(/since the previous run/)).not.toBeInTheDocument();
@@ -138,6 +164,7 @@ describe("systems page health param", () => {
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 2 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
     expect(screen.getByText("BW Down")).toBeInTheDocument();

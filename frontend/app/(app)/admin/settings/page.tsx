@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/design";
+import { Button, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/design";
+import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getDoctor, type DoctorItem } from "@/lib/api/admin-doctor";
 import { getLicenceManifest } from "@/lib/api/licence";
@@ -32,7 +33,7 @@ export default function AdminSettingsPage() {
 
   if (licence.isLoading) {
     return (
-      <div aria-busy="true" className="flex flex-col gap-6 p-6">
+      <div aria-busy="true" className="flex flex-col gap-4">
         <Skeleton height={240} />
       </div>
     );
@@ -40,15 +41,15 @@ export default function AdminSettingsPage() {
 
   if (licence.isError) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4">
         <ErrorState {...apiErrorState(licence.error)} onRetry={() => licence.refetch()} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <PageHeader title="Settings" meta="The way into each setting, and whether this deployment is healthy" />
+    <div className="flex flex-col gap-4">
+      <PageHeader title="Settings" meta="The way into each setting, and whether this deployment is healthy" actions={<Button variant="secondary" render={<Link href="/admin/licence">Open licence</Link>} />} />
 
       {l?.valid === false ? (
         <Notice tone="danger">
@@ -56,48 +57,52 @@ export default function AdminSettingsPage() {
         </Notice>
       ) : null}
 
-      <Card title="Deployment">
-        <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
-          <dt className="m-ink-3">Tenant</dt><dd>{l?.company_name ?? "Not set"}</dd>
-          <dt className="m-ink-3">Licence tier</dt><dd>{l?.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
-          <dt className="m-ink-3">Licence status</dt><dd>{l ? labelOf(l.status) : "Loading"}</dd>
-          <dt className="m-ink-3">Language model</dt><dd>{l?.llm_config ? `${l.llm_config.model}, tier ${l.llm_config.tier}` : "Not configured"}</dd>
-        </dl>
-      </Card>
+      <SettingsSheet>
+        <SettingsSection title="Deployment">
+          <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
+            <dt className="m-ink-3">Tenant</dt><dd>{l?.company_name ?? "Not set"}</dd>
+            <dt className="m-ink-3">Licence tier</dt><dd>{l?.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
+            <dt className="m-ink-3">Licence status</dt><dd>{l ? labelOf(l.status) : "Loading"}</dd>
+            <dt className="m-ink-3">Language model</dt><dd>{l?.llm_config ? `${l.llm_config.model}, tier ${l.llm_config.tier}` : "Not configured"}</dd>
+          </dl>
+        </SettingsSection>
 
-      {can("manage_settings") ? <AlertChannelsPanel /> : null}
-      {can("manage_settings") ? <RetentionPanel /> : null}
+        {can("manage_settings") ? <AlertChannelsPanel /> : null}
+        {can("manage_settings") ? <RetentionPanel /> : null}
 
-      {can("manage_system") && doctor.isError ? (
-        <ErrorState {...apiErrorState(doctor.error)} onRetry={() => doctor.refetch()} />
-      ) : null}
-      {can("manage_system") && doctor.data ? (
-        <Card title="Health checks" meta={`Last checked ${formatDate(doctor.data.last_checked, "datetime")}`}>
-          {(() => {
-            const items = doctor.data.items;
-            const warn = items.filter((i) => i.status === "warn").length;
-            const fail = items.filter((i) => i.status === "fail").length;
-            const ok = items.length - warn - fail;
-            return (
-              <p className="m-text-body" role="status">
-                {ok} passing{warn ? `, ${warn} warning` : ""}{fail ? `, ${fail} failing` : ""}
-              </p>
-            );
-          })()}
-          <ul className="mt-2 flex flex-col gap-2">
-            {doctor.data.items.map((i) => (
-              <li key={i.id} className="flex items-center gap-3">
-                <Pill tone={DOCTOR_TONE[i.status]}>{doctorLabel(i.label)}</Pill>
-                {i.detail ? <span className="m-text-meta m-ink-3">{doctorDetail(i.detail)}</span> : null}
-                {i.status !== "ok" && FIX_HREF[i.id] ? (
-                  <Link href={FIX_HREF[i.id]} className="m-text-meta underline m-ink-accent">Fix</Link>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-2"><Button variant="ghost" onClick={() => doctor.refetch()}>Check again</Button></div>
-        </Card>
-      ) : null}
+        {can("manage_system") && doctor.isError ? (
+          <SettingsSection title="Health checks">
+            <ErrorState {...apiErrorState(doctor.error)} onRetry={() => doctor.refetch()} />
+          </SettingsSection>
+        ) : null}
+        {can("manage_system") && doctor.data ? (
+          <SettingsSection title="Health checks" meta={`Last checked ${formatDate(doctor.data.last_checked, "datetime")}`}>
+            {(() => {
+              const items = doctor.data.items;
+              const warn = items.filter((i) => i.status === "warn").length;
+              const fail = items.filter((i) => i.status === "fail").length;
+              const ok = items.length - warn - fail;
+              return (
+                <p className="m-text-body" role="status">
+                  {ok} passing{warn ? `, ${warn} warning` : ""}{fail ? `, ${fail} failing` : ""}
+                </p>
+              );
+            })()}
+            <ul className="flex flex-col gap-2">
+              {doctor.data.items.map((i) => (
+                <li key={i.id} className="flex items-center gap-3">
+                  <Pill tone={DOCTOR_TONE[i.status]}>{doctorLabel(i.label)}</Pill>
+                  {i.detail ? <span className="m-text-meta m-ink-3">{doctorDetail(i.detail)}</span> : null}
+                  {i.status !== "ok" && FIX_HREF[i.id] ? (
+                    <Link href={FIX_HREF[i.id]} className="m-text-meta underline m-ink-accent">Fix</Link>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <div><Button variant="ghost" onClick={() => doctor.refetch()}>Check again</Button></div>
+          </SettingsSection>
+        ) : null}
+      </SettingsSheet>
     </div>
   );
 }

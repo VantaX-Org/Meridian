@@ -3,14 +3,25 @@
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, Card, DataTable, Datum, Dialog, Drawer, EmptyState, ErrorState, Field, Heatmap, ICONS, InsightHeader, Input, Line, Margin, Notice, PageHeader, Radar, Rule, Score, Select, Sparkline, Tabs, Waterfall,
-  type ChartPoint } from "@/design";
+  Bar, Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Heatmap, ICONS, InsightHeader, Input, Line, Notice, ObjectMap, PageHeader, Radar, Rule, Score, Select, Sparkline, Tabs, Waterfall,
+  type ChartPoint, type ObjectMapItem } from "@/design";
 
 const SERIES: ChartPoint[] = [
   { x: "W1", y: 72 }, { x: "W2", y: 76 }, { x: "W3", y: 74 }, { x: "W4", y: 81 }, { x: "W5", y: 85 },
 ];
 const STEPS: ChartPoint[] = [
   { x: "Start", y: 100, total: true }, { x: "Dupes", y: -12 }, { x: "Gaps", y: -8 }, { x: "End", y: 80, total: true },
+];
+
+const OBJECTS: ObjectMapItem[] = [
+  { id: "bp", label: "Business partner", score: 91.2, records: 100000, verdict: "go", meta: "100,000 records" },
+  { id: "mm", label: "Material master", score: 68.4, records: 25000, verdict: "no-go", meta: "MM045, 4,210 records" },
+  { id: "ap", label: "Accounts payable", score: 82.7, records: 18000, verdict: "at-risk", meta: "AP012, 1,930 records" },
+  { id: "ar", label: "Accounts receivable", score: 88.1, records: 12000, verdict: "at-risk" },
+  { id: "gl", label: "FI general ledger", score: 94.6, records: 9000, verdict: "go" },
+  { id: "fa", label: "Asset accounting", score: 90.3, records: 4000, verdict: "go" },
+  { id: "pm", label: "Plant maintenance", score: 57.9, records: 2500, verdict: "no-go" },
+  { id: "qm", label: "Quality management", score: null, records: 800, verdict: "neutral" },
 ];
 
 interface DemoRow { id: string; object: string; owner: string }
@@ -51,17 +62,15 @@ export function GalleryMore() {
           </div>
         </div>
       </Card>
-      <Card title="The Datum and the margin" meta="Figures left, meaning right, one meridian between them" padding="sm">
-        <div className="@container">
-          <Datum margin={<Margin
-            situation={{ sentence: "Quality is at 72, with 2,661 findings across 343,209 records.", tone: "at-risk", href: "#" }}
-            changed={{ sentence: "Up 1.2 points since the last run." , tone: "go" }}
-            why={{ sentence: "163 critical findings are capping the score and could stop go-live.", tone: "no-go" }}
-            next={{ sentence: "Start with Employee central: 376 findings, 27 of them critical.", action: { label: "Open object" } }}
-          />}>
-            <Card title="Figures"><Line data={SERIES} height={120} label="Line" /></Card>
-          </Datum>
-        </div>
+      <Card title="Object map" meta="Area is records, tint is the verdict">
+        <ObjectMap items={OBJECTS} columns={6} rowHeight={56} />
+      </Card>
+      <Card title="Index bar" meta="The shell is two rows">
+        <ul className="m-text-body m-ink-2 flex flex-col gap-1">
+          <li>The index bar is one row: the brand, the places a person goes as pills with live counts, More for every other page, and search, notifications, help and the user on the right.</li>
+          <li>The scope bar under it carries the page title and the scope the page publishes.</li>
+          <li>A page is one column: the figure first, the ledger of what moves it second, the one action that follows.</li>
+        </ul>
       </Card>
       <Card title="Page header" padding="sm">
         <PageHeader title="Page title" meta="One line of context" actions={<Button variant="secondary">Action</Button>} />

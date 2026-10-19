@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
   <style>
-    .arc { stroke: #26394B; }
-    .mer { stroke: #336F96; }
+    .arc { stroke: #1A2233; }
+    .mer { stroke: #2563EB; }
     @media (prefers-color-scheme: dark) {
-      .arc { stroke: #E6EDF2; }
-      .mer { stroke: #84BADA; }
+      .arc { stroke: #E8ECF3; }
+      .mer { stroke: #7FA8FF; }
     }
   </style>
   <path class="arc" d="M21.74 7.81A10 10 0 1 1 10.26 7.81" stroke-width="3.5" stroke-linecap="round"/>

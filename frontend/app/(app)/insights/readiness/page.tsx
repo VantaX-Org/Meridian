@@ -5,14 +5,13 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Stat, Status, statusLabel } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Status, statusLabel } from "@/design";
 import { getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName, plural } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { Section } from "../_components/Section";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 
@@ -44,6 +43,12 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
       <DrillLink object={row.original.module} filters={{ blocking: "true" }} run={run}>{row.original.records_blocked.toLocaleString()}</DrillLink>
     ),
   },
+  {
+    id: "action", header: "", enableSorting: false,
+    cell: ({ row }) => (
+      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`} className="m-ink-accent underline-offset-2 hover:underline">Fix</Link>
+    ),
+  },
 ];
 
 /** Without waves, the blockers table lists the S/4 simplification areas whose rules fail. */
@@ -52,6 +57,7 @@ const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
   { accessorKey: "blocking_failing", header: "Blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "yes" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
   { accessorKey: "warning_failing", header: "Warning rules", meta: { numeric: true }, cell: ({ row }) => row.original.warning_failing.toLocaleString() },
   { accessorKey: "failing_records", header: "Records failing", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
+  { id: "action", header: "", enableSorting: false, cell: () => <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="m-ink-accent underline-offset-2 hover:underline">Open rules</Link> },
 ];
 
 export default function ReadinessPage() {
@@ -146,29 +152,16 @@ export default function ReadinessPage() {
       emptyProps={{ title: "No readiness data yet", detail: dayOne.step?.detail ?? "Readiness needs a finished run.", action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />, ghost: "grid" }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <Card title="Which waves are blocked">
-        {cells.length === 0 ? waveEmpty : (
-          <>
-            <Heatmap
-              rows={modules.map(formatModuleName)}
-              cols={waves}
-              cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: HEAT[c.verdict] }))}
-              onPointClick={(cell) => {
-                const mod = modules.find((m) => formatModuleName(m) === cell.row);
-                if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: cell.col })}`);
-              }}
-            />
-            <p className="mt-2 m-text-body m-ink-2">Each cell is a wave and object pair. Select one to open its records.</p>
-          </>
-        )}
-      </Card>
-      <Section title="Blockers and warnings" height={96} query={s4} meta="Failing rules by their S/4 load effect in this run">
-        <div className="grid grid-cols-2 gap-3" data-testid="s4-strip">
-          <Stat label="Blockers" value={blockingGaps} tone={blockingGaps ? "no-go" : "go"} hint="Failing rules that stop an S/4 load" href={withScope("/insights/rules", { run, s4: "yes" })} />
-          <Stat label="Warnings" value={warningGaps} tone={warningGaps ? "at-risk" : undefined} hint="Failing rules that do not stop a load" href={withScope("/insights/rules", { run })} />
-        </div>
-      </Section>
-      <Card title="Blockers" meta={cells.length ? undefined : failingAreas.length ? "By S/4 simplification area, since no wave is defined" : undefined}>
+      <Card
+        title="Blocked objects"
+        meta={s4.data ? (
+          // What the ledger's rules do to an S/4 load, as two drills into the rules; the counts are not a second stat row.
+          <span data-testid="s4-strip" className="inline-flex flex-wrap items-center gap-x-4">
+            <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="underline-offset-2 hover:underline"><span>Blockers</span><span className="ml-1 font-medium m-numeric">{blockingGaps.toLocaleString()}</span></Link>
+            <Link href={withScope("/insights/rules", { run })} className="underline-offset-2 hover:underline"><span>Warnings</span><span className="ml-1 font-medium m-numeric">{warningGaps.toLocaleString()}</span></Link>
+          </span>
+        ) : cells.length ? undefined : failingAreas.length ? "By S/4 simplification area, since no wave is defined" : undefined}
+      >
         {blockers.length > 0 ? (
           <div role="region" aria-label="Blockers by wave and object" tabIndex={0} className="overflow-x-auto">
             <DataTable
@@ -185,7 +178,23 @@ export default function ReadinessPage() {
             <DataTable columns={areaColumns(run)} data={failingAreas} getRowId={(a) => a.area} hideToolbar dense height="auto" />
           </div>
         ) : (
-          <EmptyState title="No blockers in this run" detail={cells.length ? "Every wave and object cell can load." : "No failing rule would stop an S/4 load."} action={<Button render={<Link href="/objects">Open objects</Link>} />} ghost="grid" />
+          <EmptyState variant="inline" title="No blockers in this run" detail={cells.length ? "Every wave and object cell can load." : "No failing rule would stop an S/4 load."} action={<Link href="/objects" className="underline-offset-2 hover:underline">Open objects</Link>} />
+        )}
+      </Card>
+      <Card title="Which waves are blocked">
+        {cells.length === 0 ? waveEmpty : (
+          <>
+            <Heatmap
+              rows={modules.map(formatModuleName)}
+              cols={waves}
+              cells={cells.map((c) => ({ row: formatModuleName(c.module), col: c.wave, value: HEAT[c.verdict] }))}
+              onPointClick={(cell) => {
+                const mod = modules.find((m) => formatModuleName(m) === cell.row);
+                if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: cell.col })}`);
+              }}
+            />
+            <p className="mt-2 m-text-body m-ink-2">Each cell is a wave and object pair. Select one to open its records.</p>
+          </>
         )}
       </Card>
     </InsightFrame>

@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button, DataTable, ExplorerPage, Mono, Pill, asyncStateOf } from "@/design";
+import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { endRuleSuppression, getRuleFeedback, getRuleSuppressions, type RuleFeedbackRow, type RuleSuppression } from "@/lib/api/rules";
 import { apiErrorMessage } from "@/lib/error";
@@ -26,10 +27,7 @@ export function SuppressionsPanel() {
     { accessorKey: "reason", header: "Reason" },
     { id: "exp", header: "Expires", cell: ({ row }) => formatDate(row.original.expires_at, "date") },
     { accessorKey: "created_by", header: "By", cell: ({ row }) => row.original.created_by ?? "-" },
-    {
-      id: "end", header: "",
-      cell: ({ row }) => can("approve") ? <Button onClick={() => end.mutate(row.original.id)} disabled={end.isPending}>End now</Button> : null,
-    },
+    actionColumn((r) => (can("approve") ? <RowButton onClick={() => end.mutate(r.id)} disabled={end.isPending}>End now</RowButton> : null)),
   ];
   const rows = q.data?.suppressions ?? [];
   return (

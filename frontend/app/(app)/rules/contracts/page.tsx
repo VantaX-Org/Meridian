@@ -6,6 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Stat, Textarea, type PillTone } from "@/design";
+import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { activateContract, createContract, getContractCompliance, getContracts } from "@/lib/api/contracts";
@@ -37,7 +38,9 @@ export default function ContractsPage() {
   const q = useQuery({ queryKey: queryKeys.contracts({}), queryFn: () => getContracts() });
   const all = useMemo(() => q.data?.contracts ?? [], [q.data]);
   const term = search.trim().toLowerCase();
-  const visible = all.filter((c) => (status === "all" || (status === "breached" ? breached(c) : c.status === status)) && (!term || [c.name, c.producer, c.consumer, c.description ?? ""].join(" ").toLowerCase().includes(term)));
+  /** Breached contracts first, then those awaiting approval, then the rest by name. */
+const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval" ? 1 : 2);
+  const visible = all.filter((c) => (status === "all" || (status === "breached" ? breached(c) : c.status === status)) && (!term || [c.name, c.producer, c.consumer, c.description ?? ""].join(" ").toLowerCase().includes(term))).sort((a, b) => RANK(a) - RANK(b) || a.name.localeCompare(b.name));
   const selected = selectedId ? all.find((c) => c.id === selectedId) ?? null : null;
   const refresh = () => qc.invalidateQueries({ queryKey: ["contracts"] });
 
@@ -70,6 +73,7 @@ export default function ContractsPage() {
       cell: ({ row }) => (row.original.latest_compliant === true ? "Compliant" : row.original.latest_compliant === false ? "Not compliant" : "Not checked"),
     },
     { id: "checked", header: "Checked", cell: ({ row }) => (row.original.last_checked ? relativeTime(row.original.last_checked) : "—") },
+    actionColumn((c) => <RowButton label={`Open ${c.name}`} onClick={() => setSelectedId(c.id)}>Open</RowButton>),
   ], []);
 
   let state: "loading" | "empty" | "error" | undefined;
@@ -79,9 +83,9 @@ export default function ContractsPage() {
 
   return (
     <ExplorerPage
-      header={<PageHeader title="Data contracts" meta={q.isLoading ? "\u00a0" : `${all.length.toLocaleString()} contracts`} />}
+      header={<PageHeader title="Data contracts" meta={q.isLoading ? "\u00a0" : `${all.length.toLocaleString()} contracts`} actions={canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined} />}
       filterBar={
-        <div className="flex items-end justify-between gap-3">
+        <div className="flex items-end gap-3">
           <div className="flex items-end gap-3">
             <Field label="Filter contracts">
               <Input aria-label="Filter contracts" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -94,7 +98,6 @@ export default function ContractsPage() {
               />
             </Field>
           </div>
-          {canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : null}
         </div>
       }
       summary={

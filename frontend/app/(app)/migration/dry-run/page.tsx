@@ -1,6 +1,7 @@
 // frontend/app/(app)/migration/dry-run/page.tsx
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -18,7 +19,7 @@ const inFlight = (status: MigrationStatus | undefined) => status === "queued" ||
 const STATUS_TONE ={ load_ready: "go", load_fail: "no-go" } as const;
 const STATUS_LABEL = { load_ready: "Load ready", load_fail: "Load fail" } as const;
 
-const columns: ColumnDef<DryRunRecord>[] = [
+const columnsFor = (srcVersion: string | null | undefined): ColumnDef<DryRunRecord>[] => [
   { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
   { accessorKey: "source_table", header: "Source table", cell: ({ row }) => <Mono>{row.original.source_table}</Mono> },
   { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
@@ -31,6 +32,14 @@ const columns: ColumnDef<DryRunRecord>[] = [
     accessorKey: "reasons",
     header: "Reasons",
     cell: ({ row }) => row.original.reasons.join("; "),
+  },
+  {
+    id: "open",
+    header: "",
+    size: 80,
+    cell: ({ row }) => (
+      <Link href={`/objects/${row.original.module}${srcVersion ? `?run=${srcVersion}&tab=records` : ""}`} className="m-ink-accent-ink underline">Open</Link>
+    ),
   },
 ];
 
@@ -64,7 +73,7 @@ export default function DryRunPage() {
         narrative="Choose a dry run to see which records would load into S/4HANA."
         charts={null}
         state="empty"
-        emptyProps={{ title: "No dry run selected." }}
+        emptyProps={{ title: "No dry run selected" }}
       />
     );
   }
@@ -89,6 +98,7 @@ export default function DryRunPage() {
     );
   }
 
+  const columns = columnsFor(run?.source_version_id);
   const srcHref = run?.source_version_id ? `/runs/${run.source_version_id}` : undefined;
   const moduleBadges = run
     ? Object.entries(run.gap_summary ?? {}).map(([module, summary]) => {
@@ -103,27 +113,37 @@ export default function DryRunPage() {
 
   return (
     <ReportPage
-      narrative={
-        run
-          ? `Dry run against S/4HANA release ${run.target_release ?? "target"} — ${run.records_blocked} of ${run.records_total} records would fail to load.`
-          : "S/4 load dry run results."
-      }
-      charts={
-        <div className="flex flex-wrap items-center gap-3">
-          {moduleBadges}
-          {run && <Stat label="Blocked" value={run.records_blocked} href={srcHref} />}
-          {run && <Stat label="Total" value={run.records_total} href={srcHref} />}
+      title="S/4 load dry run"
+      meta={run ? `Release ${run.target_release ?? "target"}` : undefined}
+      exportMenu={
+        <>
           <Button variant="secondary" render={<a href={dryRunExportUrl(runId, "xlsx")} />}>
             Export Excel
           </Button>
           <Button variant="secondary" render={<a href={dryRunExportUrl(runId, "pdf")} />}>
             Export PDF
           </Button>
+        </>
+      }
+      narrative={
+        run
+          ? `Dry run against S/4HANA release ${run.target_release ?? "target"}: ${run.records_blocked.toLocaleString()} of ${run.records_total.toLocaleString()} records would fail to load`
+          : "S/4 load dry run results"
+      }
+      charts={
+        <div className="flex flex-col [gap:var(--m-section-gap)]">
+          {run ? (
+            <div className="m-stat-grid">
+              <Stat label="Blocked" value={run.records_blocked.toLocaleString()} tone={run.records_blocked > 0 ? "no-go" : "go"} href={srcHref} />
+              <Stat label="Total" value={run.records_total.toLocaleString()} href={srcHref} />
+            </div>
+          ) : null}
+          {moduleBadges.length ? <div className="flex flex-wrap items-center gap-3">{moduleBadges}</div> : null}
         </div>
       }
       tables={<DataTable columns={columns} data={rows} getRowId={(row) => `${row.module}:${row.record_key}`} />}
       state={state}
-      emptyProps={{ title: "No failing records for this dry run." }}
+      emptyProps={{ title: "No failing records for this dry run" }}
       errorProps={{
         message: runQuery.error ? apiErrorMessage(runQuery.error) : isListFailure(recordsQuery) ? apiErrorMessage(recordsQuery.error) : "Couldn't load the dry run. Try again.",
         onRetry: refetch,

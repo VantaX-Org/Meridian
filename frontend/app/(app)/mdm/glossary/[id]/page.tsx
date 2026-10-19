@@ -8,11 +8,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
+import { LedgerHead } from "@/components/mdm/ledger";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { AIDraftResponse, GlossaryTermDetail } from "@/types/api";
 
+const STATUS_LABEL: Record<string, string> = { active: "Active", under_review: "Under review", deprecated: "Deprecated" };
 type Rule = GlossaryTermDetail["linked_rules"][number];
 type Change = GlossaryTermDetail["change_history"][number];
 type Approved = { code: string; label: string };
@@ -72,7 +74,7 @@ export default function GlossaryTermPage() {
 
   if (termQuery.isLoading) {
     return (
-      <div className="flex flex-col gap-2 p-6">
+      <div className="flex flex-col gap-2">
         <Skeleton height={32} />
         <Skeleton height={120} />
       </div>
@@ -80,7 +82,7 @@ export default function GlossaryTermPage() {
   }
   if (termQuery.isError) {
     return (
-      <div className="p-6">
+      <div>
         <ErrorState
           {...apiErrorState(termQuery.error)}
           onRetry={() => void termQuery.refetch()}
@@ -119,10 +121,10 @@ export default function GlossaryTermPage() {
       <EntityTabs entityType="glossary" entityId={id} overview={<>
       <section className="flex items-center gap-2">
         <Pill tone={term.status === "active" ? "go" : term.status === "under_review" ? "at-risk" : "no-go"}>
-          {term.status.replace("_", " ")}
+          {STATUS_LABEL[term.status] ?? term.status.replace(/_/g, " ")}
         </Pill>
         {term.mandatory_for_s4hana ? <Pill tone="no-go">Mandatory for S/4HANA</Pill> : null}
-        {term.ai_drafted ? <Pill tone="at-risk">Auto-drafted</Pill> : null}
+        {term.ai_drafted ? <Pill tone="at-risk">Model draft</Pill> : null}
         <Button
           variant="secondary"
           disabled={!reviewDue || review.isPending}
@@ -189,15 +191,17 @@ export default function GlossaryTermPage() {
         </dl>
       </Card>
 
-      <Card title="Approved values" meta={String(approved.length)}>
+      <section aria-label="Approved values">
+        <LedgerHead title="Approved values" meta={String(approved.length)} />
         {approved.length === 0 ? (
           <p className="m-text-body m-ink-3">{"No approved values are defined for this field"}</p>
         ) : (
           <DataTable columns={approvedCols} getRowId={(r) => r.code} data={approved.map(([code, label]) => ({ code, label }))} height="auto" />
         )}
-      </Card>
+      </section>
 
-      <Card title="Linked rules failing" meta={String(failing.length)}>
+      <section aria-label="Linked rules failing">
+        <LedgerHead title="Linked rules failing" meta={String(failing.length)} />
         {failing.length === 0 ? (
           <p className="m-text-body m-ink-3">
             {term.linked_rules.length ? "Every linked rule passes in the latest analysis" : "No rules are linked to this term"}
@@ -205,15 +209,16 @@ export default function GlossaryTermPage() {
         ) : (
           <DataTable columns={ruleCols} getRowId={(r) => r.rule_id} data={failing} height="auto" />
         )}
-      </Card>
+      </section>
 
-      <Card title="Change history" meta={String(term.change_history.length)}>
+      <section aria-label="Change history">
+        <LedgerHead title="Change history" meta={String(term.change_history.length)} />
         {term.change_history.length === 0 ? (
           <p className="m-text-body m-ink-3">No changes recorded</p>
         ) : (
           <DataTable columns={changeCols} getRowId={(r) => r.id} data={term.change_history} height="auto" />
         )}
-      </Card>
+      </section>
       </>} />
     </RecordPage>
   );

@@ -8,8 +8,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Bar, Button, Card, DataTable, Delta, Dialog, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Heatmap, Input, Line, Mono, Pager, Pill, Tooltip, DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type HeatmapCell, entityTabs, NextActions, PageHeader, Status, asyncStateOf } from "@/design";
-import { DqsScore } from "@/components/insight/dqs-score";
+import { Button, Card, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Input, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -72,7 +71,8 @@ const FINDINGS_PAGE = 100;
 function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; history: History; onOpenSteps: () => void }) {
   const { can } = useRole();
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
-  const rows = objects.data?.objects ?? [];
+  // Ranked by records affected, the same order as the overview ledger.
+  const rows = [...(objects.data?.objects ?? [])].sort((x, y) => y.affected_records - x.affected_records);
   const modules = history.data?.modules ?? {};
 
   const columns: ColumnDef<ObjectSummary>[] = [
@@ -114,6 +114,17 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
         return <Sparkline data={series.map((s) => ({ x: s.version_id, y: s.composite }))} />;
       },
     },
+    {
+      id: "open",
+      header: "",
+      size: 90,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <span onClick={(e) => e.stopPropagation()}>
+          <Link href={`/objects/${row.original.module}?run=${versionId}`} aria-label={`Open ${formatModuleName(row.original.module)}`} className="m-ink-accent">Open</Link>
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -134,6 +145,75 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
   );
 }
 
+type ModuleRow = FindingsAggregate["by_module"][number];
+
+/** The run's objects as a ledger ranked by records affected, each with its blocking rule and one action. */
+function RunLedger({ versionId, rows, objects }: { versionId: string; rows: ModuleRow[]; objects: Map<string, ObjectSummary> }) {
+  const columns: ColumnDef<ModuleRow>[] = [
+    {
+      id: "module",
+      header: "Object",
+      accessorFn: (m) => formatModuleName(m.module),
+      cell: ({ row }) => <DrillLink object={row.original.module} run={versionId}>{formatModuleName(row.original.module)}</DrillLink>,
+    },
+    {
+      id: "score",
+      header: "Score",
+      accessorFn: (m) => objects.get(m.module)?.composite_score ?? -1,
+      cell: ({ row }) => <Score value={objects.get(row.original.module)?.composite_score} size="sm" />,
+    },
+    {
+      id: "rule",
+      header: "Blocking rule",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const o = objects.get(row.original.module);
+        return o?.blocking_rule_id ? (
+          <span className="inline-flex min-w-0 items-baseline gap-2">
+            <Mono>{o.blocking_rule_id}</Mono>
+            {o.blocking_rule_name ? <span className="m-ink-2 truncate">{o.blocking_rule_name}</span> : null}
+          </span>
+        ) : <span className="m-ink-3">—</span>;
+      },
+    },
+    {
+      id: "critical", header: "Critical", accessorFn: (m) => m.critical, meta: { numeric: true } satisfies CellMeta, size: 90,
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=critical`}>{row.original.critical.toLocaleString()}</DrillLink>,
+    },
+    {
+      id: "high", header: "High", accessorFn: (m) => m.high, meta: { numeric: true } satisfies CellMeta, size: 80,
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=high`}>{row.original.high.toLocaleString()}</DrillLink>,
+    },
+    {
+      id: "records", header: "Records", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{(row.original.affected ?? 0).toLocaleString()}</DrillLink>,
+    },
+    {
+      id: "open",
+      header: "",
+      size: 90,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <span onClick={(e) => e.stopPropagation()}>
+          <Link href={`/objects/${row.original.module}?run=${versionId}`} aria-label={`Open ${formatModuleName(row.original.module)}`} className="m-ink-accent">Open</Link>
+        </span>
+      ),
+    },
+  ];
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      getRowId={(m) => m.module}
+      rowHref={(m) => `/objects/${m.module}?run=${versionId}`}
+      hideSearch
+      hideToolbar
+      tableId="run-objects"
+      exportName="run-objects"
+    />
+  );
+}
+
 function SummaryTab({
   versionId, aggregate, history, systemId, versionLoading, lineage,
 }: {
@@ -143,18 +223,15 @@ function SummaryTab({
 }) {
   const router = useRouter();
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
+  // Shared with the Objects tab: the score, blocking rule and readiness of each object.
+  const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
+  const objectByModule = new Map((objects.data?.objects ?? []).map((o) => [o.module, o]));
 
   if (aggregate.isLoading) {
     return (
       <div className="flex flex-col gap-4" aria-busy="true">
-        <div className="flex flex-wrap items-center gap-8">
-          {[0, 1, 2, 3].map((i) => <Stat key={i} label="" value="" loading />)}
-        </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card title="Score by dimension"><Skeleton height={240} /></Card>
-          <Card title="Where findings concentrate"><Skeleton height={240} /></Card>
-        </div>
-        <Card title="Composite over runs"><Skeleton height={240} /></Card>
+        <div className="m-hero"><Skeleton height={168} /></div>
+        <Skeleton height={240} />
       </div>
     );
   }
@@ -178,11 +255,16 @@ function SummaryTab({
   const composite = a.dqs.composite;
   const delta = composite != null && a.previous_dqs != null ? Math.round((composite - a.previous_dqs) * 10) / 10 : null;
   const blocking = a.severity.critical + a.severity.high;
+  // A critical finding holds the score at the cap: the ruler draws the measured value beyond it.
+  const raw = a.dqs.raw ?? composite;
+  const capped = a.dqs.capped === true && composite != null && raw != null && raw > composite;
 
-  const dimensionData = Object.entries(a.dqs.dimension_scores).map(([dimension, score]) => ({
-    x: DIMENSIONS.find((d) => d.id === dimension)?.label ?? formatModuleName(dimension),
-    y: Math.round(score * 10) / 10,
-    dimension,
+  // Only the dimensions this run measured: an unmeasured one is not a gap in the data.
+  const dimensions = DIMENSIONS.filter((d) => a.dqs.dimension_scores[d.id] != null).map((d) => ({
+    key: d.id,
+    label: d.label,
+    score: Math.round(a.dqs.dimension_scores[d.id] * 10) / 10,
+    href: `/runs/${versionId}?tab=findings&dimension=${d.id}`,
   }));
 
   // The line is keyed by run id with the date as the tick (date and time when two runs share a day): a system's
@@ -198,16 +280,8 @@ function SummaryTab({
     return i > 0 && points[i - 1].y - p.y >= 5 ? [{ x: p.x, label: "Score fell", kind: "change" as const }] : [];
   });
 
-  const severities = ["critical", "high", "medium", "low"] as const;
-  const moduleByLabel = new Map(a.by_module.map((m) => [formatModuleName(m.module), m.module]));
-  // Each cell prints its finding count; the tint repeats the severity so colour is never the only signal.
-  const heatCells: HeatmapCell[] = a.by_module.flatMap((m) =>
-    severities.map((sev): HeatmapCell => ({ row: formatModuleName(m.module), col: labelOf(sev), value: m[sev] })),
-  );
-  const heatTone = (cell: HeatmapCell) => {
-    const sev = severities.find((s) => labelOf(s) === cell.col);
-    return cell.value === 0 ? "go" as const : sev === "critical" || sev === "high" ? "no-go" as const : "at-risk" as const;
-  };
+  // Ranked by what moves the score: records affected, then critical and high findings.
+  const ledgerRows = [...a.by_module].sort((x, y) => (y.affected ?? 0) - (x.affected ?? 0) || y.critical - x.critical || y.high - x.high);
 
   const presentModules = new Set(a.by_module.map((m) => m.module));
   const next = (prescriptive.data?.actions ?? []).filter((act) => !act.module || presentModules.has(act.module)).slice(0, 5).map((act) => ({
@@ -221,32 +295,34 @@ function SummaryTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-8">
-        <div className="flex items-center gap-2">
-          <DqsScore agg={a} versionId={versionId} />
-          {delta != null ? <Delta value={delta} run="previous run" /> : null}
-        </div>
-        <Stat label="Blocking findings" value={blocking.toLocaleString()} tone={blocking > 0 ? "no-go" : undefined} href={`/runs/${versionId}?tab=findings&severity=critical`} />
-        <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
-        {a.cost_at_risk != null ? (
-          <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
-        ) : null}
-      </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card title="Score by dimension">
-          <Bar data={dimensionData} onPointClick={(p) => router.push(`/runs/${versionId}?tab=findings&dimension=${p.dimension ?? ""}`)} />
-        </Card>
-        <Card title="Where findings concentrate">
-          <Heatmap
-            rows={a.by_module.map((m) => formatModuleName(m.module))}
-            cols={severities.map(labelOf)}
-            cells={heatCells}
-            tone={heatTone}
-            cellSize={40}
-            onPointClick={(c) => router.push(`/runs/${versionId}?tab=findings&module=${moduleByLabel.get(c.row) ?? ""}&severity=${c.col.toLowerCase()}`)}
+      <section className="m-hero grid gap-6 @5xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" aria-label="Score">
+        <div className="flex min-w-0 flex-col gap-4">
+          <Score
+            size="hero"
+            value={raw}
+            cap={capped ? composite ?? undefined : undefined}
+            criticals={a.severity.critical}
+            versionId={versionId}
+            delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
+            href={`/runs/${versionId}?tab=findings`}
           />
-        </Card>
-      </div>
+          <div className="m-stat-grid">
+            <Stat label="Blocking findings" value={blocking.toLocaleString()} tone={blocking > 0 ? "no-go" : undefined} href={`/runs/${versionId}?tab=findings&severity=critical`} />
+            <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+            {a.cost_at_risk != null ? (
+              <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+            ) : null}
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-col gap-2">
+          <h2 className="font-semibold m-text-h">Score by dimension</h2>
+          <DimensionBars items={dimensions} label="Score by dimension" />
+        </div>
+      </section>
+      <section className="flex flex-col gap-2">
+        <h2 className="font-semibold m-text-h">Objects in this run</h2>
+        <RunLedger versionId={versionId} rows={ledgerRows} objects={objectByModule} />
+      </section>
       <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
         <h2 className="font-semibold m-text-h">Next actions</h2>
         {prescriptive.isLoading ? (
@@ -259,15 +335,16 @@ function SummaryTab({
       </section>
       <Card title="Composite over runs">
         {versionLoading || (systemId != null && history.isLoading) ? (
-          <Skeleton height={240} />
+          <Skeleton height={160} />
         ) : points.length <= 1 ? (
           <EmptyState
+            variant="inline"
             title="Only one run so far"
             detail={systemId ? "Scores over time appear after a second run of this system." : "Scores over time appear after a second upload of the same objects."}
             action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />}
           />
         ) : (
-          <Line data={points} label="Composite over runs" annotations={annotations} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
+          <Line data={points} label="Composite over runs" height={160} annotations={annotations} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
         )}
       </Card>
     </div>

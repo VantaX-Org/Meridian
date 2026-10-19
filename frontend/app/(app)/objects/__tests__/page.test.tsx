@@ -18,14 +18,17 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
+/** The ledger: the object map above it repeats every label, so rows are read inside the grid. */
+const ledger = () => within(screen.getByRole("grid"));
+
 describe("ObjectsPage", () => {
   it.each([["ready", "Ready Obj", "Blocked Obj"]])("legacy ?verdict=%s maps to the readiness filter", async (v, shown, hidden) => {
     currentSearch = `run=v1&verdict=${v}`;
     const mk = (module: string, label: string, readiness: "pass" | "warn") => ({ module, label, composite_score: 80, readiness, failing_checks: 0, affected_records: 0 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "Ready Obj", "pass"), mk("b", "Blocked Obj", "warn")] });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText(shown)).toBeInTheDocument());
-    expect(screen.queryByText(hidden)).not.toBeInTheDocument();
+    await waitFor(() => expect(ledger().getByText(shown)).toBeInTheDocument());
+    expect(ledger().queryByText(hidden)).not.toBeInTheDocument();
     currentSearch = "run=v1";
   });
 
@@ -44,8 +47,8 @@ describe("ObjectsPage", () => {
       ],
     });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
-    expect(screen.getByText("72.5").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
+    await waitFor(() => expect(ledger().getByText("Material Master")).toBeInTheDocument());
+    expect(ledger().getByText("72.5").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
     expect(screen.getByText("Not ready")).toBeInTheDocument();
   });
 
@@ -80,8 +83,8 @@ describe("ObjectsPage verdict param", () => {
     const mk = (module: string, label: string, readiness: "pass" | "warn") => ({ module, label, composite_score: 80, readiness, failing_checks: 0, affected_records: 0 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "Ready Obj", "pass"), mk("b", "Blocked Obj", "warn")] });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("Ready Obj")).toBeInTheDocument());
-    expect(screen.getByText("Blocked Obj")).toBeInTheDocument();
+    await waitFor(() => expect(ledger().getByText("Ready Obj")).toBeInTheDocument());
+    expect(ledger().getByText("Blocked Obj")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Show all objects" })).not.toBeInTheDocument();
     expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
     currentSearch = "run=v1";
@@ -93,23 +96,41 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     ({ module, label, composite_score: score, readiness, failing_checks: 1, affected_records: 1, ...extra });
   const rowLabels = () => screen.getAllByRole("row").map((r) => r.textContent ?? "");
 
-  it("sorts worst readiness first, then lowest DQS", async () => {
+  it("ranks the most blocking findings first, then the most records, then the lowest DQS", async () => {
     currentSearch = "run=v1";
-    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "pass", 99), mk("b", "BBB", "warn", 70), mk("c", "CCC", "fail", 50), mk("d", "DDD", "fail", 40)] });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [
+      mk("a", "AAA", "pass", 99, { critical_checks: 0, high_checks: 1, affected_records: 500 }),
+      mk("b", "BBB", "warn", 70, { critical_checks: 1, high_checks: 1, affected_records: 10 }),
+      mk("c", "CCC", "fail", 50, { critical_checks: 1, high_checks: 1, affected_records: 90 }),
+      mk("d", "DDD", "fail", 40, { critical_checks: 0, high_checks: 0, affected_records: 900 }),
+    ] });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("DDD")).toBeInTheDocument());
+    await waitFor(() => expect(ledger().getByText("DDD")).toBeInTheDocument());
     const order = rowLabels().join("|");
-    expect(order.indexOf("DDD")).toBeLessThan(order.indexOf("CCC"));
+    // two blocking findings (CCC before BBB on records), then one (AAA), then none (DDD)
     expect(order.indexOf("CCC")).toBeLessThan(order.indexOf("BBB"));
     expect(order.indexOf("BBB")).toBeLessThan(order.indexOf("AAA"));
+    expect(order.indexOf("AAA")).toBeLessThan(order.indexOf("DDD"));
+  });
+
+  it("draws the object map from the rows the ledger shows, each tile opening its object", async () => {
+    currentSearch = "run=v1&readiness=fail";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "pass", 99), mk("c", "CCC", "fail", 50, { blocking_rule_id: "mm_bad", blocking_rule_name: "Bad" })] });
+    renderWithQuery(<ObjectsPage />);
+    const map = await screen.findByRole("list", { name: "Objects by records and verdict" });
+    const tiles = within(map).getAllByRole("link");
+    expect(tiles).toHaveLength(1);
+    expect(tiles[0]).toHaveAttribute("data-verdict", "no-go");
+    expect(tiles[0]).toHaveAttribute("href", "/objects/c?run=v1&rule=mm_bad");
+    currentSearch = "run=v1";
   });
 
   it("?readiness=fail keeps only no-go objects; Not ready Stat links to it", async () => {
     currentSearch = "run=v1&readiness=fail";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "pass", 99), mk("c", "CCC", "fail", 50)] });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("CCC")).toBeInTheDocument());
-    expect(screen.queryByText("AAA")).not.toBeInTheDocument();
+    await waitFor(() => expect(ledger().getByText("CCC")).toBeInTheDocument());
+    expect(ledger().queryByText("AAA")).not.toBeInTheDocument();
     expect(screen.getByText("Not ready").closest("a")).toHaveAttribute("href", "/objects?run=v1&readiness=fail");
     currentSearch = "run=v1";
   });
@@ -125,8 +146,8 @@ describe("ObjectsPage sort, filter and enrichment", () => {
       ],
     });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("mm_bad")).toBeInTheDocument());
-    expect(screen.getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=mm_bad");
+    await waitFor(() => expect(ledger().getByText("mm_bad")).toBeInTheDocument());
+    expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=mm_bad");
     expect(screen.getByText("Blocking findings")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
@@ -159,7 +180,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     renderWithQuery(<ObjectsPage />);
     const group = await screen.findByRole("group", { name: "Dimension" });
     expect(within(group).getByRole("button", { name: "Validity" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.queryByText("BBB")).not.toBeInTheDocument();
+    expect(ledger().queryByText("BBB")).not.toBeInTheDocument();
     currentSearch = "run=v1";
   });
 
@@ -170,7 +191,8 @@ describe("ObjectsPage sort, filter and enrichment", () => {
       objects: [mk("a", "AAA", "fail", 50, { blocking_rule_id: "DDIC-ADR6-TYPE", blocking_rule_name: "Type" })],
     });
     renderWithQuery(<ObjectsPage />);
-    const id = await screen.findByText("DDIC-ADR6-TYPE");
+    await waitFor(() => expect(ledger().getByText("DDIC-ADR6-TYPE")).toBeInTheDocument());
+    const id = ledger().getByText("DDIC-ADR6-TYPE");
     const wrap = id.closest("[data-testid='blocking-rule-id']");
     expect(wrap).not.toBeNull();
     expect(wrap).toHaveAttribute("title", "DDIC-ADR6-TYPE");
@@ -179,24 +201,17 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(id.closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=DDIC-ADR6-TYPE");
   });
 
-  it("draws each object's measured dimensions as filled bars in the Dimensions column", async () => {
+  it("lists the ledger columns in order and closes each row with an Open link to the workbench", async () => {
     currentSearch = "run=v1";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
       run_id: "v1",
-      objects: [mk("a", "AAA", "fail", 50, { dimension_scores: { completeness: 97, accuracy: 62.5, validity: 85 } })],
+      objects: [mk("a", "AAA", "fail", 50, { trend: [40, 50], blocking_rule_id: "mm_bad", blocking_rule_name: "Bad data", dimension_scores: { completeness: 97 } })],
     });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("AAA")).toBeInTheDocument());
-    expect(screen.getByRole("columnheader", { name: "Dimensions" })).toBeInTheDocument();
-    const strip = screen.getByRole("img", { name: /^Completeness 97\.0, Accuracy 62\.5/ });
-    expect(strip.getAttribute("aria-label")).toBe(
-      "Completeness 97.0, Accuracy 62.5, Consistency not measured, Timeliness not measured, Uniqueness not measured, Validity 85.0",
-    );
-    const tracks = strip.querySelectorAll(".m-dim-strip-track");
-    expect(tracks).toHaveLength(6);
-    const fills = [...strip.querySelectorAll<HTMLElement>(".m-bar-fill")];
-    expect(fills.map((f) => [f.dataset.tone, f.style.height])).toEqual([["pass", "97%"], ["critical", "62.5%"], ["medium", "85%"]]);
-    expect([...tracks].map((t) => t.getAttribute("data-measured"))).toEqual(["true", "true", "false", "false", "false", "true"]);
+    await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
+    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Records", "DQS", "Verdict", "Trend", "Action"]);
+    expect(ledger().getByText("Bad data")).toBeInTheDocument();
+    expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&rule=mm_bad");
   });
 
   it("shows a sparkline for two or more runs and a muted \"1 run\" for an object's first run", async () => {
@@ -206,9 +221,9 @@ describe("ObjectsPage sort, filter and enrichment", () => {
       objects: [mk("a", "AAA", "fail", 50, { trend: [40, 50] }), mk("b", "BBB", "warn", 70, { trend: [70] }), mk("c", "CCC", "pass", 95)],
     });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("BBB")).toBeInTheDocument());
+    await waitFor(() => expect(ledger().getByText("BBB")).toBeInTheDocument());
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
-    const cells = (label: string) => screen.getByText(label).closest("tr") as HTMLElement;
+    const cells = (label: string) => ledger().getByText(label).closest("tr") as HTMLElement;
     expect(within(cells("BBB")).getByTestId("trend-first-run")).toHaveTextContent("1 run");
     expect(within(cells("AAA")).queryByTestId("trend-first-run")).toBeNull();
     await waitFor(() => expect(cells("AAA").querySelector(".recharts-wrapper")).toBeInTheDocument());
@@ -221,7 +236,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     currentSearch = "run=v1";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "fail", 50)] });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("AAA")).toBeInTheDocument());
+    await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
     expect(screen.queryByRole("columnheader", { name: "Trend" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Blocking rule" })).toBeNull();
   });
@@ -231,7 +246,8 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v9", objects: [mk("a", "AAA", "fail", 50)] });
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(<QueryClientProvider client={qc}><ObjectsPage /></QueryClientProvider>);
-    fireEvent.click(await screen.findByText("AAA"));
+    await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
+    fireEvent.click(ledger().getByText("AAA"));
     expect(qc.getQueryData(queryKeys.objectSummary("a", "v9"))).toMatchObject({ module: "a" });
     currentSearch = "run=v1";
   });

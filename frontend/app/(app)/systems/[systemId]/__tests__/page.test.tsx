@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
@@ -11,11 +11,13 @@ import type { SAPSystemExtended } from "@/types/api";
 import SystemPage from "../page";
 
 let tab: string | null = null;
+// one object for the life of the file, as Next hands out, so a URL-state hook does not see a new URL on every render
+const searchParams = { get: (k: string) => (k === "tab" ? tab : null), toString: () => (tab ? `tab=${tab}` : "") };
 vi.mock("next/navigation", () => ({
   useParams: () => ({ systemId: "s1" }),
   usePathname: () => "/systems/s1",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  useSearchParams: () => ({ get: (k: string) => (k === "tab" ? tab : null), toString: () => (tab ? `tab=${tab}` : "") }),
+  useSearchParams: () => searchParams,
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -117,6 +119,23 @@ describe("system detail page", () => {
     renderWithQuery(<SystemPage />);
     expect(await screen.findByRole("link", { name: "Why it failed" })).toHaveAttribute("href", "/systems/s1/extractions/r2");
     expect(screen.getByRole("link", { name: "Extraction log" })).toHaveAttribute("href", "/systems/s1/extractions/r1");
+  });
+
+  it("ranks the objects by records beside the selected object's summary, with one action", async () => {
+    mockHappyPath();
+    const mod = (module: string, row_count: number) => ({ module, system_type: "ecc", enabled: true, last_synced_at: null, last_sync_status: null, row_count, config_synced: false });
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([mod("fi_gl", 10), mod("accounts_payable", 5000), mod("material_master", 300)] as never);
+    renderWithQuery(<SystemPage />);
+    const bench = await screen.findByTestId("system-workbench");
+    const buttons = within(bench).getAllByRole("button");
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      expect.stringContaining("Accounts payable"), expect.stringContaining("Material master"), expect.stringContaining("FI general ledger"),
+    ]);
+    expect(buttons[0]).toHaveAttribute("aria-pressed", "true");
+    expect(within(bench).getAllByText("5,000 records")).toHaveLength(2); // the row and the selected summary
+    fireEvent.click(buttons[1]);
+    expect(buttons[1]).toHaveAttribute("aria-pressed", "true");
+    expect(within(bench).getByRole("link", { name: "Extract" })).toHaveAttribute("href", "/systems/s1?tab=objects");
   });
 
   it("shows the system role in the header", async () => {

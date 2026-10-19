@@ -80,6 +80,12 @@ const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
     header: "Blocking rule",
     cell: ({ row }) => <CheckChips ids={row.original.causing_rules} />,
   },
+  {
+    id: "action", header: "", enableSorting: false,
+    cell: ({ row }) => (row.original.causing_rules[0]
+      ? <Link href={ruleHref(row.original.causing_rules[0])} className="m-ink-accent underline-offset-2 hover:underline">Open rule</Link>
+      : "—"),
+  },
 ];
 
 function formatRowAmount(row: ProvenCostRow): string {
@@ -177,7 +183,7 @@ function ImpactPanel({
     );
   }
 
-  const rows = impactRows(query.data?.rows ?? []);
+  const rows = impactRows(query.data?.rows ?? []).sort((a, b) => b.value_at_risk - a.value_at_risk || b.record_count - a.record_count);
   if (rows.length === 0) {
     if (unpriced) {
       return (
@@ -254,16 +260,16 @@ export default function ImpactPage() {
           : { sentence: "Run an analysis", action: { label: "Open runs", href: "/runs" } },
       }}
     >
+      <Card title="Features at risk" meta="Ranked by value at risk">
+        <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} />
+      </Card>
       {byFeature.length > 0 && (
         <Card title="Cost by feature">
-          <div role="img" aria-label={chartSummary(byFeature, "Value at risk by feature")}><Pareto data={byFeature} /></div>
+          <div role="img" aria-label={chartSummary(byFeature, "Value at risk by feature")}><Pareto data={byFeature} height={180} /></div>
         </Card>
       )}
       <Card title="Proven cost findings">
         <ProvenCostPanel query={provenCostQuery} />
-      </Card>
-      <Card title="Features at risk">
-        <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} />
       </Card>
     </InsightFrame>
   );

@@ -43,12 +43,6 @@ const HERO_TONE: Record<PillTone, string> = {
   info: "var(--m-hero-ink-2)",
 };
 
-/** Stat columns beside a lead: a row of their own while stacked, three abreast once the lead sits beside them. */
-const HERO_STAT_COLS: Record<number, string> = {
-  3: "@3xl:grid-cols-3",
-  4: "@3xl:grid-cols-4 @7xl:grid-cols-2",
-};
-
 const TONE: Record<PillTone, string> = {
   neutral: "var(--m-ink-3)",
   go: "var(--m-go)",
@@ -89,19 +83,19 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
       style={hero || embedded ? undefined : { background: "var(--m-sheet)", border: "1px solid var(--m-line)", borderRadius: "var(--m-radius-sheet)", padding: "var(--m-space-3) var(--m-space-4)" }}
     >
       {hero && (lead || (stats && stats.length > 0)) && (
-        // Lead and stats sit side by side only where both fit (a wide container); below it they stack, the lead
-        // on its own row, so the verdict never paints over a stat or wraps into a narrow column.
-        <div className={lead ? `${bare ? "" : "mb-6 "}grid gap-8 @7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @7xl:items-end` : bare ? "" : "mb-6"}>
+        // One sheet: the lead (score, ruler, verdict) left, the stats as a 2 by 2 beside it, then the four cells under
+        // a hairline. Side by side from the 4xl container size; below it the lead takes a row and the stats follow.
+        <div className={lead ? `grid gap-x-8 gap-y-4 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] @4xl:items-center ${bare ? "" : "mb-4"}` : bare ? "" : "mb-4"}>
           {lead && <div data-testid="insight-hero-lead" className="min-w-0">{lead}</div>}
           {stats && stats.length > 0 && (
-            <div className={`m-motion-stagger grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 ${lead ? HERO_STAT_COLS[Math.min(stats.length, 4)] ?? "" : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
+            <div className={`m-motion-stagger grid min-w-0 grid-cols-2 gap-x-6 gap-y-3 ${lead ? "" : "md:grid-cols-4"}`} data-testid="insight-hero-stats">
               {/* Only the lead score is set large; these sit at stat size and carry thousands separators, as the sentences under them do. */}
               {stats.slice(0, 4).map(({ to, ...x }) => <Stat key={x.label} countUp loading={loading} href={to} {...x} />)}
             </div>
           )}
         </div>
       )}
-      {!bare && <div className="m-motion-stagger grid gap-4 md:grid-cols-4 @5xl:grid-cols-4">
+      {!bare && <div className={`m-motion-stagger grid gap-4 md:grid-cols-4${hero ? " m-hero-cells" : ""}`}>
         <Cell label="Situation" cell={situation} loading={loading} hero={hero} />
         <Cell label="What changed" cell={changed} loading={loading} hero={hero} />
         <Cell label="Why it matters" cell={why} loading={loading} hero={hero} />

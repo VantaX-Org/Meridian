@@ -46,7 +46,7 @@ export function Rule({ value, target, cap, bands = DEFAULT_SCORE_BANDS, size = "
   const v = value == null ? null : clamp(value);
   const capped = v != null && cap != null && v > cap;
   const shown = capped ? cap! : v;
-  const hue = `var(--m-${tone ?? (shown == null ? "low" : dqsBand(shown, bands))})`;
+  const hue = `var(--m-${tone ?? (shown == null ? "low" : dqsBand(shown, bands))}-fill)`;
   const name = `${label ?? "Score"} ${v == null ? "not measured" : Math.round(v * 10) / 10}${capped ? `, capped at ${cap}` : ""}, target ${t}`;
   const mid = g.trackY + g.track / 2;
   return (

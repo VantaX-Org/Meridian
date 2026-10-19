@@ -21,7 +21,8 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Switch, Tabs, Textarea, emptyExportOptions, toast, type CellMeta, PageFrame } from "@/design";
+import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, Stat, Switch, Tabs, Textarea, Status, emptyExportOptions, toast, type CellMeta, PageFrame } from "@/design";
+import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
@@ -60,6 +61,11 @@ const conditionList = (r: Rule) => (Array.isArray(r.conditions) ? r.conditions :
 const valuesOf = (r: Rule, key: "check_class" | "dimension") =>
   [...new Set(conditionList(r).map((c) => c[key]).filter((v): v is string => typeof v === "string" && !!v))];
 const sevOf = (s: Rule["severity"]) => (s === "info" ? "low" : s);
+/** A rule's last pass rate on the 0 to 100 scale (the API sends a fraction or a percent). */
+const rateOf = (r: Rule): number | null => (r.last_pass_rate == null ? null : r.last_pass_rate <= 1 ? r.last_pass_rate * 100 : r.last_pass_rate);
+const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 3 };
+/** The ledger's rank: lowest pass rate first (the rules failing most records), rules not run yet last, then severity. */
+const byFailing = (a: Rule, b: Rule) => (rateOf(a) ?? 101) - (rateOf(b) ?? 101) || (SEV_RANK[a.severity] ?? 4) - (SEV_RANK[b.severity] ?? 4);
 const pct = (v: number) => `${(v * (v <= 1 ? 100 : 1)).toFixed(1)} %`;
 const matches = (r: Rule, q: string) => !q || [r.id, r.name, r.description ?? "", r.module, r.severity, ...(r.tags ?? [])].join(" ").toLowerCase().includes(q.toLowerCase());
 const detail = (e: unknown) => (isAxiosError<{ detail?: unknown }>(e) && typeof e.response?.data?.detail === "string" ? e.response.data.detail : null) ?? "Request failed";
@@ -90,7 +96,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
   const [table, setTable] = useUrlState("table", "");
   const [view, setView] = useUrlState("view", "");
   const [rawState, setState] = useUrlState("state", "");
-  const state = rawState === "enabled" || rawState === "disabled" || rawState === "not_run" ? rawState : "";
+  const state = rawState === "enabled" || rawState === "disabled" || rawState === "not_run" || rawState === "failing" ? rawState : "";
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -127,16 +133,17 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
     source: (r) => !source || r.source === source,
     table: (r) => !table || tableOf(r) === table,
     view: (r) => !view || inView(r, module, view),
-    state: (r) => !state || (state === "not_run" ? r.last_run_at == null : r.enabled === (state === "enabled")),
+    state: (r) => !state || (state === "not_run" ? r.last_run_at == null : state === "failing" ? (rateOf(r) ?? 100) < 100 : r.enabled === (state === "enabled")),
   };
   const passing = (r: Rule) => matches(r, search) && Object.values(tests).every((t) => t(r));
-  const visible = rules.filter(passing);
+  const visible = rules.filter(passing).sort(byFailing);
   const filtered = !!(search || module || check || dimension || severity || auth || source || table || view || state || category !== "all");
   const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setTable(""); setView(""); setState(""); setCategory("all"); };
 
   const selected = selectedId ? rules.find((r) => r.id === selectedId) ?? null : null;
   const disabledCount = rules.filter((r) => !r.enabled).length;
   const notRunCount = rules.filter((r) => r.last_run_at == null).length;
+  const failingCount = rules.filter((r) => (rateOf(r) ?? 100) < 100).length;
   const toggleGen = useRef(new Map<string, number>());
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => updateRule(id, { enabled }),
@@ -169,13 +176,29 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
   // Per-rule applicability comes from the same coverage query (not_applicable_rules); no extra request.
   const naReason = useMemo(() => new Map((awareQ.data?.modules ?? []).flatMap((m) => m.not_applicable_rules.map((n) => [n.check_id, n.reason] as const))), [awareQ.data]);
   const columns = useMemo<ColumnDef<Rule>[]>(() => [
-    { id: "code", header: "Rule", cell: ({ row }) => <Mono>{codeOf(row.original) || "—"}</Mono> },
-    { id: "rule", header: "Name", cell: ({ row }) => <strong>{nameOf(row.original)}</strong> },
+    {
+      id: "rule", header: "Rule", accessorFn: (r) => `${codeOf(r)} ${nameOf(r)}`,
+      cell: ({ row }) => (
+        <span className="flex min-w-0 max-w-[560px] items-baseline gap-2" title={nameOf(row.original)}>
+          <Mono>{codeOf(row.original) || "—"}</Mono>
+          <strong className="truncate">{nameOf(row.original)}</strong>
+        </span>
+      ),
+    },
     { id: "module", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={formatModuleName(row.original.module)} /> },
-    { id: "dimension", header: "Dimension", cell: ({ row }) => valuesOf(row.original, "dimension").map(labelOf).join(", ") || "—" },
     {
       id: "severity", header: "Severity", accessorFn: (r) => sevOf(r.severity), sortingFn: bySeverity, meta: { severity: true } satisfies CellMeta,
-      cell: ({ row }) => <span className="inline-flex items-center gap-2"><SeverityDot severity={sevOf(row.original.severity)} />{labelOf(row.original.severity)}</span>,
+      cell: ({ row }) => <Status kind="severity" value={sevOf(row.original.severity)} />,
+    },
+    {
+      id: "pass", header: "Pass rate", accessorFn: (r) => rateOf(r) ?? -1,
+      cell: ({ row }) => {
+        const r = row.original;
+        const na = naReason.get(r.id) ?? naReason.get(codeOf(r));
+        if (naReason.has(r.id) || naReason.has(codeOf(r))) return <span className="m-ink-3" title={na ?? undefined}>Not applicable</span>;
+        const rate = rateOf(r);
+        return rate == null ? <span className="m-ink-3">Not run yet</span> : <Score size="sm" value={rate} />;
+      },
     },
     {
       id: "state", header: "State",
@@ -195,21 +218,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
           : <Pill tone={r.enabled ? "go" : "neutral"}>{labelOf(r.enabled ? "enabled" : "disabled")}</Pill>;
       },
     },
-    {
-      id: "last", header: "Last run",
-      cell: ({ row }) => (
-        <span>
-          {row.original.last_run_at ? formatDate(row.original.last_run_at, "datetime") : "Not run yet"}
-          {row.original.last_pass_rate != null ? `, ${pct(row.original.last_pass_rate)}` : ""}
-        </span>
-      ),
-    },
-    {
-      id: "na", header: "Not applicable",
-      cell: ({ row }) => (naReason.has(row.original.id) || naReason.has(codeOf(row.original))
-        ? <span title={naReason.get(row.original.id) ?? naReason.get(codeOf(row.original)) ?? undefined}>Not applicable</span>
-        : "—"),
-    },
+    actionColumn((r) => <RowLink href={`/rules/${r.id}`} label={`Open ${nameOf(r)}`}>Open</RowLink>),
   ], [canManage, toggleRule, naReason]);
 
   const coverageRows = useMemo(
@@ -288,7 +297,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
         <Select value={auth} onValueChange={setAuth} placeholder="All authorities"
           options={[{ value: "", label: "All authorities" }, { value: "shipped", label: "SAP standard (shipped)" }, { value: "customer", label: "Customer configured" }]} />
       </Field>
-      {facetSelect("State", state, setState, ["enabled", "disabled", "not_run"], (v) => (v === "not_run" ? "Not run yet" : labelOf(v)), "All states")}
+      {facetSelect("State", state, setState, ["failing", "enabled", "disabled", "not_run"], (v) => (v === "not_run" ? "Not run yet" : labelOf(v)), "All states")}
       {facetSelect("Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")}
       {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
       {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
@@ -297,36 +306,41 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
         ? facetSelect("Configuration", cfgSystem, setCfgSystem, (systemsQ.data ?? []).map((s) => s.id), (id) => systemsQ.data?.find((s) => s.id === id)?.name ?? id, "All systems")
         : null}
       <ExportMenu options={visible.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
-      <Button variant="secondary" render={<Link href="/rules/learned" />}>Learned from your data</Button>
     </div>
   );
+
+  const coverage = coverageRows.length || rulesQ.isLoading ? (
+    <section aria-label="Coverage by object">
+      <LedgerHead title="Coverage by object" meta="How many rules apply on this configuration" />
+      {dayOne.status === "loading" || rulesQ.isLoading ? (
+        <Skeleton height={coverageRows.length ? coverageRows.length * 40 + 40 : 240} />
+      ) : hasFinishedRun ? (
+        <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} tableId="rules-coverage" />
+      ) : (
+        <EmptyState title="Coverage is measured on a finished run" action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
+      )}
+    </section>
+  ) : null;
 
   return (
     <div className="flex flex-col gap-4 py-4">
       {!canManage ? <Notice tone="info">Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
-      <div className="flex gap-4">
+      <div className="m-stat-grid">
+        <Stat label="Failing" value={failingCount.toLocaleString()} href="/rules?state=failing" tone={failingCount ? "at-risk" : undefined} hint="Last pass rate under 100" loading={rulesQ.isLoading} />
         <Stat label="Disabled" value={disabledCount.toLocaleString()} href="/rules?state=disabled" loading={rulesQ.isLoading} />
         <Stat label="Not run yet" value={notRunCount.toLocaleString()} href="/rules?state=not_run" loading={rulesQ.isLoading} />
       </div>
       {filterBar}
       <FilterChips chips={chips} onClearAll={clearFilters} />
-      {coverageRows.length || rulesQ.isLoading ? (
-        <Card title="Coverage by object" padding="sm">
-          {dayOne.status === "loading" || rulesQ.isLoading ? (
-            <Skeleton height={coverageRows.length ? coverageRows.length * 40 + 40 : 240} />
-          ) : hasFinishedRun ? (
-            <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} />
-          ) : (
-            <EmptyState title="Coverage is measured on a finished run" action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
-          )}
-        </Card>
-      ) : null}
       {rulesQ.isLoading ? (
         <Skeleton height={320} />
       ) : rulesQ.error ? (
         <ErrorState {...apiErrorState(rulesQ.error)} onRetry={() => rulesQ.refetch()} />
       ) : visible.length ? (
-        <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" />
+        <section aria-label="Rule catalogue">
+          <LedgerHead title="Rules, lowest pass rate first" meta={`${visible.length.toLocaleString()} of ${rules.length.toLocaleString()}`} />
+          <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" />
+        </section>
       ) : filtered ? (
         <EmptyState
           title="No rules match"
@@ -340,6 +354,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
           action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
         />
       )}
+      {coverage}
 
       <Drawer
         open={!!selected}
@@ -522,7 +537,10 @@ export default function RulesPage() {
       <PageHeader
         title="Rules"
         meta={summary.data ? `${total.toLocaleString()} rules, ${enabled.toLocaleString()} enabled` : "\u00a0"}
-        actions={canManage ? <Button onClick={() => { setTab("all"); setAuthoring(true); }}>New rule</Button> : undefined}
+        actions={<>
+          <Button variant="secondary" render={<Link href="/rules/learned">Learned from your data</Link>} />
+          {canManage ? <Button onClick={() => { setTab("all"); setAuthoring(true); }}>New rule</Button> : null}
+        </>}
       />
       <Tabs
         value={tab}

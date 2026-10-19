@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, PageHeader, Pill, Select, asyncStateOf } from "@/design";
+import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
   approveLearnedRule,
@@ -77,16 +78,12 @@ export default function LearnedRulesPage() {
       <DrillLink object={row.original.module} run={row.original.version_id ?? undefined}>{row.original.violations.toLocaleString()}</DrillLink>
     ) },
     { id: "keys", header: "Examples", cell: ({ row }) => <Mono>{row.original.sample_keys.slice(0, 2).join(", ") || "—"}</Mono> },
-    {
-      id: "act",
-      header: "",
-      cell: ({ row }) => row.original.status === "pending" ? (
-        <span className="flex gap-2">
-          {can("approve") ? <Button onClick={() => approve.mutate(row.original.id)} disabled={approve.isPending}>Approve</Button> : null}
-          {can("manage_rules") ? <Button variant="secondary" onClick={() => reject.mutate(row.original.id)} disabled={reject.isPending}>Reject</Button> : null}
-        </span>
-      ) : <Mono>{row.original.rule_id ?? row.original.status}</Mono>,
-    },
+    actionColumn((r) => r.status === "pending" ? (
+      <span className="flex gap-3">
+        {can("approve") ? <RowButton onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>Approve</RowButton> : null}
+        {can("manage_rules") ? <RowButton onClick={() => reject.mutate(r.id)} disabled={reject.isPending}>Reject</RowButton> : null}
+      </span>
+    ) : <Mono>{r.rule_id ?? r.status}</Mono>),
   ], [approve, reject, can]);
 
   const items = q.data?.items ?? [];

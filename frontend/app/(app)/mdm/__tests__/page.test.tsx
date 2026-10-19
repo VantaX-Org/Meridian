@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as analyticsApi from "@/lib/api/analytics";
@@ -14,19 +14,24 @@ const metric: MdmMetric = {
 };
 
 describe("MdmOverviewPage", () => {
-  it("shows the stat tiles and the two queue panels, with a one-line empty for no clusters", async () => {
+  it("shows the health figure with its four inputs, then the match work ledger with an Open action", async () => {
     vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: metric, trend: [metric], active_systems_count: 4 });
     vi.spyOn(analyticsApi, "getMdmHealth").mockResolvedValue({ data: [{ snapshot_date: "2026-10-01", mdm_health_score: 86 }] } as Awaited<ReturnType<typeof analyticsApi.getMdmHealth>>);
-    vi.spyOn(stewardshipApi, "getQueueItems").mockImplementation(async (f) =>
-      f?.item_type === "merge_decision"
-        ? { items: [], total: 0 }
-        : { items: [{ id: "q1", tenant_id: "t", item_type: "exception", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", ai_recommendation: null, ai_confidence: null }], total: 1 });
+    vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [{ id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", ai_recommendation: null, ai_confidence: null }], total: 1 });
     renderWithQuery(<MdmOverviewPage />);
-    await waitFor(() => expect(screen.getByText("Golden records")).toBeInTheDocument());
-    expect(screen.getByText("Sync coverage")).toBeInTheDocument();
-    expect(screen.getByText("Active systems")).toBeInTheDocument();
-    expect(await screen.findByText("Stewardship queue")).toBeInTheDocument();
-    expect(await screen.findByText("No match clusters awaiting review.")).toBeInTheDocument();
-    expect(screen.getByText("exception")).toBeInTheDocument();
+    expect(await screen.findByText("MDM health")).toBeInTheDocument();
+    for (const label of ["Coverage", "Match confidence", "Steward SLA", "Source consistency"]) expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText("12,480 golden records, 38 waiting on a steward")).toBeInTheDocument();
+    expect(await screen.findByText("Match work")).toBeInTheDocument();
+    expect(await screen.findByText("Merge decision")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/inbox?type=merge_decision");
+  });
+
+  it("says so when no match work is open", async () => {
+    vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: metric, trend: [metric], active_systems_count: 4 });
+    vi.spyOn(analyticsApi, "getMdmHealth").mockResolvedValue({ data: [], days: 90 });
+    vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
+    renderWithQuery(<MdmOverviewPage />);
+    expect(await screen.findByText("No open match work")).toBeInTheDocument();
   });
 });
