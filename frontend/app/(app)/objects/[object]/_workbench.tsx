@@ -1,7 +1,8 @@
 "use client";
 
 // The Overview tab: a workbench. The failing rules ranked by records on the left, the selected rule's failing
-// records on the right. The selection lives in the URL (`?rule=<id>`); without it the worst rule is selected.
+// records on the right. The selection lives in the URL (`?rule=<id>`); without it the blocking rule is selected,
+// else the worst critical rule, else the worst rule.
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -131,7 +132,12 @@ export function Workbench({ object, run }: { object: string; run: string }) {
     .sort((a, b) => b.affected_count - a.affected_count || (SEVERITY_RANK[a.severity] ?? 4) - (SEVERITY_RANK[b.severity] ?? 4));
   const listed = failing.filter((r) => !dimension || r.dimension === dimension);
   const wanted = search.get("rule");
-  const selected = listed.find((r) => r.check_id === wanted) ?? listed[0];
+  // Without ?rule= the object's blocking rule is selected (it is what to fix first), else the worst rule.
+  const selected =
+    listed.find((r) => r.check_id === wanted)
+    ?? listed.find((r) => r.check_id === data.blocking_rule_id)
+    ?? listed.find((r) => r.severity === "critical")
+    ?? listed[0];
   const top = failing[0]?.affected_count ?? 1;
 
   const hrefWith = (patch: Record<string, string | null>) => {

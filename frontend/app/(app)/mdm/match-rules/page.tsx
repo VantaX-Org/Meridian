@@ -115,7 +115,7 @@ function RulesTab() {
     { id: "weight", header: "Weight", cell: ({ row }) => row.original.weight.toFixed(2) },
     { id: "threshold", header: "Threshold", cell: ({ row }) => `${Math.round(row.original.threshold * 100)}%` },
     { id: "active", header: "State", cell: ({ row }) => <Pill tone={row.original.active ? "go" : "neutral"}>{row.original.active ? "Active" : "Off"}</Pill> },
-    actionColumn((r) => <RowButton label={`Edit ${r.field}`} onClick={() => { setEditing(r); setDraft({ ...r }); }}>{write ? "Edit" : "View"}</RowButton>),
+    actionColumn((r) => <RowButton label={`${write ? "Edit" : "View"} ${r.field}`} onClick={() => { setEditing(r); setDraft({ ...r }); }}>{write ? "Edit" : "View"}</RowButton>),
   ], [write]);
 
   return (

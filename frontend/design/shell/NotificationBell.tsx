@@ -88,9 +88,9 @@ export function NotificationRow({ n, showBody, onOpen }: { n: Notification; show
           <time className="m-text-meta" dateTime={n.created_at} style={{ color: "var(--m-ink-3)" }}>{relativeTime(n.created_at)}</time>
         </div>
         {href ? (
-          <Link href={href} onClick={() => onOpen(n)} className="underline-offset-2 hover:underline">{title}</Link>
+          <Link href={href} onClick={() => onOpen(n)} aria-label={`Open notification: ${title}`} className="underline-offset-2 hover:underline">{title}</Link>
         ) : (
-          <button type="button" onClick={() => onOpen(n)} className="text-left">{title}</button>
+          <button type="button" onClick={() => onOpen(n)} aria-label={`Open notification: ${title}`} className="text-left">{title}</button>
         )}
         {showBody && <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{humanizeIds(n.body)}</p>}
       </div>

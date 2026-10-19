@@ -234,6 +234,14 @@
   --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F1420;
   --m-info: #7FA2F3; --m-info-soft: #1C2A4A; --m-info-ink: #AFC4F8; --m-info-on: #0F1420;
   --m-critical-fill: #FF6B6B; --m-high-fill: #FB923C; --m-medium-fill: #FBBF24; --m-low-fill: #6B7A8F; --m-pass-fill: #34D399; --m-info-fill: #60A5FA;
+  /* The hero aliases resolve where they are declared, so a dark subtree (the gallery's dark sheet) restates them. */
+  --m-hero-bg: var(--m-sheet); --m-hero-bg-2: var(--m-sheet-raised); --m-hero-ink: var(--m-ink); --m-hero-ink-2: var(--m-ink-2); --m-hero-ink-3: var(--m-ink-3);
+  --m-hero-line: var(--m-line); --m-hero-skeleton: var(--m-sheet-sunken); --m-hero-skeleton-sweep: var(--m-sheet-raised);
+  --m-hero-tone-critical: var(--m-critical); --m-hero-tone-high: var(--m-high); --m-hero-tone-medium: var(--m-medium); --m-hero-tone-pass: var(--m-pass);
+  --m-go: var(--m-pass); --m-go-soft: var(--m-pass-soft); --m-go-ink: var(--m-pass-ink); --m-go-on: var(--m-pass-on);
+  --m-at-risk: var(--m-medium); --m-at-risk-soft: var(--m-medium-soft); --m-at-risk-ink: var(--m-medium-ink); --m-at-risk-on: var(--m-medium-on);
+  --m-no-go: var(--m-critical); --m-no-go-soft: var(--m-critical-soft); --m-no-go-ink: var(--m-critical-ink); --m-no-go-on: var(--m-critical-on);
+  --m-dqs-track: var(--m-sheet-sunken); --m-dqs-cap-line: var(--m-ink-2); --m-viz-grid: var(--m-line); --m-viz-axis: var(--m-ink-3); --m-viz-threshold: var(--m-ink-2);
   --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
   --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
   --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
@@ -311,6 +319,14 @@
     --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F1420;
     --m-info: #7FA2F3; --m-info-soft: #1C2A4A; --m-info-ink: #AFC4F8; --m-info-on: #0F1420;
   --m-critical-fill: #FF6B6B; --m-high-fill: #FB923C; --m-medium-fill: #FBBF24; --m-low-fill: #6B7A8F; --m-pass-fill: #34D399; --m-info-fill: #60A5FA;
+  /* The hero aliases resolve where they are declared, so a dark subtree (the gallery's dark sheet) restates them. */
+  --m-hero-bg: var(--m-sheet); --m-hero-bg-2: var(--m-sheet-raised); --m-hero-ink: var(--m-ink); --m-hero-ink-2: var(--m-ink-2); --m-hero-ink-3: var(--m-ink-3);
+  --m-hero-line: var(--m-line); --m-hero-skeleton: var(--m-sheet-sunken); --m-hero-skeleton-sweep: var(--m-sheet-raised);
+  --m-hero-tone-critical: var(--m-critical); --m-hero-tone-high: var(--m-high); --m-hero-tone-medium: var(--m-medium); --m-hero-tone-pass: var(--m-pass);
+  --m-go: var(--m-pass); --m-go-soft: var(--m-pass-soft); --m-go-ink: var(--m-pass-ink); --m-go-on: var(--m-pass-on);
+  --m-at-risk: var(--m-medium); --m-at-risk-soft: var(--m-medium-soft); --m-at-risk-ink: var(--m-medium-ink); --m-at-risk-on: var(--m-medium-on);
+  --m-no-go: var(--m-critical); --m-no-go-soft: var(--m-critical-soft); --m-no-go-ink: var(--m-critical-ink); --m-no-go-on: var(--m-critical-on);
+  --m-dqs-track: var(--m-sheet-sunken); --m-dqs-cap-line: var(--m-ink-2); --m-viz-grid: var(--m-line); --m-viz-axis: var(--m-ink-3); --m-viz-threshold: var(--m-ink-2);
     --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
     --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
     --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
