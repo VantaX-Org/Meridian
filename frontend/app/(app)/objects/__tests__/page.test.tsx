@@ -11,9 +11,10 @@ import * as objectsApi from "@/lib/api/v1/objects";
 import ObjectsPage from "../page";
 
 let currentSearch = "run=v1";
+const replace = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(currentSearch),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace }),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -127,9 +128,55 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     await waitFor(() => expect(screen.getByText("mm_bad")).toBeInTheDocument());
     expect(screen.getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=mm_bad");
     expect(screen.getByText("Blocking findings")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "accuracy" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
+  });
+
+  it("names Dimension chips in sentence case and keeps the raw id in the URL", async () => {
+    currentSearch = "run=v1";
+    replace.mockClear();
+    const dims = ["accuracy", "consistency", "timeliness", "uniqueness", "validity"];
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v1",
+      objects: dims.map((d, i) => mk(`m${i}`, `Obj ${i}`, "fail", 50, { worst_dimension: d })),
+    });
+    renderWithQuery(<ObjectsPage />);
+    const group = await screen.findByRole("group", { name: "Dimension" });
+    const chips = within(group).getAllByRole("button").map((b) => b.textContent);
+    expect(chips).toEqual(["Accuracy", "Consistency", "Timeliness", "Uniqueness", "Validity"]);
+    for (const d of dims) expect(within(group).queryByRole("button", { name: d })).toBeNull();
+    fireEvent.click(within(group).getByRole("button", { name: "Timeliness" }));
+    expect(replace).toHaveBeenCalledWith("/objects?run=v1&dimension=timeliness");
+  });
+
+  it("selects the Dimension chip from a raw ?dimension= id", async () => {
+    currentSearch = "run=v1&dimension=validity";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v1",
+      objects: [mk("a", "AAA", "fail", 50, { worst_dimension: "validity" }), mk("b", "BBB", "warn", 60, { worst_dimension: "accuracy" })],
+    });
+    renderWithQuery(<ObjectsPage />);
+    const group = await screen.findByRole("group", { name: "Dimension" });
+    expect(within(group).getByRole("button", { name: "Validity" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByText("BBB")).not.toBeInTheDocument();
+    currentSearch = "run=v1";
+  });
+
+  it("keeps a long blocking check id on one line, cut with an ellipsis and named in full by its title", async () => {
+    currentSearch = "run=v1";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v1",
+      objects: [mk("a", "AAA", "fail", 50, { blocking_rule_id: "DDIC-ADR6-TYPE", blocking_rule_name: "Type" })],
+    });
+    renderWithQuery(<ObjectsPage />);
+    const id = await screen.findByText("DDIC-ADR6-TYPE");
+    const wrap = id.closest("[data-testid='blocking-rule-id']");
+    expect(wrap).not.toBeNull();
+    expect(wrap).toHaveAttribute("title", "DDIC-ADR6-TYPE");
+    expect(wrap).toHaveClass("block", "truncate", "whitespace-nowrap");
+    expect(wrap?.getAttribute("style")).toBeNull();
+    expect(id.closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=DDIC-ADR6-TYPE");
   });
 
   it("draws each object's measured dimensions as filled bars in the Dimensions column", async () => {
