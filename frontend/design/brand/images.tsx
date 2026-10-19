@@ -1,13 +1,13 @@
 // The JSX that next/og renders into the Open Graph image and the Apple touch icon (app/opengraph-image.tsx,
 // app/apple-icon.tsx). Satori reads only inline styles and cannot read CSS tokens, so these live in the design
 // library (where inline style is allowed) and mirror public/brand/brand.json: canvas, sheet, ink, ink-2, accent.
-// Calm enterprise: a white sheet on the off-white canvas, the two-tone mark, type in ink. No cover, no gradient.
-const CANVAS = "rgb(247 248 250)";
+// Isora: a white sheet on the blue-grey canvas, the two-tone mark, type in ink. No cover, no gradient.
+const CANVAS = "rgb(245 247 248)";
 const SHEET = "rgb(255 255 255)";
-const LINE = "rgb(227 230 235)";
-const INK = "rgb(22 26 33)";
-const INK_2 = "rgb(71 79 92)";
-const ACCENT = "rgb(31 79 216)";
+const LINE = "rgb(224 231 236)";
+const INK = "rgb(38 57 75)";
+const INK_2 = "rgb(62 84 104)";
+const ACCENT = "rgb(51 111 150)";
 
 function Mark({ size }: { size: number }) {
   return (

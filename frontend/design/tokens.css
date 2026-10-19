@@ -2,38 +2,38 @@
  * The only file that may contain colour, shadow, gradient, blur, radius,
  * motion or duration literals. `npm run lint:tokens` enforces this.
  * Every token has a light value (:root) and a dark value ([data-theme="dark"]).
- * Direction: "Calm enterprise". Cool off-white canvas, white cards with hairline borders,
- * one deep blue accent for interaction, hue only for defect status. No gradients, no dark hero blocks.
+ * Direction: "Isora". A cool blue-grey canvas (#F5F7F8), white sheets with a hairline and one soft shadow, deep
+ * slate-navy ink, one steel-blue accent for interaction, sky-blue ramps, hue otherwise for defect status.
  */
 
 :root {
   /* ---------- Surfaces (light: off-white canvas, white cards) ---------- */
-  --m-canvas: #F6F5F2;          /* page background: paper */
+  --m-canvas: #F5F7F8;          /* page background: paper */
   --m-sheet: #FFFFFF;           /* cards, tables, forms, popovers */
-  --m-sheet-raised: #F1F0EC;    /* table header rows, hover rows, inset wells */
-  --m-sheet-sunken: #E7E5E0;    /* code/sample wells, bar tracks, ghost shapes */
+  --m-sheet-raised: #EEF2F5;    /* table header rows, hover rows, inset wells */
+  --m-sheet-sunken: #E3E9EE;    /* code/sample wells, bar tracks, ghost shapes */
   --m-rail: #FFFFFF;            /* sidebar background: a light sheet */
   --m-rail-hover: var(--m-sheet-raised);
   --m-rail-edge: var(--m-line); /* rail right rule */
-  --m-line: #E3E1DB;            /* hairline borders (1px) */
-  --m-line-strong: #C7C4BD;     /* input borders, table head rule */
-  --m-scrim: rgb(17 20 24 / 0.36);
+  --m-line: #E0E7EC;            /* hairline borders (1px) */
+  --m-line-strong: #C3CED7;     /* input borders, table head rule */
+  --m-scrim: rgb(38 57 75 / 0.40);
 
   /* ---------- Ink ---------- */
-  --m-ink: #17181B;             /* 17:1 on sheet */
-  --m-ink-2: #474A51;
-  --m-ink-3: #5B5F67;           /* minimum for body text on every surface */
-  --m-ink-4: #A8A8AC;           /* disabled, decorative only; never for text */
+  --m-ink: #26394B;             /* 17:1 on sheet */
+  --m-ink-2: #3E5468;
+  --m-ink-3: #4C6479;           /* minimum for body text on every surface */
+  --m-ink-4: #9AA4AD;           /* disabled, decorative only; never for text */
   --m-ink-on-accent: #FFFFFF;
 
   /* ---------- Accent: deep blue. Interaction only (selection, focus, links, primary button) ---------- */
-  --m-accent: #1F4FD8;
-  --m-accent-hover: #1A44BC;
-  --m-accent-active: #163A9F;
-  --m-accent-soft: #EBF0FC;     /* selected row, active nav */
-  --m-accent-soft-2: #D8E2FA;   /* selected + hover */
-  --m-accent-ink: #1A44BC;      /* accent used as text on soft tint */
-  --m-accent-ring: rgb(31 79 216 / 0.30);
+  --m-accent: #336F96;
+  --m-accent-hover: #2B5F80;
+  --m-accent-active: #234F6B;
+  --m-accent-soft: #E7F1F7;     /* selected row, active nav */
+  --m-accent-soft-2: #D3E6F1;   /* selected + hover */
+  --m-accent-ink: #27587A;      /* accent used as text on soft tint */
+  --m-accent-ring: rgb(51 111 150 / 0.30);
 
   /* ---------- Hero zones are white sheets: these names alias the ordinary surface and ink tokens ---------- */
   --m-hero-bg: var(--m-sheet);
@@ -85,7 +85,7 @@
   --m-dom-on: #FFFFFF;
 
   /* ---------- Charts: ten muted categorical hues, ramps. Series 1 is a quiet blue ---------- */
-  --m-viz-1: #3F63C2;
+  --m-viz-1: #336F96;
   --m-viz-2: #2E8257;
   --m-viz-3: #A17A22;
   --m-viz-4: #2F7D8E;
@@ -95,7 +95,7 @@
   --m-viz-8: #5E7E2F;
   --m-viz-9: #3B6E9C;
   --m-viz-10: #8C5096;
-  --m-viz-1-fill: rgb(63 99 194 / 0.14);
+  --m-viz-1-fill: rgb(51 111 150 / 0.16);
   --m-viz-2-fill: rgb(46 130 87 / 0.14);
   --m-viz-3-fill: rgb(161 122 34 / 0.14);
   --m-viz-4-fill: rgb(47 125 142 / 0.14);
@@ -108,10 +108,10 @@
   --m-viz-grid: var(--m-line);
   --m-viz-axis: var(--m-ink-3);
   --m-viz-threshold: var(--m-ink-2);
-  --m-viz-area: rgb(63 99 194 / 0.10);
-  --m-viz-tooltip-bg: #161A21;
+  --m-viz-area: rgb(51 111 150 / 0.12);
+  --m-viz-tooltip-bg: #26394B;
   --m-viz-tooltip-ink: #FFFFFF;
-  --m-seq-1: #EBF0FA; --m-seq-2: #C7D4F0; --m-seq-3: #97ADE2; --m-seq-4: #3C5FBE; --m-seq-5: #26408A;
+  --m-seq-1: #E7F1F7; --m-seq-2: #A8CEE3; --m-seq-3: #84BADA; --m-seq-4: #336F96; --m-seq-5: #26394B;
   --m-div-neg-2: #B5373F; --m-div-neg-1: #F2C3C6; --m-div-mid: #E9ECF0; --m-div-pos-1: #BFE2CB; --m-div-pos-2: #22744A;
 
   /* ---------- Gradients: flat everywhere. The only ramps are functional (fade, count settle). ---------- */
@@ -119,7 +119,7 @@
   --m-grad-count-settle: linear-gradient(90deg, var(--m-accent-soft) 0%, transparent 100%);
 
   /* ---------- Type ---------- */
-  --m-font-ui: var(--font-ui, "IBM Plex Sans", system-ui, sans-serif);
+  --m-font-ui: var(--font-ui, "Inter", system-ui, sans-serif);
   --m-font-sans: var(--m-font-ui);
   --m-font-mono: var(--font-jbm, "JetBrains Mono", ui-monospace, monospace);
 
@@ -147,8 +147,8 @@
   --m-page-pad: var(--m-space-8);
 
   /* ---------- Shape ---------- */
-  --m-radius-control: 6px;      /* buttons, inputs, menu items */
-  --m-radius-sheet: 8px;        /* cards, tables, dialogs, the score sheet */
+  --m-radius-control: 8px;      /* buttons, inputs, menu items */
+  --m-radius-sheet: 12px;       /* cards, tables, dialogs, the score sheet */
   --m-radius-tile: 0px;         /* KPI columns (ruled, not boxed) */
   --m-radius-pill: 999px;
   --m-border: 1px;
@@ -174,8 +174,9 @@
   /* ---------- Elevation (three levels + focus) ---------- */
   --m-elev-0: none;
   --m-elev-1: 0 0 0 1px var(--m-line);                                    /* flat card: hairline only */
-  --m-elev-2: 0 0 0 1px var(--m-line), 0 4px 12px rgb(17 20 24 / 0.08);     /* menu, popover, tooltip, hover lift */
-  --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(17 20 24 / 0.14);    /* drawer, dialog, palette */
+  --m-elev-card: 0 1px 2px rgb(38 57 75 / 0.04), 0 2px 8px rgb(38 57 75 / 0.04); /* the soft lift under every sheet (cards, hero) */
+  --m-elev-2: 0 0 0 1px var(--m-line), 0 4px 12px rgb(38 57 75 / 0.10);     /* menu, popover, tooltip, hover lift */
+  --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(38 57 75 / 0.16);    /* drawer, dialog, palette */
   --m-ring: 0 0 0 2px var(--m-accent);                                      /* selection outline */
   --m-elev-focus: 0 0 0 2px var(--m-sheet), 0 0 0 4px var(--m-accent);
   --m-elev-accent: none;                                               /* primary button */
@@ -200,34 +201,34 @@
 
 /* ---------- Dark: neutral graphite ---------- */
 [data-theme="dark"] {
-  --m-canvas: #111418;
-  --m-sheet: #181C21;
-  --m-sheet-raised: #20252C;
-  --m-sheet-sunken: #0C0E11;
-  --m-rail: #14171B;
+  --m-canvas: #0F161C;
+  --m-sheet: #16202A;
+  --m-sheet-raised: #1D2935;
+  --m-sheet-sunken: #0A1015;
+  --m-rail: #121B23;
   --m-rail-edge: var(--m-line);
   --m-rail-hover: var(--m-sheet-raised);
-  --m-line: #2A3038;
-  --m-line-strong: #3D444F;
+  --m-line: #263442;
+  --m-line-strong: #364758;
   --m-scrim: rgb(0 0 0 / 0.6);
-  --m-ink: #E7E9EC;
-  --m-ink-2: #B5BBC4;
-  --m-ink-3: #99A1AD;
-  --m-ink-4: #4D5560;
-  --m-ink-on-accent: #0C0E11;
-  --m-accent: #7398F5;
-  --m-accent-hover: #8DABF7;
-  --m-accent-active: #5F87EE;
-  --m-accent-soft: #1C2741;
-  --m-accent-soft-2: #25335A;
-  --m-accent-ink: #A4BCF8;
-  --m-accent-ring: rgb(115 152 245 / 0.40);
-  --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #111418;
-  --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #111418;
-  --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #111418;
-  --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #111418;
-  --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #111418;
-  --m-info: #7FA2F3; --m-info-soft: #1C2741; --m-info-ink: #AFC4F8; --m-info-on: #111418;
+  --m-ink: #E6EDF2;
+  --m-ink-2: #B3C2CF;
+  --m-ink-3: #97A9B8;
+  --m-ink-4: #4C5E6E;
+  --m-ink-on-accent: #0A1015;
+  --m-accent: #84BADA;
+  --m-accent-hover: #A8CEE3;
+  --m-accent-active: #6AA9CF;
+  --m-accent-soft: #1B3140;
+  --m-accent-soft-2: #223E52;
+  --m-accent-ink: #A8CEE3;
+  --m-accent-ring: rgb(132 186 218 / 0.40);
+  --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #0F161C;
+  --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #0F161C;
+  --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #0F161C;
+  --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #0F161C;
+  --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F161C;
+  --m-info: #7FA2F3; --m-info-soft: #1B3140; --m-info-ink: #AFC4F8; --m-info-on: #0F161C;
   --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
   --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
   --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
@@ -237,8 +238,8 @@
   --m-dom-plant: #A0BE86; --m-dom-plant-soft: #212A1B; --m-dom-plant-ink: #C1D5B0;
   --m-dom-asset: #D39E84; --m-dom-asset-soft: #33241D; --m-dom-asset-ink: #E3BDAA;
   --m-dom-other: #A6AEBA; --m-dom-other-soft: #23272D; --m-dom-other-ink: #C4CAD3;
-  --m-dom-on: #111418;
-  --m-viz-1: #86A4EE;
+  --m-dom-on: #0F161C;
+  --m-viz-1: #84BADA;
   --m-viz-2: #6CC594;
   --m-viz-3: #D3B466;
   --m-viz-4: #72B7C6;
@@ -248,7 +249,7 @@
   --m-viz-8: #A2C27C;
   --m-viz-9: #81AEDA;
   --m-viz-10: #C99BD1;
-  --m-viz-1-fill: rgb(134 164 238 / 0.15);
+  --m-viz-1-fill: rgb(132 186 218 / 0.15);
   --m-viz-2-fill: rgb(108 197 148 / 0.15);
   --m-viz-3-fill: rgb(211 180 102 / 0.15);
   --m-viz-4-fill: rgb(114 183 198 / 0.15);
@@ -258,12 +259,13 @@
   --m-viz-8-fill: rgb(162 194 124 / 0.15);
   --m-viz-9-fill: rgb(129 174 218 / 0.15);
   --m-viz-10-fill: rgb(201 155 209 / 0.15);
-  --m-viz-area: rgb(134 164 238 / 0.14);
-  --m-viz-tooltip-bg: #E7E9EC;
-  --m-viz-tooltip-ink: #111418;
-  --m-seq-1: #1A2132; --m-seq-2: #253353; --m-seq-3: #34508C; --m-seq-4: #7F9EEA; --m-seq-5: #BFCFF6;
-  --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #20252C; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
-  --m-grad-fade-bottom: linear-gradient(180deg, rgb(24 28 33 / 0) 0%, var(--m-sheet) 100%);
+  --m-viz-area: rgb(132 186 218 / 0.14);
+  --m-viz-tooltip-bg: #E6EDF2;
+  --m-viz-tooltip-ink: #0F161C;
+  --m-seq-1: #182633; --m-seq-2: #22384A; --m-seq-3: #2F5570; --m-seq-4: #84BADA; --m-seq-5: #C9E2F0;
+  --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #1D2935; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
+  --m-grad-fade-bottom: linear-gradient(180deg, rgb(22 32 42 / 0) 0%, var(--m-sheet) 100%);
+  --m-elev-card: none;
   --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
   --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
   --m-elev-accent: none;
@@ -274,34 +276,34 @@
 /* System preference when no explicit theme is set. Generated from the dark block above: keep value for value. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --m-canvas: #111418;
-    --m-sheet: #181C21;
-    --m-sheet-raised: #20252C;
-    --m-sheet-sunken: #0C0E11;
-    --m-rail: #14171B;
+    --m-canvas: #0F161C;
+    --m-sheet: #16202A;
+    --m-sheet-raised: #1D2935;
+    --m-sheet-sunken: #0A1015;
+    --m-rail: #121B23;
     --m-rail-edge: var(--m-line);
     --m-rail-hover: var(--m-sheet-raised);
-    --m-line: #2A3038;
-    --m-line-strong: #3D444F;
+    --m-line: #263442;
+    --m-line-strong: #364758;
     --m-scrim: rgb(0 0 0 / 0.6);
-    --m-ink: #E7E9EC;
-    --m-ink-2: #B5BBC4;
-    --m-ink-3: #99A1AD;
-    --m-ink-4: #4D5560;
-    --m-ink-on-accent: #0C0E11;
-    --m-accent: #7398F5;
-    --m-accent-hover: #8DABF7;
-    --m-accent-active: #5F87EE;
-    --m-accent-soft: #1C2741;
-    --m-accent-soft-2: #25335A;
-    --m-accent-ink: #A4BCF8;
-    --m-accent-ring: rgb(115 152 245 / 0.40);
-    --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #111418;
-    --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #111418;
-    --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #111418;
-    --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #111418;
-    --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #111418;
-    --m-info: #7FA2F3; --m-info-soft: #1C2741; --m-info-ink: #AFC4F8; --m-info-on: #111418;
+    --m-ink: #E6EDF2;
+    --m-ink-2: #B3C2CF;
+    --m-ink-3: #97A9B8;
+    --m-ink-4: #4C5E6E;
+    --m-ink-on-accent: #0A1015;
+    --m-accent: #84BADA;
+    --m-accent-hover: #A8CEE3;
+    --m-accent-active: #6AA9CF;
+    --m-accent-soft: #1B3140;
+    --m-accent-soft-2: #223E52;
+    --m-accent-ink: #A8CEE3;
+    --m-accent-ring: rgb(132 186 218 / 0.40);
+    --m-critical: #F0737C; --m-critical-soft: #3A1D21; --m-critical-ink: #F7A3A9; --m-critical-on: #0F161C;
+    --m-high: #EE965A; --m-high-soft: #38241A; --m-high-ink: #F5BB92; --m-high-on: #0F161C;
+    --m-medium: #E2BE5C; --m-medium-soft: #332B16; --m-medium-ink: #EFD58F; --m-medium-on: #0F161C;
+    --m-low: #A3ABB7; --m-low-soft: #252A31; --m-low-ink: #C0C6CF; --m-low-on: #0F161C;
+    --m-pass: #5CC78C; --m-pass-soft: #16301F; --m-pass-ink: #98DDB5; --m-pass-on: #0F161C;
+    --m-info: #7FA2F3; --m-info-soft: #1B3140; --m-info-ink: #AFC4F8; --m-info-on: #0F161C;
     --m-dom-material: #7DB4C1; --m-dom-material-soft: #192A2F; --m-dom-material-ink: #A8CED7;
     --m-dom-customer: #A79CD8; --m-dom-customer-soft: #24213A; --m-dom-customer-ink: #C6BEE6;
     --m-dom-vendor: #D495AF; --m-dom-vendor-soft: #34202A; --m-dom-vendor-ink: #E4B8CA;
@@ -311,8 +313,8 @@
     --m-dom-plant: #A0BE86; --m-dom-plant-soft: #212A1B; --m-dom-plant-ink: #C1D5B0;
     --m-dom-asset: #D39E84; --m-dom-asset-soft: #33241D; --m-dom-asset-ink: #E3BDAA;
     --m-dom-other: #A6AEBA; --m-dom-other-soft: #23272D; --m-dom-other-ink: #C4CAD3;
-    --m-dom-on: #111418;
-    --m-viz-1: #86A4EE;
+    --m-dom-on: #0F161C;
+    --m-viz-1: #84BADA;
     --m-viz-2: #6CC594;
     --m-viz-3: #D3B466;
     --m-viz-4: #72B7C6;
@@ -322,7 +324,7 @@
     --m-viz-8: #A2C27C;
     --m-viz-9: #81AEDA;
     --m-viz-10: #C99BD1;
-    --m-viz-1-fill: rgb(134 164 238 / 0.15);
+    --m-viz-1-fill: rgb(132 186 218 / 0.15);
     --m-viz-2-fill: rgb(108 197 148 / 0.15);
     --m-viz-3-fill: rgb(211 180 102 / 0.15);
     --m-viz-4-fill: rgb(114 183 198 / 0.15);
@@ -332,13 +334,14 @@
     --m-viz-8-fill: rgb(162 194 124 / 0.15);
     --m-viz-9-fill: rgb(129 174 218 / 0.15);
     --m-viz-10-fill: rgb(201 155 209 / 0.15);
-    --m-viz-area: rgb(134 164 238 / 0.14);
-    --m-viz-tooltip-bg: #E7E9EC;
-    --m-viz-tooltip-ink: #111418;
-    --m-seq-1: #1A2132; --m-seq-2: #253353; --m-seq-3: #34508C; --m-seq-4: #7F9EEA; --m-seq-5: #BFCFF6;
-    --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #20252C; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
-    --m-grad-fade-bottom: linear-gradient(180deg, rgb(24 28 33 / 0) 0%, var(--m-sheet) 100%);
-    --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
+    --m-viz-area: rgb(132 186 218 / 0.14);
+    --m-viz-tooltip-bg: #E6EDF2;
+    --m-viz-tooltip-ink: #0F161C;
+    --m-seq-1: #182633; --m-seq-2: #22384A; --m-seq-3: #2F5570; --m-seq-4: #84BADA; --m-seq-5: #C9E2F0;
+    --m-div-neg-2: #F0737C; --m-div-neg-1: #632A2F; --m-div-mid: #1D2935; --m-div-pos-1: #1F5235; --m-div-pos-2: #5CC78C;
+    --m-grad-fade-bottom: linear-gradient(180deg, rgb(22 32 42 / 0) 0%, var(--m-sheet) 100%);
+    --m-elev-card: none;
+  --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
     --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
     --m-elev-accent: none;
     --m-elev-glow-critical: 0 0 0 3px rgb(240 115 124 / 0.28);
@@ -497,7 +500,7 @@
 
 /* ---------- Colour-pass utilities (hero, depth, tone, domain, heat) ---------- */
 /* The score sheet: a white card like any other, a plain large number and one horizontal bar. */
-.m-hero { position: relative; color: var(--m-ink); padding: var(--m-hero-pad); background-color: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); }
+.m-hero { position: relative; color: var(--m-ink); padding: var(--m-hero-pad); background-color: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); box-shadow: var(--m-elev-card); }
 .m-brand-panel { position: relative; color: var(--m-ink); padding: 48px; background-color: var(--m-sheet); border-right: 1px solid var(--m-line); }
 .m-ghost-bg { background-color: transparent; border: 1px dashed var(--m-line); border-radius: var(--m-radius-sheet); }
 .m-meridian-line { position: relative; height: 1px; background: var(--m-line); }

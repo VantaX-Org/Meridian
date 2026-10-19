@@ -1,4 +1,4 @@
-# Meridian design system: "The Instrument"
+# Meridian design system: "The Instrument", styled Isora
 
 Source of truth for the visual layer. Values live in `frontend/design/tokens.css`, the only file that may hold colour, shadow, blur or motion literals. When this file and the code disagree, the code is right and this file needs updating.
 
@@ -9,9 +9,9 @@ Every data product on the market is cards on a canvas. Meridian is an instrument
 1. **The Datum.** A page is two columns with one vertical line, the meridian, between them: the figures, charts and tables on the left; the margin on the right. The line carries a short accent tick at its top. Below the container's reading width the margin stacks first, so the explanation is still read before the figures. `Datum` draws it; `PageFrame` and the insight frame use it.
 2. **The Rule.** One primitive draws every score: a ruler from 0 to 100 with the measured value as a filled run and a needle, the target as a tick, and the cap (a critical finding holding the score down) as a second tick with the measured value ghosted beyond it. The same geometry at three sizes: `hero` (the score sheet, labelled 0, Target and 100), `row` (a table cell beside the numeral) and `inline` (a mark in a sentence). A reader learns the instrument once. The 270 degree arc (`ScoreRing`) remains for the brand and the detail header; it is never beside a Rule for the same number.
 3. **The margin.** The four sentences of a page (situation, what changed, why it matters, do next) are marginalia, not a banner: `Margin` sets them in the Datum's right column, each with a tone dot and at most one action, sticky while the figures scroll. Numbers left, meaning right, always in the same place.
-4. **Paper and lab.** Light is paper: a warm-neutral off-white canvas (`#F6F5F2`), white sheets with one hairline, near-black ink. Dark is lab: neutral graphite with the same hairlines. Both come from one token set and both are first class. No gradients, no glow, no blur, no shadow outside popovers and dialogs.
-5. **One accent.** Deep blue (`#1F4FD8`, lightened in the lab) marks interaction only: the primary button, links, selection, focus, the datum's tick. Hue otherwise means defect state: red, amber and green, plus an info blue for neutral notices; severity is colour plus shape, never colour alone.
-6. **Type.** IBM Plex Sans for words and figures (400, 500, 600), tabular numerals, 14px body on a 4px grid; JetBrains Mono for SAP identifiers only. Sentence case everywhere.
+4. **Isora surfaces.** Light is a cool blue-grey canvas (`#F5F7F8`) with white sheets: one hairline, a 12px radius and one soft shadow (`--m-elev-card`) under every card and the score sheet, slate-navy ink (`#26394B`). Dark is the same system in blue-slate graphite with no card shadow. Both come from one token set and both are first class. No gradients, no glow, no blur.
+5. **One accent.** Steel blue (`#336F96`; sky blue `#84BADA` in dark) marks interaction only: the primary button, links, selection, focus, the datum's tick. The sky-blue family (`#E7F1F7`, `#A8CEE3`, `#84BADA`) is the sequential ramp and chart series 1. Hue otherwise means defect state: red, amber and green, plus an info blue for neutral notices; severity is colour plus shape, never colour alone.
+6. **Type.** Inter for words and figures (400, 500, 600), tabular numerals, 14px body on a 4px grid; JetBrains Mono for SAP identifiers only. Sentence case everywhere.
 7. **Icons.** Meridian's own set (`design/icons`), one 24 grid and one 1.6 stroke; nothing from a library, nothing decorative, no sparkle anywhere.
 8. **Motion is measurement.** 120, 240 or 480 ms, ease-out; a draw-in settles like a needle, a count-up eases like a gauge, nothing bounces. Zero under `prefers-reduced-motion`.
 9. **Every number opens the rows behind it** (`DrillLink`, `Stat href`), **the URL is state**, and **speed is a feature**: skeletons in the final geometry, virtualised tables above 200 rows, prefetch on hover.
@@ -21,21 +21,21 @@ The benchmark is Linear, Stripe and Vercel for craft, Tufte for the margin, a go
 
 ## 2. Tokens
 
-Light (paper) values on `:root`, dark (lab) under `[data-theme="dark"]` and under `prefers-color-scheme: dark` when no theme is set.
+Light values on `:root`, dark under `[data-theme="dark"]` and under `prefers-color-scheme: dark` when no theme is set.
 
 | Token | Light | Dark |
 |---|---|---|
-| `--m-canvas` | `#F6F5F2` | `#111418` |
-| `--m-sheet` | `#FFFFFF` | `#181C21` |
-| `--m-sheet-raised` | `#F1F0EC` | `#20252C` |
-| `--m-rail` | `#FFFFFF` | `#14171B` |
-| `--m-ink`, `-2`, `-3` | `#17181B`, `#474A51`, `#5B5F67` | `#E7E9EC`, `#B5BBC4`, `#99A1AD` |
-| `--m-line`, `--m-line-strong` | `#E3E1DB`, `#C7C4BD` | `#2A3038`, `#3D444F` |
-| `--m-accent`, `-soft`, `-ink` | `#1F4FD8`, `#EBF0FC`, `#1A44BC` | `#7398F5`, `#1C2741`, `#A4BCF8` |
+| `--m-canvas` | `#F5F7F8` | `#0F161C` |
+| `--m-sheet` | `#FFFFFF` | `#16202A` |
+| `--m-sheet-raised` | `#EEF2F5` | `#1D2935` |
+| `--m-rail` | `#FFFFFF` | `#121B23` |
+| `--m-ink`, `-2`, `-3` | `#26394B`, `#3E5468`, `#4C6479` | `#E6EDF2`, `#B3C2CF`, `#97A9B8` |
+| `--m-line`, `--m-line-strong` | `#E0E7EC`, `#C3CED7` | `#263442`, `#364758` |
+| `--m-accent`, `-soft`, `-ink` | `#336F96`, `#E7F1F7`, `#27587A` | `#84BADA`, `#1B3140`, `#A8CEE3` |
 | `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` | `#C02630`, `#B34A0B`, `#8A6100`, `#5A6371`, `#1A7A47` | `#F0737C`, `#EE965A`, `#E2BE5C`, `#A3ABB7`, `#5CC78C` |
 | `--m-info` | `#2659C9` | `#7FA2F3` |
 
-Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is medium, `--m-no-go` is critical. `--m-hero-*` alias sheet, ink, line and the status hues. Other groups: DQS bands and caps, chart series `--m-viz-*`, space (4px grid), radii (`--m-radius-control` 6px, `-sheet` 8px, `-tile` 0, `-pill`), tracking (`--m-tracking-tight` on hero and stat numerals, `--m-tracking-title`), elevation (`m-elev-1..3`, `--m-elev-focus`), motion (`--m-motion-*`), layout (`--m-page-pad`, `--m-page-max`, `--m-margin-w`, `--m-rail-w`, `--m-topbar-h`, `--m-row-h`, `--m-control-h`).
+Verdicts alias the scale: `--m-go` is pass, `--m-at-risk` is medium, `--m-no-go` is critical. `--m-hero-*` alias sheet, ink, line and the status hues. Other groups: DQS bands and caps, chart series `--m-viz-*`, space (4px grid), radii (`--m-radius-control` 8px, `-sheet` 12px, `-tile` 0, `-pill`), tracking (`--m-tracking-tight` on hero and stat numerals, `--m-tracking-title`), elevation (`m-elev-1..3`, `--m-elev-card`, `--m-elev-focus`), motion (`--m-motion-*`), layout (`--m-page-pad`, `--m-page-max`, `--m-margin-w`, `--m-rail-w`, `--m-topbar-h`, `--m-row-h`, `--m-control-h`).
 
 Type scale (px, size/line): label 11/14, meta 12/16, body 14/20, heading 15/22, page title 22/28, stat 26/32, hero score 64/64 (88/88 in presentation mode). The root font size is 14px. Use the `m-text-*` utility classes, never `text-[Npx]` literals in pages.
 
@@ -52,8 +52,8 @@ All in `@/design`; there is no second library. Pages compose these and draw noth
 - **Rule**: the one instrument for a score (`value`, `target`, `cap`, `bands`, `size`). `hero` is a full-width ruler with ticks every 10, the measured run in the band hue, the needle in ink, "0", "Target 90" and "100" beneath (the end label yields when the target or cap sits near it), the cap as a red tick with a dashed ghost of the measured value beyond it. `row` is 96 by 12 for a table cell, `inline` 56 by 8 for a sentence; `width` stretches a row across a stat tile. The whole ruler is one `role="img"` naming the value, cap and target.
 - **PageHeader**: `<h1>` title 22/28 semibold, one-line meta, optional status `Pill`, actions (one primary `Button` at most), tabs. Every page uses it.
 - **Button**: primary, secondary, ghost, danger (confirm dialogs only). `pending` shows the inline dot and disables the button. Use `render={<Link>}` for navigation, never a button inside an anchor.
-- **Field** with a control, **Select**, **Combobox**, **Checkbox**, **Menu**: 34px controls (`--m-control-h`), 6px radius, labels 12/16 medium, helper and error text under the control, never inside the label.
-- **Card**: white sheet, 1px `--m-line` border on every side, `--m-radius-sheet` (8px), `--m-card-pad` (24px), optional title 15/22, meta and actions. Replaces every hand-rolled `rounded border` box.
+- **Field** with a control, **Select**, **Combobox**, **Checkbox**, **Menu**: 34px controls (`--m-control-h`), 8px radius, labels 12/16 medium, helper and error text under the control, never inside the label.
+- **Card**: white sheet, 1px `--m-line` border on every side, `--m-radius-sheet` (12px), the `--m-elev-card` shadow, `--m-card-pad` (24px), optional title 15/22, meta and actions. Replaces every hand-rolled `rounded border` box.
 - **Notice**: tinted note with a 3px tone bar (info, warning, danger, success). Replaces raw alert boxes.
 - **Status**: the one status vocabulary (see "Status vocabulary" below). `<Status kind="verdict" value={api.verdict} />` renders the pill with the canonical label and tone; callers pass the API value and never write the label.
 - **Pill, Badge, SeverityDot**: `Pill` is a free label (a tag, a role, "Baseline", a count sentence) in `neutral`, `info` or a verdict tone; when the text is a verdict, a severity or a lifecycle stage it is a `Status` instead. `Badge` is a count only (`tone="critical"` for counts of failing items). Pills are sentence case with no full stop.
@@ -94,7 +94,7 @@ Copy: no full stops in table cells, pills, tile labels or hints; no "Showing X."
 ## 4. Brand
 
 - **Mark**: a 270 degree arc, open at the top, crossed by a vertical meridian line, on a 32 grid, stroke 3, round caps. The arc is ink, the line is the accent. In the app it is the inline SVG `MeridianMark` (`components/meridian/icons.tsx`).
-- **Wordmark**: the word "Meridian" type-set in IBM Plex Sans 600, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
+- **Wordmark**: the word "Meridian" type-set in Inter 600, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
 - **Assets** in `public/brand/` (see its README): marks, outlined lockups, PWA icons from `npm run brand:rasterise`. Colours are in `brand.json`. `app/apple-icon.tsx` draws the two-tone mark on a plain canvas tile and `app/opengraph-image.tsx` a white sheet on the canvas with the lockup; both read `design/brand/images.tsx`, which mirrors `brand.json`. There is no cover gradient anywhere.
 - **Favicon**: `app/icon.svg` (stroke 3.5, ink and accent from `brand.json`, follows the OS colour scheme) with `app/icon.png` fallback. **Open Graph image**: `app/opengraph-image.tsx`, lockup plus "SAP data quality, measured".
 - **Signed-out pages** (`components/auth/auth-frame.tsx`): a white brand panel (`.m-brand-panel`: lockup, the decorative score-ring instrument in the accent, two facts) beside one 400px card on the canvas with an `<h1>`, the form and the version string beneath.

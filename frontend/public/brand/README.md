@@ -11,7 +11,7 @@ fill, no gradient. The arc is ink; the meridian line is the accent.
 - `mark-mono.svg` - both strokes in `currentColor`, for print and photography.
 - `lockup-light.svg` / `lockup-dark.svg` - mark plus "Meridian" in Public Sans
   600 (letter-spacing -0.01em, outlined from the OFL font). The UI wordmark is
-  now IBM Plex Sans 600; these outlined lockups are kept until redrawn. The accent is on
+  now Inter 600; these outlined lockups are kept until redrawn. The accent is on
   the meridian line only. In the app the lockup is HTML (mark plus text).
 - `apple-icon.svg` - 180x180 design source for `maskable-512.png`. The live
   apple icon is `app/apple-icon.tsx` (ImageResponse): the two-tone mark on a
@@ -25,7 +25,7 @@ fill, no gradient. The arc is ink; the meridian line is the accent.
 
 ## Rules
 
-- The wordmark is always type-set IBM Plex Sans 600. Never redraw the letters.
+- The wordmark is always type-set Inter 600. Never redraw the letters.
 - Clear space: half the mark's height on every side.
 - Minimum size: mark 16px; lockup 96px wide. Below 96px use the mark alone.
 - Two-tone on canvas/sheet surfaces only; mono on photography or when the
