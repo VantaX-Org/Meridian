@@ -2,7 +2,7 @@
 deterministic — no LLM calls anywhere in this module."""
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.config_impact import get_config_impact
+from api.routes.findings import _latest_version_ids
 from api.routes.merge_explain import AUTO_MERGE, REVIEW_FLOOR, build_cluster_graph
 from api.routes.record_issues import _rls
 from api.services import insights_aggregate as agg
@@ -403,11 +404,30 @@ async def _agg(db: AsyncSession, tenant: Tenant, fn, *args, **kw) -> dict:
     return out
 
 
+Scope = Literal["run", "current"]
+_SCOPE = Query("run", description="run: one run (version_id, default the latest complete run). current: every "
+                                  "object at the latest complete run of its lineage; no version_id.")
+
+
+async def _current(db: AsyncSession, tenant: Tenant, fn, version_id: Optional[uuid.UUID], module: Optional[str]) -> dict:
+    """``scope=current``: ``fn`` over the latest complete run of each lineage (``_latest_version_ids``), each
+    object once from the newest run that measured it (insights_aggregate.current_objects). An empty tenant
+    answers 200 with an empty payload, not 404: no run is the current state of a day-one tenant."""
+    if version_id is not None:
+        raise HTTPException(422, "version_id and scope=current are exclusive")
+    await _rls(db, tenant)
+    ids = await _latest_version_ids(db, tenant)
+    return await db.run_sync(lambda s: fn(s, str(tenant.id), ids, module))
+
+
 @router.get("/overview", dependencies=[Depends(require_permission("view"))])
-async def get_overview(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+async def get_overview(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None, scope: Scope = _SCOPE,
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
-    """Board overview for one run. A blocker is a failing rule that is critical, or that the
-    S/4 readiness pack counts as blocking. Blockers are never summed across L1s."""
+    """Board overview for one run, or (``scope=current``) for the current state across objects. A blocker is a
+    failing rule that is critical, or that the S/4 readiness pack counts as blocking. Blockers are never summed
+    across L1s."""
+    if scope == "current":
+        return await _current(db, tenant, agg.current_overview, version_id, module)
     return await _agg(db, tenant, agg.overview, version_id and str(version_id), module)
 
 
@@ -422,8 +442,10 @@ async def get_rule_ranking(version_id: Optional[uuid.UUID] = None, module: Optio
 
 
 @router.get("/root-causes", dependencies=[Depends(require_permission("view"))])
-async def get_root_causes(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+async def get_root_causes(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None, scope: Scope = _SCOPE,
                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    if scope == "current":
+        return await _current(db, tenant, agg.current_root_causes, version_id, module)
     return await _agg(db, tenant, agg.root_causes, version_id and str(version_id), module)
 
 
@@ -441,6 +463,8 @@ async def get_trends(version_id: Optional[uuid.UUID] = None, system_id: Optional
 
 
 @router.get("/cleansing", dependencies=[Depends(require_permission("view"))])
-async def get_cleansing(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+async def get_cleansing(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None, scope: Scope = _SCOPE,
                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    if scope == "current":
+        return await _current(db, tenant, agg.current_cleansing, version_id, module)
     return await _agg(db, tenant, agg.cleansing, version_id and str(version_id), module)

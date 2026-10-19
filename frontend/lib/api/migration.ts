@@ -253,6 +253,18 @@ export interface S4Readiness {
   blocking_failing: number;
   warning_failing: number;
   areas: S4Area[];
+  /** `scope=current` only: "current" and the runs the objects were read from, newest first; null for one run. */
+  scope?: "current" | null;
+  version_ids?: string[] | null;
+}
+
+/** The S/4 readiness of the current state: every object once, at the latest finished run of its lineage. */
+export type CurrentS4Readiness = S4Readiness & { version_id: null; scope: "current"; version_ids: string[] };
+
+/** GET /api/v1/findings/s4-readiness?scope=current: S/4 readiness over every object at its latest run. */
+export async function getCurrentS4Readiness(): Promise<CurrentS4Readiness> {
+  const { data } = await apiClient.get<CurrentS4Readiness>("/api/v1/findings/s4-readiness", { params: { scope: "current" } });
+  return data;
 }
 
 /** GET /api/v1/findings/s4-readiness: the S/4HANA conversion readiness of one analysis, per simplification area. */
