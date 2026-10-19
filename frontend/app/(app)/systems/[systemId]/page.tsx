@@ -11,16 +11,18 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { clsx } from "clsx";
 import { toast } from "sonner";
-import { Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, emptyExportOptions, type PillTone, entityTabs, useBreadcrumbTitle, Score } from "@/design";
+import { Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, emptyExportOptions, type Verdict, entityTabs, toVerdict, useBreadcrumbTitle, Score } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
 import { CustomObjectsTab } from "./custom-objects-tab";
-import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
+import { ConfigLoadButton, ConfigLoadPanel, hasNoConfig, useConfigLoad } from "./config-load-panel";
 import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
+import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
@@ -48,7 +50,6 @@ const meanDqs = (v: SystemVersion) => {
 const sumRecords = (v: SystemVersion) => Object.values(v.records ?? {}).reduce((a, b) => a + b, 0);
 const findingsHref = (versionId: string, module?: string) =>
   `/runs/${versionId}${module ? `?module=${module}` : ""}`;
-const HEALTH_TONE: Record<string, PillTone> = { healthy: "go", unknown: "neutral" };
 
 /** With `systemId`, each row also links to its extraction log (the Runs tab); without, the overview's short list. */
 function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
@@ -62,7 +63,7 @@ function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
         </Link>
       ),
     },
-    { id: "status", header: "Status", cell: ({ row }) => <Pill>{labelOf(row.original.status)}</Pill> },
+    { id: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
     { id: "objects", header: "Objects", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}?tab=objects`}>{row.original.objects.length}</DrillLink> },
     { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}`}>{sumRecords(row.original).toLocaleString()}</DrillLink> },
     { id: "analysed", header: "Analysed", cell: ({ row }) => when(row.original.analysed_at) },
@@ -73,7 +74,7 @@ function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
         const d = meanDqs(row.original);
         return d === null ? "—" : (
           // The run summary carries the score explainer.
-          <DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink>
+          <Score size="sm" value={d}><DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink></Score>
         );
       },
     },
@@ -248,14 +249,13 @@ export default function SystemPage() {
           router.replace(`/systems/${systemId}?${params.toString()}`, { scroll: false });
         }}
         items={[
-          { value: "overview", label: "Overview", content: <Overview systemId={systemId} versions={versions} modules={modules} /> },
+          { value: "overview", label: "Overview", content: <Overview systemId={systemId} versions={versions} modules={modules} latest={latest} canSync={can("trigger_sync")} /> },
           {
             value: "objects",
             label: "Objects",
             content: (
               <Objects
                 id={systemId}
-                system={system}
                 modules={modules}
                 versions={versions}
                 canSync={can("trigger_sync")}
@@ -303,17 +303,93 @@ export default function SystemPage() {
 
 /* ── Overview ──────────────────────────────────────────────────────────── */
 
-function Overview({ systemId, modules, versions }: { systemId: string; modules: SystemModule[]; versions: SystemVersion[] }) {
+const VERDICT_BAR: Record<Verdict | "none", string> = {
+  go: "[border-left-color:var(--m-go)]",
+  "at-risk": "[border-left-color:var(--m-at-risk)]",
+  "no-go": "[border-left-color:var(--m-no-go)]",
+  none: "[border-left-color:var(--m-line)]",
+};
+
+interface ObjectRow {
+  module: string;
+  name: string;
+  records: number;
+  affected: number;
+  score: number | null;
+  verdict: Verdict | null;
+  summary: ObjectSummary | undefined;
+}
+
+/** A system's objects ranked by records (then by records affected), each with the verdict of its latest analysed run. */
+function rankObjects(modules: SystemModule[], latest: SystemVersion | null, summaries: ObjectSummary[]): ObjectRow[] {
+  const byModule = new Map(summaries.map((o) => [o.module, o]));
+  const rows = modules.filter((m) => m.enabled).map((m): ObjectRow => {
+    const summary = byModule.get(m.module);
+    const dqs = latest?.dqs?.[m.module];
+    return {
+      module: m.module,
+      name: formatModuleName(m.module),
+      records: Math.max(m.row_count, latest?.records?.[m.module] ?? 0),
+      affected: summary?.affected_records ?? 0,
+      score: summary?.composite_score ?? (typeof dqs === "number" ? dqs : null),
+      verdict: toVerdict(summary?.readiness) ?? null,
+      summary,
+    };
+  });
+  return rows.sort((a, b) => b.records - a.records || b.affected - a.affected || a.name.localeCompare(b.name));
+}
+
+function Overview({ systemId, modules, versions, latest, canSync }: {
+  systemId: string; modules: SystemModule[]; versions: SystemVersion[]; latest: SystemVersion | null; canSync: boolean;
+}) {
   const router = useRouter();
+  const objectsQ = useQuery({
+    queryKey: queryKeys.objects(latest?.id ?? ""),
+    queryFn: () => getObjects(latest!.id),
+    enabled: !!latest,
+  });
+  const rows = useMemo(() => rankObjects(modules, latest, objectsQ.data?.objects ?? []), [modules, latest, objectsQ.data]);
+  const [picked, setPicked] = useUrlState("object", "");
+  const selected = rows.find((r) => r.module === picked) ?? rows[0];
+
   const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
   // Ticks are dates (with the time when two runs share a day); the run id is the key so a click opens the right run.
   const tickOf = runAxisLabels(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
   const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
   const runCols = useMemo(() => runColumns(), []);
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-4">
-        <Card title="Score per run">
+    <div className="flex flex-col [gap:var(--m-section-gap)]">
+      {rows.length ? (
+        <div className="grid items-start [gap:var(--m-section-gap)] @5xl:grid-cols-[400px_minmax(0,1fr)]" data-testid="system-workbench">
+          <Card title="Objects" meta={`${rows.length.toLocaleString()} by records`} padding="sm">
+            <ul className="flex max-h-[560px] flex-col overflow-y-auto" aria-label="Objects of this system, ranked by records">
+              {rows.map((r) => (
+                <li key={r.module}>
+                  <button
+                    type="button"
+                    aria-pressed={r.module === selected?.module}
+                    onClick={() => setPicked(r.module)}
+                    className={clsx(
+                      "flex w-full items-center gap-3 px-3 py-2 text-left [border-left:3px_solid] [border-bottom:1px_solid_var(--m-line)]",
+                      "hover:[background:var(--m-sheet-raised)] aria-pressed:[background:var(--m-accent-soft)]",
+                      VERDICT_BAR[r.verdict ?? "none"],
+                    )}
+                  >
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="m-text-body m-ink truncate">{r.name}</span>
+                      <span className="m-text-meta m-ink-3 m-numeric">{r.records > 0 ? `${r.records.toLocaleString()} records` : "Not loaded"}</span>
+                    </span>
+                    {r.verdict ? <Status kind="verdict" value={r.verdict} /> : <Pill tone="neutral">Not analysed</Pill>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+          {selected ? <ObjectSummaryPane row={selected} latest={latest} systemId={systemId} canSync={canSync} /> : null}
+        </div>
+      ) : null}
+      <div className="grid [gap:var(--m-section-gap)] @5xl:grid-cols-2">
+        <Card title="Score per run" meta="Mean of the objects, newest twelve runs">
           {scored.length < 2 ? (
             <EmptyState
               title="No trend yet"
@@ -322,13 +398,14 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
             />
           ) : (
             <Line
+              height={160}
               data={scored.map((v) => ({ x: v.id, label: tickOf.get(v.id), y: Number((meanDqs(v) ?? 0).toFixed(1)), runId: v.id }))}
               label="Score per run"
               onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }}
             />
           )}
         </Card>
-        <Card title="Objects by rows">
+        <Card title="Objects by rows" meta="Twelve largest">
           {!byRows.length ? (
             <EmptyState
               title="No rows loaded yet"
@@ -337,6 +414,7 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
             />
           ) : (
             <Bar
+              height={160}
               data={byRows.map((m) => ({ x: formatModuleName(m.module), y: m.row_count }))}
               onPointClick={(p) => {
                 const m = byRows.find((b) => formatModuleName(b.module) === p.x);
@@ -362,11 +440,72 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
   );
 }
 
+/** The selected object: its score, the rule holding it down, its last run, and the one action. */
+function ObjectSummaryPane({ row, latest, systemId, canSync }: { row: ObjectRow; latest: SystemVersion | null; systemId: string; canSync: boolean }) {
+  const s = row.summary;
+  const analysed = row.score !== null && latest !== null;
+  const href = analysed ? `/objects/${row.module}?run=${latest.id}` : `/objects/${row.module}`;
+  return (
+    <Card
+      title={row.name}
+      meta={row.records > 0 ? `${row.records.toLocaleString()} records` : "Not loaded"}
+      actions={
+        analysed ? <Button render={<Link href={href}>Open object</Link>} />
+          : canSync ? <Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />
+          : undefined
+      }
+    >
+      {analysed ? (
+        <dl className="grid grid-cols-2 items-start gap-x-6 gap-y-4 @3xl:grid-cols-4" data-testid="object-summary">
+          <div className="flex flex-col gap-1">
+            <dt className="m-text-label m-ink-3">Score</dt>
+            <dd><Score value={row.score} /></dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="m-text-label m-ink-3">Verdict</dt>
+            <dd>{row.verdict ? <Status kind="verdict" value={row.verdict} /> : "—"}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="m-text-label m-ink-3">Blocking rule</dt>
+            <dd className="m-text-body">
+              {s?.blocking_rule_id ? (
+                <><Mono>{s.blocking_rule_id}</Mono>{s.blocking_rule_name ? <span className="m-ink-2"> {s.blocking_rule_name}</span> : null}</>
+              ) : s && s.failing_checks === 0 ? "None" : "—"}
+            </dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="m-text-label m-ink-3">Last run</dt>
+            <dd className="m-text-body">
+              <DrillLink href={findingsHref(latest.id, row.module)}>{when(latest.analysed_at ?? latest.run_at)}</DrillLink>
+            </dd>
+          </div>
+          {s ? (
+            <div className="flex flex-col gap-1">
+              <dt className="m-text-label m-ink-3">Failing checks</dt>
+              <dd className="m-text-body m-numeric"><DrillLink href={findingsHref(latest.id, row.module)}>{s.failing_checks.toLocaleString()}</DrillLink></dd>
+            </div>
+          ) : null}
+          {s ? (
+            <div className="flex flex-col gap-1">
+              <dt className="m-text-label m-ink-3">Records affected</dt>
+              <dd className="m-text-body m-numeric"><DrillLink href={`/objects/${row.module}?run=${latest.id}&tab=records`}>{s.affected_records.toLocaleString()}</DrillLink></dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : (
+        <EmptyState
+          title="Not analysed yet"
+          detail={row.records > 0 ? "Run an analysis to score this object." : "Extract this object to score it."}
+        />
+      )}
+    </Card>
+  );
+}
+
 /* ── Objects ───────────────────────────────────────────────────────────── */
 
-function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged }: {
+function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
   id: string;
-  system: { system_type: SystemType };
   modules: SystemModule[];
   versions: SystemVersion[];
   canSync: boolean;
@@ -375,9 +514,6 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
 }) {
   const router = useRouter();
   const latest = latestDqs(versions).version;
-  const cfg = useConfigLoad(id);
-  const cfgStatus = configStatus(cfg.load, cfg.running, system.system_type);
-  const cfgLabel = cfgStatus === "not_available" ? "Not available" : cfgStatus === "loaded" || cfgStatus === "gaps" ? "Loaded" : cfgStatus === "loading" ? "Loading" : "Not loaded";
   const again = useMutation({
     mutationFn: (module: string) => startDownload(id, { objects: [module], scope: {}, analyse: false }),
     onSuccess: () => { toast.success("Extraction started"); onChanged(); },
@@ -388,6 +524,7 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
     onSuccess: () => { toast.success("Analysis started"); onChanged(); },
     onError: (e) => toast.error((e as Error).message || "Analysis refused"),
   });
+  const rankedModules = useMemo(() => [...modules].sort((a, b) => b.row_count - a.row_count || a.module.localeCompare(b.module)), [modules]);
   const columns = useMemo<ColumnDef<SystemModule>[]>(() => [
     {
       id: "module",
@@ -397,14 +534,13 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
     { id: "enabled", header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
     { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
     { id: "synced", header: "Last synced", cell: ({ row }) => when(row.original.last_synced_at) },
-    { id: "config", header: "Configuration", cell: () => cfgLabel },
     {
       id: "dqs",
       header: "DQS",
       cell: ({ row }) => {
         const d = latest?.dqs?.[row.original.module];
         return typeof d === "number" && latest ? (
-          <DrillLink href={findingsHref(latest.id, row.original.module)}>{d.toFixed(1)}</DrillLink>
+          <Score size="sm" value={d}><DrillLink href={findingsHref(latest.id, row.original.module)}>{d.toFixed(1)}</DrillLink></Score>
         ) : "—";
       },
     },
@@ -438,12 +574,11 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
         );
       },
     },
-  ], [again, run, canSync, canAnalyse, latest, versions, cfgLabel]);
+  ], [again, run, canSync, canAnalyse, latest, versions]);
   return (
-    <div className="flex flex-col gap-4">
-      {canSync ? <ScopePicker id={id} onDownloaded={onChanged} /> : null}
+    <div className="flex flex-col [gap:var(--m-section-gap)]">
       {modules.length ? (
-        <DataTable columns={columns} data={modules} getRowId={(m) => m.module} onRowClick={(m) => router.push(`/objects/${m.module}`)} />
+        <DataTable columns={columns} data={rankedModules} getRowId={(m) => m.module} onRowClick={(m) => router.push(`/objects/${m.module}`)} />
       ) : (
         <EmptyState
           title="No objects yet"
@@ -451,6 +586,7 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
           action={<Button render={<Link href={`/systems/${id}?tab=health`}>Discover design</Link>} />}
         />
       )}
+      {canSync ? <ScopePicker id={id} onDownloaded={onChanged} /> : null}
     </div>
   );
 }
@@ -533,7 +669,6 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
       >
         <p className="m-text-body m-ink-2">{verdict}</p>
         <dl className="mt-2 grid grid-cols-2 gap-2 m-text-body">
-          <Field label="Health"><Pill tone={HEALTH_TONE[system.health_status] ?? "no-go"}>{HEALTH_LABEL[system.health_status]}</Pill></Field>
           <Field label="Last health check"><span>{when(system.last_health_check, "Never")}</span></Field>
           <Field label="Discovery status"><span>{design?.discovery_status ?? system.discovery_status ?? "Never run"}</span></Field>
           <Field label="SAP release"><Mono>{design?.sap_release ?? "Unknown"}</Mono></Field>

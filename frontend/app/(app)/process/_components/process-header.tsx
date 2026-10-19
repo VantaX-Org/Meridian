@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { Skeleton } from "@/design";
+import { PageFrame, Skeleton } from "@/design";
 
-/** Page frame shared by the process pages: centred, padded from the page tokens. */
+/** Page frame shared by the process pages: the layout's frame, so the page pads and centres like every other one. */
 export function ProcessFrame({ children }: { children: ReactNode }) {
-  return <div className="mx-auto grid w-full gap-4 [padding:var(--m-page-pad)] [max-width:var(--m-page-max)]">{children}</div>;
+  return <PageFrame>{children}</PageFrame>;
 }
 
 /** Final-geometry loading frame: header, 112px insight strip, table rows. Never one tall block. */
