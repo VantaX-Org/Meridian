@@ -148,3 +148,22 @@ def test_documented_scripts_exist(runbook: Path) -> None:
     refs = set(re.findall(r"\b(scripts/[A-Za-z0-9_.\-]+\.(?:sh|py))", text))
     missing = sorted(r for r in refs if not (ROOT / r).exists())
     assert not missing, f"{runbook.name} tells the operator to run files that are not shipped: {missing}"
+
+
+# ── the worker must carry the same release stamp as the API ─────────────────────────────────────
+# The preflight's release check compares api and worker versions. It exists to catch a
+# half-finished rollout where one image is stale - and it is blind if one of them reports the
+# 0.0.0-dev source fallback, leaving only the rule-pack hash as evidence.
+def test_the_worker_image_stamps_the_release_version() -> None:
+    dockerfile = (ROOT / "docker" / "Dockerfile.worker.prod").read_text(encoding="utf-8")
+    assert "ARG MERIDIAN_VERSION" in dockerfile, "the worker image has no version ARG"
+    assert "/app/VERSION" in dockerfile, "the worker image never writes /app/VERSION"
+
+
+def test_the_build_passes_the_version_to_the_worker() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "build-and-deploy.yml").read_text(encoding="utf-8")
+    worker = workflow.split("Dockerfile.worker.prod", 1)[1].split("build-garage", 1)[0]
+    assert "MERIDIAN_VERSION" in worker, (
+        "the worker build gets no MERIDIAN_VERSION build-arg, so it reports 0.0.0-dev and the "
+        "preflight cannot tell a stale worker image from a current one"
+    )

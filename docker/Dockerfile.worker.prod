@@ -72,6 +72,13 @@ ENV LD_LIBRARY_PATH=/opt/nwrfcsdk/lib:${LD_LIBRARY_PATH}
 
 COPY --from=builder /build .
 
+# The same version stamp the API image carries (docker/Dockerfile.api.prod), so preflight can
+# prove the worker runs the release the API does. Without it the worker reports the 0.0.0-dev
+# source fallback and the only evidence of a matching deploy is the rule-pack hash - which would
+# not notice a half-finished rollout where the worker kept the previous image.
+ARG MERIDIAN_VERSION=0.0.0-dev
+RUN echo "$MERIDIAN_VERSION" > /app/VERSION
+
 RUN find . -name "*.py" ! -name "__init__.py" -delete 2>/dev/null || true
 
 ENV PYTHONPATH=/app
