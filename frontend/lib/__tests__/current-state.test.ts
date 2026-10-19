@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DQSSummary, Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
 import {
-  blockingTotal, currentObjectRows, isScored, latestPerLineage, measuredDimensions, runObjectsName, stateDqs, stateObjects, stateRows,
+  blockingTotal, currentObjectRows, isScored, latestPerLineage, lineageTrend, measuredDimensions, runObjectsName, stateDqs, stateObjects, stateRows,
   stateScopeLine, stateSeries, stateSummary, tierOf, worstDimension,
 } from "../current-state";
 import { runDimensions } from "../home-metrics";
@@ -135,7 +135,7 @@ describe("copy", () => {
   });
 
   it("names a run's objects", () => {
-    expect(runObjectsName(MM)).toBe("Material Master");
+    expect(runObjectsName(MM)).toBe("Material master");
     expect(runObjectsName(AP_SYSTEM)).toBe("these 2 objects");
   });
 });
@@ -193,5 +193,39 @@ describe("currentObjectRows", () => {
     const lists = new Map([["co9", [listed("controlling"), listed("fi_gl", { composite_score: null, readiness: null })]]]);
     expect(currentObjectRows(runs, lists).map((r) => r.module)).toContain("fi_gl");
     expect(currentObjectRows(runs, lists, { modules: new Set(["controlling"]) }).map((r) => r.module)).toEqual(["controlling"]);
+  });
+
+  it("carries each listed row's dimension scores and trend through unchanged", () => {
+    const dims = { completeness: 91, accuracy: 62.5, validity: 88 };
+    const lists = new Map([
+      ["co9", [listed("controlling", { dimension_scores: dims, trend: [60, 61, 69] })]],
+      ["mm", [listed("material_master", { dimension_scores: { completeness: 95 }, trend: [95] })]],
+    ]);
+    const rows = new Map(currentObjectRows(runs, lists, { versions: ALL }).map((r) => [r.module, r]));
+    expect(rows.get("controlling")).toMatchObject({ dimension_scores: dims, trend: [60, 61, 69] });
+    expect(rows.get("material_master")).toMatchObject({ dimension_scores: { completeness: 95 }, trend: [95] });
+  });
+
+  it("derives dimensions and the lineage trend for a run whose list could not be read", () => {
+    const rows = new Map(currentObjectRows(runs, new Map(), { versions: ALL }).map((r) => [r.module, r]));
+    // ten uploads of controlling: the last eight, oldest first
+    expect(rows.get("controlling")?.trend).toEqual([62, 63, 64, 65, 66, 67, 68, 69]);
+    expect(rows.get("controlling")?.dimension_scores).toMatchObject({ completeness: 69, validity: 69 });
+    // one upload of material master: its first run
+    expect(rows.get("material_master")?.trend).toEqual([95]);
+    // the system run is its own lineage: the accounts payable upload does not join it
+    expect(rows.get("business_partner")?.trend).toEqual([70]);
+  });
+});
+
+describe("lineageTrend", () => {
+  it("scores the object over its lineage up to the run, skipping runs that did not score it", () => {
+    const sys1 = run("s1", "2026-10-01T00:00:00Z", { accounts_payable: 40, business_partner: 60 }, { system: "sys-1" });
+    const sys2 = run("s2", "2026-10-01T06:00:00Z", { business_partner: 65 }, { system: "sys-1" });
+    const later = run("s3", "2026-10-03T00:00:00Z", { accounts_payable: 90 }, { system: "sys-1" });
+    const versions = [sys1, sys2, AP_SYSTEM, later, AP_UPLOAD];
+    expect(lineageTrend("accounts_payable", AP_SYSTEM, versions)).toEqual([40, 50]);
+    expect(lineageTrend("business_partner", AP_SYSTEM, versions)).toEqual([60, 65, 70]);
+    expect(lineageTrend("accounts_payable", AP_UPLOAD, versions)).toEqual([80]);
   });
 });

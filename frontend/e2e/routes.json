@@ -255,7 +255,7 @@
   {
     "name": "objects-material-master",
     "path": "/objects/material_master?run=c1f752b7-ab20-441e-9b13-f47754f0e910",
-    "heading": "Material Master"
+    "heading": "Material master"
   },
   {
     "name": "objects-material-master-record",
@@ -265,7 +265,7 @@
   {
     "name": "objects-material-master-rules-mm045",
     "path": "/objects/material_master/rules/MM045?run=c1f752b7-ab20-441e-9b13-f47754f0e910",
-    "heading": "Material Master"
+    "heading": "Material master"
   },
   {
     "name": "rules",

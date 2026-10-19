@@ -141,18 +141,18 @@ describe("CompareRunsPage", () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox", { name: "Object" }));
-    expect(await screen.findByRole("option", { name: "Material Master" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Accounts Payable" })).toBeInTheDocument();
-    await user.click(screen.getByRole("option", { name: "Material Master" }));
+    expect(await screen.findByRole("option", { name: "Material master" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Accounts payable" })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "Material master" }));
 
     await waitFor(() => expect(compareVersions).toHaveBeenCalledWith("v1", "v2", "material_master"));
-    expect(screen.getByRole("combobox", { name: "Object" })).toHaveTextContent("Material Master");
+    expect(screen.getByRole("combobox", { name: "Object" })).toHaveTextContent("Material master");
 
     // The Select's options still list every module, even though the filtered response only
     // carries material_master — proving the options come from the unfiltered query, not `cmp`.
     await user.click(screen.getByRole("combobox", { name: "Object" }));
-    expect(await screen.findByRole("option", { name: "Material Master" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Accounts Payable" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "Material master" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Accounts payable" })).toBeInTheDocument();
   });
 
   it("creates fix batches in bulk for selected rules, reporting partial success", async () => {

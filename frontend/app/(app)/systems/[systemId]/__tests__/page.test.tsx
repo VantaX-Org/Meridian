@@ -169,7 +169,7 @@ describe("system detail page", () => {
       vi.spyOn(systemObjectsApi, "startDownload").mockResolvedValue({ job_id: "dl-9", status: "queued" });
       renderWithQuery(<SystemPage />);
       fireEvent.click((await screen.findAllByText("Extract"))[0]);
-      fireEvent.click(await screen.findByText("Material Master"));
+      fireEvent.click(await screen.findByText("Material master"));
       fireEvent.click(screen.getByText("Extract 1 object"));
       fireEvent.click(await screen.findByText("Confirm"));
       await waitFor(() => expect(systemObjectsApi.startDownload).toHaveBeenCalled());
@@ -194,7 +194,7 @@ describe("system detail page", () => {
       vi.spyOn(systemObjectsApi, "startDownload").mockResolvedValue({ job_id: "dl-9", status: "queued" });
       renderWithQuery(<SystemPage />);
       fireEvent.click((await screen.findAllByText("Extract"))[0]);
-      fireEvent.click(await screen.findByText("Material Master"));
+      fireEvent.click(await screen.findByText("Material master"));
       fireEvent.click(screen.getByText("Extract 1 object"));
       versions.mockResolvedValue({
         versions: [],

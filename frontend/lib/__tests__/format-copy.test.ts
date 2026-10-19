@@ -50,9 +50,44 @@ describe("display names", () => {
     expect(formatModuleName("mm_purchasing")).toBe("MM purchasing");
     expect(MODULE_LABELS.fi_gl).toBe("FI general ledger");
   });
-  it("formatModuleName title-cases anything not in the map", () => {
-    expect(formatModuleName("business_partner")).toBe("Business Partner");
-    expect(formatModuleName("material_master")).toBe("Material Master");
+  it("formatModuleName sentence-cases anything not in the map", () => {
+    expect(formatModuleName("new_custom_module")).toBe("New custom module");
+    expect(formatModuleName("completeness")).toBe("Completeness");
+  });
+
+  // The 33 module ids of the repo CLAUDE.md "SAP module coverage" table (ECC, SuccessFactors, Warehouse).
+  const COVERAGE_IDS = [
+    "business_partner", "material_master", "fi_gl", "accounts_payable", "accounts_receivable", "asset_accounting",
+    "controlling", "hcm", "mm_purchasing", "plant_maintenance", "production_planning", "project_system",
+    "quality_management", "sd_customer_master", "sd_sales_orders",
+    "employee_central", "compensation", "benefits", "payroll_integration", "performance_goals", "succession_planning",
+    "recruiting_onboarding", "learning_management", "time_attendance",
+    "ewms_stock", "ewms_transfer_orders", "batch_management", "mdg_master_data", "grc_compliance", "fleet_management",
+    "transport_management", "wm_interface", "cross_system_integration",
+  ];
+  // Every other module with a rule file under checks/rules/ (ecc, concur, ariba).
+  const OTHER_RULE_IDS = [
+    "banking_tax", "interface_health", "s4_readiness", "s4hc_master_data",
+    "concur_expense", "concur_travel", "concur_users", "ariba_supplier", "ariba_contracts", "ariba_procurement", "ariba_spend",
+  ];
+  // Words that keep their capitals after the first word: SAP acronyms and product names.
+  const KEEP_CASE = new Set(["FI", "MM", "SD", "HCM", "MDG", "GRC", "WM", "BP", "CVI", "PII", "(IDoc)", "S/4HANA", "eWMS", "Concur", "Ariba", "SuccessFactors"]);
+
+  it("names every module of the coverage table and every rule file from the map", () => {
+    for (const id of [...COVERAGE_IDS, ...OTHER_RULE_IDS]) expect(Object.hasOwn(MODULE_LABELS, id), id).toBe(true);
+  });
+
+  it("writes every module name in sentence case with SAP acronyms upper case", () => {
+    for (const [id, label] of Object.entries(MODULE_LABELS)) {
+      const [first, ...rest] = label.split(" ");
+      expect(KEEP_CASE.has(first) || /^[A-Z][a-z-]*,?$/.test(first), `${id}: ${label}`).toBe(true);
+      for (const w of rest) expect(KEEP_CASE.has(w.replace(/,$/, "")) || w === w.toLowerCase(), `${id}: ${label}`).toBe(true);
+    }
+    expect(formatModuleName("hcm")).toBe("HCM personnel administration");
+    expect(formatModuleName("ewms_stock")).toBe("eWMS stock");
+    expect(formatModuleName("sd_customer_master")).toBe("SD customer master");
+    expect(formatModuleName("business_partner")).toBe("Business partner");
+    expect(formatModuleName("performance_goals")).toBe("Performance and goals");
   });
   it("systemTypeLabel maps system types to their product names", () => {
     expect(systemTypeLabel("ecc")).toBe("ECC");

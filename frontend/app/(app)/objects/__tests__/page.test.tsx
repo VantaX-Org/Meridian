@@ -1,5 +1,5 @@
 // frontend/app/(app)/objects/__tests__/page.test.tsx
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { describe, expect, it, vi } from "vitest";
@@ -130,6 +130,44 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(screen.getByRole("button", { name: "accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
+  });
+
+  it("draws each object's measured dimensions as filled bars in the Dimensions column", async () => {
+    currentSearch = "run=v1";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v1",
+      objects: [mk("a", "AAA", "fail", 50, { dimension_scores: { completeness: 97, accuracy: 62.5, validity: 85 } })],
+    });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(screen.getByText("AAA")).toBeInTheDocument());
+    expect(screen.getByRole("columnheader", { name: "Dimensions" })).toBeInTheDocument();
+    const strip = screen.getByRole("img", { name: /^Completeness 97\.0, Accuracy 62\.5/ });
+    expect(strip.getAttribute("aria-label")).toBe(
+      "Completeness 97.0, Accuracy 62.5, Consistency not measured, Timeliness not measured, Uniqueness not measured, Validity 85.0",
+    );
+    const tracks = strip.querySelectorAll(".m-dim-strip-track");
+    expect(tracks).toHaveLength(6);
+    const fills = [...strip.querySelectorAll<HTMLElement>(".m-bar-fill")];
+    expect(fills.map((f) => [f.dataset.tone, f.style.height])).toEqual([["pass", "97%"], ["critical", "62.5%"], ["medium", "85%"]]);
+    expect([...tracks].map((t) => t.getAttribute("data-measured"))).toEqual(["true", "true", "false", "false", "false", "true"]);
+  });
+
+  it("shows a sparkline for two or more runs and a muted \"1 run\" for an object's first run", async () => {
+    currentSearch = "run=v1";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v1",
+      objects: [mk("a", "AAA", "fail", 50, { trend: [40, 50] }), mk("b", "BBB", "warn", 70, { trend: [70] }), mk("c", "CCC", "pass", 95)],
+    });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(screen.getByText("BBB")).toBeInTheDocument());
+    expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
+    const cells = (label: string) => screen.getByText(label).closest("tr") as HTMLElement;
+    expect(within(cells("BBB")).getByTestId("trend-first-run")).toHaveTextContent("1 run");
+    expect(within(cells("AAA")).queryByTestId("trend-first-run")).toBeNull();
+    await waitFor(() => expect(cells("AAA").querySelector(".recharts-wrapper")).toBeInTheDocument());
+    expect(cells("BBB").querySelector(".recharts-wrapper")).toBeNull();
+    expect(within(cells("CCC")).queryByTestId("trend-first-run")).toBeNull();
+    expect(cells("CCC").querySelector(".recharts-wrapper")).toBeNull();
   });
 
   it("omits Trend and Blocking rule columns when no row has the fields", async () => {

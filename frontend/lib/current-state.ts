@@ -123,6 +123,23 @@ export function worstDimension(s: DQSSummary): string | null {
   return worst?.[0] ?? null;
 }
 
+const TREND_RUNS = 8;
+
+/**
+ * The object's composite score over the last <=8 scored runs of `run`'s lineage up to and including `run`, oldest
+ * first, as the API's list `trend`: runs that did not score the object are skipped. One entry means its first run.
+ */
+export function lineageTrend(module: string, run: Version, versions: readonly Version[]): number[] {
+  const lineage = lineageOf(run);
+  const inLineage = [run, ...versions.filter((v) => v.id !== run.id && isScored(v) && lineageOf(v) === lineage && v.run_at <= run.run_at)];
+  return inLineage
+    .sort(newestFirst)
+    .slice(0, TREND_RUNS)
+    .reverse()
+    .map((v) => v.dqs_summary?.[module]?.composite_score)
+    .filter((y): y is number => y != null);
+}
+
 /** An objects-list row of the current state: the object's row at its own latest run, and that run. */
 export type CurrentObjectRow = Omit<ObjectSummary, "affected_records"> & {
   /** Null only when the object's run could not be read and the aggregate cannot attribute its records. */
@@ -155,7 +172,7 @@ export function currentObjectRows(
     const listed = lists.get(run.id)?.find((o) => o.module === module);
     const base = fallback.get(module);
     if (listed) out.set(module, { ...listed, run_id: run.id });
-    else if (base) out.set(module, { ...base, worst_dimension: worstDimension(summary), dimension_scores: measuredDimensions(summary) });
+    else if (base) out.set(module, { ...base, worst_dimension: worstDimension(summary), dimension_scores: measuredDimensions(summary), trend: lineageTrend(module, run, opts.versions ?? runs) });
   }
   for (const run of [...runs].sort(newestFirst)) {
     for (const o of lists.get(run.id) ?? []) {

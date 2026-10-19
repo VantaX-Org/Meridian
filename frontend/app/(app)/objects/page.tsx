@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ScoreBands, Status, Score } from "@/design";
+import { DataTable, DimensionStrip, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ScoreBands, Status, Score } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -14,7 +14,6 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { barFill } from "@/design/table/columns";
 import { DIMENSIONS } from "@/lib/home-metrics";
 import { stateScopeLine } from "@/lib/current-state";
 import { formatModuleName } from "@/lib/format";
@@ -24,7 +23,6 @@ import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
 import { FilterChips } from "./_header";
 import { useCurrentObjects } from "./_current";
-import { clsx } from "clsx";
 
 /**
  * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
@@ -54,7 +52,7 @@ const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 
 /** Optional enrichment columns appear only when some row carries the field (older backends omit them). */
 const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[]): ColumnDef<ObjectRow>[] => {
-  const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 2);
+  const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 1);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
   const hasSev = objects.some((o) => o.critical_checks != null);
   const hasDims = objects.some((o) => o.dimension_scores && Object.keys(o.dimension_scores).length > 0);
@@ -94,14 +92,7 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined): Col
     size: 96,
     cell: ({ row }) => {
       const scores = row.original.dimension_scores ?? {};
-      return (
-        <span className="inline-flex items-center gap-0.5" role="img" aria-label={DIMENSIONS.map((d) => `${formatModuleName(d)} ${scores[d] === undefined ? "not measured" : scores[d].toFixed(0)}`).join(", ")}>
-          {DIMENSIONS.map((d) => {
-            const v = scores[d];
-            return <span key={d} {...(v === undefined ? {} : barFill(v, { max: 100, tone: "rate" })?.attr)} className={clsx("m-bar-fill [width:10px] [height:14px] [border-radius:2px]", v === undefined && "[background:var(--m-line)]!")} />;
-          })}
-        </span>
-      );
+      return <DimensionStrip items={DIMENSIONS.map((d) => ({ key: d, label: formatModuleName(d), score: scores[d] ?? null }))} />;
     },
   },
   {
@@ -110,8 +101,10 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined): Col
     size: 96,
     meta: { numeric: true } satisfies CellMeta,
     cell: ({ row }) => {
-      const t = row.original.trend;
-      return t && t.length >= 2 ? <Sparkline data={t.map((y, x) => ({ x, y }))} /> : "—";
+      const t = row.original.trend ?? [];
+      // The object's first scored run in its lineage has no trend yet: say so instead of a dash.
+      if (t.length === 1) return <span className="m-text-meta m-ink-3" data-testid="trend-first-run">1 run</span>;
+      return t.length >= 2 ? <Sparkline data={t.map((y, x) => ({ x, y }))} /> : "—";
     },
   },
   {

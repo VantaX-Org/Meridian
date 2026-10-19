@@ -103,7 +103,7 @@ describe("hrefWithRun", () => {
 describe("run labels", () => {
   it("names the run and its day, without a middle dot", () => {
     expect(runScopeLabel(MM_NEW)).toBe("material_master_25k, 14 Oct 2026");
-    expect(runScopeLabel(run("x", "14", { label: null, metadata: { modules: ["material_master"] } }))).toBe("Material Master, 14 Oct 2026");
+    expect(runScopeLabel(run("x", "14", { label: null, metadata: { modules: ["material_master"] } }))).toBe("Material master, 14 Oct 2026");
   });
 
   it("adds the time only where two runs share a name and a day", () => {

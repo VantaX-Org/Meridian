@@ -9,34 +9,78 @@ export function roundedDelta(before: number, after: number): number {
 }
 
 /**
- * Display names for module ids whose words are not plain title case (acronyms, slashes). Mirrors the
- * labels in api/routes/sync_trigger.py MODULE_REGISTRY; anything missing here is title-cased.
+ * Display names for every module id the backend scores (checks/rules/<system>/<module>.yaml) or extracts
+ * (sap/extraction_registry.py). Wording follows api/routes/sync_trigger.py MODULE_REGISTRY, cased by the object-name
+ * convention in DESIGN.md: sentence case, SAP acronyms upper case (FI, MM, SD, HCM, MDG, GRC, WM, BP, CVI, PII, IDoc,
+ * S/4HANA), eWMS with its lower-case e, product names as SAP writes them (Concur, Ariba, SuccessFactors), "and" for "&".
  */
 export const MODULE_LABELS: Record<string, string> = {
+  // ECC and S/4HANA
+  business_partner: "Business partner",
+  material_master: "Material master",
   fi_gl: "FI general ledger",
+  accounts_payable: "Accounts payable",
+  accounts_receivable: "Accounts receivable",
+  asset_accounting: "Asset accounting",
+  controlling: "Controlling",
   hcm: "HCM personnel administration",
   mm_purchasing: "MM purchasing",
+  plant_maintenance: "Plant maintenance",
+  production_planning: "Production planning",
+  project_system: "Project system",
+  quality_management: "Quality management",
   sd_customer_master: "SD customer master",
   sd_sales_orders: "SD sales orders",
   interface_health: "Interface health (IDoc)",
   s4_readiness: "S/4HANA readiness",
   banking_tax: "Banking and tax master data",
+  s4hc_master_data: "BP roles, CVI and product valuation",
+  // SuccessFactors
+  employee_central: "Employee central",
+  compensation: "Compensation",
+  benefits: "Benefits",
+  payroll_integration: "Payroll integration",
+  performance_goals: "Performance and goals",
+  succession_planning: "Succession planning",
+  recruiting_onboarding: "Recruiting and onboarding",
+  learning_management: "Learning management",
+  time_attendance: "Time and attendance",
+  // Warehouse
   ewms_stock: "eWMS stock",
   ewms_transfer_orders: "eWMS transfer orders",
+  batch_management: "Batch management",
   mdg_master_data: "MDG master data",
   grc_compliance: "GRC compliance",
+  fleet_management: "Fleet management",
+  transport_management: "Transport management",
   wm_interface: "WM interface",
-  s4hc_master_data: "BP roles, CVI and product valuation",
+  cross_system_integration: "Cross-system integration",
+  // Concur and Ariba
+  concur_expense: "Concur expense reports",
+  concur_travel: "Concur travel",
+  concur_users: "Concur users and cost objects",
+  ariba_supplier: "Ariba suppliers",
+  ariba_contracts: "Ariba contracts",
+  ariba_procurement: "Ariba purchase orders and invoices",
+  ariba_spend: "Ariba spend",
+  // Extraction-only and cross-cutting
+  process_discovery: "Process discovery",
+  process_events_sfx: "SuccessFactors process events",
+  process_events_arb: "Ariba process events",
+  process_events_cnq: "Concur process events",
+  s4_load_sim: "S/4HANA load simulation",
+  proven_cost: "Proven cost",
   pii: "PII",
 };
 
-/** "business_partner" -> "Business Partner"; ids in `MODULE_LABELS` ("fi_gl", "pii") use their display name. */
+/**
+ * "fi_gl" -> "FI general ledger": the module's name from `MODULE_LABELS`. An id missing there is sentence-cased
+ * ("new_module" -> "New module"), which also names dimensions ("completeness" -> "Completeness").
+ */
 export function formatModuleName(name: string): string {
   if (Object.hasOwn(MODULE_LABELS, name)) return MODULE_LABELS[name];
-  return name
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+  const s = name.replace(/_+/g, " ").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /** "1 record", "2,310 records": a count with its noun agreed. `pluralForm` defaults to `singular + "s"`. */
@@ -275,7 +319,7 @@ export function errorLabel(error: string | null | undefined): string {
   return humanizeIds(error);
 }
 
-/** Server copy with machine ids ("accounts_payable") rewritten as names ("Accounts Payable"). */
+/** Server copy with machine ids ("accounts_payable") rewritten as names ("Accounts payable"). */
 export function humanizeIds(text: string): string {
   return text.replace(/\b[a-z]+(?:_[a-z]+)+\b/g, formatModuleName);
 }
@@ -359,7 +403,7 @@ const OBJECT_NOUN: Record<string, string> = {
 };
 /** Singular noun for one record of a module: "material_master" -> "Material". */
 export function objectNoun(module: string): string {
-  return OBJECT_NOUN[module] ?? formatModuleName(module).replace(/ (Master|Data)$/, "");
+  return OBJECT_NOUN[module] ?? formatModuleName(module).replace(/ (master|data)$/i, "");
 }
 
 const KEY_LABEL: Record<string, string> = { LIFNR: "vendor", KUNNR: "customer", MATNR: "material", BUKRS: "company code", WERKS: "plant", EKORG: "purchasing org", VKORG: "sales org", VTWEG: "distribution channel", SPART: "division", LGORT: "storage location", KOKRS: "controlling area", KOSTL: "cost centre", SAKNR: "account", EBELN: "purchase order", VBELN: "document" };
