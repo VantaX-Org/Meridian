@@ -143,6 +143,26 @@ def _acquire_version_lock(version_id: str) -> bool:
         return True  # never block an extraction because the lock backend is unavailable
 
 
+# The system lock is refreshed on every progress update and expires an hour after the last one, so
+# a dead run cannot block a retry for the whole extraction limit. A static TTL that long would mean
+# a failed attempt locked the system out until tomorrow.
+SYSTEM_LOCK_TTL = 3600
+
+
+def _touch_system_lock(system_id: str) -> None:
+    """Extend the system lock while the extraction is alive."""
+    try:
+        import redis  # type: ignore
+
+        from workers.celery_app import celery_app
+        url = celery_app.conf.broker_url
+        if not url:
+            return
+        redis.from_url(url).expire(f"extract-lock:system:{system_id}", SYSTEM_LOCK_TTL)
+    except Exception:
+        pass
+
+
 def _acquire_system_lock(system_id: str) -> bool:
     """One extraction per SYSTEM at a time, not merely per version.
 
@@ -163,7 +183,7 @@ def _acquire_system_lock(system_id: str) -> bool:
         if not url:
             return True
         client = redis.from_url(url)
-        return bool(client.set(f"extract-lock:system:{system_id}", "1", nx=True, ex=EXTRACT_TIME_LIMIT))
+        return bool(client.set(f"extract-lock:system:{system_id}", "1", nx=True, ex=SYSTEM_LOCK_TTL))
     except Exception:
         return True
 
@@ -220,6 +240,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                "started_at": datetime.now(timezone.utc).isoformat()}
 
     def progress(p: dict, ttl: int = EXTRACT_TIME_LIMIT + 60) -> None:
+        _touch_system_lock(str(system_id))
         publish_progress(progress_key(system_id), {**started, "status": "running", **{k: v for k, v in p.items() if k != "tables"}}, ttl)
 
     progress({"step": "connecting", "percent": 0})

@@ -53,3 +53,19 @@ def test_rfc_sessions_are_capped_conservatively():
 
     src = inspect.getsource(R.RFCConnector.__init__)
     assert "or 2" in src, "the RFC session default should be 2, not 4"
+
+
+def test_the_system_lock_expires_so_a_dead_run_cannot_block_a_retry():
+    """A static 24h TTL would mean one failed attempt locks the system out until tomorrow.
+
+    The lock is refreshed on every progress update instead, so a live extraction keeps it and a
+    dead one frees it within the hour.
+    """
+    from workers.tasks import run_extraction as re_mod
+
+    assert re_mod.SYSTEM_LOCK_TTL <= 3600, "the system lock must expire within an hour"
+    assert callable(re_mod._touch_system_lock)
+
+    import inspect
+    body = inspect.getsource(re_mod.run_extraction.run)
+    assert "_touch_system_lock" in body, "progress updates must refresh the lock"
