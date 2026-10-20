@@ -224,8 +224,17 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 """One data table, straight to the bundle: the frame is dropped once uploaded."""
                 # Refuse a write that would risk an OOM kill: SIGKILL cannot be caught, so the
                 # SAP sessions would be left dangling and SAP would lock the user.
+                #
+                # Only the ADDITIONAL allocation counts here. The frame is already resident, so
+                # MemAvailable excludes it - checking the whole frame against current availability
+                # can only ever fail for a large table, and did: MARC's read completed with all
+                # 18,333,093 rows, then "needs about 17.1 GB and only 14.7 GB is available" refused
+                # it, when 17.1 + 14.7 was simply the box's total. The write itself converts one
+                # column at a time, so what it actually needs is a few columns' worth of headroom.
                 from sap.rfc import require_memory
-                require_memory(int(df.memory_usage(deep=True).sum()), f"storing {table}")
+                _frame = int(df.memory_usage(deep=True).sum())
+                _per_col = _frame // max(len(df.columns), 1)
+                require_memory(_per_col * 4, f"storing {table}")
 
                 buf = io.BytesIO()
                 # arrow-backed strings, converted ONE COLUMN AT A TIME.
