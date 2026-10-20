@@ -26,6 +26,14 @@ celery_app.conf.update(
     task_always_eager=False,
     task_track_started=True,
     worker_prefetch_multiplier=1,
+    # Recycle the child process after every task. A prefork child keeps whatever its task
+    # allocated until it is replaced, and a failed extraction leaves its frames behind: the worker
+    # was observed holding 16.88 GB while completely idle with no active task, leaving the 30 GB
+    # box with 11 GB available. That starved the next run - MARC needed 17.1 GB against an
+    # "available" figure reduced by the previous attempt's garbage - and it is why the memory guard
+    # appeared to trip on memory nothing was using. One extraction per fresh child costs a process
+    # start and removes the whole class of problem.
+    worker_max_tasks_per_child=1,
     task_soft_time_limit=1800,   # 30 minutes — raises SoftTimeLimitExceeded
     task_hard_time_limit=2100,   # 35 minutes — kills the task
     # acks_late tasks unacked past the visibility timeout (Redis default 1 h) are
