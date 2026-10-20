@@ -143,6 +143,31 @@ def _acquire_version_lock(version_id: str) -> bool:
         return True  # never block an extraction because the lock backend is unavailable
 
 
+def _acquire_system_lock(system_id: str) -> bool:
+    """One extraction per SYSTEM at a time, not merely per version.
+
+    A version lock stops a redelivered copy of the same run, but every dispatch gets a fresh
+    version_id - so two runs of the same object, or of two objects on one system, could overlap
+    freely. With worker concurrency 4 and up to 4 RFC sessions per extraction (MERIDIAN_RFC_PARALLEL),
+    that is up to 16 simultaneous sessions for one SAP user against a typical limit of 6. SAP
+    refuses the surplus logons, and refused logons are how an account ends up locked - with no OOM
+    and no retry anywhere in the picture, which is exactly the lock that could not be explained.
+
+    Returns False when another extraction already holds this system.
+    """
+    try:
+        import redis  # type: ignore
+
+        from workers.celery_app import celery_app
+        url = celery_app.conf.broker_url
+        if not url:
+            return True
+        client = redis.from_url(url)
+        return bool(client.set(f"extract-lock:system:{system_id}", "1", nx=True, ex=EXTRACT_TIME_LIMIT))
+    except Exception:
+        return True
+
+
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
@@ -171,6 +196,12 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             "extraction for version %s is already running (redelivered after a restart); "
             "exiting rather than starting a second read of the same system", version_id)
         return {"version_id": str(version_id), "status": "duplicate_ignored"}
+    if not _acquire_system_lock(str(system_id)):
+        logger.warning(
+            "an extraction is already running against system %s; not starting a second one. "
+            "Concurrent extractions multiply RFC sessions for one SAP user and SAP refuses the "
+            "surplus logons, which locks the account.", system_id)
+        return {"version_id": str(version_id), "status": "system_busy"}
 
     engine = get_sync_engine()
     if sync_type != "config":

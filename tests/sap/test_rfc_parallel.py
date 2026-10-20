@@ -166,4 +166,6 @@ def test_parallel_one_reads_over_the_primary_connection_only(monkeypatch):
     monkeypatch.setenv("MERIDIAN_RFC_PARALLEL", "1")
     assert RFCConnector()._parallel == 1
     monkeypatch.delenv("MERIDIAN_RFC_PARALLEL")
-    assert RFCConnector()._parallel == 4
+    # 2, not 4: every extra session is another logon for the same SAP user and a surplus one is
+    # refused; with worker concurrency 4 this caps a system at 8 sessions instead of 16.
+    assert RFCConnector()._parallel == 2

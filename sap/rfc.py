@@ -173,14 +173,18 @@ class RFCConnector(SAPConnector):
     """SAP connector backed by pyrfc / SAP NW RFC SDK."""
 
     def __init__(self, parallel: int = 0) -> None:
-        """``parallel``: RFC connections a keyed read uses at once; 0 = MERIDIAN_RFC_PARALLEL or 4."""
+        """``parallel``: RFC connections a keyed read uses at once; 0 = MERIDIAN_RFC_PARALLEL or 2."""
         self._conn: Optional[_Conn] = None
         self._password: str = ""   # held only during an active connection
         if not parallel:
             try:
-                parallel = int(os.environ.get("MERIDIAN_RFC_PARALLEL") or 4)
+                # Two, not four. Every extra session is another logon for the same SAP user and a
+                # surplus one is refused - a refusal is how a lock accumulates. With worker
+                # concurrency 4 that is 8 sessions at worst instead of 16, against a typical SAP
+                # limit of 6.
+                parallel = int(os.environ.get("MERIDIAN_RFC_PARALLEL") or 2)
             except ValueError:
-                parallel = 4
+                parallel = 2
         self._parallel = max(1, min(8, parallel))
         self._open_extra: Optional[Callable[[], _Conn]] = None  # opens another connection like the primary
         self._extra: Optional[list[_Conn]] = None  # extra connections; None = not opened yet
