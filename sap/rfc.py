@@ -223,16 +223,30 @@ class RFCConnector(SAPConnector):
         # cooldown must lift at once - otherwise the operator unlocks the user and Meridian still
         # refuses for the remainder of the window it set itself.
         clear_logon_block(params)
+        logger.info("RFC logon ok: %s (client %s, user %s)", params.host, params.client, params.user)
         self._open_extra = lambda: pyrfc.Connection(ashost=params.host, client=params.client, user=params.user,
                                                     passwd=params.password, sysnr=params.sysnr)
 
     def close(self) -> None:
-        for c in [self._conn, *(self._extra or [])]:
-            if c is not None:
-                try:
-                    c.close()
-                except Exception:
-                    pass
+        """Close every session, and say so. A close that fails silently leaves the session open on
+        SAP's side, and SAP counts an uncleaned session against the user exactly like a failed
+        logon - a lock path with no OOM and no retry behind it. Swallowing the exception meant
+        nobody could see it happen, so each attempt looked clean while the account drifted towards
+        a lock. It is still not fatal (the process is going away either way), but it is now loud.
+        """
+        sessions = [c for c in [self._conn, *(self._extra or [])] if c is not None]
+        closed = failed = 0
+        for c in sessions:
+            try:
+                c.close()
+                closed += 1
+            except Exception as e:
+                failed += 1
+                logger.warning("RFC session close FAILED (%s); SAP may keep the session open and "
+                               "count it against the user: %s", type(e).__name__,
+                               self._mask_password(str(e), self._password or "")[:200])
+        if sessions:
+            logger.info("RFC sessions closed: %d ok, %d failed (of %d)", closed, failed, len(sessions))
         self._conn, self._extra, self._open_extra = None, None, None
         self._password = ""   # clear from memory
 
