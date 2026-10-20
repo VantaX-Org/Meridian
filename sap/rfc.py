@@ -92,8 +92,25 @@ def available_memory_bytes() -> int | None:
     return None
 
 
-def require_memory(needed: int, what: str, fraction: float = 0.55) -> None:
-    """Refuse an allocation that would risk an OOM kill, before making it."""
+def require_memory(needed: int, what: str, fraction: float | None = None) -> None:
+    """Refuse an allocation that would risk an OOM kill, before making it.
+
+    The default allows 80% of MemAvailable. It was 55% while `astype` copied the whole frame at
+    write time and the group join allocated a second one - both copies are gone (the write converts
+    columns in place, the join builds from views), so the real requirement is now about 1.1x the
+    frame rather than 2x.
+
+    The old value stopped the material_master baseline by 2%: "storing MARC needs about 17.1 GB and
+    only 16.7 GB is available (limit 55%)". The guard did its job - no OOM, sessions closed, the SAP
+    account stayed unlocked, which is exactly why it exists - but it was refusing a run that fits.
+
+    ``MERIDIAN_EXTRACT_MEMORY_FRACTION`` overrides it per deployment.
+    """
+    if fraction is None:
+        try:
+            fraction = float(os.environ.get("MERIDIAN_EXTRACT_MEMORY_FRACTION") or 0.80)
+        except ValueError:
+            fraction = 0.80
     avail = available_memory_bytes()
     if avail is None or needed <= avail * fraction:
         return

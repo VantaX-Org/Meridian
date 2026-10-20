@@ -112,3 +112,23 @@ def test_the_aligned_path_does_not_copy_the_columns():
     assert out["X"].to_numpy().base is not None or np.shares_memory(out["X"].to_numpy(),
                                                                    left["X"].to_numpy()), \
         "the joined column should be a view of the input, not a copy"
+
+
+def test_the_marc_baseline_size_is_allowed(monkeypatch):
+    """17.1 GB against 30 GB available must pass - it was refused by 2% at the old 55%.
+
+    The guard stopped a viable material_master baseline because its threshold still assumed the
+    double-frame copy that the write and join fixes removed.
+    """
+    from sap.rfc import require_memory
+
+    monkeypatch.setattr("sap.rfc.available_memory_bytes", lambda: 30 * 1024**3)
+    require_memory(int(17.1e9), "storing MARC")  # must not raise
+
+
+def test_something_that_genuinely_cannot_fit_is_still_refused(monkeypatch):
+    from sap.rfc import ExtractionMemoryError, require_memory
+
+    monkeypatch.setattr("sap.rfc.available_memory_bytes", lambda: 30 * 1024**3)
+    with pytest.raises(ExtractionMemoryError):
+        require_memory(int(26e9), "impossible")
