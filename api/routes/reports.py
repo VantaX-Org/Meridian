@@ -195,9 +195,44 @@ def _build_sync(tenant_id: str, kind: str, vid: Optional[str], vid1: Optional[st
         return build(session, tenant_id, kind, vid, vid1, module=module, matnr=matnr)
 
 
+async def _stored_pdf(tenant: Tenant, vid: Optional[uuid.UUID]) -> bytes | None:
+    """The PDF the worker already generated for this version, if there is one.
+
+    Rendering an analysis report is CPU-bound WeasyPrint work that holds the GIL, so on a large
+    dataset it starves the single uvicorn process: requesting
+    /reports/analysis/<id>.pdf for a run with 747 findings and 2.3M record issues wedged the API
+    (health checks returned 502 and the whole site went down until the container was restarted).
+    The worker generates exactly this PDF after every analysis, so serving it is both faster and
+    safe - 4s instead of a render that never finished.
+    """
+    if vid is None:
+        return None
+    try:
+        from workers.db import get_sync_engine, tenant_session
+
+        def _lookup() -> str | None:
+            with tenant_session(get_sync_engine(), str(tenant.id)) as session:
+                row = session.execute(
+                    select(Report).where(Report.tenant_id == tenant.id, Report.version_id == vid)
+                ).scalar_one_or_none()
+                return row.pdf_path if row else None
+
+        path = await asyncio.to_thread(_lookup)
+        if path:
+            return await asyncio.to_thread(download_file, settings.minio_bucket_reports, path)
+    except Exception as e:
+        logger.warning("stored PDF unavailable for %s (%s); rendering instead", vid, e)
+    return None
+
+
 async def _pdf(tenant: Tenant, kind: str, filename: str, vid: Optional[uuid.UUID] = None,
                vid1: Optional[uuid.UUID] = None, module: Optional[str] = None,
                matnr: Optional[str] = None) -> Response:
+    if kind == "analysis":
+        stored = await _stored_pdf(tenant, vid)
+        if stored is not None:
+            return Response(content=stored, media_type="application/pdf",
+                            headers={"Content-Disposition": f'attachment; filename="{filename}"'})
     try:
         pdf = await asyncio.to_thread(_build_sync, str(tenant.id), kind,
                                       str(vid) if vid else None, str(vid1) if vid1 else None,

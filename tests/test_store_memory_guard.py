@@ -36,3 +36,21 @@ def test_the_guard_measures_an_incremental_allocation():
     body = _store_body()
     assert "_per_col" in body, "the guard should size the write from one column, not the frame"
     assert "require_memory(_per_col" in body
+
+
+# ── a report render must not take the API down ─────────────────────────────────────────────────
+def test_the_analysis_report_serves_the_stored_pdf_first():
+    """Rendering on demand is CPU-bound WeasyPrint work that holds the GIL.
+
+    On a run with 747 findings and 2.3M record issues, GET /reports/analysis/<id>.pdf wedged the
+    single uvicorn process: health checks returned 502 and the site was down until the container
+    was restarted. The worker already generates this PDF after every analysis, so the route serves
+    that instead of rendering again.
+    """
+    import re
+    from pathlib import Path as _P
+
+    src = (_P(__file__).resolve().parents[1] / "api" / "routes" / "reports.py").read_text(encoding="utf-8")
+    body = src[src.index("async def _pdf("):src.index("@router.get(\"/reports/analysis/")]
+    assert "_stored_pdf" in body, "the report route must try the stored PDF before rendering"
+    assert re.search(r'if kind == "analysis"', body), "the fast path should apply to the analysis report"
