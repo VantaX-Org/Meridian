@@ -9,8 +9,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, Dialog, ExplorerPage, Field, Menu, PageHeader, Pill, Select, Input, asyncStateOf } from "@/design";
 import {
-  createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
-  type AlertChannel, type AlertChannelKind, type AlertDigest,
+  createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel, updateAlertChannel,
+  type AlertChannel, type AlertChannelKind, type AlertDigest, type AlertReportPack,
 } from "@/lib/api/notifications";
 import { actionColumn } from "@/components/mdm/ledger";
 import { apiErrorMessage } from "@/lib/error";
@@ -25,13 +25,19 @@ const DIGESTS: { value: AlertDigest; label: string }[] = [
   { value: "daily", label: "Daily" }, { value: "weekly", label: "Weekly" }, { value: "off", label: "Off" },
 ];
 
+const REPORT_PACKS: { value: AlertReportPack; label: string }[] = [
+  { value: "off", label: "Board pack: off" }, { value: "weekly", label: "Board pack: weekly" },
+  { value: "monthly", label: "Board pack: monthly" },
+];
+
 function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
   const [kind, setKind] = useState<AlertChannelKind>("email");
   const [target, setTarget] = useState("");
   const [secret, setSecret] = useState("");
   const [digest, setDigest] = useState<AlertDigest>("daily");
-  const values = { kind, target, secret, digest };
+  const [reportPack, setReportPack] = useState<AlertReportPack>("off");
+  const values = { kind, target, secret, digest, reportPack };
   const schema = useMemo<Schema<typeof values>>(() => ({
     kind: oneOf(KINDS.map((k) => k.value)),
     target: kind === "email"
@@ -39,10 +45,15 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
       : [required("Enter an https:// URL"), url(), pattern(/^https:\/\//i, "Enter an https:// URL")],
     secret: kind === "webhook" ? length(16, 256, "Use 16 to 256 characters") : undefined,
     digest: oneOf(DIGESTS.map((d) => d.value)),
+    reportPack: oneOf(REPORT_PACKS.map((r) => r.value)),
   }), [kind]);
   const form = useFormErrors(schema, values);
   const m = useMutation({
-    mutationFn: () => createAlertChannel({ kind, target, digest, immediate_critical: true, ...(kind === "webhook" && secret ? { secret } : {}) }),
+    mutationFn: () => createAlertChannel({
+      kind, target, digest, immediate_critical: true,
+      ...(kind === "email" && reportPack !== "off" ? { report_pack: reportPack } : {}),
+      ...(kind === "webhook" && secret ? { secret } : {}),
+    }),
     onSuccess: () => { toast.success("Channel added"); void qc.invalidateQueries({ queryKey: ["alert-channels"] }); setTarget(""); setSecret(""); onOpenChange(false); },
     onError: (e) => toast.error(`Not added. ${apiErrorMessage(e)}`),
   });
@@ -53,6 +64,7 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
         <Field label={kind === "email" ? "Address" : "URL"} error={form.error("target")}><Input type={kind === "email" ? "email" : "url"} value={target} onChange={(e) => setTarget(e.target.value)} onBlur={() => form.blur("target")} /></Field>
         {kind === "webhook" && <Field label="Signing secret (16 to 256 characters)" error={form.error("secret")}><Input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} onBlur={() => form.blur("secret")} /></Field>}
         <Field label="Digest"><Select value={digest} onValueChange={(v) => setDigest(v as AlertDigest)} options={DIGESTS} /></Field>
+        {kind === "email" && <Field label="Board pack"><Select value={reportPack} onValueChange={(v) => setReportPack(v as AlertReportPack)} options={REPORT_PACKS} /></Field>}
         <div className="flex gap-2">
           <Button type="submit" pending={m.isPending} disabled={!form.valid}>Add channel</Button>
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Keep channels as they are</Button>
@@ -74,6 +86,11 @@ export default function NotificationsAdminPage() {
     onSuccess: (r) => (r.delivered ? toast.success("Test message delivered") : toast.error("The channel did not accept the test message")),
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
+  const setPack = useMutation({
+    mutationFn: ({ id, report_pack }: { id: string; report_pack: AlertReportPack }) => updateAlertChannel(id, { report_pack }),
+    onSuccess: () => { toast.success("Board pack setting saved"); void qc.invalidateQueries({ queryKey: ["alert-channels"] }); },
+    onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`),
+  });
   const del = useMutation({
     mutationFn: deleteAlertChannel,
     onSuccess: () => { toast.success("Channel removed"); void qc.invalidateQueries({ queryKey: ["alert-channels"] }); },
@@ -83,6 +100,23 @@ export default function NotificationsAdminPage() {
     { accessorKey: "kind", header: "Type" },
     { accessorKey: "target", header: "Target" },
     { accessorKey: "digest", header: "Digest" },
+    {
+      id: "pack", header: "Board pack",
+      cell: ({ row }) => {
+        const c = row.original;
+        if (c.kind !== "email") return <span className="m-ink-3">Email only</span>;
+        const pack = c.report_pack ?? "off";
+        if (!canEdit) return REPORT_PACKS.find((r) => r.value === pack)?.label ?? "Board pack: off";
+        return (
+          <Select
+            label={`Board pack for ${c.target}`}
+            value={pack}
+            onValueChange={(v) => setPack.mutate({ id: c.id, report_pack: v as AlertReportPack })}
+            options={REPORT_PACKS}
+          />
+        );
+      },
+    },
     { id: "crit", header: "Critical alerts", cell: ({ row }) => (row.original.immediate_critical ? "Sent at once" : "In digest") },
     { id: "on", header: "Status", cell: ({ row }) => <Pill tone={row.original.enabled ? "go" : "at-risk"}>{row.original.enabled ? "On" : "Off"}</Pill> },
     ...(canEdit ? [actionColumn<AlertChannel>((c) => (
@@ -100,7 +134,7 @@ export default function NotificationsAdminPage() {
     <>
       <ExplorerPage
         header={<PageHeader title="Notifications" meta="Outbound alert channels" actions={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined} />}
-        summary={<p className="m-text-body m-ink-3">Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>.</p>}
+        summary={<p className="m-text-body m-ink-3">Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>. A board pack channel gets the board pack and the analyst workbook for the latest finished run: weekly on Monday mornings, or monthly on the 1st.</p>}
         state={asyncStateOf(q, () => items.length === 0, true)}
         emptyProps={{ title: "No alert channels", detail: "Add email, Slack, Teams or a webhook to send critical alerts and digests.", action: canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined }}
         errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}

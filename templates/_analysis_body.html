@@ -1,7 +1,7 @@
 {# Shared by the analysis run report and the executive report. #}
 <div class="figures">
     <div class="figure primary"><div class="v">{{ overall.composite | n(1) }}<small> / 100</small></div><div class="k">Data quality score (DQS), all modules</div></div>
-    <div class="figure"><div class="v"><span class="st {{ readiness | st }}">{{ readiness | upper }}</span></div><div class="k">Migration readiness</div></div>
+    <div class="figure"><div class="v"><span class="st {{ readiness | st }}">{{ readiness | capitalize }}</span></div><div class="k">Migration readiness</div></div>
     <div class="figure"><div class="v">{{ checks_failing | n }}<small> of {{ checks_run | n }}</small></div><div class="k">Checks with failing records</div></div>
     <div class="figure"><div class="v">{{ sev.critical | n }}</div><div class="k">Critical checks failing</div></div>
 </div>
@@ -35,7 +35,7 @@
 {% for m in modules %}
 <tr><td>{{ m.name | module }}{% if m.cap_reason %}<span class="sub">{{ m.cap_reason }}</span>{% endif %}</td>
     <td class="r">{{ m.score | n(1) }}</td>
-    <td>{% if m.status %}<span class="st {{ m.status | st }}">{{ m.status | upper }}</span>{% else %}<span class="st na">No score</span>{% endif %}</td>
+    <td>{% if m.status %}<span class="st {{ m.status | st }}">{{ m.status | capitalize }}</span>{% else %}<span class="st na">No score</span>{% endif %}</td>
     <td class="r">{{ m.checks | n }}</td><td class="r">{{ m.failing | n }}</td>
     <td class="r">{{ m.critical | n }}</td><td class="r">{{ m.high | n }}</td><td class="r">{{ m.records | n }}</td></tr>
 {% endfor %}
