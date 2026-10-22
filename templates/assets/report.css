@@ -1,34 +1,43 @@
 /* Meridian print stylesheet — shared by every PDF report (WeasyPrint).
-   Tokens mirror frontend/design/tokens.css (print is always light).
+   Tokens mirror frontend/design/tokens.css, the "Canvas" light values (print is always light):
+   near-black ink on white sheets, a bright blue-grey wash for callouts and the cover page,
+   one cobalt accent for links and the cover meridian line. Text uses the dark hues; bars, rings
+   and status marks use the *-fill hues, which are vivid but never carry text.
    Fonts are vendored so output does not depend on the host;
    HTML(string=..., base_url=TEMPLATE_DIR) resolves the relative paths.
-   Instrument Sans for UI, Instrument Serif for the cover title only,
-   JetBrains Mono for SAP identifiers and run ids. */
+   Instrument Sans for UI (500/600; 700 reuses the 600 face so headings are deterministic),
+   JetBrains Mono for SAP identifiers and run ids. No serif. */
 
 @font-face { font-family: "Instrument Sans"; font-weight: 400; src: url("fonts/InstrumentSans-400.woff2") format("woff2"); }
 @font-face { font-family: "Instrument Sans"; font-weight: 500; src: url("fonts/InstrumentSans-500.woff2") format("woff2"); }
 @font-face { font-family: "Instrument Sans"; font-weight: 600; src: url("fonts/InstrumentSans-600.woff2") format("woff2"); }
-@font-face { font-family: "Instrument Serif"; font-weight: 400; src: url("fonts/InstrumentSerif-400.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Sans"; font-weight: 700; src: url("fonts/InstrumentSans-600.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("fonts/JetBrainsMono-400.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("fonts/JetBrainsMono-500.woff2") format("woff2"); }
 
 :root {
-    --ink: #141519;
-    --ink-2: #4A4C55;
-    --ink-3: #6A6C76;
-    --line: #E4E2DB;
-    --line-2: #E4E2DB;
-    --wash: #FAF9F6;
-    --accent: #2B4BE0;
-    --navy: #0F1430;
-    --ok: #157A3C;
-    --warn: #946200;
-    --high: #BA4A0B;
-    --bad: #B42318;
-    --cover-mark: #8DA3FF;
-    --cover-meridian: #EDEDF0;
-    --ring-track: #EFEDE8;
-    --ring-line: #CFCCC3;
+    --ink: #1A2233;
+    --ink-2: #3F4A5C;
+    --ink-3: #5A6578;
+    --line: #E6EAF0;
+    --line-2: #CBD2DC;
+    --wash: #F4F6F8;
+    --accent: #2563EB;
+    --navy: #1E3A8A;
+    --ok: #1B7544;
+    --warn: #9A5B00;
+    --high: #A64D07;
+    --bad: #C62828;
+    --cover-mark: #7FA8FF;
+    --cover-meridian: #E8F1FF;
+    --ring-track: #EEF1F5;
+    --ring-line: #CBD2DC;
+    --ok-fill: #22A06B;
+    --warn-fill: #F5A524;
+    --high-fill: #F97316;
+    --bad-fill: #E5484D;
+    --accent-fill: #3B82F6;
+    --sheet: #FFFFFF;
 }
 
 /* ── Page geometry ─────────────────────────────────────────────────────── */
@@ -62,28 +71,28 @@
 
 /* ── Base type ─────────────────────────────────────────────────────────── */
 
-html { font-family: "Instrument Sans", sans-serif; font-size: 9pt; line-height: 1.45; color: var(--ink); }
+html { font-family: "Instrument Sans", sans-serif; font-size: 9pt; line-height: 1.45; color: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
 body { margin: 0; }
 .num, td.r, th.r { font-variant-numeric: tabular-nums lining-nums; }
 .mono { font-family: "JetBrains Mono", monospace; font-size: 8pt; }
 .muted { color: var(--ink-3); }
 
-h1 { font-size: 20pt; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; margin: 0 0 2mm; }
+h1 { font-size: 20pt; font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; margin: 0 0 2mm; }
 h2 {
-    font-size: 13pt; font-weight: 600; margin: 9mm 0 3mm; padding-bottom: 1.5mm;
+    font-size: 13pt; font-weight: 700; margin: 9mm 0 3mm; padding-bottom: 1.5mm;
     border-bottom: 0.3pt solid var(--line); break-after: avoid;
 }
-h3 { font-size: 9.5pt; font-weight: 600; margin: 5mm 0 2mm; break-after: avoid; }
+h3 { font-size: 9.5pt; font-weight: 700; margin: 5mm 0 2mm; break-after: avoid; }
 p { margin: 0 0 2.5mm; }
 .lead { font-size: 10.5pt; line-height: 1.5; color: var(--ink); max-width: 165mm; }
 .eyebrow {
     font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: none;
-    color: var(--accent); margin-bottom: 2mm;
+    color: var(--ink-3); margin-bottom: 2mm;
 }
 .note { font-size: 8pt; color: var(--ink-3); margin-top: 1.5mm; }
 .empty {
-    border: 0.75pt dashed var(--line-2); padding: 3mm 4mm; color: var(--ink-2);
-    font-size: 8.5pt; break-inside: avoid;
+    border: 0.75pt dashed var(--line-2); border-radius: 6px; background: var(--wash);
+    padding: 3mm 4mm; color: var(--ink-2); font-size: 8.5pt; break-inside: avoid;
 }
 .page-break { break-before: page; }
 section { break-inside: auto; }
@@ -99,11 +108,11 @@ section { break-inside: auto; }
 /* ── Key figures ───────────────────────────────────────────────────────── */
 
 .figures { display: flex; gap: 3mm; margin: 4mm 0 2mm; break-inside: avoid; }
-.figure { flex: 1; border: 0.75pt solid var(--line); padding: 3mm 3.5mm; }
-.figure .v { font-size: 17pt; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.figure { flex: 1; border: 1px solid var(--line); border-radius: 6px; background: var(--sheet); padding: 3mm 3.5mm; }
+.figure .v { font-size: 17pt; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .figure .v small { font-size: 9pt; font-weight: 500; color: var(--ink-3); }
 .figure .k { font-size: 7.5pt; color: var(--ink-3); margin-top: 1mm; }
-.figure.primary { border-color: var(--accent); border-width: 1.25pt; }
+.figure.primary { border-color: var(--accent-fill); border-width: 1.25pt; }
 
 /* ── Tables ────────────────────────────────────────────────────────────── */
 
@@ -111,7 +120,7 @@ table.data { width: 100%; border-collapse: collapse; font-size: 8pt; margin: 1mm
 table.data thead { display: table-header-group; }
 table.data tr { break-inside: avoid; }
 table.data th {
-    text-align: left; font-weight: 500; color: var(--ink-3); font-size: 8pt; background: var(--wash);
+    text-align: left; font-weight: 600; color: var(--ink-2); font-size: 8pt; background: var(--wash);
     border-bottom: 0.3pt solid var(--line); padding: 1.6mm 2mm 1.4mm 1.5mm;
 }
 table.data td { border-bottom: 0.3pt solid var(--line); padding: 1.5mm 2mm 1.5mm 1.5mm; vertical-align: top; }
@@ -122,12 +131,12 @@ table.data .sub { display: block; color: var(--ink-3); font-size: 7.5pt; margin-
 
 /* ── Status marks (status only) ────────────────────────────────────────── */
 
-.st { font-weight: 600; white-space: nowrap; }
+.st { font-weight: 700; white-space: nowrap; }
 .st::before { content: ""; display: inline-block; width: 1.8mm; height: 1.8mm; border-radius: 50%; margin-right: 1.2mm; vertical-align: 0.2mm; background: var(--ink-3); }
 .st.ok { color: var(--ok); }
-.st.ok::before { background: transparent; border-radius: 0; width: 1mm; height: 1.8mm; border: solid var(--ok); border-width: 0 0.45mm 0.45mm 0; transform: rotate(45deg); margin-right: 1.6mm; }
-.st.warn { color: var(--warn); }  .st.warn::before { border-radius: 0; background: var(--warn); transform: rotate(45deg) scale(0.8); } /* diamond: distinct from square (bad), circle (medium), triangle (high) */
-.st.bad { color: var(--bad); }    .st.bad::before { background: var(--bad); border-radius: 0; }
+.st.ok::before { background: transparent; border-radius: 0; width: 1mm; height: 1.8mm; border: solid var(--ok-fill); border-width: 0 0.45mm 0.45mm 0; transform: rotate(45deg); margin-right: 1.6mm; }
+.st.warn { color: var(--warn); }  .st.warn::before { border-radius: 0; background: var(--warn-fill); transform: rotate(45deg) scale(0.8); } /* diamond: distinct from square (bad), circle (medium), triangle (high) */
+.st.bad { color: var(--bad); }    .st.bad::before { background: var(--bad-fill); border-radius: 0; }
 .st.na { color: var(--ink-3); font-weight: 500; }
 .up { color: var(--ok); }
 .down { color: var(--bad); }
@@ -137,43 +146,51 @@ table.data .sub { display: block; color: var(--ink-3); font-size: 7.5pt; margin-
    low = hollow circle. These four classes share the severity string itself
    as the class name, so they stand apart from the status dots above. */
 .st.critical { color: var(--bad); }
-.st.critical::before { background: var(--bad); border-radius: 0; }
+.st.critical::before { background: var(--bad-fill); border-radius: 0; }
 .st.high { color: var(--high); }
 .st.high::before {
     background: transparent; width: 0; height: 0; border-radius: 0;
     border-left: 1mm solid transparent; border-right: 1mm solid transparent;
-    border-bottom: 1.8mm solid var(--high);
+    border-bottom: 1.8mm solid var(--high-fill);
 }
 .st.medium { color: var(--warn); }
-.st.medium::before { background: var(--warn); border-radius: 50%; }
+.st.medium::before { background: var(--warn-fill); border-radius: 50%; }
 .st.low { color: var(--ink-3); font-weight: 500; }
 .st.low::before { background: transparent; border: 0.3mm solid var(--ink-3); border-radius: 50%; }
 
 /* ── Cover page ────────────────────────────────────────────────────────── */
-/* Full-bleed left band (38mm, accent to navy, two-stop) carries the reversed mark. */
+/* Canvas look: the page is the wash, the content sits on one white sheet (1px line, 6px radius)
+   inset 12mm. The mark is drawn in cover-mark with the accent meridian line; accent appears
+   nowhere else on the cover except links. No band, no gradient. */
 
 .cover { page: cover; break-after: page; position: relative; height: 296mm; }
-.cover-band {
-    position: absolute; left: 0; top: 0; width: 38mm; height: 297mm;
-    background: linear-gradient(to bottom, var(--accent), var(--navy)) no-repeat;
-    background-size: 100% 100%;
+.cover::before {
+    content: ""; position: absolute; left: 12mm; top: 12mm; right: 12mm; bottom: 12mm;
+    background: var(--sheet); border: 1px solid var(--line); border-radius: 6px;
 }
-.cover-band svg { position: absolute; left: 11mm; top: 20mm; width: 16mm; height: 16mm; }
-.cover-main { position: absolute; left: 58mm; right: 20mm; top: 0; height: 297mm; }
-.cover-top { position: absolute; top: 46mm; left: 0; right: 0; }
-.cover-eyebrow { font-size: 9pt; font-weight: 500; color: var(--ink-3); margin-bottom: 4mm; }
-.cover-title { font-family: "Instrument Serif", serif; font-size: 30pt; font-weight: 400; line-height: 1.1; letter-spacing: 0; color: var(--ink); margin: 0 0 4mm; }
+.cover-band { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.cover-band svg { position: absolute; left: 28mm; top: 28mm; width: 14mm; height: 14mm; }
+.cover-main { position: absolute; left: 28mm; right: 28mm; top: 0; height: 297mm; }
+.cover-top { position: absolute; top: 62mm; left: 0; right: 0; }
+.cover-eyebrow { font-size: 9pt; font-weight: 600; color: var(--ink-3); margin-bottom: 4mm; }
+.cover-title { font-size: 28pt; font-weight: 700; line-height: 1.12; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 4mm; }
 .cover-sub { font-size: 11pt; color: var(--ink-2); margin: 0; }
-.cover-ring { position: absolute; top: 100mm; left: 0; width: 48mm; }
+.cover-ring { position: absolute; top: 112mm; left: 0; width: 48mm; }
 .cover-ring svg { display: block; width: 48mm; height: 48mm; }
+.cover-ring .ring-track { stroke: var(--ring-track); }
+.cover-ring .ring-meridian { stroke: var(--ring-line); }
 .cover-ring .cap { font-size: 8pt; color: var(--ink-3); margin-top: 2mm; }
-.cover-verdict { position: absolute; top: 100mm; left: 58mm; right: 0; font-size: 11pt; line-height: 1.5; color: var(--ink-2); margin: 0; }
+.cover-verdict {
+    position: absolute; top: 112mm; left: 58mm; right: 0; font-size: 11pt; line-height: 1.5; color: var(--ink-2); margin: 0;
+    background: var(--wash); border-radius: 6px; padding: 4mm 5mm;
+}
 .cover-verdict.alone { left: 0; }
-.cover-foot { position: absolute; bottom: 24mm; left: 0; right: 0; border-top: 0.6pt solid var(--accent); padding-top: 4mm; }
+.cover-foot { position: absolute; bottom: 30mm; left: 0; right: 0; border-top: 1px solid var(--line); padding-top: 4mm; }
 .cover-meta { display: grid; grid-template-columns: 30mm 1fr; margin: 0; font-size: 9pt; row-gap: 1.2mm; }
 .cover-meta dt { color: var(--ink-3); }
 .cover-meta dd { margin: 0; color: var(--ink); }
 .cover-meta dd.mono { font-size: 8.5pt; }
+a { color: var(--accent); text-decoration: none; }
 
 /* ── Ordered actions ───────────────────────────────────────────────────── */
 
@@ -184,13 +201,16 @@ ol.actions li {
 }
 ol.actions li::before {
     content: counter(act); position: absolute; left: 0; top: 2mm;
-    font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums;
+    font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums;
 }
 ol.actions li b { font-weight: 600; }
 
 /* ── Callout (AI-generated text only) ──────────────────────────────────── */
 
-.callout { border-left: 1.5pt solid var(--accent); background: var(--wash); padding: 3mm 4mm; margin: 3mm 0; break-inside: avoid; }
+.callout {
+    border: 1px solid var(--line); border-left: 2.25pt solid var(--accent-fill); border-radius: 6px;
+    background: var(--wash); padding: 3mm 4mm; margin: 3mm 0; break-inside: avoid;
+}
 .callout .label { font-size: 7pt; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 1mm; }
 
 /* ── Charts ────────────────────────────────────────────────────────────── */
@@ -199,3 +219,10 @@ ol.actions li b { font-weight: 600; }
 .chart svg { display: block; width: 100%; }
 .cols { display: flex; gap: 8mm; }
 .cols > div { flex: 1; min-width: 0; }
+
+/* Chart helpers (pdf_reports.py) draw inline SVG; these classes let templates restyle the same marks. */
+.chart .bar { fill: var(--accent-fill); }
+.chart .bar.up { fill: var(--ok-fill); }
+.chart .bar.down { fill: var(--bad-fill); }
+.chart .track { fill: var(--ring-track); }
+.chart .trend { stroke: var(--accent-fill); fill: none; }

@@ -70,7 +70,7 @@ def test_header_fill_is_brand_accent():
     wb = _load(build_workbook(tenant_name="T", run_label="R", run_id="1", title="X", sheets=[_basic_sheet()]))
     ws = wb["Findings"]
     header_cell = ws.cell(row=1, column=1)
-    assert "2B4BE0" in str(header_cell.fill.fgColor.rgb)
+    assert "2563EB" in str(header_cell.fill.fgColor.rgb)
 
 
 def test_number_formats_per_kind():
@@ -222,7 +222,7 @@ def test_cover_band_mark_meta_hyperlinks_and_tabs():
                               sheets=[_basic_sheet()]))
     ws = wb["Cover"]
     assert ws.column_dimensions["A"].width == 4
-    assert all("0F1430" in str(ws.cell(row=r, column=1).fill.fgColor.rgb) for r in (1, 20, 40))
+    assert all("F4F6F8" in str(ws.cell(row=r, column=1).fill.fgColor.rgb) for r in (1, 20, 40))
     assert len(ws._images) == 1 and ws._images[0].anchor._from.row == 1  # B2
     assert ws["B5"].value == "Findings export" and ws["B5"].font.size == 20 and ws["B5"].font.bold
     labels = {ws.cell(row=r, column=2).value: ws.cell(row=r, column=3) for r in range(8, 12)}
@@ -230,20 +230,20 @@ def test_cover_band_mark_meta_hyperlinks_and_tabs():
     links = [c.hyperlink.location or c.hyperlink.target for row in ws.iter_rows() for c in row if c.hyperlink]
     assert any("Findings" in str(link) for link in links)
     assert "stays inside your network" in " ".join(str(c.value) for row in ws.iter_rows() for c in row if c.value)
-    assert "0F1430" in str(ws.sheet_properties.tabColor.rgb)
-    assert "2B4BE0" in str(wb["Findings"].sheet_properties.tabColor.rgb)
+    assert "1E3A8A" in str(ws.sheet_properties.tabColor.rgb)
+    assert "2563EB" in str(wb["Findings"].sheet_properties.tabColor.rgb)
 
 
 def test_data_sheet_wash_alternation_and_status_tint():
     sheet = SheetSpec(
         title="S",
-        columns=[ColumnSpec("v", "V", fill_by_value={"bad": "FCEBE9"})],
+        columns=[ColumnSpec("v", "V", fill_by_value={"bad": "FDECEC"})],
         rows=[{"v": "a"}, {"v": "b"}, {"v": "c"}, {"v": "bad"}],
     )
     ws = _load(build_workbook(tenant_name="T", run_label="R", run_id="1", title="X", sheets=[sheet]))["S"]
     assert ws.freeze_panes == "A2" and ws.auto_filter.ref
-    assert "FAF9F6" not in str(ws["A2"].fill.fgColor.rgb) and "FAF9F6" in str(ws["A3"].fill.fgColor.rgb)
-    assert "FCEBE9" in str(ws["A5"].fill.fgColor.rgb) and "8E1B12" in str(ws["A5"].font.color.rgb)
+    assert "F4F6F8" not in str(ws["A2"].fill.fgColor.rgb) and "F4F6F8" in str(ws["A3"].fill.fgColor.rgb)
+    assert "FDECEC" in str(ws["A5"].fill.fgColor.rgb) and "1A2233" in str(ws["A5"].font.color.rgb)
 
 
 def test_cover_sheet_list_guards_formula_titles_and_escapes_apostrophes():

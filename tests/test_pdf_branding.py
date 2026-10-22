@@ -23,7 +23,7 @@ def _html(name: str) -> str:
 @pytest.mark.parametrize("name", NAMES)
 def test_cover_header_footer_markup(name):
     html = _html(name)
-    assert 'class="cover-band"' in html and "#8DA3FF" in html and "#EDEDF0" in html
+    assert 'class="cover-band"' in html and "#7FA8FF" in html and "#2563EB" in html  # mark in cover-mark, meridian line in the accent
     assert 'class="cover-title"' in html and "cover-eyebrow" in html and 'class="cover-meta"' in html
     assert "assets/brand/mark-mono.svg" in html  # running header mark
     assert "Confidential" in html and "stays inside your network" in html
@@ -48,10 +48,11 @@ def test_score_ring_only_with_dqs():
 
 def test_css_tokens_and_fonts():
     css = (Path(pr.TEMPLATE_DIR) / "assets" / "report.css").read_text()
-    for token in ("#141519", "#4A4C55", "#6A6C76", "#E4E2DB", "#FAF9F6", "#2B4BE0", "#157A3C", "#946200", "#BA4A0B", "#B42318"):
+    for token in ("#1A2233", "#3F4A5C", "#5A6578", "#E6EAF0", "#F4F6F8", "#2563EB", "#1B7544", "#9A5B00", "#A64D07", "#C62828",
+                  "#22A06B", "#F5A524", "#F97316", "#E5484D", "#3B82F6"):
         assert token in css
-    assert "Instrument Sans" in css and "Instrument Serif" in css and "Public Sans" not in css
-    for f in ("InstrumentSans-400", "InstrumentSans-500", "InstrumentSans-600", "InstrumentSerif-400"):
+    assert "Instrument Sans" in css and "Instrument Serif" not in css and "Public Sans" not in css
+    for f in ("InstrumentSans-400", "InstrumentSans-500", "InstrumentSans-600"):
         assert (Path(pr.TEMPLATE_DIR) / "assets" / "fonts" / f"{f}.woff2").exists()
 
 
@@ -66,16 +67,16 @@ def _ring_html(score, capped):
 def test_cover_ring_is_270_degree_arc_banded_with_cap_value():
     html = _ring_html(85, True)
     assert html.count("A44 44 0 1 1 18.89 18.89") == 2 and "<circle" not in html.split("cover-ring")[1].split("</svg>")[0]
-    assert "#EFEDE8" in html and "ring-meridian" in html
-    assert "stroke=\"#946200\"" in html  # 85 is in the medium band
+    assert "#EEF1F5" in html and "ring-meridian" in html
+    assert "stroke=\"#F5A524\"" in html  # 85 is in the medium band (vivid fill)
     assert "Capped at 85" in html
-    assert "Capped at 95" not in _ring_html(95, False) and 'stroke="#157A3C"' in _ring_html(95, False)
-    assert 'stroke="#B42318"' in _ring_html(40, False)
+    assert "Capped at 95" not in _ring_html(95, False) and 'stroke="#22A06B"' in _ring_html(95, False)
+    assert 'stroke="#E5484D"' in _ring_html(40, False)
 
 
 def test_status_marks_are_shapes_and_header_mark_is_5mm():
     css = (Path(pr.TEMPLATE_DIR) / "assets" / "report.css").read_text()
     assert ".st.ok::before { background: transparent" in css and "rotate(45deg)" in css
-    assert ".st.bad::before { background: var(--bad); border-radius: 0" in css
+    assert ".st.bad::before { background: var(--bad-fill); border-radius: 0" in css
     assert 'width="5mm" height="5mm"' in (Path(pr.TEMPLATE_DIR) / "assets" / "brand" / "mark-mono.svg").read_text()
     assert (Path(pr.TEMPLATE_DIR) / "assets" / "fonts" / "OFL.txt").exists()
