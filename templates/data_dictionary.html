@@ -1,0 +1,41 @@
+{% extends "_base.html" %}
+{% block body %}
+<style>
+a.toc { display: block; color: var(--ink); padding: 0.6mm 0; }
+a.toc::after { content: leader(". ") target-counter(attr(href), page); color: var(--ink-3); }
+.tbl-head { break-after: avoid; }
+</style>
+<p class="lead">{{ headline }}</p>
+<p class="note">Fields come from the SAP data dictionary shipped with Meridian. Key means the field is part of the table's primary key. Mandatory means SAP requires a value. Allowed values are listed only when the list is short.</p>
+
+<h2>Contents</h2>
+{% if contents %}
+<table class="data keep">
+<thead><tr><th>Object</th><th>Tables</th></tr></thead>
+<tbody>
+{% for c in contents %}
+<tr><td>{% if c.module == "_unmapped" %}Not read by a module extraction{% else %}{{ c.module | module }}{% endif %}</td>
+    <td>{% for t in c.tables %}<a href="#t-{{ t }}" class="mono">{{ t }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}<div class="empty">No tables to list.</div>{% endif %}
+
+{% for t in tables %}
+<h2 id="t-{{ t.name }}" class="{{ 'page-break' if loop.first else '' }} tbl-head"><span class="mono">{{ t.name }}</span></h2>
+<p class="note">Read for {% if t.modules %}{% for m in t.modules %}{{ m | module }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}no module extraction{% endif %}.
+{{ t.fields | length | n }} field{{ "s" if t.fields | length != 1 }}; key {% if t.key_fields %}<span class="mono">{{ t.key_fields | join(", ") }}</span>{% else %}not recorded{% endif %}.</p>
+<table class="data">
+<thead><tr><th>Field</th><th>Description</th><th>Type</th><th class="r">Length</th><th>Key</th><th>Mandatory</th><th>Allowed values</th></tr></thead>
+<tbody>
+{% for f in t.fields %}
+<tr><td><span class="mono">{{ f.name }}</span></td><td>{{ f.description }}{% if f.config_table %}<span class="sub">Checked against <span class="mono">{{ f.config_table }}</span></span>{% endif %}</td>
+    <td>{{ f.type }}</td><td class="r">{{ f.length if f.length is not none else "" }}</td>
+    <td>{% if f.key %}<span class="st ok">Key</span>{% endif %}</td>
+    <td>{% if f.mandatory %}<span class="st warn">Required</span>{% endif %}</td>
+    <td>{% if f.allowed %}<span class="mono">{{ f.allowed }}</span>{% else %}<span class="muted">any value</span>{% endif %}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endfor %}
+{% endblock %}
