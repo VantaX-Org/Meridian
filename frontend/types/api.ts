@@ -507,7 +507,8 @@ export type NotificationType =
   | "info"
   | "sla_at_risk"
   | "sla_ack_breached"
-  | "sla_breached";
+  | "sla_breached"
+  | "report";
 
 export interface Notification {
   id: string;

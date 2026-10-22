@@ -1275,6 +1275,10 @@ class AlertChannel(Base):
     immediate_critical = Column(Boolean, nullable=False, server_default=text("false"))
     enabled = Column(Boolean, nullable=False, server_default=text("true"))
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    #: off | weekly | monthly: board pack + analyst workbook by email (migration 085, email channels only)
+    report_pack = Column(Text, nullable=False, server_default="off")
+    #: idempotency key of the last pack sent: <cadence>:<period>:<run id>
+    report_pack_key = Column(Text, nullable=True)
 
 
 class NotificationDelivery(Base):

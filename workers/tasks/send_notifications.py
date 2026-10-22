@@ -251,9 +251,16 @@ def _build_email_content(config: dict, version_data: dict, trigger: str) -> tupl
     return subject, body
 
 
-def _send_email_smtp(recipient: str, subject: str, body: str) -> bool:
-    """Send email via local SMTP relay (air-gapped deployments). True only on a confirmed send."""
+Attachment = tuple[str, bytes, str]  # (filename, content, mime type)
+
+
+def _send_email_smtp(recipient: str, subject: str, body: str,
+                     attachments: list[Attachment] | None = None) -> bool:
+    """Send email via local SMTP relay (air-gapped deployments). True only on a confirmed send.
+    ``attachments`` are (filename, bytes, mime type) triples, attached as base64 parts."""
     import smtplib
+    from email import encoders
+    from email.mime.base import MIMEBase
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
 
@@ -262,6 +269,13 @@ def _send_email_smtp(recipient: str, subject: str, body: str) -> bool:
     msg["To"] = recipient
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "html"))
+    for filename, content, mime in attachments or []:
+        maintype, _, subtype = mime.partition("/")
+        part = MIMEBase(maintype or "application", subtype or "octet-stream")
+        part.set_payload(content)
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", "attachment", filename=filename)
+        msg.attach(part)
 
     try:
         with smtplib.SMTP(os.getenv("SMTP_HOST"), int(os.getenv("SMTP_PORT", "587"))) as smtp:
@@ -276,13 +290,25 @@ def _send_email_smtp(recipient: str, subject: str, body: str) -> bool:
         return False
 
 
-def _send_email_resend(recipient: str, subject: str, body: str) -> bool:
-    """Send email via Resend API (standard mode). True only on a confirmed send."""
+def _send_email_resend(recipient: str, subject: str, body: str,
+                       attachments: list[Attachment] | None = None) -> bool:
+    """Send email via Resend API (standard mode). True only on a confirmed send.
+    ``attachments`` go in Resend's ``attachments`` field with base64 ``content``."""
     api_key = os.getenv("RESEND_API_KEY", "")
     if not api_key:
         logger.info("Skipping email — no RESEND_API_KEY configured")
         return False
 
+    payload: dict = {
+        "from": "Meridian DQ Agent <notifications@meridian.vantax.co.za>",
+        "to": [recipient],
+        "subject": subject,
+        "html": body,
+    }
+    if attachments:
+        import base64
+        payload["attachments"] = [{"filename": name, "content": base64.b64encode(content).decode("ascii")}
+                                  for name, content, _mime in attachments]
     try:
         resp = requests.post(
             RESEND_API_URL,
@@ -290,13 +316,8 @@ def _send_email_resend(recipient: str, subject: str, body: str) -> bool:
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json={
-                "from": "Meridian DQ Agent <notifications@meridian.vantax.co.za>",
-                "to": [recipient],
-                "subject": subject,
-                "html": body,
-            },
-            timeout=10,
+            json=payload,
+            timeout=60 if attachments else 10,
         )
         logger.info(f"Email sent via Resend: status={resp.status_code}")
         return resp.ok
@@ -316,11 +337,14 @@ def _send_email(config: dict, version_data: dict, trigger: str) -> bool:
     return _deliver_email(recipient, subject, body)
 
 
-def _deliver_email(recipient: str, subject: str, body: str) -> bool:
+def _deliver_email(recipient: str, subject: str, body: str,
+                   attachments: list[Attachment] | None = None) -> bool:
     """Microsoft Graph, else the SMTP relay (SMTP_HOST), else Resend. False when no backend is
-    configured or every attempt fails — the single source of truth every caller relies on."""
+    configured or every attempt fails — the single source of truth every caller relies on.
+    A message with attachments skips Graph (its sender here has no attachment support) so the
+    files are never dropped silently."""
     # Try Microsoft Graph first
-    graph_client = create_graph_client()
+    graph_client = None if attachments else create_graph_client()
     if graph_client:
         if graph_client.send_email(recipient, subject, body, sender_name="Meridian Data Quality"):
             return True
@@ -328,8 +352,8 @@ def _deliver_email(recipient: str, subject: str, body: str) -> bool:
 
     # Fall back to SMTP or Resend
     if os.getenv("SMTP_HOST"):
-        return _send_email_smtp(recipient, subject, body)
-    return _send_email_resend(recipient, subject, body)
+        return _send_email_smtp(recipient, subject, body, attachments)
+    return _send_email_resend(recipient, subject, body, attachments)
 
 
 def _send_teams_card(config: dict, version_data: dict):

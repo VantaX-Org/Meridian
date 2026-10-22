@@ -20,28 +20,38 @@ from fastapi import Response
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.formatting.rule import CellIsRule, ColorScaleRule, DataBarRule
-from openpyxl.styles import Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
+
+from api.services.report_theme import PRINT_TOKENS
 
 if TYPE_CHECKING:
     import pandas as pd
 
 SAST = ZoneInfo("Africa/Johannesburg")
 
-ACCENT = "2B4BE0"
-_ACCENT = ACCENT
-_LINE = "E4E2DB"
-_WASH = "FAF9F6"
-_INK = "141519"
-_INK3 = "6A6C76"
-_NAVY = "0F1430"
-_WHITE = "FFFFFF"
+def _hex(key: str) -> str:
+    return PRINT_TOKENS[key].lstrip("#").upper()
 
-# Soft status tints (fill) and their ink, matching the report.css status colours.
-STATUS_TINTS = {"bad": ("FCEBE9", "8E1B12"), "high": ("FDEEE3", "8F3908"),
-                "warn": ("FBF1DB", "6E4900"), "ok": ("E4F4EA", "0F5C2D")}
-_TINT_INK = {fill: ink for fill, ink in STATUS_TINTS.values()}
+
+# The Canvas palette shared with the PDF reports (api/services/report_theme.py, frontend/DESIGN.md).
+ACCENT = _hex("accent")
+_ACCENT = ACCENT
+_ACCENT_FILL = _hex("accent_fill")  # vivid: data bars
+_LINE = _hex("line")
+_WASH = _hex("wash")
+_INK = _hex("ink")
+_INK3 = _hex("ink_3")
+_NAVY = _hex("navy")
+_WHITE = "FFFFFF"
+BODY_FONT, BODY_SIZE = "Calibri", 11  # Manrope is not available in Excel
+MONO_FONT, MONO_SIZE = "Consolas", 10
+
+# Soft status tints (fill) with ink text: red / amber / green from the Canvas, orange between amber and red.
+STATUS_TINTS = {"bad": ("FDECEC", _INK), "high": ("FFEFE2", _INK),
+                "warn": ("FFF8E6", _INK), "ok": ("E7F7EE", _INK)}
+_TINT_INK = {fill: ink for key, (fill, ink) in STATUS_TINTS.items()}
 
 # Spreadsheet formula-injection guard — same prefixes as api.routes.audit._csv_cell.
 FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
@@ -51,6 +61,8 @@ ROW_CAP = 100_000
 
 _MARK_PATH = Path(__file__).resolve().parents[2] / "templates" / "assets" / "brand" / "mark-light.png"  # anchored at B2, a white cell
 _COVER_BAND_ROWS = 40
+
+_BODY_FONT = Font(name=BODY_FONT, size=BODY_SIZE, color=_INK)
 
 ColumnKind = Literal["text", "int", "pct", "money", "date", "datetime", "mono", "raw"]
 RuleKind = Literal["status", "databar", "colorscale"]
@@ -207,14 +219,30 @@ def _cell_value_and_format(raw: object, kind: ColumnKind, scale: float) -> tuple
     return (guard_formula_cell(raw), None)
 
 
+def _display_text(value: object, number_format: Optional[str]) -> str:
+    """The text Excel will show, so a thousands-separated number gets the width it needs."""
+    try:
+        if number_format == "#,##0":
+            return f"{value:,.0f}"
+        if number_format == "#,##0.00":
+            return f"{value:,.2f}"
+        if number_format == "0.0%":
+            return f"{value * 100:.1f}%"
+    except (TypeError, ValueError):
+        pass
+    return str(value)
+
+
 def _column_width(header: str, sample_values: list[str]) -> int:
+    """Fit the 95th percentile of the content (a long outlier is allowed to clip) or the bold header
+    plus room for the filter button, whichever is wider; 10 to 60 characters."""
     lengths = sorted(len(v) for v in sample_values[:500])
     if lengths:
         idx = min(int(len(lengths) * 0.95), len(lengths) - 1)
         p95 = lengths[idx]
     else:
         p95 = 0
-    return max(10, min(60, max(len(header), p95)))
+    return max(10, min(60, max(len(header) + 3, p95 + 2)))
 
 
 def _apply_rules(ws: Worksheet, spec: SheetSpec, last_row: int) -> None:
@@ -236,7 +264,7 @@ def _apply_rules(ws: Worksheet, spec: SheetSpec, last_row: int) -> None:
             top = (1, "num") if col.kind == "pct" else (None, "max")
             ws.conditional_formatting.add(rng, DataBarRule(
                 start_type="num", start_value=0, end_type=top[1], end_value=top[0],
-                color=_ACCENT, showValue=True))
+                color=_ACCENT_FILL, showValue=True))
         else:
             bad, ok = STATUS_TINTS["bad"][0], STATUS_TINTS["ok"][0]
             ws.conditional_formatting.add(rng, ColorScaleRule(
@@ -247,19 +275,20 @@ def _apply_rules(ws: Worksheet, spec: SheetSpec, last_row: int) -> None:
 def _write_totals(ws: Worksheet, spec: SheetSpec, last_row: int) -> None:
     """SUBTOTAL row under the data (it follows the active filter). Outside the filter range."""
     row = last_row + 1
-    ws.cell(row=row, column=1, value="Total").font = Font(bold=True, color=_INK)
+    ws.cell(row=row, column=1, value="Total").font = Font(name=BODY_FONT, size=BODY_SIZE, bold=True, color=_INK)
     for i, col in enumerate(spec.columns, start=1):
         if col.key in (spec.totals or []):
             letter = get_column_letter(i)
             cell = ws.cell(row=row, column=i, value=f"=SUBTOTAL(109,{letter}2:{letter}{last_row})")
-            cell.font = Font(bold=True, color=_INK)
+            cell.font = Font(name=BODY_FONT, size=BODY_SIZE, bold=True, color=_INK)
             cell.number_format = "#,##0"
         ws.cell(row=row, column=i).border = Border(top=Side(style="thin", color=_INK3))
 
 
 def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
     """Write one data sheet. Returns (row_count, truncated)."""
-    header_font = Font(color=_WHITE, bold=True, size=11)
+    header_font = Font(name=BODY_FONT, color=_WHITE, bold=True, size=BODY_SIZE)
+    header_align = Alignment(vertical="center")
     header_fill = PatternFill(fill_type="solid", fgColor=_ACCENT)
     header_border = Border(bottom=Side(style="thin", color=_LINE))
 
@@ -268,9 +297,10 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
         cell.font = header_font
         cell.fill = header_fill
         cell.border = header_border
+        cell.alignment = header_align
         if col.kind in ("mono", "raw"):
-            cell.font = Font(color=_WHITE, bold=True, size=11, name="Consolas")
-    ws.row_dimensions[1].height = 18
+            cell.font = Font(color=_WHITE, bold=True, size=BODY_SIZE, name=MONO_FONT)
+    ws.row_dimensions[1].height = 20
     ws.sheet_properties.tabColor = _ACCENT
     wash = PatternFill(fill_type="solid", fgColor=_WASH)
 
@@ -289,8 +319,9 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
             if number_format:
                 cell.number_format = number_format
+            cell.font = _BODY_FONT
             if col.kind in ("mono", "raw"):
-                cell.font = Font(name="Consolas", size=10, color=_INK)
+                cell.font = Font(name=MONO_FONT, size=MONO_SIZE, color=_INK)
             if row_idx % 2 == 1:  # alternate rows (3, 5, ...) take the wash
                 cell.fill = wash
             if col.fill_by_value and raw in col.fill_by_value:
@@ -299,7 +330,7 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
                 if tint in _TINT_INK:
                     cell.font = Font(name=cell.font.name, size=cell.font.size, color=_TINT_INK[tint])
             if len(sample_values[col_idx]) < 500 and value is not None:
-                sample_values[col_idx].append(str(value))
+                sample_values[col_idx].append(_display_text(value, number_format))
         row_idx += 1
         row_count += 1
 
@@ -335,9 +366,9 @@ def _write_cover_sheet(
     ws.column_dimensions["B"].width = 24
     ws.column_dimensions["C"].width = 70
 
-    band = PatternFill(fill_type="solid", fgColor=_NAVY)
+    wash = PatternFill(fill_type="solid", fgColor=_WASH)  # a slim wash gutter, no dark band
     for r in range(1, _COVER_BAND_ROWS + 1):
-        ws.cell(row=r, column=1).fill = band
+        ws.cell(row=r, column=1).fill = wash
 
     if _MARK_PATH.exists():
         try:
@@ -349,9 +380,11 @@ def _write_cover_sheet(
             pass  # cover still renders without the mark if Pillow/the file is unavailable
 
     ws["B5"] = guard_formula_cell(title)
-    ws["B5"].font = Font(bold=True, size=20, color=_INK)
+    ws["B5"].font = Font(name=BODY_FONT, bold=True, size=20, color=_INK)
+    for col in ("B", "C"):
+        ws[f"{col}5"].border = Border(bottom=Side(style="medium", color=_ACCENT))
     ws["B6"] = guard_formula_cell(tenant_name)
-    ws["B6"].font = Font(size=12, color=_INK3)
+    ws["B6"].font = Font(name=BODY_FONT, size=12, color=_INK3)
 
     rows: list[tuple[str, object]] = [
         ("Organisation", guard_formula_cell(tenant_name)),
@@ -361,15 +394,15 @@ def _write_cover_sheet(
     ]
     row_idx = 8
     for label, value in rows:
-        ws.cell(row=row_idx, column=2, value=label).font = Font(bold=True, color=_INK)
+        ws.cell(row=row_idx, column=2, value=label).font = Font(name=BODY_FONT, size=BODY_SIZE, bold=True, color=_INK)
         cell = ws.cell(row=row_idx, column=3, value=value)
-        cell.font = Font(name="Consolas", size=10, color=_INK) if label == "Run ID" else Font(color=_INK)
+        cell.font = Font(name=MONO_FONT, size=MONO_SIZE, color=_INK) if label == "Run ID" else _BODY_FONT
         row_idx += 1
 
     row_idx += 1
-    ws.cell(row=row_idx, column=2, value="Sheets").font = Font(bold=True, color=_INK)
+    ws.cell(row=row_idx, column=2, value="Sheets").font = Font(name=BODY_FONT, size=BODY_SIZE, bold=True, color=_INK)
     row_idx += 1
-    link_font = Font(color=ACCENT, underline="single")
+    link_font = Font(name=BODY_FONT, size=BODY_SIZE, color=ACCENT, underline="single")
     for sheet_title, count, note in sheet_meta:
         text = f"{sheet_title} — {count:,} row{'s' if count != 1 else ''}"
         if note:
@@ -378,12 +411,12 @@ def _write_cover_sheet(
         link = ws.cell(row=row_idx, column=2, value=guard_formula_cell(sheet_title))
         link.hyperlink = "#'" + sheet_title.replace("'", "''") + "'!A1"
         link.font = link_font
-        ws.cell(row=row_idx, column=3, value=guard_formula_cell(text)).font = Font(color=_INK)
+        ws.cell(row=row_idx, column=3, value=guard_formula_cell(text)).font = _BODY_FONT
         row_idx += 1
 
     footer = ws.cell(row=max(row_idx + 1, _COVER_BAND_ROWS + 2), column=2,
                      value="Generated by Meridian – stays inside your network")
-    footer.font = Font(size=8, color=_INK3)
+    footer.font = Font(name=BODY_FONT, size=9, color=_INK3)
 
 
 def build_workbook(

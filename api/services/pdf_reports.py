@@ -160,8 +160,8 @@ def render(template: str, ctx: dict) -> bytes:
 
 # ── inline SVG charts (no JS) ────────────────────────────────────────────────
 
-_ACCENT, _TRACK, _INK, _MUTED = (PRINT_TOKENS[k] for k in ("accent", "line", "ink", "ink_3"))
-_UP, _DOWN = PRINT_TOKENS["ok"], PRINT_TOKENS["bad"]
+_ACCENT, _TRACK, _INK, _MUTED = (PRINT_TOKENS[k] for k in ("accent_fill", "ring_track", "ink", "ink_3"))
+_UP, _DOWN = PRINT_TOKENS["ok_fill"], PRINT_TOKENS["bad_fill"]
 _HIGH, _MED = PRINT_TOKENS["high"], PRINT_TOKENS["warn"]
 
 
@@ -1140,7 +1140,7 @@ def _app_version() -> str:
 
 
 def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Optional[str] = None,
-         module: Optional[str] = None, matnr: Optional[str] = None) -> Optional[bytes]:
+         module: Optional[str] = None, matnr: Optional[str] = None, runs: int = 12) -> Optional[bytes]:
     """Load one report's data for a tenant and render it. ``None`` when the run is not found
     (or, for an extraction report, the run was not extracted from SAP)."""
     tenant_name = s.execute(text("SELECT name FROM tenants WHERE id = :t"), {"t": tid}).scalar() or ""
@@ -1183,4 +1183,397 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
         d = load_record(s, tid, vid, matnr)
         return d and render("record_report.html", record_context(
             d["matnr"], d["by_view"], version=d["version"], system=d["system"], **kw))
+    if kind == "trend":
+        d = load_trend(s, tid, vid, runs)
+        return d and render("trend_report.html", trend_context(
+            d["version"], d["trend"], d["findings_first"], d["findings_last"], system=d["system"],
+            scoring=scoring, **kw))
+    if kind == "rules":
+        return render("rule_catalogue.html", rules_context(load_rules(s, tid, module), module=module, **kw))
+    if kind == "dictionary":
+        return render("data_dictionary.html", dictionary_context(module=module, **kw))
+    if kind == "owners":
+        d = load_owners(s, tid, vid)
+        return d and render("owner_report.html", owners_context(
+            d["version"], d["owners"], d["objects"], system=d["system"], scoring=scoring, **kw))
     raise ValueError(kind)
+
+
+# ── trend report (the last N finished runs of one lineage) ────────────────────
+
+TREND_MOVERS = 10
+TREND_RULES_MAX = 25
+
+
+def _dim_series(runs: list[dict]) -> list[dict]:
+    """One row per dimension: the label, the score in every run (None when no check measured it) and
+    a line chart over the runs that did measure it."""
+    out = []
+    for d in DIMENSIONS:
+        values = [(r.get("dimensions") or {}).get(d) for r in runs]
+        if not any(v is not None for v in values):
+            out.append({"name": d, "values": values, "chart": None, "change": None})
+            continue
+        measured = [v for v in values if v is not None]
+        out.append({"name": d, "values": values,
+                    "chart": trend_line([(r["label"] or r["run_at"] or "", v) for r, v in zip(runs, values)]),
+                    "change": round(measured[-1] - measured[0], 1) if len(measured) > 1 else None})
+    return out
+
+
+def _movers(first: dict, last: dict) -> list[dict]:
+    """Objects scored in both the first and the last run, ordered by how far the score moved."""
+    rows = [{"module": m, "first": first[m], "last": last[m], "change": round(last[m] - first[m], 1)}
+            for m in sorted(set(first) & set(last))
+            if first.get(m) is not None and last.get(m) is not None]
+    rows.sort(key=lambda r: (-abs(r["change"]), r["module"]))
+    return rows
+
+
+def _trend_headline(runs: list[dict], movers: list[dict], new: int, fixed: int) -> str:
+    scored = [r for r in runs if r["composite"] is not None]
+    if not scored:
+        return "None of the runs in this window produced a score, so there is no trend to report."
+    if len(scored) < 2:
+        return (f"Only one run in this window has a score, {scored[-1]['composite']:.1f} out of 100, "
+                "so there is no movement to report yet.")
+    a, b = scored[0], scored[-1]
+    delta = round(b["composite"] - a["composite"], 1)
+    word = "rose" if delta > 0 else "fell" if delta < 0 else "did not change"
+    s = (f"Across {len(scored)} runs the score {word}"
+         + (f" by {abs(delta):.1f} points" if delta else "")
+         + f", from {a['composite']:.1f} to {b['composite']:.1f} out of 100.")
+    if movers:
+        top = max(movers, key=lambda r: r["change"])
+        low = min(movers, key=lambda r: r["change"])
+        if top["change"] > 0:
+            s += f" {fmt_module(top['module'])} improved most, by {top['change']:.1f} points."
+        if low["change"] < 0:
+            s += f" {fmt_module(low['module'])} slipped most, by {abs(low['change']):.1f} points."
+    s += (f" Between the first and the last run {fmt_n(fixed)} rule{'s' if fixed != 1 else ''} "
+          f"stopped failing and {fmt_n(new)} started failing.")
+    return s
+
+
+def trend_context(version: dict, trend: dict, findings_first: list[dict], findings_last: list[dict], *,
+                  tenant_name: str, scoring: dict, system: Optional[dict] = None,
+                  generated_at: Optional[datetime] = None) -> dict:
+    """Pure builder. ``trend`` is ``insights_aggregate.trends`` output (runs oldest first, each with
+    composite, dimensions and per-module scores under the tenant's current weights)."""
+    from api.services.scoring import scoring_config
+
+    runs = list((trend or {}).get("runs") or [])
+    cfg = scoring_config(scoring)
+    now = _now(generated_at)
+    first, last = (runs[0], runs[-1]) if runs else ({}, {})
+    movers = _movers(first.get("modules") or {}, last.get("modules") or {}) if len(runs) > 1 else []
+    changes = check_changes(findings_first, findings_last) if len(runs) > 1 else \
+        {"new": [], "resolved": [], "persisting": [], "not_comparable": []}
+    shown = movers[:TREND_MOVERS]
+    overall = {"composite": last.get("composite"), "capped": False}
+    scored = last.get("composite") is not None
+    return {
+        "title": "Trend report", "eyebrow": "Data quality trend", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
+                 ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
+                 ("Window", f"{len(runs)} finished run{'s' if len(runs) != 1 else ''}"
+                  + (f", {fmt_dt(first.get('run_at'))} to {fmt_dt(last.get('run_at'))}" if len(runs) > 1 else "")),
+                 ("Generated", fmt_dt(now))],
+        "overall": overall if scored else None,
+        "headline": _trend_headline(runs, movers, len(changes["new"]), len(changes["resolved"])),
+        "runs": runs, "run_count": len(runs),
+        "score_chart": trend_line([(r["label"] or r["run_at"] or "", r["composite"]) for r in runs],
+                                  cfg["thresholds"]["target"]) if runs else None,
+        "dims": _dim_series(runs),
+        "movers": shown, "movers_total": len(movers),
+        "mover_chart": delta_bars([(fmt_module(m["module"]), m["change"]) for m in shown]) if shown else None,
+        "new_rules": changes["new"][:TREND_RULES_MAX], "new_total": len(changes["new"]),
+        "fixed_rules": changes["resolved"][:TREND_RULES_MAX], "fixed_total": len(changes["resolved"]),
+        "first_label": first.get("label") or first.get("run_at"), "last_label": last.get("label") or last.get("run_at"),
+        "annotations": (trend or {}).get("annotations") or [],
+        "methodology": methodology_block(scoring),
+    }
+
+
+def load_trend(s: Session, tid: str, vid: str, runs: int = 12) -> Optional[dict]:
+    """The run, its lineage's last ``runs`` finished runs, and the findings of the first and last."""
+    from api.services import insights_aggregate as agg
+
+    v = load_version(s, tid, vid)
+    if not v:
+        return None
+    trend = agg.trends(s, tid, vid, None, runs) or {"runs": [], "annotations": []}
+    ids = [r["version_id"] for r in trend["runs"]]
+    first = agg.load_run_findings(s, tid, ids[0]) if len(ids) > 1 else []
+    last = agg.load_run_findings(s, tid, ids[-1]) if len(ids) > 1 else []
+    return {"version": v, "trend": trend, "findings_first": first, "findings_last": last,
+            "system": load_system(s, tid, v)}
+
+
+# ── rule catalogue ───────────────────────────────────────────────────────────
+
+_RULE_DESC_MAX = 260
+
+
+def _rule_row(rid: str, name: str, module: str, category: str, severity: str, description: str,
+              conditions: Any, enabled: bool, source: str) -> dict:
+    cond = conditions
+    if isinstance(cond, str):
+        try:
+            cond = json.loads(cond or "[]")
+        except ValueError:
+            cond = []
+    cond = (cond or [{}])[0] if isinstance(cond, list) else {}
+    cond = cond if isinstance(cond, dict) else {}
+    msg = name.split(": ", 1)[1] if ": " in name else name
+    desc = (description or "").strip()
+    if desc == msg:
+        desc = ""
+    elif desc:
+        desc = _first_sentence(desc)
+    if len(desc) > _RULE_DESC_MAX:
+        desc = desc[:_RULE_DESC_MAX].rsplit(" ", 1)[0].rstrip(",;:. ") + "..."
+    return {"id": rid, "name": msg, "module": module, "category": category, "severity": severity or "medium",
+            "dimension": cond.get("dimension"), "field": cond.get("field"), "description": desc,
+            "enabled": enabled, "source": source}
+
+
+def rules_context(rules: list[dict], *, tenant_name: str, module: Optional[str] = None,
+                  generated_at: Optional[datetime] = None) -> dict:
+    """Pure builder. ``rules`` are ``_rule_row`` dicts. Grouped by module, ordered by category then module
+    name, rules by severity then id; a contents list by module with the rule counts."""
+    now = _now(generated_at)
+    rows = [r for r in rules if not module or r["module"] == module]
+    by_module: dict[str, list[dict]] = {}
+    for r in rows:
+        by_module.setdefault(r["module"], []).append(r)
+    cat_of = {m: rs[0]["category"] for m, rs in by_module.items()}
+    order = sorted(by_module, key=lambda m: (_GROUP_RANK.get(cat_of[m], 9), m))
+    groups = []
+    for m in order:
+        rs = sorted(by_module[m], key=lambda r: (_SEV_RANK.get(r["severity"], 9), r["id"]))
+        groups.append({"module": m, "slug": re.sub(r"[^a-z0-9]+", "-", m.lower()), "category": cat_of[m],
+                       "rules": rs, "count": len(rs), "enabled": sum(1 for r in rs if r["enabled"])})
+    sev = {s: sum(1 for r in rows if r["severity"] == s) for s in (*SEVERITIES, "info")}
+    off = sum(1 for r in rows if not r["enabled"])
+    if not rows:
+        headline = ("No rule matches the module you chose." if module
+                    else "The rule catalogue is empty on this installation.")
+    else:
+        headline = (f"The catalogue holds {fmt_n(len(rows))} rule{'s' if len(rows) != 1 else ''} across "
+                    f"{fmt_n(len(groups))} object{'s' if len(groups) != 1 else ''}. "
+                    f"{fmt_n(sev['critical'])} are critical and {fmt_n(sev['high'])} are high severity. "
+                    + (f"{fmt_n(off)} {'is' if off == 1 else 'are'} switched off for this organisation."
+                       if off else "Every rule is switched on for this organisation."))
+    return {
+        "title": "Rule catalogue", "eyebrow": "Validation rules", "cover": False,
+        "scope_label": _scope_label(tenant_name, None), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("Scope", fmt_module(module) if module else "Every object"),
+                 ("Rules", fmt_n(len(rows))), ("Generated", fmt_dt(now))],
+        "headline": headline, "groups": groups, "total": len(rows), "sev": sev, "switched_off": off,
+        "module": module,
+    }
+
+
+_GROUP_RANK = {"ecc": 0, "successfactors": 1, "warehouse": 2, "concur": 3, "ariba": 4}
+
+
+def load_rules(s: Session, tid: str, module: Optional[str] = None) -> list[dict]:
+    """The shipped YAML catalogue merged with this tenant's rules table: the table decides enabled and
+    severity, and adds the tenant's own rules (custom, mined, HQ). A rule the tenant has not been seeded
+    with yet is listed with the catalogue's own state."""
+    from api.services.tenant_seed import rule_catalogue
+
+    out: dict[tuple[str, str], dict] = {}
+    for r in rule_catalogue():
+        if module and r["module"] != module:
+            continue
+        out[(r["rid"], r["module"])] = _rule_row(r["rid"], r["name"], r["module"], r["category"], r["severity"],
+                                                 r["description"], r["conditions"], r["enabled"], "yaml")
+    for r in _all(s, "SELECT name, description, module, category, severity, enabled, conditions, source "
+                     "FROM rules WHERE tenant_id = :t AND (CAST(:m AS text) IS NULL OR module = CAST(:m AS text))",
+                  t=tid, m=module):
+        rid = str(r["name"]).split(":", 1)[0].strip()
+        out[(rid, r["module"])] = _rule_row(rid, r["name"], r["module"], r.get("category") or "", r["severity"],
+                                            r["description"], r["conditions"], bool(r["enabled"]),
+                                            r.get("source") or "yaml")
+    return list(out.values())
+
+
+def rules_modules() -> frozenset[str]:
+    """Modules a rule-catalogue or data-dictionary report can be filtered to."""
+    return _modules()
+
+
+# ── data dictionary ──────────────────────────────────────────────────────────
+
+_VALUES_MAX = 8
+_VALUES_CHARS = 70
+
+
+def _short_values(meta: dict) -> Optional[str]:
+    vals = meta.get("valid_values")
+    if not vals:
+        return None
+    vals = [str(v) for v in vals]
+    if len(vals) <= _VALUES_MAX and sum(len(v) for v in vals) + 2 * len(vals) <= _VALUES_CHARS:
+        return ", ".join(vals)
+    return f"{len(vals)} allowed values"
+
+
+def table_modules() -> dict[str, list[str]]:
+    """Table name (upper case) -> the modules whose extraction reads it, across every system type."""
+    from sap.extraction_registry import SYSTEM_EXTRACTIONS
+
+    out: dict[str, set[str]] = {}
+    for mods in SYSTEM_EXTRACTIONS.values():
+        for module, targets in mods.items():
+            for t in targets:
+                out.setdefault(t.source.upper(), set()).add(module)
+    return {t: sorted(m) for t, m in out.items()}
+
+
+def dictionary_context(*, tenant_name: str, module: Optional[str] = None,
+                       generated_at: Optional[datetime] = None) -> dict:
+    """Pure over the shipped data dictionary and extraction registry: every table Meridian reads, its
+    modules, and each field with key, mandatory, type, length and short valid-value lists."""
+    from sap.data_dictionary import get_all_table_names, get_key_fields, get_mandatory_fields, get_table_metadata
+
+    now = _now(generated_at)
+    mods_of = table_modules()
+    tables = []
+    for name in get_all_table_names():
+        mods = mods_of.get(name.upper(), [])
+        if module and module not in mods:
+            continue
+        meta = get_table_metadata(name) or {}
+        fields = [{"name": f, "description": m.get("description") or "", "type": m.get("data_type") or "",
+                   "length": m.get("length"), "key": bool(m.get("key")), "mandatory": bool(m.get("mandatory")),
+                   "allowed": _short_values(m), "config_table": m.get("config_table")} for f, m in meta.items()]
+        tables.append({"name": name, "modules": mods, "fields": fields,
+                       "key_fields": get_key_fields(name), "mandatory": get_mandatory_fields(name)})
+    by_module: dict[str, list[str]] = {}
+    for t in tables:
+        for m in (t["modules"] or ["_unmapped"]):
+            by_module.setdefault(m, []).append(t["name"])
+    contents = [{"module": m, "tables": by_module[m]} for m in sorted(by_module, key=lambda x: (x == "_unmapped", x))]
+    n_fields = sum(len(t["fields"]) for t in tables)
+    if not tables:
+        headline = ("No table in the data dictionary is read by the module you chose." if module
+                    else "The data dictionary is empty on this installation.")
+    else:
+        headline = (f"Meridian reads {fmt_n(len(tables))} table{'s' if len(tables) != 1 else ''} with "
+                    f"{fmt_n(n_fields)} documented field{'s' if n_fields != 1 else ''}"
+                    + (f" for {fmt_module(module)}" if module else f" across {fmt_n(len(contents))} groups of objects")
+                    + ". Key fields identify a record. Mandatory fields must hold a value for the record to be valid in SAP.")
+    return {
+        "title": "Data dictionary", "eyebrow": "Fields Meridian reads", "cover": False,
+        "scope_label": _scope_label(tenant_name, None), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("Scope", fmt_module(module) if module else "Every object"),
+                 ("Tables", fmt_n(len(tables))), ("Generated", fmt_dt(now))],
+        "headline": headline, "tables": tables, "contents": contents, "field_total": n_fields, "module": module,
+    }
+
+
+# ── owner workload ───────────────────────────────────────────────────────────
+
+
+def _blocking_rule_of(findings: list[dict]) -> dict[str, dict]:
+    """Per module, the failing critical or high rule that blocks most: severity, then failing records,
+    then id (the same pick as the objects list)."""
+    best: dict[str, dict] = {}
+    for f in findings:
+        if f.get("severity") not in ("critical", "high") or not failing(f):
+            continue
+        key = (_SEV_RANK.get(f["severity"], 9), -int(f.get("affected_count") or 0), f["check_id"])
+        if f["module"] not in best or key < best[f["module"]]["key"]:
+            best[f["module"]] = {"key": key, "check_id": f["check_id"], "severity": f["severity"],
+                                 "affected": int(f.get("affected_count") or 0)}
+    return {m: {k: v for k, v in b.items() if k != "key"} for m, b in best.items()}
+
+
+def owners_context(version: dict, owners: list[dict], objects: list[dict], *, tenant_name: str, scoring: dict,
+                   generated_at: Optional[datetime] = None, system: Optional[dict] = None) -> dict:
+    """Pure builder. ``owners``: one dict per person with ``user_id``, ``owner``, ``score``, ``delta``,
+    ``open_by_severity``, ``fixed_since_baseline`` and ``oldest_item_age_days`` (the /insights/owners
+    cards; ``score`` is ``None`` for an owner with no assigned items). ``objects``: one dict per module of
+    the run with ``module``, ``score``, ``owner_id``, ``blocking`` (check id, severity, affected, name)."""
+    from api.services.insights_owners import _SEVERITY_WEIGHT
+
+    now = _now(generated_at)
+    by_owner: dict[Any, list[dict]] = {}
+    for o in objects:
+        by_owner.setdefault(o.get("owner_id"), []).append(o)
+
+    def obj_sort(o: dict) -> tuple:
+        return (o.get("score") is None, o.get("score") if o.get("score") is not None else 0, o["module"])
+
+    rows = []
+    for o in owners:
+        mine = sorted(by_owner.get(o["user_id"], []), key=obj_sort)
+        open_n = sum((o.get("open_by_severity") or {}).values())
+        delta = o.get("delta")
+        rows.append({**o, "open": open_n, "objects": mine, "object_count": len(mine),
+                     "blocked": sum(1 for x in mine if x.get("blocking")),
+                     "trend": None if delta in (None, 0) else ("improved" if delta > 0 else "slipped")})
+    rows.sort(key=lambda r: (r["score"] is None, r["score"] if r["score"] is not None else 0, r["owner"].lower()))
+    unassigned = sorted(by_owner.get(None, []), key=obj_sort)
+    scored = [r for r in rows if r["score"] is not None]
+    if not rows and not unassigned:
+        headline = "No owner and no object is recorded for this run."
+    else:
+        headline = (f"{fmt_n(len(rows))} owner{'s' if len(rows) != 1 else ''} hold{'s' if len(rows) == 1 else ''} "
+                    f"{fmt_n(sum(r['open'] for r in rows))} open item{'s' if sum(r['open'] for r in rows) != 1 else ''}. ")
+        if scored:
+            w = scored[0]
+            headline += (f"{w['owner']} has the lowest owner score, {w['score']:.1f} out of 100, "
+                         f"with {fmt_n(w['open'])} open item{'s' if w['open'] != 1 else ''}. ")
+        headline += (f"{fmt_n(len(unassigned))} object{'s' if len(unassigned) != 1 else ''} "
+                     f"{'has' if len(unassigned) == 1 else 'have'} no owner"
+                     + (", and some of them have a blocking rule." if any(x.get("blocking") for x in unassigned) else "."))
+    return {
+        "title": "Owner workload", "eyebrow": "Data ownership", "cover": False,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
+                 ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
+                 ("Run at", fmt_dt(version.get("run_at"))), ("Generated", fmt_dt(now))],
+        "headline": headline, "owners": rows, "unassigned": unassigned,
+        "severity_weights": _SEVERITY_WEIGHT, "methodology": methodology_block(scoring),
+    }
+
+
+def load_owners(s: Session, tid: str, vid: str) -> Optional[dict]:
+    """The run, the owner cards (the same query and scorer as GET /insights/owners), who owns each object
+    (``data_owners``, kind object) and the blocking rule of each object in the run."""
+    from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
+
+    v = load_version(s, tid, vid)
+    if not v:
+        return None
+    aggs = load_owner_aggregates(_all(s, OWNER_ISSUE_SQL, tid=tid, cutoff=baseline_cutoff()))
+    owners: dict[str, dict] = {}
+    for name, a in aggs.items():
+        card = build_owner_card(name, **{k: x for k, x in a.items() if k != "user_id"})
+        owners[str(a["user_id"])] = {"user_id": str(a["user_id"]), "owner": card.owner, "score": card.score,
+                                     "delta": card.delta, "open_by_severity": card.open_by_severity,
+                                     "fixed_since_baseline": card.fixed_since_baseline,
+                                     "oldest_item_age_days": card.oldest_item_age_days}
+    holders = _all(s, "SELECT d.ref, d.owner_user_id AS uid, u.name FROM data_owners d "
+                      "JOIN users u ON u.id = d.owner_user_id AND u.tenant_id = d.tenant_id "
+                      "WHERE d.tenant_id = :t AND d.kind = 'object' AND d.owner_user_id IS NOT NULL", t=tid)
+    owner_of = {h["ref"]: str(h["uid"]) for h in holders}
+    for h in holders:  # an owner with no assigned items yet still gets a section
+        owners.setdefault(str(h["uid"]), {"user_id": str(h["uid"]), "owner": h["name"], "score": None, "delta": None,
+                                          "open_by_severity": {}, "fixed_since_baseline": 0,
+                                          "oldest_item_age_days": 0})
+    findings = load_findings(s, tid, vid)
+    blocking = _blocking_rule_of(findings)
+    summary = v.get("dqs_summary") or {}
+    objects = []
+    for m in sorted(set(summary) | {f["module"] for f in findings}):
+        b = blocking.get(m)
+        objects.append({"module": m, "score": (summary.get(m) or {}).get("composite_score"),
+                        "owner_id": owner_of.get(m),
+                        "blocking": {**b, "name": _rule(b["check_id"]).get("message") or ""} if b else None})
+    return {"version": v, "owners": list(owners.values()), "objects": objects, "system": load_system(s, tid, v)}

@@ -164,7 +164,8 @@ async def unread_count(
 # Delivery lives in workers/tasks/send_notifications.py. The HMAC secret is
 # write-only: it is never returned by the API.
 
-_CHANNEL_COLS = "id, kind, digest, immediate_critical, enabled, created_at, (secret IS NOT NULL) AS has_secret"
+_CHANNEL_COLS = ("id, kind, digest, report_pack, immediate_critical, enabled, created_at, "
+                 "(secret IS NOT NULL) AS has_secret")
 
 
 class AlertChannelCreate(BaseModel):
@@ -173,6 +174,20 @@ class AlertChannelCreate(BaseModel):
     secret: Optional[str] = Field(default=None, min_length=16, max_length=256)
     digest: Literal["daily", "weekly", "off"] = "daily"
     immediate_critical: bool = False
+    #: board pack + analyst workbook by email on this cadence (email channels only)
+    report_pack: Literal["off", "weekly", "monthly"] = "off"
+
+
+class AlertChannelUpdate(BaseModel):
+    """Any subset of the settings; what is left out stays as it is."""
+    digest: Optional[Literal["daily", "weekly", "off"]] = None
+    immediate_critical: Optional[bool] = None
+    enabled: Optional[bool] = None
+    report_pack: Optional[Literal["off", "weekly", "monthly"]] = None
+
+
+_REPORT_PACK_EMAIL_ONLY = "the board pack can only be sent to an email channel"
+_NEVER_FIRES = "channel would never fire: set a digest, immediate_critical or report_pack"
 
 
 def _redact(kind: str, target: str) -> str:
@@ -198,16 +213,42 @@ async def create_alert_channel(body: AlertChannelCreate, db: AsyncSession = Depe
             raise HTTPException(status_code=400, detail="target must be an email address")
     elif not target.startswith("https://"):
         raise HTTPException(status_code=400, detail="target must be an https:// URL")
-    if body.digest == "off" and not body.immediate_critical:
-        raise HTTPException(status_code=400, detail="channel would never fire: set a digest or immediate_critical")
+    if body.report_pack != "off" and body.kind != "email":
+        raise HTTPException(status_code=400, detail=_REPORT_PACK_EMAIL_ONLY)
+    if body.digest == "off" and not body.immediate_critical and body.report_pack == "off":
+        raise HTTPException(status_code=400, detail=_NEVER_FIRES)
     await _set_rls(db, tenant.id)
     row = (await db.execute(text(f"""
-        INSERT INTO alert_channels (tenant_id, kind, target, secret, digest, immediate_critical)
-        VALUES (:tid, :k, :t, :s, :d, :i) RETURNING {_CHANNEL_COLS}
+        INSERT INTO alert_channels (tenant_id, kind, target, secret, digest, immediate_critical, report_pack)
+        VALUES (:tid, :k, :t, :s, :d, :i, :r) RETURNING {_CHANNEL_COLS}
     """), {"tid": str(tenant.id), "k": body.kind, "t": target, "s": body.secret, "d": body.digest,
-           "i": body.immediate_critical})).mappings().one()
+           "i": body.immediate_critical, "r": body.report_pack})).mappings().one()
     await db.commit()
     return {**row, "target": _redact(body.kind, target)}
+
+
+@router.put("/alert-channels/{channel_id}", dependencies=[Depends(require_permission("manage_settings"))])
+async def update_alert_channel(channel_id: uuid.UUID, body: AlertChannelUpdate, db: AsyncSession = Depends(get_db),
+                               tenant: Tenant = Depends(get_tenant)):
+    """Change a channel's digest, critical-alert, on/off or board pack setting. The target and
+    secret are write-once: remove the channel and add it again to change them."""
+    await _set_rls(db, tenant.id)
+    cur = (await db.execute(text("SELECT kind, digest, immediate_critical, enabled, report_pack, target "
+                                 "FROM alert_channels WHERE id = :id"), {"id": str(channel_id)})).mappings().first()
+    if not cur:
+        raise HTTPException(status_code=404, detail="Alert channel not found")
+    new = {**cur, **body.model_dump(exclude_none=True)}
+    if new["report_pack"] != "off" and cur["kind"] != "email":
+        raise HTTPException(status_code=400, detail=_REPORT_PACK_EMAIL_ONLY)
+    if new["digest"] == "off" and not new["immediate_critical"] and new["report_pack"] == "off":
+        raise HTTPException(status_code=400, detail=_NEVER_FIRES)
+    row = (await db.execute(text(f"""
+        UPDATE alert_channels SET digest = :d, immediate_critical = :i, enabled = :e, report_pack = :r
+        WHERE id = :id RETURNING {_CHANNEL_COLS}, target
+    """), {"d": new["digest"], "i": new["immediate_critical"], "e": new["enabled"], "r": new["report_pack"],
+           "id": str(channel_id)})).mappings().one()
+    await db.commit()
+    return {**{k: v for k, v in row.items() if k != "target"}, "target": _redact(row["kind"], row["target"])}
 
 
 @router.delete("/alert-channels/{channel_id}", status_code=204,

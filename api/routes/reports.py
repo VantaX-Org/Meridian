@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -183,16 +183,20 @@ _NOT_FOUND = {
     "board": "Run not found.",
     "object": "Run not found, or this module was not evaluated.",
     "record": "Run not found, or this material is not in the extracted dataset.",
+    "trend": "Run not found.",
+    "rules": "No rules found.",
+    "dictionary": "No tables found.",
+    "owners": "Run not found.",
 }
 
 
 def _build_sync(tenant_id: str, kind: str, vid: Optional[str], vid1: Optional[str],
-                module: Optional[str] = None, matnr: Optional[str] = None) -> Optional[bytes]:
+                module: Optional[str] = None, matnr: Optional[str] = None, runs: int = 12) -> Optional[bytes]:
     from api.services.pdf_reports import build
     from workers.db import get_sync_engine, tenant_session
 
     with tenant_session(get_sync_engine(), tenant_id) as session:
-        return build(session, tenant_id, kind, vid, vid1, module=module, matnr=matnr)
+        return build(session, tenant_id, kind, vid, vid1, module=module, matnr=matnr, runs=runs)
 
 
 async def _stored_pdf(tenant: Tenant, vid: Optional[uuid.UUID]) -> bytes | None:
@@ -227,7 +231,7 @@ async def _stored_pdf(tenant: Tenant, vid: Optional[uuid.UUID]) -> bytes | None:
 
 async def _pdf(tenant: Tenant, kind: str, filename: str, vid: Optional[uuid.UUID] = None,
                vid1: Optional[uuid.UUID] = None, module: Optional[str] = None,
-               matnr: Optional[str] = None) -> Response:
+               matnr: Optional[str] = None, runs: int = 12) -> Response:
     if kind == "analysis":
         stored = await _stored_pdf(tenant, vid)
         if stored is not None:
@@ -236,7 +240,7 @@ async def _pdf(tenant: Tenant, kind: str, filename: str, vid: Optional[uuid.UUID
     try:
         pdf = await asyncio.to_thread(_build_sync, str(tenant.id), kind,
                                       str(vid) if vid else None, str(vid1) if vid1 else None,
-                                      module, matnr)
+                                      module, matnr, runs)
     except Exception:
         logger.exception("PDF report %s failed", kind)
         raise HTTPException(status_code=500, detail="Failed to generate PDF report")
@@ -303,7 +307,7 @@ async def record_report_pdf(version_id: uuid.UUID, matnr: str, tenant: Tenant = 
 
 # ── board pack, analyst workbook, catalogue ──────────────────────────────────
 
-async def _audit_export(request: Request, tenant: Tenant, kind: str, version_id: uuid.UUID,
+async def _audit_export(request: Request, tenant: Tenant, kind: str, version_id: Optional[uuid.UUID],
                         module: Optional[str]) -> None:
     """One audit_log row per board or workbook download. Never breaks the download: building the
     row and the insert are both guarded, and a failure is logged and swallowed."""
@@ -314,10 +318,10 @@ async def _audit_export(request: Request, tenant: Tenant, kind: str, version_id:
         row = {
             "tenant_id": tenant.id, "actor_user_id": uuid.UUID(str(uid)) if uid else None,
             "actor_email": getattr(request.state, "local_user_email", None), "action": "report.export",
-            "entity_type": "report", "entity_id": str(version_id), "method": request.method,
+            "entity_type": "report", "entity_id": str(version_id) if version_id else kind, "method": request.method,
             "path": request.url.path, "status_code": 200, "ip": request.client.host if request.client else None,
             "user_agent": request.headers.get("user-agent"), "before_json": None,
-            "after_json": {"kind": kind, "version_id": str(version_id), "module": module},
+            "after_json": {"kind": kind, "version_id": str(version_id) if version_id else None, "module": module},
         }
         await asyncio.to_thread(_insert_audit_row, row)
     except Exception:
@@ -340,6 +344,57 @@ async def board_report_pdf(version_id: uuid.UUID, request: Request, compare: Opt
         await _require_run_of_tenant(db, tenant, compare)
     res = await _pdf(tenant, "board", f"meridian_board_{version_id}.pdf", version_id, compare)
     await _audit_export(request, tenant, "board", version_id, None)
+    return res
+
+
+@router.get("/reports/trend.pdf")
+async def trend_report_pdf(version_id: uuid.UUID, request: Request, runs: int = Query(12, ge=2, le=52),
+                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Trend report: the score over the last ``runs`` finished runs of this run's lineage, dimension
+    scores per run, the objects that moved most and the rules that started or stopped failing."""
+    await _rls(db, tenant)
+    res = await _pdf(tenant, "trend", f"meridian_trend_{version_id}.pdf", version_id, runs=runs)
+    await _audit_export(request, tenant, "trend", version_id, None)
+    return res
+
+
+@router.get("/reports/rules.pdf")
+async def rules_report_pdf(request: Request, module: Optional[str] = None, db: AsyncSession = Depends(get_db),
+                           tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Rule catalogue: one object's rules, with severity, dimension, description and SAP field. Needs no run.
+    ``module`` is required: the whole catalogue is 8,000 rules and hundreds of pages, which would hold the API
+    process for minutes; an unknown module is a 422."""
+    await _rls(db, tenant)
+    if not module:
+        raise HTTPException(status_code=422, detail="Choose an object: module is required for the rule catalogue.")
+    if module not in _modules():
+        raise HTTPException(status_code=422, detail=f"Unknown module: {module}")
+    res = await _pdf(tenant, "rules", f"meridian_rules{'_' + module if module else ''}.pdf", module=module)
+    await _audit_export(request, tenant, "rules", None, module)
+    return res
+
+
+@router.get("/reports/dictionary.pdf")
+async def dictionary_report_pdf(request: Request, module: Optional[str] = None, db: AsyncSession = Depends(get_db),
+                                tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Data dictionary: the SAP tables and fields Meridian reads, by table and the objects that read it.
+    Needs no run. ``module`` limits it to the tables one object reads."""
+    await _rls(db, tenant)
+    if module and module not in _modules():
+        raise HTTPException(status_code=422, detail=f"Unknown module: {module}")
+    res = await _pdf(tenant, "dictionary", f"meridian_dictionary{'_' + module if module else ''}.pdf", module=module)
+    await _audit_export(request, tenant, "dictionary", None, module)
+    return res
+
+
+@router.get("/reports/owners/{version_id}.pdf")
+async def owners_report_pdf(version_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
+                            tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Owner workload: each owner's score, open items and objects with their blocking rule, lowest
+    score first, then the objects with no owner."""
+    await _rls(db, tenant)
+    res = await _pdf(tenant, "owners", f"meridian_owners_{version_id}.pdf", version_id)
+    await _audit_export(request, tenant, "owners", version_id, None)
     return res
 
 
@@ -375,6 +430,9 @@ async def workbook_xlsx(version_id: uuid.UUID, request: Request, module: Optiona
     return xlsx_response(*out)
 
 
+# Reports that describe the product or the tenant, not one run: their url is built without a run.
+_RUNLESS = frozenset({"rules", "dictionary"})
+
 # id, name, format, about, sections, page_estimate, requires, path template, stored-report flag
 _CATALOGUE = (
     ("board", "Board pack", "PDF", "Score, trend, blockers, root causes and impact by L1 for a board audience.",
@@ -402,6 +460,16 @@ _CATALOGUE = (
     ("object", "Object report", "PDF", "One object's rules and fields.",
      ["Score", "Rules", "Top findings", "Record samples"], 3, ["module"], "/api/v1/reports/object/{v}/{module}.pdf",
      False),
+    ("trend", "Trend report", "PDF", "The score across the last runs of this system, by dimension.",
+     ["Score over time", "Scores by dimension", "Objects that moved most", "Rules that started failing",
+      "Rules that were fixed", "Methodology"], 6, [], "/api/v1/reports/trend.pdf?version_id={v}&runs=12", False),
+    ("owners", "Owner workload", "PDF", "Each owner's score, open items and objects, then the objects with no owner.",
+     ["Owners", "Objects by owner", "Objects with no owner", "Methodology"], 4, [],
+     "/api/v1/reports/owners/{v}.pdf", False),
+    ("rules", "Rule catalogue", "PDF", "One object's validation rules, with severity, dimension and SAP field.",
+     ["Contents", "Rules by object"], 60, ["module"], "/api/v1/reports/rules.pdf?module={module}", False),
+    ("dictionary", "Data dictionary", "PDF", "The SAP tables and fields Meridian reads, by table and object.",
+     ["Contents", "Fields by table"], 40, [], "/api/v1/reports/dictionary.pdf", False),
     ("record", "Record fix sheet", "PDF", "One record's fixes.", ["Failing rules by view", "Fixes"], 1, ["record"],
      None, False),
 )
@@ -425,12 +493,12 @@ async def report_catalogue(version_id: Optional[uuid.UUID] = None, module: Optio
     out = []
     for rid, name, fmt, about, sections, pages, requires, path, stored in _CATALOGUE:
         url = None
-        if path and version_id and not ("module" in requires and not module):
-            url = path.format(v=version_id, module=module or "")
+        if path and (version_id or rid in _RUNLESS) and not ("module" in requires and not module):
+            url = path.format(v=version_id or "", module=module or "")
             if compare and rid in ("board", "workbook", "compare"):
                 key = "v1" if rid == "compare" else "compare"
                 url += ("&" if "?" in url else "?") + f"{key}={compare}"
-            if module and rid == "workbook":
+            if module and rid in ("workbook", "dictionary"):
                 url += ("&" if "?" in url else "?") + f"module={module}"
         out.append({"id": rid, "name": name, "format": fmt, "about": about, "sections": sections,
                     "page_estimate": pages, "requires": requires, "url": url,

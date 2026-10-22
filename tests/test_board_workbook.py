@@ -233,7 +233,9 @@ def test_routes_catalogue_audit_and_tenant_isolation(app_engine, seeded, monkeyp
                                                           headers=analyst)).json()}
             assert no_module["object"]["url"] is None
             none = {e["id"]: e for e in (await c.get("/api/v1/reports/catalogue", headers=analyst)).json()}
-            assert all(e["url"] is None for e in none.values())
+            # the data dictionary needs no run; everything else waits for one
+            assert none["dictionary"]["url"] == "/api/v1/reports/dictionary.pdf"
+            assert all(e["url"] is None for k, e in none.items() if k != "dictionary")
 
             who["tenant"] = b
             for url in (f"/api/v1/reports/board/{vid}.pdf", f"/api/v1/reports/{vid}/workbook.xlsx",

@@ -1,0 +1,40 @@
+{% extends "_base.html" %}
+{% block body %}
+<style>
+a.toc { display: block; color: var(--ink); padding: 0.6mm 0; }
+a.toc::after { content: leader(". ") target-counter(attr(href), page); color: var(--ink-3); }
+a.toc .n { color: var(--ink-3); }
+</style>
+<p class="lead">{{ headline }}</p>
+<div class="figures">
+    <div class="figure primary"><div class="v">{{ total | n }}</div><div class="k">Rules{% if module %} for {{ module | module }}{% endif %}</div></div>
+    <div class="figure"><div class="v">{{ sev.critical | n }}</div><div class="k">Critical</div></div>
+    <div class="figure"><div class="v">{{ sev.high | n }}</div><div class="k">High</div></div>
+    <div class="figure"><div class="v">{{ switched_off | n }}</div><div class="k">Switched off</div></div>
+</div>
+<p class="note">Each rule is a deterministic check over the extracted records. The dimension is the kind of quality it measures, and the field is the SAP table and field it reads. Severity sets how much a failure weighs in the score.</p>
+
+<h2>Contents</h2>
+{% if groups %}
+<div>
+{% for g in groups %}<a class="toc" href="#m-{{ g.slug }}">{{ g.module | module }} <span class="n">({{ g.count | n }} rule{{ "s" if g.count != 1 }})</span></a>
+{% endfor %}
+</div>
+{% else %}<div class="empty">No rules to list.</div>{% endif %}
+
+{% for g in groups %}
+<h2 id="m-{{ g.slug }}" class="page-break">{{ g.module | module }}</h2>
+<p class="note">{{ g.count | n }} rule{{ "s" if g.count != 1 }}, {{ g.enabled | n }} switched on.</p>
+<table class="data">
+<thead><tr><th>Rule</th><th>Severity</th><th>Dimension</th><th>SAP field</th></tr></thead>
+<tbody>
+{% for r in g.rules %}
+<tr><td><span class="mono">{{ r.id }}</span>{% if not r.enabled %} <span class="muted">(off)</span>{% endif %} {{ r.name }}{% if r.description %}<span class="sub">{{ r.description }}</span>{% endif %}</td>
+    <td><span class="st {{ r.severity if r.severity in ["critical", "high", "medium", "low"] else "na" }}">{{ r.severity | capitalize }}</span></td>
+    <td>{{ (r.dimension or "") | capitalize }}</td>
+    <td>{% if r.field %}<span class="mono">{{ r.field }}</span>{% else %}<span class="muted">not tied to one field</span>{% endif %}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endfor %}
+{% endblock %}

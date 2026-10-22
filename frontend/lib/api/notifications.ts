@@ -74,6 +74,8 @@ export async function getMyDeliveries(limit = 20): Promise<NotificationDelivery[
 
 export type AlertChannelKind = "webhook" | "slack" | "teams" | "email";
 export type AlertDigest = "daily" | "weekly" | "off";
+/** How often an email channel receives the board pack and the analyst workbook. */
+export type AlertReportPack = "off" | "weekly" | "monthly";
 
 /** A channel as listed: webhook targets are redacted to the host; the secret is never returned. */
 export interface AlertChannel {
@@ -81,6 +83,8 @@ export interface AlertChannel {
   kind: AlertChannelKind;
   target: string;
   digest: AlertDigest;
+  /** Board pack by email; only email channels can be set to anything but "off". Absent means off. */
+  report_pack?: AlertReportPack;
   immediate_critical: boolean;
   enabled: boolean;
   created_at: string;
@@ -94,6 +98,15 @@ export interface AlertChannelCreate {
   secret?: string;
   digest: AlertDigest;
   immediate_critical: boolean;
+  report_pack?: AlertReportPack;
+}
+
+/** Any subset of a channel's settings; what is left out stays as it is. */
+export interface AlertChannelUpdate {
+  digest?: AlertDigest;
+  immediate_critical?: boolean;
+  enabled?: boolean;
+  report_pack?: AlertReportPack;
 }
 
 export async function getAlertChannels(): Promise<AlertChannel[]> {
@@ -103,6 +116,11 @@ export async function getAlertChannels(): Promise<AlertChannel[]> {
 
 export async function createAlertChannel(body: AlertChannelCreate): Promise<AlertChannel> {
   const { data } = await apiClient.post<AlertChannel>("/api/v1/alert-channels", body);
+  return data;
+}
+
+export async function updateAlertChannel(id: string, body: AlertChannelUpdate): Promise<AlertChannel> {
+  const { data } = await apiClient.put<AlertChannel>(`/api/v1/alert-channels/${id}`, body);
   return data;
 }
 

@@ -1,0 +1,81 @@
+{% extends "_base.html" %}
+{% block body %}
+
+<h2>Score over time</h2>
+{% if run_count < 2 %}
+<p class="lead">{{ headline }}</p>
+<div class="empty">A trend needs at least two finished runs of the same system. Run the analysis again to start one.</div>
+{% else %}
+<p class="lead">{{ headline }}</p>
+<div class="chart">{{ score_chart }}</div>
+<p class="note">The line shows the data quality score of each finished run, oldest first, under your current scoring weights, so runs scored with older settings still compare. The dashed line is the target.{% for a in annotations %} {{ a.label }}.{% endfor %}</p>
+
+<h2>Scores by dimension</h2>
+<table class="data keep">
+<thead><tr><th>Run</th><th class="r">Score</th>{% for d in dims %}<th class="r">{{ d.name | capitalize }}</th>{% endfor %}</tr></thead>
+<tbody>
+{% for r in runs %}
+<tr><td>{{ r.label or (r.run_at | dt) }}{% if r.baseline %} <span class="muted">(baseline)</span>{% endif %}<span class="sub">{{ r.run_at | dt }}</span></td>
+    <td class="r">{% if r.composite is not none %}{{ r.composite | n(1) }}{% else %}<span class="muted">not scored</span>{% endif %}</td>
+    {% for key in ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] %}
+    {% set v = (r.dimensions or {}).get(key) %}
+    <td class="r">{% if v is not none %}{{ v | n(1) }}{% else %}<span class="muted">not measured</span>{% endif %}</td>
+    {% endfor %}</tr>
+{% endfor %}
+</tbody>
+</table>
+<p class="note">A dimension that no check measured in a run is shown as not measured, never as a perfect score.</p>
+
+{% for pair in [dims[0:2], dims[2:4], dims[4:6]] %}
+<div class="cols">
+{% for d in pair %}
+<div class="keep"><h3>{{ d.name | capitalize }}{% if d.change is not none %} <span class="muted">{{ d.change | signed(1) }} pts</span>{% endif %}</h3>
+{% if d.chart %}<div class="chart">{{ d.chart }}</div>{% else %}<div class="empty">Not measured in these runs.</div>{% endif %}</div>
+{% endfor %}
+</div>
+{% endfor %}
+
+<h2 class="page-break">Objects that moved most</h2>
+<p>Change in object score between the first run ({{ first_label }}) and the last run ({{ last_label }}) of the window.</p>
+{% if movers %}
+<div class="chart">{{ mover_chart }}</div>
+<table class="data keep">
+<thead><tr><th>Object</th><th class="r">First run</th><th class="r">Last run</th><th class="r">Change</th></tr></thead>
+<tbody>
+{% for m in movers %}
+<tr><td>{{ m.module | module }}</td><td class="r">{{ m.first | n(1) }}</td><td class="r">{{ m.last | n(1) }}</td>
+    <td class="r {{ 'up' if m.change > 0 else 'down' if m.change < 0 else '' }}">{{ m.change | signed(1) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% if movers_total > movers | length %}<p class="note">Top {{ movers | length }} of {{ movers_total | n }} objects scored in both runs.</p>{% endif %}
+{% else %}<div class="empty">No object was scored in both the first and the last run.</div>{% endif %}
+
+<h2>Rules that started failing</h2>
+{% if new_rules %}
+<table class="data">
+<thead><tr><th>Rule</th><th>Object</th><th class="r">Failing records</th></tr></thead>
+<tbody>
+{% for r in new_rules %}<tr><td><span class="st {{ r.severity }}">{{ (r.severity or "") | capitalize }}</span> <span class="mono">{{ r.check_id }}</span>{% if r.message %}<span class="sub">{{ r.message }}</span>{% endif %}</td>
+    <td>{{ r.module | module }}</td><td class="r">{{ r.v2 | n }}</td></tr>{% endfor %}
+</tbody>
+</table>
+{% if new_total > new_rules | length %}<p class="note">Top {{ new_rules | length }} of {{ new_total | n }} rules, worst severity first.</p>{% endif %}
+{% else %}<div class="empty">No rule that passed in the first run fails in the last run.</div>{% endif %}
+
+<h2>Rules that were fixed</h2>
+{% if fixed_rules %}
+<table class="data">
+<thead><tr><th>Rule</th><th>Object</th><th class="r">Failing records then</th></tr></thead>
+<tbody>
+{% for r in fixed_rules %}<tr><td><span class="st {{ r.severity }}">{{ (r.severity or "") | capitalize }}</span> <span class="mono">{{ r.check_id }}</span>{% if r.message %}<span class="sub">{{ r.message }}</span>{% endif %}</td>
+    <td>{{ r.module | module }}</td><td class="r">{{ r.v1 | n }}</td></tr>{% endfor %}
+</tbody>
+</table>
+{% if fixed_total > fixed_rules | length %}<p class="note">Top {{ fixed_rules | length }} of {{ fixed_total | n }} rules, worst severity first.</p>{% endif %}
+{% else %}<div class="empty">No rule that failed in the first run passes in the last run.</div>{% endif %}
+<p class="note">Only rules that ran cleanly in both runs are compared. A rule that was added, removed or could not be evaluated in either run is left out.</p>
+{% endif %}
+
+{% include "_methodology.html" %}
+{% endblock %}

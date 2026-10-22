@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, EmptyState, ExplorerPage, ExportMenu, PageHeader, Pill, Skeleton, Tabs, asyncStateOf } from "@/design";
+import { Button, DataTable, EmptyState, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Skeleton, Tabs, asyncStateOf } from "@/design";
 import {
   exportAuditEntries, getAuditEntries, getLlmAudit, type AuditEntry, type AuditListParams, type LlmAuditEntry,
 } from "@/lib/api/audit";
@@ -17,7 +17,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 const auditColumns: ColumnDef<AuditEntry>[] = [
   { id: "when", header: "When", cell: ({ row }) => <time dateTime={row.original.created_at}>{relativeTime(row.original.created_at)}</time> },
   { id: "who", header: "Who", cell: ({ row }) => row.original.actor_email ?? "system" },
-  { id: "what", header: "Action", cell: ({ row }) => [row.original.action, row.original.entity_type].filter(Boolean).join(", ") },
+  { id: "what", header: "Action", cell: ({ row }) => <Mono inline>{[row.original.action, row.original.entity_type].filter(Boolean).join(", ")}</Mono> },
   { id: "ctx", header: "Request", cell: ({ row }) => `${row.original.method} ${row.original.path} returned ${row.original.status_code}` },
 ];
 

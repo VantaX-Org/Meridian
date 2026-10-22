@@ -6,6 +6,9 @@ Triggers (all times SAST = UTC+2):
   3. monthly_report    — 04:00 SAST (02:00 UTC) 1st of month
   4. daily_digest      — 06:00 SAST (04:00 UTC) daily
   5. weekly_archive    — 00:00 SAST (22:00 UTC Saturday) Sunday
+
+Also: board pack by email to the alert channels set to weekly (Monday 07:00 SAST) or
+monthly (the 1st, 07:00 SAST) — workers/tasks/send_report_pack.py.
 """
 
 import gzip
@@ -20,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
+import workers.tasks.send_report_pack  # noqa: F401 — registers the board pack beat tasks
 
 logger = logging.getLogger("meridian.scheduler")
 
@@ -975,6 +979,16 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.send_notifications.send_alert_digest",
         "schedule": crontab(hour=4, minute=45, day_of_week=1),
         "args": ("weekly",),
+    },
+    "report-pack-weekly-monday": {
+        "task": "workers.tasks.send_report_pack.send_report_pack",
+        "schedule": crontab(hour=5, minute=0, day_of_week=1),  # Mon 05:00 UTC = 07:00 SAST, after the 04:45 digests
+        "args": ("weekly",),
+    },
+    "report-pack-monthly-1st": {
+        "task": "workers.tasks.send_report_pack.send_report_pack",
+        "schedule": crontab(hour=5, minute=0, day_of_month=1),  # 1st, 05:00 UTC = 07:00 SAST
+        "args": ("monthly",),
     },
     "forced-update-check-every-15min": {
         "task": "forced_update_check",

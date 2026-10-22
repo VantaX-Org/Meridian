@@ -1,0 +1,58 @@
+{% extends "_base.html" %}
+{% block body %}
+<p class="lead">{{ headline }}</p>
+<p class="note">Owners are ranked with the lowest owner score first. The owner score starts at 100 and loses
+{% for sev, w in severity_weights.items() %}{{ w }} for each open {{ sev }} item{% if not loop.last %}, {% endif %}{% endfor %}.
+Change is measured against the start of the last seven days. Object scores are data quality scores from this run.</p>
+
+<h2>Owners</h2>
+{% if owners %}
+<table class="data keep">
+<thead><tr><th>Owner</th><th class="r">Owner score</th><th class="r">Objects</th><th class="r">Open items</th><th class="r">Fixed in 7 days</th><th>Since baseline</th></tr></thead>
+<tbody>
+{% for o in owners %}
+<tr><td>{{ o.owner }}</td>
+    <td class="r">{% if o.score is not none %}{{ o.score | n(1) }}{% else %}<span class="muted">no items assigned</span>{% endif %}</td>
+    <td class="r">{{ o.object_count | n }}</td><td class="r">{{ o.open | n }}</td><td class="r">{{ o.fixed_since_baseline | n }}</td>
+    <td>{% if o.trend == "improved" %}<span class="up">Improved {{ o.delta | n(1) }}</span>{% elif o.trend == "slipped" %}<span class="down">Slipped {{ (0 - o.delta) | n(1) }}</span>{% else %}<span class="muted">No change</span>{% endif %}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}<div class="empty">No item is assigned to an owner and no object has an owner.</div>{% endif %}
+
+{% for o in owners %}
+<h3 class="{{ 'page-break' if loop.first else '' }}">{{ o.owner }}</h3>
+<p class="note">
+{% if o.score is not none %}Owner score {{ o.score | n(1) }}. {% endif %}{{ o.open | n }} open item{{ "s" if o.open != 1 }}{% if o.open_by_severity %} ({% for sev, n in o.open_by_severity.items() %}{{ n | n }} {{ sev }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}.
+{% if o.oldest_item_age_days %}The oldest open item is {{ o.oldest_item_age_days | n }} day{{ "s" if o.oldest_item_age_days != 1 }} old.{% endif %}</p>
+{% if o.objects %}
+<table class="data keep">
+<thead><tr><th>Object</th><th class="r">Score</th><th>Blocking rule</th><th class="r">Failing records</th></tr></thead>
+<tbody>
+{% for x in o.objects %}
+<tr><td>{{ x.module | module }}</td><td class="r">{% if x.score is not none %}{{ x.score | n(1) }}{% else %}<span class="muted">not scored</span>{% endif %}</td>
+    {% if x.blocking %}<td><span class="st {{ x.blocking.severity }}">{{ x.blocking.severity | capitalize }}</span> <span class="mono">{{ x.blocking.check_id }}</span>{% if x.blocking.name %}<span class="sub">{{ x.blocking.name }}</span>{% endif %}</td><td class="r">{{ x.blocking.affected | n }}</td>
+    {% else %}<td><span class="muted">No blocking rule</span></td><td class="r"></td>{% endif %}</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}<div class="empty">No object is assigned to {{ o.owner }}. Their score comes from items assigned to them directly.</div>{% endif %}
+{% endfor %}
+
+<h2 class="page-break">Objects with no owner</h2>
+{% if unassigned %}
+<table class="data">
+<thead><tr><th>Object</th><th class="r">Score</th><th>Blocking rule</th><th class="r">Failing records</th></tr></thead>
+<tbody>
+{% for x in unassigned %}
+<tr><td>{{ x.module | module }}</td><td class="r">{% if x.score is not none %}{{ x.score | n(1) }}{% else %}<span class="muted">not scored</span>{% endif %}</td>
+    {% if x.blocking %}<td><span class="st {{ x.blocking.severity }}">{{ x.blocking.severity | capitalize }}</span> <span class="mono">{{ x.blocking.check_id }}</span>{% if x.blocking.name %}<span class="sub">{{ x.blocking.name }}</span>{% endif %}</td><td class="r">{{ x.blocking.affected | n }}</td>
+    {% else %}<td><span class="muted">No blocking rule</span></td><td class="r"></td>{% endif %}</tr>
+{% endfor %}
+</tbody>
+</table>
+<p class="note">Assign an owner to each object in the object list so its failures reach a named person.</p>
+{% else %}<div class="empty">Every object in this run has an owner.</div>{% endif %}
+
+{% include "_methodology.html" %}
+{% endblock %}
