@@ -1,21 +1,38 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { toast } from "sonner";
+import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
 import { exportConfigMatches, getConfigMatches, type ConfigMatch } from "@/lib/api/config-matches";
+import { errorText } from "@/lib/api/remediation";
+import { analyseVersion } from "@/lib/api/system-objects";
 import { useRole } from "@/hooks/use-role";
 import { isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 const dash = (v: string | number | null) => v ?? "—";
 const CLASS_TONE: Record<string, PillTone> = { config_driven: "go", data_error: "no-go", mismatch: "at-risk" };
 
-/** Runs/[v] › Config matches: where live configuration disagrees with the standard rule. Export needs `export`. */
+/**
+ * Runs/[v] › Config matches: where live configuration disagrees with the standard rule. Export needs `export`.
+ * With none, Re-run analysis (the run header's own action, needs `analyse`) re-checks the run, which runs config matching again.
+ */
 export function ConfigMatchesTab({ versionId }: { versionId: string }) {
   const { can } = useRole();
+  const qc = useQueryClient();
   const q = useQuery({ queryKey: ["config-matches", versionId], queryFn: () => getConfigMatches(versionId), retry: false });
+  const rerun = useMutation({
+    mutationFn: () => analyseVersion(versionId),
+    onSuccess: () => {
+      toast.success("Re-analysis started. Progress shows above.");
+      void qc.invalidateQueries({ queryKey: [...queryKeys.run(versionId), "status"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.run(versionId), exact: true });
+    },
+    onError: (e: Error) => toast.error(errorText(e)),
+  });
   const cols = useMemo<ColumnDef<ConfigMatch, unknown>[]>(() => [
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
@@ -33,7 +50,13 @@ export function ConfigMatchesTab({ versionId }: { versionId: string }) {
   if (q.error && !isNotFound(q.error)) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   const items = q.data?.items ?? [];
   if (items.length === 0) {
-    return <EmptyState title="No config matches for this run." detail="They appear when an analysis includes the config intelligence engine." />;
+    return (
+      <EmptyState
+        title="No config matches yet"
+        detail="They appear when an analysis includes the config intelligence engine."
+        action={can("analyse") ? <Button onClick={() => rerun.mutate()} pending={rerun.isPending}>Re-run analysis</Button> : undefined}
+      />
+    );
   }
   const byClass = items.reduce<Record<string, number>>((acc, m) => ({ ...acc, [m.classification]: (acc[m.classification] ?? 0) + 1 }), {});
   return (

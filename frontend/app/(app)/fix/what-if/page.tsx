@@ -3,6 +3,7 @@
 /** Fix › What-if: simulate every rule fix on a run and compare the score before and after. */
 
 import { useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall, asyncStateOf } from "@/design";
@@ -55,7 +56,12 @@ export default function WhatIfPage() {
       meta="Apply every rule fix to a copy of a run and compare the score before and after"
       exportMenu={controls}
       state={asyncStateOf(versions, () => runs.length === 0, true)}
-      emptyProps={{ title: "No finished run to simulate", detail: "Run an analysis, then come back to see what the fixes would be worth.", ghost: "chart" }}
+      emptyProps={{
+        title: "No finished run to simulate",
+        detail: "Run an analysis, then come back to see what the fixes would be worth.",
+        ghost: "chart",
+        action: <Button render={<Link href="/runs">Open runs</Link>} />,
+      }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
       narrative={
         result && o && delta != null

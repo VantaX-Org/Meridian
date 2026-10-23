@@ -104,7 +104,7 @@ Each stage of the run with its **Status**, **Started**, **Duration** and **Error
 
 ### Configuration
 
-Where the system's live configuration disagrees with a standard rule. Each match shows the **Check**, **Record**, **Field**, **Actual** value, what the **Standard expects**, a **Classification**, the **Recommended action**, the **T-code** and a **Priority**. "No config matches for this run." means the analysis did not include the configuration engine.
+Where the system's live configuration disagrees with a standard rule. Each match shows the **Check**, **Record**, **Field**, **Actual** value, what the **Standard expects**, a **Classification**, the **Recommended action**, the **T-code** and a **Priority**. "No config matches yet" means the analysis did not include the configuration engine; **Re-run analysis** checks the run again (analyse permission).
 
 ### Audit
 

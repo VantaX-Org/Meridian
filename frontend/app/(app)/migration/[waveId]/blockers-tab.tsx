@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button, DataTable, DrillLink, EmptyState, Mono, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
@@ -18,7 +18,8 @@ const GAP_COLUMNS: ColumnDef<MigrationGapFinding>[] = [
   { id: "detail", header: "Detail", cell: ({ row }) => row.original.detail ?? "—" },
 ];
 
-export function BlockersTab({ waveId, runId, blockers }: { waveId: string; runId: string | null; blockers: WaveBlocker[] }) {
+/** `runAction` is the cockpit's Run now, absent without the analyse permission. */
+export function BlockersTab({ waveId, runId, blockers, runAction }: { waveId: string; runId: string | null; blockers: WaveBlocker[]; runAction?: ReactNode }) {
   const { can } = useRole();
   const [open, setOpen] = useState<WaveBlocker | null>(null);
   const filter = open ? { module: open.module, gap_type: open.gap_type, search: open.field ?? undefined } : {};
@@ -48,7 +49,7 @@ export function BlockersTab({ waveId, runId, blockers }: { waveId: string; runId
       ) : null },
   ];
 
-  if (!runId) return <EmptyState title="Run this wave to see its blockers." />;
+  if (!runId) return <EmptyState title="Not run yet" detail="Run this wave to see its blockers." action={runAction} />;
   if (!blockers.length) return <EmptyState title="The latest run found no critical or high gaps." />;
   return (
     <div className="flex flex-col gap-4">

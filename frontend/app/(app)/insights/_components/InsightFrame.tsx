@@ -6,7 +6,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Async, Card, PageFrame, PageHeader, InsightHeader, Select, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
+import { Async, Card, PageHeader, InsightHeader, Select, Skeleton, type AsyncError, type AsyncState, type EmptyStateGhost, type ExportOption, type PillTone, type InsightHeaderProps } from "@/design";
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { RunScope } from "@/components/run-scope";
@@ -164,8 +164,8 @@ export function InsightFrame({
     </div>
   );
   return (
-    // PageFrame pads once: the (app) layout's frame already pads, so a second padding doubled the gutter.
-    <PageFrame style={{ gap: "var(--m-section-gap)" }}>
+    // No padding of its own: the (app) layout's frame pads every page once, and a second padding doubled the gutter.
+    <div className="flex w-full flex-col [gap:var(--m-section-gap)]">
       <PageHeader
         title={title}
         meta={scope ? (
@@ -182,6 +182,6 @@ export function InsightFrame({
         {showInsight && <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />}
         {body}
       </div>
-    </PageFrame>
+    </div>
   );
 }

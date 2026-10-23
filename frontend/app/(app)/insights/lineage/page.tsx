@@ -265,7 +265,13 @@ export default function LineagePage() {
             {sel.type === "kpi" || sel.type === "feature" || sel.type === "process" || sel.type === "step"
               ? <GuardsPanel node={sel.id} versionId={latest?.id} /> : null}
             {sel.type === "check"
-              ? (latest ? <BlastPanel checkId={sel.id.slice("check:".length)} versionId={latest.id} /> : <EmptyState title="Blast radius needs a completed analysis." />)
+              ? (latest ? <BlastPanel checkId={sel.id.slice("check:".length)} versionId={latest.id} /> : (
+                <EmptyState
+                  title="No blast radius yet"
+                  detail="Blast radius needs a completed analysis."
+                  action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />}
+                />
+              ))
               : null}
             {neighbours.length ? (
               <ul className="flex flex-col gap-2">

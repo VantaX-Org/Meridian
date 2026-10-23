@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as settingsApi from "@/lib/api/settings";
@@ -63,6 +63,24 @@ describe("rules scoring page", () => {
     expect(await screen.findByLabelText("completeness weight")).toHaveValue(0.4);
     expect(screen.getByText("Sums to one")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save weights" })).toBeEnabled();
+  });
+
+  it("adds the severity cost fields from the empty cost model and saves them", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR", severity: {}, modules: {}, rules: {}, features: {} });
+    const save = vi.spyOn(settingsApi, "updateCostModel").mockResolvedValue();
+    renderWithQuery(<ScoringPage />);
+    const empty = (await screen.findByText("No severity costs set")).closest("[data-state='empty']") as HTMLElement;
+    expect(screen.queryByRole("button", { name: "Save cost model" })).toBeNull();
+    fireEvent.click(within(empty).getByRole("button", { name: "Add severity costs" }));
+    const critical = await screen.findByLabelText("Critical finding cost");
+    expect(screen.getByLabelText("Low finding cost")).toHaveValue(0);
+    fireEvent.change(critical, { target: { value: "500" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save cost model" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith({
+      currency: "ZAR", severity: { critical: 500, high: 0, medium: 0, low: 0 }, modules: {}, rules: {}, features: {},
+    }));
   });
 
   it("shows a retryable error when settings fail to load", async () => {

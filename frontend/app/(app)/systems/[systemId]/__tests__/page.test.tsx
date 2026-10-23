@@ -135,7 +135,23 @@ describe("system detail page", () => {
     expect(within(bench).getAllByText("5,000 records")).toHaveLength(2); // the row and the selected summary
     fireEvent.click(buttons[1]);
     expect(buttons[1]).toHaveAttribute("aria-pressed", "true");
-    expect(within(bench).getByRole("link", { name: "Extract" })).toHaveAttribute("href", "/systems/s1?tab=objects");
+    // Loaded but not analysed: the one action is in the empty state and leads to the Objects tab's Analyse.
+    const empty = within(bench).getByText("Not analysed yet").closest("[data-state='empty']") as HTMLElement;
+    expect(within(empty).getByRole("link", { name: "Analyse" })).toHaveAttribute("href", "/systems/s1?tab=objects");
+    expect(within(bench).getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("offers Extract from the empty summary of an object with no records", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([
+      { module: "fi_gl", system_type: "ecc", enabled: true, last_synced_at: null, last_sync_status: null, row_count: 0, config_synced: false },
+    ] as never);
+    renderWithQuery(<SystemPage />);
+    const bench = await screen.findByTestId("system-workbench");
+    expect(within(bench).getByText("Extract this object to score it.")).toBeInTheDocument();
+    const empty = within(bench).getByText("Not analysed yet").closest("[data-state='empty']") as HTMLElement;
+    expect(within(empty).getByRole("link", { name: "Extract" })).toHaveAttribute("href", "/systems/s1?tab=objects");
+    expect(within(bench).getAllByRole("link")).toHaveLength(1);
   });
 
   it("shows the system role in the header", async () => {

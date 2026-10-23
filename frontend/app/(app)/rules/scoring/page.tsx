@@ -321,6 +321,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
 }
 
 const COST_LABELS: Record<string, string> = { critical: "Critical finding cost", high: "High finding cost", medium: "Medium finding cost", low: "Low finding cost", info: "Info finding cost" };
+/** The severities a new cost model starts with: one field each, at zero, for the user to fill in and save. */
+const COST_SEVERITIES = ["critical", "high", "medium", "low"] as const;
 
 /** Cost per blocked record by severity. Feeds value-at-risk on the insight pages. */
 function CostModelCard({ write }: { write: boolean }) {
@@ -337,7 +339,13 @@ function CostModelCard({ write }: { write: boolean }) {
   return (
     <SettingsSection title={`Cost model (${q.data.currency})`}>
       <p className="m-text-body m-ink-3">What one blocked record costs, by severity.</p>
-      {Object.keys(sev).length === 0 && <EmptyState title="No severity costs set" detail="Enter a cost per blocked record to value findings" />}
+      {Object.keys(sev).length === 0 && (
+        <EmptyState
+          title="No severity costs set"
+          detail="Enter a cost per blocked record to value findings."
+          action={write ? <Button onClick={() => setDraft(Object.fromEntries(COST_SEVERITIES.map((k) => [k, 0])))}>Add severity costs</Button> : undefined}
+        />
+      )}
       <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(q.data); }}>
         {Object.entries(sev).map(([k, v]) => (
           <Field key={k} label={COST_LABELS[k] ?? `${formatModuleName(k)} finding cost`}>
