@@ -99,7 +99,7 @@ Because the run is in the address, you can copy a link and a colleague sees the 
 Follow these steps to go from an empty installation to your first report. Each step names the chapter with the detail.
 
 1. Connect a system or import a file. Select **Systems**, then **Connect system**, and enter the connection details. If you have an export instead, open **More** and choose **Import file**, select **Choose file** (CSV, XLSX, JSON or Parquet), check the **Column mapping** and select **Run import**. Every import becomes a run. See [Systems](/docs?page=systems).
-2. Run an analysis. On the system's page, select **Extract**, choose the objects, and select **Extract and analyse**. Watch progress in the jobs tray. An import is analysed for you. See [Runs](/docs?page=runs).
+2. Run an analysis. On the system's page, select **Extract**, choose the objects, select **Extract and analyse**, then **Confirm**. Watch progress in the jobs tray. An import is analysed for you. See [Runs](/docs?page=runs).
 3. Read Home. The verdict sentence says whether your data is ready, the score shows how far, and **What moves the score** ranks the objects to work on first. See [Home](/docs?page=home).
 4. Open an object. Select an object in the ledger or on the object map. Its page has the tabs **Overview**, **Rules**, **Fields**, **Records**, **Related**, **History** and **Audit**. See [Objects](/docs?page=objects).
 5. Work the inbox or the fix queue. **Inbox** lists the tasks assigned to you and your team. **Fix** holds the proposed corrections in the **Cleaning queue** and groups them into **Batches** for approval. See [Inbox](/docs?page=inbox) and [Fix](/docs?page=fix).

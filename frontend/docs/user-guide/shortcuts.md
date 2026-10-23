@@ -24,7 +24,7 @@ These keys work when a table has the focus. Select a row or press Tab until the 
 - ↑ / ↓: Move between rows.
 - Home / End: Jump to the first or last row.
 - Enter: Open the focused row.
-- Space: Select the focused row. The x key does the same.
+- Space: Select the focused row, where the table lets you select rows. The x key does the same.
 - Escape: Clear the selection and close the row's detail panel.
 
 ### Inbox
@@ -53,7 +53,7 @@ In this version ⌘1 and [ appear in the sheet but have no effect. There is no s
 A few pages have keys of their own that the sheet does not list.
 
 - On an object's page, 1, 2, 3 and 4 open the **Overview**, **Rules**, **Fields** and **Records** tabs.
-- On an object's page, f opens the fix sheet for the record row the keyboard is on, or for the first failing record when no row is focused.
+- On an object's page, f opens the fix sheet for the record row the keyboard is on, or for the first record in the list when no row is focused.
 - On **Runs**, with exactly two runs selected, c opens the comparison of the two.
 - In the process designer, Ctrl S (⌘S) saves the model.
 - Escape closes the **More** menu, a guided tour, a dialog or a side panel, and leaves presentation mode.
@@ -88,7 +88,7 @@ Where it takes you:
 
 - An object and a record key open that record's page, for example `material master 10001234`.
 - A record key alone opens the search page for that key.
-- An object with a severity or a dimension opens the object's page with that filter applied, for example `critical completeness material master`.
+- An object with a dimension opens the object's page with its failing rules narrowed to that dimension, for example `completeness material master`. A severity is kept in the address and applies on the object's **Rules** tab.
 - A dimension or an owner without an object opens the **Objects** list with that filter applied.
 - Anything else opens the search page with your text.
 
@@ -143,7 +143,7 @@ Pages also carry an **Export** button in their header. With one format it downlo
 ## Good to know
 
 - Tables with more than 200 rows draw only the rows on screen, so long lists stay fast. Printing a page prints every row.
-- Search and the shortcut sheet only list pages your role can open.
+- Search lists only the pages your role can open.
 - Your table views, sort and density are saved per table. Two tables with the same columns share their views.
 
 ## Related

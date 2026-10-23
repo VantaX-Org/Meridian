@@ -6,7 +6,7 @@ The admin pages are where the people who run Meridian manage access, alerts, ret
 
 The **Admin** group in **More** lists **Users and audit**, **Audit log** and **Settings**. Under **Settings** sit **Triage**, **Field mapping**, **AI settings**, **Notifications**, **Jobs**, **Reference data** and **Licence**. Two pages have no menu entry and open by address: **Roles and access** at `/admin/roles` and **Exception billing** at `/admin/billing`.
 
-A page opened without the right permission says which one it needs, such as "Needs the manage_users permission".
+A page opened without the right permission says which one it needs, such as "Needs the `manage_users` permission".
 
 ## Users and audit
 

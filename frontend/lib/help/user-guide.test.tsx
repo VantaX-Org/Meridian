@@ -22,10 +22,12 @@ describe("user guide", () => {
     expect(text.split("\n")[0]).toBe(`# ${title}`);
     const words = text.replace(/[#*`>\-[\]()]/g, " ").split(/\s+/).filter(Boolean).length;
     expect(words).toBeGreaterThanOrEqual(400);
-    expect(text).not.toMatch(/https?:\/\//);
+    // literal values such as `/objects/<object>` or `https://` may appear inside inline code; prose may not hold them
+    const prose = text.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "");
+    expect(prose).not.toMatch(/https?:\/\//);
     // the renderer supports no tables, images, blockquotes or HTML
-    expect(text).not.toMatch(/^\s*\|.*\|\s*$/m);
-    expect(text).not.toMatch(/!\[|^>\s|<[a-z]+[\s>]/im);
+    expect(prose).not.toMatch(/^\s*\|.*\|\s*$/m);
+    expect(prose).not.toMatch(/!\[|^>\s|<[a-z]+[\s>]/im);
   });
 
   it("keeps identifiers in inline code, so no snake_case word reaches the page as prose", () => {
