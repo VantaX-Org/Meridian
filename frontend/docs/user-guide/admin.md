@@ -149,7 +149,7 @@ These three are read only and appear for anyone who can open **Settings**.
 
 ## Updating Meridian
 
-Users with the Admin role see **Platform version** on the **Licence** page, with the version running. When a new version is out and the installation has its update sidecar, a dialog opens on its own.
+Users whose role can update the platform (`manage_system`: Platform admin, or the legacy Admin) see **Platform version** on the **Licence** page, with the version running. When a new version is out and the installation has its update sidecar, a dialog opens on its own.
 
 1. Click **Update now**, or **View update** on the **Licence** page. **Remind me later** hides it for that version.
 2. Read the warning: the update restarts Meridian for everyone. Check that no import, sync or export is running.

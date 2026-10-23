@@ -15,7 +15,7 @@ The sheet groups the keys as Navigation, Tables, Inbox and Global. On Windows an
 
 ### Navigation
 
-- ⌘1: Go to Home.
+- ⌘1: Go to Home. It opens the home for your role, from any page, even while you type in a box.
 
 ### Tables
 
@@ -43,10 +43,7 @@ The a, r and x keys need a role that can approve. On the **Exceptions** view, a 
 ### Global
 
 - ⌘K (Ctrl K): Search or jump to a page.
-- [: Collapse or expand the navigation.
 - ?: Show keyboard shortcuts.
-
-In this version ⌘1 and [ appear in the sheet but have no effect. There is no sidebar to collapse, and Home is one click on the Meridian mark or the **Home** pill. Many browsers also keep ⌘1 or Ctrl 1 for their own first tab.
 
 ## Keys on particular pages
 
@@ -80,19 +77,21 @@ It recognises:
 - A severity: `critical`, `high`, `medium` or `low`.
 - A dimension: `completeness`, `accuracy`, `consistency`, `timeliness`, `uniqueness` or `validity`.
 - An owner, written as `owner` followed by the name.
+- `last run`, the newest finished run.
+- A rule ID, such as `MM003`, `S4HC042` or `S4R-WM-QUANT-NEG`. Upper or lower case both work.
 - A record key: a number of 6 to 18 digits, or 10 letters and digits with at least one digit, such as a material or vendor number.
 
-Small words such as "show me all", "the", "in", "for", "findings" and "records" are ignored.
+Other words are ignored, and a chip shows only where the page it opens can use it.
 
 Where it takes you:
 
 - An object and a record key open that record's page, for example `material master 10001234`.
 - A record key alone opens the search page for that key.
-- An object with a dimension opens the object's page with its failing rules narrowed to that dimension, for example `completeness material master`. A severity is kept in the address and applies on the object's **Rules** tab.
-- A dimension or an owner without an object opens the **Objects** list with that filter applied.
-- Anything else opens the search page with your text.
-
-To find a rule, type its ID, such as `MM003`, and press Enter on **Search for "MM003"**. The search page lists the rule; select it to open it.
+- A rule ID alone opens the rule, for example `MM003`. With an object, it opens the object's **Records** tab for that rule, for example `material master MM003`.
+- An object with a severity or a dimension opens the object's **Rules** tab narrowed to them, for example `critical completeness material master`.
+- An object alone opens its page. An object page always shows the object's newest finished run, so `last run` changes nothing there.
+- A dimension, an owner or `last run` without an object opens the **Objects** list with that filter, for example `owner anna accuracy`. With `last run` the list is the newest run instead of the current state.
+- Anything else, including a severity with no object, opens the search page with your text.
 
 ## The search page
 

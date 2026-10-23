@@ -74,12 +74,10 @@ Tables follow the same rule. Roles that can change nothing, such as Viewer and A
 
 After sign-in, Meridian opens the Home page for your main role.
 
-- Platform admin, Programme lead, Analyst, Auditor, Viewer and AI reviewer open the data lead view, `/home/lead`.
-- Steward and Approver open the steward view, `/home/steward`.
+- Platform admin, Programme lead, Analyst, Auditor, Viewer and AI reviewer open the data lead view, `/home/lead`. So do the legacy Admin and Manager roles.
+- Data steward and Data owner open the steward view, `/home/steward`. So do the legacy Steward and Approver roles.
 - SAP Basis opens the Basis view, `/home/basis`.
 - Process analyst opens the process owner view, `/home/process`.
-
-If your main role is Data steward or Data owner, Home opens in the data lead view. Choose **Steward** under **View as** to switch.
 
 Anyone can switch view with **View as** on Home: **Data lead**, **Steward**, **Basis** or **Process owner**. The view changes the page layout, not your rights.
 

@@ -22,11 +22,27 @@ export type Role =
   | "ai_reviewer"
   | "viewer"
   | "process_analyst"
-  | "sap_basis";
+  | "sap_basis"
+  | "programme_lead"
+  | "data_steward"
+  | "data_owner"
+  | "platform_admin";
 
+/** Every role key the API can return: rbac.py PERMISSIONS plus PERSONA_ROLES (VALID_ROLES). */
 export const ROLES: readonly Role[] = [
   "admin", "manager", "steward", "analyst", "approver", "auditor", "ai_reviewer", "viewer", "process_analyst", "sap_basis",
+  "programme_lead", "data_steward", "data_owner", "platform_admin",
 ];
+
+/** rbac.py PERSONA_ALIAS: persona key -> the legacy key whose special-cased behaviour it inherits. */
+const PERSONA_ALIAS: Partial<Record<Role, Role>> = {
+  programme_lead: "manager", data_steward: "steward", data_owner: "approver", platform_admin: "admin",
+};
+
+/** The legacy key a role behaves as (itself when it is not an aliased persona key). */
+export function legacyRole(role: Role): Role {
+  return PERSONA_ALIAS[role] ?? role;
+}
 
 /** Type guard for an arbitrary string from the API/URL — never trust a bare cast to `Role`. */
 export function isRole(x: string): x is Role {
@@ -46,7 +62,7 @@ export function useRole() {
     can,
     /** True while the grants are still loading inside the provider; gates should show a skeleton, not a refusal. */
     loading: fromGrants?.loading ?? false,
-    isAdmin: role === "admin",
+    isAdmin: legacyRole(role) === "admin",
     // "manager tier" = may change data (approve/apply) — used for coarse nav gating
     isManager: can("approve") || can("apply"),
     isViewer: !can("upload") && !can("approve"),

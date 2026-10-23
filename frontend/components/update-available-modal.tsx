@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Dialog } from "@/design";
-import { useAuth } from "@/context/auth-context";
+import { useRole } from "@/hooks/use-role";
 import { useUpdateModal, UPDATE_SNOOZE_KEY } from "@/context/update-modal-context";
 import {
   getUpdateStatus,
@@ -73,8 +73,8 @@ function progressCopy(phase: ProgressPhase, message: string): string {
 }
 
 export function UpdateAvailableModal() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  // The update API requires manage_system (api/routes/system_update.py), not the literal admin key.
+  const isAdmin = useRole().can("manage_system");
   const { openSignal } = useUpdateModal();
 
   const statusQ = useQuery({

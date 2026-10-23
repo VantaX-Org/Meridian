@@ -542,7 +542,12 @@ export type UserRole =
   | "auditor"
   | "viewer"
   | "ai_reviewer"
-  | "process_analyst";
+  | "process_analyst"
+  | "sap_basis"
+  | "programme_lead"
+  | "data_steward"
+  | "data_owner"
+  | "platform_admin";
 
 export interface User {
   id: string;

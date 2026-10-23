@@ -6,8 +6,8 @@ Home answers one question: how healthy is your SAP data, and what should you do 
 
 Select **Home** in the index bar, or open `/home`, and Meridian sends you to the home for your role:
 
-- `/home/lead` for data leads, managers, analysts, auditors and viewers. This is also the default for any role not listed below.
-- `/home/steward` for data stewards and approvers (data owners).
+- `/home/lead` for programme leads, platform admins, managers, admins, analysts, auditors, AI reviewers and viewers.
+- `/home/steward` for data stewards, data owners, stewards and approvers.
 - `/home/basis` for SAP Basis and integration administrators.
 - `/home/process` for process analysts.
 
