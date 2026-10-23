@@ -7,12 +7,12 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, EmptyState, Heatmap, Line, Select, type ChartPoint, type HeatmapCell } from "@/design";
+import { Button, Card, DataTable, Delta, EmptyState, Heatmap, Line, Pill, Select, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { useSystemScope } from "@/lib/permissions";
-import { getRuleRanking, getTrends, type RuleRow } from "@/lib/api/insights";
+import { getRuleRanking, getTrends, type RuleRow, type TrendRun } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { labelOf, plural, trendSentence } from "@/lib/format";
+import { formatDate, labelOf, plural, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
 import { ruleColumns } from "../_components/RuleColumns";
@@ -23,6 +23,31 @@ import { scopeTrendRuns, trendDomain, trendPoints } from "../_components/trendLi
 
 const WINDOWS = [{ value: "6", label: "Last 6 runs" }, { value: "12", label: "Last 12 runs" }, { value: "24", label: "Last 24 runs" }];
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
+const num = { numeric: true } satisfies CellMeta;
+const count = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+
+/** The run-by-run ledger: each run's results and what changed from the run before. Newest first. */
+function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
+  return [
+    {
+      id: "run", header: "Run", accessorFn: (r) => r.run_at ?? "", enableSorting: false, size: 260,
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-2 whitespace-nowrap">
+          <span>{row.original.label || formatDate(row.original.run_at, "datetime")}</span>
+          {row.original.baseline ? <Pill>Baseline</Pill> : null}
+          {row.original.version_id === current ? <Pill tone="info">This run</Pill> : null}
+        </span>
+      ),
+    },
+    { id: "score", header: "Score", accessorFn: (r) => r.composite ?? -1, meta: num, cell: ({ row }) => (row.original.composite == null ? "—" : row.original.composite.toFixed(1)) },
+    { id: "change", header: "Change", accessorFn: (r) => r.change ?? 0, meta: num, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
+    { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => count(row.original.critical) },
+    { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => count(row.original.high) },
+    { id: "fixed", header: "Rules fixed", accessorFn: (r) => r.rules_fixed ?? -1, meta: num, cell: ({ row }) => (row.original.rules_fixed == null ? "—" : row.original.rules_fixed > 0 ? <Delta value={row.original.rules_fixed} /> : "0") },
+    { id: "new", header: "Newly failing", accessorFn: (r) => r.rules_new ?? -1, meta: num, cell: ({ row }) => (row.original.rules_new == null ? "—" : row.original.rules_new > 0 ? <Delta value={row.original.rules_new} invert /> : "0") },
+    { id: "records", header: "Failing records", accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => count(row.original.affected_records) },
+  ];
+}
 
 export default function TrendsPage() {
   const { run, runs, versions, resolving } = useInsightScope();
@@ -55,6 +80,10 @@ export default function TrendsPage() {
   }
   const movedRows = (moved.data?.rows ?? []).filter((r) => r.delta_affected).sort((a, b) => Math.abs(b.delta_affected ?? 0) - Math.abs(a.delta_affected ?? 0)).slice(0, 15);
   const movedCols = useMemo<ColumnDef<RuleRow>[]>(() => ruleColumns(run, true), [run]);
+  const runCols = useMemo(() => runColumns(run), [run]);
+  const byRun = useMemo(() => [...trend].reverse(), [trend]);
+  const fixedTotal = trend.reduce((n, r) => n + (r.rules_fixed ?? 0), 0);
+  const newTotal = trend.reduce((n, r) => n + (r.rules_new ?? 0), 0);
 
   const last = composite[composite.length - 1];
   const first = composite[0];
@@ -92,6 +121,11 @@ export default function TrendsPage() {
         <div className="@5xl:col-span-12">
           <Card title="Composite score" meta={narrative}>
             <Line data={composite} xDomain={domain} label="Composite score per run" annotations={annotations} onPointClick={openRun} height={200} />
+          </Card>
+        </div>
+        <div className="@5xl:col-span-12">
+          <Card title="Run by run" meta={trend.length > 1 ? `${plural(fixedTotal, "rule")} fixed and ${newTotal.toLocaleString()} newly failing across these runs, each against the run before` : "Change appears after the second run"}>
+            <DataTable columns={runCols} data={byRun} getRowId={(r) => r.version_id} rowHref={(r) => runPageHref(r.version_id)} onRowClick={(r) => router.push(runPageHref(r.version_id))} hideToolbar dense height="auto" />
           </Card>
         </div>
         <div className="@5xl:col-span-12">

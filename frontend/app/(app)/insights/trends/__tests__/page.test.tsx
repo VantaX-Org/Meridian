@@ -15,7 +15,8 @@ vi.mock("next/navigation", () => ({
 
 const run = (id: string, composite: number) => ({
   version_id: id, label: id, run_at: null, baseline: false, composite, dimensions: { completeness: composite, validity: composite - 5 },
-  modules: {}, critical: 0, blockers: 0, auto_fixable_pct: null,
+  modules: {}, critical: 0, high: 2, failing_rules: 5, affected_records: 1200, blockers: 0, auto_fixable_pct: null,
+  change: null as number | null, rules_fixed: null as number | null, rules_new: null as number | null,
 });
 
 function mount() {
@@ -37,7 +38,7 @@ describe("TrendsPage", () => {
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Trends" })).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /score per run/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(screen.getAllByRole("grid").length).toBeGreaterThan(0);
   });
 
   it("says a dimension the API omits is not measured, holds the x domain across cards and writes held at for a flat line", async () => {
@@ -55,6 +56,22 @@ describe("TrendsPage", () => {
     // The change heatmap is keyed the same way.
     expect(screen.getByLabelText("Completeness 16 Oct 2026, 17:30: 0")).toBeInTheDocument();
     expect(screen.getByText("The score has not moved across these runs.")).toBeInTheDocument();
+  });
+
+  it("lists every run newest first with its change, rules fixed and rules newly failing", async () => {
+    const r1 = run("v1", 60);
+    const r2 = { ...run("v2", 70), change: 10, rules_fixed: 3, rules_new: 1, critical: 1, affected_records: 900 };
+    vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [r1, r2], annotations: [] });
+    mount();
+    await screen.findAllByText(/rose from 60 to 70/);
+    expect(screen.getByRole("heading", { level: 2, name: "Run by run" })).toBeInTheDocument();
+    expect(screen.getByText("3 rules fixed and 1 newly failing across these runs, each against the run before")).toBeInTheDocument();
+    const rows = screen.getAllByRole("row").filter((r) => /^v[12]/.test(r.textContent ?? ""));
+    expect(rows.map((r) => r.textContent?.slice(0, 2))).toEqual(["v2", "v1"]);
+    expect(rows[0]).toHaveTextContent("This run");
+    expect(rows[0]).toHaveTextContent("+10");
+    expect(rows[0]).toHaveTextContent("900");
+    expect(rows[1]).toHaveTextContent("first run");
   });
 
   it("shows the empty state", async () => {

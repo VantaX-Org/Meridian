@@ -294,19 +294,35 @@ def trend_runs(versions: list[dict], findings_by_run: dict[str, list[dict]], fix
     """Oldest first. Every run is re-weighted under the tenant's current config so the line compares."""
     members = s4_readiness.membership()
     out = []
+    prev: Optional[dict] = None  # the run before, for the per-run change: composite delta, rules fixed and new
     for v in versions:
         vid = str(v["id"])
         summary = {m: rescore(r, scoring) for m, r in (v.get("dqs_summary") or {}).items() if isinstance(r, dict)}
         c = composite_dqs([summary], scoring=scoring)
         f = findings_by_run.get(vid, [])
+        fails = failing_rows(f)
+        ran = {x["check_id"] for x in f if not (x.get("details") or {}).get("error")}
+        failing_ids = {x["check_id"] for x in fails}
+        this = {"composite": c["composite"], "ran": ran, "failing": failing_ids}
+        change = fixed = new = None
+        if prev is not None:
+            # only checks that ran cleanly in both runs can be said to have moved
+            both = ran & prev["ran"]
+            fixed, new = len(both & prev["failing"] - failing_ids), len(both & failing_ids - prev["failing"])
+            if c["composite"] is not None and prev["composite"] is not None:
+                change = round(c["composite"] - prev["composite"], 1)
         out.append({
             "version_id": vid, "label": v.get("label"), "run_at": v["run_at"].isoformat() if v.get("run_at") else None,
             "baseline": (v.get("metadata") or {}).get("baseline") in (True, "true"),
             "composite": c["composite"], "dimensions": c["dimension_scores"], "modules": c["modules"],
             "critical": sum(int(r.get("critical_count") or 0) for r in summary.values()),
+            "high": sum(1 for x in fails if x.get("severity") == "high"),
+            "failing_rules": len(fails), "affected_records": failing_records(f),
             "blockers": len(blockers_of(f, members)),
             "auto_fixable_pct": _pct(fixes_by_run.get(vid, 0), failing_records(f)),
+            "change": change, "rules_fixed": fixed, "rules_new": new,
         })
+        prev = this
     return out
 
 

@@ -7,7 +7,8 @@ import { scopeTrendRuns, trendDomain, trendPoints } from "../trendLineage";
 const tr = (id: string, at: string | null, composite: number | null, modules: string[], label = id): TrendRun => ({
   version_id: id, label, run_at: at, baseline: false, composite,
   dimensions: composite === null ? {} : { completeness: composite },
-  modules: Object.fromEntries(modules.map((m) => [m, {}])), critical: 0, blockers: 0, auto_fixable_pct: null,
+  modules: Object.fromEntries(modules.map((m) => [m, {}])), critical: 0, high: 0, failing_rules: 0, affected_records: 0,
+  blockers: 0, auto_fixable_pct: null, change: null, rules_fixed: null, rules_new: null,
 });
 const upload = (id: string): Version => ({ id, label: id, status: "complete", run_at: "2026-10-02T00:00:00Z", dqs_summary: null, metadata: { modules: [], file_name: "f", row_count: 1 } });
 
