@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "../../../../__tests__/render";
 import FixPage from "../page";
-import { getCleaningQueue, type CleaningQueueItem } from "@/lib/api/cleaning";
+import { getCleaningGroups, type CleaningGroup } from "@/lib/api/cleaning";
 
 const push = vi.fn();
 // Stable instance across re-renders: useUrlState's sync effect depends on this
@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/api/cleaning", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/cleaning")>("@/lib/api/cleaning");
-  return { ...actual, getCleaningQueue: vi.fn() };
+  return { ...actual, getCleaningGroups: vi.fn() };
 });
 vi.mock("@/lib/api/connectivity", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/connectivity")>("@/lib/api/connectivity");
@@ -41,60 +41,48 @@ vi.mock("@/lib/api/remediation", async () => {
   return { ...actual, listBatches: vi.fn().mockResolvedValue({ items: [] }), getMonitor: vi.fn().mockResolvedValue({ items: [] }) };
 });
 
-const item = (over: Partial<CleaningQueueItem>): CleaningQueueItem => ({
-  id: "1", object_type: "material_master", status: "recommended", confidence: 0.9,
-  record_key: "100001", priority: 1, detected_at: "", applied_at: null,
-  rollback_deadline: null, rule_id: null, batch_id: "B1", version_id: null,
-  merge_preview: null, record_data_before: null, record_data_after: null,
-  golden_record_id: null, golden_field_value: null, golden_record_exists: false,
+const group = (over: Partial<CleaningGroup>): CleaningGroup => ({
+  version_id: "R1", object_type: "material_master", kind: "MARA.MEINS", rule_name: null, records: 2,
+  avg_confidence: 0.85, confident: 1, run_label: "material_master_25k", run_at: "2026-10-16T05:17:00Z",
   ...over,
 });
 
 beforeEach(() => {
   push.mockClear();
-  vi.mocked(getCleaningQueue).mockReset();
+  vi.mocked(getCleaningGroups).mockReset();
 });
 
 describe("FixPage", () => {
-  it("shows one row per batch and navigates to the batch on click", async () => {
-    vi.mocked(getCleaningQueue).mockResolvedValue({
-      items: [item({}), item({ id: "2", confidence: 0.7 })],
-      total: 2, page: 1, per_page: 100,
+  it("lists every open proposal, even ones no batch was ever set on, grouped by run and what they fix", async () => {
+    // Regression: cleaning items carry their run but never a batch_id, and the old page grouped
+    // by batch_id, so a queue of 61,816 proposals rendered as "No cleaning proposals".
+    vi.mocked(getCleaningGroups).mockResolvedValue({
+      groups: [group({}), group({ kind: "duplicate", object_type: "business_partner", records: 1, avg_confidence: 0.6, confident: 0 })],
+      records: 61_816, confident: 40_000, runs: 2,
     });
     renderWithQuery(<FixPage />);
 
-    const cell = await screen.findByText("B1");
-    await userEvent.click(cell);
-
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/fix/B1"));
-  });
-
-  it("ranks the proposals by records affected: object, rule with its words, records, confidence, proposed value and one Review link", async () => {
-    vi.mocked(getCleaningQueue).mockResolvedValue({
-      items: [
-        item({ id: "1", batch_id: "B1", rule_id: "BP019", object_type: "business_partner", confidence: 0.6 }),
-        item({ id: "2", rule_id: "MM045", confidence: 0.9, record_data_before: { MEINS: "" }, record_data_after: { MEINS: "EA" } }),
-        item({ id: "3", rule_id: "MM045", confidence: 0.8, record_key: "100002", record_data_before: { MEINS: "" }, record_data_after: { MEINS: "EA" } }),
-      ],
-      total: 3, page: 1, per_page: 100,
-    });
-    renderWithQuery(<FixPage />);
-
-    const review = await screen.findByRole("link", { name: "Review MM045 in batch B1" });
-    expect(review).toHaveAttribute("href", "/fix/B1");
+    expect(await screen.findByText("61,816")).toBeInTheDocument();
+    expect(screen.getByText("40,000")).toBeInTheDocument();
+    const review = screen.getByRole("link", { name: "Review Fix MARA.MEINS from material_master_25k" });
+    expect(review).toHaveAttribute("href", "/fix/R1?kind=MARA.MEINS");
     const row = review.closest("tr") as HTMLElement;
-    // Two records and the proposed value of the group; the rule's words arrive from the rules list.
     expect(row).toHaveTextContent("Material master");
-    expect(row).toHaveTextContent("2");
     expect(row).toHaveTextContent("85%");
-    expect(row).toHaveTextContent("EA");
-    await waitFor(() => expect(row).toHaveTextContent("Base unit is mandatory"));
-    // The two-record rule ranks above the one-record rule.
-    expect(screen.getAllByRole("row")[1]).toBe(row);
+    // Duplicates are merged on the Duplicates tab, not drafted into a fix batch.
+    expect(screen.getByRole("link", { name: "Review Duplicate records from material_master_25k" })).toHaveAttribute("href", "/fix?tab=dedup");
   });
 
-  it("shows an empty state when there are no batches", async () => {
-    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
+  it("opens the run and rule on row click", async () => {
+    vi.mocked(getCleaningGroups).mockResolvedValue({ groups: [group({})], records: 2, confident: 1, runs: 1 });
+    renderWithQuery(<FixPage />);
+
+    await userEvent.click(await screen.findByText("material_master_25k"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/fix/R1?kind=MARA.MEINS"));
+  });
+
+  it("shows an empty state when there are no proposals", async () => {
+    vi.mocked(getCleaningGroups).mockResolvedValue({ groups: [], records: 0, confident: 0, runs: 0 });
     renderWithQuery(<FixPage />);
 
     expect(await screen.findByText("No cleaning proposals")).toBeInTheDocument();

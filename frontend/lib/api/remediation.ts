@@ -309,6 +309,12 @@ export async function createBatchFromSimulation(name: string, simulationId: stri
   return data;
 }
 
+/** POST /api/v1/remediation/batches/from-cleaning: a draft batch from the approved proposals a run found, optionally of one kind. */
+export async function createBatchFromCleaning(name: string, scope: { version_id: string; kind?: string }): Promise<BatchFromSimulation> {
+  const { data } = await apiClient.post<BatchFromSimulation>("/api/v1/remediation/batches/from-cleaning", { name, ...scope });
+  return data;
+}
+
 /** Drafts a batch from the open issues matching `filter`. The API answers 400 when nothing matches or the cap is exceeded. */
 export async function createBatch(name: string, filter: BatchFilter): Promise<BatchCreated> {
   const { data } = await apiClient.post<BatchCreated>("/api/v1/remediation/batches", { name, filter });

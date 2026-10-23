@@ -118,8 +118,12 @@ async def create_batch(
 
 
 class FromCleaning(BaseModel):
+    """Approved cleaning items by id, or every approved item a run found (optionally of one kind,
+    as the cleaning queue names it: a cleaning rule id, 'duplicate' or a field)."""
     name: str = Field(min_length=1, max_length=200)
-    ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_ITEMS)
+    ids: Optional[list[uuid.UUID]] = Field(None, min_length=1, max_length=MAX_ITEMS)
+    version_id: Optional[uuid.UUID] = None
+    kind: Optional[str] = Field(None, max_length=200)
 
 
 class FromSimulation(BaseModel):
@@ -136,16 +140,30 @@ async def create_batch_from_cleaning(
     _perm: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     """Draft batch from approved cleaning items. Still needs a second person's approval before export."""
+    if not body.ids and not body.version_id:
+        raise HTTPException(status_code=422, detail="Give the cleaning item ids or the run they came from.")
     await _rls(db, tenant)
-    rows = (await db.execute(text("""
-        SELECT object_type, rule_id, record_key, record_data_before, record_data_after FROM cleaning_queue
-         WHERE tenant_id = :tid AND id = ANY(:ids) AND status = 'approved'
-    """), {"tid": str(tenant.id), "ids": [str(i) for i in body.ids]})).mappings().all()
+    where, p = "tenant_id = :tid AND status = 'approved'", {"tid": str(tenant.id)}
+    if body.ids:
+        where += " AND id = ANY(:ids)"
+        p["ids"] = [str(i) for i in body.ids]
+    if body.version_id:
+        where += " AND version_id = :vid"
+        p["vid"] = str(body.version_id)
+    if body.kind:
+        from api.routes.cleaning import kind_filter
+        where += " AND " + kind_filter(body.kind, p)
+    rows = (await db.execute(text(f"""
+        SELECT id, object_type, rule_id, record_key, record_data_before, record_data_after FROM cleaning_queue
+         WHERE {where} LIMIT {MAX_ITEMS + 1}
+    """), p)).mappings().all()
+    if len(rows) > MAX_ITEMS:
+        raise HTTPException(status_code=400, detail=f"More than {MAX_ITEMS} approved items; draft one kind at a time.")
     items = remediation.items_from_cleaning([dict(r) for r in rows])
     if not items:
         raise HTTPException(status_code=400, detail="None of these cleaning items is approved with a changed value.")
     uid, label = current_user_id(request), current_user_label()
-    filt = json.dumps({"source": "cleaning", "ids": sorted(str(i) for i in body.ids)})
+    filt = json.dumps({"source": "cleaning", "ids": sorted(str(r["id"]) for r in rows)})
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.commit()
     return out

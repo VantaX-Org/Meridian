@@ -70,10 +70,35 @@ export async function getCleaningQueue(params: {
   object_type?: string;
   status?: string;
   batch_id?: string;
+  version_id?: string;
+  kind?: string;
   page?: number;
   per_page?: number;
 }): Promise<{ items: CleaningQueueItem[]; total: number; page: number; per_page: number }> {
   const { data } = await apiClient.get("/api/v1/cleaning/queue", { params });
+  return data;
+}
+
+/**
+ * One Fix-screen decision: the open proposals of one kind on one object in one run. `kind` is
+ * a cleaning rule id, "duplicate" (a merge) or the field the proposals change, e.g. "MARA.MEINS".
+ */
+export interface CleaningGroup {
+  version_id: string;
+  object_type: string;
+  kind: string;
+  /** The cleaning rule's name when `kind` is a rule. */
+  rule_name: string | null;
+  records: number;
+  avg_confidence: number;
+  confident: number;
+  run_label: string | null;
+  run_at: string | null;
+}
+
+/** Open proposals grouped by run, object and rule, with the totals across all of them. */
+export async function getCleaningGroups(): Promise<{ groups: CleaningGroup[]; records: number; confident: number; runs: number }> {
+  const { data } = await apiClient.get("/api/v1/cleaning/queue/groups");
   return data;
 }
 
@@ -98,6 +123,10 @@ export async function bulkApprove(params: {
   max_count?: number;
   /** Approve exactly these waiting items, whatever their rule's automation level. */
   ids?: string[];
+  /** Or every waiting item this run found (narrowed by kind and min_confidence). */
+  version_id?: string;
+  kind?: string;
+  min_confidence?: number;
 }): Promise<{ approved_count: number; skipped_count: number }> {
   const { data } = await apiClient.post("/api/v1/cleaning/bulk-approve", params);
   return data;
@@ -121,6 +150,7 @@ export async function getCleaningMetrics(period_type?: string): Promise<Cleaning
 export async function getCleaningAudit(params: {
   queue_id?: string;
   batch_id?: string;
+  version_id?: string;
   action?: string;
   page?: number;
   per_page?: number;
@@ -136,6 +166,8 @@ export async function getDedupCandidates(params: {
   object_type?: string;
   min_score?: number;
   status?: string;
+  page?: number;
+  per_page?: number;
 } = {}): Promise<{ items: DedupCandidate[]; total: number }> {
   const { data } = await apiClient.get("/api/v1/dedup/candidates", { params });
   return data;
@@ -246,6 +278,7 @@ export async function downloadCleaningExport(
   status: string,
   objectType?: string,
   batchId?: string,
+  scope: { version_id?: string; kind?: string } = {},
 ): Promise<void> {
   if (!status) {
     throw new Error("status is required for cleaning export");
@@ -254,6 +287,8 @@ export async function downloadCleaningExport(
   const params = new URLSearchParams({ status });
   if (objectType) params.set("object_type", objectType);
   if (batchId) params.set("batch_id", batchId);
+  if (scope.version_id) params.set("version_id", scope.version_id);
+  if (scope.kind) params.set("kind", scope.kind);
 
   let response: AxiosResponse<Blob>;
   try {
