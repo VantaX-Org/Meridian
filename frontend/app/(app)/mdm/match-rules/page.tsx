@@ -78,9 +78,27 @@ export default function MatchRulesPage() {
 
 /* ---------- Rules ---------- */
 
+// The /match-rules API requires manage_rules for every call, reading included.
+function NeedsManageRules() {
+  return (
+    <EmptyState
+      title="Needs the manage_rules permission"
+      detail="Ask an administrator for a role that manages rules, such as steward."
+      ghost="list"
+      action={<Button variant="secondary" render={<Link href="/mdm/glossary">Open glossary</Link>} />}
+    />
+  );
+}
+
 function RulesTab() {
+  const { can, loading } = useRole();
+  // Grants fail closed while loading; a refusal must not flash before they arrive.
+  if (loading) return <Skeleton height={200} />;
+  return can("manage_rules") ? <RulesEditor /> : <NeedsManageRules />;
+}
+
+function RulesEditor() {
   const qc = useQueryClient();
-  const write = useRole().can("mdm.write");
   const [domain, setDomain] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editing, setEditing] = useState<MatchRule | null>(null);
@@ -115,16 +133,14 @@ function RulesTab() {
     { id: "weight", header: "Weight", cell: ({ row }) => row.original.weight.toFixed(2) },
     { id: "threshold", header: "Threshold", cell: ({ row }) => `${Math.round(row.original.threshold * 100)}%` },
     { id: "active", header: "State", cell: ({ row }) => <Pill tone={row.original.active ? "go" : "neutral"}>{row.original.active ? "Active" : "Off"}</Pill> },
-    actionColumn((r) => <RowButton label={`${write ? "Edit" : "View"} ${r.field}`} onClick={() => { setEditing(r); setDraft({ ...r }); }}>{write ? "Edit" : "View"}</RowButton>),
-  ], [write]);
+    actionColumn((r) => <RowButton label={`Edit ${r.field}`} onClick={() => { setEditing(r); setDraft({ ...r }); }}>Edit</RowButton>),
+  ], []);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <Select label="Domain" placeholder="All domains" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setSimulation(null); }} />
-        {write ? (
-          <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>New rule</Button>
-        ) : null}
+        <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>New rule</Button>
         <Button
           variant="secondary"
           disabled={!domain || simulate.isPending}
@@ -161,14 +177,9 @@ function RulesTab() {
         <EmptyState
           title={domain ? `No rules for ${formatModuleName(domain)} yet` : "No match rules yet"}
           detail={domain ? undefined : "Add one per field the engine should compare."}
-          action={write ? (
-            <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>Add rule</Button>
-          ) : (
-            <Button variant="secondary" render={<Link href="/mdm/glossary">Open glossary</Link>} />
-          )}
+          action={<Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>Add rule</Button>}
         />
       )}
-      {!write ? <Notice tone="info">Changing rules needs MDM write access.</Notice> : null}
 
       {draft ? (
         <Card title={editing ? `Edit rule ${editing.field}` : "New match rule"}>
@@ -195,13 +206,11 @@ function RulesTab() {
             <Select value={draft.active ? "on" : "off"} options={[{ value: "on", label: "Active" }, { value: "off", label: "Off" }]}
               onValueChange={(v) => setDraft({ ...draft, active: v === "on" })} />
           </Field>
-          {write ? (
-            <div className="flex gap-2">
-              <Button disabled={save.isPending || !draft.field.trim()} onClick={() => save.mutate(draft)}>{editing ? "Save" : "Create"}</Button>
-              {editing ? <Button variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate(editing)}>Delete rule</Button> : null}
-              <Button variant="ghost" onClick={close}>Discard changes</Button>
-            </div>
-          ) : null}
+          <div className="flex gap-2">
+            <Button disabled={save.isPending || !draft.field.trim()} onClick={() => save.mutate(draft)}>{editing ? "Save" : "Create"}</Button>
+            {editing ? <Button variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate(editing)}>Delete rule</Button> : null}
+            <Button variant="ghost" onClick={close}>Discard changes</Button>
+          </div>
         </div>
         </Card>
       ) : null}
@@ -214,7 +223,9 @@ function RulesTab() {
 function TuningTab() {
   const tuneRef = useRef<HTMLDivElement>(null);
   const [domain, setDomain] = useState("");
-  const rulesQuery = useQuery({ enabled: !!domain, queryKey: queryKeys.matchRules(domain), queryFn: () => getMatchRules(domain) });
+  // Current weights come from /match-rules (manage_rules); the dry run itself needs only view.
+  const canReadRules = useRole().can("manage_rules");
+  const rulesQuery = useQuery({ enabled: !!domain && canReadRules, queryKey: queryKeys.matchRules(domain), queryFn: () => getMatchRules(domain) });
   const domains = useMemo(() => domainOptions(rulesQuery.data?.rules.map((r) => r.domain) ?? []), [rulesQuery.data]);
   const current = useMemo(() => {
     const m: Record<string, number> = {};
@@ -265,8 +276,10 @@ function TuningTab() {
                 </Field>
               ))}
             </div>
-          ) : (
+          ) : canReadRules ? (
             <p className="m-text-body m-ink-3">No active match rules for {formatModuleName(domain)}, but thresholds can still be tried</p>
+          ) : (
+            <Notice tone="info">Seeing and changing rule weights needs the manage_rules permission. Thresholds can still be tried.</Notice>
           )}
           <div className="flex gap-3">
             <Field label="Auto-merge at">

@@ -114,7 +114,7 @@ Pairs scoring at or above the auto-merge point would merge on their own. Pairs b
 
 A constraint pins a pair: **Do not match** or **Always match**. Stewards create them by accepting or rejecting a pair, or by unmerging, and they override the score until cleared. Filter by domain, kind or record key. **Clear** removes one and asks for an optional reason; it needs the approve permission.
 
-Match rules need the manage rules permission (Admin and Steward). A role without MDM write access sees the note "Changing rules needs MDM write access."
+The **Rules** tab and the current weights on **Tuning** need the manage rules permission (Admin and Steward), even to read. Without it, **Rules** shows a message naming the `manage_rules` permission instead of the table, and **Tuning** shows a note that rule weights need that permission. You can still try thresholds there.
 
 ## Survivorship
 
@@ -138,7 +138,7 @@ Terms are drafted from analysed SAP fields. "No terms yet" means no analysis has
 
 The term page also shows **Where it lives in SAP** (**SAP table**, **Field**, **Technical name**, **Steward**), **Approved values** with each **Code** and **Label**, **Linked rules failing** with each rule's pass rate and records affected, and **Change history**.
 
-Saving and marking reviewed need the approve permission. **Auto-draft** needs the trigger AI permission (Admin, Manager, Steward and Analyst) and is limited to 20 drafts an hour. The model receives only the term's names and descriptions (its technical name, SAP table and field, why it matters and its SAP impact), never SAP records.
+Saving and marking reviewed need the approve permission (Admin, Manager, Steward and Approver). Without it, **Mark reviewed**, **Save** and **Use draft** do not show and the definition is read-only. **Auto-draft** shows only with the trigger AI permission (Admin, Manager, Steward and Analyst) and is limited to 20 drafts an hour. The model receives only the term's names and descriptions (its technical name, SAP table and field, why it matters and its SAP impact), never SAP records.
 
 ## Good to know
 
