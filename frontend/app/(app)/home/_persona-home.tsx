@@ -35,7 +35,7 @@ import {
 import { formatDate, formatModuleName, plural, round1, shortCapReason } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
 import { hrefWithRun } from "@/lib/run-scope";
-import { RunScope } from "@/components/run-scope";
+import { StateScope } from "@/components/run-scope";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
@@ -270,6 +270,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     const blocking = blockingByModule.get(o.module);
     return { ...o, blocking, blockingWords: blocking ? wordsOf(o.module, blocking) : undefined, fixable: isFixable(o.module, blocking) };
   });
+  const runById = new Map(finished.map((v) => [v.id, v]));
+  const systemName = (v: Version) => systems.find((x) => x.id === v.metadata?.system_id)?.name;
   const objectHref = (o: Pick<StateRow, "module" | "run_id">) => `/objects/${o.module}?run=${o.run_id}`;
 
   const columns: ColumnDef<ObjectRow>[] = [
@@ -285,6 +287,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           {o.blockingWords && <span className="m-ink-3 truncate [max-width:46ch]" title={o.blockingWords}>{o.blockingWords}</span>}
         </span>
       ) : "—",
+    },
+    {
+      id: "run", header: "Run", enableSorting: false,
+      cell: ({ row: { original: o } }) => {
+        const r = runById.get(o.run_id);
+        return r ? <Link href={hrefWithRun(`/home/${role}`, search, r.id)} className="m-ink-3 whitespace-nowrap" title={runLabel(r)} onClick={(e) => e.stopPropagation()}>{[systemName(r), formatDate(r.run_at, "date")].filter(Boolean).join(", ")}</Link> : "—";
+      },
     },
     { accessorKey: "affected_records", header: "Records affected", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
     {
@@ -426,12 +435,15 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         action,
       }}
       run={{ label: pinned ? runLabel(pinned) : stateScopeLine(objects.length, newest.run_at), runAt: newest.run_at }}
-      scope={pinned ? (
-        <RunScope
-          scope={{ run: pinned, choices: [], latestId: undefined, pinned: true }}
+      scope={
+        <StateScope
+          runs={latestPerLineage(finished)}
+          pinned={pinned}
+          objectCount={objects.length}
+          systemName={systemName}
           hrefFor={(id) => hrefWithRun(`/home/${role}`, search, id)}
         />
-      ) : <span data-testid="run-scope">{stateScopeLine(objects.length, newest.run_at)}</span>}
+      }
       aside={objectMap}
       dimensions={dimensionStrip}
       objects={objectsCard}
