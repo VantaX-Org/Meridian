@@ -2,13 +2,13 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
-import { AxiosError, type AxiosResponse } from "axios";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as materialsApi from "@/lib/api/materials";
 import RecordFixSheetPage from "../page";
 
+let routeParams = { object: "material_master", key: "100001" };
 vi.mock("next/navigation", () => ({
-  useParams: () => ({ object: "material_master", key: "100001" }),
+  useParams: () => routeParams,
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
@@ -55,21 +55,26 @@ describe("RecordFixSheetPage", () => {
     expect(exports[0].closest("header")).not.toBeNull();
   });
 
-  it("shows a not-yet-available state for an unsupported object", async () => {
-    vi.spyOn(objectsApi, "getObjectRecord").mockRejectedValue(
-      new AxiosError("Not Implemented", "ERR_BAD_RESPONSE", undefined, undefined, { status: 501 } as AxiosResponse),
-    );
-    vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({
-      matnr: "100001", version_id: "v1", rules_total: 0, by_view: [],
+  it("shows any other object's record: its fields and the rules it fails, looked up by the whole key", async () => {
+    routeParams = { object: "accounts_payable", key: encodeURIComponent("LIFNR=V9|BUKRS=2000") };
+    const record = vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({
+      ...material, matnr: "LIFNR=V9|BUKRS=2000", description: "Acme Ltd", views: [],
+      mara: { LIFNR: "V9", BUKRS: "2000", AKONT: "", NAME1: "Acme Ltd" }, labels: { Table: "LFB1", LIFNR: "V9", BUKRS: "2000" },
     });
-    vi.spyOn(materialsApi, "getMaterialSupersession").mockResolvedValue({
-      matnr: "100001", plants: [], bom_usage: null,
-    });
-    vi.spyOn(materialsApi, "getMaterialDuplicates").mockResolvedValue({
-      matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [],
+    const findings = vi.spyOn(objectsApi, "getObjectRecordFindings").mockResolvedValue({
+      version_id: "v1", failing: [{ check_id: "AP012", severity: "critical", message: "Reconciliation account is missing", field: "LFB1.AKONT" }],
     });
     renderWithQuery(<RecordFixSheetPage />);
-    await waitFor(() => expect(screen.getByText(/not yet available/i)).toBeInTheDocument());
+
+    expect(await screen.findByText("Reconciliation account is missing")).toBeInTheDocument();
+    expect(record).toHaveBeenCalledWith("accounts_payable", "LIFNR=V9|BUKRS=2000", expect.anything());
+    expect(findings).toHaveBeenCalledWith("accounts_payable", "LIFNR=V9|BUKRS=2000", { version_id: "v1" });
+    expect(screen.getByRole("link", { name: "AP012" })).toHaveAttribute("href", expect.stringContaining("/objects/accounts_payable/rules/AP012"));
+    // Field values with a value; the blank AKONT is left out.
+    expect(screen.getByText("NAME1")).toBeInTheDocument();
+    expect(screen.queryByText("AKONT")).not.toBeInTheDocument();
+    expect(screen.queryByText(/view completeness/i)).not.toBeInTheDocument();
+    routeParams = { object: "material_master", key: "100001" };
   });
 
   it("shows an error state when the request fails", async () => {

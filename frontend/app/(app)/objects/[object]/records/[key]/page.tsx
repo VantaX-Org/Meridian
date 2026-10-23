@@ -5,9 +5,8 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { isAxiosError } from "axios";
-import { Button, Card, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, domainOf, type RecordStatus } from "@/design";
-import { getObjectRecord } from "@/lib/api/v1/objects";
+import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, Status, domainOf, type RecordStatus } from "@/design";
+import { getObjectRecord, getObjectRecordFindings } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
@@ -43,10 +42,14 @@ export default function RecordFixSheetPage() {
   const { primary, fields } = parseRecordKey(key);
   const plant = fields.WERKS;
   const isMaterial = object === "material_master";
+  // Material master and business partner have their own sheets keyed by the primary id; every
+  // other object is looked up by the whole composite key (LIFNR=…|BUKRS=…).
+  const generic = !isMaterial && object !== "business_partner";
+  const lookupKey = generic ? key : primary;
 
   const recordQuery = useQuery({
     queryKey: queryKeys.record(object, key, run),
-    queryFn: () => getObjectRecord(object, primary, { version_id: run, plant }),
+    queryFn: () => getObjectRecord(object, lookupKey, { version_id: run, plant }),
     enabled: !!run,
     retry: false,
   });
@@ -54,6 +57,11 @@ export default function RecordFixSheetPage() {
     queryKey: [...queryKeys.record(object, key, run), "findings"],
     queryFn: () => getMaterialFindings(primary, { version_id: run }),
     enabled: !!run && isMaterial,
+  });
+  const genericFindingsQuery = useQuery({
+    queryKey: [...queryKeys.record(object, key, run), "record-findings"],
+    queryFn: () => getObjectRecordFindings(object, key, { version_id: run }),
+    enabled: !!run && !isMaterial,
   });
   const supersessionQuery = useQuery({
     queryKey: [...queryKeys.record(object, key, run), "supersession"],
@@ -82,15 +90,6 @@ export default function RecordFixSheetPage() {
       />
     );
   }
-  if (isAxiosError(recordQuery.error) && recordQuery.error.response?.status === 501) {
-    return (
-      <EmptyState
-        title="Not yet available"
-        detail={`The record fix sheet for ${object} isn't built yet.`}
-        action={<Button render={<Link href={backHref}>Back to object</Link>} />}
-      />
-    );
-  }
   if (recordQuery.isError) {
     return (
       <ErrorState
@@ -111,7 +110,10 @@ export default function RecordFixSheetPage() {
   }
 
   const hasMissing = material.views.some((view) => view.cells.some((cell) => cell.state === "missing"));
-  const status: RecordStatus = hasMissing ? { label: "failing", tone: "no-go" } : { label: "passing", tone: "go" };
+  const failingRules = genericFindingsQuery.data?.failing ?? [];
+  const failing = isMaterial ? hasMissing : failingRules.length > 0;
+  const status: RecordStatus = failing ? { label: "failing", tone: "no-go" } : { label: "passing", tone: "go" };
+  const fieldRows = Object.entries(material.mara ?? {}).filter(([, v]) => v != null && String(v).trim() !== "");
 
   const findings = findingsQuery.data;
   const supersession = supersessionQuery.data;
@@ -133,9 +135,12 @@ export default function RecordFixSheetPage() {
       status={status}
       meta={<RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}/records/${encodeURIComponent(key)}`, search, id)} />}
       actions={<ExportMenu options={exportOptions} />}
-      stats={[
+      stats={isMaterial ? [
         { label: "Missing fields", value: material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0), tone: hasMissing ? "no-go" : "go" },
         { label: "Views", value: material.views.length },
+      ] : [
+        { label: "Failing rules", value: failingRules.length, tone: failingRules.length ? "no-go" : "go" },
+        { label: "Fields with a value", value: fieldRows.length },
       ]}
     >
       <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} overview={<>
@@ -165,18 +170,55 @@ export default function RecordFixSheetPage() {
         </dl>
       </Card>
 
-      <Card title="View completeness">
-        <ul className="flex flex-col gap-1">
-          {material.views.map((view) => {
-            const ok = view.cells.filter((cell) => cell.state === "ok").length;
-            return (
-              <li key={view.view}>
-                {view.label}: {ok}/{view.cells.length} maintained
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
+      {material.views.length > 0 ? (
+        <Card title="View completeness">
+          <ul className="flex flex-col gap-1">
+            {material.views.map((view) => {
+              const ok = view.cells.filter((cell) => cell.state === "ok").length;
+              return (
+                <li key={view.view}>
+                  {view.label}: {ok}/{view.cells.length} maintained
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      ) : null}
+
+      {!isMaterial && (
+        <Card title="Failing rules">
+          {genericFindingsQuery.isError ? (
+            <SectionError what="this record's findings" query={genericFindingsQuery} />
+          ) : failingRules.length > 0 ? (
+            <ul className="flex flex-col gap-2">
+              {failingRules.map((rule) => (
+                <li key={rule.check_id} className="flex flex-wrap items-baseline gap-2">
+                  <Status kind="severity" value={rule.severity} />
+                  <Link href={hrefWithRun(`/objects/${object}/rules/${encodeURIComponent(rule.check_id)}`, null, scope.explicit ?? null)} className="m-ink-accent"><Mono>{rule.check_id}</Mono></Link>
+                  <span>{rule.message ?? ""}</span>
+                  {rule.field ? <Mono>{rule.field}</Mono> : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="m-ink-3">No failing rules on this run.</p>
+          )}
+        </Card>
+      )}
+
+      {generic && (
+        <Card title="Fields">
+          <DataTable
+            columns={[
+              { id: "field", header: "Field", accessorFn: (r: [string, string | null]) => r[0], cell: ({ row }) => <Mono>{row.original[0]}</Mono> },
+              { id: "value", header: "Value", accessorFn: (r: [string, string | null]) => r[1] ?? "", cell: ({ row }) => <Mono>{row.original[1]}</Mono> },
+            ]}
+            data={fieldRows}
+            getRowId={(r) => r[0]}
+            maxHeight={420}
+          />
+        </Card>
+      )}
 
       {isMaterial && (
         <Card title="Findings">
