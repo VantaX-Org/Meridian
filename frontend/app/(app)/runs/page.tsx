@@ -60,6 +60,19 @@ const confirmValueOf = (v: Version) => v.label ?? v.id;
 /** The day a run started, as the ledger prints it (the shared date formatter, so it follows the viewer's time zone). */
 const dayLabel = (v: Version) => formatDate(v.run_at, "date");
 
+/** A severity count with its change from the previous run of the lineage: fewer failing rules is the good direction. */
+function severityCell(v: Version, all: Version[], key: "critical" | "high") {
+  const n = v.severity_counts?.[key];
+  if (n == null) return "—";
+  const prev = all.find((r) => r.id === previousRunId(v, all))?.severity_counts?.[key];
+  return (
+    <span className="inline-flex items-center justify-end gap-2">
+      <span>{n.toLocaleString()}</span>
+      {prev != null && prev !== n ? <Delta value={n - prev} invert /> : null}
+    </span>
+  );
+}
+
 function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): ColumnDef<Version>[] {
   return [
     {
@@ -126,8 +139,8 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
         );
       },
     },
-    { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical", size: 90, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => row.original.severity_counts ? row.original.severity_counts.critical.toLocaleString() : "—" },
-    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 80, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => row.original.severity_counts ? row.original.severity_counts.high.toLocaleString() : "—" },
+    { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical", size: 110, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "critical") },
+    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 100, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "high") },
     {
       id: "open",
       header: "",

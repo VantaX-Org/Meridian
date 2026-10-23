@@ -272,16 +272,21 @@ def _trend_sheet(data: dict) -> SheetSpec:
     for r in (data["trend"] or {}).get("runs") or []:
         rows.append({"version_id": r["version_id"], "run_at": datetime.fromisoformat(r["run_at"]) if r["run_at"] else None,
                      "label": r["label"], "composite": r["composite"],
-                     **{d: (r["dimensions"] or {}).get(d) for d in DIMENSIONS},
-                     "critical": r["critical"], "blockers": r["blockers"]})
+                     "change": r.get("change"), **{d: (r["dimensions"] or {}).get(d) for d in DIMENSIONS},
+                     "critical": r["critical"], "high": r.get("high"), "blockers": r["blockers"],
+                     "failing_rules": r.get("failing_rules"), "affected_records": r.get("affected_records"),
+                     "rules_fixed": r.get("rules_fixed"), "rules_new": r.get("rules_new")})
     rows = rows[-TREND_RUNS:]
     return SheetSpec(
         "Trend",
         [_c("version_id", "Run ID", "mono", width=38), _c("run_at", "Run at", "datetime"), _c("label", "Label"),
-         _c("composite", "Score", "pct"), *[_c(d, d.capitalize(), "pct") for d in DIMENSIONS],
-         _c("critical", "Critical", "int"), _c("blockers", "Blockers", "int")],
-        rows, note=f"Last {TREND_RUNS} runs, re-weighted under the current scoring config.",
-        rules=[ConditionalRule("composite", _BAR)])
+         _c("composite", "Score", "pct"), _c("change", "Change", "raw"), *[_c(d, d.capitalize(), "pct") for d in DIMENSIONS],
+         _c("critical", "Critical", "int"), _c("high", "High", "int"), _c("blockers", "Blockers", "int"),
+         _c("failing_rules", "Failing rules", "int"), _c("affected_records", "Failing records", "int"),
+         _c("rules_fixed", "Rules fixed", "int"), _c("rules_new", "Rules newly failing", "int")],
+        rows, note=f"Last {TREND_RUNS} runs, re-weighted under the current scoring config. Change, fixed and new are "
+                   "against the run before.",
+        rules=[ConditionalRule("composite", _BAR), ConditionalRule("change", _SCALE)])
 
 
 def _commentary_sheet(data: dict, scoring: dict) -> SheetSpec:

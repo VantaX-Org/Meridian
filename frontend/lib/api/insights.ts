@@ -315,8 +315,17 @@ export interface TrendRun {
   dimensions: Record<string, number>;
   modules: Record<string, unknown>;
   critical: number;
+  /** Failing rules at high severity. */
+  high: number;
+  failing_rules: number;
+  affected_records: number;
   blockers: number;
   auto_fixable_pct: number | null;
+  /** Against the run before in the window; null on the first run. */
+  change: number | null;
+  /** Rules that failed in the run before and pass now; only rules that ran cleanly in both are counted. */
+  rules_fixed: number | null;
+  rules_new: number | null;
 }
 
 export interface TrendAnnotation {

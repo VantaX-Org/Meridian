@@ -5,7 +5,27 @@
 {% if run_count < 2 %}
 <p class="lead">{{ headline }}</p>
 <div class="empty">A trend needs at least two finished runs of the same system. Run the analysis again to start one.</div>
-{% else %}
+{% endif %}
+{% if runs %}
+<h2>Run by run</h2>
+<p class="note">Each run's results and what changed from the run before: the score, the rules that stopped failing and the rules that started.</p>
+<table class="data keep">
+<thead><tr><th>Run</th><th class="r">Score</th><th class="r">Change</th><th class="r">Critical</th><th class="r">High</th><th class="r">Fixed</th><th class="r">New</th><th class="r">Failing records</th></tr></thead>
+<tbody>
+{% for r in runs %}
+<tr><td>{{ r.label or (r.run_at | dt) }}{% if r.baseline %} <span class="muted">(baseline)</span>{% endif %}<span class="sub">{{ r.run_at | dt }}</span></td>
+    <td class="r">{% if r.composite is not none %}{{ r.composite | n(1) }}{% else %}<span class="muted">not scored</span>{% endif %}</td>
+    <td class="r {{ 'up' if (r.change or 0) > 0 else 'down' if (r.change or 0) < 0 else '' }}">{% if r.change is not none %}{{ r.change | signed(1) }}{% else %}<span class="muted">first run</span>{% endif %}</td>
+    <td class="r">{{ r.critical | n }}</td><td class="r">{{ r.high | n }}</td>
+    <td class="r">{% if r.rules_fixed is not none %}{{ r.rules_fixed | n }}{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td class="r">{% if r.rules_new is not none %}{{ r.rules_new | n }}{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td class="r">{{ r.affected_records | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endif %}
+{% if run_count >= 2 %}
 <p class="lead">{{ headline }}</p>
 <div class="chart">{{ score_chart }}</div>
 <p class="note">The line shows the data quality score of each finished run, oldest first, under your current scoring weights, so runs scored with older settings still compare. The dashed line is the target.{% for a in annotations %} {{ a.label }}.{% endfor %}</p>

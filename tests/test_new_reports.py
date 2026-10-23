@@ -83,6 +83,8 @@ def test_trend_report_single_run_renders_with_reason():
     ctx = pr.trend_context(fx.V2, {"runs": runs}, [], [], scoring={}, **KW)
     text = _html("trend_report.html", ctx)
     assert "needs at least two finished runs" in text and "no movement to report" in ctx["headline"]
+    # the one run's own results still print: the run-by-run table needs one run, the trend needs two
+    assert "Run by run" in text and "first run" in text and "October re-run" in text
     _pdf("trend_report.html", ctx)
     empty = pr.trend_context(fx.V2, {"runs": []}, [], [], scoring={}, **KW)
     assert "no trend to report" in empty["headline"]
@@ -272,3 +274,26 @@ def test_routes_are_registered_and_do_not_shadow_each_other():
     for p in ("/api/v1/reports/trend.pdf", "/api/v1/reports/rules.pdf", "/api/v1/reports/dictionary.pdf",
               "/api/v1/reports/owners/{version_id}.pdf", "/api/v1/reports/catalogue"):
         assert p in paths, p
+
+
+def test_trend_runs_carry_the_change_from_the_run_before():
+    """Each run reads against the one before it: the composite delta and the rules that stopped or
+    started failing, counting only rules that ran cleanly in both."""
+    from api.services import insights_aggregate as agg
+
+    runs = agg.trend_runs([fx.V1, fx.V2], {fx.V1["id"]: fx.FINDINGS1, fx.V2["id"]: fx.FINDINGS2}, {}, {})
+    first, last = runs
+    assert first["change"] is None and first["rules_fixed"] is None and first["rules_new"] is None
+    assert last["change"] == round(last["composite"] - first["composite"], 1)
+    fails1 = {f["check_id"] for f in fx.FINDINGS1 if f["affected_count"] and not f["details"].get("error")}
+    fails2 = {f["check_id"] for f in fx.FINDINGS2 if f["affected_count"] and not f["details"].get("error")}
+    ran = {f["check_id"] for f in fx.FINDINGS1 if not f["details"].get("error")} & \
+        {f["check_id"] for f in fx.FINDINGS2 if not f["details"].get("error")}
+    assert last["rules_fixed"] == len(ran & fails1 - fails2) and last["rules_new"] == len(ran & fails2 - fails1)
+    assert last["failing_rules"] == len(fails2) and last["high"] == sum(
+        1 for f in fx.FINDINGS2 if f["check_id"] in fails2 and f["severity"] == "high")
+    assert last["affected_records"] == agg.failing_records(fx.FINDINGS2)
+    # the trend report prints the run-by-run table with those columns
+    ctx = pr.trend_context(fx.V2, {"runs": runs, "annotations": []}, fx.FINDINGS1, fx.FINDINGS2, scoring={}, **KW)
+    text = _html("trend_report.html", ctx)
+    assert "Run by run" in text and "first run" in text and f"{last['change']:+.1f}" in text
