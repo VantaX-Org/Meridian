@@ -1041,6 +1041,28 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                        AND NOT EXISTS (SELECT 1 FROM write_back_log w WHERE w.finding_id = f.id)
                 """), {"vid": version_id, "ids": [r.check_id for r in all_results]})
 
+            # Commit the analysis result BEFORE the cross-run issue lifecycle.
+            #
+            # The lifecycle replays every failing record key and can run for hours; it is also the
+            # memory-hungry part of the task (the worker was OOM-killed at 14.7 GB during it). It
+            # ran inside this transaction, so that kill rolled back EVERYTHING - a complete
+            # analysis (141M rows checked, 746 rules, 57 DDIC tables, findings written) was lost
+            # and the version sat at 'running' with no DQS. The DQS had already been computed
+            # above; only the final UPDATE was missing.
+            #
+            # Committing here makes the result durable, so a failure in the lifecycle degrades to
+            # "issues not tracked yet" instead of "no analysis at all", and the lifecycle can be
+            # retried on its own.
+            if dqs_summary:
+                session.execute(text("""
+                    UPDATE analysis_versions
+                    SET status = 'complete', dqs_summary = CAST(:summary AS jsonb)
+                    WHERE id = :vid AND tenant_id = :tid
+                """), {"vid": version_id, "tid": tenant_id, "summary": json.dumps(dqs_summary)})
+                session.commit()
+                logger.info("DQS committed for %s before the issue lifecycle: %d module(s)",
+                            version_id, len(dqs_summary))
+
             # Step 9b: record-level findings + cross-run issue lifecycle
             # (savepoint: a failure here never loses the findings above).
             try:
