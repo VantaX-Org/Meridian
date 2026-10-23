@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Field, Input, PageHeader, ReportPage, Stat } from "@/design";
+import { Button, DataTable, Field, Input, ReportPage, Stat } from "@/design";
 import { getExceptionBilling } from "@/lib/api/exceptions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -47,10 +47,11 @@ export default function ExceptionBillingPage() {
 
   return (
     <ReportPage
-      narrative="Resolved exceptions by billing tier, on top of the base fee. Read only."
+      title="Exception billing"
+      meta="Resolved exceptions by billing tier, on top of the base fee. Read only."
+      narrative={null}
       charts={
         <div className="flex flex-col gap-4">
-          <PageHeader title="Exception billing" meta="Resolved exceptions by billing tier" />
           <div className="flex gap-6">
             <Stat label="Total" value={b ? money(b.total_amount) : q.isLoading ? "–" : "Pick a month"} />
             <Stat label="Base fee" value={b ? money(b.base_fee) : q.isLoading ? "–" : "—"} />

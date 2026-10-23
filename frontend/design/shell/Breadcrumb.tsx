@@ -97,7 +97,8 @@ export function Breadcrumb() {
         {title}
       </h1>
       {scopeParts.map((part) => (
-        <span key={part} data-testid="crumb-scope" className="truncate" style={{ color: "var(--m-ink-3)" }}>{part}</span>
+        // The page's own header carries its scope; shown here too, the line would keep the bar from collapsing.
+        <span key={part} data-testid="crumb-scope" className={pageDrawsTitle ? "sr-only" : "truncate"} style={{ color: "var(--m-ink-3)" }}>{part}</span>
       ))}
     </nav>
   );

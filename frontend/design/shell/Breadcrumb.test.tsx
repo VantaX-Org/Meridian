@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
 }));
 
+import { PageHeader } from "../primitives/PageHeader";
 import { Breadcrumb, useBreadcrumbScope, useBreadcrumbTitle } from "./Breadcrumb";
 
 describe("Breadcrumb", () => {
@@ -29,6 +30,11 @@ describe("Breadcrumb scope", () => {
     const parts = screen.getAllByTestId("crumb-scope");
     expect(parts.map((p) => p.textContent)).toEqual(["14 objects", "run 2026-10-11"]);
     expect(document.body.textContent).not.toContain("\u00B7");
+  });
+
+  it("hides the scope when the page draws its own title, so the bar can collapse", () => {
+    render(<><Breadcrumb /><Scope /><PageHeader title="Objects" meta="14 objects" /></>);
+    for (const part of screen.getAllByTestId("crumb-scope")) expect(part).toHaveClass("sr-only");
   });
 });
 
