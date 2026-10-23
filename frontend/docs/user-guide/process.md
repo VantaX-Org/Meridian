@@ -1,6 +1,6 @@
 # Processes
 
-Processes shows how your business processes really run in SAP, mined from the documents in your system, and how ready each process step is given the quality of the data behind it. Process analysts run discovery; programme leads and process owners read the flows, variants and readiness.
+Processes shows how your business processes really run in SAP, mined from your documents, and how ready each step is given the quality of its data. Process analysts run discovery; leads and process owners read the results.
 
 The pages are in the **More** menu under **Process**: **As-is processes** and **Discovery runs**. Process readiness is under **Insights**, **Readiness**, on the **Processes** view.
 
@@ -14,13 +14,11 @@ Every process in Meridian follows one five-level model:
 - **L4**, sub-process: one BPMN diagram, usually one transaction code, for example `FK01`.
 - **L5**, activity: one task in the diagram. An activity lists the SAP `TABLE.FIELD` points it touches, and the rule that checks each one.
 
-The reference model holds SAP best-practice steps. Discovery measures what actually happened against it.
+Discovery measures what actually happened against the SAP best-practice reference model.
 
 ## As-is processes
 
 [As-is processes](/process) is titled **Processes**, with the system's name. Choose the system with **System**. If your role can run discovery, **Run discovery** starts a new run.
-
-The four sentences at the top say how many processes are discovered on the system, when the last run finished, which process has the lowest fitness, and what to do next.
 
 The table lists one row per L1, lowest fitness first:
 
@@ -44,13 +42,13 @@ Fitness is green at 80% or more, amber from 60% and red below.
 5. For a full run, set **Period start**, or leave it blank for the whole history.
 6. Select **Start run**, or **Close without starting**.
 
-If you started one process, its run page opens. Running discovery needs the run process discovery permission (Admin and Process analyst). If an extraction is running on the system, a notice says the runs start once it completes.
+Running discovery needs the run process discovery permission (Admin and Process analyst). Runs on a system wait for any extraction running on it to finish.
 
 ## Discovery runs
 
 The runs table lists **System**, **L1**, **Mode**, **Status**, **Stage**, **Percent**, **Started**, **Duration**, **Cases**, **Coverage** and **Open**. It refreshes while a run is active.
 
-A run page shows the process name, its status and coverage, and four sentences: the run's mode and state, when it finished, its cases, fitness and median duration, and what to do next. Below are:
+A run page shows the process, its status and coverage, its cases and fitness, and:
 
 - **Stages**: each stage of the job and its status.
 - **Tables read**: each SAP table with its **Rows** and **State**: **Complete**, **Partial** or **Truncated**.
@@ -74,7 +72,7 @@ The tabs are:
 
 ### Flow
 
-Each box is a step; its size is the number of cases. Each arrow's width is the number of cases taking it, and its label is the median wait. Arrows carried by under a set share of cases are hidden, as in the Signavio export; select **Show all edges** to see them. The legend marks bottlenecks (the slowest tenth of arrows by median wait) and rework (a step that repeats or goes back to an earlier step).
+Box size is the number of cases; arrow width is the cases taking it, labelled with the median wait. Rare arrows are hidden, as in the Signavio export; select **Show all edges** to see them. The legend marks bottlenecks (the slowest tenth of arrows) and rework (a step that repeats or goes back).
 
 1. Select a step to drill one level down, as far as L4.
 2. At L4, a table lists each L5 activity with **Source** (Reference, Config or Discovered), **Cases**, **Share**, **Median**, **P90**, **Rework**, **Automation**, **Fitness**, **T-code** and **Fields**.
@@ -102,7 +100,7 @@ The list shows **Case**, **First event**, **Last event** and **Events**, up to 2
 4. If filters are set, choose **The filters of this view** or **Every case in the run**.
 5. Select **Export**.
 
-Arrows carried by fewer than 1% of cases are left out of the Signavio export. Each step keeps its case count, share and median time. The dialog lists the three steps to import the files into Signavio Process Manager, starting with the L1 file.
+Arrows carried by fewer than 1% of cases are left out. Each step keeps its case count, share and median time. The dialog lists the steps to import the files into Signavio Process Manager.
 
 The PowerPoint deck holds the reference model only: a summary, one slide per L1 and one per L4. Discovered cases and filters are not part of it.
 
@@ -110,7 +108,7 @@ Exporting needs the export process permission (Admin, Manager and Process analys
 
 ## Process readiness
 
-Process readiness answers "can we run this process on this data". Open **Insights**, **Readiness** and choose **Processes**. The page is titled **Process** and has two tabs: **Readiness** and **Map**. It reads the latest completed analysis, or the run in the address.
+Process readiness answers "can we run this process on this data". Open **Insights**, **Readiness** and choose **Processes**. The page is titled **Process**, with two tabs: **Readiness** and **Map**. It reads the latest completed analysis.
 
 ### How data quality enriches each step
 
@@ -150,7 +148,7 @@ The process designer at [/insights/process/designer](/insights/process/designer)
 
 **Versions** lists earlier versions. Viewing one shows **Restore as new version** and **Back to latest**. If someone saved while you edited, choose **Reload** or **Save as a copy**.
 
-**Overlay** switches between **Latest analysis** and **None**. With the overlay on, the figures show **Activities**, **Blocked** (red) and **Degraded** (amber), plus **Discovered variants** and **Unmapped**: document types found in the data but on no sub-process. **Create L1 from discovered** turns them into a starting skeleton, and **Adopt** attaches one to a sub-process.
+**Overlay** switches between **Latest analysis** and **None**. With it on, the figures count **Blocked** (red) and **Degraded** (amber) activities. **Unmapped** counts document types found in the data but on no sub-process; **Create L1 from discovered** turns them into a skeleton, and **Adopt** attaches one to a sub-process.
 
 **Export to Signavio** and **Export to PowerPoint** download the model. Both are unavailable while you have unsaved changes.
 
@@ -161,7 +159,6 @@ Editing needs the analyse permission (Admin, Manager, Steward and Analyst). Expo
 - "No completed discovery run yet" means the process has not been mined. Run discovery first.
 - "Reference, not discovered" means the system has no source tables for this process. You can still read the reference model.
 - "Pick a level-4 process to see its diagram" means the BPMN tab needs an L4 step.
-- Case counts do not add up across processes.
 
 ## Related
 
