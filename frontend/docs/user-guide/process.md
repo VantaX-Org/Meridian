@@ -114,9 +114,9 @@ Process readiness answers "can we run this process on this data". Open **Insight
 
 Each L5 field is linked to the rule that checks it. Meridian colours the field from that rule's result in the run:
 
-- Red when the linked rule's finding is critical or high, or its pass rate is under 70%.
-- Amber when the pass rate is from 70% to under 95%, or the rule is medium.
-- Green when it passes 95% or more, or no finding exists.
+- Red when the linked rule fails (it affects at least one record and did not error) and the rule is critical or high, or its pass rate is under 70%.
+- Amber when a failing rule's pass rate is from 70% to under 95%, or the failing rule is medium.
+- Green when the rule affects no records, errored, passes 95% or more, or no finding exists. A critical or high rule that passes stays green.
 
 An activity takes the worst colour of its fields, a sub-process the worst of its activities, and so on up. A gate (an L3 process) is **Blocked** if any field is red, **Ready** if 90% or more of its fields are green, and **At risk** otherwise.
 

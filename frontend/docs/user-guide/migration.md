@@ -87,7 +87,7 @@ Creating a fix batch needs the apply permission (Admin, Manager and Steward).
 
 The **S/4 areas** tab groups the run's findings by S/4HANA simplification area, such as Business Partner or Material Ledger. Its rules come from the S/4HANA readiness pack and from existing rules that a conversion depends on. A failing rule marked as blocking always counts against the area.
 
-The figures are **Ready** (go or no-go), **Blocking areas** and **Failing records**. The table lists each **Area** with its **Status**, **Rules**, **Failing rules**, **Blocking** and **Failing records**, and two actions: **Open findings** and **Create fix batch**, which drafts a batch for the area's first failing check.
+The figures are **Ready** (go or no-go), **Blocking areas** and **Failing records**. The table lists each **Area** with its **Status**, **Rules**, **Failing rules**, **Blocking** and **Failing records**, and two actions: **Open findings** and **Create fix batch**, which drafts a batch for the area's first failing check and opens it on the **Batches** tab of [Fix](/fix?tab=batches).
 
 Select an area to open its panel: the counts of failing, blocking and warning rules, each failing check with its impact and failing records, and **How to fix it**, which gives the rule's message, its SAP impact and how to correct a record, for up to five checks.
 

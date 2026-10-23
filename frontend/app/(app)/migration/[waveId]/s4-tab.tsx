@@ -112,7 +112,8 @@ export function S4Tab({ versionId }: { versionId: string | null }) {
     onSuccess: (b) => {
       toast.success("Fix batch drafted");
       void qc.invalidateQueries({ queryKey: ["remediation"] });
-      router.push(`/fix/${b.id}`);
+      // A remediation batch opens in the Batches tab drawer; /fix/[batchId] reads cleaning_queue.batch_id, a different id.
+      router.push(`/fix?tab=batches&batch=${b.id}`);
     },
     onError: (e) => toast.error(errorText(e)),
   });

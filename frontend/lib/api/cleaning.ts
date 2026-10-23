@@ -96,6 +96,8 @@ export async function bulkApprove(params: {
   rule_id?: string;
   severity?: string;
   max_count?: number;
+  /** Approve exactly these waiting items, whatever their rule's automation level. */
+  ids?: string[];
 }): Promise<{ approved_count: number; skipped_count: number }> {
   const { data } = await apiClient.post("/api/v1/cleaning/bulk-approve", params);
   return data;

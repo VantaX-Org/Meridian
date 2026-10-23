@@ -116,7 +116,8 @@ export function CreateBatchFromSimulation({ simulation }: { simulation: Simulati
       toast.success(`Fix batch created with ${n(b.items)} record${b.items === 1 ? "" : "s"}`);
       void qc.invalidateQueries({ queryKey: ["remediation"] });
       setOpen(false);
-      router.push(`/fix/${b.id}`);
+      // A remediation batch opens in the Batches tab drawer; /fix/[batchId] reads cleaning_queue.batch_id, a different id.
+      router.push(`/fix?tab=batches&batch=${b.id}`);
     },
     onError: (e) => toast.error(errorText(e)),
   });

@@ -50,6 +50,7 @@ function BatchAudit({ batchId }: { batchId: string }) {
 
 // Same bulk-approve confidence threshold as the legacy cleaning surface used (85%).
 const HIGH_CONFIDENCE = 0.85;
+const WAITING = new Set(["detected", "recommended"]);
 
 export default function BatchPage() {
   const { batchId } = useParams<{ batchId: string }>();
@@ -63,7 +64,8 @@ export default function BatchPage() {
   });
   const items = useMemo(() => data?.items ?? [], [data]);
   const ranked = useMemo(() => [...items].sort((x, y) => y.confidence - x.confidence), [items]);
-  const confident = useMemo(() => items.filter((i) => i.confidence >= HIGH_CONFIDENCE), [items]);
+  // Waiting proposals in this batch at or above the threshold: exactly what "Accept N" approves.
+  const confident = useMemo(() => items.filter((i) => i.confidence >= HIGH_CONFIDENCE && WAITING.has(i.status)), [items]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: queryKeys.batch(batchId) });
 
@@ -96,7 +98,7 @@ export default function BatchPage() {
     onSettled: () => void invalidate(),
   });
   const acceptHighConfidence = useMutation({
-    mutationFn: () => bulkApprove({ max_count: confident.length }),
+    mutationFn: () => bulkApprove({ ids: confident.map((i) => i.id) }),
     onSuccess: (r) => { toast(`Approved ${r.approved_count}`); invalidate(); },
   });
   const columns: ColumnDef<CleaningQueueItem>[] = [

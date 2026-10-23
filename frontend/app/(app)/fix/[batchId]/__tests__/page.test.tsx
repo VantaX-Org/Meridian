@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "../../../../../__tests__/render";
 import BatchPage from "../page";
-import { approveCleaning, getCleaningAudit, getCleaningQueue, type CleaningQueueItem } from "@/lib/api/cleaning";
+import { approveCleaning, bulkApprove, getCleaningAudit, getCleaningQueue, type CleaningQueueItem } from "@/lib/api/cleaning";
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ batchId: "B1" }) }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
@@ -37,6 +37,24 @@ describe("BatchPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /approve/i }));
 
     await waitFor(() => expect(approveCleaning).toHaveBeenCalledWith("i1"));
+  });
+
+  it("accepts exactly this batch's waiting proposals at 85% or higher", async () => {
+    vi.mocked(getCleaningQueue).mockResolvedValue({
+      items: [
+        item({ id: "hi", record_key: "100001", confidence: 0.92, status: "detected" }),
+        item({ id: "edge", record_key: "100002", confidence: 0.85, status: "recommended" }),
+        item({ id: "low", record_key: "100003", confidence: 0.6, status: "detected" }),
+        item({ id: "done", record_key: "100004", confidence: 0.95, status: "approved" }),
+      ],
+      total: 4, page: 1, per_page: 100,
+    });
+    vi.mocked(bulkApprove).mockResolvedValue({ approved_count: 2, skipped_count: 0 });
+
+    renderWithQuery(<BatchPage />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Accept 2 at 85% or higher" }));
+    await waitFor(() => expect(bulkApprove).toHaveBeenCalledWith({ ids: ["hi", "edge"] }));
   });
 
   it("renders one Export for the batch", async () => {

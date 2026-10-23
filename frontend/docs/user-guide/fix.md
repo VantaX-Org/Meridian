@@ -26,7 +26,7 @@ The export menu offers **Approved fixes (.xlsx)** and **Approved fixes (.csv)**.
 4. Select **Approve** or **Reject** on each row. A rejection is recorded with the reason "steward rejected".
 5. To approve in bulk, select **Accept N at 85% or higher** at the top.
 
-The bulk button approves up to that many waiting proposals, highest priority first, and only those from rules whose automation level is set to automatic. Approve the others one by one.
+The bulk button approves exactly the proposals it counts: the waiting proposals listed in this batch with a confidence of 85% or higher, whatever their rule's automation level. Approve or reject the others one by one.
 
 The batch page also has **Related**, **History** and **Audit** tabs. **Audit** lists every approval, rejection and change with **When**, **Who**, **Action** and **Record**. If your role can export, the export menu offers the approved fixes of this batch as .xlsx or .csv, and **PDF cleaning report (all batches)**. That report covers the whole tenant, not only this batch: proposals by object, rules applied, the audit trail, fix batches, proposed values, record-level fixes and duplicate candidates.
 
@@ -135,7 +135,7 @@ What-if applies every rule fix to a copy of a run and shows the score before and
 4. Read the summary sentence and the figures: **Score before**, **Score after**, **Findings resolved**, **Findings introduced**, **Cells changed** and **Records fixed**.
 5. **Score change by object** shows how each object moves the score.
 6. Two tables follow: **Rules changed by the fixes** and **Side effects**. Each lists **Rule**, **Object**, **Field**, **Result**, **Failing before**, **Failing after**, **Records resolved** and **Records introduced**. Select a rule to see each record's current and simulated value.
-7. To keep the fixes, select **Create fix batch from this simulation**, name the batch and select **Create fix batch**. The batch starts as a draft on the **Batches** tab. This needs the apply permission.
+7. To keep the fixes, select **Create fix batch from this simulation**, name the batch and select **Create fix batch**. The new batch opens on the **Batches** tab as a draft. This needs the apply permission.
 
 ## Good to know
 

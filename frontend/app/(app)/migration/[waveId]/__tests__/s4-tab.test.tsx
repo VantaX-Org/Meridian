@@ -64,7 +64,7 @@ describe("S4Tab", () => {
     const buttons = await screen.findAllByRole("button", { name: "Create fix batch" });
     await userEvent.click(buttons[0]);
     await waitFor(() => expect(create).toHaveBeenCalledWith("S/4 Business Partner / CVI: S4-CVI-LFA1", { check_id: "S4-CVI-LFA1", version_id: "v1" }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/fix/b1"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/fix?tab=batches&batch=b1"));
   });
 
   it("opens an area with the remediation text of its failing checks", async () => {

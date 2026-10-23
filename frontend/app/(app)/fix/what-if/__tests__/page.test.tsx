@@ -85,6 +85,6 @@ describe("WhatIfPage", () => {
     const buttons = await screen.findAllByRole("button", { name: "Create fix batch" });
     await userEvent.click(buttons[buttons.length - 1]);
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.stringContaining("What-if fixes"), "s1"));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/fix/b1"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/fix?tab=batches&batch=b1"));
   });
 });
