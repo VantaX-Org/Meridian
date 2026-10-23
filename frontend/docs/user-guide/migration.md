@@ -118,7 +118,7 @@ A dry run applies the target system's load checks to your source records and rep
 5. The table lists each failing record with **Module**, **Source table**, **Record**, **Status** (Load fail) and **Reasons**. **Open** takes you to the object's records.
 6. Select **Export Excel** or **Export PDF** to share the result.
 
-The page keeps the dry run in its address, so you can bookmark it and come back.
+The page keeps the dry run in its address, so you can bookmark it and come back. Opened without a dry run, or with a run that is not one, the page lists every dry run, newest first, with its objects, target release, status and the records that would fail. Select one to open it.
 
 ## How waves feed readiness and the board pack
 

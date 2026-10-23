@@ -1,12 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import { AxiosError, type AxiosResponse } from "axios";
 import * as migrationApi from "@/lib/api/migration";
 import DryRunPage from "../page";
 
 let searchParams = "run=run-1";
+const push = vi.fn();
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(searchParams),
+  useRouter: () => ({ push }),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -77,11 +80,34 @@ describe("DryRunPage", () => {
     expect(pdfLink).toHaveAttribute("href", "/api/v1/migration/runs/run-1/dry-run/pdf");
   });
 
-  it("shows an empty state when there is no run selected", async () => {
+  it("lists the dry runs to choose from when none is selected, and opens one", async () => {
     searchParams = "";
+    const list = vi.spyOn(migrationApi, "getMigrationRuns").mockResolvedValue([RUN_DETAIL.run]);
     renderWithQuery(<DryRunPage />);
-    await waitFor(() => expect(screen.getByText(/no dry run selected/i)).toBeInTheDocument());
+    fireEvent.click(await screen.findByText("60 of 100"));
+    expect(list).toHaveBeenCalledWith({ mode: "s4_dry_run" });
+    expect(push).toHaveBeenCalledWith("/migration/dry-run?run=run-1");
     searchParams = "run=run-1";
+  });
+
+  it("says how to start one when there are no dry runs", async () => {
+    searchParams = "";
+    vi.spyOn(migrationApi, "getMigrationRuns").mockResolvedValue([]);
+    renderWithQuery(<DryRunPage />);
+    expect(await screen.findByText("No dry runs yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open migration cockpit" })).toHaveAttribute("href", "/migration");
+    searchParams = "run=run-1";
+  });
+
+  it("offers the list when the run in the address is not a dry run", async () => {
+    // Pages are scoped by ?run=, so a data quality run's id can arrive here and 404.
+    vi.spyOn(migrationApi, "getMigrationRun").mockRejectedValue(
+      new AxiosError("Not Found", "ERR_BAD_REQUEST", undefined, undefined, { status: 404 } as AxiosResponse));
+    vi.spyOn(migrationApi, "getDryRunRecords").mockResolvedValue({ total: 0, rows: [] });
+    vi.spyOn(migrationApi, "getMigrationRuns").mockResolvedValue([RUN_DETAIL.run]);
+    renderWithQuery(<DryRunPage />);
+    expect(await screen.findByText(/not a dry run/i)).toBeInTheDocument();
+    expect(await screen.findByText("60 of 100")).toBeInTheDocument();
   });
 
   it("shows an error state when the run fails to load", async () => {

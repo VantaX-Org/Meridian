@@ -126,7 +126,7 @@ The page is read-only. Until a rule exists for a field, the most recent source v
 
 The business glossary defines each term, where it lives in SAP and who owns it. [Glossary](/mdm/glossary) lists terms with **Term**, **Object**, **Status** (Active, Under review or Deprecated), **S/4HANA mandatory**, **Definition** (Model draft or Steward), **Rules** and **Open**. Search by term, SAP table or field, and filter by **Domain** and **Status**.
 
-Terms are drafted from analysed SAP fields. "No terms yet" means no analysis has run.
+Terms are drafted from the SAP fields Meridian's rules check. Each analysis adds the terms of the objects it covered. If the glossary is empty after runs that finished before this was in place, select **Draft terms from analysed objects** (it needs the approve permission). Drafting is safe to repeat: a term that already exists is left as it is.
 
 ## How to maintain a glossary term
 

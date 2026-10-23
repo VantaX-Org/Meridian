@@ -1257,6 +1257,19 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         else:
             logger.info("SKIP_AI_ENRICHMENT=true — skipping AI report enrichment")
 
+        # Glossary terms for the fields this run's objects' rules check (idempotent, non-fatal):
+        # the glossary promises terms "drafted from analysed SAP fields" and nothing else wrote them.
+        try:
+            from api.services.glossary_populate import populate
+            with Session(engine) as session:
+                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                drafted = populate(session, str(tenant_id), data_modules)
+                session.commit()
+            logger.info(f"Glossary for version_id={version_id}: {drafted}")
+        except Exception as e:
+            reraise_soft_limit(e)
+            logger.warning(f"Glossary drafting failed (non-fatal): {e}")
+
         # Enqueue cleaning detection (non-blocking — failure is non-fatal)
         try:
             from workers.tasks.run_cleaning import run_cleaning

@@ -12,7 +12,18 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(mockParams.value),
 }));
 
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+
 describe("GlossaryPage", () => {
+  it("drafts terms from analysed objects when the glossary is empty", async () => {
+    vi.spyOn(glossaryApi, "getGlossaryTerms").mockResolvedValue({ terms: [], total: 0, page: 1, per_page: 100 });
+    const populate = vi.spyOn(glossaryApi, "populateGlossary").mockResolvedValue({ created: 412, linked: 600, objects: 5 });
+    renderWithQuery(<GlossaryPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Draft terms from analysed objects" }));
+    await waitFor(() => expect(populate).toHaveBeenCalled());
+  });
+
+
   it("renders one row per glossary term", async () => {
     vi.spyOn(glossaryApi, "getGlossaryTerms").mockResolvedValue({
       terms: [

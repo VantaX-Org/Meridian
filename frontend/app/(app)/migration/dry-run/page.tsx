@@ -2,15 +2,16 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { isAxiosError } from "axios";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Mono, Pill, ReportPage, Skeleton, Stat, Status } from "@/design";
-import { getDryRunRecords, getMigrationRun, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
+import { Button, DataTable, ExplorerPage, Mono, Notice, PageHeader, Pill, ReportPage, Skeleton, Stat, Status, asyncStateOf } from "@/design";
+import { getDryRunRecords, getMigrationRun, getMigrationRuns, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { MigrationStatus, TransferVerdict, WaveVerdict } from "@/types/api";
+import type { MigrationRun, MigrationStatus, TransferVerdict, WaveVerdict } from "@/types/api";
 
 const FROM_ENGINE: Record<TransferVerdict, WaveVerdict> = { go: "go", conditional: "at_risk", "no-go": "no_go" };
 
@@ -43,6 +44,37 @@ const columnsFor = (srcVersion: string | null | undefined): ColumnDef<DryRunReco
   },
 ];
 
+const pickerColumns: ColumnDef<MigrationRun>[] = [
+  { accessorKey: "created_at", header: "Started", cell: ({ row }) => formatDate(row.original.created_at, "datetime") },
+  { id: "objects", header: "Objects", accessorFn: (r) => r.modules.map(formatModuleName).join(", ") },
+  { accessorKey: "target_release", header: "S/4HANA release", cell: ({ row }) => row.original.target_release ?? "Target" },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
+  { id: "blocked", header: "Records that would fail", meta: { numeric: true }, accessorFn: (r) => r.records_blocked, cell: ({ row }) => `${row.original.records_blocked.toLocaleString()} of ${row.original.records_total.toLocaleString()}` },
+];
+
+/** Every S/4 load dry run, newest first: shown when no dry run is chosen, or the run in the address is not one. */
+function DryRunPicker({ notADryRun }: { notADryRun?: boolean }) {
+  const router = useRouter();
+  const q = useQuery({ queryKey: ["migration", "runs", "s4_dry_run"], queryFn: () => getMigrationRuns({ mode: "s4_dry_run" }) });
+  const runs = q.data ?? [];
+  return (
+    <div className="flex flex-col gap-4">
+      <PageHeader title="S/4 load dry runs" meta="Choose a dry run to see which records would load into S/4HANA" />
+      {notADryRun ? <Notice tone="info">The run in the address is not a dry run. Choose one below.</Notice> : null}
+      <ExplorerPage
+        state={asyncStateOf(q, () => runs.length === 0, true)}
+        emptyProps={{
+          title: "No dry runs yet",
+          detail: "Start one from a migration wave with Dry run (S/4 load). It checks every record against the S/4HANA load rules without loading anything.",
+          action: <Button render={<Link href="/migration">Open migration cockpit</Link>} />,
+        }}
+        errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+        table={<DataTable columns={pickerColumns} data={runs} getRowId={(r) => r.id} onRowClick={(r) => router.push(`/migration/dry-run?run=${r.id}`)} />}
+      />
+    </div>
+  );
+}
+
 export default function DryRunPage() {
   const search = useSearchParams();
   const runId = search.get("run") ?? undefined;
@@ -67,16 +99,9 @@ export default function DryRunPage() {
     void recordsQuery.refetch();
   };
 
-  if (!runId) {
-    return (
-      <ReportPage
-        narrative="Choose a dry run to see which records would load into S/4HANA."
-        charts={null}
-        state="empty"
-        emptyProps={{ title: "No dry run selected" }}
-      />
-    );
-  }
+  if (!runId) return <DryRunPicker />;
+  // The app scopes pages with ?run=, so a data quality run's id can arrive here; it is not a dry run.
+  if (isAxiosError(runQuery.error) && runQuery.error.response?.status === 404) return <DryRunPicker notADryRun />;
 
   const isLoading = runQuery.isLoading || recordsQuery.isLoading;
   const isError = runQuery.isError || isListFailure(recordsQuery);

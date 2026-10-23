@@ -381,6 +381,29 @@ async def ai_draft(
     )
 
 
+@router.post("/glossary/populate")
+async def populate_glossary(
+    role: str = Depends(require_permission("approve")),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+) -> dict:
+    """Draft terms for every object this tenant has analysed, from the rule library (no model).
+    Runs after each analysis too; this covers runs that finished before that, and is idempotent."""
+    from api.services.glossary_populate import populate
+    from api.services.version_status import finished_sql
+
+    tid = str(tenant.id)
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": tid})
+    modules = (await db.execute(text(f"""
+        SELECT DISTINCT jsonb_array_elements_text(metadata->'modules') FROM analysis_versions
+         WHERE tenant_id = :t AND {finished_sql()} AND jsonb_typeof(metadata->'modules') = 'array'"""), {"t": tid})).scalars().all()
+    if not modules:
+        raise HTTPException(status_code=409, detail="No object has been analysed yet. Run an analysis first.")
+    out = await db.run_sync(lambda s: populate(s, tid, modules, changed_by=current_user_label() or "meridian"))
+    await db.commit()
+    return {**out, "objects": len(modules)}
+
+
 @router.put("/glossary/{term_id}")
 async def update_glossary_term(
     term_id: str,
