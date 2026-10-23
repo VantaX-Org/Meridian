@@ -5,11 +5,8 @@
 {% if run_count < 2 %}
 <p class="lead">{{ headline }}</p>
 <div class="empty">A trend needs at least two finished runs of the same system. Run the analysis again to start one.</div>
-{% else %}
-<p class="lead">{{ headline }}</p>
-<div class="chart">{{ score_chart }}</div>
-<p class="note">The line shows the data quality score of each finished run, oldest first, under your current scoring weights, so runs scored with older settings still compare. The dashed line is the target.{% for a in annotations %} {{ a.label }}.{% endfor %}</p>
-
+{% endif %}
+{% if runs %}
 <h2>Run by run</h2>
 <p class="note">Each run's results and what changed from the run before: the score, the rules that stopped failing and the rules that started.</p>
 <table class="data keep">
@@ -26,6 +23,12 @@
 {% endfor %}
 </tbody>
 </table>
+
+{% endif %}
+{% if run_count >= 2 %}
+<p class="lead">{{ headline }}</p>
+<div class="chart">{{ score_chart }}</div>
+<p class="note">The line shows the data quality score of each finished run, oldest first, under your current scoring weights, so runs scored with older settings still compare. The dashed line is the target.{% for a in annotations %} {{ a.label }}.{% endfor %}</p>
 
 <h2>Scores by dimension</h2>
 <table class="data keep">

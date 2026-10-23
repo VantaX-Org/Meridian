@@ -83,6 +83,8 @@ def test_trend_report_single_run_renders_with_reason():
     ctx = pr.trend_context(fx.V2, {"runs": runs}, [], [], scoring={}, **KW)
     text = _html("trend_report.html", ctx)
     assert "needs at least two finished runs" in text and "no movement to report" in ctx["headline"]
+    # the one run's own results still print: the run-by-run table needs one run, the trend needs two
+    assert "Run by run" in text and "first run" in text and "October re-run" in text
     _pdf("trend_report.html", ctx)
     empty = pr.trend_context(fx.V2, {"runs": []}, [], [], scoring={}, **KW)
     assert "no trend to report" in empty["headline"]

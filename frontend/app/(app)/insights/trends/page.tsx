@@ -19,7 +19,7 @@ import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
-import { scopeTrendRuns, trendDomain, trendPoints } from "../_components/trendLineage";
+import { scopeTrendRuns, scopedComparisons, trendDomain, trendPoints } from "../_components/trendLineage";
 
 const WINDOWS = [{ value: "6", label: "Last 6 runs" }, { value: "12", label: "Last 12 runs" }, { value: "24", label: "Last 24 runs" }];
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
@@ -64,7 +64,10 @@ export default function TrendsPage() {
   const openRun = (p: ChartPoint) => { if (p.runId) router.push(runPageHref(p.runId)); };
 
   const current = runs.find((r) => r.id === run);
-  const trend = useMemo(() => scopeTrendRuns(q.data?.runs ?? [], current, run), [q.data, current, run]);
+  const trend = useMemo(() => {
+    const all = q.data?.runs ?? [];
+    return scopedComparisons(all, scopeTrendRuns(all, current, run));
+  }, [q.data, current, run]);
   const domain = useMemo(() => trendDomain(trend), [trend]);
   const labelByRun = new Map(domain.map((d) => [d.x, d.label ?? d.x]));
   const composite = useMemo(() => trendPoints(trend, (r) => r.composite), [trend]);
