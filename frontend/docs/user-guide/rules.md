@@ -84,7 +84,8 @@ A contract (`/rules/contracts`) turns rules into a promise between a producer an
 
 1. Select **New contract**, enter the **Contract name**, **Producer system**, **Consumer system** and **What the contract governs**, then **Create draft**.
 2. Open a contract to see its schema, quality, freshness and volume terms and its **Compliance history**.
-3. A person other than the author selects **Activate**.
+3. On a draft, select **Submit for approval**. Its status becomes awaiting approval. This needs the manage-rules permission.
+4. On a contract awaiting approval, a person other than the author selects **Activate**. This needs the approve permission. The author does not see **Activate**; the contract reads "You wrote this contract, so someone else with approval rights activates it."
 
 Quality, volume and schema terms are checked after every analysis run; freshness is checked hourly.
 
@@ -97,7 +98,7 @@ The data dictionary (`/rules/dictionary`) looks up standard SAP fields. Type one
 Scoring and alerts (`/rules/scoring`) sets how the score is built and who is told.
 
 1. At the top, **Score now** shows the latest score and **With these weights** previews it under the weights you are editing. **Weights sum** must read 1.00 before you can save.
-2. Under **Dimension weights**, enter a weight per dimension. The table shows the **Normalised** share, the **Latest score** and its **Contribution**. Select **Save weights**, or **Use DAMA defaults** (completeness 0.25, accuracy 0.25, consistency 0.20, timeliness, uniqueness and validity 0.10 each). Weights apply from the next analysis run.
+2. Under **Dimension weights**, enter a weight per dimension. The table shows the **Normalised** share, the **Latest score** and its **Contribution**. Select **Save weights**, or **Use DAMA defaults** (completeness 0.25, accuracy 0.25, consistency 0.20, timeliness, uniqueness and validity 0.10 each). Weights apply from the next analysis run. You enter them as fractions of 1; Meridian saves them as shares of 100, and shows them as fractions again when you come back.
 3. Under **When to alert**, set **Critical findings**, **High findings** and **Score drop, points**. An alert is raised when a run reaches that many critical or high findings, or an object's score falls by more than that against the previous run.
 4. Under **Score floors per object**, use **Add a floor for** to give an object a minimum score. A run that scores it lower raises an alert. Select **Save thresholds**.
 5. Under **Planner assumptions**, set the effort figures and an optional **Cost per failing record** and **Currency**, then **Save assumptions**.
@@ -109,7 +110,7 @@ Some parts of the score have no field on this page. One failing critical rule ca
 ## Who can change what
 
 - Anyone who can see Rules can read every page in this chapter.
-- Enabling and disabling rules, writing rules and drafts, publishing, **Mine now**, rejecting learned rules and creating contracts need the manage-rules permission (administrator and data steward).
+- Enabling and disabling rules, writing rules and drafts, publishing, **Mine now**, rejecting learned rules, creating contracts and submitting them for approval need the manage-rules permission (administrator and data steward).
 - Approving learned rules, activating contracts, creating and ending suppressions, and approving a rule version need the approve permission (administrator, manager, data steward and approver). The author of a version cannot approve it.
 - Saving anything on Scoring and alerts needs the manage-settings permission (administrator). Everyone else sees "These settings are read only for your role".
 - Exporting the rule list or a rule's history needs the export permission.

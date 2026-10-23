@@ -109,8 +109,8 @@ export default function ReadinessPage() {
   const waveEmpty = !configured ? (
     <EmptyState
       title="Readiness is not set up yet"
-      detail="Set the readiness thresholds under Scoring and alerts, then group the objects you move together into a wave in the migration cockpit."
-      action={<Button render={<Link href="/rules/scoring">Scoring and alerts</Link>} />}
+      detail="Readiness needs a wave: the set of objects you move together. Create one in the migration cockpit and set its minimum readiness there. Each object then gets a go or no-go here."
+      action={<Button render={<Link href="/migration">Open migration cockpit</Link>} />}
       ghost="grid"
     />
   ) : (

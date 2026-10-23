@@ -30,6 +30,22 @@ const DEFAULT_THRESHOLDS: AlertThresholds = {
 const DEFAULT_NOTIFY = { email: "", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true };
 const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "ZAR" };
 
+/** Stored weights (tenants.dqs_weights) sum to 100; the form edits fractions of 1, so rescale on load. */
+function fromStored(stored: DimensionScores | null): DimensionScores {
+  const total = stored ? DIMS.reduce((a, d) => a + (Number(stored[d]) || 0), 0) : 0;
+  if (!stored || total <= 0) return DEFAULT;
+  const out = { ...stored };
+  DIMS.forEach((d) => { out[d] = Math.round(((Number(stored[d]) || 0) / total) * 10000) / 10000; });
+  return out;
+}
+
+/** The PATCH accepts weights that sum to 100, the scale the API stores and validates. */
+function toStored(fractions: DimensionScores): DimensionScores {
+  const out = { ...fractions };
+  DIMS.forEach((d) => { out[d] = fractions[d] * 100; });
+  return out;
+}
+
 /** Weighted composite over the measured dimensions, normalising the weights like the backend does. */
 function composite(scores: Record<string, number>, weights: DimensionScores): number | null {
   const measured = DIMS.filter((d) => scores[d] != null);
@@ -62,7 +78,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const write = can("manage_settings");
   const agg = useQuery({ queryKey: queryKeys.findingsAggregate("current"), queryFn: () => getFindingsAggregate() });
 
-  const [weights, setWeights] = useState<DimensionScores>(initial.dqs_weights ?? DEFAULT);
+  const [weights, setWeights] = useState<DimensionScores>(() => fromStored(initial.dqs_weights));
   const [thresholds, setThresholds] = useState<AlertThresholds>({ ...DEFAULT_THRESHOLDS, ...initial.alert_thresholds });
   const floors = thresholds.module_floors ?? {};
   const setFloor = (module: string, value: number | null) => {
@@ -92,7 +108,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const delta = preview !== null && current !== null ? Math.round((preview - current) * 10) / 10 : null;
 
   const saveWeights = useMutation({
-    mutationFn: () => updateDqsWeights(normalised),
+    mutationFn: () => updateDqsWeights(toStored(normalised)),
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); toast.success("Weights saved. They apply from the next analysis run"); },
     onError: (e) => toast.error((e as Error).message || "Weights not saved"),
   });

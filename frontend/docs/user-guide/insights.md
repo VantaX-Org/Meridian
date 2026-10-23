@@ -69,7 +69,7 @@ Forecast (`/insights/forecast`) reads every object's score history, not one run.
 
 ## Readiness
 
-**Waves** (`/insights/readiness`) shows **Blocked objects**: each object and wave with its **Readiness**, **Blocking gaps** and **Records blocked**, and **Fix** to open the blocking rules. **Which waves are blocked** is a heatmap of objects against waves. Without waves, blockers are listed by S/4 simplification area.
+**Waves** (`/insights/readiness`) shows **Blocked objects**: each object and wave with its **Readiness**, **Blocking gaps** and **Records blocked**, and **Fix** to open the blocking rules. **Which waves are blocked** is a heatmap of objects against waves. Without waves, blockers are listed by S/4 simplification area, and the grid reads **Readiness is not set up yet**. Readiness needs a wave: select **Open migration cockpit**, then **Create wave** to group the objects you move together and set the wave's **Minimum readiness %**. Creating a wave needs the analyse permission.
 
 **Processes** (`/insights/process`) has two tabs. **Readiness** scores the L1 to L5 process of a procure to pay or order to cash object from the latest completed run: **Blocking findings**, **Gates** (Blocked, At risk or Ready at 90% and over), **Recommendations**, **Rules by step** and **SAP features at risk**. **Map** shows the process mined from the run, with **Failing steps** and **Variants**.
 

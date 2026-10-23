@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as settingsApi from "@/lib/api/settings";
@@ -38,6 +38,31 @@ describe("rules scoring page", () => {
     renderWithQuery(<ScoringPage />);
     await waitFor(() => expect(screen.getByText("Dimension weights")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText("88.5")).toBeInTheDocument());
+  });
+
+  it("saves weights on the 100 scale the API stores", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
+    const save = vi.spyOn(settingsApi, "updateDqsWeights").mockResolvedValue();
+    renderWithQuery(<ScoringPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Save weights" }));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    const sent = save.mock.calls[0][0];
+    expect(sent.completeness).toBeCloseTo(25);
+    expect(sent.consistency).toBeCloseTo(20);
+    expect(Object.values(sent).reduce((a, b) => a + b, 0)).toBeCloseTo(100);
+  });
+
+  it("reads stored weights that sum to 100 as fractions and lets them be saved", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue({
+      ...SETTINGS,
+      dqs_weights: { completeness: 40, accuracy: 20, consistency: 20, timeliness: 10, uniqueness: 5, validity: 5 },
+    });
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
+    renderWithQuery(<ScoringPage />);
+    expect(await screen.findByLabelText("completeness weight")).toHaveValue(0.4);
+    expect(screen.getByText("Sums to one")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save weights" })).toBeEnabled();
   });
 
   it("shows a retryable error when settings fail to load", async () => {

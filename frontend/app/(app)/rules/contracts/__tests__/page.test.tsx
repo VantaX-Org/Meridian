@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as contractsApi from "@/lib/api/contracts";
@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParams,
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => allowed }) }));
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
 
 const CONTRACT: Contract = {
   id: "c1",
@@ -70,6 +71,36 @@ describe("rules contracts page", () => {
     } finally {
       searchParams.delete("status");
     }
+  });
+
+  it("offers Submit for approval on a draft and Activate only on a contract awaiting approval", async () => {
+    const draft: Contract = { ...CONTRACT, id: "d1", name: "Draft one", status: "draft", created_by: "me" };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [draft], total: 1 });
+    const update = vi.spyOn(contractsApi, "updateContract").mockResolvedValue({ ...draft, status: "pending_approval" });
+    const activate = vi.spyOn(contractsApi, "activateContract");
+    vi.spyOn(contractsApi, "getContractCompliance").mockResolvedValue({ contract_id: "d1", compliance_history: [] });
+    renderWithQuery(<ContractsPage />);
+    fireEvent.click(await screen.findByText("Draft one"));
+    expect(screen.queryByRole("button", { name: "Activate" })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Submit for approval" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("d1", { status: "pending_approval" }));
+    expect(activate).not.toHaveBeenCalled();
+  });
+
+  it("offers Activate on a contract awaiting approval, but not to its author", async () => {
+    const theirs: Contract = { ...CONTRACT, id: "p1", name: "Theirs", status: "pending_approval", created_by: "someone" };
+    const mine: Contract = { ...CONTRACT, id: "p2", name: "Mine", status: "pending_approval", created_by: "me" };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [theirs, mine], total: 2 });
+    vi.spyOn(contractsApi, "getContractCompliance").mockResolvedValue({ contract_id: "p1", compliance_history: [] });
+    const activate = vi.spyOn(contractsApi, "activateContract").mockResolvedValue({ id: "p1", status: "active" });
+    renderWithQuery(<ContractsPage />);
+    fireEvent.click(await screen.findByText("Mine"));
+    expect(await screen.findByText(/someone else with approval rights activates it/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Activate" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Submit for approval" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Theirs"));
+    fireEvent.click(await screen.findByRole("button", { name: "Activate" }));
+    await waitFor(() => expect(activate).toHaveBeenCalledWith("p1"));
   });
 
   it("offers a link to rules in the empty state without manage_rules", async () => {
