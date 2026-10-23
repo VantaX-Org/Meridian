@@ -288,6 +288,12 @@ def _commentary_sheet(data: dict, scoring: dict) -> SheetSpec:
     """The board pack's plain-speech commentary, one row per section, so the words travel with the numbers."""
     from api.services.pdf_reports import board_context
 
+    module = data.get("module")
+    if module:  # the workbook is scoped to one object: so is its commentary (findings and clusters already are)
+        def scoped(v: Optional[dict]) -> Optional[dict]:
+            return {**v, "dqs_summary": {m: r for m, r in (v.get("dqs_summary") or {}).items() if m == module}} if v else v
+        data = {**data, "version": scoped(data["version"]), "previous": scoped(data["previous"]),
+                "waves": [{**w, "modules": [module]} for w in data["waves"] if module in (w.get("modules") or [])]}
     ctx = board_context(data, tenant_name=data["tenant_name"], scoring=scoring)
     com = ctx["commentary"]
     order = [("Score", "overall"), ("Dimensions", "dimensions"), ("Root causes", "clusters"), ("Blockers", "blockers"),

@@ -54,9 +54,12 @@ def board_data(with_previous: bool = True) -> dict:
 
 def test_overall_reads_the_score_against_the_bands():
     assert rc.overall(None, None) == "No module produced a score, so there is nothing to read against the target yet."
-    s = rc.overall(72.3, -1.2, T, critical=2)
+    s = rc.overall(72.3, -1.2, T, capped=True, critical=2)
     assert "72.3 is in the warning band of 90" in s and "17.7 more points" in s
-    assert "1.2 points worse" in s and "2 critical checks fail" in s
+    assert "1.2 points worse" in s and "2 critical checks fail and they cap the score" in s
+    # a critical failure within tolerance does not cap: the scorer's verdict decides, not the count
+    s = rc.overall(92.0, None, T, capped=False, critical=1)
+    assert "1 critical check fails, within the tolerance that would cap the score" in s and "fastest" not in s
     s = rc.overall(93.0, 0.0, T)
     assert "meets the target" in s and "unchanged" in s and "critical" not in s
     assert "paying off" in rc.overall(80.0, 3.0, T)
@@ -86,14 +89,16 @@ def test_fix_first_and_next_steps():
              "severity": "critical", "field": "BUT000.NAME_ORG1", "why": "A partner without a name cannot be invoiced."},
             {"check_id": "MM003", "message": "Material type is mandatory - determines storage", "module": "material_master",
              "affected": 500, "severity": "high"}]
-    s = rc.fix_first(rows)
+    s = rc.fix_first(rows, capped=True)
     assert s.startswith("The first item alone, Partner has no name in Business partner, carries")
     assert "on BUT000.NAME_ORG1" in s and "A partner without a name cannot be invoiced." in s
     assert "1 of the 2 is critical" in s and s.endswith("Work the list top down: each item is worth more than everything below it.")
-    steps = rc.next_steps(fix_first_rows=rows, critical=1, errored=2, score=72.3, thresholds=T)
+    assert "1 of the 2 is critical and comes first whatever the count." in rc.fix_first(rows)
+    steps = rc.next_steps(fix_first_rows=rows, critical=1, capped=True, errored=2, score=72.3, thresholds=T)
     assert steps[0] == "Fix Partner has no name in Business partner first: 3,120 records, the largest impact in the run."
     assert steps[1] == "Clear the 1 critical failure to lift the cap on the score."
     assert "2 checks that could not run" in steps[2] and steps[3].endswith("17.7 points away.")
+    assert rc.next_steps(critical=2) == ["Clear the 2 critical failures: each one marks records that cannot be used."]
     assert rc.next_steps() == []
     assert rc.fix_first([]) == ""
 
@@ -125,8 +130,15 @@ def test_clusters_blockers_and_waves():
     assert s == ("1 blocking rule fails. The largest is Material type is mandatory in Material master, failing on 11,420 records. "
                  "Every blocker shown sits in Material master, so one team owns the whole list. Wave 1 cannot go until these are cleared.")
     w = rc.waves(waves, T)
-    assert "Wave 1 is held back: 1 of 1 module has blocking rules (Material master)." in w
-    assert "Wave 2 is clear" in w and "Wave 3 has no scored module." in w
+    assert "Wave 1 is held back: 1 of 1 module has blocking rules (Material master); Material master is below the 90 target." in w
+    assert "Wave 2 is clear: no module in it has a blocking rule and every module meets the 90 target." in w
+    assert "Wave 3 has no scored module." in w
+    # between warning and target with no blocker is conditional, never clear
+    cond = rc.waves([{"name": "Wave 1", "modules": [{"name": "fi_gl", "score": 80.0, "blockers": 0}]}], T)
+    assert cond == "Wave 1 is not blocked, but FI GL scores below the 90 target, so it is conditional rather than ready."
+    mixed = rc.waves([{"name": "W", "modules": [{"name": "fi_gl", "score": 80.0, "blockers": 0},
+                                                 {"name": "hcm", "score": 50.0, "blockers": 0}]}], T)
+    assert mixed == "W is held back: Hcm scores below 75; FI GL is below the 90 target."
     assert rc.waves([]).startswith("No migration wave is planned")
 
 
@@ -141,6 +153,8 @@ def test_module_paragraph():
     assert s.endswith("1 blocking rule stops this module going live as it stands.")
     assert rc.module({"name": "fi_gl", "score": None}) == "FI GL produced no score in this run."
     assert rc.module({"name": "fi_gl", "score": 95.0}, T).endswith("Nothing here blocks it; keep it there.")
+    assert rc.module({"name": "fi_gl", "score": 86.0, "critical": 1, "cap_reason": "Capped at 85"}, T).endswith("1 critical failure caps its score.")
+    assert rc.module({"name": "fi_gl", "score": 92.0, "critical": 1}, T).endswith("so the score is not capped, but those records cannot be used until fixed.")
     ov = rc.modules_overview([{"name": "a", "score": 95.0}, {"name": "b", "score": 70.0, "critical": 1}, {"name": "c", "score": None}], T)
     assert ov.startswith("1 of 2 scored modules meets the 90 target. B is the weakest at 70.0 and A the strongest at 95.0, a spread of 25.0 points.")
     assert "1 module carries a critical or blocking failure: B." in ov and "1 module produced no score" in ov
@@ -262,6 +276,20 @@ def test_trend_and_owner_reports_carry_commentary():
     assert ctx["commentary"]["unassigned"].startswith("1 object has no owner. 1 of them carries a blocking rule (Material master)")
     paras = _paras("owner_report.html", ctx)
     assert ctx["owners"][0]["commentary"] in paras and ctx["commentary"]["unassigned"] in paras
+
+
+def test_workbook_commentary_follows_the_module_filter():
+    from api.services import workbook_report as wb
+
+    data = board_data()
+    data.update(module="fi_gl", findings=[f for f in fx.FINDINGS2 if f["module"] == "fi_gl"],
+                previous_findings=[f for f in fx.FINDINGS1 if f["module"] == "fi_gl"])
+    data["clusters"] = agg.cluster_findings(data["findings"], {})
+    data["overview"] = agg.overview_from(data)
+    rows = list(wb.workbook_context(data, scoring={}, generated_at=fx.GENERATED)["sheets"][1].rows)
+    text = " ".join(r["commentary"] for r in rows)
+    assert "FI GL" in text and "Material master" not in text and "Wave 2" not in text
+    assert [r["section"] for r in rows if r["section"] == "FI GL"] == ["FI GL"]
 
 
 def test_workbook_has_a_commentary_sheet_after_the_summary():

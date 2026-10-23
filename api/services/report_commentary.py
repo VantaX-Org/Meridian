@@ -114,10 +114,14 @@ def overall(score: Optional[float], delta: Optional[float], thresholds: Optional
               + ("so the work since then is paying off." if delta > 0 else "so something has slipped since then."))
     elif delta == 0:
         s += " It is unchanged from the earlier run."
-    if critical:
-        s += (f" {critical} critical {_plural(critical, 'check')} {'fails' if critical == 1 else 'fail'}, and a "
-              "critical failure caps the score however good the rest of the data is: clearing it is the fastest "
-              "way to move the number.")
+    one = critical == 1
+    if critical and capped:
+        s += (f" {critical} critical {_plural(critical, 'check')} {'fails' if one else 'fail'} and "
+              f"{'it caps' if one else 'they cap'} the score however good the rest of the data is: clearing "
+              f"{'it' if one else 'them'} is the fastest way to move the number.")
+    elif critical:
+        s += (f" {critical} critical {_plural(critical, 'check')} {'fails' if one else 'fail'}, within the tolerance "
+              "that would cap the score, but each one marks records that cannot be used until it is fixed.")
     elif capped:
         s += " A critical failure caps the score however good the rest of the data is."
     return s
@@ -160,8 +164,9 @@ def dimensions(dims: dict[str, Optional[float]], prev: Optional[dict[str, Option
 # ── rules and root causes ────────────────────────────────────────────────────
 
 
-def fix_first(rows: list[dict]) -> str:
-    """Why the ranked list starts where it does, and how concentrated the work is."""
+def fix_first(rows: list[dict], capped: bool = False) -> str:
+    """Why the ranked list starts where it does, and how concentrated the work is. ``capped`` is the
+    scorer's own verdict: only then does clearing a critical failure lift anything."""
     if not rows:
         return ""
     top = rows[0]
@@ -176,8 +181,9 @@ def fix_first(rows: list[dict]) -> str:
         s += f" {top['why'].rstrip('.')}."
     crit = sum(1 for r in rows if r.get("severity") == "critical")
     if crit:
-        s += (f" {crit} of the {len(rows)} {'is' if crit == 1 else 'are'} critical, so fixing "
-              f"{'it' if crit == 1 else 'them'} also lifts the cap on the score.")
+        s += f" {crit} of the {len(rows)} {'is' if crit == 1 else 'are'} critical"
+        s += (f", so fixing {'it' if crit == 1 else 'them'} also lifts the cap on the score." if capped
+              else f" and {'comes' if crit == 1 else 'come'} first whatever the count.")
     s += " Work the list top down: each item is worth more than everything below it."
     return s
 
@@ -280,9 +286,16 @@ def waves(rows: list[dict], thresholds: Optional[dict] = None) -> str:
             out.append(f"{w['name']} has no scored module.")
             continue
         blocked = [m for m in mods if m.get("blockers")]
-        low = [m for m in mods if m.get("score") is not None and m["score"] < t["warning"]]
-        if not blocked and not low:
-            out.append(f"{w['name']} is clear: no module in it has a blocking rule or a score below {t['warning']:.0f}.")
+        scored = [m for m in mods if m.get("score") is not None]
+        low = [m for m in scored if m["score"] < t["warning"]]
+        conditional = [m for m in scored if t["warning"] <= m["score"] < t["target"]]
+        if not blocked and not low and not conditional:
+            out.append(f"{w['name']} is clear: no module in it has a blocking rule and every module meets "
+                       f"the {t['target']:.0f} target.")
+        elif not blocked and not low:
+            out.append(f"{w['name']} is not blocked, but {_oxford([_mod(m['name']) for m in conditional])} "
+                       f"{'scores' if len(conditional) == 1 else 'score'} below the {t['target']:.0f} target, "
+                       "so it is conditional rather than ready.")
         else:
             parts = []
             if blocked:
@@ -291,6 +304,9 @@ def waves(rows: list[dict], thresholds: Optional[dict] = None) -> str:
             if low:
                 parts.append(f"{_oxford([_mod(m['name']) for m in low])} {'scores' if len(low) == 1 else 'score'} "
                              f"below {t['warning']:.0f}")
+            if conditional:
+                parts.append(f"{_oxford([_mod(m['name']) for m in conditional])} {'is' if len(conditional) == 1 else 'are'} "
+                             f"below the {t['target']:.0f} target")
             out.append(f"{w['name']} is held back: " + "; ".join(parts) + ".")
     return " ".join(out)
 
@@ -326,8 +342,11 @@ def module(m: dict, thresholds: Optional[dict] = None) -> str:
     if m.get("blockers"):
         s += (f" {m['blockers']} blocking {_plural(m['blockers'], 'rule')} "
               f"{'stops' if m['blockers'] == 1 else 'stop'} this module going live as it stands.")
-    elif m.get("critical"):
+    elif m.get("critical") and m.get("cap_reason"):
         s += f" {m['critical']} critical {_plural(m['critical'], 'failure')} {'caps' if m['critical'] == 1 else 'cap'} its score."
+    elif m.get("critical"):
+        s += (f" {m['critical']} critical {_plural(m['critical'], 'failure')} {'sits' if m['critical'] == 1 else 'sit'} "
+              "within the tolerance, so the score is not capped, but those records cannot be used until fixed.")
     elif score >= t["target"]:
         s += " Nothing here blocks it; keep it there."
     return s
@@ -582,7 +601,7 @@ def samples(samples: list[dict]) -> str:
 # ── next steps ───────────────────────────────────────────────────────────────
 
 
-def next_steps(*, fix_first_rows: list[dict] = (), critical: int = 0, unmeasured: list[str] = (),
+def next_steps(*, fix_first_rows: list[dict] = (), critical: int = 0, capped: bool = False, unmeasured: list[str] = (),
                errored: int = 0, blockers_total: int = 0, pending_proposals: int = 0,
                unowned: int = 0, score: Optional[float] = None, thresholds: Optional[dict] = None) -> list[str]:
     """Up to five actions in the order to take them, each one a sentence a manager can forward."""
@@ -592,7 +611,8 @@ def next_steps(*, fix_first_rows: list[dict] = (), critical: int = 0, unmeasured
         out.append(f"Fix {_short(top.get('message') or top.get('name'), top['check_id'])} in {_mod(top['module'])} first: "
                    f"{_n(top.get('affected'))} records, the largest impact in the run.")
     if critical:
-        out.append(f"Clear the {critical} critical {_plural(critical, 'failure')} to lift the cap on the score.")
+        out.append(f"Clear the {critical} critical {_plural(critical, 'failure')}"
+                   + (" to lift the cap on the score." if capped else ": each one marks records that cannot be used."))
     if blockers_total and not critical:
         out.append(f"Work the {blockers_total} blocking {_plural(blockers_total, 'rule')} before the next readiness review.")
     if pending_proposals:
