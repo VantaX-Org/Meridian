@@ -473,28 +473,39 @@ write_status "pulling" "Pulling latest images..."
 #
 # Refuse to deploy over a live run unless somebody explicitly insists.
 assert_no_active_run() {
-    local active=""
     if [[ "${MERIDIAN_UPDATE_FORCE:-0}" == "1" ]]; then
         warn "MERIDIAN_UPDATE_FORCE=1 — updating even if a run is active"
         return 0
     fi
-    active="$(dc exec -T db psql -U meridian -d meridian -t -A -c \
-        "SELECT count(*) FROM analysis_versions WHERE status IN ('running','pending','queued')" 2>/dev/null || echo 0)"
-    active="${active//[^0-9]/}"
-    if [[ -n "$active" && "$active" -gt 0 ]]; then
-        error "Refusing to update: $active analysis run(s) are still running."
-        error "Recreating the worker would kill them and lose the work."
-        error "Wait for them to finish, or re-run the update with MERIDIAN_UPDATE_FORCE=1 to override."
-    fi
+    # The worker's own task list is authoritative: a run can only make progress on a worker, so
+    # no active task means no run is progressing, whatever the database says. A run killed by a
+    # deploy or the OOM killer leaves its version at 'running' forever, and refusing on that row
+    # alone would block every future update (it did, immediately: the first update after this
+    # guard was added was refused by a version from a run that had died an hour earlier).
     local busy
     busy="$(dc exec -T worker celery -A workers.celery_app inspect active --timeout 10 2>/dev/null \
         | grep -cE "run_extraction|run_checks" || true)"
     busy="${busy//[^0-9]/}"
     if [[ -n "$busy" && "$busy" -gt 0 ]]; then
         error "Refusing to update: the worker is executing a run right now."
-        error "Re-run with MERIDIAN_UPDATE_FORCE=1 to override."
+        error "Recreating it would kill the run and lose the work."
+        error "Wait for it to finish, or re-run with MERIDIAN_UPDATE_FORCE=1 to override."
     fi
-    info "No analysis or extraction is running — safe to update."
+    local queued
+    queued="$(dc exec -T redis redis-cli LLEN celery 2>/dev/null || echo 0)"
+    queued="${queued//[^0-9]/}"
+    local stale
+    stale="$(dc exec -T db psql -U meridian -d meridian -t -A -c \
+        "SELECT count(*) FROM analysis_versions WHERE status IN ('running','pending','queued')" 2>/dev/null || echo 0)"
+    stale="${stale//[^0-9]/}"
+    if [[ -n "$stale" && "$stale" -gt 0 ]]; then
+        warn "$stale analysis row(s) still say running, but no task is executing them."
+        warn "That is a stale status from a run that died; the update will proceed."
+    fi
+    if [[ -n "$queued" && "$queued" -gt 0 ]]; then
+        warn "the celery queue holds $queued pending task(s); the worker will pick them up after the restart"
+    fi
+    info "No analysis or extraction is executing — safe to update."
 }
 
 assert_no_active_run
