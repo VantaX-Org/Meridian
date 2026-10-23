@@ -94,6 +94,21 @@ def test_l5_red_with_critical_failure():
     assert found_red, "Should find AP018 field with red status"
 
 
+def _ap018_status(finding: dict) -> str:
+    doc = generate_process_document("accounts_payable", {"AP018": finding}, {}, [])
+    return next(f["dq_status"] for f in _get_all_l5_fields(doc) if f["check_id"] == "AP018")
+
+
+def test_l5_red_only_when_the_rule_fails():
+    """Stored findings include passing checks: a critical or high rule that passes stays green."""
+    passing = {"pass_rate": 100.0, "affected_count": 0, "severity": "critical", "message": "x"}
+    assert _ap018_status(passing) == "green"
+    assert _ap018_status({**passing, "severity": "high", "affected_count": None}) == "green"
+    errored = {"pass_rate": 0.0, "affected_count": 5, "severity": "critical", "message": "x", "error": "boom"}
+    assert _ap018_status(errored) == "green"
+    assert _ap018_status({**passing, "affected_count": 1, "pass_rate": 99.9}) == "red"
+
+
 def test_readiness_escalates_with_failures():
     """L3 readiness should escalate when fields have failures."""
     findings = {

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Breadcrumb, Button, JobTray, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart } from "@/design";
+import { AskMeridian, Breadcrumb, Button, JobTray, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart } from "@/design";
 import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
@@ -15,7 +15,6 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { flattenNav, resolveNavHref } from "@/lib/nav";
-import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { PermissionsProvider } from "@/lib/permissions";
@@ -45,11 +44,9 @@ function CommandPaletteSlot() {
       })))
     : [];
   const items = [...navItems, ...viewTabs];
-  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const grammar = {
     objects: (objectsQ.data?.objects ?? []).map((o) => ({ module: o.module, label: o.label })),
-    systems: [...new Set((systemsQ.data ?? []).map((s) => s.environment))],
   };
   return <CommandPalette items={items} grammar={grammar} />;
 }
@@ -131,6 +128,7 @@ function Chrome({ children }: { children: ReactNode }) {
         <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
           <RootPageFrame>{children}</RootPageFrame>
         </main>
+        <AskMeridian />
       </div>
   );
 }

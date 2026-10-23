@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import { DomainChip } from "../primitives/DomainChip";
@@ -36,17 +36,29 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
   // Server snapshot is "not Mac", so SSR and hydration agree; the client reads the real platform.
   const isMac = useSyncExternalStore(noSubscribe, readIsMac, () => false);
   const router = useRouter();
+  // The latest items for the global key handler, so it subscribes once.
+  const itemsRef = useRef(items);
+  useEffect(() => { itemsRef.current = items; }, [items]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (e.key === "k") {
         e.preventDefault();
         setOpen((o) => !o);
+        return;
+      }
+      // Item key hints such as "⌘1" (lib/nav.ts `shortcut`, href already resolved for the viewer) are live keys.
+      const hit = itemsRef.current.find((i) => i.shortcut === `⌘${e.key}`);
+      if (hit) {
+        e.preventDefault();
+        setOpen(false);
+        router.push(hit.href);
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [router]);
 
   const groups = new Map<string, CommandItem[]>();
   for (const item of items) {
@@ -97,7 +109,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
               {parsed.chips.length > 0 ? "Open filtered view" : `Search for "${query.trim()}"`}
             </Command.Item>
           )}
-          <Command.Empty>Nothing matches. Try a check ID like <span style={{ fontFamily: "var(--m-font-mono)" }}>MM-001</span> or a material number.</Command.Empty>
+          <Command.Empty>Nothing matches. Try a rule ID like <span style={{ fontFamily: "var(--m-font-mono)" }}>MM003</span> or a material number.</Command.Empty>
           {[...groups].map(([group, list]) => (
               <Command.Group key={group} heading={group}>
                 {list.map((item) => (

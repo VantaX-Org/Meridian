@@ -2,10 +2,12 @@ import { screen, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as licenceApi from "@/lib/api/licence";
+import * as updateApi from "@/lib/api/system-update";
 import type { LicenceManifest } from "@/lib/api/licence";
 import AdminLicencePage from "../page";
 
-vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { role: "admin" } }) }));
+const h = vi.hoisted(() => ({ user: { role: "admin", permissions: ["view", "manage_system"] } }));
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: h.user }) }));
 vi.mock("@/context/update-modal-context", () => ({ useUpdateModal: () => ({ open: vi.fn() }) }));
 
 const MANIFEST: LicenceManifest = {
@@ -29,5 +31,23 @@ describe("admin licence page", () => {
     spy.mockResolvedValue(MANIFEST);
     retry.click();
     await waitFor(() => expect(screen.getAllByText("Professional").length).toBeGreaterThan(0));
+  });
+
+  it("shows Platform version to a platform_admin (gated on manage_system, not the admin key)", async () => {
+    h.user = { role: "platform_admin", permissions: ["view", "manage_system"] };
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue(MANIFEST);
+    vi.spyOn(updateApi, "getUpdateStatus").mockResolvedValue({
+      current_version: "1.0.0", latest_version: "1.0.0", update_available: false, release_notes: "", updater_configured: true,
+    });
+    renderWithQuery(<AdminLicencePage />);
+    await waitFor(() => expect(screen.getByText("Platform version")).toBeTruthy());
+  });
+
+  it("hides Platform version from a role without manage_system", async () => {
+    h.user = { role: "manager", permissions: ["view", "manage_systems"] };
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue(MANIFEST);
+    renderWithQuery(<AdminLicencePage />);
+    await waitFor(() => expect(screen.getAllByText("Professional").length).toBeGreaterThan(0));
+    expect(screen.queryByText("Platform version")).toBeNull();
   });
 });

@@ -9,7 +9,7 @@ export const PERSONA_OPTIONS: { value: Persona; label: string }[] = [
 ];
 
 /**
- * The single legacy-role -> persona mapping (rbac.md 1.1). Wave 16 replaces
+ * The single role -> persona mapping (rbac.md 1.1, rbac.py PERSONA_HOME / home_for). Wave 16 replaces
  * this with `/me/permissions.home`; every caller goes through here so the swap
  * touches one file.
  */
@@ -24,6 +24,11 @@ const PERSONA_BY_ROLE: Record<Role, Persona> = {
   ai_reviewer: "lead",
   process_analyst: "process", // spec process-discovery section 6.1: a persona key, not a legacy role
   sap_basis: "basis", // rbac.md 1.1: SAP Basis / integration admin
+  // Persona keys (rbac.py PERSONA_HOME).
+  programme_lead: "lead",
+  data_steward: "steward",
+  data_owner: "steward",
+  platform_admin: "lead",
 };
 
 export function personaForRole(role: Role): Persona {

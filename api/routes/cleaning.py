@@ -9,7 +9,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +36,8 @@ class BulkApproveBody(BaseModel):
     rule_id: Optional[str] = None
     severity: Optional[str] = None
     max_count: int = 500
+    # Exactly these waiting items (a batch page's named selection); bypasses the automatic-rule gate.
+    ids: Optional[list[uuid.UUID]] = Field(None, max_length=500)
 
 
 class ApplyBody(BaseModel):
@@ -360,13 +362,18 @@ async def bulk_approve(
     where = "cq.status = 'detected' AND cq.tenant_id = :tid"
     params: dict = {"tid": str(tenant.id), "max_count": body.max_count}
 
-    # Only auto-approve items linked to rules with automation_level=auto
-    where += """
-        AND (cq.rule_id IS NULL OR EXISTS (
-            SELECT 1 FROM cleaning_rules cr
-            WHERE cr.id = cq.rule_id AND cr.automation_level = 'auto'
-        ))
-    """
+    if body.ids is not None:
+        # A person named these items (like approving each row), so no automatic-rule gate.
+        where = "cq.status IN ('detected', 'recommended') AND cq.tenant_id = :tid AND cq.id = ANY(:ids)"
+        params.update(ids=[str(i) for i in body.ids], max_count=len(body.ids))
+    else:
+        # Only auto-approve items linked to rules with automation_level=auto
+        where += """
+            AND (cq.rule_id IS NULL OR EXISTS (
+                SELECT 1 FROM cleaning_rules cr
+                WHERE cr.id = cq.rule_id AND cr.automation_level = 'auto'
+            ))
+        """
 
     if body.rule_id:
         where += " AND cq.rule_id = :rid"

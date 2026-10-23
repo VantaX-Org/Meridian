@@ -23,7 +23,7 @@ export const GLOSSARY = {
     term: "Cap",
     short: "A ceiling on the score: one critical failure caps it at 85, two or more at 70",
     long: "The cap stops a high average from hiding a blocking defect. One critical failing rule limits the score to 85; two or more limit it to 70. The score always shows the measured value, the cap and the rules that caused it, so you can see what to fix to lift it.",
-    href: "/docs?page=home",
+    href: "/docs?page=concepts",
   },
   dimension: {
     term: "Dimension",

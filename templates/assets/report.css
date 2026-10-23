@@ -227,3 +227,21 @@ ol.actions li b { font-weight: 600; }
 .chart .bar.down { fill: var(--bad-fill); }
 .chart .track { fill: var(--ring-track); }
 .chart .trend { stroke: var(--accent-fill); fill: none; }
+
+/* ── User guide (templates/user_guide.html) ────────────────────────────── */
+
+.guide-toc h3 { margin-top: 4mm; }
+.guide-toc ol { list-style: none; margin: 0; padding: 0; }
+.guide-toc li { margin: 0 0 1.2mm; }
+.guide-toc a { color: var(--ink); text-decoration: none; }
+.guide-toc a::after { content: leader(".") target-counter(attr(href url), page); color: var(--ink-3); }
+.guide-chapter { break-before: page; line-height: 1.5; max-width: 165mm; }
+.guide-section { font-size: 8pt; font-weight: 600; color: var(--ink-3); margin: 0 0 1mm; }
+.guide-chapter h2 { margin-top: 7mm; }
+.guide-chapter ul, .guide-chapter ol { margin: 0 0 2.5mm; padding-left: 6mm; }
+.guide-chapter li { margin: 0 0 1mm; }
+.guide-chapter a { color: var(--accent); text-decoration: none; }
+.guide-chapter pre.code {
+    font-family: "JetBrains Mono", monospace; font-size: 8pt; background: var(--wash);
+    border: 1px solid var(--line); border-radius: 6px; padding: 2.5mm 3mm; white-space: pre-wrap; break-inside: avoid;
+}

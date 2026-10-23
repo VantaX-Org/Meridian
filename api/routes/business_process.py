@@ -29,7 +29,7 @@ async def get_business_process(
     result = await db.execute(
         text("""
             SELECT check_id, pass_rate, affected_count, severity,
-                   details->>'message' as message, module
+                   details->>'message' as message, module, details->>'error' as error
             FROM findings
             WHERE version_id = :vid AND tenant_id = :tid
         """),
@@ -39,7 +39,7 @@ async def get_business_process(
     findings_by_check = {
         r[0]: {"pass_rate": float(r[1]) if r[1] is not None else None,
                "affected_count": r[2], "severity": r[3],
-               "message": r[4] or ""}
+               "message": r[4] or "", "error": r[6]}
         for r in rows
     }
 

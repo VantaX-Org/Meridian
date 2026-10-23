@@ -14,6 +14,7 @@ from api.routes.findings import router as findings_router
 from api.routes.analyse import router as analyse_router
 from api.routes.analysis_status import router as analysis_status_router
 from api.routes.reports import router as reports_router
+from api.routes.user_guide import router as user_guide_router
 from api.routes.settings import router as settings_router
 from api.routes.llm_settings import router as llm_settings_router
 from api.routes.connect import router as connect_router
@@ -67,6 +68,7 @@ from api.routes.connectivity import router as connectivity_router
 from api.routes.spro_config import router as spro_config_router
 from api.routes.config_impact import router as config_impact_router
 from api.routes.insights import router as insights_router
+from api.routes.assistant import router as assistant_router
 from api.routes.owner_digests import router as owner_digests_router
 from api.routes.lineage import router as lineage_router
 from api.routes.business_process import router as business_process_router
@@ -291,6 +293,7 @@ app.include_router(findings_router)
 app.include_router(analyse_router)
 app.include_router(analysis_status_router)
 app.include_router(reports_router)
+app.include_router(user_guide_router)
 app.include_router(settings_router)
 app.include_router(llm_settings_router)
 app.include_router(connect_router)
@@ -344,6 +347,7 @@ app.include_router(connectivity_router)
 app.include_router(spro_config_router)
 app.include_router(config_impact_router)
 app.include_router(insights_router)
+app.include_router(assistant_router)
 app.include_router(owner_digests_router)
 app.include_router(lineage_router)
 app.include_router(business_process_router)

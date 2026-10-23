@@ -1,8 +1,9 @@
 /**
  * The one registry of keyboard shortcuts. `ShortcutSheet` (the `?` sheet) and
  * the inbox read from here, so a key is documented in exactly one place.
- * Navigation shortcuts come from the `shortcut` fields in lib/nav.ts; the
- * rest are listed below next to the component that handles them.
+ * Navigation shortcuts come from the `shortcut` fields in lib/nav.ts and are
+ * handled by design/shell/CommandPalette.tsx's global key handler; the rest
+ * are listed below next to the component that handles them.
  */
 import { NAV_GROUPS, flattenNav } from "@/lib/nav";
 
@@ -36,10 +37,9 @@ export const INBOX_SHORTCUTS: readonly Shortcut[] = [
   { group: "Inbox", keys: "Escape", description: "Close the panel" },
 ];
 
-/** design/shell/CommandPalette.tsx, Rail.tsx and the sheet itself. */
+/** design/shell/CommandPalette.tsx and the sheet itself. */
 export const GLOBAL_SHORTCUTS: readonly Shortcut[] = [
   { group: "Global", keys: "⌘K", description: "Search or jump to a page" },
-  { group: "Global", keys: "[", description: "Collapse or expand the navigation" },
   { group: "Global", keys: "?", description: "Show keyboard shortcuts" },
 ];
 

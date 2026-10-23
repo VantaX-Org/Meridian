@@ -9,7 +9,8 @@ import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, Page
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
-import { activateContract, createContract, getContractCompliance, getContracts } from "@/lib/api/contracts";
+import { useAuth } from "@/context/auth-context";
+import { activateContract, createContract, getContractCompliance, getContracts, updateContract } from "@/lib/api/contracts";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { relativeTime, formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -26,7 +27,9 @@ export default function ContractsPage() {
   const qc = useQueryClient();
   const router = useRouter();
   const { can } = useRole();
-  // Backend guards (api/routes/contracts.py): create/update need manage_rules, activate needs approve.
+  const { user } = useAuth();
+  // Backend guards (api/routes/contracts.py): create/update (incl. submit for approval) need manage_rules;
+  // activate needs approve, only from pending_approval, and never by the contract's author.
   const canCreate = can("manage_rules");
   const canActivate = can("approve");
   const [statusRaw, setStatus] = useUrlState("status", "all");
@@ -121,7 +124,7 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
       drawer={
         <>
           <Drawer open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)} title={selected?.name ?? "Contract"}>
-            {selected ? <ContractDetail contract={selected} canActivate={canActivate} onChanged={refresh} /> : null}
+            {selected ? <ContractDetail contract={selected} canSubmit={canCreate} canActivate={canActivate} userId={user?.id ?? null} onChanged={refresh} /> : null}
           </Drawer>
           <Drawer open={creating} onOpenChange={setCreating} title="New data contract">
             {creating ? <NewContractForm onDone={() => { setCreating(false); refresh(); }} /> : null}
@@ -132,7 +135,13 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
   );
 }
 
-function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Contract; canActivate: boolean; onChanged: () => void }) {
+function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged }: { contract: Contract; canSubmit: boolean; canActivate: boolean; userId: string | null; onChanged: () => void }) {
+  const isAuthor = c.created_by != null && c.created_by === userId;
+  const submit = useMutation({
+    mutationFn: () => updateContract(c.id, { status: "pending_approval" }),
+    onSuccess: () => { toast.success(`${c.name} is awaiting approval`); onChanged(); },
+    onError: (e) => toast.error((e as Error).message || "Not submitted"),
+  });
   const activate = useMutation({
     mutationFn: () => activateContract(c.id),
     onSuccess: () => { toast.success(`${c.name} is active`); onChanged(); },
@@ -196,13 +205,20 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
       </div>
 
       <div className="flex gap-2">
-        {canActivate && (c.status === "draft" || c.status === "pending_approval") ? (
+        {canSubmit && c.status === "draft" ? (
+          <Button onClick={() => submit.mutate()} disabled={submit.isPending}>{submit.isPending ? "Submitting…" : "Submit for approval"}</Button>
+        ) : null}
+        {canActivate && !isAuthor && c.status === "pending_approval" ? (
           <Button onClick={() => activate.mutate()} disabled={activate.isPending}>{activate.isPending ? "Activating…" : "Activate"}</Button>
         ) : null}
         <Mono>{c.id}</Mono>
       </div>
       {c.status === "draft" || c.status === "pending_approval" ? (
-        <p className="m-text-meta m-ink-3">Four eyes: someone other than the author activates a contract.</p>
+        <p className="m-text-meta m-ink-3">
+          {c.status === "pending_approval" && isAuthor
+            ? "You wrote this contract, so someone else with approval rights activates it."
+            : "Four eyes: a draft is submitted for approval, then someone other than the author activates it."}
+        </p>
       ) : null}
     </div>
   );
@@ -232,7 +248,7 @@ function NewContractForm({ onDone }: { onDone: () => void }) {
       <Field label="What the contract governs" error={form.error("description")}>
         <Textarea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} onBlur={() => form.blur("description")} />
       </Field>
-      <p className="m-text-meta m-ink-3">It starts as a draft. Add schema, quality, freshness and volume terms, then activate it.</p>
+      <p className="m-text-meta m-ink-3">It starts as a draft. Add schema, quality, freshness and volume terms, then submit it for approval.</p>
       <div><Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Creating…" : "Create draft"}</Button></div>
     </form>
   );

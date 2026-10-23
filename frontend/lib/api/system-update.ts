@@ -2,7 +2,7 @@ import apiClient from "./client";
 
 /**
  * Admin-only platform self-update API. All three endpoints 403 for
- * non-admin callers — gate calls with `useAuth().user?.role === "admin"`
+ * callers without `manage_system` — gate calls with `useRole().can("manage_system")`
  * before enabling any query/mutation that hits these.
  */
 

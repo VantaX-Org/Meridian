@@ -1,5 +1,10 @@
 import apiClient from "./client";
 
+/** The user guide as one PDF: every chapter of /docs, rendered by the API. */
+export function getUserGuidePdfUrl(): string {
+  return "/api/v1/docs/user-guide.pdf";
+}
+
 export function getReportDownloadUrl(versionId: string): string {
   return `/api/v1/reports/${versionId}/download`;
 }

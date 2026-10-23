@@ -66,3 +66,23 @@ def test_cleaning_audit_filters_by_batch_within_the_tenant(monkeypatch) -> None:
     sql, params = next((s, p) for s, p in db.calls if "FROM cleaning_audit" in s and "batch_id" in s)
     assert "SELECT id FROM cleaning_queue WHERE batch_id = :bid AND tenant_id = :tid" in sql
     assert params["bid"] == str(batch) and params["tid"] == str(TENANT.id)
+
+
+def test_bulk_approve_with_ids_approves_exactly_those_items_in_the_tenant(monkeypatch) -> None:
+    """A batch page names its proposals: approve those, not N from the whole queue's automatic rules."""
+    ids = [uuid.uuid4(), uuid.uuid4()]
+    db = _Recorder(bulk_rows=[(ids[0], "100001", "material_master"), (ids[1], "100002", "material_master")])
+    r = _client(monkeypatch, db).post("/api/v1/cleaning/bulk-approve", json={"ids": [str(i) for i in ids]})
+    assert r.status_code == 200 and r.json()["approved_count"] == 2
+    sql, params = next((s, p) for s, p in db.calls if "UPDATE cleaning_queue cq" in s)
+    assert "id = ANY(:ids)" in sql and "tenant_id = :tid" in sql
+    assert "automation_level" not in sql
+    assert params["ids"] == [str(i) for i in ids] and params["max_count"] == 2
+    assert params["tid"] == str(TENANT.id)
+
+
+def test_bulk_approve_without_ids_keeps_the_automatic_rule_gate(monkeypatch) -> None:
+    db = _Recorder()
+    assert _client(monkeypatch, db).post("/api/v1/cleaning/bulk-approve", json={"max_count": 5}).status_code == 200
+    sql, params = next((s, p) for s, p in db.calls if "UPDATE cleaning_queue cq" in s)
+    assert "automation_level = 'auto'" in sql and "ids" not in params

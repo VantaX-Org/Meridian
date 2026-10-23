@@ -4,9 +4,12 @@ Takes a module's findings, SPRO config baseline, and config impact results,
 then produces a fully annotated process document showing field-level readiness.
 
 Colour coding:
-  green  — check passed (pass_rate >= 95%) or no findings
+  green  — check passed (no affected records, errored, pass_rate >= 95%) or no findings
   amber  — check has warnings (pass_rate 70-95% or severity=medium)
   red    — check failed (pass_rate < 70% or severity=critical/high)
+
+Only a failing finding is classified: stored findings include passing checks, so a
+critical rule that passes stays green (same test as ``pdf_reports.failing``).
 
 Overall L3 process readiness is the worst status from its child L4 sub-processes.
 L4 readiness is the worst of its L5 activities; an activity is the worst of its fields.
@@ -281,7 +284,7 @@ def _enrich_l5(
     # --- DQ status from findings ---
     finding = findings_by_check.get(check_id)
     if finding:
-        result["dq_status"] = _classify_finding(finding)
+        result["dq_status"] = _classify_finding(finding) if _failing(finding) else "green"
         result["pass_rate"] = finding.get("pass_rate")
         result["affected_count"] = finding.get("affected_count", 0)
         result["finding_message"] = finding.get("message", "")
@@ -328,6 +331,11 @@ def _module_to_system(modules: list[str]) -> str:
         if m in EWMS_MODULES:
             return "eWMS"
     return "ECC"
+
+
+def _failing(finding: dict[str, Any]) -> bool:
+    """The rule failed: records affected and the check did not error (``pdf_reports.failing``)."""
+    return not finding.get("error") and int(finding.get("affected_count") or 0) > 0
 
 
 def _classify_finding(finding: dict[str, Any]) -> str:

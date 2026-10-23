@@ -48,11 +48,31 @@ describe("CommandPalette grammar", () => {
     (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = RO;
     HTMLElement.prototype.scrollIntoView = vi.fn();
     push.mockClear();
-    render(<CommandPalette items={[]} grammar={{ objects: [{ module: "material_master", label: "Material master" }], systems: ["PRD"] }} />);
+    render(<CommandPalette items={[]} grammar={{ objects: [{ module: "material_master", label: "Material master" }] }} />);
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
-    fireEvent.change(screen.getByPlaceholderText("Type a page, object, check ID or record key"), { target: { value: "critical material master in PRD last run" } });
+    fireEvent.change(screen.getByPlaceholderText("Type a page, object, check ID or record key"), { target: { value: "critical material master last run" } });
     expect(screen.getByLabelText("Parsed filters").textContent).toContain("Last run");
     fireEvent.click(screen.getByText("Open filtered view"));
-    expect(push).toHaveBeenCalledWith("/objects/material_master?severity=critical&system=PRD&run=latest");
+    expect(push).toHaveBeenCalledWith("/objects/material_master?tab=rules&severity=critical");
+  });
+});
+
+describe("CommandPalette item shortcuts", () => {
+  it("goes to the item whose key hint matches, with ⌘ or Ctrl", () => {
+    push.mockClear();
+    render(<CommandPalette items={[{ label: "Home", href: "/home/steward", shortcut: "⌘1" }, { label: "Runs", href: "/runs" }]} />);
+    fireEvent.keyDown(document, { key: "1", metaKey: true });
+    expect(push).toHaveBeenCalledWith("/home/steward");
+    fireEvent.keyDown(document, { key: "1", ctrlKey: true });
+    expect(push).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores the digit without a modifier and keys no item claims", () => {
+    push.mockClear();
+    render(<CommandPalette items={[{ label: "Home", href: "/home/lead", shortcut: "⌘1" }]} />);
+    fireEvent.keyDown(document, { key: "1" });
+    fireEvent.keyDown(document, { key: "2", metaKey: true });
+    fireEvent.keyDown(document, { key: "1", metaKey: true, shiftKey: true });
+    expect(push).not.toHaveBeenCalled();
   });
 });

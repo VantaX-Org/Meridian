@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/design";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
-import { useAuth } from "@/context/auth-context";
+import { useRole } from "@/hooks/use-role";
 import { useUpdateModal } from "@/context/update-modal-context";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { getUpdateStatus } from "@/lib/api/system-update";
@@ -88,8 +88,7 @@ export default function AdminLicencePage() {
 }
 
 function PlatformVersion() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = useRole().can("manage_system");
   const { open } = useUpdateModal();
   const q = useQuery({ queryKey: queryKeys.systemUpdateStatus(), queryFn: getUpdateStatus, enabled: isAdmin, staleTime: 60_000 });
   if (!isAdmin) return null;

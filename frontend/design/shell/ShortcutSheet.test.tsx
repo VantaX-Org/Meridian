@@ -42,6 +42,11 @@ describe("ShortcutSheet", () => {
     expect(shortcutSections().map((s) => s.group)).toEqual(["Navigation", "Tables", "Inbox", "Global"]);
   });
 
+  it("lists no key for collapsing the navigation (there is no sidebar to collapse)", () => {
+    expect(shortcutRegistry().map((s) => s.keys)).not.toContain("[");
+    expect(shortcutRegistry().map((s) => s.description)).not.toContain("Collapse or expand the navigation");
+  });
+
   it("is the only list of inbox keys: the inbox page keeps none of its own", () => {
     const src = readFileSync(path.resolve(__dirname, "..", "..", "app", "(app)", "inbox", "page.tsx"), "utf8");
     expect(src).not.toContain("Keyboard shortcuts");

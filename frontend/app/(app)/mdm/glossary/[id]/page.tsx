@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { LedgerHead } from "@/components/mdm/ledger";
+import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -42,6 +43,10 @@ function daysSince(iso: string | null): number | null {
 export default function GlossaryTermPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
+  // Same permissions the API checks: PUT and /review need approve, /ai-draft needs trigger_ai.
+  const { can } = useRole();
+  const canApprove = can("approve");
+  const canDraft = can("trigger_ai");
   const [editDef, setEditDef] = useState<string | null>(null);
   const [draft, setDraft] = useState<AIDraftResponse | null>(null);
 
@@ -125,13 +130,15 @@ export default function GlossaryTermPage() {
         </Pill>
         {term.mandatory_for_s4hana ? <Pill tone="no-go">Mandatory for S/4HANA</Pill> : null}
         {term.ai_drafted ? <Pill tone="at-risk">Model draft</Pill> : null}
-        <Button
-          variant="secondary"
-          disabled={!reviewDue || review.isPending}
-          onClick={() => review.mutate()}
-        >
-          {review.isPending ? "Reviewing…" : reviewDue ? "Mark reviewed" : "Current"}
-        </Button>
+        {canApprove ? (
+          <Button
+            variant="secondary"
+            disabled={!reviewDue || review.isPending}
+            onClick={() => review.mutate()}
+          >
+            {review.isPending ? "Reviewing…" : reviewDue ? "Mark reviewed" : "Current"}
+          </Button>
+        ) : null}
       </section>
 
       <Card title="Definition of record">
@@ -143,9 +150,11 @@ export default function GlossaryTermPage() {
               <p className="m-text-meta m-ink-3">{draft.why_it_matters_business}</p>
             ) : null}
             <div className="flex gap-2">
-              <Button onClick={() => { setEditDef(draft.business_definition); setDraft(null); }}>
-                Use draft
-              </Button>
+              {canApprove ? (
+                <Button onClick={() => { setEditDef(draft.business_definition); setDraft(null); }}>
+                  Use draft
+                </Button>
+              ) : null}
               <Button variant="ghost" onClick={() => setDraft(null)}>Discard</Button>
             </div>
           </Card>
@@ -153,15 +162,18 @@ export default function GlossaryTermPage() {
         <Field label="Business definition">
           <textarea className="m-input [height:auto] [padding:6px_10px]"
             value={currentDef}
+            readOnly={!canApprove}
             onChange={(e) => setEditDef(e.target.value)}
-            placeholder="No business definition yet. Use Auto-draft to propose one."
+            placeholder={canDraft ? "No business definition yet. Use Auto-draft to propose one." : "No business definition yet."}
           />
         </Field>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => autoDraft.mutate()} disabled={autoDraft.isPending}>
-            {autoDraft.isPending ? "Drafting…" : "Auto-draft"}
-          </Button>
-          {dirty ? (
+          {canDraft ? (
+            <Button variant="secondary" onClick={() => autoDraft.mutate()} disabled={autoDraft.isPending}>
+              {autoDraft.isPending ? "Drafting…" : "Auto-draft"}
+            </Button>
+          ) : null}
+          {dirty && canApprove ? (
             <>
               <Button
                 onClick={() => save.mutate({ business_definition: editDef ?? "" })}

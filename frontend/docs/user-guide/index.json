@@ -1,0 +1,43 @@
+{
+  "title": "Meridian user guide",
+  "sections": [
+    {
+      "title": "Getting started",
+      "pages": [
+        { "slug": "welcome", "title": "Welcome to Meridian" },
+        { "slug": "concepts", "title": "Key concepts" },
+        { "slug": "roles", "title": "Roles and access" }
+      ]
+    },
+    {
+      "title": "Workspaces",
+      "pages": [
+        { "slug": "home", "title": "Home" },
+        { "slug": "systems", "title": "Systems" },
+        { "slug": "objects", "title": "Objects" },
+        { "slug": "runs", "title": "Runs" },
+        { "slug": "rules", "title": "Rules" },
+        { "slug": "insights", "title": "Insights" },
+        { "slug": "reports", "title": "Reports" },
+        { "slug": "assistant", "title": "Ask Meridian" },
+        { "slug": "inbox", "title": "Inbox" },
+        { "slug": "fix", "title": "Fix" },
+        { "slug": "mdm", "title": "Master data" },
+        { "slug": "migration", "title": "Migration" },
+        { "slug": "process", "title": "Processes" }
+      ]
+    },
+    {
+      "title": "Administration",
+      "pages": [{ "slug": "admin", "title": "Administration" }]
+    },
+    {
+      "title": "Reference",
+      "pages": [
+        { "slug": "shortcuts", "title": "Keyboard shortcuts and search" },
+        { "slug": "troubleshooting", "title": "Troubleshooting" },
+        { "slug": "glossary", "title": "Glossary" }
+      ]
+    }
+  ]
+}

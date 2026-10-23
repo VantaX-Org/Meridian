@@ -1,6 +1,6 @@
 // frontend/app/(app)/mdm/glossary/[id]/__tests__/page.test.tsx
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as glossaryApi from "@/lib/api/glossary";
 import type { GlossaryTermDetail } from "@/types/api";
@@ -8,6 +8,11 @@ import GlossaryTermPage from "../page";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "t1" }),
+}));
+
+const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
+vi.mock("@/hooks/use-role", () => ({
+  useRole: () => ({ can: (a: string) => perms.granted.has(a), loading: false }),
 }));
 
 const term: GlossaryTermDetail = {
@@ -35,6 +40,11 @@ const term: GlossaryTermDetail = {
 };
 
 describe("GlossaryTermPage", () => {
+  beforeEach(() => {
+    perms.granted = new Set(["view", "approve", "trigger_ai"]);
+    vi.restoreAllMocks();
+  });
+
   it("renders the term's business name and definition", async () => {
     vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue(term);
     renderWithQuery(<GlossaryTermPage />);
@@ -55,5 +65,34 @@ describe("GlossaryTermPage", () => {
     const calls = (glossaryApi.getGlossaryTerm as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((glossaryApi.getGlossaryTerm as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+  });
+
+  it("offers Mark reviewed, Auto-draft and Save to a role holding approve and trigger_ai", async () => {
+    vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue(term);
+    renderWithQuery(<GlossaryTermPage />);
+    const box = await screen.findByDisplayValue("Groups materials for reporting.");
+    expect(screen.getByRole("button", { name: "Mark reviewed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Auto-draft" })).toBeInTheDocument();
+    fireEvent.change(box, { target: { value: "Groups materials." } });
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("hides Mark reviewed and Save from a role without approve", async () => {
+    perms.granted = new Set(["view", "trigger_ai"]);
+    vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue(term);
+    renderWithQuery(<GlossaryTermPage />);
+    const box = await screen.findByDisplayValue("Groups materials for reporting.");
+    expect(screen.queryByRole("button", { name: "Mark reviewed" })).toBeNull();
+    expect(box).toHaveAttribute("readonly");
+    fireEvent.change(box, { target: { value: "Groups materials." } });
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+
+  it("hides Auto-draft from a role without trigger_ai", async () => {
+    perms.granted = new Set(["view", "approve"]);
+    vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue(term);
+    renderWithQuery(<GlossaryTermPage />);
+    await screen.findByDisplayValue("Groups materials for reporting.");
+    expect(screen.queryByRole("button", { name: "Auto-draft" })).toBeNull();
   });
 });

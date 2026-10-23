@@ -22,7 +22,10 @@ import type { User, UserRole } from "@/types/api";
 // ponytail: getAssignableUsers() is unused here, same as the legacy component it replaces.
 void getAssignableUsers;
 
-const ROLES: UserRole[] = ["admin", "manager", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor", "process_analyst"];
+const ROLES: UserRole[] = [
+  "admin", "manager", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor", "process_analyst",
+  "programme_lead", "data_steward", "data_owner", "sap_basis", "platform_admin",
+];
 const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   admin: { label: "Admin", desc: "Full access. Manage users and rules, approve proposed rules." },
   manager: { label: "Manager", desc: "Run the programme. Connect systems, sync, analyse, approve, apply and assign work." },
@@ -33,6 +36,12 @@ const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   viewer: { label: "Viewer", desc: "Read-only access to dashboards and findings." },
   auditor: { label: "Auditor", desc: "Read-only access including the audit log." },
   process_analyst: { label: "Process analyst", desc: "Read everything, run process discovery and export as-is process models." },
+  // Persona keys (rbac.py PERSONA_ROLES): each carries the actions of the legacy role it replaces.
+  programme_lead: { label: "Programme lead / CIO", desc: "Same access as Manager. Lands on the lead home." },
+  data_steward: { label: "Data steward", desc: "Same access as Steward. Lands on the steward home." },
+  data_owner: { label: "Data owner / approver", desc: "Same access as Approver. Lands on the steward home." },
+  sap_basis: { label: "SAP Basis / integration admin", desc: "Analyst access plus connecting systems, sync and field mapping. Lands on the basis home." },
+  platform_admin: { label: "Platform admin", desc: "Same access as Admin, including platform updates." },
 };
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
 
