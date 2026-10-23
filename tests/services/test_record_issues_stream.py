@@ -71,3 +71,18 @@ def test_chunked_copy_crosses_the_flush_boundary_with_identical_rows():
     parse = lambda payloads: [r for p in payloads for r in csv.reader(io.StringIO(p))]
     assert parse(chunked) == parse(whole) and len(parse(whole)) == 11
     assert ri._copy(_session([]), "t", ("a",), iter([]), chunk=4) == 0
+
+
+def test_present_keys_projects_only_the_key_columns():
+    """The lifecycle must not decode a whole table to build its key strings.
+
+    Reaching into ``frames.frames`` loaded MARC (18.3M rows x 98 columns) into memory purely to
+    produce a two-column key. That is what pushed the worker to 14.7 GB and got it OOM-killed
+    during the issue lifecycle, after a complete analysis had already been computed.
+    """
+    import inspect
+    from api.services import record_issues
+
+    src = inspect.getsource(record_issues.present_keys)
+    assert "frame_for" in src, "present_keys must project the key columns"
+    assert "frames.frames.get" in src, "and still fall back for callers without a projection"

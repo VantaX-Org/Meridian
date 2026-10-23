@@ -85,7 +85,16 @@ def present_keys(results, frames) -> Iterator[tuple[str, str]]:
         if not keys or layout in seen:
             continue
         seen.add(layout)
-        df = frames.frames.get(r.grain) if r.grain else frames.flat
+        # Read ONLY the key columns. Reaching into frames.frames decoded the whole table: for
+        # MARC that was 18.3M rows x 98 columns held in memory purely to build a key string,
+        # which is what drove the worker to 14.7 GB and got it OOM-killed during this lifecycle.
+        # frame_for projects the columns, so a 98-column table costs 2.
+        builder = getattr(frames, "frame_for", None)
+        built = builder(list(keys), grain=r.grain) if builder else None
+        if built is None:
+            df = frames.frames.get(r.grain) if r.grain else frames.flat
+        else:
+            df = built[0]
         if df is None or any(k not in df.columns for k in keys):
             continue
         for k in record_keys(df, list(keys)).dropna().unique():

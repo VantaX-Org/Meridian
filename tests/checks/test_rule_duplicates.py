@@ -105,9 +105,17 @@ def _key(rule: dict) -> tuple:
 
 
 def same_module_duplicates(rules: list[tuple[str, dict]]) -> dict[str, list[str]]:
-    """{module: [rule id, ...]} for every group of >1 rule sharing a predicate."""
+    """{module: [rule id, ...]} for every group of >1 rule sharing a predicate.
+
+    A disabled rule is not a duplicate of anything: it never executes, so it cannot flag the same
+    record twice or inflate the rule count. The generated DDIC sidecars ship disabled by default
+    (``enabled: false``) and deliberately overlap the hand-written packs, so counting them reported
+    every intentional overlap as a duplicate.
+    """
     groups: dict[tuple, list[tuple[str, str]]] = collections.defaultdict(list)
     for module, r in rules:
+        if r.get("enabled", True) is False:
+            continue
         groups[(module, _key(r))].append((module, r["id"]))
     out: dict[str, list[str]] = {}
     for (module, _), members in groups.items():
@@ -194,3 +202,15 @@ def test_cross_module_duplication_is_allowed():
         ("sd_customer_master", {"id": "SDCM001", "check_class": "null_check", "field": "KNA1.KUNNR"}),
     ]
     assert same_module_duplicates(rules) == {}
+
+
+def test_disabled_rules_are_not_treated_as_duplicates():
+    """The generated sidecars ship ``enabled: false`` and overlap the hand-written packs on purpose.
+
+    Counting them as duplicates failed the gate on deliveries_billing, where a disabled generated
+    domain check overlapped the enabled hand-written one. A rule that never runs cannot double-flag.
+    """
+    rule = {"id": "X1", "field": "T.F", "check_class": "null_check", "enabled": True}
+    off = {"id": "X2", "field": "T.F", "check_class": "null_check", "enabled": False}
+    assert same_module_duplicates([("m", rule), ("m", off)]) == {}
+    assert same_module_duplicates([("m", rule), ("m", dict(rule, id="X3"))]) == {"m": ["X1", "X3"]}
