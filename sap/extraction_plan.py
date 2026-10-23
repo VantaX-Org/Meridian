@@ -28,7 +28,10 @@ _PE_JOINS = Path(__file__).resolve().parent / "dictionaries" / "process_event_jo
 
 _ECC = ["business_partner", "material_master", "fi_gl", "accounts_payable", "accounts_receivable",
         "asset_accounting", "hcm", "mm_purchasing", "plant_maintenance", "production_planning", "project_system",
-        "quality_management", "sd_customer_master", "sd_sales_orders", "controlling"]
+        "quality_management", "sd_customer_master", "sd_sales_orders", "controlling",
+        # migration objects a typical ECC -> S/4HANA programme carries that had no module:
+        # deliveries/billing documents and CO internal orders (see docs/migration-object-coverage.md)
+        "deliveries_billing", "internal_orders"]
 _LOGISTICS = ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface",
               "fleet_management", "transport_management", "mdg_master_data", "grc_compliance",
               "interface_health"]

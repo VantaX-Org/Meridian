@@ -371,7 +371,9 @@ describe("PersonaHomePage current state across objects", () => {
   it("summarises every object at its latest run, not the newest run alone", async () => {
     renderWithQuery(<LeadHomePage />);
 
-    expect(await screen.findByTestId("run-scope")).toHaveTextContent("Current state of 3 objects, latest run 16 Oct 2026");
+    // Every number names its runs: the state's sources, each linking to its run alone.
+    expect(await screen.findByTestId("run-sources")).toHaveTextContent("3 objects from controlling_1k, 16 Oct 2026;");
+    expect(screen.getByRole("link", { name: "controlling_1k, 16 Oct 2026" })).toHaveAttribute("href", "/home/lead?run=co2");
     expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 3 objects is not ready for go-live.");
     // (70 + 95 + 80) / 3 against the state before the newest run, (64 + 95 + 80) / 3: +2
     const dqs = screen.getByTestId("home-dqs");
@@ -418,8 +420,9 @@ describe("PersonaHomePage current state across objects", () => {
       renderWithQuery(<LeadHomePage />);
 
       const scope = await screen.findByTestId("run-scope");
-      expect(scope).toHaveTextContent("As of controlling_1k, 16 Oct 2026");
-      expect(screen.getByRole("link", { name: "Back to latest" })).toHaveAttribute("href", "/home/lead");
+      expect(scope).toHaveTextContent("controlling_1k, 16 Oct 2026");
+      expect(screen.queryByTestId("run-sources")).toBeNull();
+      expect(screen.getByRole("link", { name: "Back to all runs" })).toHaveAttribute("href", "/home/lead");
       expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 1 object is not ready for go-live.");
       expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
       expect((screen.getByText("Objects not ready")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=fail");
