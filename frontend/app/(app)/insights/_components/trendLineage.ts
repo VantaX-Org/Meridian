@@ -24,6 +24,25 @@ export function scopeTrendRuns(runs: TrendRun[], current: Version | undefined, r
   return key ? runs.filter((r) => objectKey(r) === key) : [];
 }
 
+/**
+ * The per-run comparisons (change, rules fixed, rules newly failing) come from the API against each run's
+ * immediate predecessor in the lineage. When scoping hides that predecessor, the next shown run would read
+ * against a run the reader cannot see: its change is recomputed against the run shown before it, and the rule
+ * counts, which need both runs' findings, become unknown (null) rather than wrong.
+ */
+export function scopedComparisons(all: TrendRun[], scoped: TrendRun[]): TrendRun[] {
+  const index = new Map(all.map((r, i) => [r.version_id, i]));
+  return scoped.map((r, i) => {
+    const at = index.get(r.version_id);
+    const predecessor = at != null && at > 0 ? all[at - 1] : undefined;
+    const shownBefore = i > 0 ? scoped[i - 1] : undefined;
+    if (!predecessor || predecessor === shownBefore) return r;
+    const change = shownBefore && typeof r.composite === "number" && typeof shownBefore.composite === "number"
+      ? Math.round((r.composite - shownBefore.composite) * 10) / 10 : null;
+    return { ...r, change, rules_fixed: null, rules_new: null };
+  });
+}
+
 /** Points keyed by run id with the date (or date and time) as the display label; run labels are never ticks. */
 export function trendPoints(runs: TrendRun[], value: (r: TrendRun) => number | null | undefined): ChartPoint[] {
   const labels = runAxisLabels(runs.map((r) => ({ id: r.version_id, run_at: r.run_at })));

@@ -2,12 +2,13 @@
 import { describe, expect, it } from "vitest";
 import type { TrendRun } from "@/lib/api/insights";
 import type { Version } from "@/types/api";
-import { scopeTrendRuns, trendDomain, trendPoints } from "../trendLineage";
+import { scopeTrendRuns, scopedComparisons, trendDomain, trendPoints } from "../trendLineage";
 
 const tr = (id: string, at: string | null, composite: number | null, modules: string[], label = id): TrendRun => ({
   version_id: id, label, run_at: at, baseline: false, composite,
   dimensions: composite === null ? {} : { completeness: composite },
-  modules: Object.fromEntries(modules.map((m) => [m, {}])), critical: 0, blockers: 0, auto_fixable_pct: null,
+  modules: Object.fromEntries(modules.map((m) => [m, {}])), critical: 0, high: 0, failing_rules: 0, affected_records: 0,
+  blockers: 0, auto_fixable_pct: null, change: null, rules_fixed: null, rules_new: null,
 });
 const upload = (id: string): Version => ({ id, label: id, status: "complete", run_at: "2026-10-02T00:00:00Z", dqs_summary: null, metadata: { modules: [], file_name: "f", row_count: 1 } });
 
@@ -49,5 +50,25 @@ describe("trendPoints and trendDomain", () => {
     expect(trendPoints(withGap, (r) => r.dimensions.completeness).map((p) => p.x)).toEqual(["co1", "bp1", "hcm", "bp2"]);
     expect(trendDomain(withGap).map((d) => d.x)).toEqual(["co1", "bp1", "hcm", "bp2", "gap"]);
     expect(trendDomain(withGap)[4].label).toBe("17 Oct 2026");
+  });
+});
+
+describe("scopedComparisons", () => {
+  const a = { ...tr("a", "2026-10-01T00:00:00Z", 60, ["bp", "mm"]), change: null, rules_fixed: null, rules_new: null };
+  const b = { ...tr("b", "2026-10-02T00:00:00Z", 65, ["bp"]), change: 5, rules_fixed: 2, rules_new: 0 };
+  const c = { ...tr("c", "2026-10-03T00:00:00Z", 70, ["bp", "mm"]), change: 5, rules_fixed: 1, rules_new: 3 };
+
+  it("keeps the API comparisons when the predecessor is shown", () => {
+    expect(scopedComparisons([a, b, c], [a, b, c])).toEqual([a, b, c]);
+  });
+
+  it("re-reads a run against the run shown before it when scoping hid its predecessor", () => {
+    const [first, last] = scopedComparisons([a, b, c], [a, c]);
+    expect(first).toEqual(a);
+    expect(last).toEqual({ ...c, change: 10, rules_fixed: null, rules_new: null });
+  });
+
+  it("makes the first shown run a first run when its predecessor is hidden", () => {
+    expect(scopedComparisons([a, b, c], [c])[0]).toEqual({ ...c, change: null, rules_fixed: null, rules_new: null });
   });
 });
