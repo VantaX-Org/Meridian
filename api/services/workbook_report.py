@@ -1,4 +1,4 @@
-"""Analyst workbook: nine sheets built from the same ``insights_aggregate.gather`` data as the board pack.
+"""Analyst workbook: ten sheets built from the same ``insights_aggregate.gather`` data as the board pack.
 
 Layers match pdf_reports: sync loaders, a pure ``workbook_context`` that returns SheetSpecs, and
 ``build`` that renders bytes. Impact is only ever reported per L1; no sheet carries a cross-L1 total.
@@ -18,7 +18,7 @@ from api.services import s4_readiness
 from api.services.branded_xlsx import (
     ROW_CAP, ColumnKind, ColumnSpec, ConditionalRule, SheetSpec, build_workbook, xlsx_filename)
 from api.services.pdf_reports import (
-    DIMENSIONS, _all, _rows_checked, _rule, dimension_scores, load_scoring)
+    DIMENSIONS, _all, _rows_checked, _rule, dimension_scores, fmt_module, load_scoring)
 from api.services.scoring import scoring_config, tier
 
 SCHEMA_VERSION = "1"
@@ -284,6 +284,22 @@ def _trend_sheet(data: dict) -> SheetSpec:
         rules=[ConditionalRule("composite", _BAR)])
 
 
+def _commentary_sheet(data: dict, scoring: dict) -> SheetSpec:
+    """The board pack's plain-speech commentary, one row per section, so the words travel with the numbers."""
+    from api.services.pdf_reports import board_context
+
+    ctx = board_context(data, tenant_name=data["tenant_name"], scoring=scoring)
+    com = ctx["commentary"]
+    order = [("Score", "overall"), ("Dimensions", "dimensions"), ("Root causes", "clusters"), ("Blockers", "blockers"),
+             ("Migration waves", "waves"), ("Cleansing funnel", "funnel"), ("Modules", "modules")]
+    rows = [{"section": label, "commentary": com[key]} for label, key in order if com.get(key)]
+    rows += [{"section": fmt_module(m["name"]), "commentary": m["commentary"]}
+             for g in ctx["groups"] for m in g["modules"] if m.get("commentary")]
+    rows += [{"section": f"Next step {i}", "commentary": step} for i, step in enumerate(com.get("next_steps") or [], 1)]
+    return SheetSpec("Commentary", [_c("section", "Section", width=28), _c("commentary", "Commentary", width=120)], rows,
+                     note="What the numbers mean and what to do, written from the figures alone.")
+
+
 def _meta_sheet(data: dict, cfg: dict, generated_at: datetime, app_version: str) -> SheetSpec:
     prev = data["previous"]
     kv = [("schema_version", SCHEMA_VERSION), ("generated_at", generated_at.isoformat()),
@@ -300,7 +316,7 @@ def _meta_sheet(data: dict, cfg: dict, generated_at: datetime, app_version: str)
 
 def workbook_context(data: dict, *, scoring: dict, generated_at: Optional[datetime] = None,
                      app_version: str = "") -> dict:
-    """Pure builder: the nine sheets plus the cover fields."""
+    """Pure builder: the ten sheets plus the cover fields."""
     cfg = scoring_config(scoring)
     now = generated_at or datetime.now(timezone.utc)
     v = data["version"]
@@ -308,8 +324,8 @@ def workbook_context(data: dict, *, scoring: dict, generated_at: Optional[dateti
     tiers = {"composite": tier(overall["composite"], cfg["thresholds"]) if overall["composite"] is not None else None}
     modules, objects = _module_sheets(data, cfg)
     rules, findings, _ = _rule_sheets(data)
-    sheets = [_summary_sheet(data, cfg, tiers), modules, objects, rules, findings, _samples_sheet(data),
-              _readiness_sheet(data), _trend_sheet(data), _meta_sheet(data, cfg, now, app_version)]
+    sheets = [_summary_sheet(data, cfg, tiers), _commentary_sheet(data, scoring), modules, objects, rules, findings,
+              _samples_sheet(data), _readiness_sheet(data), _trend_sheet(data), _meta_sheet(data, cfg, now, app_version)]
     return {"tenant_name": data["tenant_name"], "run_label": v.get("label") or str(v["id"]), "run_id": str(v["id"]),
             "title": "Analyst workbook", "sheets": sheets, "generated_at": now}
 

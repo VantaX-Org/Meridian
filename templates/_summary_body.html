@@ -13,10 +13,12 @@
 {% elif overall.capped %}
 <p class="note">The score is capped because critical checks fail: one critical failure caps a module at 85, two or more at 70.</p>
 {% endif %}
+{% if commentary and commentary.overall %}<p class="commentary">{{ commentary.overall }}</p>{% endif %}
 
 <h2>Quality by dimension</h2>
 {% if quality_chart %}
 <div class="chart">{{ quality_chart }}</div>
+{% if commentary and commentary.dimensions %}<p class="commentary">{{ commentary.dimensions }}</p>{% endif %}
 {% else %}
 <div class="empty">No dimension was measured in this run.</div>
 {% endif %}
