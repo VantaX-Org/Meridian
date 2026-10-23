@@ -30,7 +30,7 @@
 <div class="cols">
 {% for d in pair %}
 <div class="keep"><h3>{{ d.name | capitalize }}{% if d.change is not none %} <span class="muted">{{ d.change | signed(1) }} pts</span>{% endif %}</h3>
-{% if d.chart %}<div class="chart">{{ d.chart }}</div>{% else %}<div class="empty">Not measured in these runs.</div>{% endif %}</div>
+{% if d.chart %}<div class="chart">{{ d.chart }}</div>{% if d.commentary %}<p class="commentary">{{ d.commentary }}</p>{% endif %}{% else %}<div class="empty">Not measured in these runs.</div>{% endif %}</div>
 {% endfor %}
 </div>
 {% endfor %}
@@ -49,9 +49,11 @@
 </tbody>
 </table>
 {% if movers_total > movers | length %}<p class="note">Top {{ movers | length }} of {{ movers_total | n }} objects scored in both runs.</p>{% endif %}
+{% if commentary and commentary.movers %}<p class="commentary">{{ commentary.movers }}</p>{% endif %}
 {% else %}<div class="empty">No object was scored in both the first and the last run.</div>{% endif %}
 
 <h2>Rules that started failing</h2>
+{% if commentary and commentary.rules %}<p class="commentary">{{ commentary.rules }}</p>{% endif %}
 {% if new_rules %}
 <table class="data">
 <thead><tr><th>Rule</th><th>Object</th><th class="r">Failing records</th></tr></thead>

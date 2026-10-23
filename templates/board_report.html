@@ -8,6 +8,7 @@
 {% else %}
 <div class="empty">This run has no score to summarise.</div>
 {% endif %}
+{% if commentary and commentary.overall %}<p class="commentary">{{ commentary.overall }}</p>{% endif %}
 <div class="figures">
     <div class="figure primary"><div class="v">{% if ov.dqs.composite is not none %}{{ ov.dqs.composite | n(1) }}<small> / 100</small>{% else %}<span class="muted">—</span>{% endif %}</div>
         <div class="k">Data quality score{% if ov.dqs.delta is not none %}, {{ ov.dqs.delta | signed(1) }} pts since the earlier run{% else %}, no earlier run{% endif %}</div></div>
@@ -22,11 +23,16 @@
 <p class="note">Value at risk by business process ({{ currency }}). Processes are not added together:
 {% for r in l1_rows %}{{ r.l1 or "Unassigned" }} {{ r.amount | n }}{% if not loop.last %}; {% endif %}{% endfor %}.</p>
 {% endif %}
+{% if commentary and commentary.next_steps %}
+<div class="callout keep"><div class="label">What to do next</div>
+<ol class="actions">{% for s in commentary.next_steps %}<li>{{ s }}</li>{% endfor %}</ol></div>
+{% endif %}
 
 <h3>Top root causes</h3>
 {% if cluster_chart %}
 <div class="chart">{{ cluster_chart }}</div>
 <p class="note">Impact is failing records weighted by severity, grouped by the field the rules check.</p>
+{% if commentary and commentary.clusters %}<p class="commentary">{{ commentary.clusters }}</p>{% endif %}
 {% else %}
 <div class="empty">No failing rules to group.</div>
 {% endif %}
@@ -45,6 +51,7 @@
 {% endfor %}
 </tbody>
 </table>
+{% if commentary and commentary.dimensions %}<p class="commentary">{{ commentary.dimensions }}</p>{% endif %}
 <h3>Score over the last {{ trend_count }} run{{ "s" if trend_count != 1 }}</h3>
 {% if trend_chart %}<div class="chart">{{ trend_chart }}</div>{% else %}<div class="empty">No earlier runs to chart.</div>{% endif %}
 <h3>Biggest module movements</h3>
@@ -62,11 +69,13 @@
 </tbody>
 </table>
 {% else %}<div class="empty">No migration waves are planned.</div>{% endif %}
+{% if commentary and commentary.waves %}<p class="commentary">{{ commentary.waves }}</p>{% endif %}
 <div class="cols">
 <div><h3>Blocking rules by S/4HANA area</h3>{% if area_blocking_chart %}<div class="chart">{{ area_blocking_chart }}</div>{% else %}<div class="empty">No readiness rules evaluated.</div>{% endif %}</div>
 <div><h3>Warnings by S/4HANA area</h3>{% if area_warning_chart %}<div class="chart">{{ area_warning_chart }}</div>{% else %}<div class="empty">No readiness rules evaluated.</div>{% endif %}</div>
 </div>
 <h3>Top blockers</h3>
+{% if commentary and commentary.blockers %}<p class="commentary">{{ commentary.blockers }}</p>{% endif %}
 {% if blockers %}
 <table class="data">
 <thead><tr><th>Rule</th><th>Object</th><th class="r">Failing records</th><th class="r">Impact</th></tr></thead>
@@ -80,7 +89,7 @@
 
 {% for g in groups %}
 {% for m in g.modules %}
-{% if loop.first %}<h2 class="page-break">{{ g.label }}</h2>{% endif %}
+{% if loop.first %}<h2 class="page-break">{{ g.label }}</h2>{% if g == groups[0] and commentary and commentary.modules %}<p class="commentary">{{ commentary.modules }}</p>{% endif %}{% endif %}
 <h3 {% if not loop.first %}class="page-break"{% endif %}>{{ m.name | module }}</h3>
 <div class="figures">
     <div class="figure primary"><div class="v">{{ m.score | n(1) }}<small> / 100</small></div><div class="k">Composite score{% if m.cap_reason %}. {{ m.cap_reason }}{% endif %}</div></div>
@@ -89,6 +98,7 @@
     <div class="figure"><div class="v">{{ m.critical | n }}</div><div class="k">Critical failures</div></div>
 </div>
 <div class="chart">{{ m.chart }}</div>
+{% if m.commentary %}<p class="commentary">{{ m.commentary }}</p>{% endif %}
 {% if m.rules %}
 <table class="data keep">
 <thead><tr><th>Top failing rules</th><th class="r">Failing records</th><th class="r">Impact</th></tr></thead>
@@ -102,6 +112,7 @@
 {% if funnel_chart %}
 <div class="chart">{{ funnel_chart }}</div>
 <p class="note">Each step is a subset of the one above. Proposed values need approval before they are applied to SAP.</p>
+{% if commentary and commentary.funnel %}<p class="commentary">{{ commentary.funnel }}</p>{% endif %}
 {% else %}<div class="empty">No cleansing activity for this run.</div>{% endif %}
 
 <h2 class="page-break">Rule appendix</h2>

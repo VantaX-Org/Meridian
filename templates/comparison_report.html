@@ -28,6 +28,7 @@
     <div class="figure"><div class="v"><span class="up">{{ changes.resolved | length }}</span> / <span class="down">{{ changes.new | length }}</span></div><div class="k">Checks resolved / newly failing</div></div>
 </div>
 <p class="lead">{{ headline }}</p>
+{% if commentary and commentary.changes %}<p class="commentary">{{ commentary.changes }}</p>{% endif %}
 {% if best_module and worst_module and best_module.name != worst_module.name %}
 <p>{{ best_module.name | module }} improved most ({{ best_module.change | signed }} points); {{ worst_module.name | module }} changed least or declined ({{ worst_module.change | signed }} points).</p>
 {% endif %}

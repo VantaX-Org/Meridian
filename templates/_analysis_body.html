@@ -7,6 +7,10 @@
 </div>
 <p class="lead">{{ headline }}</p>
 {% if overall.capped %}<p class="note">The score is capped because critical checks fail: one critical failure caps a module at 85, two or more at 70.</p>{% endif %}
+{% if commentary and commentary.next_steps %}
+<div class="callout keep"><div class="label">What to do next</div>
+<ol class="actions">{% for s in commentary.next_steps %}<li>{{ s }}</li>{% endfor %}</ol></div>
+{% endif %}
 
 <h2>What to fix first</h2>
 {% if fix_first %}
@@ -18,6 +22,7 @@
         {% if f.why %}<span class="sub muted">{{ f.why }}</span>{% endif %}</li>
 {% endfor %}
 </ol>
+{% if commentary and commentary.fix_first %}<p class="commentary">{{ commentary.fix_first }}</p>{% endif %}
 {% else %}
 <div class="empty">No check found failing records in this run, so there is nothing to prioritise.</div>
 {% endif %}
@@ -29,6 +34,7 @@
 <h2>Modules</h2>
 {% if modules %}
 <div class="chart">{{ module_chart }}</div>
+{% if commentary and commentary.modules %}<p class="commentary">{{ commentary.modules }}</p>{% endif %}
 <table class="data">
 <thead><tr><th>Module</th><th class="r">DQS</th><th>Readiness</th><th class="r">Checks run</th><th class="r">Failing</th><th class="r">Critical</th><th class="r">High</th><th class="r">Records checked</th></tr></thead>
 <tbody>
@@ -52,8 +58,10 @@
 <tbody>{% for s, c in sev.items() %}<tr><td><span class="st {{ s }}">{{ s | capitalize }}</span></td><td class="r">{{ c | n }}</td></tr>{% endfor %}</tbody>
 <tfoot><tr><td>Total</td><td class="r">{{ checks_failing | n }}</td></tr></tfoot>
 </table>
+{% if commentary and commentary.severity %}<p class="commentary">{{ commentary.severity }}</p>{% endif %}
 
 <h2>Critical findings</h2>
+{% if commentary and commentary.critical %}<p class="commentary">{{ commentary.critical }}</p>{% endif %}
 {% if critical %}
 <table class="data">
 <thead><tr><th>Check</th><th>Module</th><th>Field</th><th class="r">Failing records</th><th class="r">Of records</th><th class="r">Fail rate</th></tr></thead>

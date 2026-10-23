@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from api.routes.findings import composite_dqs
 from api.services.deterministic_report import compute_readiness_status
 from api.services.scoring import critical_over_tolerance, impact
+from api.services import report_commentary as rc
 from api.services.report_pdf import TEMPLATE_DIR
 from api.services.insights_impact import DEFAULT_CURRENCY, tenant_currency
 from api.services.report_theme import PRINT_TOKENS, band_colour
@@ -458,6 +459,18 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str, s
         "top_findings": fails[:15],
         "critical": [f for f in fails if f.get("severity") == "critical"],
         "fix_first": fix_first, "errored": errs, "headline": headline,
+        "commentary": {
+            "overall": rc.overall(overall["composite"], previous["delta"] if previous else None,
+                                  overall.get("thresholds"), capped=bool(overall.get("capped")), critical=sev["critical"]),
+            "dimensions": rc.dimensions(dims, thresholds=overall.get("thresholds")),
+            "fix_first": rc.fix_first(fix_first, capped=bool(overall.get("capped"))),
+            "severity": rc.severity_mix(sev, len(ran)),
+            "critical": rc.critical_findings([f for f in fails if f.get("severity") == "critical"]),
+            "modules": rc.modules_overview(modules, overall.get("thresholds")),
+            "next_steps": rc.next_steps(fix_first_rows=fix_first, critical=sev["critical"], capped=bool(overall.get("capped")),
+                                        errored=len(errs),
+                                        score=overall["composite"], thresholds=overall.get("thresholds")),
+        },
         "methodology": methodology_block(scoring),
     }
 
@@ -513,7 +526,7 @@ def extraction_context(version: dict, *, tenant_name: str, scoring: dict, system
         rows = sync_run.get("rows_extracted")
     object_rows = meta.get("object_rows") or {}
 
-    return {
+    ctx = {
         "title": "Extraction run report", "eyebrow": "Data extraction", "cover": True,
         "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
@@ -538,6 +551,8 @@ def extraction_context(version: dict, *, tenant_name: str, scoring: dict, system
                         for c in sorted(live, key=lambda c: -float(c.get("rows") or 0))[:14]],
                        maximum=max([float(c.get("rows") or 0) for c in live] + [1.0]), dp=0) if live else None,
     }
+    ctx["commentary"] = {"run": rc.extraction(ctx)}
+    return ctx
 
 
 # ── cleaning and fixes ───────────────────────────────────────────────────────
@@ -561,7 +576,7 @@ def cleaning_context(data: dict, *, tenant_name: str, scoring: dict, version: Op
     scope = "This run only" if version else "All runs for this organisation"
     now = _now(generated_at)
     cleaning_dims = dimension_scores((version or {}).get("dqs_summary") or {})
-    return {
+    ctx = {
         "overall": composite_dqs([(version or {}).get("dqs_summary") or {}], scoring=scoring),
         "quality_chart": _quality_chart(cleaning_dims), "previous_dqs": None, "top_findings": [],
         "title": "Cleaning and fixes report", "eyebrow": "Data cleaning and remediation", "cover": True,
@@ -580,6 +595,8 @@ def cleaning_context(data: dict, *, tenant_name: str, scoring: dict, version: Op
         "proposal_source": data.get("proposal_source"),
         "record_fixes": fixes, "record_fixes_total": sum(int(r["n"]) for r in fixes),
     }
+    ctx["commentary"] = {"run": rc.cleaning(ctx)}
+    return ctx
 
 
 # ── version comparison ───────────────────────────────────────────────────────
@@ -680,6 +697,8 @@ def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: lis
                     + f" {len(changes['resolved'])} check{'s' if len(changes['resolved']) != 1 else ''} stopped failing"
                     + f" and {len(changes['new'])} started failing; {len(persisting)} still fail.")
     now = _now(generated_at)
+    improvers = sorted([c for c in check_moves if c["change"] < 0], key=lambda c: c["change"])[:5]
+    regressions = sorted([c for c in check_moves if c["change"] > 0], key=lambda c: -c["change"])[:5]
     return {
         "title": "Run comparison report", "eyebrow": "Version comparison", "cover": True,
         "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
@@ -695,10 +714,14 @@ def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: lis
         "module_chart": delta_bars([(fmt_module(m["name"]), m["change"]) for m in
                                     sorted(comparable, key=lambda m: m["change"])][:14]) if comparable else None,
         "changes": changes, "rec": rec, "records": records, "rows1": rows1, "rows2": rows2,
-        "improvers": sorted([c for c in check_moves if c["change"] < 0], key=lambda c: c["change"])[:5],
-        "regressions": sorted([c for c in check_moves if c["change"] > 0], key=lambda c: -c["change"])[:5],
+        "improvers": improvers, "regressions": regressions,
         "best_module": max(comparable, key=lambda m: m["change"]) if comparable else None,
         "worst_module": min(comparable, key=lambda m: m["change"]) if comparable else None,
+        "commentary": {
+            "overall": rc.overall(o2["composite"], change, o2.get("thresholds"), capped=bool(o2.get("capped"))),
+            "changes": rc.comparison(dims, improvers, regressions, changes),
+            "dimensions": rc.dimensions(d2, d1, o2.get("thresholds")),
+        },
     }
 
 
@@ -775,12 +798,14 @@ def board_context(data: dict, *, tenant_name: str, scoring: dict, ai_summary: Op
         m = h["module"]
         r = summary.get(m) or {}
         mdims = {d: h["scores"].get(d) for d in DIMENSIONS}
-        return {"name": m, "score": h["scores"]["composite"], "tier": h["tier"]["composite"],
-                "delta": (deltas.get(m) or {}).get("dqs_change") if prev else None,
-                "chart": hbars([(fmt_module(d), mdims[d]) for d in DIMENSIONS]),
-                "rules": by_module_rules.get(m, [])[:5], "blockers": blocking_by_module.get(m, 0),
-                "critical": h["critical"], "cap_reason": h["cap_reason"],
-                "checks": int(r.get("total_checks") or 0)}
+        blk = {"name": m, "score": h["scores"]["composite"], "tier": h["tier"]["composite"],
+               "delta": (deltas.get(m) or {}).get("dqs_change") if prev else None, "dims": mdims,
+               "chart": hbars([(fmt_module(d), mdims[d]) for d in DIMENSIONS]),
+               "rules": by_module_rules.get(m, [])[:5], "blockers": blocking_by_module.get(m, 0),
+               "critical": h["critical"], "cap_reason": h["cap_reason"],
+               "checks": int(r.get("total_checks") or 0)}
+        blk["commentary"] = rc.module(blk, cfg["thresholds"])
+        return blk
 
     groups = [{"label": _GROUP_LABEL[g], "modules": [module_block(h) for h in heat if h["group"] == g]}
               for g in agg.GROUPS]
@@ -792,6 +817,24 @@ def board_context(data: dict, *, tenant_name: str, scoring: dict, ai_summary: Op
              "blockers": blocking_by_module.get(h["module"], 0)} for h in mods]})
     l1 = sorted(by_l1(data["impact_rows"]).items(), key=lambda kv: (-kv[1], kv[0]))
     steps = (data["cleansing"] or {}).get("steps") or []
+    step_n = {x["key"]: int(x.get("records") or 0) for x in steps}
+    critical_n = sum(h["critical"] for h in heat)
+    commentary = {
+        "overall": rc.overall(ov["dqs"]["composite"], ov["dqs"].get("delta"), cfg["thresholds"],
+                              capped=bool(overall.get("capped")), critical=critical_n),
+        "dimensions": rc.dimensions(dims, prev_dims if prev else None, cfg["thresholds"]),
+        "clusters": rc.clusters(data["clusters"][:5]),
+        "blockers": rc.blockers(blockers[:10], len(blockers), wave_rows),
+        "waves": rc.waves(wave_rows, cfg["thresholds"]),
+        "funnel": rc.funnel(steps) if steps else "",
+        "modules": rc.modules_overview([{"name": h["module"], "score": h["scores"]["composite"], "critical": h["critical"],
+                                         "blockers": blocking_by_module.get(h["module"], 0)} for h in heat],
+                                       cfg["thresholds"]),
+        "next_steps": rc.next_steps(fix_first_rows=rules[:1], critical=critical_n, capped=bool(overall.get("capped")),
+                                    blockers_total=len(blockers),
+                                    pending_proposals=max(0, step_n.get("proposed", 0) - step_n.get("approved", 0)),
+                                    score=ov["dqs"]["composite"], thresholds=cfg["thresholds"]),
+    }
 
     return {
         "title": "Board data quality report", "eyebrow": "Board report", "cover": True,
@@ -820,6 +863,7 @@ def board_context(data: dict, *, tenant_name: str, scoring: dict, ai_summary: Op
         "groups": [g for g in groups if g["modules"]],
         "funnel_chart": funnel_bars([(x["label"], x["records"]) for x in steps]) if steps else None,
         "rule_appendix": rules[:BOARD_RULE_APPENDIX], "rule_total": len(rules),
+        "commentary": commentary,
         "app_version": app_version, "methodology": methodology_block(scoring),
     }
 
@@ -886,6 +930,15 @@ def object_context(module: str, module_dqs: dict, findings: list[dict], samples:
         "dim_chart": _quality_chart(dims), "headline": verdict,
         "rules": rules, "top_findings": fails[:10],
         "samples": samples, "sample_cols": cols, "errored": errs,
+        "commentary": {
+            "overall": rc.overall(score, None, overall.get("thresholds"), capped=bool(overall.get("capped")),
+                                  critical=int((module_dqs or {}).get("critical_count") or 0)),
+            "dimensions": rc.dimensions(dims, thresholds=overall.get("thresholds")),
+            "rules": rc.object_rules(rules, fails), "samples": rc.samples(samples),
+            "next_steps": rc.next_steps(fix_first_rows=fails[:1], critical=int((module_dqs or {}).get("critical_count") or 0),
+                                        capped=bool(overall.get("capped")),
+                                        errored=len(errs), score=score, thresholds=overall.get("thresholds")),
+        },
     }
 
 
@@ -1270,6 +1323,9 @@ def trend_context(version: dict, trend: dict, findings_first: list[dict], findin
     changes = check_changes(findings_first, findings_last) if len(runs) > 1 else \
         {"new": [], "resolved": [], "persisting": [], "not_comparable": []}
     shown = movers[:TREND_MOVERS]
+    dim_series = _dim_series(runs)
+    for d in dim_series:
+        d["commentary"] = rc.trend_dimension(d)
     overall = {"composite": last.get("composite"), "capped": False}
     scored = last.get("composite") is not None
     return {
@@ -1285,8 +1341,10 @@ def trend_context(version: dict, trend: dict, findings_first: list[dict], findin
         "runs": runs, "run_count": len(runs),
         "score_chart": trend_line([(r["label"] or r["run_at"] or "", r["composite"]) for r in runs],
                                   cfg["thresholds"]["target"]) if runs else None,
-        "dims": _dim_series(runs),
+        "dims": dim_series,
         "movers": shown, "movers_total": len(movers),
+        "commentary": {"movers": rc.movers(shown),
+                       "rules": rc.rule_changes(changes["new"][:TREND_RULES_MAX], changes["resolved"])},
         "mover_chart": delta_bars([(fmt_module(m["module"]), m["change"]) for m in shown]) if shown else None,
         "new_rules": changes["new"][:TREND_RULES_MAX], "new_total": len(changes["new"]),
         "fixed_rules": changes["resolved"][:TREND_RULES_MAX], "fixed_total": len(changes["resolved"]),
@@ -1518,6 +1576,8 @@ def owners_context(version: dict, owners: list[dict], objects: list[dict], *, te
                      "blocked": sum(1 for x in mine if x.get("blocking")),
                      "trend": None if delta in (None, 0) else ("improved" if delta > 0 else "slipped")})
     rows.sort(key=lambda r: (r["score"] is None, r["score"] if r["score"] is not None else 0, r["owner"].lower()))
+    for r in rows:
+        r["commentary"] = rc.owner(r)
     unassigned = sorted(by_owner.get(None, []), key=obj_sort)
     scored = [r for r in rows if r["score"] is not None]
     if not rows and not unassigned:
@@ -1539,6 +1599,8 @@ def owners_context(version: dict, owners: list[dict], objects: list[dict], *, te
                  ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
                  ("Run at", fmt_dt(version.get("run_at"))), ("Generated", fmt_dt(now))],
         "headline": headline, "owners": rows, "unassigned": unassigned,
+        "commentary": {"unassigned": rc.unassigned(unassigned),
+                       "next_steps": rc.next_steps(unowned=len(unassigned))},
         "severity_weights": _SEVERITY_WEIGHT, "methodology": methodology_block(scoring),
     }
 

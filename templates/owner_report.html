@@ -25,6 +25,7 @@ Change is measured against the start of the last seven days. Object scores are d
 <p class="note">
 {% if o.score is not none %}Owner score {{ o.score | n(1) }}. {% endif %}{{ o.open | n }} open item{{ "s" if o.open != 1 }}{% if o.open_by_severity %} ({% for sev, n in o.open_by_severity.items() %}{{ n | n }} {{ sev }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}.
 {% if o.oldest_item_age_days %}The oldest open item is {{ o.oldest_item_age_days | n }} day{{ "s" if o.oldest_item_age_days != 1 }} old.{% endif %}</p>
+{% if o.commentary %}<p class="commentary">{{ o.commentary }}</p>{% endif %}
 {% if o.objects %}
 <table class="data keep">
 <thead><tr><th>Object</th><th class="r">Score</th><th>Blocking rule</th><th class="r">Failing records</th></tr></thead>
@@ -40,6 +41,7 @@ Change is measured against the start of the last seven days. Object scores are d
 {% endfor %}
 
 <h2 class="page-break">Objects with no owner</h2>
+{% if commentary and commentary.unassigned %}<p class="commentary">{{ commentary.unassigned }}</p>{% endif %}
 {% if unassigned %}
 <table class="data">
 <thead><tr><th>Object</th><th class="r">Score</th><th>Blocking rule</th><th class="r">Failing records</th></tr></thead>

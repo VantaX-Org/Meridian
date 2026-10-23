@@ -90,6 +90,7 @@ p { margin: 0 0 2.5mm; }
     color: var(--ink-3); margin-bottom: 2mm;
 }
 .note { font-size: 8pt; color: var(--ink-3); margin-top: 1.5mm; }
+.commentary { font-size: 9pt; line-height: 1.55; color: var(--ink-2); max-width: 165mm; margin: 2mm 0 3.5mm; }
 .empty {
     border: 0.75pt dashed var(--line-2); border-radius: 6px; background: var(--wash);
     padding: 3mm 4mm; color: var(--ink-2); font-size: 8.5pt; break-inside: avoid;

@@ -13,6 +13,7 @@
 {% if complete %}The extraction is marked complete.{% elif complete is sameas false %}The extraction is marked incomplete, so checks on the missing tables did not run.{% endif %}
 {% endif %} {% if age is not none %}The data was downloaded {{ age | dur }} before this report was generated.{% endif %}
 </p>
+{% if commentary and commentary.run %}<p class="commentary">{{ commentary.run }}</p>{% endif %}
 
 <h2>Run</h2>
 <table class="meta">

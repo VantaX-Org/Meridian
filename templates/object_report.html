@@ -6,10 +6,16 @@
 </div>
 <p class="lead">{{ headline }}</p>
 {% if overall and overall.capped %}<p class="note">The score is capped because critical checks fail: one critical failure caps a module at 85, two or more at 70.</p>{% endif %}
+{% if commentary and commentary.overall %}<p class="commentary">{{ commentary.overall }}</p>{% endif %}
+{% if commentary and commentary.next_steps %}
+<div class="callout keep"><div class="label">What to do next</div>
+<ol class="actions">{% for s in commentary.next_steps %}<li>{{ s }}</li>{% endfor %}</ol></div>
+{% endif %}
 
 <h2>Quality by dimension</h2>
 {% if dim_chart %}
 <div class="chart">{{ dim_chart }}</div>
+{% if commentary and commentary.dimensions %}<p class="commentary">{{ commentary.dimensions }}</p>{% endif %}
 {% else %}
 <div class="empty">No dimension was measured for this module in this run.</div>
 {% endif %}
@@ -33,6 +39,7 @@
 <h2>All rules</h2>
 {% if rules %}
 <p class="note">Every rule run for this module, by severity then number of affected records.</p>
+{% if commentary and commentary.rules %}<p class="commentary">{{ commentary.rules }}</p>{% endif %}
 <table class="data">
 <thead><tr><th>Check</th><th>Severity</th><th>Dimension</th><th class="r">Affected</th><th class="r">Of records</th><th class="r">Fail rate</th></tr></thead>
 <tbody>
@@ -50,6 +57,7 @@
 <h2>Failing-record samples</h2>
 {% if samples %}
 <p class="note">First 25 failing records for the top 3 rules by severity and affected count.</p>
+{% if commentary and commentary.samples %}<p class="commentary">{{ commentary.samples }}</p>{% endif %}
 <table class="data">
 <thead><tr><th>Check</th><th>Record</th>{% for c in sample_cols %}<th class="mono">{{ c }}</th>{% endfor %}</tr></thead>
 <tbody>

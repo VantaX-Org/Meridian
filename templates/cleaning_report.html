@@ -14,6 +14,7 @@
 {% endif %}
 </p>
 <p class="note">Meridian never writes to SAP. Applied means the corrected value was accepted in Meridian; the change reaches SAP through an exported batch loaded by your team.</p>
+{% if commentary and commentary.run %}<p class="commentary">{{ commentary.run }}</p>{% endif %}
 
 <h2>Cleaning proposals by object</h2>
 {% if matrix %}
