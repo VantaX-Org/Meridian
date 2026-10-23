@@ -1,0 +1,20 @@
+{% extends "_base.html" %}
+{% block body %}
+<nav class="guide-toc">
+<h2>Contents</h2>
+{% for s in sections %}
+<h3>{{ s.title }}</h3>
+<ol>
+{% for c in s.chapters %}<li><a href="#{{ c.slug }}">{{ c.title }}</a></li>{% endfor %}
+</ol>
+{% endfor %}
+</nav>
+{% for s in sections %}
+{% for c in s.chapters %}
+<section class="guide-chapter">
+{% if loop.first %}<p class="guide-section">{{ s.title }}</p>{% endif %}
+{{ c.html }}
+</section>
+{% endfor %}
+{% endfor %}
+{% endblock %}
