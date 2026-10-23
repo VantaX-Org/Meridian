@@ -1,0 +1,252 @@
+module: deliveries_billing
+target_state: ECC_AND_S4HANA
+rules:
+- id: DL001
+  field: LIKP.VBELN
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Delivery number is mandatory
+  why_it_matters: VBELN is the primary key of LIKP and every delivery item, goods
+    movement and billing reference points at it. A delivery without a number cannot
+    be posted, picked, shipped or invoiced.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and its items are unreachable; goods issue cannot be posted.
+  fix_map:
+    __blank__: Recreate the outbound delivery in VL01N; the number is assigned by
+      the number range and must never be blank.
+  record_fix_template: 'Delivery {LIKP.VBELN}: VBELN is blank. Recreate the delivery
+    in VL01N.'
+- id: DL002
+  field: LIKP.VKORG
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Sales organisation is mandatory on a delivery
+  why_it_matters: VKORG determines the sales organisation the delivery belongs to and
+    drives pricing, plant determination and billing. It is copied from the reference
+    document at creation and is never blank in a valid delivery.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery cannot be billed; invoice creation in VF01 fails.
+  fix_map:
+    __blank__: Populate the sales organisation on the delivery header in VL02N.
+  record_fix_template: 'Delivery {LIKP.VBELN}: VKORG is blank. Assign the sales organisation
+    in VL02N.'
+- id: DL003
+  field: LIKP.LFART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Delivery type is mandatory
+  why_it_matters: LFART controls whether the delivery is outbound, inbound, a returns
+    delivery or a stock transfer, and with it the item categories, the shipping point
+    rules and the goods movement. A blank delivery type cannot be processed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery cannot be picked, packed or posted; shipping process stops.
+  fix_map:
+    __blank__: Assign the correct delivery type in VL02N.
+  record_fix_template: 'Delivery {LIKP.VBELN}: LFART is blank. Assign the delivery type
+    in VL02N.'
+- id: DL004
+  field: LIKP.LFDAT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Delivery date is blank
+  why_it_matters: LFDAT is the date the delivery is due to leave. It drives scheduling,
+    the picking wave and on-time-delivery reporting; a blank date means the delivery
+    is invisible to logistics planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery does not appear in scheduling or on-time delivery KPIs.
+  fix_map:
+    __blank__: Enter the delivery date in VL02N.
+  record_fix_template: 'Delivery {LIKP.VBELN}: LFDAT is blank. Enter the delivery date
+    in VL02N.'
+- id: DL005
+  field: LIKP.VBELN
+  check_class: uniqueness_check
+  fields:
+  - LIKP.VBELN
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate delivery numbers detected
+  why_it_matters: VBELN is the primary key of LIKP. Duplicate delivery numbers break
+    the join to LIPS, LIPS-to-billing references and the goods movement documents,
+    and the migration program rejects the load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Duplicate deliveries load twice or fail the migration; documents and
+    movements attach to the wrong delivery.
+  fix_map:
+    __other__: Keep one delivery per number; renumber or delete the duplicate before
+      migration.
+  record_fix_template: 'Delivery {LIKP.VBELN}: duplicate delivery number. Keep one and
+    remove the rest.'
+- id: DL006
+  field: LIPS.MATNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Material is mandatory on a delivery item
+  why_it_matters: Every delivery item must carry a material so stock can be moved and
+    the item billed. Items created for text only must use the dedicated item category,
+    not a blank material.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue and billing cannot determine the material; item is blocked.
+  fix_map:
+    __blank__: Assign the material, or delete the item if it is not a stock item.
+  record_fix_template: 'Delivery item {LIPS.VBELN}/{LIPS.POSNR}: MATNR is blank. Assign
+    the material or delete the item.'
+- id: DL007
+  field: LIPS.LFIMG
+  check_class: cross_field_check
+  fail_when: '`LIPS.LFIMG` < 0'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Delivery quantity is negative
+  why_it_matters: LFIMG is the quantity to be delivered. Outbound deliveries carry a
+    positive quantity; a negative quantity reverses the stock movement and produces
+    a goods issue that increases stock.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue moves stock the wrong way and inventory is overstated.
+  fix_map:
+    __other__: Correct the quantity sign in VL02N; use a returns delivery for genuine
+      returns.
+  record_fix_template: 'Delivery item {LIPS.VBELN}/{LIPS.POSNR}: LFIMG is {actual_value}.
+    Correct the sign in VL02N.'
+- id: DL008
+  field: LIPS.MEINS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Sales unit of measure is blank on a delivery item
+  why_it_matters: MEINS is the unit the delivery quantity is expressed in. Without it
+    the quantity has no meaning and goods issue cannot convert to the base unit of
+    measure.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue fails; quantity cannot be converted to base UoM.
+  fix_map:
+    __blank__: Assign the sales unit of measure in VL02N.
+  record_fix_template: 'Delivery item {LIPS.VBELN}/{LIPS.POSNR}: MEINS is blank. Assign
+    the unit of measure.'
+- id: DL009
+  field: VBRK.FKART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Billing type is mandatory on an invoice
+  why_it_matters: FKART determines whether the document is an invoice, a credit memo,
+    a debit memo or a cancellation, and with it the account determination, the number
+    range and the posting keys. A blank billing type cannot be posted to FI.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoice cannot be released to accounting; revenue is not recognised.
+  fix_map:
+    __blank__: Assign the billing type in VF02.
+  record_fix_template: 'Billing document {VBRK.VBELN}: FKART is blank. Assign the billing
+    type in VF02.'
+- id: DL010
+  field: VBRK.WAERK
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Document currency is blank on an invoice
+  why_it_matters: WAERK is the currency every amount in the billing document is
+    expressed in. Without it the FI document cannot be posted and the amounts have no
+    meaning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoice cannot post to FI; revenue and receivables are unrecorded.
+  fix_map:
+    __blank__: Assign the document currency in VF02.
+  record_fix_template: 'Billing document {VBRK.VBELN}: WAERK is blank. Assign the document
+    currency.'
+- id: DL011
+  field: VBRK.FKDAT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Billing date is blank
+  why_it_matters: FKDAT determines the posting period and the FI document date. A blank
+    billing date leaves the invoice outside every reporting period.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoice is not attributable to a period; revenue reporting is incomplete.
+  fix_map:
+    __blank__: Enter the billing date in VF02.
+  record_fix_template: 'Billing document {VBRK.VBELN}: FKDAT is blank. Enter the billing
+    date.'
+- id: DL012
+  field: VBRK.VBELN
+  check_class: uniqueness_check
+  fields:
+  - VBRK.VBELN
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate billing document numbers detected
+  why_it_matters: VBELN is the primary key of VBRK. Duplicates break the link from
+    items to the FI document and cause the same revenue to be posted twice.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue double counted; FI reconciliation fails.
+  fix_map:
+    __other__: Keep one billing document per number and remove the duplicate.
+  record_fix_template: 'Billing document {VBRK.VBELN}: duplicate number. Keep one and
+    remove the rest.'
+- id: DL013
+  field: VBRP.FKIMG
+  check_class: cross_field_check
+  fail_when: '`VBRP.FKIMG` < 0'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Billed quantity is negative on a standard invoice
+  why_it_matters: FKIMG is the quantity billed. On an invoice it is positive; a negative
+    quantity on an invoice type produces a credit posting against revenue.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue is reduced instead of increased; the FI posting is reversed.
+  fix_map:
+    __other__: Correct the billed quantity in VF02, or use the correct credit memo type.
+  record_fix_template: 'Billing item {VBRP.VBELN}/{VBRP.POSNR}: FKIMG is {actual_value}.
+    Correct the quantity in VF02.'
+- id: DL014
+  field: LIPS.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Plant is blank on a delivery item
+  why_it_matters: WERKS determines the plant the stock is issued from and the storage
+    location search. A blank plant cannot produce a goods movement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue cannot determine stock; delivery cannot be picked.
+  fix_map:
+    __blank__: Assign the plant on the delivery item in VL02N.
+  record_fix_template: 'Delivery item {LIPS.VBELN}/{LIPS.POSNR}: WERKS is blank. Assign
+    the plant.'
+- id: DL015
+  field: LIKP.ERDAT
+  check_class: cross_field_check
+  fail_when: '(`LIKP.ERDAT` - @today).dt.days > 0'
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Delivery was created with a future date
+  why_it_matters: ERDAT is the creation date stamped by SAP. A future creation date
+    means the record was loaded with a manipulated timestamp, which distorts lead-time
+    and ageing reporting.
+  rule_authority: sap_business_convention
+  sap_impact: Logistics lead-time and ageing reports are wrong for this delivery.
+  fix_map:
+    __other__: Correct the creation date, or reload the record without a manual date.
+  record_fix_template: 'Delivery {LIKP.VBELN}: ERDAT is {actual_value}, after today.
+    Correct the creation date.'
+- id: DL016
+  field: VBRP.MATNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Material is blank on a billing item
+  why_it_matters: A billing item must identify the material billed so the revenue can
+    be matched to the material and to the cost of goods sold.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue cannot be matched to material or COGS; margin reporting breaks.
+  fix_map:
+    __blank__: Assign the material on the billing item in VF02.
+  record_fix_template: 'Billing item {VBRP.VBELN}/{VBRP.POSNR}: MATNR is blank. Assign
+    the material.'
