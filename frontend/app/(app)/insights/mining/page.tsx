@@ -128,7 +128,10 @@ function EntityLinks() {
             />
           )}
       </div>
-      <DataTableWithMaybeEmpty columns={columns} data={shown} getRowId={(r) => r.id} loading={q.isLoading} empty="No relationships." action={<Button render={<Link href="/systems">Open systems</Link>} />} />
+      {/* With no graph the empty state above already says it; a second "No relationships" card repeated it. */}
+      {q.isLoading || nodes.length ? (
+        <DataTableWithMaybeEmpty columns={columns} data={shown} getRowId={(r) => r.id} loading={q.isLoading} empty="No relationships for this domain." action={<Button variant="secondary" onClick={() => setDomain("")}>Show every domain</Button>} />
+      ) : null}
     </div>
   );
 }

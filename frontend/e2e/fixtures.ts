@@ -249,6 +249,8 @@ const WAVE_W1 = {
   signed_off_by: null, signed_off_at: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
 };
 async function mockWave(page: Page) {
+  // The seeded tenant has no S/4 load dry runs; the recording holds no list of them.
+  await page.route(/\/api\/v1\/migration\/runs(\?.*)?$/, (r) => r.fulfill(json({ runs: [] })));
   await page.route(/\/api\/v1\/migration\/waves(\?.*)?$/, (r) => (r.request().method() === "GET" ? r.fulfill(json({ waves: [WAVE_W1] })) : r.fallback()));
   await page.route("**/api/v1/migration/waves/w1/cockpit", (r) => r.fulfill(json({
     wave: WAVE_W1, run_id: RECORDED.latestRunId, source_version_id: RECORDED.latestRunId, dest_system_type: "s4hana", verdict: "no_go",
