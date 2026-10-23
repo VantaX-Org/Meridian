@@ -89,5 +89,6 @@ export * from "./shell/HelpMenu";
 export * from "./shell/ShortcutSheet";
 export * from "./shell/WhatsNew";
 export * from "./shell/Tour";
+export * from "./shell/AskMeridian";
 export * from "./templates/FirstRunChecklist";
 export * from "./templates/PageFrame";

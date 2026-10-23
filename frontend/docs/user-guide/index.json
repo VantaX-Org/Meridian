@@ -19,6 +19,7 @@
         { "slug": "rules", "title": "Rules" },
         { "slug": "insights", "title": "Insights" },
         { "slug": "reports", "title": "Reports" },
+        { "slug": "assistant", "title": "Ask Meridian" },
         { "slug": "inbox", "title": "Inbox" },
         { "slug": "fix", "title": "Fix" },
         { "slug": "mdm", "title": "Master data" },
