@@ -3,122 +3,399 @@ target_state: ECC_AND_S4HANA
 rules:
 - id: IO001
   field: AUFK.AUFNR
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Order number is mandatory
-  why_it_matters: AUFNR is the primary key of AUFK and the object every CO settlement,
-    budget, purchase requisition and goods movement on the order points at.
-  rule_authority: sap_hard_constraint
-  sap_impact: Order is unreachable; costs cannot be collected or settled.
-  fix_map:
-    __blank__: Recreate the order in KO01; the number is assigned by the number range.
-  record_fix_template: 'Order {AUFK.AUFNR}: AUFNR is blank. Recreate the order in KO01.'
-- id: IO002
-  field: AUFK.AUART
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Order type is mandatory
-  why_it_matters: AUART determines the number range, the settlement profile, the budget
-    profile and which fields are required. Every order must carry one.
-  rule_authority: sap_hard_constraint
-  sap_impact: Order cannot be settled; settlement rules and budget cannot be derived.
-  fix_map:
-    __blank__: Assign the order type in KO02.
-  record_fix_template: 'Order {AUFK.AUFNR}: AUART is blank. Assign the order type in KO02.'
-- id: IO003
-  field: AUFK.BUKRS
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Company code is mandatory on an order
-  why_it_matters: BUKRS is the legal entity the order's costs fall into. Settlement
-    posts to FI through this company code.
-  rule_authority: sap_hard_constraint
-  sap_impact: Settlement cannot post to FI; costs stay on the order.
-  fix_map:
-    __blank__: Assign the company code in KO02.
-  record_fix_template: 'Order {AUFK.AUFNR}: BUKRS is blank. Assign the company code in
-    KO02.'
-- id: IO004
-  field: AUFK.KOKRS
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Controlling area is mandatory on an order
-  why_it_matters: KOKRS is the controlling area all CO postings are read in, and the
-    key the order's cost objects are validated against.
-  rule_authority: sap_hard_constraint
-  sap_impact: Order is invisible to controlling; no CO reporting or settlement.
-  fix_map:
-    __blank__: Assign the controlling area in KO02.
-  record_fix_template: 'Order {AUFK.AUFNR}: KOKRS is blank. Assign the controlling area
-    in KO02.'
-- id: IO005
-  field: AUFK.AUFNR
   check_class: uniqueness_check
   fields:
   - AUFK.AUFNR
   severity: critical
   dimension: uniqueness
   message: Duplicate order numbers detected
-  why_it_matters: AUFNR is the primary key of AUFK and the join key to AFKO, the
-    settlement rules and every CO line item. Duplicates attach costs to the wrong
-    order.
+  why_it_matters: AUFNR is the primary key of AUFK and the join to AFKO, the settlement rules and every
+    CO line item.
   rule_authority: sap_hard_constraint
-  sap_impact: Costs post to the wrong order; migration rejects the duplicate.
+  sap_impact: Costs post to the wrong order; the migration rejects the duplicate.
   fix_map:
-    __other__: Keep one order per number and remove the duplicate.
-  record_fix_template: 'Order {AUFK.AUFNR}: duplicate number. Keep one and remove the
-    rest.'
+    __other__: Keep one order per number.
+  record_fix_template: 'AUFK.AUFNR: duplicate key. Keep one order per number.'
+- id: IO002
+  field: AUFK.AUFNR
+  check_class: regex_check
+  pattern: ^[0-9]{1,12}$
+  severity: high
+  dimension: validity
+  message: Order number must be numeric up to 12 digits
+  why_it_matters: AUFNR is CHAR 12 assigned by an internal number range; external assignment uses the
+    same numeric shape.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be addressed by standard transactions.
+  fix_map:
+    __other__: Renumber the order from the SAP number range.
+  record_fix_template: 'AUFK.AUFNR: ''{actual_value}'' has an invalid format. Renumber the order from
+    the SAP number range.'
+- id: IO003
+  field: AUFK.AUART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Order type is mandatory
+  why_it_matters: AUART selects the number range, settlement profile, budget profile and required fields.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be settled and its budget cannot be derived.
+  fix_map:
+    __blank__: Assign the order type in KO02.
+  record_fix_template: 'AUFK.AUART: ''{actual_value}'' is blank. Assign the order type in KO02.'
+- id: IO004
+  field: AUFK.AUTYP
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Order category is mandatory
+  why_it_matters: AUTYP distinguishes internal orders from production, maintenance and process orders
+    and drives which transactions apply.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is processed by the wrong object logic.
+  fix_map:
+    __blank__: Assign the order category in KO02.
+  record_fix_template: 'AUFK.AUTYP: ''{actual_value}'' is blank. Assign the order category in KO02.'
+- id: IO005
+  field: AUFK.BUKRS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Company code is mandatory on an order
+  why_it_matters: BUKRS is the legal entity the order's costs fall into and where settlement posts to
+    FI.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement cannot post to FI; costs remain on the order.
+  fix_map:
+    __blank__: Assign the company code in KO02.
+  record_fix_template: 'AUFK.BUKRS: ''{actual_value}'' is blank. Assign the company code in KO02.'
 - id: IO006
+  field: AUFK.KOKRS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Controlling area is mandatory on an order
+  why_it_matters: KOKRS is the controlling area all CO postings are read in.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is invisible to controlling.
+  fix_map:
+    __blank__: Assign the controlling area in KO02.
+  record_fix_template: 'AUFK.KOKRS: ''{actual_value}'' is blank. Assign the controlling area in KO02.'
+- id: IO007
   field: AUFK.WAERS
   check_class: null_check
   severity: high
   dimension: completeness
   message: Order currency is blank
-  why_it_matters: WAERS is the currency the order's planned and actual costs are held
-    in. Without it no amount on the order has a unit.
+  why_it_matters: WAERS is the currency the order's planned and actual costs are held in.
   rule_authority: sap_hard_constraint
-  sap_impact: Order costs cannot be translated for settlement or reporting.
+  sap_impact: Order costs have no currency and cannot be translated.
   fix_map:
     __blank__: Assign the order currency in KO02.
-  record_fix_template: 'Order {AUFK.AUFNR}: WAERS is blank. Assign the currency in KO02.'
-- id: IO007
+  record_fix_template: 'AUFK.WAERS: ''{actual_value}'' is blank. Assign the order currency in KO02.'
+- id: IO008
+  field: AUFK.WERKS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Plant is blank on a plant-related order
+  why_it_matters: WERKS ties the order to the plant whose stock and capacity it consumes.
+  rule_authority: sap_hard_constraint
+  sap_impact: Plant availability and capacity checks cannot run for the order.
+  fix_map:
+    __blank__: Assign the plant in KO02.
+  record_fix_template: 'AUFK.WERKS: ''{actual_value}'' is blank. Assign the plant in KO02.'
+- id: IO009
+  field: AUFK.KOSTV
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Responsible cost centre is blank
+  why_it_matters: KOSTV is the cost centre responsible for the order's spend.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spend cannot be attributed to a responsible manager.
+  fix_map:
+    __blank__: Assign the responsible cost centre in KO02.
+  record_fix_template: 'AUFK.KOSTV: ''{actual_value}'' is blank. Assign the responsible cost centre in
+    KO02.'
+- id: IO010
+  field: AUFK.KOSTL
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Cost centre is blank on a cost-collecting order
+  why_it_matters: KOSTL receives the order's costs when the order is settled to a cost centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement has no receiver; costs stay on the order.
+  fix_map:
+    __blank__: Assign the cost centre in KO02.
+  record_fix_template: 'AUFK.KOSTL: ''{actual_value}'' is blank. Assign the cost centre in KO02.'
+- id: IO011
+  field: AUFK.PRCTR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Profit centre is blank
+  why_it_matters: PRCTR routes the order's costs into the profit-centre P&L.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is missing from profit-centre reporting.
+  fix_map:
+    __blank__: Assign the profit centre in KO02.
+  record_fix_template: 'AUFK.PRCTR: ''{actual_value}'' is blank. Assign the profit centre in KO02.'
+- id: IO012
+  field: AUFK.GSBER
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Business area is blank
+  why_it_matters: GSBER is needed for business-area balance-sheet reporting in classic GL.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is missing from business-area reporting.
+  fix_map:
+    __blank__: Assign the business area in KO02.
+  record_fix_template: 'AUFK.GSBER: ''{actual_value}'' is blank. Assign the business area in KO02.'
+- id: IO013
+  field: AUFK.ERDAT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Creation date is blank
+  why_it_matters: ERDAT is stamped by SAP at creation and drives order ageing and backlog reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order ageing and backlog reporting cannot place the order in time.
+  fix_map:
+    __blank__: Correct the creation date.
+  record_fix_template: 'AUFK.ERDAT: ''{actual_value}'' is blank. Correct the creation date.'
+- id: IO014
+  field: AUFK.ERDAT
+  check_class: cross_field_check
+  fail_when: (`AUFK.ERDAT` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Order was created with a future date
+  why_it_matters: ERDAT is stamped by SAP; a future date means a manipulated timestamp during the load.
+  rule_authority: sap_business_convention
+  sap_impact: Order ageing and backlog reporting are wrong.
+  fix_map:
+    __other__: Correct the creation date.
+  record_fix_template: 'AUFK.ERDAT: ''{actual_value}'' is in the future. Correct the creation date.'
+- id: IO015
+  field: AUFK.AEDAT
+  check_class: cross_field_check
+  fail_when: (`AUFK.AEDAT` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Order was changed with a future date
+  why_it_matters: AEDAT is stamped at the last change.
+  rule_authority: sap_business_convention
+  sap_impact: Change-audit reporting is wrong for the order.
+  fix_map:
+    __other__: Correct the change date.
+  record_fix_template: 'AUFK.AEDAT: ''{actual_value}'' is in the future. Correct the change date.'
+- id: IO016
+  field: AUFK.OBJNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Object number is blank
+  why_it_matters: OBJNR is the CO object every cost line item posts against; without it the order collects
+    nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costs cannot post to the order; the CO object does not exist.
+  fix_map:
+    __blank__: Recreate the order so the object number is generated.
+  record_fix_template: 'AUFK.OBJNR: ''{actual_value}'' is blank. Recreate the order so the object number
+    is generated.'
+- id: IO017
+  field: AUFK.KTEXT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Order description is blank
+  why_it_matters: KTEXT is the short description users use to identify the order in every selection screen.
+  rule_authority: sap_hard_constraint
+  sap_impact: Users cannot identify the order; selections by description miss it.
+  fix_map:
+    __blank__: Enter the order description in KO02.
+  record_fix_template: 'AUFK.KTEXT: ''{actual_value}'' is blank. Enter the order description in KO02.'
+- id: IO018
+  field: AUFK.LOEKZ
+  check_class: domain_value_check
+  allowed_values:
+  - X
+  severity: medium
+  dimension: validity
+  message: Deletion flag must be blank, X or L
+  why_it_matters: LOEKZ marks the order for deletion or as locked for deletion.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order's deletion state is ambiguous and it may be migrated when it should not be.
+  fix_map:
+    __other__: Set the deletion flag explicitly.
+  record_fix_template: 'AUFK.LOEKZ: ''{actual_value}'' is not a permitted value. Set the deletion flag
+    explicitly.'
+- id: IO019
+  field: AUFK.PHAS0
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Phase 0 indicator must be blank or X
+  why_it_matters: PHAS0 is a status flag set at order creation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order status reporting is unreliable for the record.
+  fix_map:
+    __other__: Set the flag explicitly.
+  record_fix_template: 'AUFK.PHAS0: ''{actual_value}'' is not a permitted value. Set the flag explicitly.'
+- id: IO020
+  field: AUFK.KALSM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Costing sheet is blank
+  why_it_matters: KALSM determines the overhead surcharges applied to the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Overhead is not applied to the order's costs.
+  fix_map:
+    __blank__: Assign the costing sheet in KO02.
+  record_fix_template: 'AUFK.KALSM: ''{actual_value}'' is blank. Assign the costing sheet in KO02.'
+- id: IO021
+  field: AUFK.STDAT
+  check_class: cross_field_check
+  fail_when: (`AUFK.STDAT` - @today).dt.days > 0
+  require_populated: true
+  severity: medium
+  dimension: timeliness
+  message: Order status date is in the future
+  why_it_matters: STDAT is the date of the order's current status; it cannot be after today.
+  rule_authority: sap_business_convention
+  sap_impact: Order status reporting shows a future status change.
+  fix_map:
+    __other__: Correct the status date.
+  record_fix_template: 'AUFK.STDAT: ''{actual_value}'' is in the future. Correct the status date.'
+- id: IO022
+  field: AUFK.ABKRS
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Processing group is blank
+  why_it_matters: ABKRS groups orders for periodic processing and settlement runs.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order may be skipped in the settlement run.
+  fix_map:
+    __blank__: Assign the processing group in KO02.
+  record_fix_template: 'AUFK.ABKRS: ''{actual_value}'' is blank. Assign the processing group in KO02.'
+- id: IO023
+  field: AUFK.AUFEX
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: External order number is blank
+  why_it_matters: AUFEX carries the external reference used to reconcile the order to a legacy system.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migrated order cannot be traced back to its legacy record.
+  fix_map:
+    __blank__: Populate the external order number.
+  record_fix_template: 'AUFK.AUFEX: ''{actual_value}'' is blank. Populate the external order number.'
+- id: IO024
+  field: AFKO.AUFNR
+  check_class: uniqueness_check
+  fields:
+  - AFKO.AUFNR
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate AFKO header keys detected
+  why_it_matters: AUFNR is the primary key of AFKO; a duplicate header doubles the order's quantities.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order quantities and costs are counted twice.
+  fix_map:
+    __other__: Keep one AFKO row per order.
+  record_fix_template: 'AFKO.AUFNR: duplicate key. Keep one AFKO row per order.'
+- id: IO025
   field: AFKO.GLTRP
   check_class: cross_field_check
   fail_when: '`AFKO.GLTRP` < `AFKO.GSTRP`'
   require_populated: true
   severity: high
   dimension: consistency
-  message: Planned finish date is before the planned start date
-  why_it_matters: A planned order schedule must finish on or after it starts. An
-    inverted interval makes every lead-time calculation and capacity load negative.
+  message: Planned finish date is before the planned start
+  why_it_matters: A planned schedule must finish on or after it starts.
   rule_authority: sap_hard_constraint
-  sap_impact: Capacity planning and lead-time reporting are wrong for this order.
+  sap_impact: Capacity load and lead-time are calculated as negative.
   fix_map:
-    __other__: Correct the planned start/finish dates in CO02.
-  record_fix_template: 'Order {AFKO.AUFNR}: planned finish {AFKO.GLTRP} is before planned
-    start {AFKO.GSTRP}. Correct the dates.'
-- id: IO008
+    __other__: Correct the planned dates in CO02.
+  record_fix_template: AFKO.GLTRP '{actual_value}' precedes AFKO.GSTRP. Correct the planned dates in CO02.
+- id: IO026
   field: AFKO.GLTRS
   check_class: cross_field_check
   fail_when: '`AFKO.GLTRS` < `AFKO.GSTRS`'
   require_populated: true
   severity: high
   dimension: consistency
-  message: Actual finish date is before the actual start date
-  why_it_matters: The actual execution interval cannot end before it began. SAP stamps
-    these at confirmation, so an inverted pair means the record was altered or loaded
-    incorrectly.
+  message: Actual finish date is before the actual start
+  why_it_matters: The actual execution interval cannot end before it began; SAP stamps these at confirmation.
   rule_authority: sap_hard_constraint
-  sap_impact: Actual lead-time and work-centre efficiency reporting is wrong.
+  sap_impact: Actual lead-time and work-centre efficiency are wrong.
   fix_map:
-    __other__: Correct the actual dates in CO02 against the confirmation history.
-  record_fix_template: 'Order {AFKO.AUFNR}: actual finish {AFKO.GLTRS} is before actual
-    start {AFKO.GSTRS}. Correct the dates.'
-- id: IO009
+    __other__: Correct the actual dates in CO02.
+  record_fix_template: AFKO.GLTRS '{actual_value}' precedes AFKO.GSTRS. Correct the actual dates in CO02.
+- id: IO027
+  field: AFKO.GLTRI
+  check_class: cross_field_check
+  fail_when: '`AFKO.GLTRI` < `AFKO.GSTRI`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Confirmed finish date is before the confirmed start
+  why_it_matters: The confirmation interval must be ordered.
+  rule_authority: sap_hard_constraint
+  sap_impact: Confirmation and capacity-consumption reporting are wrong.
+  fix_map:
+    __other__: Correct the confirmed dates.
+  record_fix_template: AFKO.GLTRI '{actual_value}' precedes AFKO.GSTRI. Correct the confirmed dates.
+- id: IO028
+  field: AFKO.GLTPP
+  check_class: cross_field_check
+  fail_when: '`AFKO.GLTPP` < `AFKO.GSTPP`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Forecast finish date is before the forecast start
+  why_it_matters: The forecast schedule must be ordered like the planned schedule.
+  rule_authority: sap_hard_constraint
+  sap_impact: Forecast dates and capacity levelling are wrong.
+  fix_map:
+    __other__: Correct the forecast dates in CO02.
+  record_fix_template: AFKO.GLTPP '{actual_value}' precedes AFKO.GSTPP. Correct the forecast dates in
+    CO02.
+- id: IO029
+  field: AFKO.GSTRP
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Planned start date is blank
+  why_it_matters: GSTRP anchors the order's schedule and drives capacity requirements.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be scheduled or loaded onto capacity.
+  fix_map:
+    __blank__: Enter the planned start date in CO02.
+  record_fix_template: 'AFKO.GSTRP: ''{actual_value}'' is blank. Enter the planned start date in CO02.'
+- id: IO030
+  field: AFKO.GLTRP
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Planned finish date is blank
+  why_it_matters: GLTRP closes the planned schedule.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order's schedule is incomplete and capacity planning skips it.
+  fix_map:
+    __blank__: Enter the planned finish date in CO02.
+  record_fix_template: 'AFKO.GLTRP: ''{actual_value}'' is blank. Enter the planned finish date in CO02.'
+- id: IO031
   field: AFKO.GAMNG
   check_class: cross_field_check
   fail_when: '`AFKO.GAMNG` < 0'
@@ -126,70 +403,781 @@ rules:
   severity: high
   dimension: validity
   message: Total order quantity is negative
-  why_it_matters: GAMNG is the quantity the order produces. Negative quantities invert
-    the goods movement and the cost of goods produced.
+  why_it_matters: GAMNG is the quantity the order produces; a negative quantity inverts the goods movement.
   rule_authority: sap_hard_constraint
-  sap_impact: Goods receipt increases stock the wrong way; production cost is negative.
+  sap_impact: Goods receipt moves stock the wrong way and production cost is negative.
   fix_map:
     __other__: Correct the order quantity in CO02.
-  record_fix_template: 'Order {AFKO.AUFNR}: GAMNG is {actual_value}. Correct the quantity
-    in CO02.'
-- id: IO010
-  field: AUFK.ERDAT
+  record_fix_template: 'AFKO.GAMNG: ''{actual_value}'' is negative. Correct the order quantity in CO02.'
+- id: IO032
+  field: AFKO.GASMG
   check_class: cross_field_check
-  fail_when: '(`AUFK.ERDAT` - @today).dt.days > 0'
+  fail_when: '`AFKO.GASMG` < 0'
   require_populated: true
-  severity: low
-  dimension: timeliness
-  message: Order was created with a future date
-  why_it_matters: ERDAT is stamped by SAP at creation. A future date means the record
-    was loaded with a manipulated timestamp, distorting order ageing and backlog
-    reporting.
-  rule_authority: sap_business_convention
-  sap_impact: Order ageing and backlog reporting are wrong for this order.
+  severity: medium
+  dimension: validity
+  message: Total scrap quantity is negative
+  why_it_matters: GASMG is the scrap quantity expected; it cannot be negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scrap and yield reporting are wrong for the order.
   fix_map:
-    __other__: Correct the creation date, or reload the record without a manual date.
-  record_fix_template: 'Order {AUFK.AUFNR}: ERDAT is {actual_value}, after today. Correct
-    the creation date.'
-- id: IO011
-  field: AUFK.KOSTV
+    __other__: Correct the scrap quantity.
+  record_fix_template: 'AFKO.GASMG: ''{actual_value}'' is negative. Correct the scrap quantity.'
+- id: IO033
+  field: AFKO.GMEIN
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Unit of measure is blank on the order
+  why_it_matters: GMEIN is the unit the order quantity is expressed in.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order quantity has no unit and cannot be converted for costing.
+  fix_map:
+    __blank__: Assign the order unit of measure.
+  record_fix_template: 'AFKO.GMEIN: ''{actual_value}'' is blank. Assign the order unit of measure.'
+- id: IO034
+  field: AFKO.PLNME
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: Responsible cost centre is blank on an order
-  why_it_matters: KOSTV is the cost centre the order's costs are the responsibility of.
-    Without it CO reporting cannot attribute spend to a responsible manager.
-  rule_authority: sap_business_convention
-  sap_impact: Spend on the order cannot be attributed to a responsible cost centre.
+  message: Planned unit of measure is blank
+  why_it_matters: PLNME is the unit the planned quantities are expressed in.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned-versus-actual quantity comparison fails.
   fix_map:
-    __blank__: Assign the responsible cost centre in KO02.
-  record_fix_template: 'Order {AUFK.AUFNR}: KOSTV is blank. Assign the responsible cost
-    centre in KO02.'
-- id: IO012
-  field: AUFK.WERKS
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Plant is blank on a plant-related order
-  why_it_matters: WERKS ties the order to the plant whose stock and capacity it consumes.
-    Plant-based availability and capacity checks cannot run without it.
-  rule_authority: sap_business_convention
-  sap_impact: Plant capacity and stock availability are not checked for the order.
-  fix_map:
-    __blank__: Assign the plant in KO02.
-  record_fix_template: 'Order {AUFK.AUFNR}: WERKS is blank. Assign the plant in KO02.'
-- id: IO013
+    __blank__: Assign the planned unit of measure.
+  record_fix_template: 'AFKO.PLNME: ''{actual_value}'' is blank. Assign the planned unit of measure.'
+- id: IO035
   field: AFKO.PLNBEZ
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: Planned material is blank on an order that produces material
-  why_it_matters: PLNBEZ is the material the order produces. An order with a quantity
-    to produce but no material cannot receive stock or compute the cost of goods
-    manufactured.
-  rule_authority: sap_business_convention
-  sap_impact: Goods receipt cannot post; production cost cannot be calculated.
+  message: Planned material is blank on a producing order
+  why_it_matters: PLNBEZ is the material the order produces; without it goods receipt cannot post.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt cannot post and cost of goods manufactured cannot be computed.
   fix_map:
-    __blank__: Assign the planned material in CO02, or remove the order quantity if the
-      order is not a production order.
-  record_fix_template: 'Order {AFKO.AUFNR}: PLNBEZ is blank. Assign the planned material.'
+    __blank__: Assign the planned material in CO02.
+  record_fix_template: 'AFKO.PLNBEZ: ''{actual_value}'' is blank. Assign the planned material in CO02.'
+- id: IO036
+  field: AFKO.PLNNR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Task list number is blank
+  why_it_matters: PLNNR links the order to the routing or recipe that determines operations and costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order has no operations and cannot confirm work.
+  fix_map:
+    __blank__: Assign the task list or remove the order quantity.
+  record_fix_template: 'AFKO.PLNNR: ''{actual_value}'' is blank. Assign the task list or remove the order
+    quantity.'
+- id: IO037
+  field: AFKO.STLNR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: BOM number is blank
+  why_it_matters: STLNR links the order to the bill of material that determines component requirements.
+  rule_authority: sap_hard_constraint
+  sap_impact: Component requirements are not generated for the order.
+  fix_map:
+    __blank__: Assign the BOM.
+  record_fix_template: 'AFKO.STLNR: ''{actual_value}'' is blank. Assign the BOM.'
+- id: IO038
+  field: AFKO.DISPO
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: MRP controller is blank
+  why_it_matters: DISPO is the MRP controller responsible for the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is missing from MRP controller workload reporting.
+  fix_map:
+    __blank__: Assign the MRP controller.
+  record_fix_template: 'AFKO.DISPO: ''{actual_value}'' is blank. Assign the MRP controller.'
+- id: IO039
+  field: AFKO.FEVOR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Production scheduler is blank
+  why_it_matters: FEVOR is the production scheduler responsible for the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is missing from production-scheduler reporting.
+  fix_map:
+    __blank__: Assign the production scheduler.
+  record_fix_template: 'AFKO.FEVOR: ''{actual_value}'' is blank. Assign the production scheduler.'
+- id: IO040
+  field: AFKO.PLAUF
+  check_class: cross_field_check
+  fail_when: (`AFKO.PLAUF` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Scheduling date is in the future
+  why_it_matters: PLAUF is the date the order was last scheduled; it cannot be after today.
+  rule_authority: sap_business_convention
+  sap_impact: Scheduling history for the order is wrong.
+  fix_map:
+    __other__: Correct the scheduling date.
+  record_fix_template: 'AFKO.PLAUF: ''{actual_value}'' is in the future. Correct the scheduling date.'
+- id: IO041
+  field: AFKO.PDATV
+  check_class: cross_field_check
+  fail_when: (`AFKO.PDATV` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Task list change date is in the future
+  why_it_matters: PDATV is the change date of the assigned task list.
+  rule_authority: sap_business_convention
+  sap_impact: Task-list version traceability is wrong for the order.
+  fix_map:
+    __other__: Correct the task list change date.
+  record_fix_template: 'AFKO.PDATV: ''{actual_value}'' is in the future. Correct the task list change
+    date.'
+- id: IO042
+  field: AFKO.PLSVB
+  check_class: cross_field_check
+  fail_when: '`AFKO.PLSVB` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Planned scrap quantity is negative
+  why_it_matters: PLSVB is the planned scrap quantity; it cannot be negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned yield and scrap reporting are wrong.
+  fix_map:
+    __other__: Correct the planned scrap quantity.
+  record_fix_template: 'AFKO.PLSVB: ''{actual_value}'' is negative. Correct the planned scrap quantity.'
+- id: IO043
+  field: AFKO.LODIV
+  check_class: cross_field_check
+  fail_when: '`AFKO.LODIV` < 0'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Lot-size-dependent quantity is negative
+  why_it_matters: LODIV is the lot-size quantity used to scale the order; it cannot be negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order scaling and costing are wrong.
+  fix_map:
+    __other__: Correct the lot-size quantity.
+  record_fix_template: 'AFKO.LODIV: ''{actual_value}'' is negative. Correct the lot-size quantity.'
+- id: IO044
+  field: AFKO.AUFPL
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Routing number is blank
+  why_it_matters: AUFPL links the order's operations to the sequence and work centres.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operations cannot be confirmed against the order.
+  fix_map:
+    __blank__: Assign the routing number in CO02.
+  record_fix_template: 'AFKO.AUFPL: ''{actual_value}'' is blank. Assign the routing number in CO02.'
+- id: IO045
+  field: AFKO.PRONR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Product planning number is blank
+  why_it_matters: PRONR groups orders for product planning and long-term planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is missing from product planning runs.
+  fix_map:
+    __blank__: Assign the product planning number.
+  record_fix_template: 'AFKO.PRONR: ''{actual_value}'' is blank. Assign the product planning number.'
+- id: IO046
+  field: AFKO.NTZUE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Network assignment is blank
+  why_it_matters: NTZUE links the order to the project network when it is project-driven.
+  rule_authority: sap_hard_constraint
+  sap_impact: Project-driven order reporting cannot link the order to its network.
+  fix_map:
+    __blank__: Assign the network or clear the project reference.
+  record_fix_template: 'AFKO.NTZUE: ''{actual_value}'' is blank. Assign the network or clear the project
+    reference.'
+- id: IO048
+  field: AFKO.SBMNG
+  check_class: cross_field_check
+  fail_when: '`AFKO.SBMNG` < 0'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: BOM-dependent quantity is negative
+  why_it_matters: SBMNG is the quantity the BOM explodes to; it cannot be negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: Component requirements are wrong for the order.
+  fix_map:
+    __other__: Correct the BOM quantity.
+  record_fix_template: 'AFKO.SBMNG: ''{actual_value}'' is negative. Correct the BOM quantity.'
+- id: IO049
+  field: AUFK.STORT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Order location is blank
+  why_it_matters: STORT is the location the order's work is performed at, used in maintenance and production
+    reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be located in plant reporting.
+  fix_map:
+    __blank__: Assign the location in KO02.
+  record_fix_template: 'AUFK.STORT: ''{actual_value}'' is blank. Assign the location in KO02.'
+- id: IO050
+  field: AUFK.SOWRK
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Planner group for plant maintenance is blank
+  why_it_matters: SOWRK groups maintenance orders by planner for workload reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is missing from maintenance planner reporting.
+  fix_map:
+    __blank__: Assign the planner group.
+  record_fix_template: 'AUFK.SOWRK: ''{actual_value}'' is blank. Assign the planner group.'
+- id: IO051
+  field: AUFK.ASTNR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Requesting cost centre is blank
+  why_it_matters: ASTNR is the cost centre that requested the work and is used for internal charging.
+  rule_authority: sap_hard_constraint
+  sap_impact: Internal charging and requester reporting are wrong.
+  fix_map:
+    __blank__: Assign the requesting cost centre.
+  record_fix_template: 'AUFK.ASTNR: ''{actual_value}'' is blank. Assign the requesting cost centre.'
+- id: IO052
+  field: AUFK.ASTKZ
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Request indicator must be blank or X
+  why_it_matters: ASTKZ flags the order as an internal request.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order's request status is ambiguous.
+  fix_map:
+    __other__: Set the indicator explicitly.
+  record_fix_template: 'AUFK.ASTKZ: ''{actual_value}'' is not a permitted value. Set the indicator explicitly.'
+- id: IO053
+  field: AUFK.PHAS1
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Phase 1 indicator must be blank or X
+  why_it_matters: PHAS1 is an order status flag.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order status reporting is unreliable.
+  fix_map:
+    __other__: Set the flag explicitly.
+  record_fix_template: 'AUFK.PHAS1: ''{actual_value}'' is not a permitted value. Set the flag explicitly.'
+- id: IO054
+  field: AUFK.PHAS2
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Phase 2 indicator must be blank or X
+  why_it_matters: PHAS2 is an order status flag.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order status reporting is unreliable.
+  fix_map:
+    __other__: Set the flag explicitly.
+  record_fix_template: 'AUFK.PHAS2: ''{actual_value}'' is not a permitted value. Set the flag explicitly.'
+- id: IO055
+  field: AUFK.PHAS3
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Phase 3 indicator must be blank or X
+  why_it_matters: PHAS3 is an order status flag.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order status reporting is unreliable.
+  fix_map:
+    __other__: Set the flag explicitly.
+  record_fix_template: 'AUFK.PHAS3: ''{actual_value}'' is not a permitted value. Set the flag explicitly.'
+- id: IO056
+  field: AUFK.KAPPL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Application is blank
+  why_it_matters: KAPPL identifies the application (e.g. CO, PM) the order belongs to for condition and
+    status logic.
+  rule_authority: sap_hard_constraint
+  sap_impact: Status and condition logic cannot determine the application.
+  fix_map:
+    __blank__: Assign the application.
+  record_fix_template: 'AUFK.KAPPL: ''{actual_value}'' is blank. Assign the application.'
+- id: IO057
+  field: AUFK.SETNM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Set name is blank on a distribution order
+  why_it_matters: SETNM identifies the set used to distribute costs across receivers.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost distribution cannot resolve the set for the order.
+  fix_map:
+    __blank__: Assign the set name or clear the distribution flag.
+  record_fix_template: 'AUFK.SETNM: ''{actual_value}'' is blank. Assign the set name or clear the distribution
+    flag.'
+- id: IO058
+  field: AUFK.CYCLE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Distribution cycle is blank
+  why_it_matters: CYCLE identifies the periodic distribution cycle that includes the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is skipped by the distribution run.
+  fix_map:
+    __blank__: Assign the distribution cycle.
+  record_fix_template: 'AUFK.CYCLE: ''{actual_value}'' is blank. Assign the distribution cycle.'
+- id: IO059
+  field: AUFK.SDATE
+  check_class: cross_field_check
+  fail_when: (`AUFK.SDATE` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Next distribution date is in the future
+  why_it_matters: SDATE is the next run date of the distribution cycle; a future date is expected but
+    a stale one indicates the cycle stopped.
+  rule_authority: sap_business_convention
+  sap_impact: Distribution reporting shows the order on a stale cycle.
+  fix_map:
+    __other__: Align the distribution date with the cycle.
+  record_fix_template: 'AUFK.SDATE: ''{actual_value}'' is in the future. Align the distribution date with
+    the cycle.'
+- id: IO060
+  field: AUFK.ZSCHL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Overhead key is blank
+  why_it_matters: ZSCHL selects the overhead calculation for the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Overhead is not applied to the order's costs.
+  fix_map:
+    __blank__: Assign the overhead key in KO02.
+  record_fix_template: 'AUFK.ZSCHL: ''{actual_value}'' is blank. Assign the overhead key in KO02.'
+- id: IO061
+  field: AUFK.PDAT1
+  check_class: cross_field_check
+  fail_when: (`AUFK.PDAT1` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Phase 1 date is in the future
+  why_it_matters: PDAT1 records when status phase 1 was reached; it cannot be after today.
+  rule_authority: sap_business_convention
+  sap_impact: Order status history is wrong.
+  fix_map:
+    __other__: Correct the phase date.
+  record_fix_template: 'AUFK.PDAT1: ''{actual_value}'' is in the future. Correct the phase date.'
+- id: IO062
+  field: AUFK.IDAT1
+  check_class: cross_field_check
+  fail_when: (`AUFK.IDAT1` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Phase 1 change date is in the future
+  why_it_matters: IDAT1 records when phase 1 was last changed.
+  rule_authority: sap_business_convention
+  sap_impact: Order status history is wrong.
+  fix_map:
+    __other__: Correct the change date.
+  record_fix_template: 'AUFK.IDAT1: ''{actual_value}'' is in the future. Correct the change date.'
+- id: IO063
+  field: AUFK.KDAUF
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Sales order reference is blank on a sales-order-driven order
+  why_it_matters: KDAUF links the order to the sales order it fulfils.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be traced to the sales demand that created it.
+  fix_map:
+    __blank__: Assign the sales order or clear the sales-order flag.
+  record_fix_template: 'AUFK.KDAUF: ''{actual_value}'' is blank. Assign the sales order or clear the sales-order
+    flag.'
+- id: IO064
+  field: AUFK.KDPOS
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Sales order item is blank on a sales-order-driven order
+  why_it_matters: KDPOS completes the reference to the sales order item.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be matched to the exact sales item.
+  fix_map:
+    __blank__: Assign the sales order item.
+  record_fix_template: 'AUFK.KDPOS: ''{actual_value}'' is blank. Assign the sales order item.'
+- id: IO065
+  field: AUFK.PLINT
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Planning indicator must be blank or X
+  why_it_matters: PLINT flags the order as planning-relevant.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planning runs may skip or double-count the order.
+  fix_map:
+    __other__: Set the indicator explicitly.
+  record_fix_template: 'AUFK.PLINT: ''{actual_value}'' is not a permitted value. Set the indicator explicitly.'
+- id: IO066
+  field: AUFK.VOGRP
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+  - '5'
+  - '6'
+  - '7'
+  - '8'
+  - '9'
+  severity: low
+  dimension: validity
+  message: Object group is not a recognised value
+  why_it_matters: VOGRP groups CO objects for collective processing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Collective processing may misclassify the order.
+  fix_map:
+    __other__: Correct the object group.
+  record_fix_template: 'AUFK.VOGRP: ''{actual_value}'' is not a permitted value. Correct the object group.'
+- id: IO069
+  field: AFKO.PLNTY
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Task list type is blank
+  why_it_matters: PLNTY identifies whether the order uses a routing, a rate routing or a recipe.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costing cannot determine which task list applies.
+  fix_map:
+    __blank__: Assign the task list type.
+  record_fix_template: 'AFKO.PLNTY: ''{actual_value}'' is blank. Assign the task list type.'
+- id: IO070
+  field: AFKO.PLNAL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Task list group counter is blank
+  why_it_matters: PLNAL selects the exact task list alternative among several valid ones.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costing may pick the wrong task list alternative.
+  fix_map:
+    __blank__: Assign the group counter.
+  record_fix_template: 'AFKO.PLNAL: ''{actual_value}'' is blank. Assign the group counter.'
+- id: IO071
+  field: AFKO.PLNAW
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Task list usage is blank
+  why_it_matters: PLNAW defines the usage (production, maintenance, costing) of the task list.
+  rule_authority: sap_hard_constraint
+  sap_impact: The wrong task list can be selected for the order.
+  fix_map:
+    __blank__: Assign the task list usage.
+  record_fix_template: 'AFKO.PLNAW: ''{actual_value}'' is blank. Assign the task list usage.'
+- id: IO072
+  field: AFKO.FTRMS
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Scheduled finish date is blank
+  why_it_matters: FTRMS is the capacity-scheduled finish used for detailed scheduling.
+  rule_authority: sap_hard_constraint
+  sap_impact: Detailed scheduling and capacity levelling skip the order.
+  fix_map:
+    __blank__: Schedule the order in CO02.
+  record_fix_template: 'AFKO.FTRMS: ''{actual_value}'' is blank. Schedule the order in CO02.'
+- id: IO073
+  field: AFKO.FTRMI
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Scheduled start date is blank
+  why_it_matters: FTRMI is the capacity-scheduled start.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity requirements are not placed in time.
+  fix_map:
+    __blank__: Schedule the order in CO02.
+  record_fix_template: 'AFKO.FTRMI: ''{actual_value}'' is blank. Schedule the order in CO02.'
+- id: IO074
+  field: AFKO.PRUEFLOS
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Inspection lot is blank on an inspection-relevant order
+  why_it_matters: PRUEFLOS links the order to the quality inspection lot it triggers.
+  rule_authority: sap_hard_constraint
+  sap_impact: Quality results cannot be matched to the order.
+  fix_map:
+    __blank__: Assign the inspection lot.
+  record_fix_template: 'AFKO.PRUEFLOS: ''{actual_value}'' is blank. Assign the inspection lot.'
+- id: IO075
+  field: AFKO.BEDID
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Requirement ID is blank
+  why_it_matters: BEDID links the order to the requirements record that generated it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be traced to its requirement.
+  fix_map:
+    __blank__: Assign the requirement ID.
+  record_fix_template: 'AFKO.BEDID: ''{actual_value}'' is blank. Assign the requirement ID.'
+- id: IO076
+  field: AFKO.STLAL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: BOM alternative is blank
+  why_it_matters: STLAL selects the BOM alternative used for the order's components.
+  rule_authority: sap_hard_constraint
+  sap_impact: Component requirements may use the wrong BOM alternative.
+  fix_map:
+    __blank__: Assign the BOM alternative.
+  record_fix_template: 'AFKO.STLAL: ''{actual_value}'' is blank. Assign the BOM alternative.'
+- id: IO077
+  field: AFKO.STLTY
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: BOM category is blank
+  why_it_matters: STLTY identifies the BOM category (material BOM, equipment BOM).
+  rule_authority: sap_hard_constraint
+  sap_impact: Component explosion cannot determine the BOM category.
+  fix_map:
+    __blank__: Assign the BOM category.
+  record_fix_template: 'AFKO.STLTY: ''{actual_value}'' is blank. Assign the BOM category.'
+- id: IO078
+  field: AFKO.STLST
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: BOM status is blank
+  why_it_matters: STLST records the BOM status at the time the order was created.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order's BOM version cannot be reproduced.
+  fix_map:
+    __blank__: Assign the BOM status.
+  record_fix_template: 'AFKO.STLST: ''{actual_value}'' is blank. Assign the BOM status.'
+- id: IO079
+  field: AFKO.PLART
+  check_class: domain_value_check
+  allowed_values:
+  - '1'
+  - '2'
+  severity: low
+  dimension: validity
+  message: Planning type is not a recognised value
+  why_it_matters: PLART distinguishes planning types on the order header.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planning reporting misclassifies the order.
+  fix_map:
+    __other__: Correct the planning type.
+  record_fix_template: 'AFKO.PLART: ''{actual_value}'' is not a permitted value. Correct the planning
+    type.'
+- id: IO080
+  field: AFKO.TERKZ
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - '1'
+  - '2'
+  - '3'
+  severity: low
+  dimension: validity
+  message: Scheduling type is not a recognised value
+  why_it_matters: TERKZ selects forward, backward or mid-point scheduling.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order's schedule cannot be reproduced.
+  fix_map:
+    __other__: Correct the scheduling type.
+  record_fix_template: 'AFKO.TERKZ: ''{actual_value}'' is not a permitted value. Correct the scheduling
+    type.'
+- id: IO081
+  field: AFKO.REDKZ
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+  severity: low
+  dimension: validity
+  message: Reduction type is not a recognised value
+  why_it_matters: REDKZ controls how the schedule is reduced against the requirement date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Schedule reduction may be applied incorrectly.
+  fix_map:
+    __other__: Correct the reduction type.
+  record_fix_template: 'AFKO.REDKZ: ''{actual_value}'' is not a permitted value. Correct the reduction
+    type.'
+- id: IO082
+  field: AFKO.APRIO
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - '1'
+  - '2'
+  - '3'
+  severity: low
+  dimension: validity
+  message: Priority is not a recognised value
+  why_it_matters: APRIO orders orders within capacity levelling.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity levelling may order the order wrongly.
+  fix_map:
+    __other__: Correct the priority.
+  record_fix_template: 'AFKO.APRIO: ''{actual_value}'' is not a permitted value. Correct the priority.'
+- id: IO083
+  field: AFKO.SLSVN
+  check_class: cross_field_check
+  fail_when: '`AFKO.SLSVN` < 0'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Planned delivery quantity is negative
+  why_it_matters: SLSVN is the quantity planned for delivery from the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery planning for the order is wrong.
+  fix_map:
+    __other__: Correct the planned delivery quantity.
+  record_fix_template: 'AFKO.SLSVN: ''{actual_value}'' is negative. Correct the planned delivery quantity.'
+- id: IO084
+  field: AFKO.SLSBS
+  check_class: cross_field_check
+  fail_when: '`AFKO.SLSBS` < 0'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Planned scrap of the delivery quantity is negative
+  why_it_matters: SLSBS is planned scrap on the delivery quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scrap reporting for the order is wrong.
+  fix_map:
+    __other__: Correct the planned scrap.
+  record_fix_template: 'AFKO.SLSBS: ''{actual_value}'' is negative. Correct the planned scrap.'
+- id: IO085
+  field: AUFK.BUKRS
+  check_class: exists_check
+  fields:
+  - AUFK.BUKRS
+  target_table: T001
+  target_fields:
+  - BUKRS
+  severity: critical
+  dimension: accuracy
+  message: Order company code does not exist in the company code master
+  why_it_matters: AUFK.BUKRS must resolve to T001. Settlement posts to FI through this company code, and
+    an orphan company code cannot post at all.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement cannot post; the order's costs are stranded.
+  fix_map:
+    __missing__: Create the company code or correct the order.
+  record_fix_template: 'AUFK.BUKRS: ''{actual_value}'' has no T001 master record. Create the company code
+    or correct the order.'
+- id: IO086
+  field: AUFK.KOKRS
+  check_class: exists_check
+  fields:
+  - AUFK.KOKRS
+  target_table: TKA01
+  target_fields:
+  - KOKRS
+  severity: critical
+  dimension: accuracy
+  message: Order controlling area does not exist
+  why_it_matters: AUFK.KOKRS must resolve to TKA01. The controlling area defines the currency and the
+    fiscal year variant every CO posting uses.
+  rule_authority: sap_hard_constraint
+  sap_impact: No CO posting can be made for the order.
+  fix_map:
+    __missing__: Create the controlling area or correct the order.
+  record_fix_template: 'AUFK.KOKRS: ''{actual_value}'' has no TKA01 master record. Create the controlling
+    area or correct the order.'
+- id: IO087
+  field: AUFK.KOSTV
+  check_class: exists_check
+  fields:
+  - AUFK.KOSTV
+  target_table: CSKS
+  target_fields:
+  - KOSTL
+  severity: high
+  dimension: accuracy
+  message: Responsible cost centre does not exist in the controlling area
+  why_it_matters: AUFK.KOSTV must resolve to a CSKS cost centre so spend can be attributed and settled.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spend cannot be attributed or settled to the responsible cost centre.
+  fix_map:
+    __missing__: Create the cost centre or correct the order.
+  record_fix_template: 'AUFK.KOSTV: ''{actual_value}'' has no CSKS master record. Create the cost centre
+    or correct the order.'
+- id: IO088
+  field: AUFK.KOSTL
+  check_class: exists_check
+  fields:
+  - AUFK.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOSTL
+  severity: high
+  dimension: accuracy
+  message: Order cost centre does not exist in the controlling area
+  why_it_matters: AUFK.KOSTL must resolve to CSKS when the order settles to a cost centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement has no valid receiver; costs stay on the order.
+  fix_map:
+    __missing__: Create the cost centre or correct the order.
+  record_fix_template: 'AUFK.KOSTL: ''{actual_value}'' has no CSKS master record. Create the cost centre
+    or correct the order.'
+- id: IO089
+  field: AFKO.PLNBEZ
+  check_class: exists_check
+  fields:
+  - AFKO.PLNBEZ
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: critical
+  dimension: accuracy
+  message: Planned material does not exist in the material master
+  why_it_matters: AFKO.PLNBEZ must resolve to MARA so goods receipt can post and the cost of goods manufactured
+    can be computed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt cannot post; production cost cannot be computed.
+  fix_map:
+    __missing__: Create the material or correct the planned material.
+  record_fix_template: 'AFKO.PLNBEZ: ''{actual_value}'' has no MARA master record. Create the material
+    or correct the planned material.'

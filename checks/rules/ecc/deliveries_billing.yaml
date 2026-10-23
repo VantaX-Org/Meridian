@@ -3,100 +3,454 @@ target_state: ECC_AND_S4HANA
 rules:
 - id: DL001
   field: LIKP.VBELN
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Delivery number is mandatory
-  why_it_matters: VBELN is the primary key of LIKP and every delivery item, goods
-    movement and billing reference points at it. A delivery without a number cannot
-    be posted, picked, shipped or invoiced.
-  rule_authority: sap_hard_constraint
-  sap_impact: Delivery and its items are unreachable; goods issue cannot be posted.
-  fix_map:
-    __blank__: Recreate the outbound delivery in VL01N; the number is assigned by
-      the number range and must never be blank.
-  record_fix_template: 'Delivery {LIKP.VBELN}: VBELN is blank. Recreate the delivery
-    in VL01N.'
-- id: DL002
-  field: LIKP.VKORG
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Sales organisation is mandatory on a delivery
-  why_it_matters: VKORG determines the sales organisation the delivery belongs to and
-    drives pricing, plant determination and billing. It is copied from the reference
-    document at creation and is never blank in a valid delivery.
-  rule_authority: sap_hard_constraint
-  sap_impact: Delivery cannot be billed; invoice creation in VF01 fails.
-  fix_map:
-    __blank__: Populate the sales organisation on the delivery header in VL02N.
-  record_fix_template: 'Delivery {LIKP.VBELN}: VKORG is blank. Assign the sales organisation
-    in VL02N.'
-- id: DL003
-  field: LIKP.LFART
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Delivery type is mandatory
-  why_it_matters: LFART controls whether the delivery is outbound, inbound, a returns
-    delivery or a stock transfer, and with it the item categories, the shipping point
-    rules and the goods movement. A blank delivery type cannot be processed.
-  rule_authority: sap_hard_constraint
-  sap_impact: Delivery cannot be picked, packed or posted; shipping process stops.
-  fix_map:
-    __blank__: Assign the correct delivery type in VL02N.
-  record_fix_template: 'Delivery {LIKP.VBELN}: LFART is blank. Assign the delivery type
-    in VL02N.'
-- id: DL004
-  field: LIKP.LFDAT
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: Delivery date is blank
-  why_it_matters: LFDAT is the date the delivery is due to leave. It drives scheduling,
-    the picking wave and on-time-delivery reporting; a blank date means the delivery
-    is invisible to logistics planning.
-  rule_authority: sap_hard_constraint
-  sap_impact: Delivery does not appear in scheduling or on-time delivery KPIs.
-  fix_map:
-    __blank__: Enter the delivery date in VL02N.
-  record_fix_template: 'Delivery {LIKP.VBELN}: LFDAT is blank. Enter the delivery date
-    in VL02N.'
-- id: DL005
-  field: LIKP.VBELN
   check_class: uniqueness_check
   fields:
   - LIKP.VBELN
   severity: critical
   dimension: uniqueness
   message: Duplicate delivery numbers detected
-  why_it_matters: VBELN is the primary key of LIKP. Duplicate delivery numbers break
-    the join to LIPS, LIPS-to-billing references and the goods movement documents,
-    and the migration program rejects the load.
+  why_it_matters: VBELN is the primary key of LIKP. Duplicates break the join to LIPS, the reference from
+    billing and the goods movement documents.
   rule_authority: sap_hard_constraint
-  sap_impact: Duplicate deliveries load twice or fail the migration; documents and
-    movements attach to the wrong delivery.
+  sap_impact: The migration load is rejected; documents and movements attach to the wrong delivery.
   fix_map:
-    __other__: Keep one delivery per number; renumber or delete the duplicate before
-      migration.
-  record_fix_template: 'Delivery {LIKP.VBELN}: duplicate delivery number. Keep one and
-    remove the rest.'
+    __other__: Keep one delivery per number.
+  record_fix_template: 'LIKP.VBELN: duplicate key. Keep one delivery per number.'
+- id: DL002
+  field: LIKP.VBELN
+  check_class: regex_check
+  pattern: ^[0-9]{10}$
+  severity: high
+  dimension: validity
+  message: Delivery number must be 10 digits
+  why_it_matters: VBELN is CHAR 10 and assigned by an internal number range. Any other shape means the
+    key was built outside SAP.
+  rule_authority: sap_hard_constraint
+  sap_impact: The delivery cannot be addressed by standard transactions or interfaces.
+  fix_map:
+    __other__: Renumber the delivery from the SAP number range.
+  record_fix_template: 'LIKP.VBELN: ''{actual_value}'' has an invalid format. Renumber the delivery from
+    the SAP number range.'
+- id: DL003
+  field: LIKP.VKORG
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Sales organisation is mandatory on a delivery
+  why_it_matters: VKORG drives pricing, plant determination and billing and is copied from the reference
+    document at creation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery cannot be billed; VF01 fails.
+  fix_map:
+    __blank__: Assign the sales organisation in VL02N.
+  record_fix_template: 'LIKP.VKORG: ''{actual_value}'' is blank. Assign the sales organisation in VL02N.'
+- id: DL004
+  field: LIKP.LFART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Delivery type is mandatory
+  why_it_matters: LFART selects the item categories, the shipping point rules and the goods movement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery cannot be picked, packed or posted.
+  fix_map:
+    __blank__: Assign the delivery type in VL02N.
+  record_fix_template: 'LIKP.LFART: ''{actual_value}'' is blank. Assign the delivery type in VL02N.'
+- id: DL005
+  field: LIKP.VSTEL
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Shipping point is mandatory
+  why_it_matters: VSTEL determines loading times, the working calendar and which shipping activities are
+    required.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and goods issue cannot be executed for the delivery.
+  fix_map:
+    __blank__: Assign the shipping point in VL02N.
+  record_fix_template: 'LIKP.VSTEL: ''{actual_value}'' is blank. Assign the shipping point in VL02N.'
 - id: DL006
+  field: LIKP.KUNNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Ship-to party is blank
+  why_it_matters: KUNNR is the party the goods are delivered to and is required for the delivery note
+    and the export documents.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery note and transport documents cannot be produced.
+  fix_map:
+    __blank__: Assign the ship-to party in VL02N.
+  record_fix_template: 'LIKP.KUNNR: ''{actual_value}'' is blank. Assign the ship-to party in VL02N.'
+- id: DL007
+  field: LIKP.KUNAG
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Sold-to party is blank
+  why_it_matters: KUNAG is the party that ordered. It is required to bill the delivery to the correct
+    customer.
+  rule_authority: sap_hard_constraint
+  sap_impact: Billing cannot determine the payer; revenue posts to the wrong customer.
+  fix_map:
+    __blank__: Assign the sold-to party in VL02N.
+  record_fix_template: 'LIKP.KUNAG: ''{actual_value}'' is blank. Assign the sold-to party in VL02N.'
+- id: DL008
+  field: LIKP.LFDAT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Delivery date is blank
+  why_it_matters: LFDAT is when the delivery is due to leave and drives scheduling, picking waves and
+    on-time-delivery reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery is invisible to logistics planning and OTD KPIs.
+  fix_map:
+    __blank__: Enter the delivery date in VL02N.
+  record_fix_template: 'LIKP.LFDAT: ''{actual_value}'' is blank. Enter the delivery date in VL02N.'
+- id: DL009
+  field: LIKP.WADAT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Goods issue date is blank
+  why_it_matters: WADAT is the planned goods issue date and is the basis for the material availability
+    check and stock commitment.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock is not committed for the delivery; availability is overstated.
+  fix_map:
+    __blank__: Enter the goods issue date in VL02N.
+  record_fix_template: 'LIKP.WADAT: ''{actual_value}'' is blank. Enter the goods issue date in VL02N.'
+- id: DL010
+  field: LIKP.ERDAT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Creation date is blank
+  why_it_matters: ERDAT is stamped by SAP when the delivery is created and is used for ageing and lead-time
+    reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery ageing and lead-time reporting cannot place the document in time.
+  fix_map:
+    __blank__: Correct the creation date or reload the delivery.
+  record_fix_template: 'LIKP.ERDAT: ''{actual_value}'' is blank. Correct the creation date or reload the
+    delivery.'
+- id: DL011
+  field: LIKP.ERDAT
+  check_class: cross_field_check
+  fail_when: (`LIKP.ERDAT` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Delivery was created with a future date
+  why_it_matters: ERDAT is stamped by SAP. A future creation date means the timestamp was manipulated
+    during the load.
+  rule_authority: sap_business_convention
+  sap_impact: Logistics ageing and lead-time reports are wrong for this delivery.
+  fix_map:
+    __other__: Correct the creation date.
+  record_fix_template: 'LIKP.ERDAT: ''{actual_value}'' is in the future. Correct the creation date.'
+- id: DL012
+  field: LIKP.AEDAT
+  check_class: cross_field_check
+  fail_when: (`LIKP.AEDAT` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Delivery was changed with a future date
+  why_it_matters: AEDAT is stamped at the last change. A future date indicates a manipulated timestamp.
+  rule_authority: sap_business_convention
+  sap_impact: Change-audit and ageing reporting are wrong for this delivery.
+  fix_map:
+    __other__: Correct the change date.
+  record_fix_template: 'LIKP.AEDAT: ''{actual_value}'' is in the future. Correct the change date.'
+- id: DL013
+  field: LIKP.WAERK
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Document currency is blank on a delivery
+  why_it_matters: WAERK is the currency of the values on the delivery and is carried into billing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Values on the delivery have no currency unit; billing inherits the gap.
+  fix_map:
+    __blank__: Assign the document currency in VL02N.
+  record_fix_template: 'LIKP.WAERK: ''{actual_value}'' is blank. Assign the document currency in VL02N.'
+- id: DL014
+  field: LIKP.BZIRK
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Sales district is blank
+  why_it_matters: BZIRK drives sales reporting by region and the sales-district-based pricing and statistics.
+  rule_authority: sap_hard_constraint
+  sap_impact: The delivery is missing from sales-district reporting.
+  fix_map:
+    __blank__: Assign the sales district in VL02N.
+  record_fix_template: 'LIKP.BZIRK: ''{actual_value}'' is blank. Assign the sales district in VL02N.'
+- id: DL015
+  field: LIKP.ROUTE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Route is blank
+  why_it_matters: ROUTE determines transport scheduling, the route stages and the freight charge basis.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transport planning and freight costing skip the delivery.
+  fix_map:
+    __blank__: Assign the route in VL02N.
+  record_fix_template: 'LIKP.ROUTE: ''{actual_value}'' is blank. Assign the route in VL02N.'
+- id: DL016
+  field: LIKP.LPRIO
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Delivery priority is blank
+  why_it_matters: LPRIO orders deliveries in the picking and shipping queue; a blank priority is treated
+    as undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: The delivery is not ordered correctly in the shipping queue.
+  fix_map:
+    __blank__: Assign the delivery priority in VL02N.
+  record_fix_template: 'LIKP.LPRIO: ''{actual_value}'' is blank. Assign the delivery priority in VL02N.'
+- id: DL017
+  field: LIKP.VSBED
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Shipping conditions are blank
+  why_it_matters: VSBED selects the shipping point and the transport planning rules.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shipping point determination loses a criterion for this delivery.
+  fix_map:
+    __blank__: Assign the shipping conditions in VL02N.
+  record_fix_template: 'LIKP.VSBED: ''{actual_value}'' is blank. Assign the shipping conditions in VL02N.'
+- id: DL018
+  field: LIKP.FAKSK
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Billing block is blank
+  why_it_matters: FAKSK is expected to be explicitly set (blank meaning no block). An unset field in a
+    migrated record hides whether billing was blocked.
+  rule_authority: sap_hard_constraint
+  sap_impact: Billing blocks cannot be distinguished from unset values.
+  fix_map:
+    __blank__: Explicitly set or clear the billing block.
+  record_fix_template: 'LIKP.FAKSK: ''{actual_value}'' is blank. Explicitly set or clear the billing block.'
+- id: DL019
+  field: LIKP.BTGEW
+  check_class: cross_field_check
+  fail_when: '`LIKP.BTGEW` < 0'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Total weight is negative
+  why_it_matters: BTGEW is the gross weight of the delivery and feeds freight costing and transport documents.
+  rule_authority: sap_hard_constraint
+  sap_impact: Freight cost and transport documents are calculated with a negative weight.
+  fix_map:
+    __other__: Correct the total weight in VL02N.
+  record_fix_template: 'LIKP.BTGEW: ''{actual_value}'' is negative. Correct the total weight in VL02N.'
+- id: DL020
+  field: LIKP.NTGEW
+  check_class: cross_field_check
+  fail_when: '`LIKP.NTGEW` < 0'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Net weight is negative
+  why_it_matters: NTGEW is the net weight of the goods and is used for customs and freight.
+  rule_authority: sap_hard_constraint
+  sap_impact: Customs and freight values are wrong for this delivery.
+  fix_map:
+    __other__: Correct the net weight in VL02N.
+  record_fix_template: 'LIKP.NTGEW: ''{actual_value}'' is negative. Correct the net weight in VL02N.'
+- id: DL021
+  field: LIKP.VOLUM
+  check_class: cross_field_check
+  fail_when: '`LIKP.VOLUM` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Total volume is negative
+  why_it_matters: VOLUM is the volume shipped and drives load planning and the freight rate.
+  rule_authority: sap_hard_constraint
+  sap_impact: Load planning and freight rates are wrong for this delivery.
+  fix_map:
+    __other__: Correct the volume in VL02N.
+  record_fix_template: 'LIKP.VOLUM: ''{actual_value}'' is negative. Correct the volume in VL02N.'
+- id: DL022
+  field: LIKP.ERDAT
+  check_class: cross_field_check
+  fail_when: '`LIKP.ERDAT` > `LIKP.LFDAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Delivery date is before the creation date
+  why_it_matters: A delivery cannot be due to leave before it was created; an inverted pair means the
+    dates were loaded out of order.
+  rule_authority: sap_business_convention
+  sap_impact: On-time-delivery and lead-time reporting are wrong for this delivery.
+  fix_map:
+    __other__: Correct the delivery date in VL02N.
+  record_fix_template: LIKP.ERDAT '{actual_value}' follows LIKP.LFDAT. Correct the delivery date in VL02N.
+- id: DL023
+  field: LIKP.WADAT
+  check_class: cross_field_check
+  fail_when: '`LIKP.WADAT` > `LIKP.LFDAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Goods issue date is after the delivery date
+  why_it_matters: Goods must be issued on or before the delivery leaves; the reverse makes the shipment
+    schedule impossible.
+  rule_authority: sap_business_convention
+  sap_impact: Transport scheduling reports a negative transit plan.
+  fix_map:
+    __other__: Correct the goods issue or delivery date.
+  record_fix_template: LIKP.WADAT '{actual_value}' follows LIKP.LFDAT. Correct the goods issue or delivery
+    date.
+- id: DL024
+  field: LIKP.VBTYP
+  check_class: domain_value_check
+  allowed_values:
+  - '7'
+  - J
+  severity: medium
+  dimension: validity
+  message: Delivery category must be an outbound delivery or delivery
+  why_it_matters: VBTYP identifies the document category. Only outbound delivery categories belong in
+    a delivery load.
+  rule_authority: sap_hard_constraint
+  sap_impact: The document is classified wrongly and is picked up by the wrong processes.
+  fix_map:
+    __other__: Correct the document category.
+  record_fix_template: 'LIKP.VBTYP: ''{actual_value}'' is not a permitted value. Correct the document
+    category.'
+- id: DL025
+  field: LIKP.AUTLF
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Complete-delivery indicator must be blank or X
+  why_it_matters: AUTLF is a flag; SAP accepts only blank or X.
+  rule_authority: sap_hard_constraint
+  sap_impact: The complete-delivery rule is interpreted unpredictably.
+  fix_map:
+    __other__: Set the indicator to X or clear it.
+  record_fix_template: 'LIKP.AUTLF: ''{actual_value}'' is not a permitted value. Set the indicator to
+    X or clear it.'
+- id: DL026
+  field: LIKP.KZAZU
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Order-combination indicator must be blank or X
+  why_it_matters: KZAZU is a flag controlling whether the delivery may be combined with others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery combination behaves unpredictably for this document.
+  fix_map:
+    __other__: Set the indicator to X or clear it.
+  record_fix_template: 'LIKP.KZAZU: ''{actual_value}'' is not a permitted value. Set the indicator to
+    X or clear it.'
+- id: DL027
+  field: LIPS.VBELN
+  check_class: uniqueness_check
+  fields:
+  - LIPS.VBELN
+  - LIPS.POSNR
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate delivery item keys detected
+  why_it_matters: VBELN+POSNR is the primary key of LIPS. Duplicates break goods issue and billing references.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item load is rejected; quantities post twice.
+  fix_map:
+    __other__: Keep one row per delivery/item number.
+  record_fix_template: 'LIPS.VBELN: duplicate key. Keep one row per delivery/item number.'
+- id: DL028
   field: LIPS.MATNR
   check_class: null_check
   severity: critical
   dimension: completeness
   message: Material is mandatory on a delivery item
-  why_it_matters: Every delivery item must carry a material so stock can be moved and
-    the item billed. Items created for text only must use the dedicated item category,
-    not a blank material.
+  why_it_matters: Every stock item must carry a material so the goods movement and billing can determine
+    it.
   rule_authority: sap_hard_constraint
-  sap_impact: Goods issue and billing cannot determine the material; item is blocked.
+  sap_impact: Goods issue and billing cannot determine the material.
   fix_map:
-    __blank__: Assign the material, or delete the item if it is not a stock item.
-  record_fix_template: 'Delivery item {LIPS.VBELN}/{LIPS.POSNR}: MATNR is blank. Assign
-    the material or delete the item.'
-- id: DL007
+    __blank__: Assign the material or delete the item.
+  record_fix_template: 'LIPS.MATNR: ''{actual_value}'' is blank. Assign the material or delete the item.'
+- id: DL029
+  field: LIPS.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Plant is blank on a delivery item
+  why_it_matters: WERKS determines the plant the stock is issued from and the storage-location search.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue cannot determine stock; the delivery cannot be picked.
+  fix_map:
+    __blank__: Assign the plant in VL02N.
+  record_fix_template: 'LIPS.WERKS: ''{actual_value}'' is blank. Assign the plant in VL02N.'
+- id: DL030
+  field: LIPS.LGORT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Storage location is blank on a delivery item
+  why_it_matters: LGORT is where the stock is taken from. Without it the goods issue cannot post.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue fails with a storage-location error.
+  fix_map:
+    __blank__: Assign the storage location in VL02N.
+  record_fix_template: 'LIPS.LGORT: ''{actual_value}'' is blank. Assign the storage location in VL02N.'
+- id: DL031
+  field: LIPS.PSTYV
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Item category is blank
+  why_it_matters: PSTYV controls whether the item is relevant for delivery, billing and stock movement.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is not processed by delivery or billing.
+  fix_map:
+    __blank__: Assign the item category in VL02N.
+  record_fix_template: 'LIPS.PSTYV: ''{actual_value}'' is blank. Assign the item category in VL02N.'
+- id: DL032
+  field: LIPS.MEINS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Sales unit of measure is blank
+  why_it_matters: MEINS is the unit the delivery quantity is expressed in; without it the quantity has
+    no meaning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue cannot convert the quantity to the base unit.
+  fix_map:
+    __blank__: Assign the sales unit of measure.
+  record_fix_template: 'LIPS.MEINS: ''{actual_value}'' is blank. Assign the sales unit of measure.'
+- id: DL033
+  field: LIPS.VRKME
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Alternative sales unit is blank
+  why_it_matters: VRKME records the unit the customer ordered in, needed to reconcile the order to the
+    delivery.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order-to-delivery quantity reconciliation is impossible for the item.
+  fix_map:
+    __blank__: Assign the sales unit in VL02N.
+  record_fix_template: 'LIPS.VRKME: ''{actual_value}'' is blank. Assign the sales unit in VL02N.'
+- id: DL034
   field: LIPS.LFIMG
   check_class: cross_field_check
   fail_when: '`LIPS.LFIMG` < 0'
@@ -104,76 +458,158 @@ rules:
   severity: high
   dimension: validity
   message: Delivery quantity is negative
-  why_it_matters: LFIMG is the quantity to be delivered. Outbound deliveries carry a
-    positive quantity; a negative quantity reverses the stock movement and produces
-    a goods issue that increases stock.
+  why_it_matters: LFIMG is the quantity to be delivered. An outbound delivery carries a positive quantity;
+    a negative one reverses the stock movement.
   rule_authority: sap_hard_constraint
-  sap_impact: Goods issue moves stock the wrong way and inventory is overstated.
+  sap_impact: Goods issue increases stock instead of reducing it.
   fix_map:
-    __other__: Correct the quantity sign in VL02N; use a returns delivery for genuine
-      returns.
-  record_fix_template: 'Delivery item {LIPS.VBELN}/{LIPS.POSNR}: LFIMG is {actual_value}.
-    Correct the sign in VL02N.'
-- id: DL008
-  field: LIPS.MEINS
+    __other__: Correct the quantity sign; use a returns delivery for returns.
+  record_fix_template: 'LIPS.LFIMG: ''{actual_value}'' is negative. Correct the quantity sign; use a returns
+    delivery for returns.'
+- id: DL035
+  field: LIPS.NTGEW
+  check_class: cross_field_check
+  fail_when: '`LIPS.NTGEW` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Item net weight is negative
+  why_it_matters: NTGEW is the item weight and feeds freight and customs calculations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Freight and customs values are wrong for the item.
+  fix_map:
+    __other__: Correct the item weight in VL02N.
+  record_fix_template: 'LIPS.NTGEW: ''{actual_value}'' is negative. Correct the item weight in VL02N.'
+- id: DL036
+  field: LIPS.BRGEW
+  check_class: cross_field_check
+  fail_when: '`LIPS.BRGEW` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Item gross weight is negative
+  why_it_matters: BRGEW is the gross item weight used for transport documents.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transport documents show a negative weight.
+  fix_map:
+    __other__: Correct the gross weight in VL02N.
+  record_fix_template: 'LIPS.BRGEW: ''{actual_value}'' is negative. Correct the gross weight in VL02N.'
+- id: DL037
+  field: LIPS.VOLUM
+  check_class: cross_field_check
+  fail_when: '`LIPS.VOLUM` < 0'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Item volume is negative
+  why_it_matters: VOLUM is the item volume used for load planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Load planning is wrong for the item.
+  fix_map:
+    __other__: Correct the volume in VL02N.
+  record_fix_template: 'LIPS.VOLUM: ''{actual_value}'' is negative. Correct the volume in VL02N.'
+- id: DL038
+  field: LIPS.MATKL
   check_class: null_check
-  severity: critical
+  severity: medium
   dimension: completeness
-  message: Sales unit of measure is blank on a delivery item
-  why_it_matters: MEINS is the unit the delivery quantity is expressed in. Without it
-    the quantity has no meaning and goods issue cannot convert to the base unit of
-    measure.
+  message: Material group is blank
+  why_it_matters: MATKL drives material-group statistics and purchasing/spend analysis.
   rule_authority: sap_hard_constraint
-  sap_impact: Goods issue fails; quantity cannot be converted to base UoM.
+  sap_impact: The item is missing from material-group reporting.
   fix_map:
-    __blank__: Assign the sales unit of measure in VL02N.
-  record_fix_template: 'Delivery item {LIPS.VBELN}/{LIPS.POSNR}: MEINS is blank. Assign
-    the unit of measure.'
-- id: DL009
-  field: VBRK.FKART
+    __blank__: Assign the material group in VL02N.
+  record_fix_template: 'LIPS.MATKL: ''{actual_value}'' is blank. Assign the material group in VL02N.'
+- id: DL039
+  field: LIPS.BWART
   check_class: null_check
-  severity: critical
+  severity: medium
   dimension: completeness
-  message: Billing type is mandatory on an invoice
-  why_it_matters: FKART determines whether the document is an invoice, a credit memo,
-    a debit memo or a cancellation, and with it the account determination, the number
-    range and the posting keys. A blank billing type cannot be posted to FI.
+  message: Movement type is blank
+  why_it_matters: BWART determines the stock movement and the account determination for the goods issue.
   rule_authority: sap_hard_constraint
-  sap_impact: Invoice cannot be released to accounting; revenue is not recognised.
+  sap_impact: Goods issue cannot post; stock and cost accounts are not updated.
   fix_map:
-    __blank__: Assign the billing type in VF02.
-  record_fix_template: 'Billing document {VBRK.VBELN}: FKART is blank. Assign the billing
-    type in VF02.'
-- id: DL010
-  field: VBRK.WAERK
+    __blank__: Assign the movement type in VL02N.
+  record_fix_template: 'LIPS.BWART: ''{actual_value}'' is blank. Assign the movement type in VL02N.'
+- id: DL040
+  field: LIPS.GSBER
   check_class: null_check
-  severity: critical
+  severity: low
   dimension: completeness
-  message: Document currency is blank on an invoice
-  why_it_matters: WAERK is the currency every amount in the billing document is
-    expressed in. Without it the FI document cannot be posted and the amounts have no
-    meaning.
+  message: Business area is blank
+  why_it_matters: GSBER is required for business-area balance sheets in classic GL.
   rule_authority: sap_hard_constraint
-  sap_impact: Invoice cannot post to FI; revenue and receivables are unrecorded.
+  sap_impact: The goods issue cannot be split by business area.
   fix_map:
-    __blank__: Assign the document currency in VF02.
-  record_fix_template: 'Billing document {VBRK.VBELN}: WAERK is blank. Assign the document
-    currency.'
-- id: DL011
-  field: VBRK.FKDAT
+    __blank__: Assign the business area in VL02N.
+  record_fix_template: 'LIPS.GSBER: ''{actual_value}'' is blank. Assign the business area in VL02N.'
+- id: DL041
+  field: LIPS.VKBUR
   check_class: null_check
-  severity: high
+  severity: low
   dimension: completeness
-  message: Billing date is blank
-  why_it_matters: FKDAT determines the posting period and the FI document date. A blank
-    billing date leaves the invoice outside every reporting period.
+  message: Sales office is blank
+  why_it_matters: VKBUR is used for sales-office reporting and salesperson determination.
   rule_authority: sap_hard_constraint
-  sap_impact: Invoice is not attributable to a period; revenue reporting is incomplete.
+  sap_impact: The item is missing from sales-office reporting.
   fix_map:
-    __blank__: Enter the billing date in VF02.
-  record_fix_template: 'Billing document {VBRK.VBELN}: FKDAT is blank. Enter the billing
-    date.'
-- id: DL012
+    __blank__: Assign the sales office in VL02N.
+  record_fix_template: 'LIPS.VKBUR: ''{actual_value}'' is blank. Assign the sales office in VL02N.'
+- id: DL042
+  field: LIPS.VKGRP
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Sales group is blank
+  why_it_matters: VKGRP groups sales staff for reporting and commission.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is missing from sales-group reporting.
+  fix_map:
+    __blank__: Assign the sales group in VL02N.
+  record_fix_template: 'LIPS.VKGRP: ''{actual_value}'' is blank. Assign the sales group in VL02N.'
+- id: DL043
+  field: LIPS.VTWEG
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Distribution channel is blank
+  why_it_matters: VTWEG determines pricing and the sales statistics the item contributes to.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is missing from distribution-channel reporting.
+  fix_map:
+    __blank__: Assign the distribution channel in VL02N.
+  record_fix_template: 'LIPS.VTWEG: ''{actual_value}'' is blank. Assign the distribution channel in VL02N.'
+- id: DL044
+  field: LIPS.ERDAT
+  check_class: cross_field_check
+  fail_when: (`LIPS.ERDAT` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Item was created with a future date
+  why_it_matters: ERDAT is stamped by SAP at creation; a future date means a manipulated timestamp.
+  rule_authority: sap_business_convention
+  sap_impact: Item ageing and lead-time reporting are wrong.
+  fix_map:
+    __other__: Correct the creation date.
+  record_fix_template: 'LIPS.ERDAT: ''{actual_value}'' is in the future. Correct the creation date.'
+- id: DL045
+  field: LIPS.LFIMG
+  check_class: cross_field_check
+  fail_when: '`LIPS.LFIMG` > `LIPS.LGMNG`'
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Delivery quantity exceeds the warehouse-managed quantity
+  why_it_matters: Where warehouse management is active, LGMNG is the quantity the WM system handles and
+    must not be below the delivered quantity.
+  rule_authority: sap_business_convention
+  sap_impact: WM and inventory management disagree on the quantity for the item.
+  fix_map:
+    __other__: Align the WM quantity in VL02N.
+  record_fix_template: LIPS.LFIMG '{actual_value}' follows LIPS.LGMNG. Align the WM quantity in VL02N.
+- id: DL046
   field: VBRK.VBELN
   check_class: uniqueness_check
   fields:
@@ -181,15 +617,352 @@ rules:
   severity: critical
   dimension: uniqueness
   message: Duplicate billing document numbers detected
-  why_it_matters: VBELN is the primary key of VBRK. Duplicates break the link from
-    items to the FI document and cause the same revenue to be posted twice.
+  why_it_matters: VBELN is the primary key of VBRK. Duplicates break the link to the FI document and post
+    revenue twice.
   rule_authority: sap_hard_constraint
-  sap_impact: Revenue double counted; FI reconciliation fails.
+  sap_impact: Revenue is double counted; FI reconciliation fails.
   fix_map:
-    __other__: Keep one billing document per number and remove the duplicate.
-  record_fix_template: 'Billing document {VBRK.VBELN}: duplicate number. Keep one and
-    remove the rest.'
-- id: DL013
+    __other__: Keep one billing document per number.
+  record_fix_template: 'VBRK.VBELN: duplicate key. Keep one billing document per number.'
+- id: DL047
+  field: VBRK.VBELN
+  check_class: regex_check
+  pattern: ^[0-9]{10}$
+  severity: high
+  dimension: validity
+  message: Billing document number must be 10 digits
+  why_it_matters: VBELN is CHAR 10 assigned by an internal number range.
+  rule_authority: sap_hard_constraint
+  sap_impact: The document cannot be addressed by standard transactions.
+  fix_map:
+    __other__: Renumber from the SAP number range.
+  record_fix_template: 'VBRK.VBELN: ''{actual_value}'' has an invalid format. Renumber from the SAP number
+    range.'
+- id: DL048
+  field: VBRK.FKART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Billing type is mandatory
+  why_it_matters: FKART determines invoice/credit memo/debit memo, account determination and posting keys.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoice cannot be released to accounting.
+  fix_map:
+    __blank__: Assign the billing type in VF02.
+  record_fix_template: 'VBRK.FKART: ''{actual_value}'' is blank. Assign the billing type in VF02.'
+- id: DL049
+  field: VBRK.WAERK
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Document currency is blank
+  why_it_matters: WAERK is the currency of every amount in the billing document.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FI document cannot be posted; amounts have no unit.
+  fix_map:
+    __blank__: Assign the document currency in VF02.
+  record_fix_template: 'VBRK.WAERK: ''{actual_value}'' is blank. Assign the document currency in VF02.'
+- id: DL050
+  field: VBRK.FKDAT
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Billing date is blank
+  why_it_matters: FKDAT determines the posting period and the FI document date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue is not attributable to a period.
+  fix_map:
+    __blank__: Enter the billing date in VF02.
+  record_fix_template: 'VBRK.FKDAT: ''{actual_value}'' is blank. Enter the billing date in VF02.'
+- id: DL051
+  field: VBRK.FKDAT
+  check_class: cross_field_check
+  fail_when: (`VBRK.FKDAT` - @today).dt.days > 0
+  require_populated: true
+  severity: medium
+  dimension: timeliness
+  message: Billing date is in the future
+  why_it_matters: A billing date after today means revenue is recognised in a period that has not begun.
+  rule_authority: sap_business_convention
+  sap_impact: Revenue is recognised early and period reporting is distorted.
+  fix_map:
+    __other__: Correct the billing date in VF02.
+  record_fix_template: 'VBRK.FKDAT: ''{actual_value}'' is in the future. Correct the billing date in VF02.'
+- id: DL052
+  field: VBRK.VKORG
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Sales organisation is blank on the invoice
+  why_it_matters: VKORG drives account determination and the revenue accounts posted to.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue posts to the wrong accounts or not at all.
+  fix_map:
+    __blank__: Assign the sales organisation in VF02.
+  record_fix_template: 'VBRK.VKORG: ''{actual_value}'' is blank. Assign the sales organisation in VF02.'
+- id: DL053
+  field: VBRK.VTWEG
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Distribution channel is blank on the invoice
+  why_it_matters: VTWEG is part of the account-determination key for revenue.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue account determination fails for the invoice.
+  fix_map:
+    __blank__: Assign the distribution channel in VF02.
+  record_fix_template: 'VBRK.VTWEG: ''{actual_value}'' is blank. Assign the distribution channel in VF02.'
+- id: DL054
+  field: VBRK.KUNRG
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Payer is blank on the invoice
+  why_it_matters: KUNRG is the party that pays. Without it the receivable has no customer.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FI receivable cannot be posted to a customer.
+  fix_map:
+    __blank__: Assign the payer in VF02.
+  record_fix_template: 'VBRK.KUNRG: ''{actual_value}'' is blank. Assign the payer in VF02.'
+- id: DL055
+  field: VBRK.BUKRS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Company code is blank on the invoice
+  why_it_matters: BUKRS is the legal entity the revenue and receivable post to.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FI document cannot be created.
+  fix_map:
+    __blank__: Assign the company code in VF02.
+  record_fix_template: 'VBRK.BUKRS: ''{actual_value}'' is blank. Assign the company code in VF02.'
+- id: DL056
+  field: VBRK.BELNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Accounting document number is blank
+  why_it_matters: BELNR links the billing document to its FI document. A released invoice must carry it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The invoice cannot be reconciled to accounting.
+  fix_map:
+    __blank__: Release the invoice to accounting in VF02.
+  record_fix_template: 'VBRK.BELNR: ''{actual_value}'' is blank. Release the invoice to accounting in
+    VF02.'
+- id: DL057
+  field: VBRK.GJAHR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Fiscal year is blank
+  why_it_matters: GJAHR completes the FI document key together with BELNR.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FI reference is incomplete and reconciliation fails.
+  fix_map:
+    __blank__: Release the invoice to accounting.
+  record_fix_template: 'VBRK.GJAHR: ''{actual_value}'' is blank. Release the invoice to accounting.'
+- id: DL058
+  field: VBRK.KURRF
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Currency conversion rate is blank
+  why_it_matters: KURRF is the rate used to translate the document currency into local currency.
+  rule_authority: sap_hard_constraint
+  sap_impact: Local-currency amounts cannot be derived for the invoice.
+  fix_map:
+    __blank__: Enter the conversion rate in VF02.
+  record_fix_template: 'VBRK.KURRF: ''{actual_value}'' is blank. Enter the conversion rate in VF02.'
+- id: DL059
+  field: VBRK.KURRF
+  check_class: cross_field_check
+  fail_when: '`VBRK.KURRF` < 0'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Currency conversion rate is negative or zero
+  why_it_matters: An exchange rate must be positive; zero or negative destroys every translated amount.
+  rule_authority: sap_hard_constraint
+  sap_impact: Local-currency revenue and receivables are wrong.
+  fix_map:
+    __other__: Correct the conversion rate in VF02.
+  record_fix_template: 'VBRK.KURRF: ''{actual_value}'' is negative. Correct the conversion rate in VF02.'
+- id: DL060
+  field: VBRK.NETWR
+  check_class: cross_field_check
+  fail_when: '`VBRK.NETWR` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Net value is negative on a standard invoice
+  why_it_matters: NETWR is the net value of the billing document. On an invoice it is positive; a negative
+    value means a credit was posted as an invoice.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue is reduced instead of increased.
+  fix_map:
+    __other__: Correct the net value or use the right billing type.
+  record_fix_template: 'VBRK.NETWR: ''{actual_value}'' is negative. Correct the net value or use the right
+    billing type.'
+- id: DL061
+  field: VBRK.ZTERM
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Payment terms are blank
+  why_it_matters: ZTERM determines the due date and any cash discount for the receivable.
+  rule_authority: sap_hard_constraint
+  sap_impact: The receivable has no due date; dunning and cash discount fail.
+  fix_map:
+    __blank__: Assign the payment terms in VF02.
+  record_fix_template: 'VBRK.ZTERM: ''{actual_value}'' is blank. Assign the payment terms in VF02.'
+- id: DL062
+  field: VBRK.ZLSCH
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Payment method is blank
+  why_it_matters: ZLSCH selects how the receivable is collected.
+  rule_authority: sap_hard_constraint
+  sap_impact: Automatic payment cannot process the receivable.
+  fix_map:
+    __blank__: Assign the payment method in VF02.
+  record_fix_template: 'VBRK.ZLSCH: ''{actual_value}'' is blank. Assign the payment method in VF02.'
+- id: DL063
+  field: VBRK.KTGRD
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Account assignment group is blank
+  why_it_matters: KTGRD is part of the account-determination key for revenue postings.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue account determination may fall back or fail.
+  fix_map:
+    __blank__: Assign the account assignment group.
+  record_fix_template: 'VBRK.KTGRD: ''{actual_value}'' is blank. Assign the account assignment group.'
+- id: DL064
+  field: VBRK.LAND1
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Country is blank on the invoice
+  why_it_matters: LAND1 drives tax determination and the legality of the invoice.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax is not determined correctly for the invoice.
+  fix_map:
+    __blank__: Assign the country in VF02.
+  record_fix_template: 'VBRK.LAND1: ''{actual_value}'' is blank. Assign the country in VF02.'
+- id: DL065
+  field: VBRK.SPART
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Division is blank on the invoice
+  why_it_matters: SPART is part of the account-determination and reporting key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue is not reported by division.
+  fix_map:
+    __blank__: Assign the division in VF02.
+  record_fix_template: 'VBRK.SPART: ''{actual_value}'' is blank. Assign the division in VF02.'
+- id: DL066
+  field: VBRK.POPER
+  check_class: domain_value_check
+  allowed_values:
+  - '01'
+  - '02'
+  - '03'
+  - '04'
+  - '05'
+  - '06'
+  - '07'
+  - 08
+  - 09
+  - '10'
+  - '11'
+  - '12'
+  - '13'
+  - '14'
+  - '15'
+  - '16'
+  severity: medium
+  dimension: validity
+  message: Posting period must be 01-16
+  why_it_matters: POPER is the posting period within the fiscal year; SAP allows 01-16 including special
+    periods.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue posts to a non-existent period.
+  fix_map:
+    __other__: Correct the posting period in VF02.
+  record_fix_template: 'VBRK.POPER: ''{actual_value}'' is not a permitted value. Correct the posting period
+    in VF02.'
+- id: DL067
+  field: VBRK.FKTYP
+  check_class: domain_value_check
+  allowed_values:
+  - A
+  - B
+  - C
+  - D
+  - E
+  - F
+  - I
+  - K
+  - L
+  - P
+  - R
+  - U
+  - W
+  - X
+  severity: low
+  dimension: validity
+  message: Billing category is not a recognised value
+  why_it_matters: FKTYP classifies the billing document for account determination and reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: The document is misclassified in revenue reporting.
+  fix_map:
+    __other__: Correct the billing category.
+  record_fix_template: 'VBRK.FKTYP: ''{actual_value}'' is not a permitted value. Correct the billing category.'
+- id: DL068
+  field: VBRK.ERDAT
+  check_class: cross_field_check
+  fail_when: (`VBRK.ERDAT` - @today).dt.days > 0
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Invoice was created with a future date
+  why_it_matters: ERDAT is stamped by SAP at creation.
+  rule_authority: sap_business_convention
+  sap_impact: Invoice ageing reporting is wrong.
+  fix_map:
+    __other__: Correct the creation date.
+  record_fix_template: 'VBRK.ERDAT: ''{actual_value}'' is in the future. Correct the creation date.'
+- id: DL069
+  field: VBRP.VBELN
+  check_class: uniqueness_check
+  fields:
+  - VBRP.VBELN
+  - VBRP.POSNR
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate billing item keys detected
+  why_it_matters: VBELN+POSNR is the primary key of VBRP.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item load is rejected; revenue posts twice.
+  fix_map:
+    __other__: Keep one row per document/item.
+  record_fix_template: 'VBRP.VBELN: duplicate key. Keep one row per document/item.'
+- id: DL070
+  field: VBRP.MATNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Material is blank on a billing item
+  why_it_matters: The item must identify the material so revenue can be matched to COGS.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue cannot be matched to material margin.
+  fix_map:
+    __blank__: Assign the material in VF02.
+  record_fix_template: 'VBRP.MATNR: ''{actual_value}'' is blank. Assign the material in VF02.'
+- id: DL071
   field: VBRP.FKIMG
   check_class: cross_field_check
   fail_when: '`VBRP.FKIMG` < 0'
@@ -197,56 +970,283 @@ rules:
   severity: high
   dimension: validity
   message: Billed quantity is negative on a standard invoice
-  why_it_matters: FKIMG is the quantity billed. On an invoice it is positive; a negative
-    quantity on an invoice type produces a credit posting against revenue.
+  why_it_matters: FKIMG is the quantity billed; on an invoice it is positive, a negative value credits
+    revenue.
   rule_authority: sap_hard_constraint
-  sap_impact: Revenue is reduced instead of increased; the FI posting is reversed.
+  sap_impact: Revenue is reduced instead of increased.
   fix_map:
-    __other__: Correct the billed quantity in VF02, or use the correct credit memo type.
-  record_fix_template: 'Billing item {VBRP.VBELN}/{VBRP.POSNR}: FKIMG is {actual_value}.
-    Correct the quantity in VF02.'
-- id: DL014
-  field: LIPS.WERKS
+    __other__: Correct the quantity or use a credit memo type.
+  record_fix_template: 'VBRP.FKIMG: ''{actual_value}'' is negative. Correct the quantity or use a credit
+    memo type.'
+- id: DL072
+  field: VBRP.NETWR
+  check_class: cross_field_check
+  fail_when: '`VBRP.NETWR` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Net value is negative on a billing item
+  why_it_matters: NETWR is the net value of the item; on an invoice it is positive.
+  rule_authority: sap_hard_constraint
+  sap_impact: Item revenue is wrong and margin reporting is distorted.
+  fix_map:
+    __other__: Correct the item value.
+  record_fix_template: 'VBRP.NETWR: ''{actual_value}'' is negative. Correct the item value.'
+- id: DL073
+  field: VBRP.MEINS
   check_class: null_check
   severity: high
   dimension: completeness
-  message: Plant is blank on a delivery item
-  why_it_matters: WERKS determines the plant the stock is issued from and the storage
-    location search. A blank plant cannot produce a goods movement.
+  message: Base unit of measure is blank on a billing item
+  why_it_matters: MEINS is required to convert the billed quantity into the material's base unit.
   rule_authority: sap_hard_constraint
-  sap_impact: Goods issue cannot determine stock; delivery cannot be picked.
+  sap_impact: The billed quantity cannot be converted for costing.
   fix_map:
-    __blank__: Assign the plant on the delivery item in VL02N.
-  record_fix_template: 'Delivery item {LIPS.VBELN}/{LIPS.POSNR}: WERKS is blank. Assign
-    the plant.'
-- id: DL015
-  field: LIKP.ERDAT
+    __blank__: Assign the base unit of measure.
+  record_fix_template: 'VBRP.MEINS: ''{actual_value}'' is blank. Assign the base unit of measure.'
+- id: DL074
+  field: VBRP.VRKME
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Sales unit of measure is blank on a billing item
+  why_it_matters: VRKME records the unit the customer was billed in.
+  rule_authority: sap_hard_constraint
+  sap_impact: Quantity reconciliation between order, delivery and invoice fails.
+  fix_map:
+    __blank__: Assign the sales unit.
+  record_fix_template: 'VBRP.VRKME: ''{actual_value}'' is blank. Assign the sales unit.'
+- id: DL075
+  field: VBRP.WERKS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Plant is blank on a billing item
+  why_it_matters: WERKS is needed for the cost of goods sold and for plant-level margin.
+  rule_authority: sap_hard_constraint
+  sap_impact: COGS and plant margin cannot be determined.
+  fix_map:
+    __blank__: Assign the plant in VF02.
+  record_fix_template: 'VBRP.WERKS: ''{actual_value}'' is blank. Assign the plant in VF02.'
+- id: DL076
+  field: VBRP.PSTYV
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Item category is blank on a billing item
+  why_it_matters: PSTYV controls how the item is treated in billing and account determination.
+  rule_authority: sap_hard_constraint
+  sap_impact: Account determination may fall back or fail.
+  fix_map:
+    __blank__: Assign the item category.
+  record_fix_template: 'VBRP.PSTYV: ''{actual_value}'' is blank. Assign the item category.'
+- id: DL077
+  field: VBRP.MATKL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Material group is blank on a billing item
+  why_it_matters: MATKL supports material-group revenue and margin analysis.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is missing from material-group reporting.
+  fix_map:
+    __blank__: Assign the material group.
+  record_fix_template: 'VBRP.MATKL: ''{actual_value}'' is blank. Assign the material group.'
+- id: DL078
+  field: VBRP.GSBER
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Business area is blank on a billing item
+  why_it_matters: GSBER is needed for business-area P&L reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is missing from business-area reporting.
+  fix_map:
+    __blank__: Assign the business area.
+  record_fix_template: 'VBRP.GSBER: ''{actual_value}'' is blank. Assign the business area.'
+- id: DL079
+  field: VBRP.VSTEL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Shipping point is blank on a billing item
+  why_it_matters: VSTEL supports logistics reporting and revenue by shipping location.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue cannot be reported by shipping point.
+  fix_map:
+    __blank__: Assign the shipping point.
+  record_fix_template: 'VBRP.VSTEL: ''{actual_value}'' is blank. Assign the shipping point.'
+- id: DL080
+  field: VBRP.KURSK
   check_class: cross_field_check
-  fail_when: '(`LIKP.ERDAT` - @today).dt.days > 0'
+  fail_when: '`VBRP.KURSK` < 0'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Exchange rate is negative or zero on a billing item
+  why_it_matters: KURSK translates the item values into local currency.
+  rule_authority: sap_hard_constraint
+  sap_impact: Local-currency item values are wrong.
+  fix_map:
+    __other__: Correct the exchange rate.
+  record_fix_template: 'VBRP.KURSK: ''{actual_value}'' is negative. Correct the exchange rate.'
+- id: DL081
+  field: VBRP.PRSDT
+  check_class: cross_field_check
+  fail_when: (`VBRP.PRSDT` - @today).dt.days > 0
   require_populated: true
   severity: low
   dimension: timeliness
-  message: Delivery was created with a future date
-  why_it_matters: ERDAT is the creation date stamped by SAP. A future creation date
-    means the record was loaded with a manipulated timestamp, which distorts lead-time
-    and ageing reporting.
+  message: Pricing date is in the future
+  why_it_matters: PRSDT determines which pricing conditions applied. A pricing date after today means
+    the item was priced from a period that has not begun.
   rule_authority: sap_business_convention
-  sap_impact: Logistics lead-time and ageing reports are wrong for this delivery.
+  sap_impact: The invoice may carry prices from a period that does not exist yet.
   fix_map:
-    __other__: Correct the creation date, or reload the record without a manual date.
-  record_fix_template: 'Delivery {LIKP.VBELN}: ERDAT is {actual_value}, after today.
-    Correct the creation date.'
-- id: DL016
-  field: VBRP.MATNR
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: Material is blank on a billing item
-  why_it_matters: A billing item must identify the material billed so the revenue can
-    be matched to the material and to the cost of goods sold.
+    __other__: Correct the pricing date in VF02.
+  record_fix_template: 'VBRP.PRSDT: ''{actual_value}'' is in the future. Correct the pricing date in VF02.'
+- id: DL082
+  field: VBRP.NTGEW
+  check_class: cross_field_check
+  fail_when: '`VBRP.NTGEW` < 0'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Item net weight is negative
+  why_it_matters: NTGEW is the item weight used for freight and customs.
   rule_authority: sap_hard_constraint
-  sap_impact: Revenue cannot be matched to material or COGS; margin reporting breaks.
+  sap_impact: Freight and customs values are wrong for the item.
   fix_map:
-    __blank__: Assign the material on the billing item in VF02.
-  record_fix_template: 'Billing item {VBRP.VBELN}/{VBRP.POSNR}: MATNR is blank. Assign
-    the material.'
+    __other__: Correct the weight.
+  record_fix_template: 'VBRP.NTGEW: ''{actual_value}'' is negative. Correct the weight.'
+- id: DL083
+  field: VBRP.SHKZG
+  check_class: domain_value_check
+  allowed_values:
+  - A
+  - B
+  - X
+  severity: low
+  dimension: validity
+  message: Debit/credit indicator must be blank, S or H
+  why_it_matters: SHKZG marks the item as debit (S) or credit (H).
+  rule_authority: sap_hard_constraint
+  sap_impact: The item's sign in reporting is ambiguous.
+  fix_map:
+    __other__: Set the indicator to S or H.
+  record_fix_template: 'VBRP.SHKZG: ''{actual_value}'' is not a permitted value. Set the indicator to
+    S or H.'
+- id: DL084
+  field: LIPS.MATNR
+  check_class: exists_check
+  fields:
+  - LIPS.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: critical
+  dimension: accuracy
+  message: Delivery item references a material that does not exist in the material master
+  why_it_matters: LIPS.MATNR must resolve to MARA. An orphan material means the stock movement and the
+    billing item point at a material that the system does not know, so no valuation or costing can be
+    derived.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue and billing fail valuation; stock cannot be valued for the item.
+  fix_map:
+    __missing__: Create the material or correct the item's material number.
+  record_fix_template: 'LIPS.MATNR: ''{actual_value}'' has no MARA master record. Create the material
+    or correct the item''s material number.'
+- id: DL085
+  field: VBRP.MATNR
+  check_class: exists_check
+  fields:
+  - VBRP.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: critical
+  dimension: accuracy
+  message: Billing item references a material that does not exist in the material master
+  why_it_matters: VBRP.MATNR must resolve to MARA so revenue can be matched to the material and its cost
+    of goods sold.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue cannot be matched to COGS; margin reporting breaks for the item.
+  fix_map:
+    __missing__: Create the material or correct the billing item.
+  record_fix_template: 'VBRP.MATNR: ''{actual_value}'' has no MARA master record. Create the material
+    or correct the billing item.'
+- id: DL086
+  field: LIKP.KUNNR
+  check_class: exists_check
+  fields:
+  - LIKP.KUNNR
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  severity: critical
+  dimension: accuracy
+  message: Delivery ship-to party does not exist in the customer master
+  why_it_matters: LIKP.KUNNR must resolve to KNA1. An orphan customer cannot be invoiced and the delivery
+    note carries no valid address.
+  rule_authority: sap_hard_constraint
+  sap_impact: Billing cannot determine the customer; delivery documents are invalid.
+  fix_map:
+    __missing__: Create the customer or correct the ship-to party.
+  record_fix_template: 'LIKP.KUNNR: ''{actual_value}'' has no KNA1 master record. Create the customer
+    or correct the ship-to party.'
+- id: DL087
+  field: LIKP.KUNAG
+  check_class: exists_check
+  fields:
+  - LIKP.KUNAG
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  severity: high
+  dimension: accuracy
+  message: Delivery sold-to party does not exist in the customer master
+  why_it_matters: LIKP.KUNAG must resolve to KNA1 so the delivery can be billed to a valid customer.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue posts to a non-existent customer or not at all.
+  fix_map:
+    __missing__: Create the customer or correct the sold-to party.
+  record_fix_template: 'LIKP.KUNAG: ''{actual_value}'' has no KNA1 master record. Create the customer
+    or correct the sold-to party.'
+- id: DL088
+  field: VBRK.KUNRG
+  check_class: exists_check
+  fields:
+  - VBRK.KUNRG
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  severity: critical
+  dimension: accuracy
+  message: Billing payer does not exist in the customer master
+  why_it_matters: VBRK.KUNRG must resolve to KNA1. The FI receivable posts against this customer, so an
+    orphan payer breaks the FI document.
+  rule_authority: sap_hard_constraint
+  sap_impact: The receivable cannot be posted; FI reconciliation fails.
+  fix_map:
+    __missing__: Create the customer or correct the payer.
+  record_fix_template: 'VBRK.KUNRG: ''{actual_value}'' has no KNA1 master record. Create the customer
+    or correct the payer.'
+- id: DL089
+  field: LIKP.VKORG
+  check_class: exists_check
+  fields:
+  - LIKP.VKORG
+  target_table: TVKO
+  target_fields:
+  - VKORG
+  severity: high
+  dimension: accuracy
+  message: Delivery sales organisation does not exist
+  why_it_matters: LIKP.VKORG must resolve to TVKO. Account determination and plant determination key off
+    the sales organisation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Billing cannot determine revenue accounts.
+  fix_map:
+    __missing__: Create the sales organisation or correct the delivery.
+  record_fix_template: 'LIKP.VKORG: ''{actual_value}'' has no TVKO master record. Create the sales organisation
+    or correct the delivery.'

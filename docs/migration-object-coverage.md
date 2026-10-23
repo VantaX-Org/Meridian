@@ -23,8 +23,8 @@ build).
 | accounts_payable | 185 | controlling | 102 |
 | project_system | 165 | asset_accounting | 100 |
 | business_partner | 155 | banking_tax | 91 |
-| **deliveries_billing** | **16** | ewms_stock | 74 |
-| **internal_orders** | **13** | ewms_transfer_orders | 53 |
+| **deliveries_billing** | **89** | ewms_stock | 74 |
+| **internal_orders** | **89** | ewms_transfer_orders | 53 |
 | interface_health | 53 | sd_customer_master | 100 |
 | fleet_management | 49 | transport_management | 48 |
 | wm_interface | 44 | mdg_master_data | 41 |
@@ -36,12 +36,19 @@ The same registry serves **S/4HANA on-premise** (27), **S/4HANA Cloud** (18), **
 ## Added for the ECC→S/4 gap
 
 * **`deliveries_billing`** — LIKP, LIPS, VBRK, VBRP. Deliveries and billing documents are a
-  standard migration object and had no module at all. 16 rules: keys mandatory, quantities
-  not negative, duplicate delivery/invoice numbers, blank material or plant on items,
-  future creation dates.
-* **`internal_orders`** — AUFK, AFKO. CO internal orders and order headers. 13 rules: order
-  number/type/company code/controlling area mandatory, duplicate order numbers, planned and
-  actual finish-before-start, negative order quantity, blank responsible cost centre.
+  standard migration object and had no module at all. **89 rules** across all six dimensions:
+  mandatory keys, key format, duplicate document numbers, negative weights/volumes/quantities,
+  missing material or plant on items, inverted and future dates, domain values on document
+  categories and posting periods, and referential integrity to MARA, KNA1 and TVKO.
+* **`internal_orders`** — AUFK, AFKO. CO internal orders and order headers. **89 rules** across
+  all six dimensions: order number/type/category/company code/controlling area, duplicate order
+  numbers, planned, actual, confirmed and forecast schedules inverted, negative order/scrap
+  quantities, missing CO object number, task-list and BOM references, status flags, and
+  referential integrity to T001, TKA01, CSKS and MARA.
+
+Both are at parity with their peers on **dimension spread** — the criterion chosen for this
+programme: completeness, accuracy, consistency, validity, uniqueness and timeliness all carry
+rules, rather than matching the rule count of `material_master` (679).
 
 ## Still missing
 
@@ -53,7 +60,7 @@ The same registry serves **S/4HANA on-premise** (27), **S/4HANA Cloud** (18), **
 | **Treasury / cash management** | only T012/T012K are in the dictionary; FEBKO/FEBEP are not |
 | **ECC payroll results** (RGDIR, PAYR) | cluster tables; only T512W/T549A are available |
 | **Capacity** (KBKO) | partially available (KAKO, CRHD) |
-| **Deliveries — deeper rules** | 16 rules is coverage, not depth; material_master has 679 |
+
 
 `batch_management` (37) and the EWM modules (44–74) are also thin relative to
 `material_master`, so they are covered rather than deep.
