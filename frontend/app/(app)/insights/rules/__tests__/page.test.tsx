@@ -43,7 +43,7 @@ describe("RulesPage", () => {
     expect(screen.getByRole("grid")).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /impact/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: "Explore" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Failing rules" })).toBeInTheDocument();
   });
 
   it("shows the field, the cost at risk in the tenant currency and links Open records to the object's records tab", async () => {
@@ -59,7 +59,6 @@ describe("RulesPage", () => {
     expect(links[0].getAttribute("href")).not.toContain("/records?");
     expect(screen.getByText("Impact by rule")).toBeInTheDocument();
     // The shared tab strip and action bar come with the frame.
-    expect(screen.getByRole("link", { name: "Report library" })).toBeInTheDocument();
   });
 
   it("keeps the product's case in Impact by S/4 status", async () => {

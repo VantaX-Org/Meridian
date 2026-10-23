@@ -104,7 +104,6 @@ describe("LineagePage trace graph", () => {
     expect(node).toHaveAttribute("role", "button");
     expect(node).toHaveAttribute("tabindex", "0");
     // The frame carries the shared action bar for the run (checked before the drawer, a modal, hides the page).
-    expect(screen.getByRole("link", { name: "Report library" })).toHaveAttribute("href", "/insights/reports?run=v1");
     fireEvent.click(node);
     const open = await screen.findByRole("link", { name: "Open the object" });
     expect(open).toHaveAttribute("href", "/objects/business_partner?run=v1");

@@ -59,12 +59,12 @@ Filter the list with **Domain** (Material master or Business partner), **Status*
 
 The merge page shows, for one record, the golden value of every field beside the value each source holds.
 
-1. Open [Merge conflicts](/mdm/golden/merge) with a record chosen in the address (`/mdm/golden/merge?id=` followed by the record's id).
+1. Open a golden record and select **Compare sources**.
 2. The page title reads "Merge conflicts for" and the SAP key.
 3. **Field comparison** has a column per source. Each value shows its confidence. Values that differ from the golden value are shown in red.
 4. Select **Back to record** to return.
 
-Without a record in the address, the page asks you to choose one and links to merge candidates.
+Opened without a record, the page asks you to choose one and links to **Golden records**. **Review other duplicate pairs** opens the **Duplicates** tab of [Fix](/docs?page=fix), where pairs are merged.
 
 ## Duplicates and merging
 

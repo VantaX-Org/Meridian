@@ -95,7 +95,7 @@ export const TOURS: readonly TourDef[] = [
       {
         target: "insight-views", href: "/insights/exec", placement: "bottom",
         title: "Five views",
-        body: "Summary, Progress, Explore, Readiness and Operate. Each view's detail screens sit in this strip, and every page offers Run analysis, Auto clean, Present and Export.",
+        body: "Summary, Progress, Explore, Readiness and Operate. Each view's detail screens sit in this strip, and every page offers Run analysis, Review fixes, Present and Export.",
       },
       {
         target: "owners", href: "/insights/owners", placement: "top",

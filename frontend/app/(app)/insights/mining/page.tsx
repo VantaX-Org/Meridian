@@ -293,7 +293,7 @@ export default function MiningPage() {
   const patternsTotal = sum.data?.total_patterns ?? 0;
   return (
     <InsightFrame
-      title="Mining"
+      title="Patterns"
       scope
       meta="Links and patterns from every mined run; Mine now mines the run shown"
       run={run}

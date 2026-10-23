@@ -124,7 +124,7 @@ export default function ReadinessPage() {
 
   return (
     <InsightFrame
-      title="Readiness"
+      title="Waves"
       scope
       run={run}
       insight={{

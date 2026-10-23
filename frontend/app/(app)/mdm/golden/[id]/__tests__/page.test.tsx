@@ -38,6 +38,8 @@ describe("MasterRecordPage", () => {
     renderWithQuery(<MasterRecordPage />);
     await waitFor(() => expect(screen.getByText("MARA-1000")).toBeInTheDocument());
     expect(screen.getAllByText("FERT").length).toBeGreaterThan(0);
+    // The merge comparison is reachable from the record.
+    expect(screen.getByRole("link", { name: "Compare sources" })).toHaveAttribute("href", `/mdm/golden/merge?id=${record.id}`);
   });
 
   it("shows an empty state when the record does not exist", async () => {

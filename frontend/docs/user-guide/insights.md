@@ -6,15 +6,15 @@ Insights turns the findings of your runs into answers for the people who decide:
 
 Select **Insights** in the index bar to open the overview (`/insights`). The views are grouped in the **More** menu under Insights, and each view has its own tabs under the page title:
 
-- **Summary**: **Summary**, **Overview** and **Reports**.
+- **Summary**: **Executive summary**, **Overview** and **Reports**.
 - **Progress**: **Since baseline**, **Trends** and **Forecast**.
-- **Explore**: **Rules**, **Value at risk**, **Lineage**, **Patterns** and **Duplicates**.
+- **Explore**: **Failing rules**, **Value at risk**, **Lineage**, **Patterns** and **Duplicates**.
 - **Readiness**: **Waves**, **Processes** and **Migration cockpit**.
 - **Operate**: **Owners**, **Operations**, **Runs**, **Fix queue** and **Data contracts**.
 
 Every Insights page is built the same way, top to bottom:
 
-1. The header: the title, the scope line, and the action bar with **Run analysis** (if you may start a sync), **Auto clean**, **Report library**, **Present** and **Export**.
+1. The header: the title, the scope line, and the action bar with **Run analysis** (if you may start a sync), **Review fixes**, **Present** and **Export**.
 2. The four-sentence header: **Situation**, **What changed**, **Why it matters** and **Do next**, with one button for the next action. A sentence that is a link opens the page that explains it.
 3. The cards: the ledger that ranks the work first, then the charts.
 
@@ -22,7 +22,7 @@ Every Insights page is built the same way, top to bottom:
 
 - **Run.** Most views show one run. The scope line reads **One run**, then "As of" the run, with a **Showing run** picker of the other runs of the same system or upload and the latest run of every other one. **Back to latest** appears while you look at an older run. Without `?run=` in the address, the newest finished run is used.
 - **Current state.** The overview alone can show every object at its latest run. The scope line then reads "Current state of N objects, latest run" and a date, and **Showing** lets you open one run instead. **Back to current state** returns.
-- **Object.** Explore filters to one object, and the report library has an **Object** choice. An object filter shows the newest run that measured that object.
+- **Object.** **Failing rules** filters to one object, and the report library has an **Object** choice. An object filter shows the newest run that measured that object.
 - **System.** Trends and process readiness offer a **System** choice when you have more than one system.
 - **Window.** Trends offers **Last 6 runs**, **Last 12 runs** or **Last 24 runs**.
 
@@ -57,7 +57,7 @@ Forecast (`/insights/forecast`) reads every object's score history, not one run.
 
 ## Explore
 
-**Rules** (`/insights/rules`) is one set of failing rules seen from any angle. Pick **Group by**: **Rule**, **Object**, **Field**, **Dimension**, **Severity** or **S/4 status**. Narrow it with **Severity**, **Dimension**, **Auto-fixable** and **S/4 blocking**. The ledger shows each rule's object, severity, dimension, **Failing records**, **Total**, **Pass rate**, **Impact**, **Auto-fix** share, **S/4** status, **Change** since the previous run, field and **Open records**. Impact is failing records times a severity weight: critical 8, high 4, medium 2, low 1. The **Impact by** chart below shows how few rules carry 80% of it. Select a group row to drill into it. **Views** saves the current filters under a name.
+**Failing rules** (`/insights/rules`) is one set of failing rules seen from any angle. Pick **Group by**: **Rule**, **Object**, **Field**, **Dimension**, **Severity** or **S/4 status**. Narrow it with **Severity**, **Dimension**, **Auto-fixable** and **S/4 blocking**. The ledger shows each rule's object, severity, dimension, **Failing records**, **Total**, **Pass rate**, **Impact**, **Auto-fix** share, **S/4** status, **Change** since the previous run, field and **Open records**. Impact is failing records times a severity weight: critical 8, high 4, medium 2, low 1. The **Impact by** chart below shows how few rules carry 80% of it. Select a group row to drill into it. **Views** saves the current filters under a name.
 
 **Value at risk** (`/insights/impact`) lists **Features at risk**: each blocked SAP feature with its **Blocked records**, **Value at risk** and **Blocking rule**. Value at risk is the blocked records times the value of each, so it appears only once features are priced. **Proven cost findings** shows money measured on posted documents that broke a rule. Amounts are shown per L1 process and never added across processes.
 
@@ -98,13 +98,13 @@ Only rules that ran cleanly in both runs count as fixed or newly failing. A rule
 
 1. Select a row in **Fix first**, **Rules** or another rule ledger.
 2. The finding opens in a side panel: **What failed**, **How many**, **Why**, **Impact**, **Samples** and **Fix**.
-3. Select **Auto clean this rule**, **Open records** or **Open rule**.
+3. Select **Create fix batch**, **Open records** or **Open rule**.
 
 Object names in the ledgers open the object on its Rules tab.
 
 ## How to compare with a baseline
 
-1. Open **Progress**.
+1. Open **Since baseline**.
 2. Under **Compare with**, pick a run, or leave **Pinned baseline or previous run**.
 3. To make the run you are viewing the reference for later runs, select **Pin as baseline**.
 
@@ -116,7 +116,7 @@ Select **Export** in the action bar. Every view scoped to a run offers **Failing
 - Executive summary: the same two, plus **Run data (JSON)**.
 - Progress: **Proof of progress (PDF)** and **Comparison workbook (Excel)**.
 
-For every other report, open **Report library**.
+For every other report, open the **Reports** tab of the Summary view.
 
 ## How to present
 

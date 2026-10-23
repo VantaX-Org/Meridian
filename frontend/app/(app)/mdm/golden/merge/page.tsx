@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { DataTable, EmptyState, ErrorState, Mono, PageHeader, Skeleton } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Mono, PageHeader, Skeleton } from "@/design";
 import type { ColumnDef } from "@tanstack/react-table";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { getMasterRecord } from "@/lib/api/master-records";
@@ -25,13 +25,17 @@ export default function GoldenRecordMergePage() {
     enabled: !!id,
   });
 
+  const header = <PageHeader title="Merge conflicts" meta="Field-by-field comparison of a golden record against every contributing source" />;
   if (!id) {
     return (
-      <EmptyState
-        title="Choose a master record"
-        detail="Pick a record from merge candidates to compare its sources."
-        action={<Link href="/insights/duplicates" className="m-ink-accent">Review merge candidates</Link>}
-      />
+      <div className="flex flex-col gap-4">
+        {header}
+        <EmptyState
+          title="Choose a golden record"
+          detail="Open a golden record and choose Compare sources to see where its sources disagree."
+          action={<Button render={<Link href="/mdm/golden">Open golden records</Link>} />}
+        />
+      </div>
     );
   }
   if (query.isLoading) {
@@ -58,7 +62,7 @@ export default function GoldenRecordMergePage() {
       <EmptyState
         title="Record not found"
         detail="It may have been removed or merged already."
-        action={<Link href="/mdm/golden" className="m-ink-accent">All golden records</Link>}
+        action={<Button render={<Link href="/mdm/golden">All golden records</Link>} />}
       />
     );
   }
@@ -90,19 +94,23 @@ export default function GoldenRecordMergePage() {
       <PageHeader
         title={`Merge conflicts for ${record.sap_object_key}`}
         meta="Field-by-field comparison of the golden value against every contributing source"
-        actions={<Link href={`/mdm/golden/${record.id}`} className="m-text-body m-ink-accent">Back to record</Link>}
+        actions={<Button variant="secondary" render={<Link href={`/mdm/golden/${record.id}`}>Back to record</Link>} />}
       />
       <section aria-label="Field comparison">
         <LedgerHead title="Field comparison" meta={String(fields.length)} />
         {fields.length === 0 ? (
-          <p className="m-text-body m-ink-3">No golden fields to compare</p>
+          <EmptyState
+            title="No golden fields to compare"
+            detail="This record has no consolidated fields yet."
+            action={<Button variant="secondary" render={<Link href={`/mdm/golden/${record.id}`}>Back to record</Link>} />}
+          />
         ) : (
           <DataTable columns={cols} getRowId={(r) => r.field} data={rows} height="auto" />
         )}
       </section>
-      <Link href="/insights/duplicates" className="m-text-body m-ink-accent">
-        Review other merge candidates in duplicates
-      </Link>
+      <div>
+        <Button variant="ghost" render={<Link href="/fix?tab=dedup">Review other duplicate pairs</Link>} />
+      </div>
     </div>
   );
 }

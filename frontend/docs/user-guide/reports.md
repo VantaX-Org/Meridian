@@ -4,7 +4,7 @@ Reports turn a run into documents you can share: a board pack for the steering c
 
 ## What you see
 
-Open the report library from the **Reports** tab of the Insights Summary view (`/insights/reports`), or with **Report library** in the action bar of any Insights page.
+Open the report library from the **Reports** tab of the Insights Summary view (`/insights/reports`).
 
 - The header names the scope: the run, the comparison run and the object, for example "Scope: PRD ECC weekly, no comparison run, every object in the run". The run follows the page's run picker; without one, the newest finished run is used.
 - Two choices sit in the action bar: **Compare with** (**No comparison** or an earlier run of the same system or upload) and **Object** (**All objects** or one object in the run).

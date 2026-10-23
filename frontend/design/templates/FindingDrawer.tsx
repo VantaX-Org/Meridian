@@ -86,7 +86,7 @@ function AutoCleanButton({ checkId, module, versionId }: { checkId: string; modu
   });
   if (!can("apply")) return null;
   if (batchId) return <Button render={<Link href={`/fix/${batchId}`}>Open fix batch</Link>} />;
-  return <Button onClick={() => create.mutate()} pending={create.isPending}>Auto clean this rule</Button>;
+  return <Button onClick={() => create.mutate()} pending={create.isPending}>Create fix batch</Button>;
 }
 
 export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerProps) {

@@ -29,6 +29,14 @@ const record: MasterRecordDetail = {
 };
 
 describe("GoldenRecordMergePage", () => {
+  it("without a record, keeps its header and points to the golden records", async () => {
+    searchParams.delete("id");
+    renderWithQuery(<GoldenRecordMergePage />);
+    expect(screen.getByRole("heading", { name: "Merge conflicts" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open golden records" })).toHaveAttribute("href", "/mdm/golden");
+    searchParams.set("id", "m1");
+  });
+
   it("renders a field-by-field comparison with the conflicting source highlighted", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
     renderWithQuery(<GoldenRecordMergePage />);
