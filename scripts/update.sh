@@ -465,6 +465,40 @@ if [[ -z "${MERIDIAN_UPDATE_REEXEC:-}" ]]; then
 fi
 
 write_status "pulling" "Pulling latest images..."
+# An update recreates the worker, which kills whatever it is running. That is fine for an idle
+# deployment and disastrous for a 15-hour analysis: it happened three times - twice to a
+# material_master baseline that had already finished its extraction, once while DDIC conformance
+# was mid-flight - and each time the run was lost with its version left at 'running'. The
+# checkpoint saves the extraction, but hours of work still go.
+#
+# Refuse to deploy over a live run unless somebody explicitly insists.
+assert_no_active_run() {
+    local active=""
+    if [[ "${MERIDIAN_UPDATE_FORCE:-0}" == "1" ]]; then
+        warn "MERIDIAN_UPDATE_FORCE=1 — updating even if a run is active"
+        return 0
+    fi
+    active="$(dc exec -T db psql -U meridian -d meridian -t -A -c \
+        "SELECT count(*) FROM analysis_versions WHERE status IN ('running','pending','queued')" 2>/dev/null || echo 0)"
+    active="${active//[^0-9]/}"
+    if [[ -n "$active" && "$active" -gt 0 ]]; then
+        error "Refusing to update: $active analysis run(s) are still running."
+        error "Recreating the worker would kill them and lose the work."
+        error "Wait for them to finish, or re-run the update with MERIDIAN_UPDATE_FORCE=1 to override."
+    fi
+    local busy
+    busy="$(dc exec -T worker celery -A workers.celery_app inspect active --timeout 10 2>/dev/null \
+        | grep -cE "run_extraction|run_checks" || true)"
+    busy="${busy//[^0-9]/}"
+    if [[ -n "$busy" && "$busy" -gt 0 ]]; then
+        error "Refusing to update: the worker is executing a run right now."
+        error "Re-run with MERIDIAN_UPDATE_FORCE=1 to override."
+    fi
+    info "No analysis or extraction is running — safe to update."
+}
+
+assert_no_active_run
+
 pull_images
 sync_deployment_files
 pull_dependencies
