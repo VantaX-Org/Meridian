@@ -87,7 +87,7 @@ export function StateScope({ runs, pinned, objectCount, systemName, hrefFor }: {
   const router = useRouter();
   const choices = pinned && !runs.some((r) => r.id === pinned.id) ? [...runs, pinned] : runs;
   const labels = runChoiceLabels(choices);
-  const source = (v: Version) => [systemName(v), labels.get(v.id) ?? runScopeLabel(v)].filter(Boolean).join(" · ");
+  const source = (v: Version) => [systemName(v), labels.get(v.id) ?? runScopeLabel(v)].filter(Boolean).join(", ");
   return (
     <span data-testid="run-scope" className="inline-flex flex-wrap items-center gap-2">
       <Select
