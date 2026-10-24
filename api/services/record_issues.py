@@ -150,7 +150,22 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     session.execute(text(
         "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
     session.execute(text("TRUNCATE tmp_present"))
-    _copy(session, "tmp_present", ("grain", "record_key"), present_keys(results, frames))
+    # tmp_present is only ever probed to decide whether an EXISTING issue should be resolved, so it
+    # never needs a key that has no issue. Streaming every evaluated key is the whole dataset - 57
+    # tables, ~100M rows - which on a real material_master run had not finished copying after 42
+    # minutes and had consumed 13 GB of disk before it was killed. Bounding it by the open issues
+    # (2.4M here) keeps the semantics identical and makes the copy minutes instead of hours.
+    tracked = set(session.execute(text("""
+        SELECT COALESCE(grain, ''), record_key FROM record_issues
+         WHERE tenant_id = :tid AND scope = :scope AND status <> 'resolved'
+    """), p).all())
+
+    def _tracked_keys():
+        for grain, key in present_keys(results, frames):
+            if (grain or "", key) in tracked:
+                yield grain, key
+
+    _copy(session, "tmp_present", ("grain", "record_key"), _tracked_keys())
     # the resolved/reopened semi-joins probe tmp_present per record_issues row; without an index
     # that is a 2.6M × ~60M sequential scan (the run hung ~1.5 h here)
     session.execute(text("CREATE INDEX ON tmp_present (grain, record_key)"))

@@ -86,3 +86,20 @@ def test_present_keys_projects_only_the_key_columns():
     src = inspect.getsource(record_issues.present_keys)
     assert "frame_for" in src, "present_keys must project the key columns"
     assert "frames.frames.get" in src, "and still fall back for callers without a projection"
+
+
+def test_tmp_present_is_bounded_by_open_issues():
+    """tmp_present must not be the whole dataset.
+
+    It is only probed to decide whether an existing issue can be resolved, so a key with no issue
+    is dead weight. Streaming every evaluated key means 57 tables / ~100M rows: a real
+    material_master run had not finished the copy after 42 minutes and had spent 13 GB of disk.
+    """
+    import inspect
+    from api.services import record_issues
+
+    src = inspect.getsource(record_issues.track)
+    assert "_tracked_keys" in src, "present keys must be filtered"
+    assert "FROM record_issues" in src.split("_tracked_keys")[0][-400:], (
+        "the filter must come from the issue table")
+    assert "if (grain or \"\", key) in tracked" in src, "and must actually filter"
