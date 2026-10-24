@@ -194,6 +194,17 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     if current:
         batches.append(current)
 
+    # Derive each key layout's present keys ONCE. The batches reuse them; re-deriving per batch
+    # re-reads the same parquet files (MARC alone is 18.3M rows) for every batch, which made the
+    # batched rebuild slower than the single-statement version it replaced.
+    layout_keys: dict[tuple, list[tuple[str, str]]] = {}
+    for r in results:
+        keys = tuple((r.details or {}).get("record_key_fields") or ())
+        layout = (r.grain or "", keys)
+        if not keys or layout in layout_keys:
+            continue
+        layout_keys[layout] = [(g, k) for g, k in present_keys([r], frames) if (g or "", k) in tracked]
+
     reopened = created = resolved = 0
     for batch in batches:
         bp = {**p, "batch": batch}
@@ -206,8 +217,16 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
         session.execute(text(
             "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
         session.execute(text("TRUNCATE tmp_present"))
-        _copy(session, "tmp_present", ("grain", "record_key"),
-              ((g, k) for g, k in present_keys(batch_results, frames) if (g or "", k) in tracked))
+        batch_keys: list[tuple[str, str]] = []
+        seen_layouts: set[tuple] = set()
+        for r in batch_results:
+            keys = tuple((r.details or {}).get("record_key_fields") or ())
+            layout = (r.grain or "", keys)
+            if not keys or layout in seen_layouts:
+                continue
+            seen_layouts.add(layout)
+            batch_keys.extend(layout_keys.get(layout, ()))
+        _copy(session, "tmp_present", ("grain", "record_key"), batch_keys)
         session.execute(text("CREATE INDEX ON tmp_present (grain, record_key)"))
 
         reopened += session.execute(text("""

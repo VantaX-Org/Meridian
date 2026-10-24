@@ -143,3 +143,17 @@ def test_tmp_present_survives_batch_commits():
     # SET app.tenant_id is session-scoped and the connection returns to the pool on commit, so it
     # must be re-applied for every batch or RLS fails on batch 2
     assert "SET app.tenant_id" in loop, "the tenant setting must be re-applied per batch"
+
+
+def test_key_layouts_are_derived_once_not_per_batch():
+    """Re-deriving present keys per batch re-reads the same parquet files.
+
+    MARC alone is 18.3M rows; doing that for every batch made the batched rebuild slower than the
+    single-statement version it replaced. Layouts are computed once and reused.
+    """
+    import inspect
+    from api.services import record_issues
+
+    src = inspect.getsource(record_issues.track)
+    assert "layout_keys" in src, "keys must be cached per layout"
+    assert src.count("present_keys(") == 1, "present_keys runs once, not once per batch"
