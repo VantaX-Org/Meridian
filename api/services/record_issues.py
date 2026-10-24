@@ -18,6 +18,8 @@ RLS tables is not allowed), then one INSERT/UPDATE per step.
 
 from __future__ import annotations
 
+import os
+
 import csv
 import io
 import json
@@ -147,84 +149,101 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
         return {"failing_records": failing, "created": 0, "reopened": 0, "auto_resolved": 0,
                 "lifecycle": "skipped (not the newest run)"}
 
+    # Process the reconciliation in batches of checks.
+    #
+    # Everything below - the reopened sweep, the upsert over every failing record, and the resolve
+    # sweep - used to run once over the whole version. On a real material_master baseline that is
+    # 810 checks and 5.26M failing records: a single upsert, and a resolve sweep whose temp table
+    # (tmp_present) had still not finished copying after 42 minutes at 13 GB of disk, before the
+    # previous attempt sat in it for over seven hours.
+    #
+    # Batching bounds each statement to one set of checks and commits per batch, so progress is
+    # durable and no single statement can dominate a run. Each batch is idempotent (upserts are
+    # ON CONFLICT, sweeps are status-guarded), so a partial run is safe to repeat.
     session.execute(text(
         "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
-    session.execute(text("TRUNCATE tmp_present"))
     # tmp_present is only ever probed to decide whether an EXISTING issue should be resolved, so it
-    # never needs a key that has no issue. Streaming every evaluated key is the whole dataset - 57
-    # tables, ~100M rows - which on a real material_master run had not finished copying after 42
-    # minutes and had consumed 13 GB of disk before it was killed. Bounding it by the open issues
-    # (2.4M here) keeps the semantics identical and makes the copy minutes instead of hours.
+    # never needs a key that has no issue. Bounding it by the open issues keeps the copy small.
     tracked = set(session.execute(text("""
         SELECT COALESCE(grain, ''), record_key FROM record_issues
          WHERE tenant_id = :tid AND scope = :scope AND status <> 'resolved'
     """), p).all())
 
-    def _tracked_keys():
-        for grain, key in present_keys(results, frames):
-            if (grain or "", key) in tracked:
-                yield grain, key
+    by_check = {r.check_id: r for r in results}
+    check_ids = sorted(session.execute(text(
+        "SELECT DISTINCT check_id FROM finding_records WHERE version_id = :vid",
+    ), p).scalars().all())
+    size = max(1, int(os.getenv("MERIDIAN_LIFECYCLE_BATCH", "50")))
 
-    _copy(session, "tmp_present", ("grain", "record_key"), _tracked_keys())
-    # the resolved/reopened semi-joins probe tmp_present per record_issues row; without an index
-    # that is a 2.6M × ~60M sequential scan (the run hung ~1.5 h here)
-    session.execute(text("CREATE INDEX ON tmp_present (grain, record_key)"))
+    reopened = created = resolved = 0
+    for i in range(0, len(check_ids), size):
+        batch = check_ids[i:i + size]
+        bp = {**p, "batch": batch}
+        batch_results = [by_check[c] for c in batch if c in by_check]
+        session.execute(text("TRUNCATE tmp_present"))
+        _copy(session, "tmp_present", ("grain", "record_key"),
+              ((g, k) for g, k in present_keys(batch_results, frames) if (g or "", k) in tracked))
+        session.execute(text("CREATE INDEX ON tmp_present (grain, record_key)"))
 
-    reopened = session.execute(text("""
-        WITH hit AS (
-            UPDATE record_issues ri
-               SET status = 'open', resolution = NULL, resolved_version = NULL, resolved_at = NULL,
-                   reopened_count = ri.reopened_count + 1, updated_at = now(),
-                   -- the previous owner keeps the item; its SLA clock restarts from now
-                   sla_started_at = NULL, sla_state = NULL, sla_notified = '{}', ack_due_at = NULL,
-                   ack_risk_at = NULL, due_at = NULL, risk_at = NULL, acknowledged_at = NULL,
-                   sla_paused_at = NULL, snoozed_until = NULL, snooze_reason = NULL,
-                   assigned_at = CASE WHEN ri.assigned_to IS NULL THEN NULL ELSE now() END
+        reopened += session.execute(text("""
+            WITH hit AS (
+                UPDATE record_issues ri
+                   SET status = 'open', resolution = NULL, resolved_version = NULL, resolved_at = NULL,
+                       reopened_count = ri.reopened_count + 1, updated_at = now(),
+                       sla_started_at = NULL, sla_state = NULL, sla_notified = '{}', ack_due_at = NULL,
+                       ack_risk_at = NULL, due_at = NULL, risk_at = NULL, acknowledged_at = NULL,
+                       sla_paused_at = NULL, snoozed_until = NULL, snooze_reason = NULL,
+                       assigned_at = CASE WHEN ri.assigned_to IS NULL THEN NULL ELSE now() END
+                  FROM finding_records fr
+                 WHERE fr.version_id = :vid AND ri.tenant_id = :tid AND ri.scope = :scope
+                   AND ri.check_id = fr.check_id AND ri.record_key = fr.record_key
+                   AND ri.status = 'resolved' AND fr.check_id = ANY(:batch)
+                RETURNING ri.id
+            )
+            INSERT INTO record_issue_events (tenant_id, issue_id, action, from_value, to_value, version_id, user_label)
+            SELECT :tid, id, 'reopened', 'resolved', 'open', :vid, 'system' FROM hit
+        """), bp).rowcount
+
+        upsert = session.execute(text("""
+            INSERT INTO record_issues (tenant_id, scope, module, check_id, record_key, grain, severity,
+                                       first_seen_version, last_seen_version)
+            SELECT fr.tenant_id, :scope, fr.module, fr.check_id, fr.record_key, fr.grain, f.severity, :vid, :vid
               FROM finding_records fr
-             WHERE fr.version_id = :vid AND ri.tenant_id = :tid AND ri.scope = :scope
-               AND ri.check_id = fr.check_id AND ri.record_key = fr.record_key AND ri.status = 'resolved'
-            RETURNING ri.id
-        )
-        INSERT INTO record_issue_events (tenant_id, issue_id, action, from_value, to_value, version_id, user_label)
-        SELECT :tid, id, 'reopened', 'resolved', 'open', :vid, 'system' FROM hit
-    """), p).rowcount
+              JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
+             WHERE fr.version_id = :vid AND fr.record_key NOT LIKE :unstable
+               AND fr.check_id = ANY(:batch)
+            ON CONFLICT (tenant_id, scope, check_id, record_key) DO UPDATE
+               SET last_seen_version = EXCLUDED.last_seen_version, last_seen_at = now(),
+                   severity = EXCLUDED.severity, module = EXCLUDED.module
+            RETURNING (xmax = 0) AS created
+        """), {**bp, "unstable": _UNSTABLE}).fetchall()
+        created += sum(1 for (c,) in upsert if c)
 
-    upsert = session.execute(text("""
-        INSERT INTO record_issues (tenant_id, scope, module, check_id, record_key, grain, severity,
-                                   first_seen_version, last_seen_version)
-        SELECT fr.tenant_id, :scope, fr.module, fr.check_id, fr.record_key, fr.grain, f.severity, :vid, :vid
-          FROM finding_records fr
-          JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
-         WHERE fr.version_id = :vid AND fr.record_key NOT LIKE :unstable
-        ON CONFLICT (tenant_id, scope, check_id, record_key) DO UPDATE
-           SET last_seen_version = EXCLUDED.last_seen_version, last_seen_at = now(),
-               severity = EXCLUDED.severity, module = EXCLUDED.module
-        RETURNING (xmax = 0) AS created
-    """), {**p, "unstable": _UNSTABLE}).fetchall()
-    created = sum(1 for (c,) in upsert if c)
-
-    resolved = session.execute(text("""
-        WITH ran AS (
-            SELECT check_id FROM findings
-             WHERE version_id = :vid AND tenant_id = :tid
-               AND details->>'error' IS NULL
-               AND COALESCE((details->>'failing_keys_truncated')::boolean, false) = false
-        ), fixed AS (
-            UPDATE record_issues ri
-               SET status = 'resolved', resolution = 'verified_fixed', resolved_version = :vid,
-                   steward_verdict = COALESCE(ri.steward_verdict, 'real'),
-                   resolved_at = now(), updated_at = now()
-             WHERE ri.tenant_id = :tid AND ri.scope = :scope AND ri.status <> 'resolved'
-               AND NOT EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = :vid
-                                  AND fr.check_id = ri.check_id AND fr.record_key = ri.record_key)
-               AND ri.check_id IN (SELECT check_id FROM ran)
-               AND EXISTS (SELECT 1 FROM tmp_present tp
-                            WHERE tp.grain = COALESCE(ri.grain, '') AND tp.record_key = ri.record_key)
-            RETURNING ri.id
-        )
-        INSERT INTO record_issue_events (tenant_id, issue_id, action, to_value, version_id, user_label)
-        SELECT :tid, id, 'auto_resolved', 'resolved', :vid, 'system' FROM fixed
-    """), p).rowcount
+        resolved += session.execute(text("""
+            WITH ran AS (
+                SELECT check_id FROM findings
+                 WHERE version_id = :vid AND tenant_id = :tid
+                   AND details->>'error' IS NULL
+                   AND COALESCE((details->>'failing_keys_truncated')::boolean, false) = false
+                   AND check_id = ANY(:batch)
+            ), fixed AS (
+                UPDATE record_issues ri
+                   SET status = 'resolved', resolution = 'verified_fixed', resolved_version = :vid,
+                       steward_verdict = COALESCE(ri.steward_verdict, 'real'),
+                       resolved_at = now(), updated_at = now()
+                 WHERE ri.tenant_id = :tid AND ri.scope = :scope AND ri.status <> 'resolved'
+                   AND ri.check_id = ANY(:batch)
+                   AND NOT EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = :vid
+                                      AND fr.check_id = ri.check_id AND fr.record_key = ri.record_key)
+                   AND ri.check_id IN (SELECT check_id FROM ran)
+                   AND EXISTS (SELECT 1 FROM tmp_present tp
+                                WHERE tp.grain = COALESCE(ri.grain, '') AND tp.record_key = ri.record_key)
+                RETURNING ri.id
+            )
+            INSERT INTO record_issue_events (tenant_id, issue_id, action, to_value, version_id, user_label)
+            SELECT :tid, id, 'auto_resolved', 'resolved', :vid, 'system' FROM fixed
+        """), bp).rowcount
+        session.commit()
 
     return {"failing_records": failing, "created": created, "reopened": reopened, "auto_resolved": resolved}
 

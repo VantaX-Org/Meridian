@@ -99,7 +99,22 @@ def test_tmp_present_is_bounded_by_open_issues():
     from api.services import record_issues
 
     src = inspect.getsource(record_issues.track)
-    assert "_tracked_keys" in src, "present keys must be filtered"
-    assert "FROM record_issues" in src.split("_tracked_keys")[0][-400:], (
-        "the filter must come from the issue table")
-    assert "if (grain or \"\", key) in tracked" in src, "and must actually filter"
+    assert "FROM record_issues" in src, "open issues must be read"
+    assert 'if (g or "", k) in tracked' in src, "present keys must be filtered by them"
+
+
+def test_lifecycle_reconciles_in_batches():
+    """The reconciliation must not be one statement over the whole version.
+
+    On the real baseline that is 810 checks and 5.26M failing records: the upsert and the resolve
+    sweep each ran over everything, and the sweep did not finish in seven hours. Batching bounds
+    each statement to one set of checks and commits per batch, so progress is durable.
+    """
+    import inspect
+    from api.services import record_issues
+
+    src = inspect.getsource(record_issues.track)
+    assert "MERIDIAN_LIFECYCLE_BATCH" in src, "batch size must be configurable"
+    assert "for i in range(0, len(check_ids), size)" in src, "must iterate in batches"
+    assert "fr.check_id = ANY(:batch)" in src, "each statement must be scoped to the batch"
+    assert "session.commit()" in src, "each batch must commit"
