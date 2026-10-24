@@ -59,12 +59,12 @@ Filter the list with **Domain** (Material master or Business partner), **Status*
 
 The merge page shows, for one record, the golden value of every field beside the value each source holds.
 
-1. Open [Merge conflicts](/mdm/golden/merge) with a record chosen in the address (`/mdm/golden/merge?id=` followed by the record's id).
+1. Open a golden record and select **Compare sources**.
 2. The page title reads "Merge conflicts for" and the SAP key.
 3. **Field comparison** has a column per source. Each value shows its confidence. Values that differ from the golden value are shown in red.
 4. Select **Back to record** to return.
 
-Without a record in the address, the page asks you to choose one and links to merge candidates.
+Opened without a record, the page asks you to choose one and links to **Golden records**. **Review other duplicate pairs** opens the **Duplicates** tab of [Fix](/docs?page=fix), where pairs are merged.
 
 ## Duplicates and merging
 
@@ -126,7 +126,7 @@ The page is read-only. Until a rule exists for a field, the most recent source v
 
 The business glossary defines each term, where it lives in SAP and who owns it. [Glossary](/mdm/glossary) lists terms with **Term**, **Object**, **Status** (Active, Under review or Deprecated), **S/4HANA mandatory**, **Definition** (Model draft or Steward), **Rules** and **Open**. Search by term, SAP table or field, and filter by **Domain** and **Status**.
 
-Terms are drafted from analysed SAP fields. "No terms yet" means no analysis has run.
+Terms are drafted from the SAP fields Meridian's rules check. Each analysis adds the terms of the objects it covered. If the glossary is empty after runs that finished before this was in place, select **Draft terms from analysed objects** (it needs the approve permission). Drafting is safe to repeat: a term that already exists is left as it is.
 
 ## How to maintain a glossary term
 

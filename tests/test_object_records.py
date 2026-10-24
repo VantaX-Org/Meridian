@@ -42,9 +42,10 @@ def _get(app, url):
     return asyncio.run(go())
 
 
-def test_unsupported_object_returns_501(monkeypatch):
+def test_other_object_needs_a_composite_key(monkeypatch):
+    """Every object now has a record sheet (the generic one); a bare key names no field to find it by."""
     resp = _get(_app(monkeypatch), "/api/v1/objects/fi_gl/records/1000")
-    assert resp.status_code == 501
+    assert resp.status_code == 422
 
 
 def test_material_master_record_delegates_to_material_360(monkeypatch):

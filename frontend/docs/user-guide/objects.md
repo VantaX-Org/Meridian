@@ -97,11 +97,17 @@ When no rule is chosen, the tab reads "No rule selected" and offers **Open rules
 
 A record page at `/objects/<object>/records/<key>` shows one record from one run. It is also called the fix sheet. The header shows the record key, the object, a **passing** or **failing** pill and the run it was read from. The export menu downloads **Fix sheet (PDF)**.
 
-Two figures show **Missing fields** and **Views**. The **Overview** tab then shows:
+Every object has a record page. For a material, two figures show **Missing fields** and **Views**, and the **Overview** tab shows:
 
-- **Identity**: the description and key fields. For a material, the material type, material group and base unit.
+- **Identity**: the description, material type, material group and base unit.
 - **View completeness**: each view with how many of its fields are maintained.
-- For a material only: **Findings** (the failing rules by view), **Supersession** (the supersession chain at each plant) and **Possible duplicates** (candidates with the fields they match on and a score).
+- **Findings** (the failing rules by view), **Supersession** (the supersession chain at each plant) and **Possible duplicates** (candidates with the fields they match on and a score).
+
+For any other object, two figures show **Failing rules** and **Fields with a value**, and the **Overview** tab shows:
+
+- **Identity**: the record's name where it has one, the SAP table it was read from and its key fields.
+- **Failing rules**: each rule the record fails in this run, with its severity, its message and the field it reads. Select a rule to open it.
+- **Fields**: every field of the record that has a value, as it was read in this run.
 
 The **Related**, **History** and **Audit** tabs follow.
 
@@ -134,7 +140,7 @@ Every number in Meridian is a link to what lies behind it.
 - "Material master is not in this run" means the run in the link did not measure that object. Select **Show latest run of** to open its own latest run.
 - "No run has measured this object" means no finished run includes it.
 - "All records pass this rule" means the rule found nothing to fix in this run.
-- "Not yet available" on a record page means the fix sheet for that object is not built yet.
+- "Record not found in this run" on a record page means the run you are viewing does not hold that record. Choose another run in the header.
 - If your access is limited to certain modules, you see only those objects.
 
 ## Related

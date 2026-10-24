@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button, DataTable, EmptyState, Mono } from "@/design";
 import { useRole } from "@/hooks/use-role";
@@ -12,10 +12,15 @@ import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { TransferFieldMapping, TransferValueMapping } from "@/types/api";
 
-export function MappingTab({ modules, destType }: { modules: string[]; destType: string }) {
+/** `runAction` is the cockpit's Run now (absent without the analyse permission); `wavesAction` leads to the waves list. */
+export function MappingTab({ modules, destType, runAction, wavesAction }: {
+  modules: string[]; destType: string; runAction?: ReactNode; wavesAction?: ReactNode;
+}) {
   const [module, setModule] = useState(modules[0] ?? "");
   const [targetField, setTargetField] = useState<string | null>(null);
-  if (!modules.length) return <EmptyState title="Add modules to this wave to edit their mapping." />;
+  if (!modules.length) {
+    return <EmptyState title="No modules in this wave" detail="Modules are set when a wave is created, on the waves page." action={wavesAction} />;
+  }
   return (
     <div className="flex flex-col gap-4">
       <label className="flex items-center gap-2 m-text-meta m-ink-2">
@@ -25,13 +30,15 @@ export function MappingTab({ modules, destType }: { modules: string[]; destType:
           {modules.map((m) => <option key={m} value={m}>{formatModuleName(m)}</option>)}
         </select>
       </label>
-      <FieldMap module={module} destType={destType} onValueMap={setTargetField} />
+      <FieldMap module={module} destType={destType} onValueMap={setTargetField} runAction={runAction} />
       {targetField ? <ValueMap module={module} targetField={targetField} /> : null}
     </div>
   );
 }
 
-function FieldMap({ module, destType, onValueMap }: { module: string; destType: string; onValueMap: (f: string) => void }) {
+function FieldMap({ module, destType, onValueMap, runAction }: {
+  module: string; destType: string; onValueMap: (f: string) => void; runAction?: ReactNode;
+}) {
   const qc = useQueryClient();
   const { can } = useRole();
   const key = queryKeys.migrationFieldMap(module, destType);
@@ -55,7 +62,7 @@ function FieldMap({ module, destType, onValueMap }: { module: string; destType: 
         </Button>) : null },
   ];
   if (map.isPending) return null;
-  if (!map.data?.length) return <EmptyState title="No field map for this module yet. Run the wave to seed one." />;
+  if (!map.data?.length) return <EmptyState title="No field map yet" detail="Run the wave to seed one for this module." action={runAction} />;
   return <DataTable columns={columns} data={map.data} getRowId={(m) => m.id} />;
 }
 

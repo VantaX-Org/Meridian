@@ -96,7 +96,7 @@ Each object with its **Composite** score, **Readiness**, **Failing checks**, **A
 
 Every failing rule in the run, worst severity first. Filter by **Severity** and **Dimension**. The columns are **Severity**, **Rule**, **Object**, **Dimension**, **Records** (such as "120 of 4,000") and **Message**. Select the record count to open the failing records.
 
-Select a finding to open its drawer: **What failed**, **How many**, **Impact**, **Samples** and **Root cause**, with **Open records** and **Open rule**. If your role can apply fixes, **Auto clean this rule** creates a fix batch, or **Open fix batch** opens the one that exists.
+Select a finding to open its drawer: **What failed**, **How many**, **Impact**, **Samples** and **Root cause**, with **Open records** and **Open rule**. If your role can apply fixes, **Create fix batch** creates a fix batch, or **Open fix batch** opens the one that exists.
 
 ### Steps
 
@@ -104,7 +104,7 @@ Each stage of the run with its **Status**, **Started**, **Duration** and **Error
 
 ### Configuration
 
-Where the system's live configuration disagrees with a standard rule. Each match shows the **Check**, **Record**, **Field**, **Actual** value, what the **Standard expects**, a **Classification**, the **Recommended action**, the **T-code** and a **Priority**. "No config matches for this run." means the analysis did not include the configuration engine.
+Where the system's live configuration disagrees with a standard rule. Each match shows the **Check**, **Record**, **Field**, **Actual** value, what the **Standard expects**, a **Classification**, the **Recommended action**, the **T-code** and a **Priority**. "No config matches yet" means the analysis did not include the configuration engine; **Re-run analysis** checks the run again (analyse permission).
 
 ### Audit
 

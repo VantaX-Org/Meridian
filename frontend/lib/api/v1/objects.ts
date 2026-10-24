@@ -68,6 +68,13 @@ export const getObjectRecord = (
 ) =>
   get<Material360>(`/api/v1/objects/${encodeURIComponent(object)}/records/${encodeURIComponent(key)}`, params);
 
+export interface RecordFinding { check_id: string; severity: string; message: string | null; field: string | null }
+
+/** GET /api/v1/objects/{object}/records/{key}/findings — the rules this record fails in the run. */
+export const getObjectRecordFindings = (object: string, key: string, params: { version_id?: string } = {}) =>
+  get<{ version_id: string | null; failing: RecordFinding[] }>(
+    `/api/v1/objects/${encodeURIComponent(object)}/records/${encodeURIComponent(key)}/findings`, params);
+
 /** GET /api/v1/objects/export — every object's summary row for the run, as CSV or XLSX. */
 export function exportObjects(run: string, format: "csv" | "xlsx" = "xlsx"): Promise<void> {
   return downloadBlob("/api/v1/objects/export", { run, format }, `objects.${format}`);

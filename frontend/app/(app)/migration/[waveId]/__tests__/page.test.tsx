@@ -1,5 +1,5 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as pairingApi from "@/lib/api/config-pairing";
 import * as migrationApi from "@/lib/api/migration";
@@ -14,7 +14,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => search,
   useParams: () => ({ waveId: "w1" }),
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+let allowed = true;
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => allowed }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const COCKPIT: WaveCockpit = {
@@ -101,5 +102,63 @@ describe("WaveCockpitPage", () => {
     vi.spyOn(migrationApi, "getWaveCockpit").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<WaveCockpitPage />);
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
+});
+
+describe("WaveCockpitPage empty states", () => {
+  const NOT_RUN: WaveCockpit = { ...COCKPIT, run_id: null, source_version_id: null, score: null, trend: [], blockers: [] };
+  const NO_MODULES: WaveCockpit = { ...NOT_RUN, wave: { ...COCKPIT.wave, modules: [] }, objects: [] };
+  const emptyOf = async (text: string) => (await screen.findByText(text)).closest("[data-state='empty']") as HTMLElement;
+
+  beforeEach(() => { allowed = true; vi.restoreAllMocks(); });
+
+  it("sends a wave with no modules to the waves list from the overview", async () => {
+    search = new URLSearchParams("tab=overview");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(NO_MODULES);
+    renderWithQuery(<WaveCockpitPage />);
+    const empty = await emptyOf("No modules in this wave");
+    expect(within(empty).getByRole("link", { name: "Open waves" })).toHaveAttribute("href", "/migration");
+  });
+
+  it("sends a wave with no modules to the waves list from the mapping tab", async () => {
+    search = new URLSearchParams("tab=mapping");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(NO_MODULES);
+    renderWithQuery(<WaveCockpitPage />);
+    const empty = await emptyOf("No modules in this wave");
+    expect(within(empty).getByRole("link", { name: "Open waves" })).toHaveAttribute("href", "/migration");
+  });
+
+  it.each([
+    ["blockers", "Run this wave to see its blockers."],
+    ["s4", "Run this wave to see its S/4 simplification areas."],
+  ])("runs the wave from the %s tab before its first run", async (tab, detail) => {
+    search = new URLSearchParams(`tab=${tab}`);
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(NOT_RUN);
+    const run = vi.spyOn(migrationApi, "runWave").mockResolvedValue({ run_id: "r9", task_id: "t", status: "queued", mode: "source_to_destination", modules: [] });
+    renderWithQuery(<WaveCockpitPage />);
+    const empty = await emptyOf("Not run yet");
+    expect(within(empty).getByText(detail)).toBeInTheDocument();
+    fireEvent.click(within(empty).getByRole("button", { name: "Run now" }));
+    await waitFor(() => expect(run).toHaveBeenCalledWith("w1"));
+  });
+
+  it("runs the wave to seed a module's field map", async () => {
+    search = new URLSearchParams("tab=mapping");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(NOT_RUN);
+    vi.spyOn(migrationApi, "getFieldMap").mockResolvedValue([]);
+    const run = vi.spyOn(migrationApi, "runWave").mockResolvedValue({ run_id: "r9", task_id: "t", status: "queued", mode: "source_to_destination", modules: [] });
+    renderWithQuery(<WaveCockpitPage />);
+    const empty = await emptyOf("No field map yet");
+    fireEvent.click(within(empty).getByRole("button", { name: "Run now" }));
+    await waitFor(() => expect(run).toHaveBeenCalledWith("w1"));
+  });
+
+  it("offers no Run now without the analyse permission", async () => {
+    allowed = false;
+    search = new URLSearchParams("tab=blockers");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(NOT_RUN);
+    renderWithQuery(<WaveCockpitPage />);
+    await emptyOf("Not run yet");
+    expect(screen.queryByRole("button", { name: "Run now" })).toBeNull();
   });
 });

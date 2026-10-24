@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -48,6 +48,14 @@ const COMPLETED: simApi.SimulationCompleted = {
 beforeEach(() => { vi.restoreAllMocks(); push.mockReset(); });
 
 describe("WhatIfPage", () => {
+  it("sends the user to Runs when there is no finished run to simulate", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] } as never);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><WhatIfPage /></QueryClientProvider>);
+    const empty = (await screen.findByText("No finished run to simulate")).closest("[data-state='empty']") as HTMLElement;
+    expect(within(empty).getByRole("link", { name: "Open runs" })).toHaveAttribute("href", "/runs");
+  });
+
   it("shows the worker error instead of crashing when a simulation fails", async () => {
     vi.spyOn(simApi, "getSimulation").mockResolvedValue({ simulation_id: "s1", status: "failed", error: "worker exploded" });
     mount();

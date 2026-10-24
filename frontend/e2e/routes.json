@@ -129,7 +129,7 @@
   {
     "name": "insights-duplicates",
     "path": "/insights/duplicates",
-    "heading": "Duplicate clusters"
+    "heading": "Duplicates"
   },
   {
     "name": "insights-exec",
@@ -149,12 +149,12 @@
   {
     "name": "insights-lineage",
     "path": "/insights/lineage",
-    "heading": "Lineage and impact"
+    "heading": "Lineage"
   },
   {
     "name": "insights-mining",
     "path": "/insights/mining",
-    "heading": "Pattern mining"
+    "heading": "Patterns"
   },
   {
     "name": "insights-operations",
@@ -164,12 +164,12 @@
   {
     "name": "insights-owners",
     "path": "/insights/owners",
-    "heading": "Owner scorecards"
+    "heading": "Owners"
   },
   {
     "name": "insights-process",
     "path": "/insights/process",
-    "heading": "Process readiness",
+    "heading": "Processes",
     "knownBad": [
       "/api/v1/business-process/"
     ]
@@ -182,12 +182,12 @@
   {
     "name": "insights-readiness",
     "path": "/insights/readiness",
-    "heading": "Readiness"
+    "heading": "Waves"
   },
   {
     "name": "insights-reports",
     "path": "/insights/reports",
-    "heading": "Report library"
+    "heading": "Reports"
   },
   {
     "name": "mdm",
@@ -345,17 +345,17 @@
   {
     "name": "insights-duplicates-pairs",
     "path": "/insights/duplicates?tab=pairs",
-    "heading": "Duplicate clusters"
+    "heading": "Duplicates"
   },
   {
     "name": "insights-duplicates-anomalies",
     "path": "/insights/duplicates?tab=anomalies",
-    "heading": "Duplicate clusters"
+    "heading": "Duplicates"
   },
   {
     "name": "insights-duplicates-relationships",
     "path": "/insights/duplicates?tab=relationships",
-    "heading": "Duplicate clusters"
+    "heading": "Duplicates"
   },
   {
     "name": "migration-wave-s4",
@@ -391,11 +391,11 @@
   {
     "name": "insights-rules",
     "path": "/insights/rules",
-    "heading": "Explore"
+    "heading": "Failing rules"
   },
   {
     "name": "insights-progress",
     "path": "/insights/progress",
-    "heading": "Progress"
+    "heading": "Since baseline"
   }
 ]

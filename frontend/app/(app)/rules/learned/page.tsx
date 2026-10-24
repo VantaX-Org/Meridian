@@ -37,6 +37,13 @@ const STATUS_OPTIONS = [
 const KIND_OPTIONS = [{ value: "all", label: "All kinds" }, ...Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))];
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
+/** The part of a composite record key that is the rule's own field (`PRCTR=BAD-0037`), else its first part. */
+function exampleOf(key: string, field: string): string {
+  const name = field.split(".").pop();
+  const parts = key.split("|");
+  return parts.find((p) => p.split("=")[0].split(".").pop() === name) ?? parts[0];
+}
+
 export default function LearnedRulesPage() {
   const qc = useQueryClient();
   const { can } = useRole();
@@ -77,7 +84,12 @@ export default function LearnedRulesPage() {
     { id: "viol", header: "Breaks it", cell: ({ row }) => (
       <DrillLink object={row.original.module} run={row.original.version_id ?? undefined}>{row.original.violations.toLocaleString()}</DrillLink>
     ) },
-    { id: "keys", header: "Examples", cell: ({ row }) => <Mono>{row.original.sample_keys.slice(0, 2).join(", ") || "—"}</Mono> },
+    { id: "keys", header: "Examples", cell: ({ row }) => {
+      const keys = row.original.sample_keys.slice(0, 2);
+      return keys.length
+        ? <span title={keys.join("\n")}><Mono>{keys.map((k) => exampleOf(k, row.original.field)).join(", ")}</Mono></span>
+        : "—";
+    } },
     actionColumn((r) => r.status === "pending" ? (
       <span className="flex gap-3">
         {can("approve") ? <RowButton onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>Approve</RowButton> : null}

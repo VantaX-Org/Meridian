@@ -164,7 +164,8 @@ export function InsightFrame({
     </div>
   );
   return (
-    <div className="mx-auto flex w-full flex-col [gap:var(--m-section-gap)] [padding:var(--m-page-pad)] [max-width:var(--m-page-max)]">
+    // No padding of its own: the (app) layout's frame pads every page once, and a second padding doubled the gutter.
+    <div className="flex w-full flex-col [gap:var(--m-section-gap)]">
       <PageHeader
         title={title}
         meta={scope ? (

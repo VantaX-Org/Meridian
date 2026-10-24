@@ -115,7 +115,7 @@ export default function ProgressPage() {
 
   return (
     <InsightFrame
-      title="Progress"
+      title="Since baseline"
       scope
       meta={v1 && v2 ? `compared with ${label(v1)}` : undefined}
       toolbar={
@@ -146,7 +146,7 @@ export default function ProgressPage() {
         why: { sentence: rows.length ? `${plural(improved, "object")} improved, ${slipped} slipped` : "—", href: withScope("/objects", { run }) },
         next: worst && worst.change < 0
           ? { sentence: `${formatModuleName(worst.module)} slipped most, start there`, action: { label: "Open object", href: withScope(`/objects/${worst.module}`, { run }) } }
-          : { sentence: t?.persisting ? "Clear what is still failing" : "Hold the line, share the proof", action: t?.persisting ? { label: "Auto clean", href: withScope("/fix", { run }) } : { label: "Open reports", href: withScope("/insights/reports", { run }) } },
+          : { sentence: t?.persisting ? "Clear what is still failing" : "Hold the line, share the proof", action: t?.persisting ? { label: "Review fixes", href: withScope("/fix", { run }) } : { label: "Open reports", href: withScope("/insights/reports", { run }) } },
       }}
       state={state}
       skeleton={<><CardSkeleton height={240} /><CardSkeleton height={240} /></>}

@@ -4,6 +4,7 @@ import csv
 import io
 import logging
 import uuid
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -35,9 +36,14 @@ class RejectBody(BaseModel):
 class BulkApproveBody(BaseModel):
     rule_id: Optional[str] = None
     severity: Optional[str] = None
-    max_count: int = 500
+    max_count: int = Field(500, ge=1, le=5000)
     # Exactly these waiting items (a batch page's named selection); bypasses the automatic-rule gate.
     ids: Optional[list[uuid.UUID]] = Field(None, max_length=500)
+    # Or the waiting items one run found (with rule_id, one review page's group) at or above a
+    # confidence; a person names this scope too, so it also bypasses the automatic-rule gate.
+    version_id: Optional[uuid.UUID] = None
+    kind: Optional[str] = Field(None, max_length=200)
+    min_confidence: Optional[float] = Field(None, ge=0, le=1)
 
 
 class ApplyBody(BaseModel):
@@ -157,6 +163,8 @@ async def list_cleaning_queue(
     rule_id: Optional[str] = None,
     assigned_to: Optional[str] = None,
     batch_id: Optional[uuid.UUID] = None,
+    version_id: Optional[uuid.UUID] = None,
+    kind: Optional[str] = None,  # what the proposals do: a cleaning rule id, 'duplicate' or a field
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -182,6 +190,11 @@ async def list_cleaning_queue(
     if batch_id:
         where_clauses.append("batch_id = :bid")
         params["bid"] = str(batch_id)
+    if version_id:
+        where_clauses.append("version_id = :vid")
+        params["vid"] = str(version_id)
+    if kind:
+        where_clauses.append(kind_filter(kind, params))
 
     where = " AND ".join(where_clauses)
 
@@ -206,7 +219,7 @@ async def list_cleaning_queue(
 
     result = await db.execute(
         text(f"""
-            SELECT id, object_type, status, confidence, record_key, priority,
+            SELECT id, object_type, status, {CONF_SQL} AS confidence, record_key, priority,
                    detected_at, applied_at, rollback_deadline, rule_id, batch_id,
                    version_id, merge_preview, record_data_before, record_data_after,
                    golden_record_id, golden_field_value
@@ -226,6 +239,78 @@ async def list_cleaning_queue(
         items.append(row)
 
     return {"items": items, "total": total, "page": page, "per_page": per_page}
+
+
+# ── GET /api/v1/cleaning/queue/groups ────────────────────────────────────────
+
+_groups_cache: dict[str, tuple[float, dict]] = {}
+
+# Confidence is 0..100 from the cleaning engine and 0..1 from the match engine; read it as 0..1.
+CONF_SQL = "(CASE WHEN confidence > 1 THEN confidence / 100.0 ELSE confidence END)"
+_HAS_MERGE = "(merge_preview IS NOT NULL AND merge_preview <> '{}'::jsonb)"
+# What a proposal does, the unit one person decides on: its cleaning rule when it has one, a
+# duplicate merge, or else the field it changes.
+KIND_SQL = f"""(CASE WHEN rule_id IS NOT NULL THEN rule_id::text WHEN {_HAS_MERGE} THEN 'duplicate'
+    ELSE (SELECT k FROM jsonb_object_keys(COALESCE(record_data_after, '{{}}'::jsonb)) k ORDER BY k LIMIT 1) END)"""
+
+
+def kind_filter(kind: str, params: dict) -> str:
+    """SQL predicate for one kind as KIND_SQL names it; adds its bind values to ``params``."""
+    if kind == "duplicate":
+        return f"rule_id IS NULL AND {_HAS_MERGE}"
+    try:
+        params["kind_rid"] = str(uuid.UUID(kind))
+        return "rule_id = :kind_rid"
+    except ValueError:
+        params["kind_field"] = kind
+        return f"rule_id IS NULL AND NOT {_HAS_MERGE} AND record_data_after ? :kind_field"
+
+
+@router.get("/cleaning/queue/groups")
+async def list_cleaning_groups(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view")),
+):
+    """Open proposals grouped by the run that found them, the object and what they do (KIND_SQL):
+    one row per decision on the Fix screen. Cleaning items carry their run (version_id) but no
+    batch, so the run is the batch. Cached for _TOTAL_TTL_S like the queue total; the table
+    holds millions of rows."""
+    await _set_rls(db, tenant.id)
+    key = str(tenant.id)
+    hit = _groups_cache.get(key)
+    if hit and time.monotonic() - hit[0] <= _TOTAL_TTL_S:
+        return hit[1]
+    rows = (await db.execute(text(f"""
+        WITH open AS (
+            SELECT version_id, object_type, {KIND_SQL} AS kind, {CONF_SQL} AS conf
+              FROM cleaning_queue
+             WHERE tenant_id = :tid AND status IN ('detected', 'recommended') AND version_id IS NOT NULL
+        )
+        SELECT o.version_id, o.object_type, o.kind, COUNT(*) AS records, AVG(o.conf) AS avg_confidence,
+               COUNT(*) FILTER (WHERE o.conf >= 0.85) AS confident,
+               MAX(r.name) AS rule_name, v.label AS run_label, v.run_at AS run_at
+          FROM open o
+          LEFT JOIN analysis_versions v ON v.id = o.version_id AND v.tenant_id = :tid
+          LEFT JOIN cleaning_rules r ON r.id::text = o.kind AND r.tenant_id = :tid
+         GROUP BY o.version_id, o.object_type, o.kind, v.label, v.run_at
+         ORDER BY records DESC, avg_confidence DESC
+    """), {"tid": key})).mappings().all()
+    groups = [{
+        "version_id": str(r["version_id"]), "object_type": r["object_type"], "kind": r["kind"] or "other",
+        "rule_name": r["rule_name"],
+        "records": int(r["records"]), "avg_confidence": float(r["avg_confidence"] or 0),
+        "confident": int(r["confident"]), "run_label": r["run_label"],
+        "run_at": r["run_at"].isoformat() if r["run_at"] else None,
+    } for r in rows]
+    out = {
+        "groups": groups,
+        "records": sum(g["records"] for g in groups),
+        "confident": sum(g["confident"] for g in groups),
+        "runs": len({g["version_id"] for g in groups}),
+    }
+    _groups_cache[key] = (time.monotonic(), out)
+    return out
 
 
 # ── GET /api/v1/cleaning/queue/{id} ──────────────────────────────────────────
@@ -366,6 +451,14 @@ async def bulk_approve(
         # A person named these items (like approving each row), so no automatic-rule gate.
         where = "cq.status IN ('detected', 'recommended') AND cq.tenant_id = :tid AND cq.id = ANY(:ids)"
         params.update(ids=[str(i) for i in body.ids], max_count=len(body.ids))
+    elif body.version_id is not None:
+        where = "cq.status IN ('detected', 'recommended') AND cq.tenant_id = :tid AND cq.version_id = :vid"
+        params["vid"] = str(body.version_id)
+        if body.kind:
+            where += " AND " + kind_filter(body.kind, params)
+        if body.min_confidence is not None:
+            where += f" AND {CONF_SQL} >= :minc"
+            params["minc"] = body.min_confidence
     else:
         # Only auto-approve items linked to rules with automation_level=auto
         where += """
@@ -568,6 +661,8 @@ async def export_cleaning_data(
     batch_id: Optional[uuid.UUID] = Query(
         None, description="Optional cleaning-queue batch filter — omit to export across all batches"
     ),
+    version_id: Optional[uuid.UUID] = None,  # only items found by this run
+    kind: Optional[str] = None,  # only items of this kind (see the queue)
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("export", scope=scope_from_path)),
@@ -586,6 +681,11 @@ async def export_cleaning_data(
     if batch_id:
         where += " AND batch_id = :bid"
         params["bid"] = str(batch_id)
+    if version_id:
+        where += " AND version_id = :vid"
+        params["vid"] = str(version_id)
+    if kind:
+        where += " AND " + kind_filter(kind, params)
 
     result = await db.execute(
         text(f"""
@@ -731,6 +831,7 @@ async def get_cleaning_metrics(
 async def list_cleaning_audit(
     queue_id: Optional[str] = None,
     batch_id: Optional[uuid.UUID] = Query(None, description="Only rows for items of this cleaning-queue batch"),
+    version_id: Optional[uuid.UUID] = None,  # only rows for items found by this run
     action: Optional[str] = None,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
@@ -751,6 +852,11 @@ async def list_cleaning_audit(
             "queue_id IN (SELECT id FROM cleaning_queue WHERE batch_id = :bid AND tenant_id = :tid)"
         )
         params["bid"] = str(batch_id)
+    if version_id:
+        where_clauses.append(
+            "queue_id IN (SELECT id FROM cleaning_queue WHERE version_id = :vid AND tenant_id = :tid)"
+        )
+        params["vid"] = str(version_id)
     if action:
         where_clauses.append("action = :act")
         params["act"] = action
@@ -787,22 +893,27 @@ async def list_all_dedup_candidates(
     object_type: Optional[str] = None,
     min_score: int = Query(default=60, ge=0, le=100),
     status: str = "pending",
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Candidate pairs across every object type (the matcher keys them by SAP module)."""
+    """Candidate pairs across every object type (the matcher keys them by SAP module), one page at a
+    time: a deployment holds millions of pairs."""
     await _set_rls(db, tenant.id)
     where = "tenant_id = :tid AND match_score >= :ms AND status = :st"
     params: dict[str, object] = {"tid": str(tenant.id), "ms": min_score, "st": status}
     if object_type:
         where += " AND object_type = :ot"
         params["ot"] = object_type
+    total = (await db.execute(text(f"SELECT COUNT(*) FROM dedup_candidates WHERE {where}"), params)).scalar() or 0
     result = await db.execute(
-        text(f"SELECT * FROM dedup_candidates WHERE {where} ORDER BY match_score DESC, object_type"),
-        params,
+        text(f"SELECT * FROM dedup_candidates WHERE {where} ORDER BY match_score DESC, object_type, id"
+             " LIMIT :limit OFFSET :offset"),
+        {**params, "limit": per_page, "offset": (page - 1) * per_page},
     )
     items = [_row_to_dict(r) for r in result.fetchall()]
-    return {"items": items, "total": len(items)}
+    return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
 # ── GET /api/v1/dedup/candidates/{object_type} ───────────────────────────────

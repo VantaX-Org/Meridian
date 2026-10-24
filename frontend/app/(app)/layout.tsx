@@ -125,7 +125,8 @@ function Chrome({ children }: { children: ReactNode }) {
           />
         </Suspense>
         <TopBar trailing={<ScopedPill />} />
-        <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
+        {/* Bottom room for the Ask Meridian launcher (fixed bottom-right), so the last row of a page never sits under it. */}
+        <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)] [padding-bottom:calc(var(--m-space-10)+var(--m-space-8))]">
           <RootPageFrame>{children}</RootPageFrame>
         </main>
         <AskMeridian />

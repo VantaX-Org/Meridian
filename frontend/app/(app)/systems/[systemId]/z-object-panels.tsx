@@ -8,12 +8,14 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Mono, Pill, Select, Skeleton, Stat, Status } from "@/design";
 import { downloadCsv } from "@/lib/actions";
+import { useRole } from "@/hooks/use-role";
 import {
-  createZRule, getZMapping, getZReport, getZRegistry, getZRules, updateZRegistryEntry,
+  createZRule, detectZObjectsNow, getZMapping, getZReport, getZRegistry, getZRules, updateZRegistryEntry,
   type ZCustomRule, type ZMapping, type ZRegistryEntry, type ZRegistryStatus, type ZRuleTemplate,
 } from "@/lib/api/z-objects";
 import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
+import { useRerun } from "./use-rerun";
 
 const STATUS_OPTIONS: { value: ZRegistryStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -116,14 +118,13 @@ export function RulesSection({ canCreate }: { canCreate: boolean }) {
   if (q.isLoading) return <Skeleton height={200} />;
   if (q.error) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   const custom = q.data?.custom_rules ?? [];
+  const newRule = canCreate ? <Button onClick={() => setCreating(true)}>New Z rule</Button> : undefined;
   return (
     <div className="flex flex-col gap-4">
-      <Card
-        title="Custom Z rules"
-        actions={canCreate ? <Button onClick={() => setCreating(true)}>New Z rule</Button> : undefined}
-      >
+      {/* With no rules yet, New Z rule is the empty state's action rather than a second copy in the header. */}
+      <Card title="Custom Z rules" actions={custom.length > 0 ? newRule : undefined}>
         {custom.length === 0 ? (
-          <EmptyState variant="inline" title="No custom Z rules yet" detail="Templates below cover the common checks" />
+          <EmptyState variant="inline" title="No custom Z rules yet" detail="Templates below cover the common checks." action={newRule} />
         ) : (
           <DataTable columns={ruleCols} data={custom} getRowId={(r) => r.id} hideToolbar dense height="auto" tableId="z-custom-rules" />
         )}
@@ -136,8 +137,17 @@ export function RulesSection({ canCreate }: { canCreate: boolean }) {
   );
 }
 
-export function MappingSection() {
+/** The mapping is tenant-wide; with `systemId`, Detect now reruns detection on that system's latest data, as the tab's own button does. */
+export function MappingSection({ systemId }: { systemId?: string } = {}) {
+  const { can } = useRole();
   const q = useQuery({ queryKey: ["z-objects", "mapping"], queryFn: getZMapping, retry: false });
+  const detect = useRerun({
+    run: () => detectZObjectsNow(systemId),
+    queryKey: ["z-objects"],
+    queued: "Detection queued. Results refresh as it finishes",
+    done: "Custom object results refreshed",
+  });
+  const detectAction = can("analyse") ? <Button onClick={() => detect.mutate()} pending={detect.isPending}>Detect now</Button> : undefined;
   const cols = useMemo<ColumnDef<ZMapping>[]>(() => [
     { id: "name", header: "Custom field", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
@@ -146,10 +156,10 @@ export function MappingSection() {
     { id: "source", header: "Source", cell: ({ row }) => labelOf(row.original.mapping_source) },
   ], []);
   if (q.isLoading) return <Skeleton height={200} />;
-  if (q.error && isNotFound(q.error)) return <EmptyState title="No custom object analysis yet" detail="Detect custom objects to see their standard mapping" />;
+  if (q.error && isNotFound(q.error)) return <EmptyState title="No custom object analysis yet" detail="Detect custom objects to see their standard mapping." action={detectAction} />;
   if (q.error) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   const mappings = q.data?.mappings ?? [];
-  if (mappings.length === 0) return <EmptyState title="No mappings yet" detail="Mappings appear once custom objects are detected" />;
+  if (mappings.length === 0) return <EmptyState title="No mappings yet" detail="Mappings appear once custom objects are detected." action={detectAction} />;
   return <DataTable columns={cols} data={mappings} getRowId={(m) => `${m.module}/${m.object_name}`} height={380} exportName="z-object-mapping" />;
 }
 

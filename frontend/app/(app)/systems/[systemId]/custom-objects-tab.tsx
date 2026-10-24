@@ -194,7 +194,7 @@ export function CustomObjectsTab({ systemId }: { systemId?: string }) {
           { value: "dormant", label: "Dormant", content: <DormantSection /> },
           { value: "drift", label: "Drift", content: <DriftSection /> },
           { value: "rules", label: "Rules", content: <RulesSection canCreate={can("manage_rules")} /> },
-          { value: "mapping", label: "Mapping", content: <MappingSection /> },
+          { value: "mapping", label: "Mapping", content: <MappingSection systemId={systemId} /> },
         ]}
       />
       <ReportDialog open={reportOpen} onOpenChange={setReportOpen} />

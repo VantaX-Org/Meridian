@@ -175,6 +175,7 @@ export default function MasterRecordPage() {
         >
           {writeback.isPending ? "Writing back…" : "Write back"}
         </GatedPrimary>
+        <Button variant="ghost" render={<Link href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
       </section>
       {writeback.data ? (
         <p className="m-text-body m-ink-3">{writeback.data.message}</p>

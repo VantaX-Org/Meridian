@@ -265,7 +265,7 @@
   .m-scopebar { display: flex; align-items: center; gap: var(--m-space-3); min-height: var(--m-scopebar-h); padding: 0 var(--m-space-6); background: var(--m-canvas); border-bottom: 1px solid var(--m-line); flex-shrink: 0; }
   .m-scopebar-trailing { display: flex; align-items: center; gap: var(--m-space-2); margin-left: auto; white-space: nowrap; }
   /* Nothing to show (the h1 is screen-reader-only and the page published no crumb or scope): the bar takes no room. */
-  .m-scopebar:not(:has(nav a, nav [data-testid="crumb-scope"], nav h1:not(.sr-only), .m-scopebar-trailing > *)) { min-height: 0; height: 0; padding: 0; border: 0; }
+  .m-scopebar:not(:has(nav a, nav [data-testid="crumb-scope"]:not(.sr-only), nav h1:not(.sr-only), .m-scopebar-trailing > *)) { min-height: 0; height: 0; padding: 0; border: 0; }
   @media (max-width: 1023px) {
     .m-topnav { padding: 0 var(--m-space-4); gap: var(--m-space-3); }
     .m-topnav-more { min-width: 0; width: calc(100vw - 32px); grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -40,23 +40,6 @@ rules:
     __other__: LIKP.VSTEL '{invalid_value}' is not defined in the check table TVST.VSTEL. Correct it there or add the missing
       entry.
   record_fix_template: LIKP.VSTEL points at a check table TVST.VSTEL entry that does not exist.
-- id: DXRd35f3f3f
-  enabled: false
-  field: LIKP.VKORG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Sales Organization must exist in the check table TVKO.VKORG
-  why_it_matters: VKORG (Sales Organization) is defined in the SAP Data Dictionary with check table TVKO.VKORG on domain VKORG.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VKORG resolve it through check table TVKO.VKORG; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: LIKP.VKORG '{invalid_value}' is not defined in the check table TVKO.VKORG. Correct it there or add the missing
-      entry.
-  record_fix_template: LIKP.VKORG points at a check table TVKO.VKORG entry that does not exist.
 - id: DXR38521352
   enabled: false
   field: LIKP.LFART
@@ -141,91 +124,6 @@ rules:
     __other__: LIKP.LIFSK '{invalid_value}' is not defined in the check table TVLS.LIFSP. Correct it there or add the missing
       entry.
   record_fix_template: LIKP.LIFSK points at a check table TVLS.LIFSP entry that does not exist.
-- id: DXVd5d78e1e
-  enabled: false
-  field: LIKP.VBTYP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: 'SD document category must be a value of domain VBTYP (e.g. #, $, &, *, +, ,, -, ., 0, 1, 2, 3 ...)'
-  why_it_matters: Domain VBTYP fixes the permitted values of VBTYP (SD document category) in the SAP Data Dictionary. Any
-    other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the
-    field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VBTYP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '#'
-  - $
-  - '&'
-  - '*'
-  - +
-  - ','
-  - '-'
-  - .
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  - '4'
-  - '5'
-  - '6'
-  - '7'
-  - '8'
-  - ':'
-  - A
-  - B
-  - C
-  - D
-  - E
-  - F
-  - G
-  - H
-  - I
-  - J
-  - K
-  - L
-  - M
-  - N
-  - O
-  - P
-  - Q
-  - R
-  - S
-  - T
-  - U
-  - V
-  - W
-  - X
-  - ^
-  - a
-  - b
-  - c
-  - d
-  - e
-  - f
-  - g
-  - h
-  - i
-  - j
-  - k
-  - n
-  - o
-  - p
-  - q
-  - r
-  - s
-  - t
-  - u
-  - v
-  - w
-  - x
-  - '|'
-  - '~'
-  - §
-  fix_map:
-    __other__: 'LIKP.VBTYP ''{invalid_value}'' is not in domain VBTYP. Set it to one of: #, $, &, *, +, ,, -, ., 0, 1, 2,
-      3 ....'
-  record_fix_template: 'LIKP.VBTYP is {actual_value}; expected one of: #, $, &, *, +, ,, -, ., 0, 1, 2, 3 ....'
 - id: DXRd2dda3ad
   enabled: false
   field: LIKP.KNFAK
@@ -277,40 +175,6 @@ rules:
     __other__: LIKP.VSBED '{invalid_value}' is not defined in the check table TVSB.VSBED. Correct it there or add the missing
       entry.
   record_fix_template: LIKP.VSBED points at a check table TVSB.VSBED entry that does not exist.
-- id: DXR599d4c24
-  enabled: false
-  field: LIKP.KUNNR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Ship-to party must exist in the check table KNA1.KUNNR
-  why_it_matters: KUNNR (Ship-to party) is defined in the SAP Data Dictionary with check table KNA1.KUNNR on domain KUNNR.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KUNNR resolve it through check table KNA1.KUNNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: LIKP.KUNNR '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
-      entry.
-  record_fix_template: LIKP.KUNNR points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR859e160f
-  enabled: false
-  field: LIKP.KUNAG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Sold-to party must exist in the check table KNA1.KUNNR
-  why_it_matters: KUNAG (Sold-to party) is defined in the SAP Data Dictionary with check table KNA1.KUNNR on domain KUNNR.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KUNAG resolve it through check table KNA1.KUNNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: LIKP.KUNAG '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
-      entry.
-  record_fix_template: LIKP.KUNAG points at a check table KNA1.KUNNR entry that does not exist.
 - id: DXRa98303eb
   enabled: false
   field: LIKP.KDGRP
@@ -1189,23 +1053,6 @@ rules:
     __other__: LIPS.PSTYV '{invalid_value}' is not defined in the check table TVPT.PSTYV. Correct it there or add the missing
       entry.
   record_fix_template: LIPS.PSTYV points at a check table TVPT.PSTYV entry that does not exist.
-- id: DXR352a09e3
-  enabled: false
-  field: LIPS.MATNR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Material Number must exist in the check table MARA.MATNR
-  why_it_matters: MATNR (Material Number) is defined in the SAP Data Dictionary with check table MARA.MATNR on domain MATNR.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MATNR resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: LIPS.MATNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: LIPS.MATNR points at a check table MARA.MATNR entry that does not exist.
 - id: DXR6458fcbd
   enabled: false
   field: LIPS.MATWA
@@ -3584,36 +3431,6 @@ rules:
     __other__: VBRK.FKART '{invalid_value}' is not defined in the check table TVFK.FKART. Correct it there or add the missing
       entry.
   record_fix_template: VBRK.FKART points at a check table TVFK.FKART entry that does not exist.
-- id: DXV860998d8
-  enabled: false
-  field: VBRK.FKTYP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Billing Category must be a value of domain FKTYP (e.g. A, B, C, D, E, F, I, K, L, P, R, U ...)
-  why_it_matters: Domain FKTYP fixes the permitted values of FKTYP (Billing Category) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FKTYP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - A
-  - B
-  - C
-  - D
-  - E
-  - F
-  - I
-  - K
-  - L
-  - P
-  - R
-  - U
-  - W
-  - X
-  fix_map:
-    __other__: 'VBRK.FKTYP ''{invalid_value}'' is not in domain FKTYP. Set it to one of: A, B, C, D, E, F, I, K, L, P, R,
-      U ....'
-  record_fix_template: 'VBRK.FKTYP is {actual_value}; expected one of: A, B, C, D, E, F, I, K, L, P, R, U ....'
 - id: DXVb3aeb166
   enabled: false
   field: VBRK.VBTYP
@@ -4018,22 +3835,6 @@ rules:
     __other__: VBRK.BUKRS '{invalid_value}' is not defined in the check table T001.BUKRS. Correct it there or add the missing
       entry.
   record_fix_template: VBRK.BUKRS points at a check table T001.BUKRS entry that does not exist.
-- id: DXRcc73bb79
-  enabled: false
-  field: VBRK.KUNRG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Payer must exist in the check table KNA1.KUNNR
-  why_it_matters: KUNRG (Payer) is defined in the SAP Data Dictionary with check table KNA1.KUNNR on domain KUNNR. A value
-    outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KUNRG resolve it through check table KNA1.KUNNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: VBRK.KUNRG '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
-      entry.
-  record_fix_template: VBRK.KUNRG points at a check table KNA1.KUNNR entry that does not exist.
 - id: DXR40a9d4f8
   enabled: false
   field: VBRK.KUNAG
@@ -4856,23 +4657,6 @@ rules:
     __other__: VBRP.AUPOS '{invalid_value}' is not defined in the check table VBUP.POSNR. Correct it there or add the missing
       entry.
   record_fix_template: VBRP.AUPOS points at a check table VBUP.POSNR entry that does not exist.
-- id: DXR42469bab
-  enabled: false
-  field: VBRP.MATNR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Material Number must exist in the check table MARA.MATNR
-  why_it_matters: MATNR (Material Number) is defined in the SAP Data Dictionary with check table MARA.MATNR on domain MATNR.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MATNR resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: VBRP.MATNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: VBRP.MATNR points at a check table MARA.MATNR entry that does not exist.
 - id: DXR7cf3babc
   enabled: false
   field: VBRP.PMATN
@@ -5230,24 +5014,6 @@ rules:
     __other__: VBRP.SPARA '{invalid_value}' is not defined in the check table TSPA.SPART. Correct it there or add the missing
       entry.
   record_fix_template: VBRP.SPARA points at a check table TSPA.SPART entry that does not exist.
-- id: DXV227f103e
-  enabled: false
-  field: VBRP.SHKZG
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Returns item must be a value of domain SHKZG_VF (e.g. A, B, X)
-  why_it_matters: Domain SHKZG_VF fixes the permitted values of SHKZG (Returns item) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: SHKZG will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - A
-  - B
-  - X
-  fix_map:
-    __other__: 'VBRP.SHKZG ''{invalid_value}'' is not in domain SHKZG_VF. Set it to one of: A, B, X.'
-  record_fix_template: 'VBRP.SHKZG is {actual_value}; expected one of: A, B, X.'
 - id: DXR5440a580
   enabled: false
   field: VBRP.BWTAR

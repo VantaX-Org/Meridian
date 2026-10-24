@@ -133,7 +133,7 @@ export default function RulesPage() {
 
   return (
     <InsightFrame
-      title="Explore"
+      title="Failing rules"
       scope
       meta={`${module ? formatModuleName(module) : "Every object in this run"}${field ? `, field ${field}` : ""}`}
       run={run}

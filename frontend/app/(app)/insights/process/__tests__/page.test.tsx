@@ -83,6 +83,5 @@ describe("ProcessInsightsPage without a process definition", () => {
     expect(await screen.findByRole("option", { name: /accounts_payable_1k, Accounts payable/ })).toBeInTheDocument();
     // The four sentences come from the frame, once, with the shared action bar beside the title.
     expect(screen.getByText("Business partner has no L1 to L5 process definition.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Report library" })).toBeInTheDocument();
   });
 });

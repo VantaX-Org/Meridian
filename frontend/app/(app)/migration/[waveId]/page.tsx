@@ -5,12 +5,12 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Bar, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Skeleton, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel, toVerdict } from "@/design";
+import { Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Skeleton, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel, toVerdict } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import {
-  downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, signoffWave,
+  downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, runWave, signoffWave,
 } from "@/lib/api/migration";
 import { downloadRealignment } from "@/lib/api/config-pairing";
 import { formatDate } from "@/lib/format";
@@ -57,6 +57,16 @@ export default function WaveCockpitPage() {
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
+  // The waves list's Run now, offered here by the tabs that need a run first.
+  const runNow = useMutation({
+    mutationFn: () => runWave(waveId),
+    onSuccess: () => {
+      toast.success("Run queued, readiness updates when it completes");
+      void qc.invalidateQueries({ queryKey: queryKeys.migrationCockpit(waveId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.migrationWaves() });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
 
   if (cockpit.isPending) {
     return (
@@ -96,6 +106,9 @@ export default function WaveCockpitPage() {
   // "objects" is the pre-18a name of the first tab; keep old deep links working.
   const rawTab = searchParams.get("tab") ?? "overview";
   const tab = rawTab === "objects" ? "overview" : rawTab;
+  const runAction = can("analyse") ? <Button onClick={() => runNow.mutate()} pending={runNow.isPending}>Run now</Button> : undefined;
+  // A wave's modules are set when it is created; the waves list is where that happens.
+  const wavesAction = <Button render={<Link href="/migration">Open waves</Link>} />;
 
   return (
     <div className="flex flex-col [gap:var(--m-section-gap)]">
@@ -135,11 +148,11 @@ export default function WaveCockpitPage() {
                 <DataTable columns={objectColumns(run)} data={ranked} getRowId={(o) => o.module} />
                 <Bar label="Objects by readiness verdict" height={96} data={funnel} />
               </div>
-            ) : <EmptyState title="Add modules to this wave to see its objects." /> },
-          { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} blockers={c.blockers} /> },
+            ) : <EmptyState title="No modules in this wave" detail="Modules are set when a wave is created, on the waves page." action={wavesAction} /> },
+          { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} blockers={c.blockers} runAction={runAction} /> },
           { value: "mapping", label: "Mapping", content: (
-              <MappingTab modules={w.modules} destType={c.dest_system_type} />) },
-          { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} /> },
+              <MappingTab modules={w.modules} destType={c.dest_system_type} runAction={runAction} wavesAction={wavesAction} />) },
+          { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} runAction={runAction} /> },
           ...entityTabs({ entityType: "migration", entityId: waveId, auditPath: `/migration/waves/${waveId}` }),
         ]}
       />

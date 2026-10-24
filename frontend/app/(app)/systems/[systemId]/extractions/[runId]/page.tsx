@@ -10,13 +10,26 @@ import { JobProgress } from "@/design/shell/JobProgress";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { getJob } from "@/lib/api/jobs";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
+import { getVersion } from "@/lib/api/versions";
 import { apiErrorState } from "@/lib/error";
+import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
-
+// A run repeats a step per object, so a step is named by its number and when it started.
+const stepId = (st: RunStep, i: number) => `${st.step_number}-${st.started_at}-${i}`;
+/** Chart labels: a step that repeats (once per object) is numbered, "Running data quality checks 2". */
+const stepLabels = (steps: RunStep[]): string[] => {
+  const total = new Map<string, number>(), seen = new Map<string, number>();
+  for (const st of steps) total.set(st.step_name, (total.get(st.step_name) ?? 0) + 1);
+  return steps.map((st) => {
+    const n = (seen.get(st.step_name) ?? 0) + 1;
+    seen.set(st.step_name, n);
+    return (total.get(st.step_name) ?? 0) > 1 ? `${st.step_name} ${n}` : st.step_name;
+  });
+};
 
 const columns: ColumnDef<RunStep>[] = [
-  { accessorKey: "step_number", header: "#" },
+  { accessorKey: "started_at", header: "Started", cell: ({ row }) => formatDate(row.original.started_at, "seconds") },
   { accessorKey: "step_name", header: "Step" },
   {
     accessorKey: "status",
@@ -37,6 +50,7 @@ export default function ExtractionPage() {
     queryKey: [...queryKeys.run(runId), "steps"],
     queryFn: () => getRunSteps(runId),
   });
+  const version = useQuery({ queryKey: ["version", runId], queryFn: () => getVersion(runId), retry: false });
   const job = useQuery({
     queryKey: [...queryKeys.run(runId), "job"],
     queryFn: () => getJob(`dl-${runId}`),
@@ -48,8 +62,8 @@ export default function ExtractionPage() {
     if (isAxiosError(steps.error) && steps.error.response?.status === 404) {
       return (
         <EmptyState
-          title="Extraction not found."
-          detail="This run id does not exist for this system."
+          title="Extraction not found"
+          detail="This run does not exist for this system."
           action={<Button render={<Link href={`/systems/${systemId}`}>Back to system</Link>} />}
         />
       );
@@ -64,9 +78,10 @@ export default function ExtractionPage() {
   const activeJob = liveJob && (liveJob.status === "queued" || liveJob.status === "running") ? liveJob : null;
   const runningStage = activeJob?.stages?.find((s) => s.status === "running")?.label;
 
+  const v = version.data;
   const narrative = (
     <>
-      Extraction run <Mono>{runId}</Mono>
+      {v ? <>Extracted {formatDate(v.run_at, "datetime")}{v.label ? <>, run <Mono>{v.label}</Mono></> : null}.</> : <>Run <Mono>{runId}</Mono></>}
       {activeJob ? (
         <>
           <RunProgressBanner
@@ -90,6 +105,8 @@ export default function ExtractionPage() {
 
   return (
     <ReportPage
+      title="Extraction"
+      meta={v ? <Status kind="lifecycle" value={v.status} /> : undefined}
       narrative={narrative}
       exportMenu={stepRows.length > 0 ? <ExportMenu options={[{ format: "xlsx", run: () => exportRunSteps(runId, "xlsx") }]} /> : undefined}
       charts={
@@ -97,13 +114,17 @@ export default function ExtractionPage() {
           <Bar
             label="Step durations in seconds"
             height={Math.max(120, stepRows.length * 36)}
-            data={stepRows.flatMap((st) => (st.duration_ms == null ? [] : [{ x: st.step_name, y: Number((st.duration_ms / 1000).toFixed(1)) }]))}
+            data={stepRows.flatMap((st, i) => (st.duration_ms == null ? [] : [{ x: stepLabels(stepRows)[i], y: Number((st.duration_ms / 1000).toFixed(1)) }]))}
           />
         ) : null
       }
-      tables={<DataTable columns={columns} data={stepRows} getRowId={(row) => String(row.step_number)} />}
+      tables={<DataTable columns={columns} data={stepRows} getRowId={(row) => stepId(row, stepRows.indexOf(row))} />}
       state={steps.isLoading ? "loading" : stepRows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No step history for this extraction yet." }}
+      emptyProps={{
+        title: "No step history yet",
+        detail: "Steps appear here as the extraction runs.",
+        action: <Button variant="secondary" render={<Link href={`/systems/${systemId}`}>Back to system</Link>} />,
+      }}
     />
   );
 }

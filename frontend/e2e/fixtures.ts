@@ -216,14 +216,25 @@ async function mockSteward(page: Page) {
 export const CLEANING_ITEM = {
   id: "cq1", object_type: "business_partner", status: "recommended", confidence: 0.92,
   record_key: "LIFNR=V9|BUKRS=2000", priority: 1, detected_at: "2026-10-01T09:00:00Z", applied_at: null,
-  rollback_deadline: null, rule_id: "DUP001", batch_id: "B1", version_id: null, merge_preview: null,
-  record_data_before: null, record_data_after: null, golden_record_id: null, golden_field_value: null,
+  rollback_deadline: null, rule_id: null, batch_id: null, version_id: "B1", merge_preview: null,
+  record_data_before: { "LFA1.NAME1": "acme" }, record_data_after: { "LFA1.NAME1": "ACME" }, golden_record_id: null, golden_field_value: null,
   golden_record_exists: false,
 };
 
+/** The cleaning queue's one group: the fixture item's run "B1" and the field it fixes. */
+export const CLEANING_GROUP = {
+  version_id: "B1", object_type: "business_partner", kind: "LFA1.NAME1", rule_name: null, records: 1,
+  avg_confidence: 0.92, confident: 1, run_label: "business_partner_100k", run_at: "2026-10-01T09:00:00Z",
+};
+
+/** Proposals carry a run, not a batch: the queue is grouped by run and kind, and a review page is one run. */
 async function mockFixBatch(page: Page) {
-  await page.route(/\/api\/v1\/cleaning\/queue\?(?=.*batch_id=B1)/, (r) =>
-    r.fulfill(json({ items: [CLEANING_ITEM], total: 1, page: 1, per_page: 500 })));
+  await page.route(/\/api\/v1\/cleaning\/queue\/groups/, (r) =>
+    r.fulfill(json({ groups: [CLEANING_GROUP], records: 1, confident: 1, runs: 1 })));
+  await page.route(/\/api\/v1\/cleaning\/queue\?(?=.*version_id=B1)/, (r) =>
+    r.fulfill(json({ items: [CLEANING_ITEM], total: 1, page: 1, per_page: 100 })));
+  await page.route(/\/api\/v1\/versions\/B1$/, (r) =>
+    r.fulfill(json({ id: "B1", label: "business_partner_100k", run_at: "2026-10-01T09:00:00Z", status: "complete" })));
   await page.route(/\/api\/v1\/cleaning\/approve\//, (r) =>
     r.fulfill(json({ id: CLEANING_ITEM.id, status: "approved" })));
 }
@@ -238,6 +249,8 @@ const WAVE_W1 = {
   signed_off_by: null, signed_off_at: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
 };
 async function mockWave(page: Page) {
+  // The seeded tenant has no S/4 load dry runs; the recording holds no list of them.
+  await page.route(/\/api\/v1\/migration\/runs(\?.*)?$/, (r) => r.fulfill(json({ runs: [] })));
   await page.route(/\/api\/v1\/migration\/waves(\?.*)?$/, (r) => (r.request().method() === "GET" ? r.fulfill(json({ waves: [WAVE_W1] })) : r.fallback()));
   await page.route("**/api/v1/migration/waves/w1/cockpit", (r) => r.fulfill(json({
     wave: WAVE_W1, run_id: RECORDED.latestRunId, source_version_id: RECORDED.latestRunId, dest_system_type: "s4hana", verdict: "no_go",

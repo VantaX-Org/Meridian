@@ -53,8 +53,7 @@ describe("ForecastPage", () => {
     // The forecast reads every object's history, not one run: the header says what the API saw and names no run.
     expect(await screen.findByText("Every object, 6 runs on 1 day")).toBeInTheDocument();
     expect(screen.queryByTestId("run-scope")).toBeNull();
-    expect(screen.getByRole("link", { name: "Report library" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Auto clean" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review fixes" })).toBeInTheDocument();
   });
 
   it("forecastEmptyDetail covers no runs, too few days and the unknown case", () => {

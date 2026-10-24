@@ -6,6 +6,12 @@ import type {
   BatchLookupResponse,
 } from "@/types/api";
 
+/** POST /api/v1/glossary/populate: draft terms for every analysed object from the rule library. */
+export async function populateGlossary(): Promise<{ created: number; linked: number; objects: number }> {
+  const { data } = await apiClient.post("/api/v1/glossary/populate");
+  return data;
+}
+
 export async function getGlossaryTerms(params?: {
   domain?: string;
   status?: string;

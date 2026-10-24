@@ -249,7 +249,7 @@ export default function SystemPage() {
           router.replace(`/systems/${systemId}?${params.toString()}`, { scroll: false });
         }}
         items={[
-          { value: "overview", label: "Overview", content: <Overview systemId={systemId} versions={versions} modules={modules} latest={latest} canSync={can("trigger_sync")} /> },
+          { value: "overview", label: "Overview", content: <Overview systemId={systemId} versions={versions} modules={modules} latest={latest} canSync={can("trigger_sync")} canAnalyse={can("analyse")} /> },
           {
             value: "objects",
             label: "Objects",
@@ -339,8 +339,8 @@ function rankObjects(modules: SystemModule[], latest: SystemVersion | null, summ
   return rows.sort((a, b) => b.records - a.records || b.affected - a.affected || a.name.localeCompare(b.name));
 }
 
-function Overview({ systemId, modules, versions, latest, canSync }: {
-  systemId: string; modules: SystemModule[]; versions: SystemVersion[]; latest: SystemVersion | null; canSync: boolean;
+function Overview({ systemId, modules, versions, latest, canSync, canAnalyse }: {
+  systemId: string; modules: SystemModule[]; versions: SystemVersion[]; latest: SystemVersion | null; canSync: boolean; canAnalyse: boolean;
 }) {
   const router = useRouter();
   const objectsQ = useQuery({
@@ -385,7 +385,7 @@ function Overview({ systemId, modules, versions, latest, canSync }: {
               ))}
             </ul>
           </Card>
-          {selected ? <ObjectSummaryPane row={selected} latest={latest} systemId={systemId} canSync={canSync} /> : null}
+          {selected ? <ObjectSummaryPane row={selected} latest={latest} systemId={systemId} canSync={canSync} canAnalyse={canAnalyse} /> : null}
         </div>
       ) : null}
       <div className="grid [gap:var(--m-section-gap)] @5xl:grid-cols-2">
@@ -440,20 +440,26 @@ function Overview({ systemId, modules, versions, latest, canSync }: {
   );
 }
 
-/** The selected object: its score, the rule holding it down, its last run, and the one action. */
-function ObjectSummaryPane({ row, latest, systemId, canSync }: { row: ObjectRow; latest: SystemVersion | null; systemId: string; canSync: boolean }) {
+/**
+ * The selected object: its score, the rule holding it down, its last run, and the one action.
+ * Not analysed yet, the one action sits in the empty state: Analyse when it has records, else Extract,
+ * both on the Objects tab, where the per-object Analyse and Extract again buttons are.
+ */
+function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse }: {
+  row: ObjectRow; latest: SystemVersion | null; systemId: string; canSync: boolean; canAnalyse: boolean;
+}) {
   const s = row.summary;
   const analysed = row.score !== null && latest !== null;
   const href = analysed ? `/objects/${row.module}?run=${latest.id}` : `/objects/${row.module}`;
+  const objectsTab = `/systems/${systemId}?tab=objects`;
+  const nextStep = row.records > 0
+    ? (canAnalyse ? <Button render={<Link href={objectsTab}>Analyse</Link>} /> : undefined)
+    : (canSync ? <Button render={<Link href={objectsTab}>Extract</Link>} /> : undefined);
   return (
     <Card
       title={row.name}
       meta={row.records > 0 ? `${row.records.toLocaleString()} records` : "Not loaded"}
-      actions={
-        analysed ? <Button render={<Link href={href}>Open object</Link>} />
-          : canSync ? <Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />
-          : undefined
-      }
+      actions={analysed ? <Button render={<Link href={href}>Open object</Link>} /> : undefined}
     >
       {analysed ? (
         <dl className="grid grid-cols-2 items-start gap-x-6 gap-y-4 @3xl:grid-cols-4" data-testid="object-summary">
@@ -496,6 +502,7 @@ function ObjectSummaryPane({ row, latest, systemId, canSync }: { row: ObjectRow;
         <EmptyState
           title="Not analysed yet"
           detail={row.records > 0 ? "Run an analysis to score this object." : "Extract this object to score it."}
+          action={nextStep}
         />
       )}
     </Card>

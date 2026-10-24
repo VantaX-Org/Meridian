@@ -79,8 +79,12 @@ describe("S4Tab", () => {
     expect(byCode).toHaveBeenCalledWith("BP203", "business_partner");
   });
 
-  it("asks for a wave run first when there is no version", () => {
-    renderWithQuery(<S4Tab versionId={null} />);
-    expect(screen.getByText(/run this wave/i)).toBeInTheDocument();
+  it("asks for a wave run first when there is no version, with the run action", async () => {
+    const onRun = vi.fn();
+    renderWithQuery(<S4Tab versionId={null} runAction={<button type="button" onClick={onRun}>Run now</button>} />);
+    const empty = screen.getByText("Not run yet").closest("[data-state='empty']") as HTMLElement;
+    expect(within(empty).getByText(/run this wave/i)).toBeInTheDocument();
+    await userEvent.click(within(empty).getByRole("button", { name: "Run now" }));
+    expect(onRun).toHaveBeenCalled();
   });
 });

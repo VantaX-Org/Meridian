@@ -108,7 +108,7 @@ Exporting needs the export process permission (Admin, Manager and Process analys
 
 ## Process readiness
 
-Process readiness answers "can we run this process on this data". Open **Insights**, **Readiness** and choose **Processes**. The page is titled **Process**, with two tabs: **Readiness** and **Map**. It reads the latest completed analysis.
+Process readiness answers "can we run this process on this data". Open **Insights**, **Readiness** and choose **Processes**. The page is titled **Processes**, with two tabs: **Readiness** and **Map**. It reads the latest completed analysis.
 
 ### How data quality enriches each step
 

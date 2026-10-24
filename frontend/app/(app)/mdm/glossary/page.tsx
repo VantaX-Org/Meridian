@@ -4,13 +4,15 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Pill, Select, asyncStateOf, type CellMeta } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { formatModuleName } from "@/lib/format";
 import { useUrlState } from "@/hooks/use-url-state";
-import { getGlossaryTerms } from "@/lib/api/glossary";
+import { getGlossaryTerms, populateGlossary } from "@/lib/api/glossary";
+import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { GlossaryTermSummary } from "@/types/api";
@@ -48,6 +50,16 @@ export default function GlossaryPage() {
   const [domain, setDomain] = useUrlState("domain", "all");
   const [status, setStatus] = useUrlState("status", "all");
   const [search, setSearch] = useUrlState("q");
+  const qc = useQueryClient();
+  const canDraft = useRole().can("approve");
+  const draft = useMutation({
+    mutationFn: populateGlossary,
+    onSuccess: (r) => {
+      toast.success(`${r.created.toLocaleString()} term${r.created === 1 ? "" : "s"} drafted across ${r.objects.toLocaleString()} object${r.objects === 1 ? "" : "s"}`);
+      void qc.invalidateQueries({ queryKey: ["glossary"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
 
   const query = useQuery({
     queryKey: queryKeys.glossary("list", { domain, status, search }),
@@ -64,7 +76,7 @@ export default function GlossaryPage() {
   const domainOptions = useMemo(() => {
     const seen = new Set<string>();
     for (const t of terms) seen.add(t.domain);
-    return [{ value: "all", label: "All domains" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: d }))];
+    return [{ value: "all", label: "All domains" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: formatModuleName(d) }))];
   }, [terms]);
 
   const state = asyncStateOf(query, () => terms.length === 0, true);
@@ -102,10 +114,14 @@ export default function GlossaryPage() {
       state={state}
       emptyProps={{
         title: filtered ? "No terms match" : "No terms yet",
-        detail: filtered ? "Clear a filter to widen the list." : "Terms are drafted from analysed SAP fields. Run an analysis to populate the glossary.",
+        detail: filtered
+          ? "Clear a filter to widen the list."
+          : "Terms are drafted from the SAP fields Meridian's rules check, for each object you analyse. Each analysis adds its objects' terms.",
         action: filtered
           ? <Button variant="secondary" onClick={clearFilters}>Clear filters</Button>
-          : <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />,
+          : canDraft
+            ? <Button pending={draft.isPending} onClick={() => draft.mutate()}>Draft terms from analysed objects</Button>
+            : <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />,
       }}
       errorProps={{
         message: apiErrorMessage(query.error),

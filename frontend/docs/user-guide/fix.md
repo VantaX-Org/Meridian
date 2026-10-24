@@ -10,25 +10,26 @@ The page header reads **Fix**, "Review proposals, approve batches and hand them 
 
 ## Cleaning queue
 
-A cleaning proposal is a suggested new value for a failing record. The queue groups proposals by batch and rule, so each row is one decision: review this rule's fixes in this batch. Rows with the most records come first.
+A cleaning proposal is a suggested new value for a failing record. Meridian proposes them after every run. The queue groups the open proposals by the run that found them, the object and what they fix, so each row is one decision. Rows with the most records come first.
 
-The figures above the table are **Records with a proposal** (with the number of rules and batches) and **At 85% confidence or higher**, the records ready to accept.
+What a row fixes is either a field, shown as **Fix** and the field name, for example `MARA.MEINS`, or **Duplicate records**, a pair of records that look like the same thing.
 
-The columns are **Object**, **Rule**, **Records**, **Confidence** (the mean confidence of the group), **Proposed value**, **Batch** and **Review**. The proposed value is the most common one in the group, in monospace, with the field it changes beside it. Hover over it to see the old value and the new one.
+The figures above the table are **Records with a proposal** (with the number of groups and runs) and **At 85% confidence or higher**, the records ready to accept in one step.
+
+The columns are **Object**, **What it fixes**, **Records**, **Confidence** (the mean confidence of the group), **At 85% or higher**, **Found by run** and **Review**.
 
 The export menu offers **Approved fixes (.xlsx)** and **Approved fixes (.csv)**.
 
-## How to review a cleaning batch
+## How to review cleaning proposals
 
-1. In **Cleaning queue**, select a row or its **Review** link. The batch page opens, titled with the batch id.
-2. Read the figures: **Records**, **Mean confidence** and **At 85% or higher**.
-3. The table lists each proposal with **Record**, **Rule**, **Proposed value**, **Confidence** and **Status**, most confident first.
+1. In **Cleaning queue**, select a row or its **Review** link. The review page opens, titled with what the proposals fix and the run that found them. A **Duplicate records** row opens the **Duplicates** tab instead, where you merge them.
+2. Read the figures: **Waiting for review**, **At 85% or higher** and **Approved**.
+3. The table lists each proposal with **Record**, **Proposed value**, **Confidence** and **Status**, most confident first, 100 to a page.
 4. Select **Approve** or **Reject** on each row. A rejection is recorded with the reason "steward rejected".
-5. To approve in bulk, select **Accept N at 85% or higher** at the top.
+5. To approve in bulk, select **Accept N at 85% or higher** at the top. It approves every waiting proposal of this group with a confidence of 85% or higher, on every page, up to 5,000 at a time.
+6. When proposals are approved, select **Draft fix batch from N approved**. Meridian drafts a fix batch from them, which you then approve and export on the **Batches** tab (see below). A second person approves the batch before it is exported.
 
-The bulk button approves exactly the proposals it counts: the waiting proposals listed in this batch with a confidence of 85% or higher, whatever their rule's automation level. Approve or reject the others one by one.
-
-The batch page also has **Related**, **History** and **Audit** tabs. **Audit** lists every approval, rejection and change with **When**, **Who**, **Action** and **Record**. If your role can export, the export menu offers the approved fixes of this batch as .xlsx or .csv, and **PDF cleaning report (all batches)**. That report covers the whole tenant, not only this batch: proposals by object, rules applied, the audit trail, fix batches, proposed values, record-level fixes and duplicate candidates.
+The review page also has **Related**, **History** and **Audit** tabs. **Audit** lists every approval, rejection and change with **When**, **Who**, **Action** and **Record**. If your role can export, the export menu offers the approved fixes of these proposals as .xlsx or .csv, and **PDF cleaning report (all batches)**. That report covers the whole tenant: proposals by object, rules applied, the audit trail, fix batches, proposed values, record-level fixes and duplicate candidates.
 
 Approving and rejecting need the approve permission (Admin, Manager, Steward and Approver). Without it, **Approve** is greyed out and its tooltip names the role you need, with a **Request access** link.
 
@@ -42,6 +43,7 @@ A fix batch is a set of record-level corrections that move together. It has thre
 
 Batches are drafted from several places. Creating one needs the apply permission (Admin, Manager and Steward).
 
+- The cleaning queue: **Draft fix batch from N approved** on a review page.
 - A run comparison: **Create fix batch** on a rule that newly fails, or **Create fix batches** for several (see [Runs](/docs?page=runs)).
 - **What-if**: **Create fix batch from this simulation**.
 - A migration wave: **Create fix batch** on the **Blockers** or **S/4 areas** tab (see [Migration](/docs?page=migration)).
@@ -123,7 +125,15 @@ The card also shows the re-check schedule, with **Set a schedule** or **Change**
 
 ## Duplicates
 
-The **Duplicates** tab lists candidate pairs with **Object**, **Record A**, **Record B**, **Match**, **Method** and **Status**. It is read-only. Merging happens in [Master data](/docs?page=mdm).
+The **Duplicates** tab lists candidate pairs with **Object**, **Record A**, **Record B**, **Match**, **Method** and **Status**, 100 to a page, best matches first.
+
+## How to merge duplicates
+
+1. On the **Duplicates** tab, select a pair. A side panel opens.
+2. Compare the two records field by field.
+3. Select **Keep A** or **Keep B**. The record you keep survives, and the other is folded into it in the golden record.
+
+Merging needs the approve permission. To tune how pairs are found, use [Master data](/docs?page=mdm) match rules.
 
 ## How to use What-if
 

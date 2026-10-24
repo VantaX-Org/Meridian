@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as lineageApi from "@/lib/api/lineage";
@@ -11,9 +11,10 @@ vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
 // mock it wholesale so the page renders without an auth provider.
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(""), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/" }));
+// DayOneAction renders its fallback link, as it does with no day-one step.
 vi.mock("@/hooks/use-day-one", () => ({
   useDayOne: () => ({ status: "ready", step: null }),
-  DayOneAction: () => null,
+  DayOneAction: ({ fallbackHref, fallbackLabel }: { fallbackHref: string; fallbackLabel: string }) => <a href={fallbackHref}>{fallbackLabel}</a>,
 }));
 
 const LATEST = {
@@ -104,11 +105,41 @@ describe("LineagePage trace graph", () => {
     expect(node).toHaveAttribute("role", "button");
     expect(node).toHaveAttribute("tabindex", "0");
     // The frame carries the shared action bar for the run (checked before the drawer, a modal, hides the page).
-    expect(screen.getByRole("link", { name: "Report library" })).toHaveAttribute("href", "/insights/reports?run=v1");
     fireEvent.click(node);
     const open = await screen.findByRole("link", { name: "Open the object" });
     expect(open).toHaveAttribute("href", "/objects/business_partner?run=v1");
     expect(open.getAttribute("href")).not.toContain("/analyse/");
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("LineagePage blast radius", () => {
+  it("sends a traced rule to Runs when there is no completed analysis", async () => {
+    class StubRO { observe() {} disconnect() {} unobserve() {} }
+    vi.stubGlobal("ResizeObserver", StubRO);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    vi.spyOn(lineageApi, "getLineageModel").mockResolvedValue({ model_version: 3, node_counts: {}, edge_count: 10, kpis: [], processes: [], features: [], warnings: [] });
+    vi.spyOn(lineageApi, "getLineage").mockResolvedValue({
+      start: "check:AP017", model_version: 3,
+      nodes: [
+        { id: "check:AP017", type: "check", label: "AP017" },
+        { id: "kpi:dpo", type: "kpi", label: "DPO" },
+      ],
+      edges: [{ source: "check:AP017", target: "kpi:dpo", rel: "guards" }],
+      paths_to_kpis: [],
+    } as never);
+    const { container } = renderWithQuery(<LineagePage />);
+    fireEvent.change(await screen.findByLabelText("Node to trace"), { target: { value: "check:AP017" } });
+    fireEvent.click(screen.getByRole("button", { name: "Trace" }));
+    const node = await waitFor(() => {
+      const g = Array.from(container.querySelectorAll("g.m-graph-node")).find((el) => el.querySelector("title")?.textContent === "AP017");
+      expect(g).toBeTruthy();
+      return g as SVGGElement;
+    });
+    fireEvent.click(node);
+    const empty = (await screen.findByText("No blast radius yet")).closest("[data-state='empty']") as HTMLElement;
+    expect(within(empty).getByText("Blast radius needs a completed analysis.")).toBeInTheDocument();
+    expect(within(empty).getByRole("link", { name: "Open runs" })).toHaveAttribute("href", "/runs");
     vi.unstubAllGlobals();
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -96,7 +96,8 @@ function AreaDrawer({ area, versionId, onClose, onFix, fixing, canFix }: {
   );
 }
 
-export function S4Tab({ versionId }: { versionId: string | null }) {
+/** `runAction` is the cockpit's Run now, absent without the analyse permission. */
+export function S4Tab({ versionId, runAction }: { versionId: string | null; runAction?: ReactNode }) {
   const router = useRouter();
   const qc = useQueryClient();
   const { can } = useRole();
@@ -153,7 +154,7 @@ export function S4Tab({ versionId }: { versionId: string | null }) {
     ];
   }, [versionId, canFix, fix, fixingCheck]);
 
-  if (!versionId) return <EmptyState title="Run this wave to see S/4 simplification areas" />;
+  if (!versionId) return <EmptyState title="Not run yet" detail="Run this wave to see its S/4 simplification areas." action={runAction} />;
   if (s4.isError) return <ErrorState {...apiErrorState(s4.error)} onRetry={() => void s4.refetch()} />;
   if (s4.isLoading || !s4.data) return <Skeleton height={240} />;
   const d = s4.data;

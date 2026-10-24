@@ -81,7 +81,7 @@ Creating a fix batch needs the apply permission (Admin, Manager and Steward).
 4. Where a field has a value map, select **Value map** to see each **Source value** and **Target value**.
 5. To add an entry, type a source value and a target value and select **Add mapping**.
 
-"No field map for this module yet" means the wave has not run; running it seeds one. Confirming and adding mappings need the analyse permission.
+"No field map yet" means the wave has not run; **Run now** runs it and seeds one. Confirming and adding mappings need the analyse permission.
 
 ## S/4HANA readiness by area
 
@@ -118,7 +118,7 @@ A dry run applies the target system's load checks to your source records and rep
 5. The table lists each failing record with **Module**, **Source table**, **Record**, **Status** (Load fail) and **Reasons**. **Open** takes you to the object's records.
 6. Select **Export Excel** or **Export PDF** to share the result.
 
-The page keeps the dry run in its address, so you can bookmark it and come back.
+The page keeps the dry run in its address, so you can bookmark it and come back. Opened without a dry run, or with a run that is not one, the page lists every dry run, newest first, with its objects, target release, status and the records that would fail. Select one to open it.
 
 ## How waves feed readiness and the board pack
 
@@ -133,8 +133,8 @@ Without any wave, the readiness view lists the S/4HANA simplification areas whos
 ## Good to know
 
 - "No migration waves yet. Create one to track readiness." means none exist.
-- "Add modules to this wave to see its objects." means the wave has no modules.
-- "Run this wave to see its blockers." means it has not been run.
+- "No modules in this wave" means the wave was created without modules. Modules are set when a wave is created; **Open waves** goes back to the list.
+- "Not run yet" on **Blockers** or **S/4 areas** means the wave has not been run. **Run now** runs it (analyse permission).
 - "The latest run found no critical or high gaps." means nothing blocks the wave.
 - A wave with **Not run** has no verdict. It counts in no verdict figure.
 - Verdict colours use the same scale as everywhere in Meridian: green for go, amber for at risk, red for no-go.
