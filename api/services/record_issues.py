@@ -170,14 +170,29 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     """), p).all())
 
     by_check = {r.check_id: r for r in results}
-    check_ids = sorted(session.execute(text(
-        "SELECT DISTINCT check_id FROM finding_records WHERE version_id = :vid",
-    ), p).scalars().all())
-    size = max(1, int(os.getenv("MERIDIAN_LIFECYCLE_BATCH", "50")))
+    # Batch by RECORD VOLUME, not by check count. Each check's failing-key list is capped at 100k,
+    # but the distribution is wildly skewed: on the real baseline 50 of 810 checks held 99.5% of
+    # the 2.54M records, so a fixed count of 50 per batch put 2.5M rows in the first batch and it
+    # did not finish in 24 minutes. Balancing by records makes every batch comparable.
+    counts = dict(session.execute(text(
+        "SELECT check_id, count(*) FROM finding_records WHERE version_id = :vid GROUP BY check_id",
+    ), p).all())
+    budget = max(1000, int(os.getenv("MERIDIAN_LIFECYCLE_RECORDS", "200000")))
+    batches: list[list[str]] = []
+    current: list[str] = []
+    running = 0
+    for cid, n in sorted(counts.items(), key=lambda kv: -kv[1]):
+        n = int(n or 0)
+        if current and running + n > budget:
+            batches.append(current)
+            current, running = [], 0
+        current.append(cid)
+        running += n
+    if current:
+        batches.append(current)
 
     reopened = created = resolved = 0
-    for i in range(0, len(check_ids), size):
-        batch = check_ids[i:i + size]
+    for batch in batches:
         bp = {**p, "batch": batch}
         batch_results = [by_check[c] for c in batch if c in by_check]
         session.execute(text("TRUNCATE tmp_present"))

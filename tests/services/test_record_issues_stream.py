@@ -114,7 +114,10 @@ def test_lifecycle_reconciles_in_batches():
     from api.services import record_issues
 
     src = inspect.getsource(record_issues.track)
-    assert "MERIDIAN_LIFECYCLE_BATCH" in src, "batch size must be configurable"
-    assert "for i in range(0, len(check_ids), size)" in src, "must iterate in batches"
+    assert "MERIDIAN_LIFECYCLE_RECORDS" in src, "the record budget must be configurable"
+    assert "for batch in batches" in src, "must iterate in batches"
+    # batches are balanced by record volume: key lists are capped at 100k each and 50 of 810 checks
+    # held 99.5% of the records, so a fixed check count produced one 2.5M-row batch
+    assert "running + n > budget" in src, "and be balanced by volume, not by check count"
     assert "fr.check_id = ANY(:batch)" in src, "each statement must be scoped to the batch"
     assert "session.commit()" in src, "each batch must commit"
