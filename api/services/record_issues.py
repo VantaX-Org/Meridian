@@ -160,12 +160,11 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     # Batching bounds each statement to one set of checks and commits per batch, so progress is
     # durable and no single statement can dominate a run. Each batch is idempotent (upserts are
     # ON CONFLICT, sweeps are status-guarded), so a partial run is safe to repeat.
-    # ON COMMIT DELETE ROWS, not ON COMMIT DROP: the batched loop commits after every batch, and a
-    # dropped table would not exist for the next one ("relation tmp_present does not exist").
-    session.execute(text(
-        "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DELETE ROWS"))
-    session.execute(text(
-        "CREATE INDEX IF NOT EXISTS tmp_present_grain_key ON tmp_present (grain, record_key)"))
+    # tmp_present is created INSIDE each batch, ON COMMIT DROP. It cannot be created once and kept:
+    # Session.commit() returns the connection to the pool, so the next batch runs on a different
+    # backend where a temp table from the previous one does not exist ("relation tmp_present does
+    # not exist" - which is exactly how the first batched rebuild failed). The whole
+    # create/copy/index/query cycle now happens within one transaction and is dropped by its commit.
     # tmp_present is only ever probed to decide whether an EXISTING issue should be resolved, so it
     # never needs a key that has no issue. Bounding it by the open issues keeps the copy small.
     tracked = set(session.execute(text("""
@@ -199,9 +198,12 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     for batch in batches:
         bp = {**p, "batch": batch}
         batch_results = [by_check[c] for c in batch if c in by_check]
+        session.execute(text(
+            "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
         session.execute(text("TRUNCATE tmp_present"))
         _copy(session, "tmp_present", ("grain", "record_key"),
               ((g, k) for g, k in present_keys(batch_results, frames) if (g or "", k) in tracked))
+        session.execute(text("CREATE INDEX ON tmp_present (grain, record_key)"))
 
         reopened += session.execute(text("""
             WITH hit AS (

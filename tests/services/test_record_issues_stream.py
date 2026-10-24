@@ -134,6 +134,9 @@ def test_tmp_present_survives_batch_commits():
     from api.services import record_issues
 
     src = inspect.getsource(record_issues.track)
-    assert "ON COMMIT DELETE ROWS" in src, "must not be dropped by a batch commit"
-    assert "record_key text) ON COMMIT DROP" not in src, "the dropping variant breaks the second batch"
-    assert "CREATE INDEX IF NOT EXISTS" in src, "the index is created once, before the loop"
+    # Session.commit() returns the connection to the pool, so a temp table created once is invisible
+    # to the next batch. It must be created inside each batch, ON COMMIT DROP.
+    loop = src[src.index("for batch in batches"):]
+    assert "CREATE TEMP TABLE IF NOT EXISTS tmp_present" in loop, "create it inside the batch loop"
+    assert "ON COMMIT DROP" in loop, "and let the batch commit drop it"
+    assert "CREATE INDEX ON tmp_present" in loop, "the index is rebuilt per batch"
