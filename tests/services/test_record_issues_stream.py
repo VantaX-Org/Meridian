@@ -121,3 +121,19 @@ def test_lifecycle_reconciles_in_batches():
     assert "running + n > budget" in src, "and be balanced by volume, not by check count"
     assert "fr.check_id = ANY(:batch)" in src, "each statement must be scoped to the batch"
     assert "session.commit()" in src, "each batch must commit"
+
+
+def test_tmp_present_survives_batch_commits():
+    """The temp table must outlive a batch commit.
+
+    Batching commits per batch, and tmp_present was created ON COMMIT DROP, so the second batch
+    failed with 'relation "tmp_present" does not exist'. It is now ON COMMIT DELETE ROWS with the
+    index created once outside the loop.
+    """
+    import inspect
+    from api.services import record_issues
+
+    src = inspect.getsource(record_issues.track)
+    assert "ON COMMIT DELETE ROWS" in src, "must not be dropped by a batch commit"
+    assert "record_key text) ON COMMIT DROP" not in src, "the dropping variant breaks the second batch"
+    assert "CREATE INDEX IF NOT EXISTS" in src, "the index is created once, before the loop"
