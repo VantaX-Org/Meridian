@@ -140,3 +140,6 @@ def test_tmp_present_survives_batch_commits():
     assert "CREATE TEMP TABLE IF NOT EXISTS tmp_present" in loop, "create it inside the batch loop"
     assert "ON COMMIT DROP" in loop, "and let the batch commit drop it"
     assert "CREATE INDEX ON tmp_present" in loop, "the index is rebuilt per batch"
+    # SET app.tenant_id is session-scoped and the connection returns to the pool on commit, so it
+    # must be re-applied for every batch or RLS fails on batch 2
+    assert "SET app.tenant_id" in loop, "the tenant setting must be re-applied per batch"

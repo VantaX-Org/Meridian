@@ -198,6 +198,11 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     for batch in batches:
         bp = {**p, "batch": batch}
         batch_results = [by_check[c] for c in batch if c in by_check]
+        # Re-apply the tenant setting for THIS batch. Session.commit() returns the connection to
+        # the pool, so the next batch may run on a different backend that never saw the SET issued
+        # before the loop - where RLS then fails with 'unrecognized configuration parameter
+        # app.tenant_id' (exactly what the first successful-looking rebuild hit on batch 2).
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
         session.execute(text(
             "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
         session.execute(text("TRUNCATE tmp_present"))
