@@ -10,7 +10,7 @@ import { Async, Card, PageHeader, InsightHeader, Select, Skeleton, type AsyncErr
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { RunScope } from "@/components/run-scope";
-import { stateScopeLine } from "@/lib/current-state";
+import { CURRENT_STATE_LABEL, stateScopeLine } from "@/lib/current-state";
 import { hrefWithRun, runChoiceLabels, runScopeLabel } from "@/lib/run-scope";
 import { InsightActions } from "./InsightActions";
 import { InsightTabs } from "./InsightViews";
@@ -128,7 +128,7 @@ function InsightCurrentScope({ present }: { present: boolean }) {
         onValueChange={(id) => {
           if (id && id !== "current") router.replace(hrefWithRun(pathname, search, id), { scroll: false });
         }}
-        options={[{ value: "current", label: "Current state" }, ...runs.map((r) => ({ value: r.id, label: labels.get(r.id) ?? r.id }))]}
+        options={[{ value: "current", label: CURRENT_STATE_LABEL }, ...runs.map((r) => ({ value: r.id, label: labels.get(r.id) ?? r.id }))]}
         className="m-input inline-flex max-w-[320px] items-center justify-between gap-2"
       />}
     </span>

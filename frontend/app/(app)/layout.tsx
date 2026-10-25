@@ -122,7 +122,8 @@ function Presentation({ children }: { children: ReactNode }) {
     <div className="flex h-screen flex-col" data-present="1">
       {/* The shell is gone, so the document heading the Breadcrumb owns is kept here, visually hidden. */}
       <div className="sr-only"><Breadcrumb /></div>
-      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none [background:var(--m-canvas)]">
+      {/* The same bottom room as the shell: "Exit presentation" and the attribution sit over it, never over the last row. */}
+      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none [background:var(--m-canvas)] [padding-bottom:calc(var(--m-space-10)+var(--m-space-8))]">
         <RootPageFrame>{children}</RootPageFrame>
       </main>
       <div className="fixed bottom-4 right-4 m-print-hide">

@@ -116,6 +116,18 @@ describe("Tour", () => {
     expect(isTourDone("t")).toBe(false);
   });
 
+  it("Skip tour closes it without marking it done, and the last step offers Done instead", async () => {
+    await open("t");
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Skip tour" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(isTourDone("t")).toBe(false);
+    await act(async () => { startTour("once"); });
+    await screen.findByRole("dialog", { name: "Only" });
+    expect(screen.queryByRole("button", { name: "Skip tour" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+  });
+
   it("Escape on a one-shot offer counts as seen", async () => {
     await open("once");
     await screen.findByRole("dialog");
@@ -128,16 +140,16 @@ describe("Tour", () => {
     const dialog = await screen.findByRole("dialog");
     const next = screen.getByRole("button", { name: "Next" });
     expect(next).toHaveFocus();
-    // Next is the last enabled button (Back is disabled on step 1): Tab wraps to the first focusable, which is Next itself.
+    // Next is the last enabled button (Back is disabled on step 1): Tab wraps to the first focusable, Skip tour.
     fireEvent.keyDown(dialog, { key: "Tab" });
-    expect(next).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Skip tour" })).toHaveFocus();
     fireEvent.click(next);
     await screen.findByRole("dialog", { name: "Second" });
-    const back = screen.getByRole("button", { name: "Back" });
+    const skip = screen.getByRole("button", { name: "Skip tour" });
     const done = screen.getByRole("button", { name: "Next" });
     done.focus();
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Tab" });
-    expect(back).toHaveFocus();
+    expect(skip).toHaveFocus();
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Tab", shiftKey: true });
     expect(done).toHaveFocus();
   });

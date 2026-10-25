@@ -695,7 +695,8 @@
 /* ProgressFill: the accent fill inside a caller-owned progress track. */
 .m-progress-fill { display: block; height: 100%; background: var(--m-accent); }
 /* Aletheia attribution: the licensed mark, required on every screen (Aletheia licence, section 6). Fixed bottom
-   left, never interactive, above everything, never hidden in presentation mode or print. The mark is Aletheia's own
-   file, served unaltered from public/brand. */
-.m-attribution { position: fixed; left: 15px; bottom: 13px; z-index: 2147483647; display: flex; align-items: center; gap: 7px; pointer-events: none; user-select: none; color: var(--m-ink-3); font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; letter-spacing: 0.12em; }
+   left, never interactive, never hidden in presentation mode or print. It sits above the page, the BulkBar and the
+   Ask launcher (z 40) but under the popup, dialog and drawer layer (z 50), so it never draws over a modal or a menu.
+   The mark is Aletheia's own file, served unaltered from public/brand. */
+.m-attribution { position: fixed; left: 15px; bottom: 13px; z-index: 45; display: flex; align-items: center; gap: 7px; pointer-events: none; user-select: none; color: var(--m-ink-3); font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; letter-spacing: 0.12em; }
 .m-attribution img { width: 16px; height: 16px; border-radius: 4px; display: block; flex: none; }

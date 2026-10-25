@@ -218,10 +218,14 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     // the one-run overview endpoints are not read for a cross-object page
     expect(insightsApi.getOverview).not.toHaveBeenCalled();
     expect(insightsApi.getRootCauses).not.toHaveBeenCalled();
-    // mean of 50, 80 and 95; blocking findings are critical and high across the objects (3 + 2)
+    // mean of 50, 80 and 95; critical and high findings across the objects (3 + 2). Not "blocking": that word is the
+    // run overview's set (critical or S/4-blocking rules, blockers.count).
     const verdict = screen.getByTestId("hero-verdict");
     expect(within(verdict).getByText("At risk")).toBeInTheDocument();
-    expect(within(verdict).getByText("5 blocking findings in 2 objects")).toBeInTheDocument();
+    expect(within(verdict).getByText("5 critical and high findings in 2 objects")).toBeInTheDocument();
+    expect(screen.queryByText("Blocking findings")).toBeNull();
+    // the tile opens the findings behind its count, not the objects below target
+    expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/insights?severity=critical,high");
     expect(screen.getByText("DQS 75.0 across 3 objects, at risk")).toBeInTheDocument();
     expect(screen.getAllByText("1 of 3 objects is not ready for go-live, 1 at risk.").length).toBeGreaterThan(0);
     // Fix first lists each object's findings from its own latest run only (CO099 is from an older controlling run)
@@ -230,6 +234,18 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     expect(screen.queryByText("CO099")).toBeNull();
     // the per-run analyses are offered per run, each a link that pins that run
     expect(screen.getByRole("link", { name: "material_master_25k, 16 Oct 2026" })).toHaveAttribute("href", "/insights?run=mm1");
+  });
+
+  it("narrows Fix first to the severities of ?severity=, every matching row, with a way back", async () => {
+    query = "severity=critical,high";
+    mockCurrent();
+    mount();
+    expect(await screen.findByText("CO001")).toBeInTheDocument();
+    expect(findingsApi.getFindings).toHaveBeenCalledWith({ severity: "critical,high", sort: "impact", limit: 200 });
+    expect(screen.getByText("Critical and high failing rules, each object at its latest run, highest impact first")).toBeInTheDocument();
+    expect(screen.getByTestId("fix-first-clear")).toHaveAttribute("href", "/insights");
+    // still the current state: the one-run overview is not read
+    expect(insightsApi.getOverview).not.toHaveBeenCalled();
   });
 
   it("lays the verdict out with a wrapping basis so it never shrinks to a word per line", async () => {

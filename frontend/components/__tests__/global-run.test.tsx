@@ -1,7 +1,7 @@
 // One run for every screen: a ?run= is kept, carried onto the next screen, and cleared by going back to latest.
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { OBJECT_KEY, RUN_KEY, RunCarrier, readSelectedObject, readSelectedRun } from "../global-run";
+import { GlobalRunPicker, OBJECT_KEY, RUN_KEY, RunCarrier, readSelectedObject, readSelectedRun } from "../global-run";
 
 const replace = vi.fn();
 let pathname = "/objects";
@@ -12,10 +12,42 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => search,
 }));
 
+vi.mock("@/hooks/use-run-list", () => ({
+  useRunList: () => ({ data: { versions: [{ id: "r1", label: "Run 1", status: "complete", run_at: "2026-10-16T00:00:00Z", dqs_summary: {}, metadata: {} }] } }),
+}));
+
 const at = (path: string, query = "") => { pathname = path; search = new URLSearchParams(query); };
 
 describe("RunCarrier", () => {
-  beforeEach(() => { replace.mockClear(); window.localStorage.clear(); at("/objects"); });
+  beforeEach(() => { replace.mockClear(); window.sessionStorage.clear(); window.localStorage.clear(); at("/objects"); });
+
+  it("keeps the choice for this tab's session only, never across sessions", () => {
+    at("/objects", "run=r1");
+    render(<RunCarrier />);
+    expect(window.sessionStorage.getItem(RUN_KEY)).toBe("r1");
+    expect(window.localStorage.getItem(RUN_KEY)).toBeNull();
+  });
+
+  it.each(["/home", "/home/lead", "/insights", "/insights/exec"])("never carries a run or an object onto the current-state view %s", (path) => {
+    window.sessionStorage.setItem(RUN_KEY, "r1");
+    window.sessionStorage.setItem(OBJECT_KEY, "material_master");
+    at(path);
+    render(<RunCarrier />);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("does not make a current-state view's own ?run= pin the other screens", () => {
+    at("/home/lead", "run=r9");
+    render(<RunCarrier />);
+    expect(readSelectedRun()).toBeNull();
+  });
+
+  it("still carries the chosen run onto a one-run insight view", () => {
+    window.sessionStorage.setItem(RUN_KEY, "r1");
+    at("/insights/rules");
+    render(<RunCarrier />);
+    expect(replace).toHaveBeenCalledWith("/insights/rules?run=r1", { scroll: false });
+  });
 
   it("keeps the run on the URL as the chosen run", () => {
     at("/objects", "run=r1");
@@ -25,7 +57,7 @@ describe("RunCarrier", () => {
   });
 
   it("carries the chosen run onto a screen opened without one", () => {
-    window.localStorage.setItem(RUN_KEY, "r1");
+    window.sessionStorage.setItem(RUN_KEY, "r1");
     at("/fix", "tab=batches");
     render(<RunCarrier />);
     expect(replace).toHaveBeenCalledWith("/fix?tab=batches&run=r1", { scroll: false });
@@ -41,7 +73,7 @@ describe("RunCarrier", () => {
   });
 
   it("leaves screens whose ?run= is their own alone", () => {
-    window.localStorage.setItem(RUN_KEY, "r1");
+    window.sessionStorage.setItem(RUN_KEY, "r1");
     at("/process/ptp", "run=discovery-7");
     render(<RunCarrier />);
     expect(readSelectedRun()).toBe("r1");
@@ -49,8 +81,8 @@ describe("RunCarrier", () => {
   });
 
   it("carries the chosen object along with the run", () => {
-    window.localStorage.setItem(RUN_KEY, "r1");
-    window.localStorage.setItem(OBJECT_KEY, "material_master");
+    window.sessionStorage.setItem(RUN_KEY, "r1");
+    window.sessionStorage.setItem(OBJECT_KEY, "material_master");
     at("/insights/progress");
     render(<RunCarrier />);
     expect(replace).toHaveBeenCalledWith("/insights/progress?run=r1&module=material_master", { scroll: false });
@@ -69,5 +101,22 @@ describe("RunCarrier", () => {
     at("/fix");
     rerender(<RunCarrier />);
     expect(readSelectedObject()).toBeNull();
+  });
+});
+
+describe("GlobalRunPicker", () => {
+  it("is hidden on the current-state views, whose header picker names the scope \"Current state\"", () => {
+    for (const path of ["/home/lead", "/insights", "/insights/exec"]) {
+      at(path);
+      const { queryByTestId, unmount } = render(<GlobalRunPicker />);
+      expect(queryByTestId("global-run")).toBeNull();
+      unmount();
+    }
+  });
+
+  it("shows on a one-run screen", () => {
+    at("/objects");
+    const { getByTestId } = render(<GlobalRunPicker />);
+    expect(getByTestId("global-run")).toBeInTheDocument();
   });
 });

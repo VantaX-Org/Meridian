@@ -38,11 +38,21 @@ import { clsx } from "clsx";
 
 const SEVERITY_OPTIONS = [
   { value: "", label: "All severities" },
+  // The Home and Insights "Critical and high findings" tiles drill here with both.
+  { value: "critical,high", label: "Critical and high" },
   { value: "critical", label: "Critical" },
   { value: "high", label: "High" },
   { value: "medium", label: "Medium" },
   { value: "low", label: "Low" },
 ];
+
+/** The chip's words for a severity filter: the option's label, else each severity in plain words. */
+function severityFilterLabel(severity: string): string {
+  const option = SEVERITY_OPTIONS.find((o) => o.value === severity);
+  if (option) return option.label;
+  const words = severity.split(",").filter(Boolean).map((s, i) => (i === 0 ? labelOf(s) : labelOf(s).toLowerCase()));
+  return words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0] ?? severity;
+}
 
 const DIMENSION_OPTIONS = [{ value: "", label: "All dimensions" }, ...DIMENSIONS.map((d) => ({ value: d.id, label: d.label }))];
 
@@ -483,7 +493,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         <div className="flex flex-wrap items-center gap-2">
           <Select label="Severity" value={severity} onValueChange={(v) => setFilter("severity", v)} options={SEVERITY_OPTIONS} placeholder="Severity" />
           <Select label="Dimension" value={dimension} onValueChange={(v) => setFilter("dimension", v)} options={DIMENSION_OPTIONS} placeholder="Dimension" />
-          {severity ? <FilterChip label={`Severity: ${labelOf(severity)}`} onRemove={() => setFilter("severity", "")} /> : null}
+          {severity ? <FilterChip label={`Severity: ${severityFilterLabel(severity)}`} onRemove={() => setFilter("severity", "")} /> : null}
           {dimension ? <FilterChip label={`Dimension: ${DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)}`} onRemove={() => setFilter("dimension", "")} /> : null}
           {moduleFilter ? <FilterChip label={`Object: ${formatModuleName(moduleFilter)}`} onRemove={() => setFilter("module", "")} /> : null}
         </div>

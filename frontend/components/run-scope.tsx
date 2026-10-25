@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Select } from "@/design";
+import { CURRENT_STATE_LABEL } from "@/lib/current-state";
 import { plural } from "@/lib/format";
 import { runChoiceLabels, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
@@ -62,7 +63,7 @@ export function RunScope({ scope, hrefFor, picker = false }: RunScopeProps) {
         <span>As of {runScopeLabel(run)}</span>
       )}
       {pinned && (
-        <Link href={hrefFor(null)} className="m-ink-accent underline-offset-2 hover:underline">
+        <Link href={hrefFor(null)} className="m-ink-accent underline underline-offset-2">
           Back to latest
         </Link>
       )}
@@ -73,8 +74,8 @@ export function RunScope({ scope, hrefFor, picker = false }: RunScopeProps) {
 const ALL_RUNS = "all";
 
 /**
- * The header meta of a page that combines runs (home's current state): a "Showing" switch between all runs and
- * any one of them, and, for all runs, the runs each number comes from, each with its system and a link to it alone.
+ * The header meta of a page that combines runs (home's current state): a "Showing" switch between the current state
+ * (every object at its latest run) and any one run, and, for all runs, the runs each number comes from, each with its system and a link to it alone.
  */
 export function StateScope({ runs, pinned, objectCount, systemName, hrefFor }: {
   /** The latest run of every lineage, newest first. */
@@ -94,12 +95,12 @@ export function StateScope({ runs, pinned, objectCount, systemName, hrefFor }: {
         label="Showing"
         value={pinned?.id ?? ALL_RUNS}
         onValueChange={(id) => { if (id) router.replace(hrefFor(id === ALL_RUNS ? null : id), { scroll: false }); }}
-        options={[{ value: ALL_RUNS, label: "All runs, current state" }, ...choices.map((c) => ({ value: c.id, label: source(c) }))]}
+        options={[{ value: ALL_RUNS, label: CURRENT_STATE_LABEL }, ...choices.map((c) => ({ value: c.id, label: source(c) }))]}
         className="m-input inline-flex max-w-[360px] items-center justify-between gap-2"
       />
       {pinned ? (
-        <Link href={hrefFor(null)} className="m-ink-accent underline-offset-2 hover:underline">
-          Back to all runs
+        <Link href={hrefFor(null)} className="m-ink-accent underline underline-offset-2">
+          Back to current state
         </Link>
       ) : (
         <span data-testid="run-sources">
@@ -107,7 +108,7 @@ export function StateScope({ runs, pinned, objectCount, systemName, hrefFor }: {
           {runs.map((r, i) => (
             <Fragment key={r.id}>
               {i > 0 && "; "}
-              <Link href={hrefFor(r.id)} className="m-ink-accent underline-offset-2 hover:underline">{source(r)}</Link>
+              <Link href={hrefFor(r.id)} className="m-ink-accent underline underline-offset-2">{source(r)}</Link>
             </Fragment>
           ))}
         </span>

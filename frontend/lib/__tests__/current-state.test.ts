@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DQSSummary, Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
 import {
-  blockingTotal, currentObjectRows, isScored, latestPerLineage, lineageTrend, measuredDimensions, runObjectsName, stateDqs, stateObjects, stateRows,
+  criticalHighHref, criticalHighTotal, currentObjectRows, isScored, latestPerLineage, lineageTrend, measuredDimensions, runObjectsName, stateDqs, stateObjects, stateRows,
   stateScopeLine, stateSeries, stateSummary, tierOf, worstDimension,
 } from "../current-state";
 import { runDimensions } from "../home-metrics";
@@ -105,13 +105,18 @@ describe("tierOf", () => {
   });
 });
 
-describe("blockingTotal", () => {
+describe("criticalHighTotal", () => {
   it("sums failing critical and high checks across objects", () => {
     const objects = stateObjects([
       run("a", "2026-10-16T00:00:00Z", { fi_gl: summary(70, { critical_count: 2, high_count: 3, medium_count: 9 }) }),
       run("b", "2026-10-15T00:00:00Z", { hcm: summary(70, { critical_count: 1, high_count: 0 }) }),
     ]);
-    expect(blockingTotal(objects)).toBe(6);
+    expect(criticalHighTotal(objects)).toBe(6);
+  });
+
+  it("opens the findings behind the count: one run's findings tab, else the current-state findings", () => {
+    expect(criticalHighHref([{ id: "r1" }])).toBe("/runs/r1?tab=findings&severity=critical,high");
+    expect(criticalHighHref([{ id: "r1" }, { id: "r2" }])).toBe("/insights?severity=critical,high");
   });
 });
 

@@ -1,10 +1,11 @@
 // frontend/app/(app)/insights/exec/__tests__/page.test.tsx
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as downloadApi from "@/lib/api/download";
+import * as findingsApi from "@/lib/api/findings";
 import ExecPage from "../page";
 
 const h = vi.hoisted(() => ({ qs: "run=v1", path: "/insights", versions: [] as unknown[] }));
@@ -174,6 +175,40 @@ describe("ExecPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: /export/i }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /board pack, latest run/i }));
     await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v2"), `Meridian board pack – ECC PRD – ${TODAY}.pdf`));
+  });
+
+  it("ranks Fix first from each object's current findings and shows the current state's delta", async () => {
+    h.qs = "";
+    h.path = "/insights/exec";
+    const sum = (score: number) => ({ composite_score: score, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: false, cap_reason: null });
+    h.versions = [
+      { id: "co2", label: "controlling_1k", status: "complete", run_at: "2026-10-16T05:00:00Z", metadata: { modules: ["controlling"] }, dqs_summary: { controlling: sum(60) } },
+      { id: "co1", label: "controlling_1k", status: "complete", run_at: "2026-10-15T05:00:00Z", metadata: { modules: ["controlling"] }, dqs_summary: { controlling: sum(50) } },
+      { id: "mm1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T03:00:00Z", metadata: { modules: ["material_master"] }, dqs_summary: { material_master: sum(80) } },
+    ];
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
+      version_id: null, latest_version_id: "co2", scope: "current", composite: 70, cap: null, cap_reason: null,
+      narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
+    });
+    vi.spyOn(insightsApi, "getCurrentOverview").mockResolvedValue({ dqs: { composite: 70, previous: null, delta: null, tier: "at_risk", capped: false, cap_reason: null } } as never);
+    const ranking = vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "co2", rows: [] } as never);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockRejectedValue(new Error("not under test"));
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [
+        { id: "f1", version_id: "co2", module: "controlling", check_id: "CO001", severity: "critical", dimension: "completeness", affected_count: 40, total_count: 100, pass_rate: 60, details: {} },
+        { id: "f0", version_id: "co1", module: "controlling", check_id: "CO099", severity: "critical", dimension: "completeness", affected_count: 99, total_count: 100, pass_rate: 1, details: {} },
+        { id: "f2", version_id: "mm1", module: "material_master", check_id: "MM045", severity: "high", dimension: "validity", affected_count: 12, total_count: 100, pass_rate: 88, details: {} },
+      ],
+      total: 3,
+    } as never);
+    renderWithQuery(<ExecPage />);
+    // every object at its latest run, not the newest run's rules alone; CO099 is from an older controlling run
+    expect(await screen.findByText("CO001")).toBeInTheDocument();
+    expect(screen.getByText("MM045")).toBeInTheDocument();
+    expect(screen.queryByText("CO099")).toBeNull();
+    expect(ranking).not.toHaveBeenCalled();
+    // (60 + 80) / 2 against (50 + 80) / 2: up 5 with the latest run, as Home and the overview say
+    expect(within(screen.getByTestId("hero-verdict")).getByText("Up 5 with the latest run")).toBeInTheDocument();
   });
 
   it("is empty only when the tenant has no run at all", async () => {

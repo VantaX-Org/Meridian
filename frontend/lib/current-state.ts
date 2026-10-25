@@ -3,8 +3,8 @@ import type { DQSSummary, Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
 import type { FindingsAggregate } from "@/lib/api/findings";
 import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
-import { formatDate, formatModuleName, plural, runAxisLabels } from "@/lib/format";
-import { isFinished, lineageOf } from "@/lib/runs";
+import { formatDate, formatModuleName, plural, round1, runAxisLabels } from "@/lib/format";
+import { isFinished, lineageOf, previousInLineage } from "@/lib/runs";
 import { runDqs, type TrendPoint } from "@/lib/home-metrics";
 
 /**
@@ -15,6 +15,18 @@ import { runDqs, type TrendPoint } from "@/lib/home-metrics";
  * An object (a module) measured by more than one current run, e.g. read from a system and also uploaded, is taken
  * from the newest of them: one row per object, as the objects list keys its rows.
  */
+
+/**
+ * Screens that describe the current state when no `?run=` pins one: every home (`/home`, `/home/<persona>`), the
+ * Insights overview and the executive summary (`insights/_components/scopeMode.ts` CURRENT_STATE_VIEWS). A chosen
+ * run is never carried onto them (components/global-run.tsx), and they name their scope "Current state".
+ */
+export function isCurrentStateView(pathname: string): boolean {
+  return pathname === "/home" || pathname.startsWith("/home/") || pathname === "/insights" || pathname === "/insights/exec";
+}
+
+/** The one name of the current-state scope, wherever a picker or header shows it. */
+export const CURRENT_STATE_LABEL = "Current state";
 
 /** A run with scores: finished and at least one module in its `dqs_summary`. */
 export const isScored = (v: Version): boolean => isFinished(v) && Object.keys(v.dqs_summary ?? {}).length > 0;
@@ -183,9 +195,26 @@ export function currentObjectRows(
   return [...out.values()].sort((a, b) => a.module.localeCompare(b.module));
 }
 
-/** Failing critical and high checks across the objects: the "blocking findings" of the current state. */
-export function blockingTotal(objects: readonly StateObject[]): number {
+/**
+ * Failing critical and high checks across the objects: the "Critical and high findings" tile of the current state.
+ * Not "blocking findings": the insights overview's blockers (`blockers.count`) are failing rules that are critical
+ * or that the S/4 readiness pack counts as blocking, a different set.
+ */
+export function criticalHighTotal(objects: readonly StateObject[]): number {
   return objects.reduce((n, o) => n + o.summary.critical_count + o.summary.high_count, 0);
+}
+
+/** The `severity` value that lists the findings behind `criticalHighTotal`. */
+export const CRITICAL_AND_HIGH = "critical,high";
+
+/**
+ * The findings behind `criticalHighTotal`: one run's findings tab filtered to critical and high, or (several runs)
+ * the current-state findings on the Insights overview, filtered the same way.
+ */
+export function criticalHighHref(runs: readonly Pick<Version, "id">[]): string {
+  return runs.length === 1
+    ? `/runs/${runs[0].id}?tab=findings&severity=${CRITICAL_AND_HIGH}`
+    : `/insights?severity=${CRITICAL_AND_HIGH}`;
 }
 
 /**
@@ -203,6 +232,21 @@ export function stateSeries(versions: readonly Version[], modules?: ReadonlySet<
     if (y != null) out.push({ x: run.id, label: ticks.get(run.id) ?? formatDate(run.run_at, "date"), y, runId: run.id });
   }
   return out;
+}
+
+/**
+ * The change the newest run made to the current state's score: `runs` (the latest run of each lineage, newest
+ * first) with the newest swapped for the run before it in its own lineage, so it never compares one object with
+ * another. Null when the newest run is its lineage's first or nothing is scored. Home, the Insights overview and the
+ * executive summary show this one delta.
+ */
+export function stateDelta(runs: readonly Version[], finished: readonly Version[], modules?: ReadonlySet<string> | null): number | null {
+  const newest = runs[0];
+  if (!newest) return null;
+  const dqs = stateDqs(stateObjects(runs, modules));
+  const previous = previousInLineage(newest, [...finished]);
+  const previousDqs = previous ? stateDqs(stateObjects(runs.map((r) => (r.id === newest.id ? previous : r)), modules)) : null;
+  return dqs != null && previousDqs != null ? round1(dqs - previousDqs) : null;
 }
 
 /** "Current state of 15 objects, latest run 16 Oct 2026": the header line of a cross-object home. */

@@ -267,12 +267,12 @@ describe("PersonaHomePage blocking and loading states", () => {
     expect(screen.queryByRole("link", { name: /MM-/ })).toBeNull();
   });
 
-  it("counts critical plus high as blocking and links one run's count to its findings, critical first", async () => {
+  it("counts critical plus high findings and links one run's count to its findings, critical and high", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
 
     renderWithQuery(<LeadHomePage />);
 
-    const stat = (await screen.findByText("Blocking findings")).closest("a");
+    const stat = (await screen.findByText("Critical and high findings")).closest("a");
     expect(stat).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(stat).toHaveTextContent("1");
   });
@@ -409,7 +409,10 @@ describe("PersonaHomePage current state across objects", () => {
     expect(notReady).toHaveTextContent("of 3");
     expect(notReady).toHaveAttribute("href", "/objects?readiness=fail");
     // critical and high: controlling 2 + 1, material master 1, accounts payable 4
-    expect((screen.getByText("Blocking findings")).closest("a")).toHaveTextContent("8");
+    const criticalHigh = (screen.getByText("Critical and high findings")).closest("a");
+    expect(criticalHigh).toHaveTextContent("8");
+    // Several runs: the current-state findings filtered to critical and high, not the objects below target.
+    expect(criticalHigh).toHaveAttribute("href", "/insights?severity=critical,high");
     expect(screen.getByText("All objects, each at its latest run by then")).toBeInTheDocument();
   });
 
@@ -448,7 +451,7 @@ describe("PersonaHomePage current state across objects", () => {
       const scope = await screen.findByTestId("run-scope");
       expect(scope).toHaveTextContent("controlling_1k, 16 Oct 2026");
       expect(screen.queryByTestId("run-sources")).toBeNull();
-      expect(screen.getByRole("link", { name: "Back to all runs" })).toHaveAttribute("href", "/home/lead");
+      expect(screen.getByRole("link", { name: "Back to current state" })).toHaveAttribute("href", "/home/lead");
       expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 1 object is not ready for go-live.");
       expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
       expect((screen.getByText("Objects below target")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=fail");
