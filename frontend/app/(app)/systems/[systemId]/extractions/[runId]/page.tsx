@@ -11,6 +11,7 @@ import { JobProgress } from "@/design/shell/JobProgress";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { JobError } from "@/components/job-error";
 import { getJob } from "@/lib/api/jobs";
+import { getSystems } from "@/lib/api/connectivity";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorState } from "@/lib/error";
@@ -55,6 +56,9 @@ export default function ExtractionPage() {
     queryKey: [...queryKeys.run(runId), "steps"],
     queryFn: () => getRunSteps(runId),
   });
+  // The system's name scopes the Extract again gate ("Needs SAP Basis on ECC Prod"), never its id.
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const systemName = systemsQ.data?.find((s) => s.id === systemId)?.name ?? "this system";
   const version = useQuery({ queryKey: ["version", runId], queryFn: () => getVersion(runId), retry: false });
   const job = useQuery({
     queryKey: [...queryKeys.run(runId), "job"],
@@ -110,7 +114,7 @@ export default function ExtractionPage() {
             <>
               <Button variant="secondary" render={<Link href={`/systems/${systemId}?tab=health`}>Check the connection</Link>} />
               {/* Only trigger_sync opens the Extract drawer; without it the control stays, disabled, saying why. */}
-              <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} variant="secondary" render={<Link href={`/systems/${systemId}?extract=1`} />}>
+              <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={systemName} variant="secondary" render={<Link href={`/systems/${systemId}?extract=1`} />}>
                 Extract again
               </GatedPrimary>
             </>

@@ -171,11 +171,12 @@ export function Workbench({ object, run }: { object: string; run: string }) {
         <Stat label="Failing rules" value={data.failing_checks.toLocaleString()} href={rulesHref} />
         {/* `?blocking=true` keeps the critical and high rules (isBlocking), not the blocking findings of the readiness view. */}
         <Stat label="Critical and high" value={blockingRules} hint="failing rules" tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
-        <Stat label="Records affected" value={data.affected_records.toLocaleString()} href={failing[0] ? tabHref(`records&check_id=${encodeURIComponent(failing[0].check_id)}`) : undefined} />
+        {/* Summed over the failing rules (a record failing two rules counts twice): rule failures, as the header says. */}
+        <Stat label="Rule failures" value={data.affected_records.toLocaleString()} hint="records failing a rule, per rule" href={tabHref("fix")} />
         <Stat
           label="Auto-fixable"
           value={autoRecords == null ? "—" : autoRecords.toLocaleString()}
-          hint={autoRecords != null && data.affected_records > 0 ? `${Math.round((autoRecords / data.affected_records) * 100)}% of affected records` : undefined}
+          hint={autoRecords != null && data.affected_records > 0 ? `${Math.round((autoRecords / data.affected_records) * 100)}% of rule failures` : undefined}
           href={autoRecords != null ? `/insights/rules?run=${run}&module=${object}&auto=yes` : undefined}
         />
       </div>

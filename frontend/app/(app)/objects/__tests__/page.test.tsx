@@ -140,6 +140,16 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     currentSearch = "run=v1";
   });
 
+  it("?readiness=warn,fail keeps every object below target (at risk and no-go), the drill Home uses", async () => {
+    currentSearch = "run=v1&readiness=warn%2Cfail";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "pass", 99), mk("b", "BBB", "warn", 80), mk("c", "CCC", "fail", 50)] });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(ledger().getByText("CCC")).toBeInTheDocument());
+    expect(ledger().getByText("BBB")).toBeInTheDocument();
+    expect(ledger().queryByText("AAA")).not.toBeInTheDocument();
+    currentSearch = "run=v1";
+  });
+
   it("renders blocking rule, trend, stat and chips when the API supplies them, and degrades when absent", async () => {
     currentSearch = "run=v1";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({

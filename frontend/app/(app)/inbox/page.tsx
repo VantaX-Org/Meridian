@@ -110,6 +110,7 @@ const ROOT_CAUSES: { value: RootCauseType | "other"; label: string }[] = [
 const NO_DUE = Number.MAX_SAFE_INTEGER;
 const BULK_CONFIDENCE = 0.85;
 const DAY = 24 * HOUR;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const priorityLabel = (p: number) => (p === 1 ? "Priority 1 (highest)" : `Priority ${p}`);
 
 /** 45m, 5h, 3d */
@@ -281,7 +282,7 @@ export default function InboxPage() {
     () => assignable.filter((u) => u.id !== user?.id).map((u) => ({ value: u.id, label: u.name || u.email })),
     [assignable, user?.id],
   );
-  // `?assignee=` comes from the owners view, which names an owner by display name or email, not by id.
+  // `?assignee=` comes from the owners view's "Open inbox" (a user id); a display name or an email also matches.
   const assignee = assigneeRaw.trim();
   const assigneeIds = useMemo(() => {
     if (!assignee) return null;
@@ -295,6 +296,9 @@ export default function InboxPage() {
     (id: string | null) => (!id ? "Unassigned" : id === user?.id ? "You" : names.get(id) ?? "Unknown user"),
     [names, user?.id],
   );
+
+  // The Owner chip names the person: `?assignee=` may be a user id (the owners view's "Open inbox"), never shown raw.
+  const assigneeLabel = !assignee ? "" : assignee === user?.id || names.has(assignee) ? who(assignee) : UUID_RE.test(assignee) ? "Unknown user" : assignee;
 
   // A type is only a filter when the loaded tasks carry it; unknown values apply nothing.
   const type = useMemo(() => oneOf(typeRaw, [...new Set(all.map((t) => t.item_type))], "all"), [typeRaw, all]);
@@ -397,7 +401,9 @@ export default function InboxPage() {
       if (asked > approved) toast(`${asked - approved} below ${HIGH_CONFIDENCE_LABEL} or already closed, left for manual review`);
       refresh();
     },
-    onError: (e, _ids, ctx) => { setApproveIds(null); setApproveOne(null); rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`); },
+    // The server may have closed the task (a stale write-back is resolved with a 409): put the snapshot back, say
+    // the server's reason and refetch, so the inbox never offers a task that is already closed.
+    onError: (e, _ids, ctx) => { setApproveIds(null); setApproveOne(null); rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`); refresh(); },
   });
   // Rejecting overrides the model's recommendation: the correction reason is recorded on the task
   // and fed to the AI-feedback loop that proposes new match rules (/ai/rules).
@@ -410,7 +416,7 @@ export default function InboxPage() {
         if (t) await submitAiFeedback({ queue_item_id: id, steward_decision: "reject", correction_reason: why, domain: t.domain });
       }),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Rejected", r); },
-    onError: (e, _v, ctx) => rollback(ctx?.snap, `Not rejected: ${apiErrorMessage(e)}`),
+    onError: (e, _v, ctx) => { rollback(ctx?.snap, `Not rejected: ${apiErrorMessage(e)}`); refresh(); },
   });
   const escalate = useMutation({
     mutationFn: (ids: string[]) => each(ids, escalateItem),
@@ -660,8 +666,8 @@ export default function InboxPage() {
               {view !== "all" && <FilterChip label="Who" value={WHO_CHIP[view]} onRemove={() => setView("")} />}
               {when !== "any" && <FilterChip label="When" value={WHEN_CHIP[when]} onRemove={() => setWhen("")} />}
               {type !== "all" && <FilterChip label="Type" value={labelOf(type)} onRemove={() => setType("")} />}
-              {prio !== null && <FilterChip label="Priority" value={String(prio)} onRemove={() => setPrio("")} />}
-              {assignee && <FilterChip label="Owner" value={assignee} onRemove={() => setAssignee("")} />}
+              {prio !== null && <FilterChip label="Priority" value={priorityLabel(prio)} onRemove={() => setPrio("")} />}
+              {assignee && <FilterChip label="Owner" value={assigneeLabel} onRemove={() => setAssignee("")} />}
               <Button variant="ghost" size="sm" onClick={() => showAll(false)}>Clear filters</Button>
             </div>
           )}
@@ -920,7 +926,9 @@ function usePair(t: StewardshipQueueItem) {
 
 /**
  * What approving one task does, in the words of its type: the write-back names the field, value and record,
- * the merge names both records. `action` completes "Press Enter to …" and the dialog's body; there is no undo.
+ * the merge names both records. `action` completes "Press Enter to …" and the dialog's body.
+ * Approving a write-back marks the proposal applied in Meridian (api/routes/stewardship.py: no SAP write happens
+ * there); the value reaches SAP only in the cleaning export (an LSMW, BAPI or IDoc file) that is loaded into SAP.
  */
 function approveCopy(t: StewardshipQueueItem, proposal: CleaningQueueItem | null, pair: ReviewPair | null): {
   title: string; confirmLabel: string; action: string; body: React.ReactNode;
@@ -930,15 +938,15 @@ function approveCopy(t: StewardshipQueueItem, proposal: CleaningQueueItem | null
     if (proposal && p) {
       const value = p.value || "(blank)";
       const before = p.before ? p.before : "blank";
-      const field = p.field ? ` into ${p.field}` : "";
+      const field = p.field ? ` ${p.field}` : "";
       return {
         title: "Approve this write-back?",
         confirmLabel: "Approve write-back",
-        action: `write ${value}${field} on ${proposal.record_key} in SAP`,
-        body: <>Writes <Mono>{value}</Mono>{p.field ? <> into <Mono>{p.field}</Mono></> : null} on <Mono>{proposal.record_key}</Mono> in SAP, replacing {p.before ? <Mono>{before}</Mono> : before}. An approved write-back cannot be undone here.</>,
+        action: `approve changing${field} from ${before} to ${value} on ${proposal.record_key}`,
+        body: <>Approves changing{p.field ? <> <Mono>{p.field}</Mono></> : null} from {p.before ? <Mono>{before}</Mono> : before} to <Mono>{value}</Mono> on <Mono>{proposal.record_key}</Mono>. It is applied in the export to SAP; nothing is written to SAP from here.</>,
       };
     }
-    return { title: "Approve this write-back?", confirmLabel: "Approve write-back", action: "approve the write-back to SAP", body: "The proposed value is written to SAP. An approved write-back cannot be undone here." };
+    return { title: "Approve this write-back?", confirmLabel: "Approve write-back", action: "approve the proposed value", body: "Approves the proposed value. It is applied in the export to SAP; nothing is written to SAP from here." };
   }
   if (t.item_type === "merge_decision") {
     if (pair) {

@@ -16,7 +16,7 @@ import { getCurrentCleansing, getCurrentOverview, getCurrentRootCauses, l1Label 
 import { getCurrentS4Readiness } from "@/lib/api/migration";
 import { getObjects } from "@/lib/api/v1/objects";
 import { criticalHighHref, criticalHighTotal, runObjectsName, stateDelta, stateDqs, stateRows, stateSeries, stateSummary, tierOf, type StateObject } from "@/lib/current-state";
-import { DIMENSIONS, dimensionHeatmapCells, runCap, runDimensions, worstObjectsFirst } from "@/lib/home-metrics";
+import { BELOW_TARGET, DIMENSIONS, dimensionHeatmapCells, isBelowTarget, runCap, runDimensions, worstObjectsFirst } from "@/lib/home-metrics";
 import { verdictSentence } from "@/lib/home-narrative";
 import { checkClassLabel, deltaSentence, formatModuleName, plural, trendSentence } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
@@ -147,7 +147,9 @@ export function CurrentOverview() {
   const capped = objects.filter((o) => o.summary.composite_score != null && o.summary.capped).length;
   // Failing critical and high checks; "blocking" is the run overview's set (critical or S/4-blocking rules).
   const criticalHigh = criticalHighTotal(objects);
-  const notReady = rows.filter((r) => r.readiness === "fail");
+  // Below target: at risk or no-go (go only at the target), the same objects `/objects?readiness=warn,fail` lists.
+  const belowTarget = rows.filter(isBelowTarget);
+  const belowTargetTone = rows.some((r) => r.readiness === "fail") ? "no-go" : belowTarget.length ? "at-risk" : "go";
   const worst = worstObjectsFirst(rows)[0];
   const objectsHref = (q: Record<string, string> = {}) => withScope("/objects", q);
   const worstHref = worst ? withScope(`/objects/${worst.module}`, { run: worst.run_id }) : objectsHref();
@@ -182,7 +184,7 @@ export function CurrentOverview() {
   const impactHref = runs.length === 1 ? withScope("/insights/impact", { run: runs[0].id }) : undefined;
   const impactScopeHint = runs.length === 1 ? runScopeLabel(runs[0]) : runs.length > 1 ? `Across ${plural(runs.length, "run")}` : undefined;
   // The hero's sub-line compares against the target rather than repeating the Critical and high tile.
-  const belowTargetLine = `${notReady.length} of ${plural(rows.length, "object")} below target`;
+  const belowTargetLine = `${belowTarget.length} of ${plural(rows.length, "object")} below target`;
 
   return (
     <InsightFrame
@@ -213,7 +215,7 @@ export function CurrentOverview() {
         ),
         stats: [
           { label: "Critical and high findings", value: newest ? criticalHigh : "—", hint: criticalHigh ? "failing rules" : "none", tone: newest ? (criticalHigh ? "no-go" : "go") : undefined, to: criticalHighHref(runs), versionId: newest?.id },
-          { label: "Objects below target", value: newest ? notReady.length : "—", hint: `of ${rows.length}`, tone: newest ? (notReady.length ? "no-go" : "go") : undefined, to: objectsHref({ readiness: "fail" }), versionId: newest?.id },
+          { label: "Objects below target", value: newest ? belowTarget.length : "—", hint: `of ${rows.length}`, tone: newest ? belowTargetTone : undefined, to: objectsHref({ readiness: BELOW_TARGET }), versionId: newest?.id },
           { label: "Worst object", value: worst?.composite_score != null ? worst.composite_score.toFixed(1) : "—", hint: worst?.label, to: worstHref },
           {
             label: "Records with a suggested value",

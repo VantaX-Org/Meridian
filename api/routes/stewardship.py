@@ -465,6 +465,9 @@ async def _release_queue_item(db: AsyncSession, tid: str, item_id: str) -> dict:
 # ── PUT /stewardship/{id}/resolve ────────────────────────────────────────────
 
 
+#: A task the inbox still lists (and the shell badge counts); anything else is closed.
+_OPEN_STATUSES = ("open", "in_progress", "escalated")
+
 @router.put("/stewardship/{item_id}/resolve")
 async def resolve_queue_item(
     item_id: Annotated[str, Path(pattern=_UUID_RE)],
@@ -500,6 +503,10 @@ async def resolve_queue_item(
         raise HTTPException(status_code=404, detail="Queue item not found")
 
     item = _row_to_item(row)
+    # Already closed (resolved elsewhere, or a stale write-back closed by an earlier attempt): nothing to decide,
+    # and the source record must not be touched again.
+    if item.status not in _OPEN_STATUSES:
+        raise HTTPException(status_code=409, detail="This task is already closed; nothing was changed.")
     user_id = await _resolve_user_id(db, tenant, request)
 
     # Apply the resolution to the source record
@@ -510,7 +517,7 @@ async def resolve_queue_item(
             # Close the stale task so the inbox stops offering it, then report the conflict.
             await db.execute(
                 text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now() "
-                     "WHERE id = :id AND tenant_id = :tid AND status IN ('open', 'in_progress')"),
+                     "WHERE id = :id AND tenant_id = :tid AND status IN ('open', 'in_progress', 'escalated')"),
                 {"id": item_id, "tid": str(tenant.id)},
             )
             await db.commit()

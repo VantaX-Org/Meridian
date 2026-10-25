@@ -515,6 +515,8 @@ async def delete_sync_profile(
     role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Delete one extraction schedule (sync profile). Its extraction log (sync_runs) cascades; analysis runs stay."""
+    if not _as_uuid(system_id) or not _as_uuid(profile_id):
+        raise HTTPException(status_code=404, detail="Schedule not found")  # never reaches the uuid cast
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     result = await db.execute(
         text("DELETE FROM sync_profiles WHERE id = :pid AND system_id = :sid AND tenant_id = :tid RETURNING id"),

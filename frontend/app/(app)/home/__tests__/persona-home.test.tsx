@@ -134,7 +134,7 @@ describe("PersonaHomePage Brief geometry", () => {
       expect(rows[0]).toHaveTextContent("Controlling");
       expect(rows[1]).toHaveTextContent("Material master");
     });
-    for (const h of ["Object", "Blocking rule", "Records affected", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    for (const h of ["Object", "Blocking rule", "Rule failures", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "All 2 objects" })).toHaveAttribute("href", "/objects");
   });
 
@@ -418,8 +418,9 @@ describe("PersonaHomePage current state across objects", () => {
     expect(dqs).toHaveTextContent("vs before the latest run");
     expect(dqs).toHaveTextContent("2.0");
     const notReady = (screen.getByText("Objects below target")).closest("a");
-    expect(notReady).toHaveTextContent("of 3");
-    expect(notReady).toHaveAttribute("href", "/objects?readiness=fail");
+    // below target is at risk or no-go: controlling (no-go) and material master (at risk)
+    expect(notReady).toHaveTextContent(/2\s*of 3/);
+    expect(notReady).toHaveAttribute("href", "/objects?readiness=warn%2Cfail");
     // critical and high: controlling 2 + 1, material master 1, accounts payable 4
     const criticalHigh = (screen.getByText("Critical and high findings")).closest("a");
     expect(criticalHigh).toHaveTextContent("8");
@@ -469,7 +470,7 @@ describe("PersonaHomePage current state across objects", () => {
       expect(screen.getByRole("link", { name: "Back to current state" })).toHaveAttribute("href", "/home/lead");
       expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 1 object is not ready for go-live.");
       expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
-      expect((screen.getByText("Objects below target")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=fail");
+      expect((screen.getByText("Objects below target")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=warn%2Cfail");
     } finally {
       nav.search = "";
     }

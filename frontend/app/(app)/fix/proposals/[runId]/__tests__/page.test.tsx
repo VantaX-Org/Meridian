@@ -64,7 +64,7 @@ describe("ProposalsPage", () => {
     queue([item({}), item({ id: "i2", record_key: "100002", status: "approved" })]);
     renderWithQuery(<ProposalsPage />);
     await screen.findByText("100001");
-    expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ version_id: "R1", kind: "MARA.MEINS", status: "detected" }));
+    expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ version_id: "R1", kind: "MARA.MEINS", status: "detected,recommended" }));
     expect(screen.getByText("Waiting")).toBeInTheDocument();
     expect(screen.getByText("100002").closest("[role=row], tr")).toHaveTextContent("Approved");
     expect(screen.queryByText("Queued")).toBeNull();

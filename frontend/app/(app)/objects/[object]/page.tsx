@@ -485,7 +485,7 @@ export default function ObjectDetailPage() {
         <span>
           <Link href={tabHref("rules")} aria-label={`Open the ${plural(summary.failing_checks, "failing rule")} of ${name}`} className="m-ink-accent underline underline-offset-2">{plural(summary.failing_checks, "failing rule")}</Link>
           {", "}
-          {/* Summed over the rules (a record failing two rules counts twice): rule failures, not records. The strip below has the distinct records. */}
+          {/* Summed over the rules (a record failing two rules counts twice): rule failures, not records; the Overview strip's "Rule failures" is the same count and opens the same tab. */}
           <Link href={tabHref("fix")} aria-label={`Open the records behind the ${plural(summary.affected_records, "rule failure")} of ${name}`} className="m-ink-accent underline underline-offset-2">{plural(summary.affected_records, "rule failure")}</Link>
         </span>
       )}

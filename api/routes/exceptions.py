@@ -318,10 +318,19 @@ async def assign_exception(
         {"eid": exception_id, "tid": str(tenant.id), "txt": f"Assigned to {body.user_name}"},
     )
     # The assignee hears about it in the bell (and in their digest or immediate email, per preferences).
-    title_row = await db.execute(text("SELECT title FROM exceptions WHERE id = :eid"), {"eid": exception_id})
-    title = (title_row.scalar() or "an exception")
-    await create_notification(str(tenant.id), body.user_id, "assignment", f"Assigned to you: {title}",
-                              "An exception was assigned to you.", f"/inbox?kind=exception&focus={exception_id}", db)
+    # exceptions.assigned_to has no FK but notifications.user_id does: an assignee that is not a user of this
+    # tenant (a team name, a free-text owner) gets no notification rather than a 500. Compared as text, so a
+    # non-uuid id never reaches a uuid cast.
+    is_user = (await db.execute(
+        text("SELECT 1 FROM users WHERE id::text = :uid AND tenant_id = :tid"),
+        {"uid": body.user_id, "tid": str(tenant.id)},
+    )).scalar()
+    if is_user:
+        title_row = await db.execute(text("SELECT title FROM exceptions WHERE id = :eid AND tenant_id = :tid"),
+                                     {"eid": exception_id, "tid": str(tenant.id)})
+        title = (title_row.scalar() or "an exception")
+        await create_notification(str(tenant.id), body.user_id, "assignment", f"Assigned to you: {title}",
+                                  "An exception was assigned to you.", f"/inbox?kind=exception&focus={exception_id}", db)
     await db.commit()
 
     return {"id": exception_id, "assigned_to": body.user_id}

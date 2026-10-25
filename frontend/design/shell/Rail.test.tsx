@@ -23,6 +23,7 @@ vi.mock("@/context/licence-context", () => ({
 vi.mock("@/lib/api/shell", () => ({
   getShellCounts: vi.fn().mockResolvedValue({ fix: 3, inbox: 0 }),
 }));
+import { getShellCounts } from "@/lib/api/shell";
 
 vi.mock("@/lib/api/connectivity", () => ({
   getSystems: vi.fn().mockResolvedValue([]),
@@ -126,6 +127,15 @@ describe("Rail (the index bar)", () => {
     expect(fix).toContainElement(badge);
     expect(badge.closest("[data-severity='critical']")).not.toBeNull();
     expect(screen.getByRole("link", { name: "Inbox" })).not.toHaveTextContent("0");
+  });
+
+  it("a Fix count of cleaning proposals opens the Cleaning tab as a neutral count", async () => {
+    vi.mocked(getShellCounts).mockResolvedValueOnce({ fix: 4, fix_source: "cleaning", inbox: 0 });
+    renderRail();
+    const badge = await screen.findByText("4");
+    const fix = badge.closest("a");
+    expect(fix).toHaveAttribute("href", "/fix?tab=cleaning");
+    expect(badge.closest("[data-severity='critical']")).toBeNull();
   });
 
   it("every nav href is unique across the pills and the More panel", async () => {

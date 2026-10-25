@@ -87,7 +87,8 @@ def test_shell_counts_queries_are_tenant_scoped(monkeypatch):
     assert "status = 'detected'" in fix_sql
 
     inbox_sql = next(s for s, _ in count_calls if "stewardship_queue" in s)
-    assert "status IN ('open', 'in_progress')" in inbox_sql
+    # the inbox lists open, in-progress and escalated items; the badge counts the same three
+    assert "status IN ('open', 'in_progress', 'escalated')" in inbox_sql
 
 
 def test_shell_counts_none_scalar_yields_zero(monkeypatch):

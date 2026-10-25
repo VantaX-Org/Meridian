@@ -86,8 +86,8 @@ describe("403 handler", () => {
       await apiClient.post("/api/v1/fix/batches/b1/approve", {}, { adapter: forbidden }).catch(() => {});
     });
     expect(await screen.findByRole("dialog", { name: "Request access" })).toBeInTheDocument();
-    expect(screen.getByText("fixes")).toBeInTheDocument();
-    expect(screen.getByText("approve")).toBeInTheDocument();
+    expect(screen.getByText("Approve fixes")).toBeInTheDocument();
+    expect(screen.queryByText("fixes")).not.toBeInTheDocument(); // plain words, never the permission keys
   });
 
   it("does not open it for a background GET", async () => {
@@ -107,13 +107,21 @@ describe("RequestAccessDialog", () => {
     const create = vi.spyOn(meApi, "createAccessRequest").mockResolvedValue({} as meApi.AccessRequest);
     const onClose = vi.fn();
     wrap(<RequestAccessDialog target={target} onClose={onClose} />);
-    expect(screen.getByText("ECC Prod, all modules")).toBeInTheDocument();
+    expect(screen.getByText("ECC Prod, all objects")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Wave 2 sign-off" } });
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(create).toHaveBeenCalledWith({
       resource: "fixes", action: "approve", system_id: "s1", module: null, reason: "Wave 2 sign-off",
     });
+  });
+
+  it("names the access in plain words and never shows a system id", () => {
+    const id = "6f1c2d3e-0000-4000-8000-000000000001";
+    wrap(<RequestAccessDialog target={{ resource: "extraction", action: "run", system_id: id }} onClose={() => {}} />);
+    expect(screen.getByText("Run extraction")).toBeInTheDocument();
+    expect(screen.getByText("One system, all objects")).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(id))).not.toBeInTheDocument();
   });
 
   it("shows the API's 422 message", async () => {

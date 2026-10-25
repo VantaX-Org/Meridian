@@ -27,6 +27,7 @@ import { FilterChips } from "./_header";
 import { useCurrentObjects } from "./_current";
 import { toFixHref, workSummaryQuery } from "./_work";
 import type { WorkObject } from "@/lib/api/work";
+import { BELOW_TARGET } from "@/lib/home-metrics";
 
 /**
  * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
@@ -53,6 +54,7 @@ const ranked = (a: ObjectRow, b: ObjectRow) =>
 const MAP_VERDICT = { fail: "no-go", warn: "at-risk", pass: "go" } as const;
 
 const READINESS_FILTER = [
+  { value: BELOW_TARGET, label: "Below target" },
   { value: "fail", label: "No-go" },
   { value: "warn", label: "At risk" },
   { value: "pass", label: "Go" },
@@ -280,7 +282,7 @@ export default function ObjectsPage() {
   const dimension = search.get("dimension");
   const owner = search.get("owner");
   const shownObjs = objects
-    .filter((o) => !readiness || o.readiness === readiness)
+    .filter((o) => !readiness || (o.readiness != null && readiness.split(",").includes(o.readiness)))
     .filter((o) => !dimension || o.worst_dimension === dimension)
     .filter((o) => !owner || o.owner === owner)
     .sort(ranked);

@@ -4,6 +4,7 @@ import { Menu } from "@base-ui/react/menu";
 import Link from "next/link";
 import { Pill, IconCheck, IconGear, IconLogOut, IconMonitor, IconMoon, IconSun, type Icon } from "@/design";
 import { useAuth } from "@/context/auth-context";
+import { roleLabel } from "@/lib/roles";
 import { useAuroraPrefs, type Theme } from "@/hooks/use-theme";
 
 const THEMES: { value: Theme; label: string; icon: Icon }[] = [
@@ -41,7 +42,7 @@ export function UserMenu() {
             <div className="flex flex-col gap-1 px-2.5 py-2">
               <span className="m-text-body font-medium truncate m-ink">{user.name}</span>
               <span className="m-text-meta truncate m-ink-3">{user.email}</span>
-              <span><Pill tone="neutral">{user.role}</Pill></span>
+              <span><Pill tone="neutral">{roleLabel(user.role)}</Pill></span>
             </div>
             <Menu.Separator className={SEPARATOR} />
             <div className="px-2.5 pt-2 pb-1 m-text-meta m-ink-3">Theme</div>

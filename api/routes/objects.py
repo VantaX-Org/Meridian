@@ -202,7 +202,8 @@ _OBJECTS_EXPORT_COLUMNS = [
     ColumnSpec("composite_score", "Composite score", kind="money"),
     ColumnSpec("readiness", "Readiness"),
     ColumnSpec("failing_checks", "Failing checks", kind="int"),
-    ColumnSpec("affected_records", "Affected records", kind="int"),
+    # summed over the failing rules (a record failing two rules counts twice): rule failures, not records
+    ColumnSpec("affected_records", "Rule failures", kind="int"),
 ]
 
 

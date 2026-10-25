@@ -132,7 +132,7 @@ describe("ObjectDetailPage", () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
     expect(screen.getByText("Material master")).toBeInTheDocument();
-    for (const label of ["Failing rules", "Critical and high", "Records affected", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
+    for (const label of ["Failing rules", "Critical and high", "Rule failures", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
     const rules = await screen.findAllByTestId("workbench-rule-row");
     expect(rules.map((r) => r.textContent)).toEqual([expect.stringContaining("mm_missing_desc"), expect.stringContaining("mm_bad_uom")]);
     expect(rules[0]).toHaveAttribute("aria-current", "true");
@@ -509,7 +509,9 @@ describe("ObjectDetailPage keyboard and gating", () => {
   it("shows the header counts and affected records from a complete payload", async () => {
     searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByText("Records affected")).toBeInTheDocument();
+    expect((await screen.findAllByText("Rule failures")).length).toBeGreaterThan(0);
+    // The strip's summed count is labelled and drilled like the header's: rule failures, opening Records to fix.
+    expect(screen.getAllByText("Rule failures").map((e) => e.closest("a")?.getAttribute("href"))).toContain("/objects/material_master?run=v1&tab=fix");
     expect(screen.getAllByText("120").length).toBeGreaterThan(0);
     // Each header count opens what it counts.
     // One rule, singular; the summed affected count is rule failures, not records.
@@ -556,7 +558,7 @@ describe("ObjectDetailPage keyboard and gating", () => {
     searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("No dimension scores")).toBeInTheDocument();
-    expect(screen.getByText("Records affected")).toBeInTheDocument();
+    expect(screen.getAllByText("Rule failures").length).toBeGreaterThan(0);
   });
 });
 

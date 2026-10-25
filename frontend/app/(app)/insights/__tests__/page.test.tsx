@@ -261,8 +261,9 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     // run overview's set (critical or S/4-blocking rules, blockers.count).
     const verdict = screen.getByTestId("hero-verdict");
     expect(within(verdict).getByText("At risk")).toBeInTheDocument();
-    // The sub-line compares with the target rather than repeating the Critical and high tile.
-    expect(within(verdict).getByText("1 of 3 objects below target")).toBeInTheDocument();
+    // The sub-line compares with the target rather than repeating the Critical and high tile: below target is
+    // at risk or no-go (50 no-go, 80 at risk; 95 go).
+    expect(within(verdict).getByText("2 of 3 objects below target")).toBeInTheDocument();
     expect(screen.queryByText("Blocking findings")).toBeNull();
     // the tile opens the findings behind its count, not the objects below target
     expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/insights?severity=critical,high");

@@ -56,6 +56,8 @@ export function FixSteps({ current }: { current: (typeof STEPS)[number] }) {
 const WAITING = "detected";
 /** Waiting proposals carry the engine's "detected" (older rows "recommended"); only those take a decision. */
 const isWaiting = (status: string) => status === WAITING || status === "recommended";
+/** `?status=` of the waiting list: the API takes several comma-separated statuses. */
+const WAITING_STATUSES = `${WAITING},recommended`;
 const DECISION: Record<string, { label: string; tone: PillTone }> = {
   approved: { label: "Approved", tone: "go" },
   rejected: { label: "Rejected", tone: "no-go" },
@@ -111,7 +113,8 @@ export default function ProposalsPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: key,
     // Only the proposals still waiting: a decided one leaves this list (the approved ones are counted below).
-    queryFn: () => getCleaningQueue({ version_id: runId, kind, status: WAITING, per_page: PAGE_SIZE, page }),
+    // Both waiting statuses, the same set the groups count ("Accept N") and bulk approve act on.
+    queryFn: () => getCleaningQueue({ version_id: runId, kind, status: WAITING_STATUSES, per_page: PAGE_SIZE, page }),
   });
   const version = useQuery({ queryKey: ["version", runId], queryFn: () => getVersion(runId as string), enabled: !!runId, retry: false });
   const groups = useQuery({ queryKey: ["cleaning", "groups"], queryFn: getCleaningGroups });

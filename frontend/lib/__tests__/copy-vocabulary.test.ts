@@ -35,7 +35,7 @@ const BANNED: [RegExp, string, string[]?][] = [
   [/(?:in|of) this lineage/, '"of this system"'],
   [/"Ready to load"/, 'the verdict "Go" through Status'],
   [/"Not ready"/, 'the verdict "No-go" through Status'],
-  // "Not ready" is wave readiness (readiness, executive summary); objects under the warning band are below target.
+  // "Not ready" is wave readiness (readiness, executive summary); objects under the target (at risk or no-go) are below target.
   [/label(=|: )"Objects not ready"|"Open objects not ready"/, '"Objects below target"'],
   [/\b(?:Red|Amber|Green)\b"/, "a Status verdict (go, at-risk, no-go)"],
   [/"Needs attention"/, "a Status verdict (connection health keeps Healthy; a score verdict is Go, At risk, No-go)"],

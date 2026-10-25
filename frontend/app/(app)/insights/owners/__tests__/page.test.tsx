@@ -62,6 +62,20 @@ describe("OwnersPage", () => {
     expect(screen.getAllByRole("link", { name: /^Open the inbox of/ })).toHaveLength(1);
   });
 
+  it("labels the numbers by what they measure: open issues, the change and fixes over the last 7 days", async () => {
+    vi.spyOn(insightsApi, "getOwners").mockResolvedValue({
+      owners: [{ ...JANE, user_id: "u-jane", delta: -4 }, { ...JANE, owner: "bob", user_id: "u-bob" }],
+    } as never);
+    renderWithQuery(<OwnersPage />);
+    expect(await screen.findByRole("columnheader", { name: /Open issues/ })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Change this week/ })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Fixed in the last 7 days/ })).toBeInTheDocument();
+    expect(screen.queryByText(/since the first run/)).toBeNull();
+    expect(screen.getByText("1 owner lost ground in the last 7 days")).toBeInTheDocument();
+    // No list shows exactly an owner's open issues across runs, so the count is not a link.
+    expect(screen.queryByRole("link", { name: /open records of/ })).toBeNull();
+  });
+
   it("shows a loading skeleton while the request is in flight", () => {
     vi.spyOn(insightsApi, "getOwners").mockReturnValue(new Promise(() => {}));
     renderWithQuery(<OwnersPage />);

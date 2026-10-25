@@ -179,9 +179,15 @@ async def list_cleaning_queue(
     if object_type:
         where_clauses.append("object_type = :ot")
         params["ot"] = object_type
-    if status:
+    # One status, or several comma-separated ("detected,recommended": every proposal still waiting, the
+    # same set /cleaning/queue/groups counts and bulk approve acts on).
+    statuses = [s.strip() for s in (status or "").split(",") if s.strip()]
+    if len(statuses) == 1:
         where_clauses.append("status = :st")
-        params["st"] = status
+        params["st"] = statuses[0]
+    elif statuses:
+        where_clauses.append(f"status IN ({', '.join(f':st{i}' for i in range(len(statuses)))})")
+        params.update({f"st{i}": s for i, s in enumerate(statuses)})
     if rule_id:
         where_clauses.append("rule_id = :rid")
         params["rid"] = rule_id

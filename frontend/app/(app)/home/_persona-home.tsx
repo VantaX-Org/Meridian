@@ -27,7 +27,7 @@ import { RouteInsight } from "@/components/insight/route-insight";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf,
+  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import {
@@ -186,14 +186,15 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const findings = (findingsQ.data?.findings ?? []).filter((f) => (!scopeFilter.modules || scopeFilter.modules.has(f.module)) && f.version_id === runOf.get(f.module)?.id);
   const scored = worstObjectsFirst(objects);
   const worst = scored[0];
-  // Objects whose score is below the warning band ("fail"); "not ready" is kept for wave readiness.
-  const belowTarget = objects.filter((o) => o.readiness === "fail");
+  // Objects below target: at risk or no-go (go only at the target); "not ready" is kept for wave readiness.
+  const belowTarget = objects.filter(isBelowTarget);
+  const belowTargetTone = objects.some((o) => o.readiness === "fail") ? "no-go" : belowTarget.length ? "at-risk" : "go";
   const systems = systemsQ.data ?? [];
   const activeSystems = systems.filter((s) => s.is_active);
 
   const action =
     role === "lead"
-      ? { label: belowTarget.length ? "Open objects below target" : "Open objects", href: objectsHref(belowTarget.length ? { readiness: "fail" } : {}) }
+      ? { label: belowTarget.length ? "Open objects below target" : "Open objects", href: objectsHref(belowTarget.length ? { readiness: BELOW_TARGET } : {}) }
       : role === "steward"
         ? { label: "Open worst object", href: worst ? `/objects/${worst.module}?run=${worst.run_id}` : objectsHref() }
         : (() => {
@@ -303,7 +304,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         return r ? <Link href={hrefWithRun(`/home/${role}`, search, r.id)} className="m-ink-3 whitespace-nowrap" title={runLabel(r)} onClick={(e) => e.stopPropagation()}>{[systemName(r), formatDate(r.run_at, "date")].filter(Boolean).join(", ")}</Link> : "—";
       },
     },
-    { accessorKey: "affected_records", header: "Records affected", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
+    // Summed over the object's failing rules (a record failing two rules counts twice): rule failures, not records.
+    { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
     {
       id: "dqs", header: "Score", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
@@ -430,7 +432,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const work =
     role === "lead" ? (
       <WorkRow>
-        <Stat label="Objects below target" value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTarget.length ? "no-go" : "go"} href={objectsHref({ readiness: "fail" })} />
+        <Stat label="Objects below target" value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTargetTone} href={objectsHref({ readiness: BELOW_TARGET })} />
         <Stat label="Critical and high findings" value={criticalHigh.toLocaleString()} hint={criticalHigh ? "failing rules" : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
         <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>

@@ -20,7 +20,6 @@ from api.services.analytics_engine import (
     OperationalAnalytics,
     PredictiveAnalytics,
     PrescriptiveAnalytics,
-    RISK_CURRENCY,
 )
 from db.schema import (
     AnalysisVersion,
@@ -262,8 +261,8 @@ async def get_impact_analytics(
         )
         row = latest.first()
         if not row:
-            return {"impacts": [], "roi": {"subscription_annual": 0, "risk_mitigated": 0, "roi_multiple": 0, "payback_months": 0,
-                                            "currency": RISK_CURRENCY}}
+            # No run yet: the same ROI as a run with no impact (no subscription: nulls, never made-up zeros).
+            return {"impacts": [], "roi": impact_analytics.calculate_roi([], _monthly_subscription(tenant))}
         vid = row[0].id
 
     # Load findings

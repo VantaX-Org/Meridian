@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { fixHref } from "@/lib/drill";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -25,11 +24,12 @@ const openCount = (o: OwnerCardResponse) => Object.values(o.open_by_severity).re
 const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
   { accessorKey: "score", header: "Score", meta: { numeric: true, heat: "seq", heatRange: [0, 100] } },
-  { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true }, cell: ({ row }) => row.original.user_id
-    ? <Link href={fixHref({ assignee: row.original.user_id })} aria-label={`Open the ${openCount(row.original).toLocaleString()} open records of ${row.original.owner}`} className="m-ink-accent underline underline-offset-2">{openCount(row.original).toLocaleString()}</Link>
-    : openCount(row.original).toLocaleString() },
-  { accessorKey: "delta", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
-  { accessorKey: "fixed_since_baseline", header: "Fixed since the first run", meta: { numeric: true } },
+  // Open record issues assigned to the owner across every run. No list shows exactly these (Fix work lists the
+  // latest run's records, not issues), so the count is plain; the row's "Open inbox" is its action.
+  { id: "open", header: "Open issues", accessorFn: openCount, meta: { numeric: true }, cell: ({ row }) => openCount(row.original).toLocaleString() },
+  // Score now against the score 7 days ago (the issues open then); negative when the owner lost ground.
+  { accessorKey: "delta", header: "Change this week", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
+  { accessorKey: "fixed_since_baseline", header: "Fixed in the last 7 days", meta: { numeric: true } },
   // The owner's own inbox tasks (the inbox reads ?assignee= as a user id, a name or an email); no link without a user.
   { id: "action", header: "", enableSorting: false, cell: ({ row }) => row.original.user_id
     ? <Link href={`/inbox?assignee=${encodeURIComponent(row.original.user_id)}`} aria-label={`Open the inbox of ${row.original.owner}`} className="m-ink-accent underline underline-offset-2">Open inbox</Link>
@@ -59,7 +59,7 @@ function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend
         ))}
       </div>
       <div className="m-text-body m-ink-3">
-        {`${owner.fixed_since_baseline.toLocaleString()} fixed since the first run, oldest open item ${plural(owner.oldest_item_age_days, "day")} old`}
+        {`${owner.fixed_since_baseline.toLocaleString()} fixed in the last 7 days, oldest open item ${plural(owner.oldest_item_age_days, "day")} old`}
       </div>
       <p className="m-text-body">{owner.digest}</p>
       <div className="m-text-meta m-ink-3">
@@ -103,9 +103,9 @@ export default function OwnersPage() {
       run={run}
       controls={<Button variant="ghost" render={<Link href="/rules/scoring">Schedule digests</Link>} />}
       insight={{
-        situation: { sentence: below === undefined ? `${plural(owners.length, "owner")} with open items` : `${below} of ${plural(owners.length, "owner is", "owners are")} below the target of ${target}`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
-        changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground since the last run` },
-        why: { sentence: openTotal ? `${plural(openTotal, "open item sits", "open items sit")} with owners` : "No open item sits with an owner" },
+        situation: { sentence: below === undefined ? `${plural(owners.length, "owner")} with open issues` : `${below} of ${plural(owners.length, "owner is", "owners are")} below the target of ${target}`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
+        changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground in the last 7 days` },
+        why: { sentence: openTotal ? `${plural(openTotal, "open issue sits", "open issues sit")} with owners` : "No open issue sits with an owner" },
         next: canSend && owners.length
           ? { sentence: worst ? `Start with ${worst.owner}, the lowest score, and send everyone their digest` : "Send everyone their digest", action: { label: "Send digests to everyone", onClick: () => setConfirmAll(true) } }
           : { sentence: worst ? `Start with ${worst.owner}, the lowest score` : "Assign owners", action: { label: "Open inbox", href: "/inbox" } },

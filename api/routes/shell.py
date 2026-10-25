@@ -17,8 +17,9 @@ async def shell_counts(
     _role: str = Depends(require_permission("view")),
 ) -> dict[str, int | str]:
     """Fix = records still to fix in the latest run's work list (cleaning proposals awaiting review when that
-    run has none); Inbox = open stewardship items. ``fix_source`` says which of the two ``fix`` counts:
-    "work" (records to fix) or "cleaning" (proposals to review), so a caller never labels one as the other."""
+    run has none); Inbox = open, in-progress and escalated stewardship items (the statuses the inbox lists).
+    ``fix_source`` says which of the two ``fix`` counts: "work" (records to fix) or "cleaning" (proposals to
+    review), so a caller never labels one as the other."""
     vid = await latest_run(db, tenant.id)
     fix_result = None
     if vid:
@@ -39,7 +40,7 @@ async def shell_counts(
             {"tid": str(tenant.id)},
         )
     inbox_result = await db.execute(
-        text("SELECT COUNT(*) FROM stewardship_queue WHERE tenant_id = :tid AND status IN ('open', 'in_progress')"),
+        text("SELECT COUNT(*) FROM stewardship_queue WHERE tenant_id = :tid AND status IN ('open', 'in_progress', 'escalated')"),
         {"tid": str(tenant.id)},
     )
     return {"fix": fix_result.scalar() or 0, "fix_source": fix_source, "inbox": inbox_result.scalar() or 0}

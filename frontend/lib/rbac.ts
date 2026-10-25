@@ -70,6 +70,30 @@ export interface RequestTarget {
   systemLabel?: string;
 }
 
+/** Plain words for the (resource, action) pairs people request most; `accessLabel` builds the rest. */
+const ACCESS_LABEL: Readonly<Record<string, string>> = {
+  "fixes.approve": "Approve fixes",
+  "fixes.run": "Apply fixes",
+  "fixes.edit": "Edit fixes",
+  "analysis.approve": "Sign off analysis",
+  "analysis.run": "Run analysis",
+  "extraction.run": "Run extraction",
+  "extraction.create": "Upload data",
+  "mdm.edit": "Edit golden records",
+  "process.export_process": "Export process models",
+};
+const VERB: Readonly<Record<string, string>> = {
+  view: "View", create: "Create", edit: "Edit", approve: "Approve", run: "Run", export: "Export", admin: "Administer",
+};
+
+/** A permission pair as a person says it ("Approve fixes", "Run extraction"), never the raw keys. */
+export function accessLabel(resource: string, action: string): string {
+  const known = ACCESS_LABEL[`${resource}.${action}`];
+  if (known) return known;
+  const verb = VERB[action] ?? action.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  return resource ? `${verb} ${resource.replace(/_/g, " ")}` : verb;
+}
+
 /** A 403 names a legacy action (and sometimes a resource); the access-request API wants a (resource, action) pair. */
 export function requestTargetFor(denied: AccessDenied): RequestTarget {
   if (denied.resource && (ACTIONS as readonly string[]).includes(denied.action)) {

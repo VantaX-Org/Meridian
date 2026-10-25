@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantsPicker, scopeLabel, type GrantRowView } from "@/components/admin/grants-picker";
+import { accessLabel } from "@/lib/rbac";
 import { InviteForm } from "@/components/admin/invite-form";
 import { matrixDiff, matrixToPairs, RoleMatrix } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
@@ -337,7 +338,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       <ul className="flex flex-col gap-3" aria-label="Open access requests">
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-3 m-text-body">
-            <span>{who(r.user_id)} wants <Mono>{r.resource} {r.action}</Mono> at {where(r) === "all" ? "all systems" : where(r)}</span>
+            <span>{who(r.user_id)} asks to {accessLabel(r.resource, r.action).toLowerCase()} at {where(r) === "all" ? "all systems" : where(r)}</span>
             <span className="m-ink-3">{r.reason}, {relativeTime(r.created_at)}</span>
             <Button onClick={() => { setRole(""); setGranting(r); }}>Grant</Button>
             <Button variant="secondary" onClick={() => setDeclining(r)}>Decline</Button>
@@ -346,7 +347,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       </ul>
       <Dialog open={!!granting} onOpenChange={(o) => { if (!o) setGranting(null); }} title="Grant access">
         <div className="flex flex-col gap-3">
-          {granting ? <p className="m-text-body">{who(granting.user_id)}, {granting.resource} {granting.action}, scope: {where(granting) === "all" ? "all systems" : where(granting)}. The grant is created at this scope</p> : null}
+          {granting ? <p className="m-text-body">{who(granting.user_id)}, {accessLabel(granting.resource, granting.action).toLowerCase()}, scope: {where(granting) === "all" ? "all systems" : where(granting)}. The grant is created at this scope</p> : null}
           <Field label="Role"><Select options={roles.map((r) => ({ value: r.key, label: r.name }))} value={role} onValueChange={setRole} placeholder="Choose a role" /></Field>
           <div className="flex gap-2">
             <Button disabled={!role || decide.isPending} onClick={() => granting && decide.mutate({ id: granting.id, body: { decision: "granted", role_key: role } })}>Grant access</Button>

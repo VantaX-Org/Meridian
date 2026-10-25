@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as cleaning from "@/lib/api/cleaning";
@@ -216,6 +217,24 @@ describe("InboxPage workbench", () => {
     await waitFor(() => expect(screen.getByRole("list", { name: "Tasks" }).querySelectorAll("li")).toHaveLength(1));
     expect(openedSource(screen.getByRole("region", { name: "Selected item" }))).toBe("/inbox?kind=exception&focus=rec-a");
     expect(screen.getByRole("button", { name: "Remove filter Owner" })).toBeInTheDocument();
+  });
+
+  it("names the Owner chip by the person, never the user id, and the Priority chip in words", async () => {
+    const ann = "6f1c2d3e-0000-4000-8000-0000000000a1";
+    nav.qs = `keep=1&assignee=${ann}&prio=2`;
+    nav.can = true;
+    vi.spyOn(users, "getUsers").mockResolvedValue({ users: [{ id: ann, name: "Ann", email: "ann@acme.test" }] } as never);
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("a", "material_master", { assigned_to: ann, priority: 2 })] : [],
+      total: p?.status === "open" ? 1 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    const owner = (await screen.findByRole("button", { name: "Remove filter Owner" })).parentElement as HTMLElement;
+    await waitFor(() => expect(owner).toHaveTextContent("Ann"));
+    expect(owner).not.toHaveTextContent(ann);
+    expect((screen.getByRole("button", { name: "Remove filter Priority" }).parentElement as HTMLElement)).toHaveTextContent("Priority 2");
   });
 
   it("offers Load more when the queue holds more than the newest page", async () => {
@@ -456,7 +475,7 @@ describe("InboxPage task sources", () => {
     fireEvent.click(within(detail).getByRole("button", { name: "Approve" }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Approve this write-back?");
-    expect(dialog).toHaveTextContent("Writes EA into MEINS on 100001 in SAP, replacing XX");
+    expect(dialog).toHaveTextContent("Approves changing MEINS from XX to EA on 100001. It is applied in the export to SAP; nothing is written to SAP from here.");
     expect(resolve).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Keep open" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -464,6 +483,25 @@ describe("InboxPage task sources", () => {
     fireEvent.click(within(detail).getByRole("button", { name: "Approve" }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Approve write-back" }));
     await waitFor(() => expect(resolve).toHaveBeenCalledWith("t1", "approve"));
+  });
+
+  it("refetches the queue and says the server's reason when an approve is refused (the task was closed)", async () => {
+    vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({
+      id: "cq1", object_type: "material_master", record_key: "100001", rule_id: null,
+      record_data_before: { MEINS: "XX" }, record_data_after: { MEINS: "EA" },
+    } as never);
+    const config = { headers: new AxiosHeaders() } as InternalAxiosRequestConfig;
+    vi.spyOn(stewardship, "resolveItem").mockRejectedValue(new AxiosError("409", "ERR_BAD_REQUEST", config, null, {
+      status: 409, statusText: "Conflict", headers: {}, config,
+      data: { detail: "This fix was already applied, rejected or rolled back. Refresh the inbox." },
+    }));
+    const detail = await mountOne({ item_type: "writeback_approval", source_id: "cq1" });
+    await within(detail).findByText("100001");
+    const reads = vi.mocked(stewardship.getQueueItems).mock.calls.length;
+    fireEvent.click(within(detail).getByRole("button", { name: "Approve" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Approve write-back" }));
+    expect(await screen.findByText(/Not approved: This fix was already applied/)).toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(stewardship.getQueueItems).mock.calls.length).toBeGreaterThan(reads));
   });
 
   it("confirms a single merge approve, naming both records", async () => {
