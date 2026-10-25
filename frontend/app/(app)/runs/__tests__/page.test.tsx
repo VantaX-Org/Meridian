@@ -222,7 +222,8 @@ describe("RunsPage", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Remove filter System: ECC Prod" })).toBeInTheDocument();
+    const chip = screen.getByRole("button", { name: "Remove filter System" }).closest(".m-chip");
+    expect(chip).toHaveTextContent("SystemECC Prod");
     searchParams.delete("system");
   });
 });
@@ -251,7 +252,7 @@ describe("RunsPage archive", () => {
     await waitFor(() => expect(screen.getByText("Old upload")).toBeInTheDocument());
     expect(get).toHaveBeenCalledWith(expect.objectContaining({ include_archived: true }));
     expect(screen.getByText("Archived")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove filter Including archived" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove filter Runs" }).closest(".m-chip")).toHaveTextContent("RunsIncluding archived");
     fireEvent.click(screen.getByRole("button", { name: "Restore archived runs" }));
     await waitFor(() => expect(restore).toHaveBeenCalled());
     searchParams.delete("archived");

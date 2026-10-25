@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Input, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
+import { Button, Card, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -32,9 +32,6 @@ import { latestFinishedRun, lineageChoices, runName } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
 import type { Finding, Version } from "@/types/api";
 import { clsx } from "clsx";
-
-
-
 
 const SEVERITY_OPTIONS = [
   { value: "", label: "All severities" },
@@ -305,43 +302,54 @@ function SummaryTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="m-hero grid gap-6 @5xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" aria-label="Score">
-        <div className="flex min-w-0 flex-col gap-4">
-          <Score
-            size="hero"
-            value={composite}
-            measured={capped ? raw : undefined}
-            cap={capped ? composite ?? undefined : undefined}
-            criticals={a.severity.critical}
-            versionId={versionId}
-            delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
-            hint={clean ? "Nothing failed in this run" : undefined}
-            href={`/runs/${versionId}?tab=findings`}
-          />
-          <div className="m-stat-grid">
-            {/* The findings list filters by one severity, so the two that block are two drills. */}
-            <Stat
-              label="Critical and high findings"
-              value={blocking.toLocaleString()}
-              tone={blocking > 0 ? "no-go" : undefined}
-              hint={
-                <span className="inline-flex gap-2">
-                  <DrillLink href={`/runs/${versionId}?tab=findings&severity=critical`}>{a.severity.critical.toLocaleString()} critical</DrillLink>
-                  <DrillLink href={`/runs/${versionId}?tab=findings&severity=high`}>{a.severity.high.toLocaleString()} high</DrillLink>
-                </span>
-              }
+      {/* The score band as Insights and MDM draw it: the hero score and its verdict on the left, the stats beside it. */}
+      <InsightHeader
+        hero
+        bare
+        lead={
+          <div className="m-hero-lead">
+            <Score
+              size="hero"
+              value={composite}
+              measured={capped ? raw : undefined}
+              cap={capped ? composite ?? undefined : undefined}
+              criticals={a.severity.critical}
+              versionId={versionId}
+              delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
+              hint={clean ? "Nothing failed in this run" : undefined}
+              href={`/runs/${versionId}?tab=findings`}
             />
-            <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
-            {cost != null ? (
-              <Stat label="Cost at risk" value={formatMoney(Math.round(cost), costModel.data?.currency)} href={`/runs/${versionId}?tab=findings`} />
-            ) : null}
           </div>
-        </div>
-        <div className="flex min-w-0 flex-col gap-2">
-          <h2 className="font-semibold m-text-h">Score by dimension</h2>
+        }
+        stats={[
+          // The findings list filters by one severity, so the two that block are two drills.
+          {
+            label: "Critical and high findings",
+            value: blocking.toLocaleString(),
+            tone: blocking > 0 ? "no-go" : undefined,
+            hint: (
+              <span className="inline-flex gap-2">
+                <DrillLink href={`/runs/${versionId}?tab=findings&severity=critical`}>{a.severity.critical.toLocaleString()} critical</DrillLink>
+                <DrillLink href={`/runs/${versionId}?tab=findings&severity=high`}>{a.severity.high.toLocaleString()} high</DrillLink>
+              </span>
+            ),
+          },
+          { label: "Affected records", value: a.affected_records.toLocaleString(), to: `/runs/${versionId}?tab=findings` },
+          ...(cost != null ? [{ label: "Cost at risk", value: formatMoney(Math.round(cost), costModel.data?.currency), to: `/runs/${versionId}?tab=findings` }] : []),
+        ]}
+        // `bare` sets the score band alone; the cells below are not drawn.
+        situation={{ sentence: "" }}
+        changed={{ sentence: "" }}
+        why={{ sentence: "" }}
+        next={{ sentence: "" }}
+      />
+      {/* The dimension bars are a strip under the score, not a chart of their own. */}
+      {dimensions.length > 0 ? (
+        <section aria-label="Score by dimension" data-testid="run-dimensions" className="@5xl:max-w-[50%]">
+          <h2 className="m-text-meta m-ink-3 pb-1">Score by dimension</h2>
           <DimensionBars items={dimensions} label="Score by dimension" />
-        </div>
-      </section>
+        </section>
+      ) : null}
       {clean ? (
         <EmptyState
           variant="inline"
@@ -398,20 +406,6 @@ const findingsFetch = (versionId: string, severity: string, dimension: string, m
     limit: FINDINGS_PAGE,
     offset: (page - 1) * FINDINGS_PAGE,
   });
-
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onRemove}
-      aria-label={`Remove filter ${label}`}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors [background:var(--m-accent-soft)]! m-ink-accent [font-size:var(--m-text-meta)]!"
-    >
-      {label}
-      <span aria-hidden>×</span>
-    </button>
-  );
-}
 
 function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenSteps: () => void }) {
   const router = useRouter();
@@ -495,9 +489,9 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         <div className="flex flex-wrap items-center gap-2">
           <Select label="Severity" value={severity} onValueChange={(v) => setFilter("severity", v)} options={SEVERITY_OPTIONS} placeholder="Severity" />
           <Select label="Dimension" value={dimension} onValueChange={(v) => setFilter("dimension", v)} options={DIMENSION_OPTIONS} placeholder="Dimension" />
-          {severity ? <FilterChip label={`Severity: ${severityFilterLabel(severity)}`} onRemove={() => setFilter("severity", "")} /> : null}
-          {dimension ? <FilterChip label={`Dimension: ${DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)}`} onRemove={() => setFilter("dimension", "")} /> : null}
-          {moduleFilter ? <FilterChip label={`Object: ${formatModuleName(moduleFilter)}`} onRemove={() => setFilter("module", "")} /> : null}
+          {severity ? <FilterChip label="Severity" value={severityFilterLabel(severity)} onRemove={() => setFilter("severity", "")} /> : null}
+          {dimension ? <FilterChip label="Dimension" value={DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)} onRemove={() => setFilter("dimension", "")} /> : null}
+          {moduleFilter ? <FilterChip label="Object" value={formatModuleName(moduleFilter)} onRemove={() => setFilter("module", "")} /> : null}
         </div>
       }
       toolbarEnd={

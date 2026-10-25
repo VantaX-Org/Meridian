@@ -125,7 +125,7 @@ describe("RunDetailPage", () => {
     vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
     renderWithQuery(<RunDetailPage />);
     expect((await screen.findAllByText("Nothing failed in this run")).length).toBeGreaterThan(0);
-    expect(screen.getByRole("region", { name: "Score" })).toBeInTheDocument();
+    expect(screen.getByTestId("score-hero")).toBeInTheDocument();
     expect(screen.queryByText("Next actions")).toBeNull();
   });
 
@@ -399,7 +399,7 @@ describe("RunDetailPage", () => {
     const list = vi.spyOn(findingsApi, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
     renderWithQuery(<RunDetailPage />);
     await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ version_id: "v2", severity: "critical,high" })));
-    expect(await screen.findByRole("button", { name: /Severity: Critical and high/ })).toBeInTheDocument();
+    expect((await screen.findByRole("button", { name: "Remove filter Severity" })).closest(".m-chip")).toHaveTextContent("SeverityCritical and high");
     expect(screen.queryByText(/Critical,high/)).toBeNull();
     // the Severity select shows the filter, not a blank value
     expect(screen.getAllByText("Critical and high").length).toBeGreaterThan(0);

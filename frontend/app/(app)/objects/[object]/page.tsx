@@ -242,7 +242,7 @@ function HistoryTab({ object, run, systemId }: { object: string; run: string; sy
         <Line data={points.map((p) => ({ x: p.x, y: p.y }))} label={`${formatModuleName(object)} composite score per run`} />
       </Card>
       <Card title="Runs">
-        <DataTable columns={columns} data={[...points].reverse()} getRowId={(p) => p.version_id} hideToolbar dense height="auto" />
+        <DataTable columns={columns} data={[...points].reverse()} getRowId={(p) => p.version_id} hideToolbar height="auto" />
       </Card>
     </div>
   );

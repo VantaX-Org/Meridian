@@ -124,6 +124,9 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(tiles).toHaveLength(1);
     expect(tiles[0]).toHaveAttribute("data-verdict", "no-go");
     expect(tiles[0]).toHaveAttribute("href", "/objects/c?run=v1&tab=fix");
+    // Each tile counts in the unit that sizes the map, not "records".
+    expect(tiles[0].getAttribute("aria-label")).toMatch(/rule failures?$/);
+    expect(tiles[0].getAttribute("aria-label")).not.toMatch(/records$/);
     currentSearch = "run=v1";
   });
 

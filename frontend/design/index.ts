@@ -74,6 +74,7 @@ export * from "./templates/RecordPage";
 export * from "./templates/ReportPage";
 export * from "./templates/FindingDrawer";
 export * from "./templates/InsightHeader";
+export * from "./templates/RankedRow";
 export * from "./templates/NextActions";
 export * from "./templates/EntityTabs";
 

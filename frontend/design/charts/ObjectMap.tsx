@@ -31,11 +31,17 @@ function spans(share: number, columns: number): [number, number] {
  * The object map: one tile per object, its area the record count, its colour the verdict, its number the score.
  * Reads at a glance what the objects table says in rows; every tile opens the object.
  */
-export function ObjectMap({ items, columns = 8, rowHeight = 64, label = "Objects by records and verdict" }: {
+/** What a tile's `records` counts: distinct records, or rule failures (one record can fail several rules). */
+export type ObjectMapUnit = "records" | "rule failures";
+const UNIT_ONE: Record<ObjectMapUnit, string> = { records: "record", "rule failures": "rule failure" };
+
+export function ObjectMap({ items, columns = 8, rowHeight = 64, label = "Objects by records and verdict", unit = "records" }: {
   items: readonly ObjectMapItem[];
   columns?: number;
   rowHeight?: number;
   label?: string;
+  /** The unit each tile's aria-label counts in; it follows what sizes the map. */
+  unit?: ObjectMapUnit;
 }) {
   const total = items.reduce((n, i) => n + Math.max(0, i.records), 0) || 1;
   const sorted = [...items].sort((a, b) => b.records - a.records);
@@ -61,7 +67,7 @@ export function ObjectMap({ items, columns = 8, rowHeight = 64, label = "Objects
         return (
           <li key={item.id} style={style} className="min-w-0">
             {item.href ? (
-              <Link href={item.href} className="m-omap-tile" data-verdict={item.verdict} aria-label={`${item.label}, ${item.score == null ? "not scored" : item.score.toFixed(1)}, ${item.records.toLocaleString()} records`}>
+              <Link href={item.href} className="m-omap-tile" data-verdict={item.verdict} aria-label={`${item.label}, ${item.score == null ? "not scored" : item.score.toFixed(1)}, ${item.records.toLocaleString()} ${item.records === 1 ? UNIT_ONE[unit] : unit}`}>
                 {body}
               </Link>
             ) : (

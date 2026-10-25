@@ -89,7 +89,7 @@ export default function ProcessHomePage() {
       <PageFrame data-testid="home-loading">
         <Skeleton height={26} width={160} />
         <Skeleton height={240} />
-        <div className="grid grid-cols-2 gap-4"><StatSkeleton /><StatSkeleton /></div>
+        <div className="m-stat-grid"><StatSkeleton /><StatSkeleton /></div>
         <Skeleton height={112} />
       </PageFrame>
     );

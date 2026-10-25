@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, EmptyState, ExplorerPage, emptyExportOptions, Field, HelpHint, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
+import { PageHeader, DrillLink, FilterChip, Button, ConfirmDialog, DataTable, Delta, EmptyState, ExplorerPage, emptyExportOptions, Field, HelpHint, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
 import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
 import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -25,7 +25,6 @@ import { isFinished, lineageSeries, overallDqs, previousRunId, runPageHref, scop
 import { runName, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
-
 
 const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
 
@@ -185,20 +184,6 @@ function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (
     return () => window.removeEventListener("keydown", onKey);
   }, [two, selected, onCompare]);
   return two ? <Button {...prefetch} onClick={() => onCompare(selected[0], selected[1])}>Compare</Button> : <span className="m-ink-2">Select two runs</span>;
-}
-
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onRemove}
-      aria-label={`Remove filter ${label}`}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors [background:var(--m-accent-soft)]! m-ink-accent [font-size:var(--m-text-meta)]!"
-    >
-      {label}
-      <span aria-hidden>×</span>
-    </button>
-  );
 }
 
 const PAGE_SIZE = 100;
@@ -396,10 +381,10 @@ export default function RunsPage() {
   const filterBar = (
     <div className="flex flex-wrap items-center gap-2">
       <Select label="System" value={system} onValueChange={setSystem} options={systemOptions} placeholder="All systems" />
-      {system ? <FilterChip label={`System: ${systemName.get(system) ?? system}`} onRemove={() => setSystem("")} /> : null}
-      {failedOnly ? <FilterChip label="Status: failed" onRemove={() => setStatus("")} /> : null}
+      {system ? <FilterChip label="System" value={systemName.get(system) ?? system} onRemove={() => setSystem("")} /> : null}
+      {failedOnly ? <FilterChip label="Status" value="Failed" onRemove={() => setStatus("")} /> : null}
       {showArchived ? (
-        <FilterChip label="Including archived" onRemove={() => setArchived("")} />
+        <FilterChip label="Runs" value="Including archived" onRemove={() => setArchived("")} />
       ) : (
         <Tooltip label="Include runs that were archived" render={<Button variant="ghost" onClick={() => setArchived("1")} />}>
           Show archived

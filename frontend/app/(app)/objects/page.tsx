@@ -354,7 +354,7 @@ export default function ObjectsPage() {
     verdict: o.readiness ? MAP_VERDICT[o.readiness] : "neutral",
     meta: o.blocking_rule_id ?? (distinctRecords && o.work ? plural(o.work.records, "record") : o.affected_records != null ? plural(o.affected_records, "rule failure") : undefined),
   }));
-  const map = shownObjs.length > 0 && <ObjectMap items={mapItems} columns={12} rowHeight={44} label={distinctRecords ? undefined : "Objects by rule failures and verdict"} />;
+  const map = shownObjs.length > 0 && <ObjectMap items={mapItems} columns={12} rowHeight={44} label={distinctRecords ? undefined : "Objects by rule failures and verdict"} unit={distinctRecords ? "records" : "rule failures"} />;
 
   return (
     <ExplorerPage

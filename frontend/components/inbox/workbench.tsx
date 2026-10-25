@@ -1,10 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Checkbox } from "@/design";
+import { Checkbox, RankedRow, type RankedTone } from "@/design";
 
-/** The severity bar a row carries on its leading edge: the severity of an item, or its SLA state mapped onto the same scale. */
-export type WorkbenchTone = "critical" | "high" | "medium" | "low" | "pass";
+/** The severity bar a row carries: the severity of an item, or its SLA state mapped onto the same scale. */
+export type WorkbenchTone = RankedTone;
 
 export interface WorkbenchItem {
   id: string;
@@ -63,26 +63,18 @@ export function Workbench({
           </div>
         ) : null}
         <ul className="flex flex-col [max-height:calc(100vh-260px)] overflow-y-auto" aria-label={listLabel} data-tour="inbox-queue">
-          {items.map((item) => {
-            const selected = item.id === selectedId;
-            return (
-              <li key={item.id} className={`m-row-severity-${item.tone} [border-bottom:1px_solid_var(--m-line)] last:[border-bottom:0]`}>
-                <div className={`flex items-center gap-2 pl-3 pr-2 py-2 ${selected ? "[background:var(--m-accent-soft)]" : "hover:[background:var(--m-sheet-raised)]"}`}>
-                  <Checkbox aria-label={`Select ${item.label}`} checked={checked.has(item.id)} onChange={(e) => onCheck(item.id, e.target.checked)} />
-                  <button
-                    type="button"
-                    onClick={() => onSelect(item.id)}
-                    aria-current={selected ? "true" : undefined}
-                    className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
-                  >
-                    <span className="m-text-body w-full truncate font-medium">{item.title}</span>
-                    {item.meta ? <span className="m-text-meta m-ink-3 w-full truncate">{item.meta}</span> : null}
-                  </button>
-                  {item.aside ? <span className="shrink-0">{item.aside}</span> : null}
-                </div>
-              </li>
-            );
-          })}
+          {items.map((item) => (
+            <RankedRow
+              key={item.id}
+              tone={item.tone}
+              selected={item.id === selectedId}
+              onSelect={() => onSelect(item.id)}
+              lead={<Checkbox aria-label={`Select ${item.label}`} checked={checked.has(item.id)} onChange={(e) => onCheck(item.id, e.target.checked)} />}
+              label={item.title}
+              meta={item.meta}
+              aside={item.aside}
+            />
+          ))}
         </ul>
       </section>
       <section aria-label="Selected item" className="min-w-0">

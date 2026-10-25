@@ -621,6 +621,18 @@
 .m-bar-fill[data-step="3"] { background: var(--m-seq-3); }
 .m-bar-fill[data-step="4"] { background: var(--m-seq-4); }
 .m-bar-fill[data-step="5"] { background: var(--m-seq-5); }
+/* RankedRow: a workbench's ranked list row. The bar is the severity in its fill hue, never the accent; the accent marks the selected row. */
+.m-ranked-row { display: flex; align-items: center; gap: var(--m-space-2); padding: var(--m-space-2) var(--m-space-2) var(--m-space-2) var(--m-space-3); border-bottom: 1px solid var(--m-line); box-shadow: inset 2px 0 0 transparent; }
+.m-ranked-row:last-child { border-bottom: 0; }
+.m-ranked-row:hover { background: var(--m-sheet-raised); }
+.m-ranked-row[data-selected="true"] { background: var(--m-accent-soft); box-shadow: inset 2px 0 0 var(--m-accent); }
+.m-ranked-action { display: flex; flex: 1 1 auto; min-width: 0; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; color: inherit; }
+.m-ranked-track { display: block; width: 100%; height: 6px; overflow: hidden; border-radius: var(--m-radius-pill); background: var(--m-sheet-sunken); }
+.m-ranked-fill { display: block; height: 100%; border-radius: inherit; background: var(--m-low-fill); }
+.m-ranked-fill[data-tone="critical"] { background: var(--m-critical-fill); }
+.m-ranked-fill[data-tone="high"] { background: var(--m-high-fill); }
+.m-ranked-fill[data-tone="medium"] { background: var(--m-medium-fill); }
+.m-ranked-fill[data-tone="pass"] { background: var(--m-pass-fill); }
 .m-row-severity-critical > :first-child { box-shadow: inset 3px 0 0 var(--m-critical-fill); }
 .m-row-severity-high > :first-child { box-shadow: inset 3px 0 0 var(--m-high-fill); }
 .m-row-severity-medium > :first-child { box-shadow: inset 3px 0 0 var(--m-medium-fill); }

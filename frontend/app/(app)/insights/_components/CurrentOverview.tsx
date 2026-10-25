@@ -259,7 +259,7 @@ export function CurrentOverview() {
             data={fixFirst}
             getRowId={(f) => f.id}
             onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
-            hideToolbar dense height="auto"
+            hideToolbar height="auto"
           />
         </Section>
 

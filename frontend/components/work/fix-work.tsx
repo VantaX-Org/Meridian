@@ -7,7 +7,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "sonner";
 import {
   BulkBar, Button, Card, Checkbox, ConfirmDialog, Dialog, EmptyState, ErrorState, FilterChip, Input, Mono, Notice, Pill,
-  ProgressFill, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity,
+  RankedRow, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -75,24 +75,26 @@ function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: st
         className={`flex items-center justify-between rounded-[var(--m-radius-control)] px-3 py-2 text-left m-text-body ${!active ? "bg-[var(--m-accent-soft)] m-ink" : "m-ink-2 hover:bg-[var(--m-sheet-raised)]"}`}>
         <span>Every issue</span>
       </button>
-      {groups.map((g) => (
-        <button key={g.check_id} type="button" onClick={() => onPick(g.check_id)} aria-current={active === g.check_id ? "true" : undefined}
-          data-testid="work-group"
-          className={`flex flex-col gap-1 rounded-[var(--m-radius-control)] px-3 py-2 text-left ${active === g.check_id ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"}`}>
-          <span className="flex items-start gap-2">
-            <SeverityDot severity={isSeverity(g.severity) ? g.severity : "low"} />
-            <span className="m-text-body m-ink flex-1">{g.message ?? g.check_id}</span>
-            <span className="m-text-body m-numeric m-ink-2">{g.open.toLocaleString()}</span>
-          </span>
-          <span className="flex items-center gap-2 pl-5 m-text-meta m-ink-3">
-            {formatModuleName(g.module)}{g.field ? <>, <Mono inline>{g.field}</Mono></> : null}
-            {g.proposed ? <>, {g.proposed.toLocaleString()} suggested</> : null}
-          </span>
-          <span aria-hidden className="ml-5 block h-1 overflow-hidden rounded-full bg-[var(--m-sheet-raised)]">
-            <ProgressFill value={(g.open / top) * 100} />
-          </span>
-        </button>
-      ))}
+      <ul aria-label="Issues ranked by open records" className="flex flex-col">
+        {groups.map((g) => (
+          <RankedRow
+            key={g.check_id}
+            tone={isSeverity(g.severity) ? g.severity : "low"}
+            onSelect={() => onPick(g.check_id)}
+            selected={active === g.check_id}
+            testId="work-group"
+            label={
+              <span className="flex min-w-0 items-center gap-2">
+                <SeverityDot severity={isSeverity(g.severity) ? g.severity : "low"} />
+                <span className="min-w-0 flex-1 truncate">{g.message ?? g.check_id}</span>
+              </span>
+            }
+            magnitude={g.open.toLocaleString()}
+            share={(g.open / top) * 100}
+            meta={<span className="truncate">{formatModuleName(g.module)}{g.field ? <>, <Mono inline>{g.field}</Mono></> : null}{g.proposed ? <>, {g.proposed.toLocaleString()} suggested</> : null}</span>}
+          />
+        ))}
+      </ul>
     </nav>
   );
 }
@@ -336,7 +338,7 @@ export function FixWork() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)_minmax(0,480px)] lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+      <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)_minmax(0,440px)] 2xl:grid-cols-[400px_minmax(0,1fr)_minmax(0,480px)]">
         <Card title="Issues" meta={groups.data ? `${groups.data.total.toLocaleString()} in this run` : undefined} padding="sm">
           {groups.isLoading ? <Skeleton height={240} /> : groups.isError ? <ErrorState {...apiErrorState(groups.error)} onRetry={() => groups.refetch()} />
             : groups.data && groups.data.groups.length ? (

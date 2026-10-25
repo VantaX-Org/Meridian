@@ -184,7 +184,7 @@ export default function SystemPage() {
     return (
       <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton height={56} />
-        <div className="grid grid-cols-4 gap-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={88} />)}</div>
+        <div className="m-stat-grid">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={88} />)}</div>
         <Skeleton height={240} />
       </div>
     );
