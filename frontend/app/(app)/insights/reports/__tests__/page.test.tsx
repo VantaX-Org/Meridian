@@ -77,7 +77,8 @@ describe("ReportsPage", () => {
     mount();
     expect(await screen.findByRole("listbox", { name: "Reports" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
-    await userEvent.click(await screen.findByRole("option", { name: /Run comparison/ }));
+    await userEvent.click(await screen.findByRole("option", { name: /Comparison report/ }));
+    expect(screen.queryByRole("button", { name: "Copy link" })).toBeNull();
     expect(screen.getByText(/Key figures: DQS 80/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Download" }));
     expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare/v2.pdf", "compare_v2.pdf");
@@ -89,7 +90,7 @@ describe("ReportsPage", () => {
     const first = await screen.findByRole("option", { name: /Board pack/ });
     first.focus();
     await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("option", { name: /Run comparison/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("option", { name: /Comparison report/ })).toHaveAttribute("aria-selected", "true");
   });
 
   it("disables record download until a key is typed", async () => {
@@ -118,7 +119,7 @@ describe("ReportsPage scope and rendering", () => {
     expect(await screen.findByRole("option", { name: "Run 1" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "controlling_1k" })).toBeNull();
     expect(screen.queryByRole("option", { name: "Run 2" })).toBeNull();
-    expect(screen.getByText("1 earlier run of the same lineage can be compared.")).toBeInTheDocument();
+    expect(screen.getByText("1 earlier run of the same system can be compared")).toBeInTheDocument();
   });
 
   it("shows a pending Rendering state on Download while the PDF builds", async () => {

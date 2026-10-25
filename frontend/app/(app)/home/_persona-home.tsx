@@ -20,9 +20,11 @@ import { useDayOne } from "@/hooks/use-day-one";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { exportFindings } from "@/lib/api/findings";
+import { getQueueItems } from "@/lib/api/stewardship";
 import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { RouteInsight } from "@/components/insight/route-insight";
+import { DqsScore } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
   runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf,
@@ -32,7 +34,7 @@ import {
   blockingTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
   type StateRow,
 } from "@/lib/current-state";
-import { formatDate, formatModuleName, plural, round1, shortCapReason } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
 import { hrefWithRun, runScopeLabel } from "@/lib/run-scope";
 import { StateScope } from "@/components/run-scope";
@@ -90,6 +92,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, enabled: wantsFindings });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
+  // The steward's queue leads the page: the five open items due first.
+  const queueQ = useQuery({ queryKey: ["home-inbox-top"], queryFn: () => getQueueItems({ status: "open", limit: 5 }), enabled: role === "steward", meta: { ignoreError: true } });
   const finished = allVersions
     .filter(isScored)
     .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime());
@@ -391,26 +395,50 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const notLoaded = Math.max((landscapeQ.data?.total ?? 0) - (landscapeQ.data?.loaded ?? 0), 0);
   // Failing critical and high checks of every object in scope.
   const blocking = blockingTotal(state);
+  // The findings behind the count: one run's findings tab, critical first (the run page's own drill); several runs
+  // have no one findings list, so the objects not ready stand in.
+  const blockingHref = scopeRuns.length === 1 ? `/runs/${scopeRuns[0].id}?tab=findings&severity=critical` : objectsHref({ readiness: "fail" });
   const countsReady = !!counts;
+  const queueItems = queueQ.data?.items ?? [];
+  const inboxCard = role === "steward" ? (
+    <Card title="Inbox" meta={countsReady ? `${plural(counts.inbox, "open item")}` : undefined} padding="sm">
+      {queueQ.isLoading ? <Skeleton height={120} /> : queueItems.length === 0 ? (
+        <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix" className="underline-offset-2 hover:underline">Open cleaning proposals</Link>} />
+      ) : (
+        <ul className="flex flex-col" data-testid="home-inbox-items">
+          {queueItems.map((it) => (
+            <li key={it.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)] m-text-body">
+              <Link href={`/inbox?type=${encodeURIComponent(it.item_type)}`} className="flex-1 underline-offset-2 hover:underline">{labelOf(it.item_type)}, {formatModuleName(it.domain)}</Link>
+              {it.sla_state === "breached" && <Pill tone="no-go">Overdue</Pill>}
+              <span className="m-ink-3">{it.due_at ? `due ${relativeTime(it.due_at)}` : `opened ${relativeTime(it.created_at)}`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  ) : null;
   const work =
     role === "lead" ? (
       <WorkRow>
         <Stat label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={objectsHref({ readiness: "fail" })} />
-        <Stat label="Blocking findings" value={blocking.toLocaleString()} hint={blocking ? "critical and high" : "none"} tone={blocking ? "no-go" : "go"} href={objectsHref({ readiness: "fail" })} />
+        <Stat label="Blocking findings" value={blocking.toLocaleString()} hint={blocking ? "critical and high" : "none"} tone={blocking ? "no-go" : "go"} href={blockingHref} />
         <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
     ) : role === "steward" ? (
-      <WorkRow>
-        <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
-        <Stat label="Cleaning proposals" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
-        <Stat
-          label="Worst object"
-          value={worst?.composite_score?.toFixed(1) ?? "—"}
-          hint={worst?.label}
-          tone={worst?.composite_score != null ? readinessOf(worst.composite_score, bands) : undefined}
-          href={worst ? `/objects/${worst.module}?run=${worst.run_id}` : undefined}
-        />
-      </WorkRow>
+      <>
+        <WorkRow>
+          <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
+          <Stat label="Cleaning proposals" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
+          <Stat
+            label="Worst object"
+            value={worst?.composite_score?.toFixed(1) ?? "—"}
+            hint={worst?.label}
+            tone={worst?.composite_score != null ? readinessOf(worst.composite_score, bands) : undefined}
+            href={worst ? `/objects/${worst.module}?run=${worst.run_id}` : undefined}
+          />
+        </WorkRow>
+        {inboxCard}
+      </>
     ) : (
       <WorkRow>
         <Stat label="Systems unhealthy" value={unhealthy} hint={`of ${activeSystems.length} active`} tone={unhealthy ? "no-go" : "go"} href="/systems" />
@@ -423,8 +451,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     <HomePage
       persona={role}
       state="ready"
+      workFirst={role === "steward"}
+      explain={aggregateQ.data ? <DqsScore agg={aggregateQ.data} versionId={pinned?.id} cap={cap?.cap} capReason={capReason} /> : undefined}
       verdict={{
         dqs,
+        cap: cap?.cap,
+        criticals: cap?.criticals,
+        bands,
         delta: dqs != null && previousDqs != null ? round1(dqs - previousDqs) : null,
         previousLabel: previous ? (pinned ? runLabel(previous) : "before the latest run") : undefined,
         firstRun: !previous,
@@ -433,7 +466,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         capLine,
         action,
       }}
-      run={{ label: pinned ? runLabel(pinned) : stateScopeLine(objects.length, newest.run_at), runAt: newest.run_at }}
+      run={{ id: newest.id, label: pinned ? runLabel(pinned) : stateScopeLine(objects.length, newest.run_at), runAt: newest.run_at }}
       scope={
         <StateScope
           runs={latestPerLineage(finished)}
@@ -457,13 +490,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         <Select
           label="View as"
           value={role}
-          onValueChange={(r) => router.push(`/home/${r}`)}
+          onValueChange={(r) => router.push(hrefWithRun(`/home/${r}`, search, pinnedId))}
           options={PERSONA_OPTIONS}
         />
         {can("export") ? (
           <span data-tour="home-export" className="inline-flex"><ExportMenu
             options={[
-              ...(role === "steward" ? [{ format: "xlsx" as const, label: "My failing records (Excel)", run: () => exportFindings("xlsx", { ...(pinned ? { version_id: pinned.id } : {}), sort: "severity" }) }] : []),
+              ...(role === "steward" ? [{ format: "xlsx" as const, label: "Failing records (Excel)", run: () => exportFindings("xlsx", { ...(pinned ? { version_id: pinned.id } : {}), sort: "severity" }) }] : []),
               // The executive report is one run's: without ?run= it is the newest run's, and says so.
               {
                 format: "pdf",

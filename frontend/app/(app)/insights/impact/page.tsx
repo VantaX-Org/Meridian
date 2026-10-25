@@ -20,6 +20,7 @@ import {
 import { domainOf } from "@/design/tokens";
 import { getCostModel } from "@/lib/api/settings";
 import { labelOf, plural } from "@/lib/format";
+import { previousInLineage } from "@/lib/runs";
 import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -31,6 +32,12 @@ import { useInsightScope, withScope } from "../_components/useInsightScope";
 function ruleHref(checkId: string): string {
   return `/rules/${encodeURIComponent(checkId)}`;
 }
+
+/** A feature's display name: a machine id reads as words; a transaction code (MIGO) keeps its case. */
+const featureLabel = (feature: string) => (feature.includes("_") || feature === feature.toLowerCase() ? labelOf(feature) : feature);
+
+/** The failing rules behind a feature, on the rules page, scoped to the run. */
+const rulesBehind = (run: string | undefined, rules: string[]) => withScope("/insights/rules", { run, check: rules.join(",") || undefined });
 
 function CheckChips({ ids }: { ids: string[] }) {
   return (
@@ -51,13 +58,13 @@ export function impactRows(rows: ImpactRow[]): ImpactRow[] {
   return rows.filter((r) => r.record_count > 0 || r.value_at_risk > 0);
 }
 
-const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
+const impactColumns = (run: string | undefined, currency?: string | null): ColumnDef<ImpactRow>[] => [
   {
     accessorKey: "feature",
     header: "Feature",
     cell: ({ row }) => (
-      <DrillLink object={row.original.feature}>
-        {row.original.feature}
+      <DrillLink href={rulesBehind(run, row.original.causing_rules)}>
+        {featureLabel(row.original.feature)}
       </DrillLink>
     ),
   },
@@ -66,7 +73,7 @@ const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
     accessorKey: "record_count",
     header: "Blocked records",
     meta: { numeric: true },
-    cell: ({ row }) => <DrillLink object={row.original.feature}>{row.original.record_count.toLocaleString()}</DrillLink>,
+    cell: ({ row }) => <DrillLink href={rulesBehind(run, row.original.causing_rules)}>{row.original.record_count.toLocaleString()}</DrillLink>,
   },
   {
     accessorKey: "value_at_risk",
@@ -166,10 +173,12 @@ function ImpactPanel({
   dayOne,
   currency,
   unpriced,
+  run,
 }: {
   query: UseQueryResult<ImpactResponse, Error>;
   dayOne: ReturnType<typeof useDayOne>;
   currency?: string | null;
+  run?: string;
   /** True when the tenant's cost model prices no feature yet, so no value at risk can exist. */
   unpriced: boolean;
 }) {
@@ -202,16 +211,24 @@ function ImpactPanel({
       />
     );
   }
-  return <DataTable columns={impactColumns(currency)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
+  return <DataTable columns={impactColumns(run, currency)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
 }
 
 export default function ImpactPage() {
-  const { run } = useInsightScope();
+  const { run, runs } = useInsightScope();
   const dayOne = useDayOne();
 
   const impactQuery = useQuery({
     queryKey: queryKeys.insights("impact", run),
     queryFn: () => getImpact({ version_id: run }),
+  });
+  // What changed: the same features at the run before this one in its lineage (same system, or uploads of the same objects).
+  const current = runs.find((r) => r.id === run);
+  const previous = current ? previousInLineage(current, runs) : null;
+  const prevQuery = useQuery({
+    queryKey: queryKeys.insights("impact", previous?.id),
+    queryFn: () => getImpact({ version_id: previous?.id }),
+    enabled: !!previous,
   });
   const provenCostQuery = useQuery({
     queryKey: queryKeys.insights("proven-cost", run),
@@ -225,7 +242,21 @@ export default function ImpactPage() {
   const rows = impactRows(impactQuery.data?.rows ?? []);
   const top = [...rows].sort((x, y) => y.value_at_risk - x.value_at_risk)[0];
   const currency = provenCostQuery.data?.currency ?? costModel.data?.currency;
-  const byFeature = rows.filter((r) => r.value_at_risk > 0).map((r) => ({ x: labelOf(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
+  const byFeature = rows.filter((r) => r.value_at_risk > 0).map((r) => ({ x: featureLabel(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
+  const prevRows = impactRows(prevQuery.data?.rows ?? []);
+  const atRisk = rows.reduce((n, r) => n + r.value_at_risk, 0);
+  const prevAtRisk = prevRows.reduce((n, r) => n + r.value_at_risk, 0);
+  const changed = previous && prevQuery.isLoading
+    ? <Skeleton height={16} />
+    : !previous
+      ? "First run of this system"
+      : !prevQuery.data
+        ? "The previous run could not be read"
+        : atRisk !== prevAtRisk
+          ? `Value at risk ${atRisk > prevAtRisk ? "up" : "down"} ${formatMoney(Math.abs(atRisk - prevAtRisk), currency)} since the previous run`
+          : rows.length === prevRows.length
+            ? `${plural(rows.length, "feature")} blocked, as in the previous run`
+            : `${Math.abs(rows.length - prevRows.length).toLocaleString()} ${rows.length > prevRows.length ? "more" : "fewer"} features blocked than in the previous run`;
 
   // Each card follows its own query, so proven cost shows while a large impact query is still running.
   const state: "loading" | undefined = dayOne.status === "loading" ? "loading" : undefined;
@@ -247,21 +278,21 @@ export default function ImpactPage() {
         loading: impactQuery.isLoading,
         situation: {
           sentence: top && top.value_at_risk > 0
-            ? `${formatMoney(top.value_at_risk, currency)} at risk in ${labelOf(top.feature)}, the largest of ${plural(rows.length, "blocked feature")}`
+            ? `${formatMoney(top.value_at_risk, currency)} at risk in ${featureLabel(top.feature)}, the largest of ${plural(rows.length, "blocked feature")}`
             : rows.length ? `${plural(rows.length, "feature is", "features are")} blocked, but none is priced yet` : "No feature carries value at risk",
           tone: top && top.value_at_risk > 0 ? "at-risk" : rows.length ? "at-risk" : "go",
         },
-        changed: { sentence: provenCostQuery.data ? `${plural(provenCostQuery.data.rows.length, "cost metric is", "cost metrics are")} backed by documents` : "—" },
+        changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: "Value at risk is what the blocked records are worth: their count times the value of each" },
         next: unpriced
           ? { sentence: "Give each SAP feature a value and the defects get a price", action: { label: "Open settings", href: "/admin/settings" } }
           : top
-          ? { sentence: `Fix the rules behind ${labelOf(top.feature)}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run, s4: "yes" }) } }
+          ? { sentence: `Fix the rules behind ${featureLabel(top.feature)}`, action: { label: "Open failing rules", href: rulesBehind(run, top.causing_rules) } }
           : { sentence: "Run an analysis", action: { label: "Open runs", href: "/runs" } },
       }}
     >
       <Card title="Features at risk" meta="Ranked by value at risk">
-        <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} />
+        <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} run={run} />
       </Card>
       {byFeature.length > 0 && (
         <Card title="Cost by feature">

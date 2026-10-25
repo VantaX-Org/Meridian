@@ -20,7 +20,7 @@ export interface InsightHeaderProps {
   changed: InsightCell;
   why: InsightCell;
   next: InsightCell & { action?: { label: string; href?: string; onClick?: () => void; impact?: string } };
-  /** When given, the AI summary replaces the four cells; the sentences are never shown twice. */
+  /** When given, the model's summary is set under the four cells, labelled in words as the model's; the four cells stay. */
   aiSummary?: AiSummaryProps;
   loading?: boolean;
   /** Opt-in hero zone: a white score sheet with up to four stats above the sentences. One per page. */
@@ -69,13 +69,6 @@ function Cell({ label, cell, loading, hero, children }: { label: string; cell: I
 
 export function InsightHeader({ situation, changed, why, next, aiSummary, loading, hero, stats, lead, embedded, bare }: InsightHeaderProps) {
   const a = next.action;
-  if (aiSummary && !bare) {
-    return (
-      <section aria-label="Insight" className={embedded ? "m-hero-cells" : "m-motion-rise"} style={embedded ? undefined : { background: "var(--m-sheet)", borderTop: "1px solid var(--m-line-strong)", borderBottom: "1px solid var(--m-line)", padding: "var(--m-space-3) 0" }}>
-        <AiSummary {...aiSummary} />
-      </section>
-    );
-  }
   return (
     <section
       aria-label="Insight"
@@ -112,6 +105,7 @@ export function InsightHeader({ situation, changed, why, next, aiSummary, loadin
           )}
         </Cell>
       </div>}
+      {aiSummary && !bare && <div className={hero || embedded ? "pt-3" : "mt-3 border-t pt-3 [border-color:var(--m-line)]"}><AiSummary {...aiSummary} /></div>}
     </section>
   );
 }

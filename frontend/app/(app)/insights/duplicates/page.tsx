@@ -19,8 +19,11 @@ import {
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
+import { getMiningDuplicates } from "@/lib/api/mining";
+import { previousInLineage } from "@/lib/runs";
 import { apiErrorState } from "@/lib/error";
 import { plural } from "@/lib/format";
+import { Skeleton } from "@/design";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
@@ -31,7 +34,26 @@ import { MinedAnomalies, MinedDuplicates, MinedRelationships } from "./mined-tab
 export default function DuplicatesPage() {
   const search = useSearchParams();
   const router = useRouter();
-  const run = useInsightScope().run ?? "";
+  const scope = useInsightScope();
+  const run = scope.run ?? "";
+  // What changed: pairs mined in this run against the run before it in its lineage (same key as the Mined pairs tab).
+  const current = scope.runs.find((r) => r.id === run);
+  const previous = current ? previousInLineage(current, scope.runs) : null;
+  const minedNow = useQuery({ queryKey: ["mining", "duplicates", run], queryFn: () => getMiningDuplicates({ version_id: run || undefined, limit: 500 }), enabled: !!run && !!previous });
+  const minedBefore = useQuery({ queryKey: ["mining", "duplicates", previous?.id ?? ""], queryFn: () => getMiningDuplicates({ version_id: previous?.id, limit: 500 }), enabled: !!previous });
+  const pairsNow = minedNow.data?.length ?? 0;
+  const pairsBefore = minedBefore.data?.length ?? 0;
+  const changed = !run || !current
+    ? "First run of this system"
+    : !previous
+      ? "First run of this system"
+      : minedNow.isLoading || minedBefore.isLoading
+        ? <Skeleton height={16} />
+        : !minedNow.data || !minedBefore.data
+          ? "The previous run could not be read"
+          : pairsNow === pairsBefore
+            ? `${plural(pairsNow, "duplicate pair")} mined, as in the previous run`
+            : `${Math.abs(pairsNow - pairsBefore).toLocaleString()} ${pairsNow > pairsBefore ? "more" : "fewer"} duplicate pairs mined than in the previous run`;
   const tab = search.get("tab") ?? "clusters";
   const setTab = (next: string) => {
     const params = new URLSearchParams(search.toString());
@@ -122,7 +144,7 @@ export default function DuplicatesPage() {
       run={run || undefined}
       insight={{
         situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${plural(nodes.length, "record is", "records are")} in this cluster` },
-        changed: { sentence: "Mined pairs, anomalies and relationships follow the run you choose" },
+        changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: picked && !cluster.isLoading ? `${plural(edges.length, "matched pair links", "matched pairs link")} these records` : "A cluster shows which records would merge into one" },
         next: { sentence: nodes.length ? "Choose the surviving record, then propose the merge" : "Pick an object and a record" },
         loading: picked && cluster.isLoading,

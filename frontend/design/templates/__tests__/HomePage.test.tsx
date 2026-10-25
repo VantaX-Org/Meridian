@@ -6,7 +6,7 @@ vi.mock("@/hooks/use-jobs", () => ({ useJobs: () => ({ active: [] }) }));
 
 import { HomePage } from "../HomePage";
 
-const run = { label: "Run 1", runAt: "2026-01-01T00:00:00Z" };
+const run = { id: "v1", label: "Run 1", runAt: "2026-01-01T00:00:00Z" };
 
 describe("HomePage no-data state", () => {
   it("renders the step sheet, the situation sentence and no verdict number", () => {

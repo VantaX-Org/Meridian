@@ -37,7 +37,7 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
     queryFn: () => getLineageGuards({ node, version_id: versionId }),
   });
   if (q.isLoading) return <Skeleton height={120} />;
-  if (q.error || !q.data) return <EmptyState title="Guards could not be read." />;
+  if (q.error || !q.data) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   const d = q.data;
   return (
     <div className="flex flex-col gap-2">
@@ -70,9 +70,9 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
     queryFn: () => getBlastRadius(versionId, checkId),
   });
   if (q.isLoading) return <Skeleton height={120} />;
-  if (q.error || !q.data) return <EmptyState title="Blast radius could not be read." />;
+  if (q.error || !q.data) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   const d = q.data;
-  if (!d.failing_records) return <EmptyState title={`No failing records are stored for ${checkId} in this version.`} />;
+  if (!d.failing_records) return <EmptyState title="No failing records stored for this rule in this run" detail="The blast radius needs the rule's failing record keys." action={<Button render={<Link href="/rules">Open rules</Link>} />} />;
   return (
     <div className="flex flex-col gap-2">
       <p className="m-text-body m-ink-2">
@@ -95,7 +95,7 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
             </li>
           ))}
         </ul>
-      ) : <EmptyState title="No transactional documents are modelled for this object." />}
+      ) : <EmptyState title="No transactional documents modelled for this object" action={<Button render={<Link href="/rules">Open rules</Link>} />} />}
     </div>
   );
 }

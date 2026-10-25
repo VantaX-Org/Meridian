@@ -6,13 +6,13 @@ import { useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, Field, Input, Pill, Select, asyncStateOf } from "@/design";
+import { Button, Card, ErrorState, Field, Input, Pill, Select, Skeleton, asyncStateOf } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
 import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
-import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
-import { apiErrorMessage } from "@/lib/error";
+import { deltaSentence, formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
 import { lineageOf } from "@/lib/runs";
@@ -21,6 +21,12 @@ import { useInsightScope } from "../_components/useInsightScope";
 
 const NONE = "none";
 const EXT: Record<CatalogueEntry["format"], string> = { PDF: "pdf", XLSX: "xlsx", JSON: "json" };
+/** One name per report, the same on every page; a report the catalogue adds keeps its own name. */
+const REPORT_NAME: Record<string, string> = {
+  executive: "Executive report", board: "Board pack", trend: "Progress report", compare: "Comparison report",
+  workbook: "Comparison workbook", analysis: "Run report (analysis)", full: "Narrative report",
+};
+const nameOf = (e: CatalogueEntry) => REPORT_NAME[e.id] ?? e.name;
 
 export default function ReportsPage() {
   const { can, has } = usePermissions();
@@ -84,12 +90,8 @@ export default function ReportsPage() {
       setBuilding(null);
     }
   };
-  const copy = async () => {
-    if (!href) return;
-    try { await navigator.clipboard.writeText(new URL(href, window.location.origin).toString()); toast.success("Link copied"); } catch { toast.error("Could not copy the link"); }
-  };
-
   const o = overview.data;
+  const score = o?.dqs.composite;
   const scopeLine = [versionId ? runLabel(versionId) : "no run", cmp ? `compared with ${runLabel(cmp)}` : "no comparison run", mod ? formatModuleName(mod) : "every object in the run"].join(", ");
 
   return (
@@ -100,12 +102,16 @@ export default function ReportsPage() {
       module={mod}
       skeleton={<CardSkeleton height={300} />}
       insight={{
-        situation: { sentence: `${plural(runs.length, "completed run is", "completed runs are")} available. Reports are rendered from the run you choose.`, tone: runs.length ? "go" : "at-risk" },
-        changed: { sentence: cmp ? `Comparing with ${runLabel(cmp)}.` : comparableRuns.length ? `${plural(comparableRuns.length, "earlier run")} of the same lineage can be compared.` : "No earlier run of the same lineage to compare with." },
-        why: { sentence: can("export") ? `${plural(entries.length, "report")} in the library.` : "Export needs the auditor or analyst role." },
+        // The scoped run's score leads; the reports are rendered from it.
+        situation: {
+          sentence: versionId && o ? `DQS ${score != null ? score.toFixed(1) : "not scored"} for ${runLabel(versionId)}${o.dqs.tier ? `, ${o.dqs.tier === "go" ? "go" : o.dqs.tier === "at_risk" ? "at risk" : "no-go"}` : ""}` : `${plural(runs.length, "completed run is", "completed runs are")} available`,
+          tone: o?.dqs.tier === "no_go" ? "no-go" : o?.dqs.tier === "at_risk" ? "at-risk" : runs.length ? "go" : "at-risk",
+        },
+        changed: { sentence: cmp ? `Compared with ${runLabel(cmp)}` : o?.dqs.delta != null ? deltaSentence(o.dqs.delta) : comparableRuns.length ? `${plural(comparableRuns.length, "earlier run")} of the same system can be compared` : "No earlier run of the same system to compare with" },
+        why: { sentence: can("export") ? `${plural(entries.length, "report")} in the library, rendered from ${versionId ? runLabel(versionId) : "the run you choose"}` : "Export needs the auditor or analyst role" },
         next: can("export") && href
-          ? { sentence: "Download the selected report.", action: { label: building ? "Rendering" : `Download ${current?.name ?? "report"}`, onClick: () => void download() } }
-          : { sentence: can("export") ? "Choose a run." : "Export needs the auditor or analyst role.", action: { label: "Open runs", href: "/runs" } },
+          ? { sentence: `Download ${current ? nameOf(current) : "the selected report"}`, action: { label: building ? "Rendering" : `Download ${current ? nameOf(current) : "report"}`, onClick: () => void download() } }
+          : { sentence: can("export") ? "Choose a run" : "Export needs the auditor or analyst role", action: { label: "Open runs", href: "/runs" } },
       }}
       controls={
         <>
@@ -139,7 +145,7 @@ export default function ReportsPage() {
                       tabIndex={e.id === current?.id ? 0 : -1} onClick={() => setSelected(e.id)}
                       className="m-lift flex flex-col gap-1 rounded p-3 text-left m-ink [background:var(--m-surface)]! aria-selected:[background:var(--m-surface-2)]!"
                     >
-                      <span className="flex items-center gap-2 font-medium">{e.name}<Pill tone="neutral">{e.format}</Pill></span>
+                      <span className="flex items-center gap-2 font-medium">{nameOf(e)}<Pill tone="neutral">{e.format}</Pill></span>
                       <span className="m-text-meta m-ink-3">{e.about}</span>
                     </button>
                   ))}
@@ -148,7 +154,7 @@ export default function ReportsPage() {
             </Card>
           </div>
           <div className="@5xl:col-span-7">
-            <Card title={current ? `Preview: ${current.name}` : "Preview"}>
+            <Card title={current ? `Preview: ${nameOf(current)}` : "Preview"}>
               {current && (
                 <div className="flex flex-col gap-3">
                   <p className="m-text-body">{current.about}</p>
@@ -158,7 +164,7 @@ export default function ReportsPage() {
                   )}
                   {o && (
                     <p className="m-text-body m-ink-2">
-                      {`Key figures: DQS ${o.dqs.composite ?? "not scored"}, ${o.blockers.count} blockers`}
+                      {`Key figures: DQS ${o.dqs.composite ?? "not scored"}, ${plural(o.blockers.count, "blocking finding")}`}
                       {o.value_at_risk.worst_l1 ? `, largest L1 at risk ${l1Label(o.value_at_risk.worst_l1)} ${formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency)}` : ""}.
                     </p>
                   )}
@@ -171,7 +177,6 @@ export default function ReportsPage() {
                   {current.last_built_at && <p className="m-text-meta m-ink-3">{`Last built ${formatDate(current.last_built_at, "datetime")}.`}</p>}
                   <div className="flex gap-2">
                     <Button variant="primary" disabled={!href} pending={building === current.id} onClick={() => void download()}>{building === current.id ? "Rendering" : "Download"}</Button>
-                    <Button variant="secondary" disabled={!href} onClick={() => void copy()}>Copy link</Button>
                   </div>
                 </div>
               )}
@@ -183,9 +188,11 @@ export default function ReportsPage() {
         <div className="mt-4">
           <Card title="Recent exports">
             {recent.isError ? (
-              <p className="m-text-body" role="alert">{`Recent exports did not load. ${apiErrorMessage(recent.error)}`}</p>
+              <ErrorState {...apiErrorState(recent.error)} onRetry={() => void recent.refetch()} />
+            ) : recent.isLoading ? (
+              <Skeleton height={60} />
             ) : (recent.data?.entries ?? []).length === 0 ? (
-              <p className="m-text-body m-ink-2">{recent.isLoading ? "Loading" : "No exports yet."}</p>
+              <p className="m-text-body m-ink-2">No exports yet</p>
             ) : (
               <ul className="flex flex-col gap-1 m-text-body">
                 {recent.data?.entries.map((e) => {

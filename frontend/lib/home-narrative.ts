@@ -1,4 +1,5 @@
 import type { ObjectSummary } from "./api/v1/objects";
+import { plural } from "./format";
 
 export interface NarrativeInput {
   role: "lead" | "steward" | "basis";
@@ -22,13 +23,15 @@ function worstFirst(objects: ObjectSummary[]): ObjectSummary[] {
  * a role-specific call to action. Pure function of `objects` — no randomness,
  * no clock reads, so it is safe to unit test byte-for-byte.
  */
-/** Sentence 1 alone: the overall state, used as the home verdict. */
+/** Sentence 1 alone: the overall state, used as the home verdict: "N of M objects are not ready for go-live, K at risk." */
 export function verdictSentence(objects: Pick<ObjectSummary, "readiness">[]): string {
-  const failing = objects.filter((o) => o.readiness === "fail");
+  const failing = objects.filter((o) => o.readiness === "fail").length;
+  const atRisk = objects.filter((o) => o.readiness === "warn").length;
   if (objects.length === 0) return "No objects have been analysed yet.";
-  if (failing.length === 0) return objects.length === 1 ? "The one object is ready for go-live." : `All ${objects.length.toLocaleString("en-US")} objects are ready for go-live.`;
-  const total = `${objects.length.toLocaleString("en-US")} ${objects.length === 1 ? "object" : "objects"}`;
-  return `${failing.length.toLocaleString("en-US")} of ${total} ${failing.length === 1 ? "is" : "are"} not ready for go-live.`;
+  if (failing === 0 && atRisk === 0) return objects.length === 1 ? "The one object is ready for go-live." : `All ${objects.length.toLocaleString("en-US")} objects are ready for go-live.`;
+  const total = plural(objects.length, "object");
+  if (failing === 0) return `${atRisk.toLocaleString("en-US")} of ${total} ${atRisk === 1 ? "is" : "are"} at risk for go-live.`;
+  return `${failing.toLocaleString("en-US")} of ${total} ${failing === 1 ? "is" : "are"} not ready for go-live${atRisk ? `, ${atRisk.toLocaleString("en-US")} at risk` : ""}.`;
 }
 
 export function buildNarrative({ role, objects }: NarrativeInput): string {

@@ -8,6 +8,10 @@ import { rulesFor80 } from "../../_components/rulesFor80";
 import RulesPage from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: () => null,
+}));
 let query = "run=v1";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

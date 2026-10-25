@@ -53,7 +53,10 @@ export function RouteInsight() {
   });
   const llmQ = useQuery({ queryKey: ["health", "llm"], queryFn: getLlmHealth, enabled: !!section && hasRun, staleTime: 60_000 });
   const llmOn = llmQ.data?.llm_available === true;
-  const execQ = useQuery({ queryKey: queryKeys.insights("exec", runId), queryFn: () => getExec({ version_id: runId }), enabled: !!section && hasRun && !!runId && llmOn });
+  // The model's narrative describes one run. It is shown only when the four cells describe the same scope: a pinned
+  // run, or a current state made of one run; several lineages have no narrative that covers them all.
+  const sameScope = !!run || stateRuns.length <= 1;
+  const execQ = useQuery({ queryKey: queryKeys.insights("exec", runId), queryFn: () => getExec({ version_id: runId }), enabled: !!section && hasRun && !!runId && llmOn && sameScope });
   const costAtRisk = aggQ.data?.cost_at_risk;
   const costModelQ = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: !!section && costAtRisk != null && costAtRisk > 0, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
 
@@ -101,8 +104,8 @@ export function RouteInsight() {
     dayOne: dayOne.step ? { label: dayOne.step.label, href: dayOne.step.href, status: dayOne.step.key === "running" } : undefined,
   };
   const cells = buildInsight(section, facts);
-  // AI on: the model's summary replaces the four cells. AI off (or no narrative): the four cells alone.
-  const aiOn = hasRun && llmOn && (execQ.isLoading || !!execQ.data?.narrative);
+  // The four rule-built cells always. The model's summary, labelled in words, sits under them when it covers the same scope.
+  const aiOn = hasRun && llmOn && sameScope && (execQ.isLoading || !!execQ.data?.narrative);
 
   return (
     <div className="min-w-0">

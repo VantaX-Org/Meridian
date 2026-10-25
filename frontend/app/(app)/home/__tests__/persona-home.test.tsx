@@ -7,6 +7,7 @@ import * as objectsApi from "@/lib/api/v1/objects";
 import * as findingsApi from "@/lib/api/findings";
 import * as versionsApi from "@/lib/api/versions";
 import * as shellApi from "@/lib/api/shell";
+import * as stewardshipApi from "@/lib/api/stewardship";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as downloadApi from "@/lib/api/download";
@@ -56,6 +57,7 @@ beforeEach(() => {
   vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS });
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST] });
   vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: 0, inbox: 0 });
+  vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [], total: 0 } as unknown as Awaited<ReturnType<typeof stewardshipApi.getQueueItems>>);
   vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
   vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
   vi.spyOn(jobsHook, "useJobs").mockReturnValue({ active: [], jobs: [] } as unknown as ReturnType<typeof jobsHook.useJobs>);
@@ -265,14 +267,38 @@ describe("PersonaHomePage blocking and loading states", () => {
     expect(screen.queryByRole("link", { name: /MM-/ })).toBeNull();
   });
 
-  it("counts critical plus high as blocking and links it to the objects list", async () => {
+  it("counts critical plus high as blocking and links one run's count to its findings, critical first", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
 
     renderWithQuery(<LeadHomePage />);
 
     const stat = (await screen.findByText("Blocking findings")).closest("a");
-    expect(stat).toHaveAttribute("href", "/objects?readiness=fail");
+    expect(stat).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical");
     expect(stat).toHaveTextContent("1");
+  });
+
+  it("sets the steward's work row and inbox items before the score, and the lead's after it", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [
+      { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-08T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", ai_recommendation: null, ai_confidence: null },
+    ], total: 1 } as unknown as Awaited<ReturnType<typeof stewardshipApi.getQueueItems>>);
+
+    renderWithQuery(<StewardHomePage />);
+
+    const items = await screen.findByTestId("home-inbox-items");
+    expect(items).toHaveTextContent("Merge decision, Material master");
+    const hero = screen.getByTestId("home-verdict-row");
+    const inbox = screen.getByText("Open inbox").closest("a") as HTMLElement;
+    expect(inbox.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(items.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps the lead's score before the work row", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    renderWithQuery(<LeadHomePage />);
+    const hero = await screen.findByTestId("home-verdict-row");
+    const inbox = screen.getByText("Open inbox").closest("a") as HTMLElement;
+    expect(hero.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("shows a dash, no hint, for inbox and proposals until counts load", async () => {
@@ -374,7 +400,7 @@ describe("PersonaHomePage current state across objects", () => {
     // Every number names its runs: the state's sources, each linking to its run alone.
     expect(await screen.findByTestId("run-sources")).toHaveTextContent("3 objects from controlling_1k, 16 Oct 2026;");
     expect(screen.getByRole("link", { name: "controlling_1k, 16 Oct 2026" })).toHaveAttribute("href", "/home/lead?run=co2");
-    expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 3 objects is not ready for go-live.");
+    expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 3 objects is not ready for go-live, 1 at risk.");
     // (70 + 95 + 80) / 3 against the state before the newest run, (64 + 95 + 80) / 3: +2
     const dqs = screen.getByTestId("home-dqs");
     expect(dqs).toHaveTextContent("vs before the latest run");

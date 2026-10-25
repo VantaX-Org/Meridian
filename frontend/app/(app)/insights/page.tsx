@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
+import { Bar, Button, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, statusLabel, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getCleansing, getHeatmap, getOverview, getRootCauses, getRuleRanking, getTrends, l1Label, type RuleRow,
@@ -130,14 +130,14 @@ function RunOverview() {
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : "Not scored yet"}
               </span>
               <span className="m-text-body m-ink-2">
-                {o ? `${plural(o.blockers.count, "blocking gap")}${o.blockers.waves ? ` across ${plural(o.blockers.waves, "wave")}` : ""}` : " "}
+                {o ? `${plural(o.blockers.count, "blocking finding")}${o.blockers.waves ? ` across ${plural(o.blockers.waves, "wave")}` : ""}` : " "}
               </span>
             </div>
             )}
           </div>
         ),
         stats: [
-          { label: "Blocking gaps", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
+          { label: "Blocking findings", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
           { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ source: "rule", confidence: "high" }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
             label: "Value at risk, worst L1",
@@ -146,9 +146,9 @@ function RunOverview() {
             hint: o?.value_at_risk.worst_l1 ? `${l1Label(o.value_at_risk.worst_l1)}, ${o.value_at_risk.features_blocked} features blocked` : undefined,
           },
         ],
-        situation: { sentence: o ? `DQS ${o.dqs.composite ?? "not scored"}${o.dqs.tier ? `, ${labelOf(o.dqs.tier).toLowerCase()}` : ""}` : fallback("—"), tone: o?.dqs.tier === "no_go" ? "no-go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "go" ? "go" : undefined, href: withScope("/insights/trends", { run }) },
+        situation: { sentence: o ? `${o.dqs.composite != null ? `DQS ${o.dqs.composite.toFixed(1)}` : "Not scored"}${o.dqs.tier ? `, ${statusLabel("verdict", o.dqs.tier)}` : ""}` : fallback("—"), tone: o?.dqs.tier === "no_go" ? "no-go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "go" ? "go" : undefined, href: withScope("/insights/trends", { run }) },
         changed: { sentence: o?.dqs.delta != null ? deltaSentence(o.dqs.delta) : fallback("No earlier run") },
-        why: { sentence: o ? plural(o.blockers.count, "blocking gap") : fallback("—"), href: withScope("/insights/readiness", { run }) },
+        why: { sentence: o ? plural(o.blockers.count, "blocking finding") : fallback("—"), href: withScope("/insights/readiness", { run }) },
         next: { sentence: "Fix the highest-impact rules first", action: { label: "Open failing rules", href: withScope("/insights/rules", { run, module }) } },
       }}
       state={state}

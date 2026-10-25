@@ -5,7 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, PageHeader, Skeleton, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel, toVerdict } from "@/design";
+import { Bar, Button, Card, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, PageHeader, Skeleton, Sparkline, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel, toVerdict } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
@@ -13,7 +13,7 @@ import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, runWave, signoffWave,
 } from "@/lib/api/migration";
 import { downloadRealignment } from "@/lib/api/config-pairing";
-import { formatDate } from "@/lib/format";
+import { formatDate, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
 import { STAGE_LABEL } from "../create-wave-dialog";
@@ -137,7 +137,16 @@ export default function WaveCockpitPage() {
         />
         <Stat label="Records blocked" href={`/migration/${waveId}?tab=blockers`} value={c.records_blocked.toLocaleString()}
               delta={`of ${c.records_total.toLocaleString()}`} />
-        <Stat label="Trend" href={run ? `/runs/${run}` : undefined} value={<Line data={c.trend.map((p) => ({ x: formatDate(p.completed_at, "date"), y: p.score }))} />} />
+        <Card title="Trend" padding="sm">
+          {c.trend.length < 2 ? (
+            <p className="m-text-body m-ink-2">The trend starts with the second run</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Sparkline data={c.trend.map((p) => ({ x: formatDate(p.completed_at, "date"), y: p.score }))} width={160} height={32} />
+              <p className="m-text-body m-ink-2">{trendSentence(c.trend[0].score, c.trend[c.trend.length - 1].score, c.trend.length, "Readiness").replace(/\.$/, "")}</p>
+            </div>
+          )}
+        </Card>
       </div>
       <Tabs
         value={tab}

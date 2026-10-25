@@ -8,7 +8,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, Card, ConfirmDialog, DataTable, Delta, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { getOwners, getReadiness, type OwnerCardResponse } from "@/lib/api/insights";
+import { getOwners, type OwnerCardResponse } from "@/lib/api/insights";
+import { getObjects } from "@/lib/api/v1/objects";
 import { sendOwnerDigests } from "@/lib/api/owners";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf, plural, relativeTime } from "@/lib/format";
@@ -25,7 +26,7 @@ const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true } },
   { accessorKey: "delta", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
   { accessorKey: "fixed_since_baseline", header: "Fixed since baseline", meta: { numeric: true } },
-  { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline-offset-2 hover:underline">Open</Link> },
+  { id: "action", header: "", enableSorting: false, cell: ({ row }) => <Link href={`/inbox?assignee=${encodeURIComponent(row.original.owner)}`} className="m-ink-accent underline-offset-2 hover:underline">Open</Link> },
 ];
 
 /** Writes the digest notification now. `owner` undefined sends to everyone. */
@@ -78,11 +79,12 @@ export default function OwnersPage() {
     queryFn: () => getOwners(),
   });
 
-  const readiness = useQuery({ queryKey: queryKeys.insights("readiness", run), queryFn: () => getReadiness({ version_id: run }) });
+  // The tenant's score target (the objects list's bands), the same line the homes draw.
+  const bandsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const owners = data?.owners ?? [];
 
-  const threshold = readiness.data?.threshold;
-  const below = typeof threshold === "number" ? owners.filter((o) => o.score < threshold).length : undefined;
+  const target = bandsQ.data?.thresholds?.target;
+  const below = typeof target === "number" ? owners.filter((o) => o.score < target).length : undefined;
   const openTotal = owners.reduce((n, o) => n + Object.values(o.open_by_severity).reduce((a, b) => a + b, 0), 0);
   const ranked = [...owners].sort((x, y) => x.score - y.score);
   const worst = ranked[0];
@@ -98,10 +100,10 @@ export default function OwnersPage() {
         </>
       }
       insight={{
-        situation: { sentence: below === undefined ? "—" : `${below} of ${plural(owners.length, "owner is", "owners are")} below the ${threshold}% threshold`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
-        changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground this run` },
+        situation: { sentence: below === undefined ? "—" : `${below} of ${plural(owners.length, "owner is", "owners are")} below the target of ${target}`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
+        changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground since the last run` },
         why: { sentence: openTotal ? `${plural(openTotal, "open item sits", "open items sit")} with owners` : "No open item sits with an owner" },
-        next: { sentence: worst ? `Start with ${worst.owner}` : "Assign owners", action: { label: "Open inbox", href: "/inbox" } },
+        next: { sentence: worst ? `Start with ${worst.owner}` : "Assign owners", action: { label: "Open inbox", href: worst ? `/inbox?assignee=${encodeURIComponent(worst.owner)}` : "/inbox" } },
       }}
       skeleton={<CardSkeleton height={220} />}
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : owners.length === 0 ? "empty" : undefined}

@@ -45,7 +45,9 @@ describe("RouteInsight gating", () => {
     m.exec.mockResolvedValue({ narrative: "model words" });
     mount();
     expect(await screen.findByText("model words")).toBeTruthy();
-    expect(screen.queryByText("Situation")).toBeNull();
+    expect(screen.getByText("Summary, written by the model from the findings")).toBeTruthy();
+    // The four rule-built cells stay; the model's words are set under them.
+    expect(screen.getByText("Situation")).toBeTruthy();
   });
 
   it("calls compare with a defined previous run as v1 and links current-vs-baseline", async () => {

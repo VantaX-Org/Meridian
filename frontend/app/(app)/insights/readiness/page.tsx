@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Status, statusLabel } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Skeleton, Status, statusLabel } from "@/design";
 import { getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName, plural } from "@/lib/format";
+import { previousInLineage } from "@/lib/runs";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
@@ -22,7 +23,7 @@ const HEAT: Record<ReadinessCell["verdict"], "go" | "at-risk" | "no-go"> = { go:
 const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
   { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
   { accessorKey: "wave", header: "Wave" },
-  { id: "verdict", header: "Readiness", accessorFn: (c) => statusLabel("verdict", c.verdict), cell: ({ row }) => (
+  { id: "verdict", header: "Verdict", accessorFn: (c) => statusLabel("verdict", c.verdict), cell: ({ row }) => (
       <DrillLink href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`}>
         <span aria-label={`${formatModuleName(row.original.module)}, wave ${row.original.wave}: ${statusLabel("verdict", row.original.verdict)}`}>
           <Status kind="verdict" value={row.original.verdict} />
@@ -31,7 +32,7 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
     ) },
   {
     accessorKey: "blocker_count",
-    header: "Blocking gaps",
+    header: "Blocking findings",
     meta: { numeric: true },
     cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }} run={run}>{row.original.blocker_count.toLocaleString()}</DrillLink>,
   },
@@ -62,12 +63,20 @@ const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
 
 export default function ReadinessPage() {
   const router = useRouter();
-  const { run } = useInsightScope();
+  const { run, runs, versions } = useInsightScope();
   const dayOne = useDayOne();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("readiness", run),
     queryFn: () => getReadiness({ version_id: run }),
+  });
+  // What changed: the same cells at the run before this one in its lineage (same system, or uploads of the same objects).
+  const current = runs.find((r) => r.id === run);
+  const previous = current ? previousInLineage(current, runs) : null;
+  const prevQ = useQuery({
+    queryKey: queryKeys.insights("readiness", previous?.id),
+    queryFn: () => getReadiness({ version_id: previous?.id }),
+    enabled: !!previous,
   });
 
   // The S/4 strip follows the run even when no wave is defined yet.
@@ -105,6 +114,16 @@ export default function ReadinessPage() {
   const worst = blockers[0];
   const noGo = cells.filter((c) => c.verdict === "no_go").length;
   const blocked = cells.reduce((n, c) => n + c.records_blocked, 0);
+  const prevNoGo = prevQ.data ? prevQ.data.cells.filter((c) => c.verdict === "no_go").length : null;
+  const changed = versions.isLoading || (previous && prevQ.isLoading)
+    ? <Skeleton height={16} />
+    : !previous
+      ? "First run of this system"
+      : prevNoGo == null
+        ? "The previous run could not be read"
+        : noGo === prevNoGo
+          ? `${plural(noGo, "object and wave pair")} blocked, as in the previous run`
+          : `${Math.abs(noGo - prevNoGo).toLocaleString()} ${noGo > prevNoGo ? "more" : "fewer"} object and wave pairs blocked than in the previous run`;
 
   const waveEmpty = !configured ? (
     <EmptyState
@@ -130,11 +149,11 @@ export default function ReadinessPage() {
       insight={{
         situation: {
           sentence: cells.length
-            ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go`
+            ? `${noGo} of ${plural(cells.length, "object and wave pair")} cannot load`
             : s4.data ? `${plural(blockingGaps, "rule")} would block an S/4 load, and no wave is set up yet` : "No waves set up yet",
           tone: noGo || blockingGaps ? "no-go" : "go",
         },
-        changed: { sentence: s4.data ? `${blockingGaps.toLocaleString()} blocking and ${warningGaps.toLocaleString()} warning rules fail` : "Blocking rules are being counted", href: withScope("/insights/rules", { run, s4: "yes" }) },
+        changed: { sentence: changed, href: previous ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: cells.length ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `, against a threshold of ${data.threshold}%` : ""}` : "Until there is a wave, no object gets a go or no-go" },
         next: worst
           ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: withScope(`/objects/${worst.module}`, { run, tab: "rules", blocking: "true" }) } }
@@ -158,7 +177,7 @@ export default function ReadinessPage() {
           // What the ledger's rules do to an S/4 load, as two drills into the rules; the counts are not a second stat row.
           <span data-testid="s4-strip" className="inline-flex flex-wrap items-center gap-x-4">
             <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="underline-offset-2 hover:underline"><span>Blockers</span><span className="ml-1 font-medium m-numeric">{blockingGaps.toLocaleString()}</span></Link>
-            <Link href={withScope("/insights/rules", { run })} className="underline-offset-2 hover:underline"><span>Warnings</span><span className="ml-1 font-medium m-numeric">{warningGaps.toLocaleString()}</span></Link>
+            <Link href={withScope("/insights/rules", { run, severity: "medium" })} className="underline-offset-2 hover:underline"><span>Warnings</span><span className="ml-1 font-medium m-numeric">{warningGaps.toLocaleString()}</span></Link>
           </span>
         ) : cells.length ? undefined : failingAreas.length ? "By S/4 simplification area, since no wave is defined" : undefined}
       >

@@ -2,9 +2,10 @@
 
 /** Process owner home (process-discovery spec §7.2): can each L1 run, the blocking rule, coverage and the latest runs. */
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, ErrorState, Mono, PageHeader, Skeleton, StatSkeleton, Stat, Status, type StatTone, PageFrame } from "@/design";
+import { Button, Card, DataTable, DrillLink, ErrorState, Mono, PageHeader, Select, Skeleton, StatSkeleton, Stat, Status, type StatTone, PageFrame } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
@@ -13,6 +14,8 @@ import { getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-dis
 import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { PERSONA_OPTIONS } from "@/lib/persona";
+import { hrefWithRun } from "@/lib/run-scope";
 import {
   NoSystem, RunsTable, SystemSelect, fitnessTone, fmtFitness, l1Href, headline, useProcessSystem,
 } from "../../process/_components/shared";
@@ -49,6 +52,8 @@ const columns = (systemId: string, canRun: boolean): ColumnDef<Row>[] => [
 
 export default function ProcessHomePage() {
   const { can } = useRole();
+  const router = useRouter();
+  const search = useSearchParams();
   const { systems, list, system, setSystem } = useProcessSystem();
   const { jobs } = useJobs();
   const readiness = useProcessReadiness();
@@ -86,9 +91,15 @@ export default function ProcessHomePage() {
   const catalogueHref = `/process?system=${system.id}`;
   return (
     <PageFrame>
-      {/* "View as" (persona preview) select is added to these actions by the shell work; keep the fragment. */}
-      <PageHeader title="Home" meta={`${system.name}, ${rows.length} processes`}
-        actions={<><SystemSelect value={system.id} onValueChange={setSystem} systems={list} /></>} />
+      <PageHeader title="Home" meta={`${system.name}, ${rows.length} processes`} actions={<>
+        <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />
+        <Select
+          label="View as"
+          value="process"
+          onValueChange={(r) => router.push(hrefWithRun(`/home/${r}`, search, search.get("run")))}
+          options={PERSONA_OPTIONS}
+        />
+      </>} />
       <Card title="Can each process run" padding="sm"
         meta={readiness.latest ? `${noGo} of ${readiness.byL1.size} scored processes no-go` : "No finished analysis to score readiness from"}>
         <DataTable columns={columns(system.id, can("run_process_discovery"))} data={ledger} getRowId={(r) => r.l1} height="auto" dense hideToolbar tableId="home-processes" />

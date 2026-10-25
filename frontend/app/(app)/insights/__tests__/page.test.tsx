@@ -63,8 +63,8 @@ describe("InsightsOverviewPage", () => {
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getAllByTestId("insight-hero-stats")).toHaveLength(1);
     expect(screen.getByRole("link", { name: /^Reports/ })).toBeInTheDocument();
-    // The hero names what it counts (config-impact blocking gaps), so it never contradicts Readiness's "Blockers".
-    expect(screen.getByText("Blocking gaps")).toBeInTheDocument();
+    // One term for the count on every insight page: blocking findings.
+    expect(screen.getByText("Blocking findings")).toBeInTheDocument();
     expect(screen.queryByText("Blockers")).toBeNull();
     // one run is never described as "all objects"
     expect(screen.queryByText(/all objects/i)).toBeNull();
@@ -86,7 +86,7 @@ describe("InsightsOverviewPage", () => {
     mount();
     const link = await screen.findByRole("link", { name: "Open records" });
     expect(link).toHaveAttribute("href", "/objects/accounts_payable?tab=records&run=v1&check=AP083");
-    expect(screen.getAllByText("1 blocking gap").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1 blocking finding").length).toBeGreaterThan(0);
     expect(screen.queryByText(/across 0 waves/)).toBeNull();
     expect(screen.getByText("No wave defined")).toBeInTheDocument();
   });
@@ -222,7 +222,7 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     expect(within(verdict).getByText("At risk")).toBeInTheDocument();
     expect(within(verdict).getByText("5 blocking findings in 2 objects")).toBeInTheDocument();
     expect(screen.getByText("DQS 75.0 across 3 objects, at risk")).toBeInTheDocument();
-    expect(screen.getAllByText("1 of 3 objects is not ready for go-live.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1 of 3 objects is not ready for go-live, 1 at risk.").length).toBeGreaterThan(0);
     // Fix first lists each object's findings from its own latest run only (CO099 is from an older controlling run)
     expect(await screen.findByText("CO001")).toBeInTheDocument();
     expect(screen.getByText("MM045")).toBeInTheDocument();

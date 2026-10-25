@@ -131,7 +131,7 @@ export default function MigrationPage() {
         table={<DataTable columns={columns} data={shownWaves} getRowId={(w) => w.id}
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}
         state={asyncStateOf(waves, () => data.length === 0, true)}
-        emptyProps={{ title: "No migration waves yet. Create one to track readiness.", action: createButton }}
+        emptyProps={{ title: "No waves yet", detail: "A wave is the set of objects you move together. Create one and every object in it gets a go or no-go.", action: createButton }}
         errorProps={{ message: apiErrorMessage(waves.error), onRetry: () => void waves.refetch() }}
       />
       <CreateWaveDialog open={creating} onOpenChange={setCreating} />

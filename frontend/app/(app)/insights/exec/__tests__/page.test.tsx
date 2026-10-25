@@ -94,13 +94,29 @@ describe("ExecPage", () => {
     // Not the page-level empty state: the hero carries the score and the first-run sentence.
     expect(await screen.findByText("First scored run")).toBeInTheDocument();
     expect(screen.queryByText("No executive summary yet")).toBeNull();
-    expect(screen.getByText("No waves set up yet")).toBeInTheDocument();
+    expect(screen.getAllByText("No waves yet").length).toBeGreaterThan(0);
+    expect(screen.getByText("Create the first wave")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open migration cockpit" })).toHaveAttribute("href", "/migration");
     expect(screen.getAllByText("Nobody owns an issue yet").length).toBeGreaterThan(0);
     // ROI without any cost avoided says so instead of "0x" and "0 months".
     expect(await screen.findByText("No cost avoided yet")).toBeInTheDocument();
     expect(screen.queryByText("0x")).toBeNull();
     expect(screen.queryByText(/0 months/)).toBeNull();
+  });
+
+  it("leads Do next with the cap when the exec payload carries one, and reads the cap from the API", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [], cap: 70, cap_reason: "MM001: material type missing — score capped at 70" } as never);
+    vi.spyOn(insightsApi, "getOverview").mockResolvedValue({
+      version_id: "v1", run_label: "Run 1", run_at: null, previous_version_id: null,
+      dqs: { composite: 70, previous: null, delta: null, tier: "no_go", capped: true, cap_reason: null },
+      blockers: { count: 0, previous: null, waves: 0 }, auto_fixable: { records: 0, failing_records: 0, pct: null, high_confidence: 0 },
+      value_at_risk: { worst_l1: null, worst_l1_amount: 0, currency: "ZAR", features_blocked: 0 }, narrative: [],
+    });
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText("Lift the cap: fix MM001")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open failing rules" })).toHaveAttribute("href", "/insights/rules?run=v1&severity=critical");
+    expect(screen.getByText("Capped at 70")).toBeInTheDocument();
   });
 
   it("shows an inline error with retry when the ROI request fails", async () => {

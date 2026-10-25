@@ -5,11 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict, Score } from "@/design";
+import { DqsScore } from "@/components/insight/dqs-score";
 import { getRoi } from "@/lib/api/analytics";
+import { getFindingsAggregate } from "@/lib/api/findings";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
+import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecResponse, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
-import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason } from "@/lib/format";
+import { capRuleIds, deltaSentence, formatModuleName, labelOf, plural, shortCapReason } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -23,6 +25,9 @@ import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightF
 
 
 const plain = (n: number) => formatMoney(n);
+
+/** The cap and its reason, once the exec API carries them (optional until that lands; absent means no cap hint). */
+type ExecData = ExecResponse & { cap?: number | null; cap_reason?: string | null };
 
 const readinessColumns: ColumnDef<ReadinessCell>[] = [
   { accessorKey: "module", header: "Object", cell: ({ row }) => <DrillLink object={row.original.module}>{formatModuleName(row.original.module)}</DrillLink> },
@@ -50,6 +55,7 @@ const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
   { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href="/insights/owners">{row.original.score}</DrillLink> },
   { accessorKey: "delta", header: "Change", cell: ({ row }) => <Delta value={row.original.delta} /> },
+  { id: "action", header: "", enableSorting: false, cell: ({ row }) => <Link href={`/inbox?assignee=${encodeURIComponent(row.original.owner)}`} className="m-ink-accent underline-offset-2 hover:underline">Open</Link> },
 ];
 
 export default function ExecPage() {
@@ -66,8 +72,15 @@ export default function ExecPage() {
 
   const cost = useQuery({ queryKey: queryKeys.insights("proven-cost", run), queryFn: () => getProvenCost({ version_id: run }), enabled: !!run });
   const overview = useQuery({ queryKey: queryKeys.insights("overview", run), queryFn: () => getOverview({ version_id: run }), enabled: !!run });
+  const aggregate = useQuery({ queryKey: queryKeys.findingsAggregate(run ?? "current"), queryFn: () => getFindingsAggregate(run), enabled: !!run });
   const dqs = overview.data?.dqs;
   const VERDICT_SENTENCE: Record<string, string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
+  // The cap from the exec API when it carries one; the overview's reason otherwise. No cap value, no cap hint.
+  const exec = data as ExecData | undefined;
+  const cap = exec?.cap ?? undefined;
+  const capReason = exec?.cap_reason ?? dqs?.cap_reason ?? null;
+  const capped = cap != null || !!dqs?.capped;
+  const capRule = capRuleIds(capReason)[0];
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
@@ -87,6 +100,8 @@ export default function ExecPage() {
     { format: "json", label: "Run data (JSON)", run: () => downloadAuthenticated(getReportJsonExportUrl(vid), `run_${vid}.json`) },
   ] : [];
   const noGo = data?.readiness_cells.filter((c) => c.verdict === "no_go").length ?? 0;
+  const atRiskCells = data?.readiness_cells.filter((c) => c.verdict === "at_risk").length ?? 0;
+  const goCells = data?.readiness_cells.filter((c) => c.verdict === "go").length ?? 0;
   const owners = data?.owner_rows ?? [];
   const up = owners.filter((o) => o.delta > 0).length;
   const down = owners.filter((o) => o.delta < 0).length;
@@ -108,35 +123,49 @@ export default function ExecPage() {
         hero: true,
         lead: dqs && typeof dqs.composite === "number" ? (
           <div className="m-hero-lead">
-            <Score
-                size="hero"
-                value={dqs.composite}
-                versionId={vid}
-                hint={dqs.capped ? `Capped at ${dqs.composite <= 70 ? 70 : 85}` : undefined}
-                delta={dqs.delta != null ? <Delta value={dqs.delta} /> : undefined}
-              />
+            <div className="flex items-start gap-4">
+              <Score
+                  size="hero"
+                  value={dqs.composite}
+                  cap={cap}
+                  versionId={vid}
+                  hint={cap != null ? `Capped at ${cap}` : undefined}
+                  delta={dqs.delta != null ? <Delta value={dqs.delta} /> : undefined}
+                />
+              {aggregate.data && <div className="pt-6"><DqsScore agg={aggregate.data} versionId={vid} cap={cap} capReason={capReason} /></div>}
+            </div>
             <div className="m-hero-verdict" data-testid="hero-verdict">
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
                 {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
               </span>
               <span className="m-text-body m-ink-2">
-                {dqs.capped && dqs.cap_reason ? `Capped: ${shortCapReason(dqs.cap_reason)}` : deltaSentence(dqs.delta)}
+                {capped && capReason ? `Capped: ${shortCapReason(capReason)}` : deltaSentence(dqs.delta)}
               </span>
             </div>
           </div>
         ) : undefined,
         stats: data ? [
-          { label: "No-go cells", value: noGo, tone: noGo ? "no-go" : "go", to: "/insights/readiness" },
-          { label: "Largest L1 at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", to: "/insights/impact" },
-          { label: "Owners improved", value: up, to: "/insights/owners" },
-          { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: "/insights/owners" },
+          { label: "Objects blocked in a wave", value: noGo, tone: noGo ? "no-go" : "go", to: withScope("/insights/readiness", { run }) },
+          { label: "Biggest process at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", hint: topRisk ? l1Label(topRisk.l1) : undefined, to: withScope("/insights/impact", { run }) },
+          { label: "Owners improved", value: up, to: withScope("/insights/owners", { run }) },
+          { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: withScope("/insights/owners", { run }) },
         ] : undefined,
-        situation: { sentence: data?.narrative || (cells.length ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go` : "No waves set up yet"), tone: noGo ? "no-go" : "go" },
+        situation: {
+          sentence: data?.narrative || (cells.length ? `${noGo} of ${plural(cells.length, "object and wave pair")} cannot load` : "No waves yet"),
+          tone: cells.length === 0 ? "neutral" : noGo ? "no-go" : "go",
+        },
         changed: { sentence: owners.length === 0 ? "Nobody owns an issue yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
-        why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "Nothing is priced at risk yet", href: "/insights/impact" },
-        next: noGo
-          ? { sentence: "Clear the no-go cells first", action: { label: "Open readiness", href: withScope("/insights/readiness", { run }) } }
-          : { sentence: "Share the board pack", action: { label: "Open reports", href: withScope("/insights/reports", { run }) } },
+        why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "Nothing is priced at risk yet", href: withScope("/insights/impact", { run }) },
+        // The next step follows the verdict: lift a cap first, then the objects not ready, then the waves.
+        next: capped
+          ? { sentence: `Lift the cap: fix ${capRule ?? "the critical rules"}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run, severity: "critical" }) } }
+          : dqs?.tier === "no_go"
+            ? { sentence: "Open objects not ready", action: { label: "Open objects", href: withScope("/objects", { run, readiness: "fail" }) } }
+            : noGo
+              ? { sentence: "Clear the blocked waves first", action: { label: "Open waves", href: withScope("/insights/readiness", { run }) } }
+              : cells.length === 0
+                ? { sentence: "Create the first wave", action: { label: "Open migration", href: "/migration" } }
+                : { sentence: "Share the board pack", action: { label: "Open reports", href: withScope("/insights/reports", { run }) } },
       }}
       state={state}
       skeleton={
@@ -160,9 +189,9 @@ export default function ExecPage() {
           </Section>
         </div>
         <div className="@5xl:col-span-12">
-          <Card title="Readiness by wave" meta={cells.length ? `${noGo} no-go, ${cells.length - noGo} ready` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open readiness</Link>}>
+          <Card title="Readiness by wave" meta={cells.length ? `${goCells} go, ${atRiskCells} at risk, ${noGo} no-go` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open waves</Link>}>
             {cells.length === 0 && (
-              <EmptyState variant="inline" title="No readiness waves yet" detail="Create a wave in the migration cockpit to score objects per wave." action={<Link href="/migration" className="underline-offset-2 hover:underline">Open migration cockpit</Link>} />
+              <EmptyState variant="inline" title="No waves yet" detail="Create a wave in the migration cockpit to score objects per wave." action={<Link href="/migration" className="underline-offset-2 hover:underline">Open migration cockpit</Link>} />
             )}
             {cells.length > 0 && (
               <div role="region" aria-label="Readiness by object and wave" tabIndex={0} className="mb-3 overflow-x-auto">
@@ -175,7 +204,7 @@ export default function ExecPage() {
               </div>
             )}
             {cells.length === 0 ? null : blocked.length === 0 ? (
-              <p className="m-text-body m-ink-2">Every object and wave can load.</p>
+              <EmptyState variant="inline" title="Every object and wave can load" action={<Link href={withScope("/insights/readiness", { run })} className="underline-offset-2 hover:underline">Open waves</Link>} />
             ) : (
               <DataTable columns={readinessColumns} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
             )}
@@ -183,15 +212,15 @@ export default function ExecPage() {
         </div>
         {l1Tabs.length > 0 && (
           <div className="@5xl:col-span-7">
-            <Card title="Score movement">
+            <Card title="Value at risk by feature" meta="Each step is one priced feature, grouped by the process it serves">
               <Tabs
                 items={l1Tabs.map(([l1, points]) => ({
                   value: l1,
                   label: l1Label(l1),
                   content: (
                     <>
-                      <Waterfall data={points} label={`Score movement, ${l1Label(l1)}`} />
-                      <p className="mt-2 m-text-body m-ink-2">{`${l1Label(l1)}: from ${points[0].x} to ${points[points.length - 1].x}.`}</p>
+                      <Waterfall data={points} label={`Value at risk by feature, ${l1Label(l1)}`} />
+                      <p className="mt-2 m-text-body m-ink-2">{`${l1Label(l1)}: ${plural(points.length, "priced feature")}, from ${points[0].x} to ${points[points.length - 1].x}`}</p>
                     </>
                   ),
                 }))}
@@ -216,10 +245,7 @@ export default function ExecPage() {
                   <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
                 </div>
               ) : roi.data && !roi.data.roi.subscription_annual ? (
-                <p className="m-text-body m-ink-2">
-                  Return on investment appears once the subscription and cost per record are set.{" "}
-                  <Link href="/admin/settings" className="underline-offset-2 hover:underline">Open settings</Link>
-                </p>
+                <EmptyState variant="inline" title="No return on investment yet" detail="It appears once the subscription and cost per record are set" action={<Link href="/admin/settings" className="underline-offset-2 hover:underline">Open settings</Link>} />
               ) : roi.data && !roi.data.roi.risk_mitigated ? (
                 // No multiple or payback can be stated before any cost is avoided; "0x" and "0 months" would read as a verdict.
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
