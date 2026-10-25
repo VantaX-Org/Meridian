@@ -314,6 +314,16 @@ describe("PersonaHomePage blocking and loading states", () => {
     expect(inbox).not.toHaveTextContent(/clear|0/);
     expect((await screen.findByText("Records to fix")).closest("a")).not.toHaveTextContent(/clear/);
   });
+
+  it("labels the steward's fix tile as cleaning proposals when the latest run has no work list", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: 4, fix_source: "cleaning", inbox: 0 });
+    renderWithQuery(<StewardHomePage />);
+    const tile = (await screen.findByText("Cleaning proposals to review")).closest("a");
+    expect(tile).toHaveAttribute("href", "/fix?tab=cleaning");
+    expect(tile).toHaveTextContent("4");
+    expect(screen.queryByText("Records to fix")).toBeNull();
+  });
 });
 
 describe("PersonaHomePage header actions (T20)", () => {
@@ -429,6 +439,9 @@ describe("PersonaHomePage current state across objects", () => {
     await screen.findByTestId("run-scope");
     expect((screen.getByText("Worst object")).closest("a")).toHaveAttribute("href", "/objects/controlling?run=co2");
     expect(screen.getByRole("link", { name: "Open worst object" })).toHaveAttribute("href", "/objects/controlling?run=co2");
+    // The verdict's next step is the home's one primary button; Run analysis is secondary.
+    expect(screen.getByRole("link", { name: "Open worst object" })).toHaveClass("m-btn-primary");
+    expect(screen.getByRole("button", { name: "Run analysis" })).toHaveClass("m-btn-secondary");
     // the blocking rule of an object that is not in the newest run drills into that object's own run
     expect(screen.getByRole("link", { name: "MM045" })).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
     expect(screen.getByText("1 of 3 objects capped by critical rules")).toBeInTheDocument();

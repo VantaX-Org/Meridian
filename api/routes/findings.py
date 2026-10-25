@@ -312,8 +312,12 @@ async def score_history(
          ORDER BY run_at DESC LIMIT :lim
     """), {"tid": str(tenant.id), "lim": limit})).mappings().all()
     out = []
+    # Each module's score as stored when the run was scored (no re-weighting), keyed by run.
+    then_modules: dict[str, dict[str, float]] = {}
     for r in rows:
         summary = r["dqs_summary"] or {}
+        then_modules[str(r["id"])] = {m: v["composite_score"] for m, v in summary.items()
+                                      if isinstance(v, dict) and v.get("composite_score") is not None}
         then = composite_dqs([summary], scoring=r["scoring"])
         now = composite_dqs([{m: rescore(v, current) for m, v in summary.items() if isinstance(v, dict)}], scoring=current)
         out.append({"version_id": str(r["id"]), "run_at": r["run_at"].isoformat() if r["run_at"] else None,
@@ -326,7 +330,8 @@ async def score_history(
     modules: dict[str, list[dict]] = {}
     for r in out:
         for m, c in r["under_current"]["modules"].items():
-            modules.setdefault(m, []).append({"version_id": r["version_id"], "composite": c})
+            modules.setdefault(m, []).append({"version_id": r["version_id"], "composite": c,
+                                              "at_the_time": then_modules[r["version_id"]].get(m)})
     return {"history": out, "modules": modules}
 
 

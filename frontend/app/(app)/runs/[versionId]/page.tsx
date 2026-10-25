@@ -24,7 +24,7 @@ import { DqsScore } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, formatMoney, formatNumber, labelOf, runAxisLabels } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, formatMoney, formatNumber, labelOf, plural, runAxisLabels } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
@@ -296,8 +296,11 @@ function SummaryTab({
     title: act.title,
     impact: [`${act.affected_count.toLocaleString()} records`, `${act.impact_points.toLocaleString()} impact points`],
     verb: act.type === "finding" ? "Open finding" : act.type === "cleaning" ? "Open cleaning" : "Open exception",
-    href: act.type === "finding" ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}` : "/inbox",
-    why: `Impact points weigh the failing records by severity; ranked by impact points per hour of effort (${act.value_per_hour.toFixed(1)}), ${act.severity} severity.`,
+    href: act.type === "finding"
+      ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}`
+      : act.type === "cleaning" ? `/fix?${new URLSearchParams({ tab: "cleaning", ...(act.module ? { module: act.module } : {}) })}` : "/inbox",
+    // Plain words from the same action: its records, how many of them are critical, and the effort.
+    why: `${plural(act.affected_count, "record")}, ${(act.severity === "critical" ? act.affected_count : 0).toLocaleString()} critical; about ${plural(Math.max(1, Math.round(act.effort_hours)), "hour")}.`,
   }));
 
   return (

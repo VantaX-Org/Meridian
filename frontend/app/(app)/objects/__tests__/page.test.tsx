@@ -118,7 +118,8 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     currentSearch = "run=v1&readiness=fail";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "pass", 99), mk("c", "CCC", "fail", 50, { blocking_rule_id: "mm_bad", blocking_rule_name: "Bad" })] });
     renderWithQuery(<ObjectsPage />);
-    const map = await screen.findByRole("list", { name: "Objects by records and verdict" });
+    // No work list is built here, so the tiles are sized by rule failures and the map says so.
+    const map = await screen.findByRole("list", { name: "Objects by rule failures and verdict" });
     const tiles = within(map).getAllByRole("link");
     expect(tiles).toHaveLength(1);
     expect(tiles[0]).toHaveAttribute("data-verdict", "no-go");
@@ -211,7 +212,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
-    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Records", "Score", "Verdict", "Trend", "Action"]);
+    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Rule failures", "Score", "Verdict", "Trend", "Action"]);
     expect(ledger().getByText("Bad data")).toBeInTheDocument();
     expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&tab=fix");
   });

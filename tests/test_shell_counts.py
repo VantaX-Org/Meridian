@@ -66,7 +66,7 @@ def test_shell_counts_shape_and_values(monkeypatch):
 
     assert res.status_code == 200
     body = res.json()
-    assert set(body.keys()) == {"fix", "inbox"}
+    assert set(body.keys()) == {"fix", "fix_source", "inbox"}
     assert body["fix"] == 3
     assert body["inbox"] == 5
 
@@ -96,16 +96,19 @@ def test_shell_counts_none_scalar_yields_zero(monkeypatch):
 
     res = _get(app, "/api/v1/shell/counts")
 
-    assert res.json() == {"fix": 0, "inbox": 0}
+    assert res.json() == {"fix": 0, "fix_source": "cleaning", "inbox": 0}
 
 
 def test_fix_counts_records_to_fix_of_the_latest_run(monkeypatch):
     db = _Db(fix_count=99, inbox_count=0, latest=str(uuid.uuid4()), to_fix=7)
     res = _get(_app(db, monkeypatch), "/api/v1/shell/counts")
     assert res.json()["fix"] == 7
+    assert res.json()["fix_source"] == "work"
     assert not any("cleaning_queue" in s for s, _ in db.calls)
 
 
 def test_fix_falls_back_to_cleaning_proposals_without_a_work_list(monkeypatch):
     db = _Db(fix_count=4, inbox_count=0, latest=str(uuid.uuid4()), to_fix=None)
-    assert _get(_app(db, monkeypatch), "/api/v1/shell/counts").json()["fix"] == 4
+    body = _get(_app(db, monkeypatch), "/api/v1/shell/counts").json()
+    # the count is cleaning proposals, and says so
+    assert body["fix"] == 4 and body["fix_source"] == "cleaning"

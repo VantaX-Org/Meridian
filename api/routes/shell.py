@@ -15,9 +15,10 @@ async def shell_counts(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("view")),
-) -> dict[str, int]:
+) -> dict[str, int | str]:
     """Fix = records still to fix in the latest run's work list (cleaning proposals awaiting review when that
-    run has none); Inbox = open stewardship items."""
+    run has none); Inbox = open stewardship items. ``fix_source`` says which of the two ``fix`` counts:
+    "work" (records to fix) or "cleaning" (proposals to review), so a caller never labels one as the other."""
     vid = await latest_run(db, tenant.id)
     fix_result = None
     if vid:
@@ -30,7 +31,9 @@ async def shell_counts(
                                       "WHERE tenant_id = :tid AND id = CAST(:vid AS uuid)"),
                                  {"tid": str(tenant.id), "vid": vid})).scalar():
             fix_result = None
+    fix_source = "work"
     if fix_result is None:
+        fix_source = "cleaning"
         fix_result = await db.execute(
             text("SELECT COUNT(*) FROM cleaning_queue WHERE tenant_id = :tid AND status = 'detected'"),
             {"tid": str(tenant.id)},
@@ -39,4 +42,4 @@ async def shell_counts(
         text("SELECT COUNT(*) FROM stewardship_queue WHERE tenant_id = :tid AND status IN ('open', 'in_progress')"),
         {"tid": str(tenant.id)},
     )
-    return {"fix": fix_result.scalar() or 0, "inbox": inbox_result.scalar() or 0}
+    return {"fix": fix_result.scalar() or 0, "fix_source": fix_source, "inbox": inbox_result.scalar() or 0}

@@ -280,9 +280,7 @@ async def get_impact_analytics(
 
     impacts = impact_analytics.quantify_impact(findings_data, exc_data)
 
-    # Default subscription — could come from tenant config
-    monthly_sub = 15000.0
-    roi = impact_analytics.calculate_roi(impacts, monthly_sub)
+    roi = impact_analytics.calculate_roi(impacts, _monthly_subscription(tenant))
 
     return {"impacts": impacts, "roi": roi, "version_id": str(vid)}
 
@@ -452,6 +450,16 @@ async def get_module_forecast(
     }
 
 
+def _monthly_subscription(tenant: Tenant) -> float | None:
+    """The tenant's monthly subscription in rand, or None.
+
+    No tenant column or setting records the subscription a customer pays, so there
+    is none to use: ROI multiple, payback and the annual subscription stay None
+    rather than being computed from an invented fee.
+    """
+    return None
+
+
 # ── 8. GET /analytics/roi ────────────────────────────────────────────────────
 
 
@@ -481,8 +489,7 @@ async def get_roi(
     )
     cost_avoidance = [_row_to_dict(r) for r in ca_result.all()]
 
-    monthly_sub = 15000.0
-    roi = impact_analytics.calculate_roi(impacts, monthly_sub)
+    roi = impact_analytics.calculate_roi(impacts, _monthly_subscription(tenant))
 
     return {
         "roi": roi,

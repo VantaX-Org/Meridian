@@ -7,6 +7,7 @@ import { FixWork } from "../fix-work";
 import { RecordPanel } from "../record-panel";
 import { dueLabel } from "../status";
 import * as work from "@/lib/api/work";
+import * as versions from "@/lib/api/versions";
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -68,6 +69,15 @@ beforeEach(() => {
 });
 
 describe("FixWork", () => {
+  it("names the run its counts belong to, and calls critical what it is", async () => {
+    const getVersion = vi.spyOn(versions, "getVersion").mockResolvedValue({ id: "R1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: null, metadata: {} });
+    renderWithQuery(<FixWork />);
+    expect(await screen.findByText("As of material_master_25k, 16 Oct 2026")).toBeInTheDocument();
+    expect(getVersion).toHaveBeenCalledWith("R1");
+    expect(screen.getByText("critical severity")).toBeInTheDocument();
+    expect(screen.queryByText("block SAP processes")).toBeNull();
+  });
+
   it("shows the totals, the issues and the records worst first, and the first record's panel", async () => {
     renderWithQuery(<FixWork />);
     expect((await screen.findAllByText("Records to fix")).length).toBeGreaterThan(0);

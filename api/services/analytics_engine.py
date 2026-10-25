@@ -541,29 +541,33 @@ class BusinessImpactAnalytics:
         return results
 
     def calculate_roi(
-        self, impacts: list[dict], monthly_subscription_zar: float
+        self, impacts: list[dict], monthly_subscription_zar: float | None
     ) -> dict:
-        """Calculate ROI from impact data vs subscription cost."""
-        annual_sub = monthly_subscription_zar * 12
+        """Calculate ROI from impact data vs subscription cost.
+
+        With no subscription configured (None or 0) there is nothing to divide by:
+        the subscription, ROI multiple and payback are None, never a made-up fee.
+        """
         total_mitigated = sum(i.get("mitigated_zar", 0) for i in impacts)
 
-        if annual_sub <= 0:
+        if not monthly_subscription_zar or monthly_subscription_zar <= 0:
             return {
-                "subscription_annual": 0,
+                "subscription_annual": None,
                 "risk_mitigated": round(total_mitigated, 2),
-                "roi_multiple": 0,
-                "payback_months": 0,
+                "roi_multiple": None,
+                "payback_months": None,
                 "currency": RISK_CURRENCY,
             }
 
+        annual_sub = monthly_subscription_zar * 12
         roi_multiple = total_mitigated / annual_sub
-        payback_months = (annual_sub / total_mitigated) * 12 if total_mitigated > 0 else 0
+        payback_months = (annual_sub / total_mitigated) * 12 if total_mitigated > 0 else None
 
         return {
             "subscription_annual": round(annual_sub, 2),
             "risk_mitigated": round(total_mitigated, 2),
             "roi_multiple": round(roi_multiple, 1),
-            "payback_months": round(payback_months, 1),
+            "payback_months": round(payback_months, 1) if payback_months is not None else None,
             "currency": RISK_CURRENCY,
         }
 

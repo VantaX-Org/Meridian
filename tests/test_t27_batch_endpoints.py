@@ -192,6 +192,8 @@ def test_scores_history_per_module_series(app_engine):
             assert mm_series[v1] == 80.0 and mm_series[v2] == 90.0
             bp_series = {row["version_id"]: row["composite"] for row in body["modules"]["business_partner"]}
             assert bp_series == {v2: 70.0}  # absent from v1, not padded with a null
+            # each point also carries the module score as stored when the run was scored
+            assert {row["version_id"]: row["at_the_time"] for row in body["modules"]["material_master"]} == {v1: 80.0, v2: 90.0}
             # the module series' composite equals what the composite history already reports per-module
             assert by_vid[v2]["under_current"]["modules"]["material_master"] == mm_series[v2]
 

@@ -29,7 +29,7 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
-import { DIMENSIONS, formatDate, formatModuleName } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, plural, shortCapReason } from "@/lib/format";
 
 const RULE_HISTORY_RUNS = 8;
 const TAB_KEYS = ["fix", "overview", "rules", "fields", "records"] as const;
@@ -46,25 +46,32 @@ const historyQuery = (object: string, run: string) => ({
  * The object's DQS as the md ring. Once the object and the tenant's weights have loaded, the ring opens the
  * breakdown (weighted dimensions, costliest rules); until then, or without weights, it is the plain ring.
  */
-function ObjectScore({ summary, detail }: { summary: ObjectSummary; detail: ObjectDetail | undefined }) {
+function ObjectScore({ summary, detail, run }: { summary: ObjectSummary; detail: ObjectDetail | undefined; run: string }) {
   const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings, retry: false, meta: { ignoreError: true } });
-  const score = summary.composite_score;
-  if (score == null) return null;
+  const composite = summary.composite_score;
+  if (composite == null) return null;
+  // A critical failure holds the score at the cap: the ring draws the measured score and fills to the cap, as the
+  // run's DQS ring does (components/insight/dqs-score.tsx).
+  const cap = detail?.capped ? composite : undefined;
+  const score = cap != null ? (detail?.raw_score ?? composite) : composite;
   const weights = settings.data?.dqs_weights as Record<string, number> | undefined;
   const measured = detail && weights ? Object.entries(detail.dimension_scores).filter(([d]) => weights[d] != null) : [];
-  if (!detail || !weights || measured.length === 0) return <Score value={score} />;
+  if (!detail || !weights || measured.length === 0) return <Score value={score} cap={cap} />;
   const total = measured.reduce((n, [d]) => n + weights[d], 0) || 1;
   const tone = summary.readiness === "pass" ? "go" : summary.readiness === "warn" ? "at-risk" : summary.readiness === "fail" ? "no-go" : "neutral";
   const failing = detail.rules.filter((r) => r.affected_count > 0).sort((a, b) => b.affected_count - a.affected_count).slice(0, 5);
   return (
     <Score
       value={score}
+      cap={cap}
       explain={{
         band: { label: tone ? statusLabel("verdict", tone) : "Scored", tone },
+        capReason: cap != null ? (detail.cap_reason ? shortCapReason(detail.cap_reason) : "a critical finding is open") : undefined,
+        run,
         dimensions: measured.map(([d, v]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score: v })),
         // weight descends with rank so the explainer's recordsFailed * weight sort keeps the records order
         rules: failing.map((r, i, all) => ({ ruleId: r.check_id, object: detail.module, recordsFailed: r.affected_count, weight: (all.length - i) / all.length })),
-        historyHref: `/objects/${detail.module}?tab=history`,
+        historyHref: `/objects/${detail.module}?${new URLSearchParams({ run, tab: "history" })}`,
       }}
     />
   );
@@ -204,14 +211,21 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   );
 }
 
-/** This object's composite score across every scored run, oldest first: improvement over time, per object. */
-function HistoryTab({ object, run }: { object: string; run: string }) {
+/**
+ * This object's score across the scored runs of this run's system, oldest first, each as it was scored at the time
+ * (as the run page's history does): another system's runs, or today's re-weighting, would not be this object's history.
+ */
+function HistoryTab({ object, run, systemId }: { object: string; run: string; systemId: string | null | undefined }) {
   const q = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: SCORE_HISTORY_LIMIT }) });
-  const series = q.data?.modules[object] ?? [];
   const runs = new Map((q.data?.history ?? []).map((h) => [h.version_id, h]));
+  // The API lists newest first; the line runs oldest first.
+  const series = (q.data?.modules[object] ?? [])
+    .filter((p) => (runs.get(p.version_id)?.system_id ?? null) === (systemId ?? null) && p.at_the_time != null)
+    .map((p) => ({ version_id: p.version_id, score: p.at_the_time as number }))
+    .reverse();
   const points = series.map((p, i) => {
     const h = runs.get(p.version_id);
-    return { version_id: p.version_id, x: h?.run_at ? formatDate(h.run_at) : `Run ${i + 1}`, y: Math.round(p.composite * 10) / 10, change: i === 0 ? null : Math.round((p.composite - series[i - 1].composite) * 10) / 10 };
+    return { version_id: p.version_id, x: h?.run_at ? formatDate(h.run_at) : `Run ${i + 1}`, y: Math.round(p.score * 10) / 10, change: i === 0 ? null : Math.round((p.score - series[i - 1].score) * 10) / 10 };
   });
   type Point = (typeof points)[number];
   const columns: ColumnDef<Point>[] = [
@@ -465,9 +479,10 @@ export default function ObjectDetailPage() {
       <RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}`, search, id)} />
       {summary && (
         <span>
-          <Link href={tabHref("rules")} aria-label={`Open the ${summary.failing_checks.toLocaleString()} failing rules of ${name}`} className="m-ink-accent underline underline-offset-2">{`${summary.failing_checks.toLocaleString()} failing rules`}</Link>
+          <Link href={tabHref("rules")} aria-label={`Open the ${plural(summary.failing_checks, "failing rule")} of ${name}`} className="m-ink-accent underline underline-offset-2">{plural(summary.failing_checks, "failing rule")}</Link>
           {", "}
-          <Link href={tabHref("fix")} aria-label={`Open the ${summary.affected_records.toLocaleString()} affected records of ${name}`} className="m-ink-accent underline underline-offset-2">{`${summary.affected_records.toLocaleString()} affected records`}</Link>
+          {/* Summed over the rules (a record failing two rules counts twice): rule failures, not records. The strip below has the distinct records. */}
+          <Link href={tabHref("fix")} aria-label={`Open the records behind the ${plural(summary.affected_records, "rule failure")} of ${name}`} className="m-ink-accent underline underline-offset-2">{plural(summary.affected_records, "rule failure")}</Link>
         </span>
       )}
     </span>
@@ -481,7 +496,7 @@ export default function ObjectDetailPage() {
         status={
           summary && (summary.composite_score != null || summary.readiness) ? (
             <span className="inline-flex items-center gap-3">
-              {summary.composite_score != null ? <ObjectScore summary={summary} detail={data} /> : null}
+              {summary.composite_score != null ? <ObjectScore summary={summary} detail={data} run={run} /> : null}
               {summary.readiness ? <Status kind="verdict" value={summary.readiness} /> : null}
             </span>
           ) : null
@@ -516,7 +531,7 @@ export default function ObjectDetailPage() {
               />
             ),
           },
-          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, history: <HistoryTab object={object} run={run} /> }),
+          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, history: <HistoryTab object={object} run={run} systemId={version?.metadata?.system_id} /> }),
         ]}
       />
     </PageFrame>

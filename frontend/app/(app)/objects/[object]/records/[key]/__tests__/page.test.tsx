@@ -54,6 +54,18 @@ describe("RecordFixSheetPage", () => {
     const exports = screen.getAllByRole("button", { name: "Export" });
     expect(exports).toHaveLength(1);
     expect(exports[0].closest("header")).not.toBeNull();
+    expect(screen.getByText("Organisational levels")).toBeInTheDocument();
+  });
+
+  it("offers the record sheet PDF and the organisational levels only for a material", async () => {
+    routeParams = { object: "accounts_payable", key: encodeURIComponent("LIFNR=V9|BUKRS=2000") };
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({ ...material, matnr: "LIFNR=V9|BUKRS=2000", views: [], mara: { LIFNR: "V9" }, labels: { LIFNR: "V9" } });
+    vi.spyOn(objectsApi, "getObjectRecordFindings").mockResolvedValue({ version_id: "v1", failing: [] });
+    renderWithQuery(<RecordFixSheetPage />);
+    expect(await screen.findByText("No failing rules on this run")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+    expect(screen.queryByText(/levels/i)).toBeNull();
+    routeParams = { object: "material_master", key: "100001" };
   });
 
   it("reads a material that fails a rule as No-go even with every field filled, and links the rule", async () => {

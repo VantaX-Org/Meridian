@@ -431,8 +431,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       <>
         <WorkRow>
           <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
-          {/* counts.fix is the records waiting in Fix work, not cleaning proposals. */}
-          <Stat label="Records to fix" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
+          {/* counts.fix is the latest run's records to fix, or cleaning proposals when that run has no work list: fix_source says which. */}
+          {countsReady && counts.fix_source === "cleaning" ? (
+            <Stat label="Cleaning proposals to review" value={counts.fix.toLocaleString()} hint={!counts.fix ? "clear" : "no work list for the latest run"} href="/fix?tab=cleaning" />
+          ) : (
+            <Stat label="Records to fix" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
+          )}
           <Stat
             label="Worst object"
             value={worst?.composite_score?.toFixed(1) ?? "—"}
@@ -490,7 +494,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       onboarding={<HomeOnboarding />}
       cells={<RouteInsight />}
       headerActions={<>
-        <RunAnalysis />
+        <RunAnalysis variant="secondary" />
         <Select
           label="View as"
           value={role}
