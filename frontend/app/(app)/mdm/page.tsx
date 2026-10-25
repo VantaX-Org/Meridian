@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, ExplorerPage, Line, PageHeader, Pill, Stat, type CellMeta } from "@/design";
+import { Button, Card, DataTable, ExplorerPage, Line, PageHeader, Pill, Stat, statusLabel, type CellMeta } from "@/design";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { getMdmHealth } from "@/lib/api/analytics";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
@@ -44,7 +44,7 @@ export default function MdmOverviewPage() {
   const failed = isListFailure(dash) ? dash : isListFailure(health) ? health : null;
   const state = dash.isLoading || health.isLoading ? "loading" : failed ? "error" : !m && points.length === 0 && items.length === 0 ? "empty" : undefined;
   const tone = m ? (m.mdm_health_score >= 85 ? "go" : m.mdm_health_score >= 60 ? "at-risk" : "no-go") : undefined;
-  const verdict = m ? (m.mdm_health_score >= 85 ? "Healthy" : m.mdm_health_score >= 60 ? "Needs attention" : "Unhealthy") : null;
+  const verdict = tone ? statusLabel("verdict", tone) : null;
 
   return (
     <ExplorerPage

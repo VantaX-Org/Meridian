@@ -57,9 +57,9 @@ describe("CompareRunsPage", () => {
   it("renders the narrative, three stats and the changed-rule table", async () => {
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("DQS moved from 71.2 to 74.8 (+3.6) across 1 module.")).toBeInTheDocument());
-    expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument();
+    expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument();
     expect(screen.getAllByText("74.8").length).toBeGreaterThan(0);
-    expect(screen.getByText("DQS Oct 1")).toBeInTheDocument();
+    expect(screen.getByText(/^DQS Oct 1, /)).toBeInTheDocument();
     const rules = screen.getAllByRole("row").map((r) => r.textContent ?? "");
     expect(rules.findIndex((t) => t.includes("MM041"))).toBeLessThan(rules.findIndex((t) => t.includes("MM002"))); // largest regression first
   });
@@ -78,7 +78,7 @@ describe("CompareRunsPage", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument());
     // a report page's export menu also offers Print, so the single PDF option sits in the menu
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "PDF" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /PDF/ }));
     await waitFor(() => expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", "comparison.pdf"));
   });
 
@@ -103,7 +103,7 @@ describe("CompareRunsPage", () => {
   it("hides fix batch actions without the apply permission", async () => {
     can.mockImplementation(() => false);
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: /Create fix batch/ })).toBeNull();
   });
 
@@ -137,7 +137,7 @@ describe("CompareRunsPage", () => {
       .spyOn(versionsApi, "compareVersions")
       .mockImplementation((_v1, _v2, module) => Promise.resolve(module ? cmp : multiModuleCmp));
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument());
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox", { name: "Object" }));

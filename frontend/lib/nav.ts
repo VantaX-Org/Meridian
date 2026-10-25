@@ -205,9 +205,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: IconRules,
         keywords: "rules checks catalogue yaml contracts scoring alerts",
         children: [
-          { href: "/rules/contracts", requires: req("contracts", "view"), label: "Contracts", icon: IconContract, licenceKey: "contracts", keywords: "data contracts sla" },
-          { href: "/rules/drafts", requires: req("rules", "edit"), label: "Drafts", icon: IconDraft, anyOf: ["manage_rules"], keywords: "rule authoring draft" },
-          { href: "/rules/dictionary", requires: req("rules", "view"), label: "Data dictionary", icon: IconBook, anyOf: ["view"], keywords: "ddic fields dictionary" },
+          { href: "/rules/contracts", requires: req("contracts", "view"), label: "Data contracts", icon: IconContract, licenceKey: "contracts", keywords: "data contracts sla" },
+          { href: "/rules/drafts", requires: req("rules", "edit"), label: "Rule drafts", icon: IconDraft, anyOf: ["manage_rules"], keywords: "rule authoring draft" },
+          { href: "/rules/dictionary", requires: req("rules", "view"), label: "Dictionary", icon: IconBook, anyOf: ["view"], keywords: "ddic data dictionary fields" },
           { href: "/rules/scoring", requires: req("rules", "view"), label: "Scoring and alerts", icon: IconSliders, anyOf: ["view"], keywords: "weights thresholds" },
         ],
       },
@@ -228,18 +228,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 
 /** Header titles for routes that are not in the nav. */
 const OFF_NAV_TITLES: Record<string, string> = {
-  "/command-centre": "Live operations",
-  "/executive-report": "Executive report",
-  "/data": "Connect and load",
   "/admin/billing": "Exception billing",
   "/admin/roles": "Roles and access",
   "/design": "Design library",
-  "/workbench/record": "Record report",
-  "/workbench/progress": "Progress",
-  "/workbench/triage": "My queue",
   "/search": "Search",
   "/docs": "Documentation",
   "/me/preferences": "Preferences",
+  "/rules/learned": "Learned rules",
   "/inbox/notifications": "Notifications",
   // Insight views carry short rail labels; the pages keep their full titles.
   "/insights/exec": "Executive summary",
@@ -252,7 +247,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/insights/mining": "Patterns",
   "/insights/duplicates": "Duplicates",
   "/insights/readiness": "Waves",
-  "/insights/process": "Processes",
+  "/insights/process": "Process readiness",
   "/insights/process/designer": "Process designer",
   "/insights/owners": "Owners",
   "/insights/operations": "Operations",

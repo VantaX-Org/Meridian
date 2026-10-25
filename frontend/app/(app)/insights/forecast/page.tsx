@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, EmptyState, Line, Pill, Select, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, Line, Select, Status } from "@/design";
 import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning, type PredictiveResponse } from "@/lib/api/analytics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
@@ -12,20 +12,19 @@ import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { withScope } from "../_components/useInsightScope";
 
-const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
-  red: "no-go",
-  amber: "at-risk",
-  green: "go",
-};
+/** The API's traffic-light signal in the product's one verdict vocabulary. */
+const SIGNAL_VERDICT: Record<EarlyWarning["signal"], string> = { red: "no-go", amber: "at-risk", green: "go" };
 
-const SIGNAL_LABEL: Record<EarlyWarning["signal"], string> = { red: "Red", amber: "Amber", green: "Green" };
+/** The API's trend enum as a plain phrase. */
+const TREND_WORDS: Record<string, string> = { improving: "improving", stable: "holding steady", declining: "declining", critical: "falling fast" };
+const trendWords = (t: string) => TREND_WORDS[t] ?? t.replace(/_/g, " ");
 
 const warningColumns: ColumnDef<EarlyWarning>[] = [
-  { accessorKey: "module_id", header: "Module", cell: ({ row }) => formatModuleName(row.original.module_id) },
+  { accessorKey: "module_id", header: "Object", cell: ({ row }) => <DrillLink object={row.original.module_id}>{formatModuleName(row.original.module_id)}</DrillLink> },
   {
     accessorKey: "signal",
-    header: "Signal",
-    cell: ({ row }) => <Pill tone={SIGNAL_TONE[row.original.signal]}>{SIGNAL_LABEL[row.original.signal]}</Pill>,
+    header: "Verdict",
+    cell: ({ row }) => <Status kind="verdict" value={SIGNAL_VERDICT[row.original.signal]} />,
   },
   { accessorKey: "message", header: "Message" },
   { accessorKey: "recommended_action", header: "Recommended action" },
@@ -101,10 +100,10 @@ export default function ForecastPage() {
       meta={seen ? `Every object, ${seen}` : undefined}
       insight={{
         situation: {
-          sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d}% DQS in 30 days` : "Not enough runs to forecast",
+          sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d} in 30 days` : "Not enough runs to forecast",
           tone: declining.length ? "at-risk" : "go",
         },
-        changed: { sentence: `${plural(declining.length, "module is", "modules are")} declining` },
+        changed: { sentence: `${plural(declining.length, "object is", "objects are")} declining` },
         why: { sentence: warnings.length ? `${plural(warnings.length, "early warning is", "early warnings are")} open` : "No early warning is open" },
         next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: worst ? "Open failing rules" : "Open runs", href: worst ? withScope("/insights/rules", { module: worst.module_id }) : "/runs" } },
       }}
@@ -135,18 +134,18 @@ export default function ForecastPage() {
           )}
           {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
           {hidden > 0 && (
-            <p className="m-text-meta m-ink-3">{`+${hidden} more modules, shown one at a time when selected above`}</p>
+            <p className="m-text-meta m-ink-3">{`${hidden} more objects, shown one at a time when selected above`}</p>
           )}
           {selected && (
             <p className="m-text-body m-ink-2">
-              {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
+              {`${formatModuleName(selected.module_id)} is ${trendWords(selected.trend)}, ${selected.confidence}% confidence over ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
             </p>
           )}
         </div>
       </Card>
       <Card title="Early warnings">
         {warnings.length === 0 ? (
-          <EmptyState title="No early warnings" detail="Every module is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
+          <EmptyState title="No early warnings" detail="Every object is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
         ) : (
         <DataTable columns={warningColumns} data={warnings} getRowId={(w) => `${w.module_id}-${w.signal}-${w.message}`} hideToolbar dense height="auto" />
         )}

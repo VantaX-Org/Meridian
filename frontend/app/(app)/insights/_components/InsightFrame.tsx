@@ -11,8 +11,7 @@ import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { RunScope } from "@/components/run-scope";
 import { stateScopeLine } from "@/lib/current-state";
-import { hrefWithRun, runChoiceLabels } from "@/lib/run-scope";
-import { formatDate } from "@/lib/format";
+import { hrefWithRun, runChoiceLabels, runScopeLabel } from "@/lib/run-scope";
 import { InsightActions } from "./InsightActions";
 import { InsightTabs } from "./InsightViews";
 import { CURRENT_STATE_VIEWS, insightRunChoices } from "./scopeMode";
@@ -24,7 +23,7 @@ export { formatMoney } from "@/lib/format";
 /** Human label for a run id from the run list the shell already loads (or the run read by id), never the raw id. */
 export function useRunLabel(versionId?: string | null): string | undefined {
   const { run: v } = useRunListWith(versionId);
-  return v ? v.label || formatDate(v.run_at, "datetime") : undefined;
+  return v ? runScopeLabel(v) : undefined;
 }
 
 export interface InsightFrameProps {

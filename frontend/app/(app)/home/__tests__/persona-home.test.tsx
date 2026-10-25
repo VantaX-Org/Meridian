@@ -132,7 +132,7 @@ describe("PersonaHomePage Brief geometry", () => {
       expect(rows[0]).toHaveTextContent("Controlling");
       expect(rows[1]).toHaveTextContent("Material master");
     });
-    for (const h of ["Object", "Blocking rule", "Records affected", "DQS", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    for (const h of ["Object", "Blocking rule", "Records affected", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "All 2 objects" })).toHaveAttribute("href", "/objects");
   });
 

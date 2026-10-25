@@ -27,12 +27,13 @@ import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
-import { formatDate, formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
+import { formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
+import { runName } from "@/lib/run-scope";
 import type { SystemModule, SystemType } from "@/types/api";
 import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
 import { PilotTab } from "./pilot-tab";
@@ -59,7 +60,7 @@ function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
       header: "Run",
       cell: ({ row }) => (
         <Link href={`/runs/${row.original.id}`} className="underline">
-          {row.original.label ?? formatDate(row.original.run_at, "datetime")}
+          {runName(row.original)}
         </Link>
       ),
     },
@@ -69,7 +70,7 @@ function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
     { id: "analysed", header: "Analysed", cell: ({ row }) => when(row.original.analysed_at) },
     {
       id: "dqs",
-      header: "DQS",
+      header: "Score",
       cell: ({ row }) => {
         const d = meanDqs(row.original);
         return d === null ? "—" : (
@@ -543,7 +544,7 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
     { id: "synced", header: "Last synced", cell: ({ row }) => when(row.original.last_synced_at) },
     {
       id: "dqs",
-      header: "DQS",
+      header: "Score",
       cell: ({ row }) => {
         const d = latest?.dqs?.[row.original.module];
         return typeof d === "number" && latest ? (

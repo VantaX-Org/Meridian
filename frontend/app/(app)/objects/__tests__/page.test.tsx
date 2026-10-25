@@ -49,7 +49,7 @@ describe("ObjectsPage", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("Material Master")).toBeInTheDocument());
     expect(ledger().getByText("72.5").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
-    expect(screen.getByText("Not ready")).toBeInTheDocument();
+    expect(screen.getAllByText("No-go").length).toBeGreaterThan(0);
   });
 
   it("shows an empty state when the run has no objects", async () => {
@@ -131,7 +131,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("CCC")).toBeInTheDocument());
     expect(ledger().queryByText("AAA")).not.toBeInTheDocument();
-    expect(screen.getByText("Not ready").closest("a")).toHaveAttribute("href", "/objects?run=v1&readiness=fail");
+    expect(screen.getAllByText("No-go").map((e) => e.closest("a")).find((a) => a?.getAttribute("href")?.includes("readiness=fail"))).toHaveAttribute("href", "/objects?run=v1&readiness=fail");
     currentSearch = "run=v1";
   });
 
@@ -209,7 +209,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
-    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Records", "DQS", "Verdict", "Trend", "Action"]);
+    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Records", "Score", "Verdict", "Trend", "Action"]);
     expect(ledger().getByText("Bad data")).toBeInTheDocument();
     expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&rule=mm_bad");
   });

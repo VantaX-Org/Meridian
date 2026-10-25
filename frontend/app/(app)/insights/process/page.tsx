@@ -599,7 +599,7 @@ export default function ProcessInsightsPage() {
   const placeholder: ViewInsight = { loading: true, situation: { sentence: "" }, changed: { sentence: "" }, why: { sentence: "" }, next: { sentence: "" } };
   return (
     <InsightFrame
-      title="Processes"
+      title="Process readiness"
       meta={latest ? `As of ${runScopeLabel(latest)}` : "Latest completed run"}
       run={latest?.id ?? run}
       insight={insight ?? placeholder}

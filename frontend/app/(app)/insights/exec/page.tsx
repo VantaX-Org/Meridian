@@ -67,7 +67,7 @@ export default function ExecPage() {
   const cost = useQuery({ queryKey: queryKeys.insights("proven-cost", run), queryFn: () => getProvenCost({ version_id: run }), enabled: !!run });
   const overview = useQuery({ queryKey: queryKeys.insights("overview", run), queryFn: () => getOverview({ version_id: run }), enabled: !!run });
   const dqs = overview.data?.dqs;
-  const VERDICT_SENTENCE: Record<string, string> = { go: "Ready to load", at_risk: "At risk", no_go: "Not ready" };
+  const VERDICT_SENTENCE: Record<string, string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"

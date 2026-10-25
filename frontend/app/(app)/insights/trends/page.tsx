@@ -7,14 +7,15 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, Delta, EmptyState, Heatmap, Line, Pill, Select, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
+import { Button, Card, DataTable, Delta, EmptyState, Heatmap, HelpHint, Line, Pill, Select, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { useSystemScope } from "@/lib/permissions";
 import { getRuleRanking, getTrends, type RuleRow, type TrendRun } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatDate, labelOf, plural, trendSentence } from "@/lib/format";
+import { labelOf, plural, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
+import { runName } from "@/lib/run-scope";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -33,7 +34,7 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
       id: "run", header: "Run", accessorFn: (r) => r.run_at ?? "", enableSorting: false, size: 260,
       cell: ({ row }) => (
         <span className="inline-flex items-center gap-2 whitespace-nowrap">
-          <span>{row.original.label || formatDate(row.original.run_at, "datetime")}</span>
+          <span>{runName(row.original)}</span>
           {row.original.baseline ? <Pill>Baseline</Pill> : null}
           {row.original.version_id === current ? <Pill tone="info">This run</Pill> : null}
         </span>
@@ -99,14 +100,14 @@ export default function TrendsPage() {
     <InsightFrame
       title="Trends"
       scope
-      meta={run ? `${plural(trend.length, "run")} in this lineage` : `${plural(runs.length, "completed run")}`}
+      meta={run ? `${plural(trend.length, "run")} of this system, each against the run before` : `${plural(runs.length, "completed run")}`}
       run={run}
       controls={
         <>
           {(systems.data?.length ?? 0) > 1 ? (
             <Select label="System" value={systemChoice} onValueChange={setSystem} options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]} />
           ) : null}
-          <Select label="Window" value={win} onValueChange={setWin} options={WINDOWS} />
+          <span className="inline-flex items-center gap-1"><Select label="Window" value={win} onValueChange={setWin} options={WINDOWS} /><HelpHint term="window" /></span>
         </>
       }
       insight={{

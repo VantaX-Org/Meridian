@@ -163,6 +163,54 @@ export const GLOSSARY = {
     long: "Drift is recorded when a later configuration read differs from the earlier one, such as a field turned from optional to required. Each drift entry names what changed and when, so a score change can be linked to a change in SAP rather than to the data.",
     href: "/docs?page=systems",
   },
+  run: {
+    term: "Run",
+    short: "One analysis of one system or file: its scores, findings and records at that moment",
+    long: "A run is one pass of every applicable rule over the data read from one system (or one uploaded file). It carries its scores, findings and the records behind them, and it never changes afterwards. Runs of the same system line up in time, which is what progress, trends and the forecast read.",
+    href: "/runs",
+  },
+  previous_run: {
+    term: "Previous run",
+    short: "The finished run of the same system that came just before this one",
+    long: "Change on a run page, the Runs ledger and Trends is measured against the previous run: the newest finished run of the same system (or of the same uploaded objects) that started earlier. Runs of other systems are never compared with each other.",
+    href: "/runs",
+  },
+  baseline: {
+    term: "Baseline",
+    short: "The run you pinned to measure progress against; without one, the previous run is used",
+    long: "Pin any finished run as the baseline of its system and every later run reports its change since that run, on the Since baseline page and in the progress report. Without a pinned baseline the comparison falls back to the previous run. One baseline per system; pinning another replaces it.",
+    href: "/insights/progress",
+  },
+  current_state: {
+    term: "Current state",
+    short: "Every object at its latest finished run, combined: the whole landscape as it stands today",
+    long: "Home and the Insights summary read the current state: each object as measured by the newest finished run of its system, so a system analysed yesterday and a file uploaded today both count. Choose a run under Showing to read that one run alone instead.",
+    href: "/home",
+  },
+  pinned_run: {
+    term: "Pinned run",
+    short: "An older run opened by its link; the page reads that run, not the latest",
+    long: "A page normally shows the latest finished run. Opening a run from the ledger, a trend point or a shared link pins that run: every number on the page comes from it and the header names it. Back to latest returns to the newest run.",
+    href: "/runs",
+  },
+  window: {
+    term: "Window",
+    short: "How many of the latest runs a trend draws",
+    long: "Trends draw the last 6, 12 or 24 finished runs of one system, newest on the right. A wider window shows the long arc; a narrower one makes the last few changes readable. The window never mixes runs of different systems.",
+    href: "/insights/trends",
+  },
+  verdict: {
+    term: "Verdict",
+    short: "Go, At risk or No-go: whether the score clears the target, is near it, or is below the warning line",
+    long: "The verdict turns a score into a decision using the tenant's bands: Go at or above the target, At risk between the warning line and the target, No-go below it. Objects, waves and processes carry the same three words, so a reader never needs a second scale.",
+    href: "/rules/scoring",
+  },
+  blocking_finding: {
+    term: "Blocking finding",
+    short: "A critical or high finding: one that holds the score down or stops a load",
+    long: "Findings are ranked critical, high, medium and low. Critical and high findings are the blocking ones: critical failures cap the score and either kind can stop an object from loading into S/4HANA. Counts of blocking findings always open the rows behind them.",
+    href: "/objects",
+  },
 } as const satisfies Record<string, GlossaryEntry>;
 
 export type GlossaryKey = keyof typeof GLOSSARY;

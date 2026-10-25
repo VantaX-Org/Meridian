@@ -26,7 +26,7 @@ import { DIMENSIONS, formatDate, formatModuleName, labelOf, runAxisLabels } from
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
-import { latestFinishedRun, lineageChoices } from "@/lib/run-scope";
+import { latestFinishedRun, lineageChoices, runName } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
 import type { Finding, Version } from "@/types/api";
 import { clsx } from "clsx";
@@ -84,7 +84,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     },
     {
       id: "composite",
-      header: "Composite",
+      header: "Score",
       cell: ({ row }) => (row.original.composite_score == null ? "—" : (
         <DrillLink object={row.original.module} run={versionId}>{row.original.composite_score.toFixed(1)}</DrillLink>
       )),
@@ -633,7 +633,7 @@ export default function RunDetailPage() {
 
   const header = v ? (
     <PageHeader
-      title={v.label ?? formatDate(v.run_at, "datetime")}
+      title={runName(v)}
       meta={
         <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>{["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}</span>

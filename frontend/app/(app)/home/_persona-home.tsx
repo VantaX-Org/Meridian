@@ -34,7 +34,7 @@ import {
 } from "@/lib/current-state";
 import { formatDate, formatModuleName, plural, round1, shortCapReason } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
-import { hrefWithRun } from "@/lib/run-scope";
+import { hrefWithRun, runScopeLabel } from "@/lib/run-scope";
 import { StateScope } from "@/components/run-scope";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
@@ -53,8 +53,7 @@ const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.He
 
 
 /** Header label for a run: never a raw id (same formula as the run selector). */
-const runLabel = (v: Version) =>
-  v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Latest"}, ${formatDate(v.run_at, "date")}`;
+const runLabel = (v: Version) => runScopeLabel(v);
 
 function WorkRow({ children }: { children: ReactNode }) {
   return <div className="m-stat-grid">{children}</div>;
@@ -297,7 +296,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     },
     { accessorKey: "affected_records", header: "Records affected", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
     {
-      id: "dqs", header: "DQS", meta: { numeric: true },
+      id: "dqs", header: "Score", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
       cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : (
         <Score size="sm" value={o.composite_score} bands={bands} />

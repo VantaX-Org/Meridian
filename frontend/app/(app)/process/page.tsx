@@ -32,7 +32,7 @@ export default function ProcessCataloguePage() {
   const rows = catalogue.data;
   return (
     <ProcessFrame>
-      <PageHeader title="Processes" meta={system?.name}
+      <PageHeader title="As-is processes" meta={system?.name}
         actions={system && (
           <>
             <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />

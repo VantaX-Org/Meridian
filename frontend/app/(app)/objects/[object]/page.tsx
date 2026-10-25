@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status } from "@/design";
+import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
@@ -58,7 +58,7 @@ function ObjectScore({ summary, detail }: { summary: ObjectSummary; detail: Obje
     <Score
       value={score}
       explain={{
-        band: { label: tone === "go" ? "On target" : tone === "at-risk" ? "Needs attention" : tone === "no-go" ? "Below floor" : "Scored", tone },
+        band: { label: tone ? statusLabel("verdict", tone) : "Scored", tone },
         dimensions: measured.map(([d, v]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score: v })),
         // weight descends with rank so the explainer's recordsFailed * weight sort keeps the records order
         rules: failing.map((r, i, all) => ({ ruleId: r.check_id, object: detail.module, recordsFailed: r.affected_count, weight: (all.length - i) / all.length })),

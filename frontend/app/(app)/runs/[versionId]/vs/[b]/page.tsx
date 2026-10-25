@@ -35,12 +35,13 @@ import { createBatch, errorText } from "@/lib/api/remediation";
 import { getComparisonReportUrl } from "@/lib/api/reports";
 import { compareRecordKeys, compareRecords, compareVersions } from "@/lib/api/versions";
 import { formatDate, formatModuleName, roundedDelta } from "@/lib/format";
+import { runScopeLabel } from "@/lib/run-scope";
 import { compareNarrative } from "@/lib/narrative";
 import { queryKeys } from "@/lib/query-keys";
 import type { CheckChange, Version } from "@/types/api";
 
 const KEYS_LIMIT = 50;
-const runLabel = (v: Version) => v.label ?? formatDate(v.run_at, "date");
+const runLabel = (v: Version) => runScopeLabel(v);
 const change = (c: CheckChange) => c.v2_affected - c.v1_affected;
 const fmtN = (n: number) => n.toLocaleString();
 
@@ -51,7 +52,7 @@ const columns: ColumnDef<CheckChange>[] = [
   { id: "after", header: "Records after", accessorFn: (c) => c.v2_affected, cell: ({ row }) => fmtN(row.original.v2_affected) },
   {
     id: "delta",
-    header: "Delta",
+    header: "Change",
     accessorFn: change,
     cell: ({ row }) => {
       const d = change(row.original);
@@ -224,7 +225,7 @@ export default function CompareRunsPage() {
     <div className="grid grid-cols-3 gap-3">
       <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
       <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
-      <Stat label="Delta" value={<Delta value={roundedDelta(before, after)} />} />
+      <Stat label="Change" value={<Delta value={roundedDelta(before, after)} />} />
     </div>
   ) : (
     <div className="grid grid-cols-3 gap-3">
@@ -262,7 +263,7 @@ export default function CompareRunsPage() {
       exportMenu={
         cmp && can("export") ? (
           <ExportMenu
-            options={[{ format: "pdf" as const, run: () => downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), "comparison.pdf") }]}
+            options={[{ format: "pdf" as const, label: "Progress report (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), "comparison.pdf") }]}
           />
         ) : undefined
       }

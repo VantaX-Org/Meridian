@@ -92,7 +92,7 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
   },
   {
     accessorKey: "composite_score",
-    header: "DQS",
+    header: "Score",
     cell: ({ row }) => {
       const score = row.original.composite_score;
       if (score == null) return "—";
@@ -261,7 +261,7 @@ export default function ObjectsPage() {
       <div className="m-stat-grid m-motion-stagger">
         <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
-        <Stat label="Not ready" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
+        <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
         <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" />
         {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" />}
       </div>

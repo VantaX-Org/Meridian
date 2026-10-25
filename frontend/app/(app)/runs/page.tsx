@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
+import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, HelpHint, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -20,11 +20,11 @@ import { archiveVersions, compareVersions, getVersions, restoreVersions } from "
 import { formatDate, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
+import { runName } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 
 
-const runName = (v: Version) => v.label ?? formatDate(v.run_at, "datetime");
 const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
 
 /** Live progress for a run that is still being analysed: polls the status endpoint until it settles, then refreshes the list. */
@@ -102,8 +102,8 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
       ),
     },
     {
-      id: "lineage",
-      header: "Lineage",
+      id: "history",
+      header: () => <span className="inline-flex items-center gap-1">History <HelpHint term="run" /></span>,
       size: 110,
       enableSorting: false,
       cell: ({ row }) => {
@@ -125,7 +125,7 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
     {
       id: "dqs",
       accessorFn: (v) => overallDqs(v) ?? -1,
-      header: "DQS",
+      header: "Score",
       cell: ({ row }) => {
         const dqs = overallDqs(row.original);
         if (dqs === null) return "—";
@@ -305,6 +305,7 @@ export default function RunsPage() {
   const header = (
     <PageHeader
       title="Runs"
+      meta={<span className="inline-flex items-center gap-1">Every analysis, newest first; change is against the previous run of the same system <HelpHint term="previous_run" /></span>}
       actions={
         <>
           <ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />

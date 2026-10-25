@@ -46,7 +46,7 @@ const sprintColumns: ColumnDef<SprintPlan>[] = [
   { accessorKey: "total_effort_hours", header: "Effort (h)" },
   { accessorKey: "records_fixed", header: "Records fixed" },
   { accessorKey: "critical_cleared", header: "Criticals cleared" },
-  { id: "dqs", header: "DQS", cell: ({ row }) => `${row.original.dqs_now ?? "—"} to ${row.original.dqs_projected ?? "—"}` },
+  { id: "dqs", header: "Score", cell: ({ row }) => `${row.original.dqs_now ?? "—"} to ${row.original.dqs_projected ?? "—"}` },
   { id: "cost", header: "Estimated cost", cell: ({ row }) => row.original.estimated_cost == null ? "—" : `${row.original.estimated_cost.toLocaleString()} ${row.original.currency}` },
 ];
 

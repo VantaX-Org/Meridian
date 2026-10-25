@@ -74,7 +74,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     expect(screen.getByTestId("run-scope")).toHaveTextContent("Current state of 3 objects, latest run 16 Oct 2026");
     expect(screen.queryByText("Back to latest")).toBeNull();
     // the stats read the merged list: one not ready, one at risk, one go, 0 critical + 3 high blocking
-    expect(screen.getByText("Not ready").closest("a")).toHaveAttribute("href", "/objects?readiness=fail");
+    expect(screen.getAllByText("No-go").map((e) => e.closest("a")).find((a) => a?.getAttribute("href")?.includes("readiness=fail"))).toHaveAttribute("href", "/objects?readiness=fail");
     expect(within(screen.getByText("Blocking findings").closest("a, div") as HTMLElement).getByText("3")).toBeInTheDocument();
   });
 

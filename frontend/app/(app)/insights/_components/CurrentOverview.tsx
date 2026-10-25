@@ -32,7 +32,7 @@ import { Section } from "./Section";
 import { useCurrentState } from "./useCurrentState";
 import { withScope } from "./useInsightScope";
 
-const VERDICT = { pass: "Ready to load", warn: "At risk", fail: "Not ready" } as const;
+const VERDICT = { pass: "Go", warn: "At risk", fail: "No-go" } as const;
 const TONE = { pass: "go", warn: "at-risk", fail: "no-go" } as const;
 
 const findingColumns: ColumnDef<Finding>[] = [

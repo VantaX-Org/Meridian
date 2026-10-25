@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Score } from "@/design";
+import { Score, statusLabel } from "@/design";
 import { getFindings, type FindingsAggregate } from "@/lib/api/findings";
 import { getSettings } from "@/lib/api/settings";
 import { DIMENSIONS } from "@/lib/format";
@@ -32,7 +32,7 @@ export function DqsScore({ agg, versionId }: { agg: FindingsAggregate; versionId
       value={raw}
       cap={cap}
       explain={{
-        band: { label: tier === "pass" ? "On target" : tier === "warn" ? "Needs attention" : tier === "fail" ? "Below floor" : "Scored", tone: tier === "pass" ? "go" : tier === "warn" ? "at-risk" : tier === "fail" ? "no-go" : "neutral" },
+        band: { label: tier ? statusLabel("verdict", tier === "pass" ? "go" : tier === "warn" ? "at-risk" : "no-go") : "Scored", tone: tier === "pass" ? "go" : tier === "warn" ? "at-risk" : tier === "fail" ? "no-go" : "neutral" },
         dimensions: measured.map(([d, score]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score })),
         capReason: cap != null ? "a critical finding is open" : undefined,
         // weight descends with rank so the explainer's recordsFailed * weight sort keeps the impact order

@@ -27,7 +27,7 @@ import { useInsightScope, withScope } from "./_components/useInsightScope";
 import { CurrentOverview } from "./_components/CurrentOverview";
 import { CleansingFunnel, RootCauseList, S4Chart, s4Totals } from "./_components/RunAnalyses";
 
-const VERDICT_SENTENCE: Record<string, string> = { go: "Ready to load", at_risk: "At risk", no_go: "Not ready" };
+const VERDICT_SENTENCE: Record<string, string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
 
 
 const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));

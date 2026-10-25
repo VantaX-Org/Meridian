@@ -7,8 +7,9 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { Version } from "@/types/api";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Delta, DrillLink, Mono, Select, Sparkline, Status } from "@/design";
+import { Button, Card, DataTable, Delta, DrillLink, HelpHint, Mono, Select, Sparkline, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { compareRecords, compareVersions, pinBaseline, type RecordDiffCheck } from "@/lib/api/versions";
@@ -19,6 +20,7 @@ import { apiErrorMessage, apiErrorReason, isListFailure, isNotFound } from "@/li
 import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { lineageOf, SCORE_HISTORY_LIMIT } from "@/lib/runs";
+import { runScopeLabel } from "@/lib/run-scope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
 import { useFindingOpener } from "../_components/FindingOpener";
@@ -54,7 +56,7 @@ export default function ProgressPage() {
   const v1 = cmp.data?.v1;
   const v2 = cmp.data?.v2;
   // The compare response carries both runs, so their labels never depend on the run list.
-  const label = (v?: { label: string | null; run_at: string } | null) => (v ? v.label || formatDate(v.run_at, "datetime") : "the baseline");
+  const label = (v?: { label: string | null; run_at: string; metadata?: Version["metadata"]; dqs_summary?: Version["dqs_summary"] } | null) => (v ? runScopeLabel(v) : "the baseline");
   const composite = (v?: { dqs_summary: Record<string, { composite_score: number | null }> | null } | null) => {
     const s = v?.dqs_summary;
     const scores = s ? Object.values(s).map((d) => d.composite_score).filter((x): x is number => typeof x === "number") : [];
@@ -120,17 +122,20 @@ export default function ProgressPage() {
       meta={v1 && v2 ? `compared with ${label(v1)}` : undefined}
       toolbar={
         <>
-          <Select
-            label="Compare with"
-            value={baseline ?? ""}
-            onValueChange={(id) => router.replace(withScope(path, { run, module, baseline: id || undefined }))}
-            options={[{ value: "", label: "Pinned baseline or previous run" }, ...comparableRuns.map((r) => ({ value: r.id, label: `${optionLabels.get(r.id) ?? formatDate(r.run_at, "datetime")}${r.metadata?.baseline ? " (baseline)" : ""}` }))]}
-          />
+          <span className="inline-flex items-center gap-1">
+            <Select
+              label="Compare with"
+              value={baseline ?? ""}
+              onValueChange={(id) => router.replace(withScope(path, { run, module, baseline: id || undefined }))}
+              options={[{ value: "", label: "Pinned baseline or previous run" }, ...comparableRuns.map((r) => ({ value: r.id, label: `${optionLabels.get(r.id) ?? formatDate(r.run_at, "datetime")}${r.metadata?.baseline ? " (baseline)" : ""}` }))]}
+            />
+            <HelpHint term="baseline" />
+          </span>
           {can("analyse") && run ? <Button variant="secondary" onClick={() => pin.mutate()} pending={pin.isPending}>Pin as baseline</Button> : null}
         </>
       }
       exportOptions={run ? [
-        { format: "pdf", label: "Proof of progress (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(run, baseline), `progress_${run}.pdf`) },
+        { format: "pdf", label: "Progress report (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(run, baseline), `progress_${run}.pdf`) },
         { format: "xlsx", label: "Comparison workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module, compare: baseline }), `comparison_${run}.xlsx`) },
       ] : []}
       insight={{

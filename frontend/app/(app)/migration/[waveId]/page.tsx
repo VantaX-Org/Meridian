@@ -34,7 +34,7 @@ const objectColumns = (run: string | null): ColumnDef<WaveObject>[] => {
   { id: "records", header: "Records", cell: ({ row }) => drill(row.original.module, "records", row.original.records.toLocaleString()) },
   { id: "blocked", header: "Records blocked", cell: ({ row }) => drill(row.original.module, "records", row.original.records_blocked.toLocaleString()) },
   { id: "gaps", header: "Blocking gaps", cell: ({ row }) => drill(row.original.module, "rules", row.original.blocker_count.toLocaleString()) },
-  { id: "dqs", header: "DQS", cell: ({ row }) => (row.original.dqs == null ? "—" : drill(row.original.module, "overview", row.original.dqs.toFixed(1))) },
+  { id: "dqs", header: "Score", cell: ({ row }) => (row.original.dqs == null ? "—" : drill(row.original.module, "overview", row.original.dqs.toFixed(1))) },
   { id: "open", header: "", size: 80, cell: ({ row }) => (
       <Link href={run ? `/objects/${row.original.module}?run=${run}` : `/objects/${row.original.module}`} className="m-ink-accent-ink underline" onClick={(e) => e.stopPropagation()}>Open</Link>
     ) },
