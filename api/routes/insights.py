@@ -332,9 +332,29 @@ def exec_narrative(no_go: int, cells: int, priced: int, worst_name: Optional[str
     return " ".join(out)
 
 
+Scope = Literal["run", "current"]
+_SCOPE = Query("run", description="run: one run (version_id, default the latest complete run). current: every "
+                                  "object at the latest complete run of its lineage; no version_id.")
+
+
+def _exec_dqs(s, tid: str, vid: str) -> dict:
+    """The DQS block of one run (composite, capped, cap_reason), the same numbers /overview shows for it."""
+    v = agg.resolve_version(s, tid, vid)
+    return agg.dqs_block(v, None, agg.load_scoring(s, tid), None) if v else {}
+
+
+def _exec_score(dqs: dict) -> dict:
+    """composite, cap and cap_reason for the exec payload: the cap is the composite itself while a critical finding
+    holds the score there (api/services/scoring.py:_cap), so the page can draw the measured value beyond it."""
+    comp = dqs.get("composite")
+    capped = bool(dqs.get("capped")) and comp is not None
+    return {"composite": comp, "cap": comp if capped else None, "cap_reason": dqs.get("cap_reason") if capped else None}
+
+
 @router.get("/exec", dependencies=[Depends(require_permission("view"))])
 async def get_exec(
     version_id: Optional[uuid.UUID] = None,
+    scope: Scope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -344,8 +364,21 @@ async def get_exec(
     directly (same pattern get_impact already uses for get_config_impact), all scoped
     to the same resolved version_id, so both the JSON page and the PDF export
     (api/routes/reports.py's executive_report_pdf, unchanged) describe the same run.
-    narrative is a deterministic string built from these numbers — no LLM call."""
+    narrative is a deterministic string built from these numbers — no LLM call.
+
+    ``scope=current`` (the scope of Home): the composite, cap and cap_reason come from the current state, every
+    object at the latest complete run of its lineage (``_latest_version_ids``, as /overview?scope=current). The
+    readiness cells, impact rows and proven cost are per run, so they come from the newest of those runs."""
     await _rls(db, tenant)
+    current: Optional[dict] = None
+    if scope == "current":
+        if version_id is not None:
+            raise HTTPException(422, "version_id and scope=current are exclusive")
+        ids = await _latest_version_ids(db, tenant)
+        if ids:
+            current = await db.run_sync(lambda s: agg.current_overview(s, str(tenant.id), ids, None))
+            newest = (current.get("version_ids") or [None])[0]
+            version_id = uuid.UUID(newest) if newest else None
     if version_id is None:
         version_id = (await db.execute(
             text("SELECT id FROM analysis_versions WHERE tenant_id = :t "
@@ -357,6 +390,8 @@ async def get_exec(
             # tenant. 200 with empty fields so the page renders its empty state.
             return {
                 "version_id": None,
+                "scope": scope,
+                "composite": None, "cap": None, "cap_reason": None,
                 "narrative": "",
                 "readiness_cells": [],
                 "waterfall": [],
@@ -382,9 +417,12 @@ async def get_exec(
 
     narrative = exec_narrative(no_go, len(cells), len(rows), worst_name, worst_amount, len(owner_rows),
                                top_cost, proven_cost["currency"])
+    dqs = current["dqs"] if current else await db.run_sync(lambda s: _exec_dqs(s, str(tenant.id), str(version_id)))
 
     return {
-        "version_id": str(version_id),
+        "version_id": None if current else str(version_id),
+        "scope": scope,
+        **_exec_score(dqs),
         "narrative": narrative,
         "readiness_cells": cells,
         "waterfall": waterfall,
@@ -402,11 +440,6 @@ async def _agg(db: AsyncSession, tenant: Tenant, fn, *args, **kw) -> dict:
     if out is None:
         raise HTTPException(404, "No completed run found")
     return out
-
-
-Scope = Literal["run", "current"]
-_SCOPE = Query("run", description="run: one run (version_id, default the latest complete run). current: every "
-                                  "object at the latest complete run of its lineage; no version_id.")
 
 
 async def _current(db: AsyncSession, tenant: Tenant, fn, version_id: Optional[uuid.UUID], module: Optional[str]) -> dict:

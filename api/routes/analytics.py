@@ -157,16 +157,23 @@ async def get_predictive_analytics(
 async def get_prescriptive_analytics(
     limit: int = Query(20, ge=1, le=50),
     type: Optional[str] = Query(None),
+    version_id: Optional[uuid.UUID] = Query(None, description="The run whose findings the actions come from; "
+                                                              "default the latest finished run."),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Next-best actions ranked by ROI per hour."""
     await _set_tenant(db, tenant)
 
-    # Load latest version findings
+    # Load the findings of the named run, else of the latest finished one
+    version_filter = [AnalysisVersion.tenant_id == tenant.id]
+    if version_id is not None:
+        version_filter.append(AnalysisVersion.id == version_id)
+    else:
+        version_filter.append(AnalysisVersion.status.in_(FINISHED))
     latest_version = await db.execute(
         select(AnalysisVersion)
-        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
+        .where(*version_filter)
         .order_by(AnalysisVersion.run_at.desc())
         .limit(1)
     )
