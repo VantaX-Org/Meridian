@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as mdmApi from "@/lib/api/mdm-metrics";
 import * as stewardshipApi from "@/lib/api/stewardship";
+import * as objectsApi from "@/lib/api/v1/objects";
 import type { MdmMetric, StewardshipQueueItem } from "@/types/api";
 import MdmOverviewPage from "../page";
 
@@ -25,6 +26,19 @@ describe("MdmOverviewPage", () => {
     expect(await screen.findByText("Match work")).toBeInTheDocument();
     expect(await screen.findByText("Merge decision")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/inbox?type=merge_decision&focus=q1");
+  });
+
+  it("draws the health score in the insight hero, with the target and verdict from the tenant's score bands", async () => {
+    vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: metric, trend: [metric], active_systems_count: 4 });
+    vi.spyOn(analyticsApi, "getMdmHealth").mockResolvedValue({ data: [], days: 90 });
+    vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "r1", objects: [], thresholds: { target: 95, warning: 80, critical: 60 } });
+    renderWithQuery(<MdmOverviewPage />);
+    const hero = await screen.findByRole("region", { name: "Insight" });
+    expect(hero).toHaveClass("m-hero");
+    // 86 is under the tenant's target of 95 and over its warning of 80: at risk, where a fixed 85 would say go.
+    expect(await screen.findByText("Target 95, 38 waiting on a steward")).toBeInTheDocument();
+    expect(screen.getByTestId("hero-verdict")).toHaveTextContent("At risk");
   });
 
   it("counts only merge decisions, in every status the inbox treats as live", async () => {

@@ -59,7 +59,7 @@ export function ConformanceView({ runId, filters, rework, onClearFilters }: {
 
   return (
     <div className="grid gap-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="m-stat-grid">
         <Stat label="Fitness" help="fitness" value={fmtFitness(c.fitness)} tone={tone === "go" || tone === "at-risk" || tone === "no-go" ? tone : undefined}
           hint="Share of reference steps each case performs in order" />
         <Stat label="Happy path" help="happyPath" value={fmtShare(c.happy_path?.share ?? 0)}

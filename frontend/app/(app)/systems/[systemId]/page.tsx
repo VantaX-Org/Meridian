@@ -271,7 +271,7 @@ export default function SystemPage() {
         </Notice>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-4 @3xl:grid-cols-4">
+      <div className="m-stat-grid">
         {/* Runs can exist without an extraction (uploads); "nothing extracted" must not sit beside their score. */}
         <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : versions.length ? "Runs come from uploads" : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
         <Stat

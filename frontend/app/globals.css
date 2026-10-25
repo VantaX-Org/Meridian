@@ -339,6 +339,9 @@
   .m-tab[data-selected] { color: var(--m-ink); font-weight: 600; }
   .m-tab-count { margin-left: 6px; }
   .m-tab-indicator { position: absolute; left: 0; bottom: -1px; height: 2px; background: var(--m-accent); }
+  /* Link mode: a strip of route links (InsightTabs) wears the same tab; the current page carries the accent rule. */
+  a.m-tab { display: inline-flex; align-items: center; text-decoration: none; }
+  .m-tab[aria-current="page"] { color: var(--m-ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--m-accent); }
 
   .m-mono { font-family: var(--m-font-mono); }
   .m-mono-inline { color: var(--m-ink); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); background: var(--m-sheet-sunken); padding: 1px 4px; border-radius: var(--m-radius-control); }

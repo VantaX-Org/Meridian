@@ -176,8 +176,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         <p className="m-text-body m-ink-3">
           The score is each measured dimension times its weight. One critical finding caps it at 85, two or more at 70. The cap is fixed.
         </p>
-        <table className="m-text-body">
-          <thead><tr><th className="text-left">Dimension</th><th className="text-left">Weight</th><th className="text-right">Normalised</th><th className="text-right">Latest score</th><th className="text-right">Contribution</th></tr></thead>
+        <table className="m-table">
+          <thead><tr><th>Dimension</th><th>Weight</th><th className="text-right">Normalised</th><th className="text-right">Latest score</th><th className="text-right">Contribution</th></tr></thead>
           <tbody>
             {DIMS.map((d: Dim) => (
               <tr key={d}>
@@ -225,8 +225,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           <div>
             <h3 className="m-text-body font-semibold mb-1">Score floors per object</h3>
             <p className="m-text-meta mb-2 m-ink-3">An analysis that scores an object below its floor raises an in-app alert, and an email or Teams message when configured.</p>
-            <table className="m-text-body [max-width:480px]!">
-              <thead><tr><th className="text-left">Object</th><th className="text-left">Floor</th><th /></tr></thead>
+            <table className="m-table [max-width:480px]">
+              <thead><tr><th>Object</th><th>Floor</th><th /></tr></thead>
               <tbody>
                 {Object.entries(floors).sort(([a], [b]) => a.localeCompare(b)).map(([m, v]) => (
                   <tr key={m}>

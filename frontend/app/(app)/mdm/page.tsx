@@ -5,7 +5,9 @@
 import Link from "next/link";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, ExplorerPage, Line, PageHeader, Pill, Stat, statusLabel, type CellMeta } from "@/design";
+import { Button, Card, DataTable, ExplorerPage, InsightHeader, Line, PageHeader, Pill, Stat, statusLabel, type CellMeta } from "@/design";
+import { useScoreBands } from "@/hooks/use-score-bands";
+import { readinessOf } from "@/lib/home-metrics";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { getMdmHealth } from "@/lib/api/analytics";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
@@ -51,8 +53,10 @@ export default function MdmOverviewPage() {
   const total = queues.reduce((n, q) => n + (q.data?.total ?? 0), 0);
   const failed = isListFailure(dash) ? dash : isListFailure(health) ? health : null;
   const state = dash.isLoading || health.isLoading ? "loading" : failed ? "error" : !m && points.length === 0 && items.length === 0 ? "empty" : undefined;
-  const tone = m ? (m.mdm_health_score >= 85 ? "go" : m.mdm_health_score >= 60 ? "at-risk" : "no-go") : undefined;
-  const verdict = tone ? statusLabel("verdict", tone) : null;
+  // The tenant's score bands set the target tick and the verdict, as they do for every other score.
+  const { bands } = useScoreBands();
+  const tone = m ? readinessOf(m.mdm_health_score, bands) : undefined;
+  const verdict = tone ? statusLabel("verdict", tone) : "";
 
   return (
     <ExplorerPage
@@ -69,21 +73,32 @@ export default function MdmOverviewPage() {
         />
       }
       summary={m ? (
-        <section aria-label="MDM health" className="m-hero m-motion-rise">
-          <div className="grid gap-8 @7xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] @7xl:items-end">
+        <InsightHeader
+          hero
+          bare
+          lead={
             <div className="m-hero-lead">
               <div className="m-score-hero" data-testid="score-hero">
-                <Stat hero label="MDM health" value={m.mdm_health_score} bar={m.mdm_health_score} rule={{ target: 85 }} tone={tone} versionId={m.snapshot_date} hint={verdict ?? undefined} />
+                <Stat hero label="MDM health" value={m.mdm_health_score} bar={m.mdm_health_score} rule={{ target: bands.target }} tone={tone} versionId={m.snapshot_date} />
+              </div>
+              <div className="m-hero-verdict" data-testid="hero-verdict">
+                <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">{verdict}</span>
+                <span className="m-text-body m-ink-2">{`Target ${bands.target}, ${m.backlog_count.toLocaleString()} waiting on a steward`}</span>
               </div>
             </div>
-            <div className="m-motion-stagger grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 @3xl:grid-cols-4 @7xl:grid-cols-2">
-              <Stat label="Coverage" value={`${m.golden_record_coverage_pct}%`} href="/mdm/golden" hint="Weight 40%" spark={trend.map((t) => t.golden_record_coverage_pct)} />
-              <Stat label="Match confidence" value={`${Math.round(m.avg_match_confidence * 100)}%`} href="/mdm/match-rules" hint="Weight 30%" spark={trend.map((t) => t.avg_match_confidence * 100)} />
-              <Stat label="Steward SLA" value={`${m.steward_sla_compliance_pct}%`} href="/inbox" hint="Weight 20%" spark={trend.map((t) => t.steward_sla_compliance_pct)} />
-              <Stat label="Source consistency" value={`${m.source_consistency_pct}%`} href="/mdm/golden" hint="Weight 10%" spark={trend.map((t) => t.source_consistency_pct)} />
-            </div>
-          </div>
-        </section>
+          }
+          stats={[
+            { label: "Coverage", value: `${m.golden_record_coverage_pct}%`, to: "/mdm/golden", hint: "Weight 40%", spark: trend.map((t) => t.golden_record_coverage_pct) },
+            { label: "Match confidence", value: `${Math.round(m.avg_match_confidence * 100)}%`, to: "/mdm/match-rules", hint: "Weight 30%", spark: trend.map((t) => t.avg_match_confidence * 100) },
+            { label: "Steward SLA", value: `${m.steward_sla_compliance_pct}%`, to: "/inbox", hint: "Weight 20%", spark: trend.map((t) => t.steward_sla_compliance_pct) },
+            { label: "Source consistency", value: `${m.source_consistency_pct}%`, to: "/mdm/golden", hint: "Weight 10%", spark: trend.map((t) => t.source_consistency_pct) },
+          ]}
+          // `bare` sets the score band alone; the cells below are not drawn.
+          situation={{ sentence: `MDM health ${m.mdm_health_score}, ${verdict}`, tone }}
+          changed={{ sentence: "" }}
+          why={{ sentence: "" }}
+          next={{ sentence: "" }}
+        />
       ) : undefined}
       state={state}
       emptyProps={{

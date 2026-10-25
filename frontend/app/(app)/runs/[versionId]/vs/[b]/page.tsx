@@ -275,13 +275,13 @@ export default function CompareRunsPage() {
   );
 
   const charts = cmp ? (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="m-stat-grid">
       <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
       <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
       <Stat label="Change" value={<Delta value={roundedDelta(before, after)} />} />
     </div>
   ) : (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="m-stat-grid">
       {[0, 1, 2].map((i) => <Stat key={i} label="" value="" loading />)}
     </div>
   );

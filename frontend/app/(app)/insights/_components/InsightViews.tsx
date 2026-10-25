@@ -53,7 +53,7 @@ export function InsightTabs({ view: viewId, run: runId }: { view?: string; run?:
   const view = viewId ? VIEWS.find((v) => v.id === viewId) : viewOf(pathname);
   if (!view || search?.get("present") === "1") return null;
   return (
-    <nav aria-label={`${view.label} views`} data-tour="insight-views" className="flex flex-wrap items-center gap-1 border-b [border-color:var(--m-line)]">
+    <nav aria-label={`${view.label} views`} data-tour="insight-views" className="m-tabs-list flex-wrap">
       {view.tabs.map(([href, label]) => {
         const current = href === pathname;
         return (
@@ -61,7 +61,7 @@ export function InsightTabs({ view: viewId, run: runId }: { view?: string; run?:
             key={href}
             href={href.startsWith("/insights") ? withScope(href, { run }) : href}
             aria-current={current ? "page" : undefined}
-            className="m-motion-colors -mb-px flex h-9 items-center px-3 m-text-body font-medium m-ink-3 [border-bottom:2px_solid_transparent] aria-[current=page]:[color:var(--m-ink)] aria-[current=page]:[border-bottom-color:var(--m-accent)]"
+            className="m-tab m-motion-colors"
           >
             {label}
           </Link>

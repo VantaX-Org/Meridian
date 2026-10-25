@@ -146,7 +146,7 @@ function ProvenCostPanel({ query, run }: { query: UseQueryResult<ProvenCostRespo
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="m-stat-grid">
         <Stat
           label="Largest proven cost, one process"
           help="provenCost"
