@@ -5,27 +5,17 @@ from pathlib import Path
 import pytest
 
 
-# ── O.1 Grouped sidebar navigation ──────────────────────────────────────────
+# ── O.1 Grouped navigation ──────────────────────────────────────────────────
 #
-# The nav is defined once in frontend/lib/nav.ts and read by both the sidebar
-# (app/(dashboard)/layout.tsx) and the ⌘K command palette, so the two can't
-# drift. Ten sections, in journey order; each href appears once.
+# The nav is defined once in frontend/lib/nav.ts and read by the index bar (Rail) and the ⌘K command
+# palette, so the two can't drift. "Work" holds the four main entries everyone uses (Fix work, Objects,
+# Progress, Inbox); the other five sections sit under More. Each href appears once.
 
 NAV = Path("frontend/lib/nav.ts")
 LAYOUT = Path("frontend/app/(app)/layout.tsx")
+VIEWS = Path("frontend/app/(app)/insights/_components/InsightViews.tsx")
 
-NAV_GROUP_ORDER = (
-    "Home",
-    "Systems",
-    "Objects",
-    "Runs",
-    "Fix",
-    "Inbox",
-    "Insights",
-    "MDM",
-    "Rules",
-    "Admin",
-)
+NAV_GROUP_ORDER = ("Work", "Analysis", "Master data", "Rules", "Data in", "Admin")
 
 
 def _has_item(text: str, href: str, label: str) -> bool:
@@ -45,10 +35,10 @@ def _group_block(content: str, group: str) -> str:
 
 
 def test_sidebar_has_nav_groups():
-    """The shared nav has the job-based groups, in journey order."""
+    """The shared nav has the main entries first, then the More sections."""
     content = _nav()
     positions = [content.index(f'group: "{g}"') for g in NAV_GROUP_ORDER]
-    assert positions == sorted(positions), "Nav groups are out of journey order"
+    assert positions == sorted(positions), "Nav groups are out of order"
 
 
 def test_sidebar_and_palette_share_nav():
@@ -64,68 +54,64 @@ def test_sidebar_and_palette_share_nav():
 
 
 def test_overview_items():
-    """Home holds the role home at /home/lead; no 'Dashboard' label."""
-    block = _group_block(_nav(), "Home")
-    assert _has_item(block, "/home/lead", "Home")
-    assert '"/analytics"' not in block
+    """The main entries are Fix work, Objects, Progress and Inbox; the lead home sits under Analysis."""
+    work = _group_block(_nav(), "Work")
+    for href in ("/fix", "/objects", "/insights/progress", "/inbox"):
+        assert f'"{href}"' in work, f"{href} missing from the main entries"
+    assert _has_item(_group_block(_nav(), "Analysis"), "/home/lead", "Home")
     assert 'label: "Dashboard"' not in LAYOUT.read_text(encoding="utf-8") and 'label: "Dashboard"' not in _nav()
 
 
-
 def test_sidebar_systems_and_data_items():
-    """Systems has Systems, Import file and Migration (its own wave cockpit page)."""
-    block = _group_block(_nav(), "Systems")
+    """Data in has Systems, Import file and Migration (its own wave cockpit page)."""
+    block = _group_block(_nav(), "Data in")
     for href in ("/systems", "/import", "/migration"):
-        assert f'"{href}"' in block, f"{href} missing from Systems"
-
+        assert f'"{href}"' in block, f"{href} missing from Data in"
 
 
 def test_sidebar_quality_items():
-    """Objects and Runs are their own sections."""
+    """Objects is a main entry; Runs sits under Analysis."""
     content = _nav()
-    assert _has_item(_group_block(content, "Objects"), "/objects", "Objects")
-    assert _has_item(_group_block(content, "Runs"), "/runs", "Runs")
-
+    assert _has_item(_group_block(content, "Work"), "/objects", "Objects")
+    assert _has_item(_group_block(content, "Analysis"), "/runs", "Runs")
 
 
 def test_sidebar_fix_items():
-    """Fix holds cleaning; the steward inbox, with Exceptions beneath it, is its own section."""
+    """Fix work and the steward inbox, with Exceptions beneath it, are main entries."""
+    work = _group_block(_nav(), "Work")
+    assert _has_item(work, "/fix", "Fix work")
+    assert _has_item(work, "/inbox", "Inbox")
+    assert '"/inbox?kind=exception"' in work
     content = _nav()
-    assert _has_item(_group_block(content, "Fix"), "/fix", "Fix")
-    inbox = _group_block(content, "Inbox")
-    assert _has_item(inbox, "/inbox", "Inbox")
-    assert '"/inbox?kind=exception"' in inbox
     assert '"/stewardship"' not in content
     assert '"/workbench"' not in content
     assert 'label: "Workbench"' not in content, "duplicate 'Workbench' labels must be gone"
 
 
-
 def test_sidebar_mdm_items():
-    """MDM (renamed from 'Master data') has Golden records, Glossary and Match rules."""
-    block = _group_block(_nav(), "MDM")
-    for href in ("/mdm/golden", "/mdm/glossary", "/mdm/match-rules"):
+    """Master data has Golden records, Match review, Glossary and Match rules."""
+    block = _group_block(_nav(), "Master data")
+    for href in ("/mdm/golden", "/mdm/golden/merge", "/mdm/glossary", "/mdm/match-rules"):
         assert f'"{href}"' in block
 
 
 def test_sidebar_process_and_impact_items():
-    """Insights holds the process map, lineage, pattern mining and duplicate clusters."""
-    block = _group_block(_nav(), "Insights")
+    """Processes sit under Analysis; the insight views reach the process map, lineage, patterns and duplicates."""
+    assert '"/process"' in _group_block(_nav(), "Analysis")
+    views = VIEWS.read_text(encoding="utf-8")
     for href in ("/insights/process", "/insights/lineage", "/insights/mining", "/insights/duplicates"):
-        assert f'"{href}"' in block
-
+        assert f'"{href}"' in views
 
 
 def test_sidebar_reports_and_admin_items():
-    """Insights is the report hub; Admin has Users and audit and Settings with its sub-pages."""
+    """Insights is the report hub under Analysis; Admin has Users and audit and Settings with its sub-pages."""
     content = _nav()
-    assert _has_item(_group_block(content, "Insights"), "/insights", "Insights")
+    assert _has_item(_group_block(content, "Analysis"), "/insights", "Insights")
     assert '"/rules"' in _group_block(content, "Rules")
     admin = _group_block(content, "Admin")
     assert '"/admin/users"' in admin and '"/admin/settings"' in admin
     for href in ("/admin/triage", "/admin/mappings", "/admin/ai", "/admin/licence"):
         assert f'"{href}"' in content
-
 
 
 def test_pages_removed_from_nav_stay_routable():
@@ -218,6 +204,6 @@ def test_upload_page_connected_systems_banner():
     """Upload page shows banner when SAP systems are connected."""
     path = Path("frontend/app/(app)/import/page.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "connected" in content and "Download from the source" in content
+    assert "connected" in content and "Open systems" in content
     assert "one-off assessments" in content
     assert "getSystems" in content
