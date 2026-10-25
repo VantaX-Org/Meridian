@@ -59,6 +59,40 @@ describe("admin licence page", () => {
     expect(await screen.findByText("9 of 10 seats in use")).toBeInTheDocument();
   });
 
+  it("words an expired licence as expired, not as a date still ahead", async () => {
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, days_remaining: 0 });
+    renderWithQuery(<AdminLicencePage />);
+    expect(await screen.findByText("Expired")).toBeInTheDocument();
+    expect(screen.getByText(/The licence has expired\. Renew it in Meridian HQ/)).toBeInTheDocument();
+    expect(screen.queryByText(/before then/)).toBeNull();
+  });
+
+  it("keeps the before-then wording while days remain", async () => {
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, days_remaining: 5 });
+    renderWithQuery(<AdminLicencePage />);
+    expect(await screen.findByText(/Renew it in Meridian HQ before then/)).toBeInTheDocument();
+  });
+
+  it("does not call seats unlimited before the licence has validated", async () => {
+    const { max_users: _omit, ...rest } = MANIFEST.features;
+    const features = rest as LicenceManifest["features"]; // an unvalidated manifest carries no max_users
+    void _omit;
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, valid: null, features });
+    renderWithQuery(<AdminLicencePage />);
+    await screen.findByText("Seats");
+    expect(screen.queryByText("Unlimited")).toBeNull();
+    expect(screen.getAllByText("Not validated yet").length).toBeGreaterThan(0);
+  });
+
+  it("says unlimited seats for a validated licence with no seat cap", async () => {
+    const { max_users: _omit, ...rest } = MANIFEST.features;
+    const features = rest as LicenceManifest["features"]; // an unvalidated manifest carries no max_users
+    void _omit;
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, features });
+    renderWithQuery(<AdminLicencePage />);
+    expect(await screen.findByText("Unlimited")).toBeInTheDocument();
+  });
+
   it("says nothing about seats below three quarters", async () => {
     vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, seats_used: 3 });
     renderWithQuery(<AdminLicencePage />);

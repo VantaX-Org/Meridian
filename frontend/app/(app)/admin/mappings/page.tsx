@@ -24,17 +24,19 @@ function DraftInput({ m, field, label, mono }: { m: FieldMapping; field: keyof D
   return (
     <Input value={d[field] ?? ""} aria-label={`${m.standard_field} ${label}`} disabled={!write} className={mono ? "font-mono" : undefined}
       placeholder={field === "customer_field" ? "Column header in the file" : undefined}
-      onChange={(e) => set(m, { [field]: (field === "customer_field" ? e.target.value.trim() : e.target.value) || null })} />
+      onChange={(e) => set(m, { [field]: e.target.value || null })} />
   );
 }
 
 function SaveCell({ m }: { m: FieldMapping }) {
   const { drafts, write, onSaved } = useContext(DraftsContext);
   const d = draftOf(drafts, m);
+  // The column header is kept as typed (spaces inside it included) and trimmed only when saved.
+  const column = d.customer_field?.trim() || undefined;
   const save = useMutation({
     mutationFn: () => updateFieldMapping(m.id, {
-      customer_field: d.customer_field ?? undefined, customer_label: d.customer_label ?? undefined,
-      notes: d.notes ?? undefined, is_mapped: !!(d.customer_field && d.customer_field.trim()),
+      customer_field: column, customer_label: d.customer_label ?? undefined,
+      notes: d.notes ?? undefined, is_mapped: !!column,
     }),
     onSuccess: () => { onSaved(m.id); toast.success(`${m.standard_field} saved`); },
     onError: (e) => toast.error(`${m.standard_field} not saved. ${apiErrorMessage(e)}`),

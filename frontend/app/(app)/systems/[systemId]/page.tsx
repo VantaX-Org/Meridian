@@ -12,7 +12,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { clsx } from "clsx";
-import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, emptyExportOptions, type Verdict, entityTabs, toVerdict, toast, useBreadcrumbTitle, Score } from "@/design";
+import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, Tooltip, emptyExportOptions, type Verdict, entityTabs, toVerdict, toast, useBreadcrumbTitle, Score } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
@@ -569,6 +569,9 @@ function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse, onExtra
 /* ── Objects ───────────────────────────────────────────────────────────── */
 
 type ObjectAction = { kind: "extract"; module: string } | { kind: "analyse"; module: string; versionId: string } | null;
+/** Why an object row's action is off, as its tooltip says it. */
+const EXTRACT_DISABLED_REASON = "This object is turned off for this system, so it is not extracted. Ask an administrator to turn it on";
+const ANALYSE_DISABLED_REASON = "No finished extraction of this object to analyse yet. Extract it first";
 
 function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged }: {
   id: string;
@@ -621,22 +624,34 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
         return (
           <div className="flex gap-2">
             {canSync ? (
-              <Button
-                variant="secondary"
-                disabled={again.isPending || !row.original.enabled}
-                onClick={(e) => { e.stopPropagation(); setAction({ kind: "extract", module: m }); }}
-              >
-                Extract again
-              </Button>
+              !row.original.enabled ? (
+                <Tooltip label={EXTRACT_DISABLED_REASON} render={<Button variant="secondary" disabled aria-disabled="true" aria-label={`Extract again. ${EXTRACT_DISABLED_REASON}`} />}>
+                  Extract again
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="secondary"
+                  disabled={again.isPending}
+                  onClick={(e) => { e.stopPropagation(); setAction({ kind: "extract", module: m }); }}
+                >
+                  Extract again
+                </Button>
+              )
             ) : null}
             {canAnalyse ? (
-              <Button
-                variant="ghost"
-                disabled={run.isPending || !version}
-                onClick={(e) => { e.stopPropagation(); if (version) setAction({ kind: "analyse", module: m, versionId: version.id }); }}
-              >
-                Analyse
-              </Button>
+              !version ? (
+                <Tooltip label={ANALYSE_DISABLED_REASON} render={<Button variant="ghost" disabled aria-disabled="true" aria-label={`Analyse. ${ANALYSE_DISABLED_REASON}`} />}>
+                  Analyse
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="ghost"
+                  disabled={run.isPending}
+                  onClick={(e) => { e.stopPropagation(); setAction({ kind: "analyse", module: m, versionId: version.id }); }}
+                >
+                  Analyse
+                </Button>
+              )
             ) : null}
           </div>
         );

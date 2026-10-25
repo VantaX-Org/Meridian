@@ -6,7 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, ConfirmDialog, DataTable, EmptyState, ErrorState, Field, Input, Notice, Pill, Skeleton, Switch, Async, toast } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import {
-  getPurgeLog, getRetention, getRetentionPreview, updateRetention,
+  getPurgeLog, getRetention, getRetentionPreview, previewRetentionDraft, updateRetention,
   type PurgeLogEntry, type RetentionPolicy, type RetentionPreviewItem, type RowsByTable,
 } from "@/lib/api/retention";
 import { SettingsSection } from "@/components/mdm/ledger";
@@ -145,11 +145,14 @@ export function RetentionPanel() {
   const shortens = !!policy && (shorter(draft.versions_days, policy.versions_days) || shorter(draft.reports_days, policy.reports_days)
     || shorter(draft.audit_days, policy.audit_days) || draft.keep_latest_per_system < policy.keep_latest_per_system || (policy.keep_baseline && !draft.keep_baseline));
   const needsConfirm = !!enforcement?.enforced && shortens;
-  const purgeable = (preview.data ?? []).filter((p) => !p.blocked_reason);
+  // The confirm counts what the draft being saved selects, not the saved policy.
+  const draftPreview = useMutation({ mutationFn: previewRetentionDraft });
+  const purgeable = (draftPreview.data ?? []).filter((p) => !p.blocked_reason);
   const purgeSystems = Array.from(new Set(purgeable.map((p) => systemName(p.system_id))));
   const onSave = () => {
     if (!needsConfirm) { save.mutate(); return; }
-    void preview.refetch();
+    draftPreview.reset();
+    draftPreview.mutate(draft);
     setConfirming(true);
   };
   const statusLine = (() => {
@@ -160,7 +163,7 @@ export function RetentionPanel() {
       : "Dry run until seven days after the first nightly run under this policy";
     return enforcement.flag_enabled
       ? `${until}. The nightly task writes dry-run rows to the purge log only.`
-      : `${until}; set MERIDIAN_PURGE_ENABLED to enforce.`;
+      : `${until}. Ask your platform operator to turn on enforced purges.`;
   })();
 
   return (
@@ -214,9 +217,11 @@ export function RetentionPanel() {
           onOpenChange={setConfirming}
           title="Shorten retention while purges are enforced"
           tone="danger"
-          body={preview.isFetching
+          body={draftPreview.isPending || draftPreview.isIdle
             ? "Counting the runs this policy selects…"
-            : purgeable.length
+            : draftPreview.isError
+              ? "The runs this policy selects could not be counted. Saving lets the nightly task purge archived runs past it, for good."
+              : purgeable.length
               ? `${purgeable.length.toLocaleString()} ${purgeable.length === 1 ? "run" : "runs"} from ${purgeSystems.join(", ")} will be purged nightly, for good. Golden records, rules and contracts are never touched.`
               : "No archived run is past this policy today; runs that pass it later are purged nightly, for good."}
           confirmLabel="Save policy"

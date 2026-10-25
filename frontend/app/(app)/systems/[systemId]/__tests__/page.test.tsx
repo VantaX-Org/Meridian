@@ -292,6 +292,19 @@ describe("system detail page", () => {
     expect(within(bench).queryAllByRole("link")).toHaveLength(0); // the one action is the Extract button, which opens the Extract drawer
   });
 
+  it("on the Objects tab, says why Extract again and Analyse are off", async () => {
+    tab = "objects";
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([
+      { module: "fi_gl", system_type: "ecc", enabled: false, last_synced_at: null, last_sync_status: null, row_count: 10, config_synced: false },
+    ] as never);
+    renderWithQuery(<SystemPage />);
+    const extractBtn = await screen.findByRole("button", { name: /^Extract again\. This object is turned off for this system/ });
+    expect(extractBtn).toBeDisabled();
+    const analyseBtn = screen.getByRole("button", { name: /^Analyse\. No finished extraction of this object to analyse yet/ });
+    expect(analyseBtn).toBeDisabled();
+  });
+
   it("shows the system role in the header", async () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);

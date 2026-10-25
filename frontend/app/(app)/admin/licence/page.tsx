@@ -52,7 +52,7 @@ export default function AdminLicencePage() {
 
       {days !== undefined && days !== null && days < 30 ? (
         <Notice tone={days < 7 ? "danger" : "warning"} title={days <= 0 ? "Expired" : `Expires in ${days.toLocaleString()} ${days === 1 ? "day" : "days"}`}>
-          Renew it in Meridian HQ before then. The deployment validates with Meridian HQ on a schedule, so a renewal shows here after the next check
+          {days <= 0 ? "The licence has expired. Renew it in Meridian HQ; this deployment keeps its data either way." : "Renew it in Meridian HQ before then."} The deployment validates with Meridian HQ on a schedule, so a renewal shows here after the next check
         </Notice>
       ) : null}
 
@@ -74,7 +74,7 @@ export default function AdminLicencePage() {
               <dt className="m-ink-3">Tenant</dt><dd>{l.company_name ?? "Not set"}</dd>
               <dt className="m-ink-3">Tier</dt><dd>{l.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
               <dt className="m-ink-3">Status</dt><dd>{labelOf(l.status)}</dd>
-              <dt className="m-ink-3">Seats</dt><dd>{seats ? (used != null ? `${used.toLocaleString()} of ${seats.toLocaleString()} in use` : seats.toLocaleString()) : "Unlimited"}</dd>
+              <dt className="m-ink-3">Seats</dt><dd>{seats ? (used != null ? `${used.toLocaleString()} of ${seats.toLocaleString()} in use` : seats.toLocaleString()) : l.valid === null ? "Not validated yet" : "Unlimited"}</dd>
               <dt className="m-ink-3">Days remaining</dt><dd className={days !== undefined && days !== null && days < 30 ? "[color:var(--m-medium)]" : undefined}>{days ?? "—"}</dd>
               <dt className="m-ink-3">Renews</dt><dd>{l.expiry_date ? formatDate(l.expiry_date) : "Not set"}</dd>
               <dt className="m-ink-3">Last validated</dt><dd>{l.last_validated ? formatDate(l.last_validated, "datetime") : "Not validated yet"}</dd>

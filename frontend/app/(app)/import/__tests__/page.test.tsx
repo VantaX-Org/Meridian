@@ -115,3 +115,92 @@ describe("import attached to a system", () => {
     expect(screen.queryByRole("combobox", { name: "System" })).toBeNull();
   });
 });
+
+describe("column mapping follows the chosen object", () => {
+  const BP: uploadApi.MatchResponse = {
+    detected_module: "business_partner", module_confidence: 0.9, module_label: "Business partner",
+    mappings: [
+      { source_column: "PARTNER", target_field: "BUT000.PARTNER", confidence: 0.95, is_required: true, match_type: "exact" },
+      { source_column: "NAME", target_field: null, confidence: 0, is_required: false, match_type: "unmatched" },
+    ],
+    unmapped_required: ["BUT000.BU_TYPE"],
+    available_modules: [{ value: "business_partner", label: "Business partner" }, { value: "material_master", label: "Material master" }],
+  };
+  const MM: uploadApi.MatchResponse = {
+    ...BP, detected_module: "material_master", module_label: "Material master",
+    mappings: [
+      { source_column: "PARTNER", target_field: null, confidence: 0, is_required: false, match_type: "unmatched" },
+      { source_column: "NAME", target_field: "MARA.MATNR", confidence: 0.7, is_required: true, match_type: "alias" },
+    ],
+    unmapped_required: ["MARA.MTART", "MARA.MEINS"],
+  };
+
+  function setup() {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    vi.spyOn(preview, "readHeaderSample").mockResolvedValue({ headers: ["PARTNER", "NAME"], sample: [["1", "Acme"]] });
+    const utils = renderWithQuery(<ImportPage />);
+    const input = utils.container.querySelector("input[type=file]") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["PARTNER,NAME\n1,Acme\n"], "data.csv", { type: "text/csv" })] } });
+  }
+
+  it("re-matches the columns against the new object and recounts the required fields", async () => {
+    vi.spyOn(fieldMappingsApi, "getModuleFieldMappings").mockRejectedValue(new Error("none"));
+    const matchSpy = vi.spyOn(uploadApi, "matchColumns").mockImplementation(async (_h, _s, _f, hint) => (hint === "material_master" ? MM : BP));
+    setup();
+    expect(await screen.findByText(/1 required field has no column: BUT000.BU_TYPE/)).toBeInTheDocument();
+    expect(screen.getByText("BUT000.PARTNER")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Material master" }));
+    expect(await screen.findByText(/2 required fields have no column: MARA.MEINS, MARA.MTART/)).toBeInTheDocument();
+    expect(matchSpy).toHaveBeenLastCalledWith(["PARTNER", "NAME"], [["1", "Acme"]], "data.csv", "material_master");
+    expect(screen.queryByText("BUT000.PARTNER")).toBeNull();
+    expect(screen.getByText("MARA.MATNR")).toBeInTheDocument();
+    expect(screen.getByText(/set to Material master/)).toBeInTheDocument();
+  });
+
+  it("recounts the required fields when a correction leaves one without a column", async () => {
+    vi.spyOn(uploadApi, "matchColumns").mockResolvedValue(BP);
+    vi.spyOn(fieldMappingsApi, "getModuleFieldMappings").mockResolvedValue({
+      module: "business_partner",
+      mappings: [{ id: "f1", module: "business_partner", standard_field: "BUT000.PARTNER", standard_label: "Partner", customer_field: null, customer_label: null, data_type: "string", is_mapped: false, notes: null, updated_at: "" }],
+    });
+    setup();
+    expect(await screen.findByText(/1 required field has no column/)).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    const picker = await screen.findByRole("combobox", { name: "Standard field for PARTNER" });
+    await user.click(picker);
+    const option = await screen.findByRole("option", { name: "Not mapped" });
+    await waitFor(() => expect(option.closest("[role=listbox]")).toHaveAttribute("data-open"));
+    await user.click(option);
+    expect(await screen.findByText(/2 required fields have no column: BUT000.BU_TYPE, BUT000.PARTNER/)).toBeInTheDocument();
+  });
+
+  it("when the columns cannot be read, offers a retry and lets the object be chosen by hand", async () => {
+    vi.spyOn(fieldMappingsApi, "getModuleFieldMappings").mockRejectedValue(new Error("none"));
+    const matchSpy = vi.spyOn(uploadApi, "matchColumns").mockRejectedValue(new Error("down"));
+    const upload = vi.spyOn(uploadApi, "uploadFile").mockResolvedValue({ version_id: "v9", job_id: "j9", status: "pending" });
+    vi.spyOn(uploadApi, "pollAnalysisStatus").mockResolvedValue({
+      task_id: "j9", status: "completed", progress: { current_step: "complete", step_number: 5, total_steps: 5, rows_processed: 1, total_rows: 1, percent_complete: 100 },
+      result: null, error: null, db_status: "complete",
+    });
+    setup();
+    expect(await screen.findByText(/The columns could not be read/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(matchSpy).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/The columns could not be read/)).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "Object" }));
+    const option = await screen.findByRole("option", { name: "Material master" });
+    await waitFor(() => expect(option.closest("[role=listbox]")).toHaveAttribute("data-open"));
+    await user.click(option);
+    const run = await screen.findByRole("button", { name: "Run import" });
+    expect(run).toBeEnabled();
+    await user.click(run);
+    await waitFor(() => expect(upload).toHaveBeenCalled());
+    expect(upload.mock.calls[0][1]).toBe("material_master");
+    expect(upload.mock.calls[0][2]).toBeNull();
+  });
+});

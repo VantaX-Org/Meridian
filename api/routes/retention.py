@@ -2,6 +2,8 @@
 
 * ``GET/PUT /api/v1/settings/retention``: the tenant's policy (tenants.retention).
 * ``GET /api/v1/settings/retention/preview``: what the policy would purge now, as a dry run.
+* ``POST /api/v1/settings/retention/preview``: the same dry run for a draft policy in the
+  body (nothing is saved), so a confirm can name what the policy being saved would purge.
 * ``GET /api/v1/settings/purge-log``: the purge history, newest first.
 * ``DELETE /api/v1/versions/{id}``: purge one archived version for good; the body must
   repeat the version's label (its id when it has none).
@@ -65,11 +67,13 @@ def _sync_session(tenant_id: str):
 
 # ── sync helpers, run in a thread ────────────────────────────────────────────
 
-def _preview(tenant_id: str) -> list[dict[str, Any]]:
-    """Dry-run purge of every version the policy selects now."""
+def _preview(tenant_id: str, policy: Optional[RetentionPolicy] = None) -> list[dict[str, Any]]:
+    """Dry-run purge of every version a policy selects now: the saved one, or ``policy``
+    when given (a draft that is not saved)."""
     out: list[dict[str, Any]] = []
     with _sync_session(tenant_id) as session:
-        policy = load_policy(session, tenant_id)
+        if policy is None:
+            policy = load_policy(session, tenant_id)
         for v in select_expired_versions(session, tenant_id, policy, _now()):
             r = purge_version(session, tenant_id, v.id, dry_run=True, actor=None, source="preview")
             out.append({"version_id": v.id, "label": v.label, "run_at": v.run_at, "system_id": v.system_id,
@@ -266,6 +270,14 @@ async def preview_retention(tenant: Tenant = Depends(get_tenant)):
     """Dry run of the policy as it stands: each version it would purge now, with the
     rows per table, the storage it would free, and why it would be refused."""
     items = await asyncio.to_thread(_preview, str(tenant.id))
+    return {"items": items, "generated_at": _now()}
+
+
+@router.post("/settings/retention/preview", dependencies=[Depends(require_permission("manage_settings"))])
+async def preview_draft_retention(body: RetentionPolicy, tenant: Tenant = Depends(get_tenant)):
+    """Dry run of a draft policy (the body), before it is saved: what saving it would let
+    the nightly task purge now. Nothing is stored; the saved policy is unchanged."""
+    items = await asyncio.to_thread(_preview, str(tenant.id), body)
     return {"items": items, "generated_at": _now()}
 
 

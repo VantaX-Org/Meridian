@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.roles import enforce_ceiling, forbid_self, guard_user_access_change, insert_grant, resolve_caller
-from api.services.rbac import Scope, require_permission, VALID_ROLES
+from api.services.rbac import PERSONA_ALIAS, Scope, require_permission, VALID_ROLES
 from workers.tasks.send_user_invitation import send_invitation_email
 
 router = APIRouter(prefix="/api/v1", tags=["users"])
@@ -43,6 +43,37 @@ class InviteUserBody(BaseModel):
     # fallback every legacy guard reads) becomes the first unscoped grant's role,
     # else viewer, so a scoped grant never widens into a tenant-wide one.
     grants: list[InviteGrant] = Field(default_factory=list)
+
+
+# Role keys that carry tenant administration (manage_users, manage_system): the legacy admin and
+# its persona alias. A user holds it through users.role or an unscoped grant.
+ADMIN_ROLES: tuple[str, ...] = ("admin", next(k for k, v in PERSONA_ALIAS.items() if v == "admin"))
+
+_IS_ADMIN_SQL = (
+    "(u.role = ANY(:admin_roles) OR EXISTS (SELECT 1 FROM user_role_scopes g WHERE g.tenant_id = u.tenant_id "
+    "AND g.user_id = u.id AND g.system_id IS NULL AND g.module IS NULL AND g.role_key = ANY(:admin_roles)))"
+)
+
+LAST_ADMIN_DETAIL = "This is the last active admin. Make another user an admin before changing this one."
+
+
+async def _is_active_admin(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    row = (await db.execute(text(
+        f"SELECT 1 FROM users u WHERE u.id = :uid AND u.tenant_id = :tid AND u.is_active AND {_IS_ADMIN_SQL}"),
+        {"uid": str(user_id), "tid": str(tenant_id), "admin_roles": list(ADMIN_ROLES)})).fetchone()
+    return row is not None
+
+
+async def forbid_last_admin(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    """409 when `user_id` is an active admin and no other active admin is left in the tenant:
+    demoting, deactivating or removing them would leave nobody able to manage users."""
+    if not await _is_active_admin(db, tenant_id, user_id):
+        return
+    others = (await db.execute(text(
+        f"SELECT count(*) FROM users u WHERE u.tenant_id = :tid AND u.id <> :uid AND u.is_active AND {_IS_ADMIN_SQL}"),
+        {"uid": str(user_id), "tid": str(tenant_id), "admin_roles": list(ADMIN_ROLES)})).scalar()
+    if not others:
+        raise HTTPException(status_code=409, detail=LAST_ADMIN_DETAIL)
 
 
 # ── GET /api/v1/users ────────────────────────────────────────────────────────
@@ -113,6 +144,8 @@ async def update_user(
         # Deactivating (or reactivating) takes all of a user's access away (or gives it back): not
         # yourself, and only for a user whose every role sits under your own permissions.
         await guard_user_access_change(db, tenant, request, user_id)
+        if body.is_active is False:
+            await forbid_last_admin(db, tenant.id, user_id)
 
     old_role = None
     if body.role is not None:
@@ -127,6 +160,8 @@ async def update_user(
             forbid_self(caller, user_id)
             await enforce_ceiling(db, tenant.id, caller, body.role)
             await enforce_ceiling(db, tenant.id, caller, old_role)
+            if body.role not in ADMIN_ROLES:
+                await forbid_last_admin(db, tenant.id, user_id)
 
     set_clause = ", ".join(updates)
     result = await db.execute(
@@ -276,6 +311,7 @@ async def delete_user(
 
     await _set_rls(db, tenant.id)
     await guard_user_access_change(db, tenant, request, user_id)
+    await forbid_last_admin(db, tenant.id, user_id)
 
     try:
         result = await db.execute(

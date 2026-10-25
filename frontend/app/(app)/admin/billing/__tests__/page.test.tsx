@@ -24,7 +24,7 @@ describe("admin billing page", () => {
   it("renders billing once loaded", async () => {
     vi.spyOn(exceptionsApi, "getExceptionBilling").mockResolvedValue(BILLING);
     renderWithQuery(<ExceptionBillingPage />);
-    await waitFor(() => expect(screen.getByText("Invoice inv_123")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Invoiced. The invoice is in Meridian HQ")).toBeInTheDocument());
   });
 
   it("shows every amount in the period's currency", async () => {
@@ -50,6 +50,6 @@ describe("admin billing page", () => {
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue(BILLING);
     retry.click();
-    await waitFor(() => expect(screen.getByText("Invoice inv_123")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Invoiced. The invoice is in Meridian HQ")).toBeInTheDocument());
   });
 });
