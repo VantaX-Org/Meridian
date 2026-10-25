@@ -10,6 +10,7 @@ import { Drawer } from "../primitives/Drawer";
 import { EmptyState } from "../primitives/EmptyState";
 import { Status } from "../primitives/Status";
 import { JobProgress } from "./JobProgress";
+import { RetryJobButton } from "./RetryJob";
 import { IconActivity } from "../icons";
 
 /** Where a job's result lives, when it carries an id: its run, its discovery run or its system. */
@@ -22,8 +23,8 @@ export function jobHref(job: Job): string | null {
 
 /**
  * The jobs drawer: every job with its lifecycle, progress, the live detail while it runs and, when it failed,
- * the error it failed with. "Open" goes to the run or system the job belongs to. There is no retry endpoint, so
- * a failed job is started again from the page that started it.
+ * the error it failed with. "Open" goes to the run or system the job belongs to; "Retry" starts a failed job again
+ * when its kind can be retried and the user may start it.
  */
 export function JobTray() {
   useJobStream();
@@ -70,6 +71,7 @@ export function JobTray() {
                       Open
                     </Link>
                   )}
+                  <RetryJobButton job={job} />
                 </div>
                 {job.status === "failed" && job.error && (
                   <p className="m-text-meta m-ink-2" data-testid="job-error">{job.error}</p>

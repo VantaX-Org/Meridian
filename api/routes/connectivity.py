@@ -94,7 +94,8 @@ async def extract_modules(
 
     version_id = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", ", ".join(body.modules), status="queued",
-                   system_id=body.system_id, modules=body.modules, version_id=version_id)
+                   system_id=body.system_id, modules=body.modules, version_id=version_id,
+                   retry={"via": "extract", "body": body.model_dump(mode="json")})
     run_extraction.delay(str(tenant.id), body.system_id, body.modules, body.include_config, body.sync_type,
                          None, True, None, version_id)
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "modules": body.modules}
