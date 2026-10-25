@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-provider";
-import { Toaster } from "@/design";
+import { Attribution, Toaster } from "@/design";
 import { Providers } from "@/lib/providers";
 import brand from "../public/brand/brand.json";
 import "./globals.css";
@@ -44,6 +44,7 @@ export default function RootLayout({
           <Providers>
             {children}
             <Toaster />
+            <Attribution />
           </Providers>
         </body>
       </html>

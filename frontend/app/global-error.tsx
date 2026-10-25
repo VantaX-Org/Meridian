@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import "../design/tokens.css";
 import "../design/global-error.css";
 import { clientErrorId, reportClientError } from "@/lib/client-errors";
+import { Attribution } from "@/design/brand/Attribution";
 
 // Replaces the root layout, so there is no shell, no Tailwind and no design primitives here: plain elements
 // styled by design/global-error.css, which reads tokens.css variables only.
@@ -50,6 +51,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             </div>
           </div>
         </main>
+        <Attribution />
       </body>
     </html>
   );
