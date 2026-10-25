@@ -2,15 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Button, Dialog, Field, Input, Select } from "@/design";
-import { registerSystem } from "@/lib/api/systems";
+import { Button, Dialog, Field, Input, Select, toast } from "@/design";
+import { registerSystem, testDraftConnection } from "@/lib/api/systems";
 import { apiErrorMessage } from "@/lib/error";
 import { length, oneOf, pattern, required, url, useFormErrors, type Schema } from "@/lib/forms";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemType } from "@/types/api";
 
-const TYPES: { value: SystemType; label: string }[] = [
+export const TYPES: { value: SystemType; label: string }[] = [
   { value: "ecc", label: "SAP ECC" },
   { value: "s4hana_onprem", label: "S/4HANA on premise" },
   { value: "ewm", label: "Extended Warehouse Management" },
@@ -19,9 +18,22 @@ const TYPES: { value: SystemType; label: string }[] = [
   { value: "concur", label: "Concur" },
   { value: "btp", label: "BTP" },
 ];
-const ENVIRONMENTS = [{ value: "PRD", label: "Production" }, { value: "QAS", label: "Quality" }, { value: "DEV", label: "Development" }];
-const RFC_TYPES: readonly SystemType[] = ["ecc", "s4hana_onprem", "ewm"];
-const NEEDS_TOKEN_URL: readonly SystemType[] = ["s4hana_cloud", "btp"];
+export const ENVIRONMENTS = [{ value: "PRD", label: "Production" }, { value: "QAS", label: "Quality" }, { value: "DEV", label: "Development" }];
+export const environmentLabel = (v: string) => ENVIRONMENTS.find((e) => e.value === v)?.label ?? v;
+export const RFC_TYPES: readonly SystemType[] = ["ecc", "s4hana_onprem", "ewm"];
+export const NEEDS_TOKEN_URL: readonly SystemType[] = ["s4hana_cloud", "btp"];
+/** One line under each SAP field, the same in the connect dialog and the edit form. */
+export const HINT = {
+  host: "Host name or IP of the application server, for example sap-ecc.internal",
+  client: "3 digits, for example 100",
+  sysnr: "2 digits, for example 00",
+  username: "RFC user with read access to the tables; the global SAP_RFC_USER when empty",
+  base_url: "The tenant's API root, for example https://my123456.s4hana.cloud.sap",
+  token_url: "The XSUAA /oauth/token endpoint",
+  company_id: "The SuccessFactors company ID",
+  client_id: "OAuth client ID from the service key",
+};
+export const Hint = ({ text }: { text: string }) => <p className="m-text-meta m-ink-3 -mt-2">{text}</p>;
 
 const EMPTY = {
   name: "", system_type: "ecc", environment: "DEV",
@@ -67,20 +79,27 @@ export function ConnectSystemDialog({ open, onOpenChange }: { open: boolean; onO
   const set = (key: keyof Values) => (e: { target: { value: string } }) => setV((cur) => ({ ...cur, [key]: e.target.value }));
   const bind = (key: keyof Values) => ({ value: v[key], onChange: set(key), onBlur: () => form.blur(key) });
 
+  const body = (): Parameters<typeof registerSystem>[0] => ({
+    name: v.name.trim(),
+    system_type: type,
+    environment: v.environment,
+    ...(rfc
+      ? { host: v.host.trim(), client: v.client.trim(), sysnr: v.sysnr.trim(), auth_type: "rfc", ...(v.username.trim() ? { username: v.username.trim() } : {}), credentials: { password: v.password } }
+      : {
+          base_url: v.base_url.trim(), auth_type: "oauth2_client_credentials",
+          ...(v.token_url.trim() ? { token_url: v.token_url.trim() } : {}),
+          ...(v.company_id.trim() ? { company_id: v.company_id.trim() } : {}),
+          credentials: { client_id: v.client_id, client_secret: v.client_secret },
+        }),
+  });
+  // Test before save: the draft is tried against SAP without being stored.
+  const test = useMutation({
+    mutationFn: () => testDraftConnection(body()),
+    onSuccess: (r) => (r.connected ? toast.success(`Connected. ${r.message}`.trim()) : toast.error(`Not connected. ${r.message}`.trim())),
+    onError: (e) => toast.error(`Not connected. ${apiErrorMessage(e)}`),
+  });
   const m = useMutation({
-    mutationFn: () => registerSystem({
-      name: v.name.trim(),
-      system_type: type,
-      environment: v.environment,
-      ...(rfc
-        ? { host: v.host.trim(), client: v.client.trim(), sysnr: v.sysnr.trim(), auth_type: "rfc", ...(v.username.trim() ? { username: v.username.trim() } : {}), credentials: { password: v.password } }
-        : {
-            base_url: v.base_url.trim(), auth_type: "oauth2_client_credentials",
-            ...(v.token_url.trim() ? { token_url: v.token_url.trim() } : {}),
-            ...(v.company_id.trim() ? { company_id: v.company_id.trim() } : {}),
-            credentials: { client_id: v.client_id, client_secret: v.client_secret },
-          }),
-    }),
+    mutationFn: () => registerSystem(body()),
     onSuccess: (system) => {
       toast.success(`${system.name} connected`);
       void qc.invalidateQueries({ queryKey: queryKeys.systems() });
@@ -99,25 +118,37 @@ export function ConnectSystemDialog({ open, onOpenChange }: { open: boolean; onO
         {rfc ? (
           <>
             <Field label="Host" error={form.error("host")}><Input {...bind("host")} /></Field>
+            <Hint text={HINT.host} />
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Client" error={form.error("client")}><Input {...bind("client")} inputMode="numeric" maxLength={3} /></Field>
-              <Field label="Instance number" error={form.error("sysnr")}><Input {...bind("sysnr")} inputMode="numeric" maxLength={2} /></Field>
+              <div className="flex flex-col gap-3">
+                <Field label="Client" error={form.error("client")}><Input {...bind("client")} inputMode="numeric" maxLength={3} /></Field>
+                <Hint text={HINT.client} />
+              </div>
+              <div className="flex flex-col gap-3">
+                <Field label="Instance number" error={form.error("sysnr")}><Input {...bind("sysnr")} inputMode="numeric" maxLength={2} /></Field>
+                <Hint text={HINT.sysnr} />
+              </div>
             </div>
             <Field label="User (optional)"><Input {...bind("username")} autoComplete="off" /></Field>
+            <Hint text={HINT.username} />
             <Field label="Password" error={form.error("password")}><Input {...bind("password")} type="password" autoComplete="new-password" /></Field>
           </>
         ) : (
           <>
             <Field label="Base URL" error={form.error("base_url")}><Input {...bind("base_url")} type="url" placeholder="https://" /></Field>
+            <Hint text={HINT.base_url} />
             <Field label={NEEDS_TOKEN_URL.includes(type) ? "Token URL" : "Token URL (optional)"} error={form.error("token_url")}><Input {...bind("token_url")} type="url" placeholder="https://" /></Field>
+            <Hint text={HINT.token_url} />
             {type === "successfactors" && <Field label="Company ID" error={form.error("company_id")}><Input {...bind("company_id")} /></Field>}
             <Field label="Client ID" error={form.error("client_id")}><Input {...bind("client_id")} autoComplete="off" /></Field>
+            <Hint text={HINT.client_id} />
             <Field label="Client secret" error={form.error("client_secret")}><Input {...bind("client_secret")} type="password" autoComplete="new-password" /></Field>
           </>
         )}
         <div className="flex gap-2">
+          <Button type="button" variant="secondary" pending={test.isPending} disabled={!form.valid} onClick={() => test.mutate()}>Test connection</Button>
           <Button type="submit" pending={m.isPending} disabled={!form.valid}>Connect system</Button>
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Not now</Button>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Not now</Button>
         </div>
       </form>
     </Dialog>

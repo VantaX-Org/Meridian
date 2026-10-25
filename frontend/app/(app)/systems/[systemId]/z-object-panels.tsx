@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
+import { toast } from "@/design";
 import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Mono, Pill, Select, Skeleton, Stat, Status } from "@/design";
 import { downloadCsv } from "@/lib/actions";
 import { useRole } from "@/hooks/use-role";
@@ -144,8 +144,7 @@ export function MappingSection({ systemId }: { systemId?: string } = {}) {
   const detect = useRerun({
     run: () => detectZObjectsNow(systemId),
     queryKey: ["z-objects"],
-    queued: "Detection queued. Results refresh as it finishes",
-    done: "Custom object results refreshed",
+    queued: "Detection started",
   });
   const detectAction = can("analyse") ? <Button onClick={() => detect.mutate()} pending={detect.isPending}>Detect now</Button> : undefined;
   const cols = useMemo<ColumnDef<ZMapping>[]>(() => [

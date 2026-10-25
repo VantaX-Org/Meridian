@@ -45,6 +45,7 @@ export async function updateSystem(
     description?: string;
     environment?: string;
     is_active?: boolean;
+    // Only the secrets the user retyped; an absent key keeps the stored value.
     credentials?: Record<string, string>;
     role?: "source" | "target";
     target_system_id?: string; // "" clears the target
@@ -138,6 +139,11 @@ export async function updateSyncProfile(
     body
   );
   return data;
+}
+
+// Needs DELETE /api/v1/systems/{id}/profiles/{profile_id} on the API (api/routes/systems.py); not there yet.
+export async function deleteSyncProfile(systemId: string, profileId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/systems/${systemId}/profiles/${profileId}`);
 }
 
 export async function getSyncRuns(

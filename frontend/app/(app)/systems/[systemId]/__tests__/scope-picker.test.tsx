@@ -21,7 +21,7 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     const startDownload = vi.spyOn(systemObjectsApi, "startDownload").mockResolvedValue({ job_id: "dl-1", status: "queued" });
 
     const onDownloaded = vi.fn();
-    renderWithQuery(<ScopePicker id="sys1" onDownloaded={onDownloaded} />);
+    renderWithQuery(<ScopePicker id="sys1" system={{ name: "ECC Prod", environment: "PRD" }} onDownloaded={onDownloaded} />);
 
     const row = await screen.findByText("Material master");
     fireEvent.click(row);
@@ -30,7 +30,7 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     expect(checkbox).not.toBeChecked();
 
     fireEvent.click(screen.getByText("Extract 1 object"));
-    fireEvent.click(await screen.findByText("Confirm"));
+    fireEvent.click(await screen.findByRole("button", { name: "Extract now" }));
     await waitFor(() =>
       expect(startDownload).toHaveBeenCalledWith("sys1", expect.objectContaining({ scope: {} })),
     );
@@ -43,7 +43,7 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     fireEvent.click(checkboxAgain);
     expect(checkboxAgain).toBeChecked();
     fireEvent.click(screen.getByText("Extract 1 object"));
-    fireEvent.click(await screen.findByText("Confirm"));
+    fireEvent.click(await screen.findByRole("button", { name: "Extract now" }));
     await waitFor(() =>
       expect(startDownload).toHaveBeenLastCalledWith(
         "sys1",
@@ -56,7 +56,7 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
 describe("ScopePicker", () => {
   it("clicking the checkbox text toggles the box", async () => {
     vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [object()] });
-    renderWithQuery(<ScopePicker id="sys1" onDownloaded={vi.fn()} />);
+    renderWithQuery(<ScopePicker id="sys1" system={{ name: "ECC Prod", environment: "PRD" }} onDownloaded={vi.fn()} />);
     fireEvent.click(await screen.findByText("Material master"));
     const box = await screen.findByRole("checkbox", { name: "Skip records flagged for deletion" });
     fireEvent.click(screen.getByText("Skip records flagged for deletion"));
@@ -65,7 +65,7 @@ describe("ScopePicker", () => {
 
   it("empty state links to the Health tab", async () => {
     vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [] });
-    renderWithQuery(<ScopePicker id="sys1" onDownloaded={vi.fn()} />);
+    renderWithQuery(<ScopePicker id="sys1" system={{ name: "ECC Prod", environment: "PRD" }} onDownloaded={vi.fn()} />);
     const link = await screen.findByRole("link", { name: "Test connection" });
     expect(link).toHaveAttribute("href", "/systems/sys1?tab=health");
   });

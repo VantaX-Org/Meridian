@@ -3,7 +3,7 @@
 /**
  * One system: Overview, Objects, Runs, Health, Pilot tabs. The active tab is
  * controlled from the ?tab= search param, so Stat links and redirects switch it.
- * Edit via a Drawer.
+ * Edit via a Drawer. `?extract=1` lands with the Extract drawer open.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -12,29 +12,30 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { clsx } from "clsx";
-import { toast } from "sonner";
-import { Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, emptyExportOptions, type Verdict, entityTabs, toVerdict, useBreadcrumbTitle, Score } from "@/design";
+import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, emptyExportOptions, type Verdict, entityTabs, toVerdict, toast, useBreadcrumbTitle, Score } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
 import { CustomObjectsTab } from "./custom-objects-tab";
-import { ConfigLoadButton, ConfigLoadPanel, hasNoConfig, useConfigLoad } from "./config-load-panel";
+import { ConfigLoadPanel } from "./config-load-panel";
 import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
-import { deleteSystem, updateSystem } from "@/lib/api/systems";
+import { deleteSystem, getSyncProfiles, testDraftConnection, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
-import { formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
 import { GatedPrimary } from "@/components/gated-primary";
+import { ENVIRONMENTS, HINT, Hint, NEEDS_TOKEN_URL, RFC_TYPES, environmentLabel } from "@/components/systems/connect-system-dialog";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
 import { runName } from "@/lib/run-scope";
-import type { SystemModule, SystemType } from "@/types/api";
+import type { SAPSystemExtended, SystemModule, SystemType } from "@/types/api";
 import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
 import { PilotTab } from "./pilot-tab";
 import { ScopePicker } from "./scope-picker";
@@ -43,6 +44,8 @@ import { SchedulesPanel } from "./schedules-panel";
 
 /** Longest to wait for a just-started download to report progress. */
 const AWAIT_DOWNLOAD_MS = 120_000;
+/** The sentence every live-system confirmation carries. */
+const READ_ONLY = "Read-only: Meridian never writes to SAP.";
 const when = (iso: string | null | undefined, never = "Never") => (iso ? relativeTime(iso) : never);
 const meanDqs = (v: SystemVersion) => {
   const x = Object.values(v.dqs ?? {}).filter((d): d is number => typeof d === "number");
@@ -51,6 +54,8 @@ const meanDqs = (v: SystemVersion) => {
 const sumRecords = (v: SystemVersion) => Object.values(v.records ?? {}).reduce((a, b) => a + b, 0);
 const findingsHref = (versionId: string, module?: string) =>
   `/runs/${versionId}${module ? `?module=${module}` : ""}`;
+/** "ECC Prod (Production)": the system and environment every confirmation names. */
+const systemScope = (s: { name: string; environment: string }) => `${s.name} (${environmentLabel(s.environment)})`;
 
 /** With `systemId`, each row also links to its extraction log (the Runs tab); without, the overview's short list. */
 function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
@@ -98,7 +103,8 @@ export default function SystemPage() {
   const qc = useQueryClient();
   const { can } = useRole();
   const [editOpen, setEditOpen] = useState(false);
-  const [extractOpen, setExtractOpen] = useState(false);
+  const [extractOpen, setExtractOpen] = useState(searchParams.get("extract") === "1");
+  const [confirmAnalyse, setConfirmAnalyse] = useState(false);
   const [awaitedJobId, setAwaitedJobId] = useState<string | null>(null); // job id of the download just started, while its progress is awaited
   const initialTab = searchParams.get("tab") ?? "overview";
 
@@ -142,8 +148,18 @@ export default function SystemPage() {
 
   const test = useMutation({
     mutationFn: () => testConnection(systemId),
-    onSuccess: (r) => { toast.success(`Connection ${r.status}, ${r.latency_ms} ms`); refresh(); },
-    onError: (e) => toast.error((e as Error).message || "Connection test failed"),
+    onSuccess: (r) => {
+      if (r.status === "healthy") {
+        toast.success(`Connection healthy, ${r.latency_ms} ms`);
+      } else {
+        // The cause is the message; the fix is usually the credentials, one click away.
+        toast.error(`${HEALTH_LABEL[r.status as keyof typeof HEALTH_LABEL] ?? labelOf(r.status)}${r.message ? `: ${r.message}` : ""}`, {
+          action: { label: "Update credentials", onClick: () => setEditOpen(true) },
+        });
+      }
+      refresh();
+    },
+    onError: (e) => toast.error(apiErrorMessage(e) || "Connection test failed"),
   });
   const testLabel = test.isPending
     ? "Testing"
@@ -154,8 +170,8 @@ export default function SystemPage() {
         : "Test connection";
   const analyse = useMutation({
     mutationFn: () => analyseVersion((latest ?? versions[0])!.id),
-    onSuccess: () => { toast.success("Analysis started"); refresh(); },
-    onError: (e) => toast.error((e as Error).message || "Analysis refused"),
+    onSuccess: () => { toast.success("Analysis started"); setConfirmAnalyse(false); refresh(); },
+    onError: (e) => toast.error(apiErrorMessage(e) || "Analysis refused"),
   });
 
   if (systemsQ.isLoading) {
@@ -177,6 +193,8 @@ export default function SystemPage() {
   }
 
   const loaded = modules.filter((m) => m.enabled && m.row_count > 0).length;
+  const openExtract = () => setExtractOpen(true);
+  const analysable = latest ?? versions[0];
 
   return (
     <div className="flex flex-col gap-4">
@@ -189,11 +207,11 @@ export default function SystemPage() {
           {can("manage_systems") ? <Button variant="secondary" onClick={() => setEditOpen(true)}>Edit</Button> : null}
           {can("trigger_sync") ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
           <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
-            onClick={() => setExtractOpen(true)}>
+            onClick={openExtract}>
             Extract
           </GatedPrimary>
           {can("analyse") ? (
-            <Button variant="secondary" disabled={analyse.isPending || !(latest ?? versions[0])} onClick={() => analyse.mutate()}>
+            <Button variant="secondary" disabled={analyse.isPending || !analysable} onClick={() => setConfirmAnalyse(true)}>
               Analyse
             </Button>
           ) : null}
@@ -207,6 +225,18 @@ export default function SystemPage() {
         </>
         }
       />
+      {analysable ? (
+        <ConfirmDialog
+          open={confirmAnalyse}
+          onOpenChange={setConfirmAnalyse}
+          title={`Analyse ${systemScope(system)}`}
+          body={`Runs every rule over the ${analysable.objects.length.toLocaleString()} ${analysable.objects.length === 1 ? "object" : "objects"} of the run from ${formatDate(analysable.run_at, "datetime")}, as already extracted. ${READ_ONLY}`}
+          confirmLabel="Analyse"
+          cancelLabel="Not now"
+          pending={analyse.isPending}
+          onConfirm={() => analyse.mutate()}
+        />
+      ) : null}
 
       {versionsQ.data?.download?.status === "running" || versionsQ.data?.download?.status === "queued" ? (
         <Notice tone="info">
@@ -250,13 +280,14 @@ export default function SystemPage() {
           router.replace(`/systems/${systemId}?${params.toString()}`, { scroll: false });
         }}
         items={[
-          { value: "overview", label: "Overview", content: <Overview systemId={systemId} versions={versions} modules={modules} latest={latest} canSync={can("trigger_sync")} canAnalyse={can("analyse")} /> },
+          { value: "overview", label: "Overview", content: <Overview systemId={systemId} versions={versions} modules={modules} latest={latest} canSync={can("trigger_sync")} canAnalyse={can("analyse")} onExtract={openExtract} /> },
           {
             value: "objects",
             label: "Objects",
             content: (
               <Objects
                 id={systemId}
+                system={system}
                 modules={modules}
                 versions={versions}
                 canSync={can("trigger_sync")}
@@ -268,7 +299,7 @@ export default function SystemPage() {
           {
             value: "runs",
             label: "Runs",
-            content: <Runs systemId={systemId} versions={versions} loading={versionsQ.isLoading} canSync={can("trigger_sync")} />,
+            content: <Runs versions={versions} loading={versionsQ.isLoading} canSync={can("trigger_sync")} onExtract={openExtract} />,
           },
           {
             value: "health",
@@ -286,7 +317,7 @@ export default function SystemPage() {
 
       {can("trigger_sync") ? (
         <Drawer open={extractOpen} onOpenChange={setExtractOpen} title={`Extract from ${system.name}`}>
-          <ScopePicker id={systemId} onDownloaded={(jobId) => { setAwaitedJobId(jobId); setExtractOpen(false); refresh(); }} />
+          <ScopePicker id={systemId} system={system} onDownloaded={(jobId) => { setAwaitedJobId(jobId); setExtractOpen(false); refresh(); }} />
         </Drawer>
       ) : null}
 
@@ -340,8 +371,8 @@ function rankObjects(modules: SystemModule[], latest: SystemVersion | null, summ
   return rows.sort((a, b) => b.records - a.records || b.affected - a.affected || a.name.localeCompare(b.name));
 }
 
-function Overview({ systemId, modules, versions, latest, canSync, canAnalyse }: {
-  systemId: string; modules: SystemModule[]; versions: SystemVersion[]; latest: SystemVersion | null; canSync: boolean; canAnalyse: boolean;
+function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, onExtract }: {
+  systemId: string; modules: SystemModule[]; versions: SystemVersion[]; latest: SystemVersion | null; canSync: boolean; canAnalyse: boolean; onExtract: () => void;
 }) {
   const router = useRouter();
   const objectsQ = useQuery({
@@ -358,6 +389,8 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse }: 
   const tickOf = runAxisLabels(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
   const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
   const runCols = useMemo(() => runColumns(), []);
+  // Every "Extract" in an empty state opens the one Extract drawer.
+  const extract = canSync ? <Button onClick={onExtract}>Extract</Button> : undefined;
   return (
     <div className="flex flex-col [gap:var(--m-section-gap)]">
       {rows.length ? (
@@ -386,7 +419,7 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse }: 
               ))}
             </ul>
           </Card>
-          {selected ? <ObjectSummaryPane row={selected} latest={latest} systemId={systemId} canSync={canSync} canAnalyse={canAnalyse} /> : null}
+          {selected ? <ObjectSummaryPane row={selected} latest={latest} systemId={systemId} canSync={canSync} canAnalyse={canAnalyse} onExtract={onExtract} /> : null}
         </div>
       ) : null}
       <div className="grid [gap:var(--m-section-gap)] @5xl:grid-cols-2">
@@ -395,7 +428,7 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse }: 
             <EmptyState
               title="No trend yet"
               detail="Two analysed runs are needed to draw a trend."
-              action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />}
+              action={extract}
             />
           ) : (
             <Line
@@ -411,7 +444,7 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse }: 
             <EmptyState
               title="No rows loaded yet"
               detail="Extract an object to see how many rows it holds."
-              action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />}
+              action={extract}
             />
           ) : (
             <Bar
@@ -432,8 +465,8 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse }: 
         ) : (
           <EmptyState
             title="Nothing extracted yet"
-            detail="Extract from the Objects tab to create the first run."
-            action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />}
+            detail="Extract to create the first run."
+            action={extract}
           />
         )}
       </Card>
@@ -443,11 +476,11 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse }: 
 
 /**
  * The selected object: its score, the rule holding it down, its last run, and the one action.
- * Not analysed yet, the one action sits in the empty state: Analyse when it has records, else Extract,
- * both on the Objects tab, where the per-object Analyse and Extract again buttons are.
+ * Not analysed yet, the one action sits in the empty state: Analyse when it has records (on the Objects tab,
+ * where the per-object Analyse is), else Extract, which opens the Extract drawer.
  */
-function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse }: {
-  row: ObjectRow; latest: SystemVersion | null; systemId: string; canSync: boolean; canAnalyse: boolean;
+function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse, onExtract }: {
+  row: ObjectRow; latest: SystemVersion | null; systemId: string; canSync: boolean; canAnalyse: boolean; onExtract: () => void;
 }) {
   const s = row.summary;
   const analysed = row.score !== null && latest !== null;
@@ -455,7 +488,7 @@ function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse }: {
   const objectsTab = `/systems/${systemId}?tab=objects`;
   const nextStep = row.records > 0
     ? (canAnalyse ? <Button render={<Link href={objectsTab}>Analyse</Link>} /> : undefined)
-    : (canSync ? <Button render={<Link href={objectsTab}>Extract</Link>} /> : undefined);
+    : (canSync ? <Button onClick={onExtract}>Extract</Button> : undefined);
   return (
     <Card
       title={row.name}
@@ -512,8 +545,11 @@ function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse }: {
 
 /* ── Objects ───────────────────────────────────────────────────────────── */
 
-function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
+type ObjectAction = { kind: "extract"; module: string } | { kind: "analyse"; module: string; versionId: string } | null;
+
+function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged }: {
   id: string;
+  system: SAPSystemExtended;
   modules: SystemModule[];
   versions: SystemVersion[];
   canSync: boolean;
@@ -522,15 +558,16 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
 }) {
   const router = useRouter();
   const latest = latestDqs(versions).version;
+  const [action, setAction] = useState<ObjectAction>(null);
   const again = useMutation({
     mutationFn: (module: string) => startDownload(id, { objects: [module], scope: {}, analyse: false }),
-    onSuccess: () => { toast.success("Extraction started"); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Extraction refused"),
+    onSuccess: () => { toast.success("Extraction started"); setAction(null); onChanged(); },
+    onError: (e) => toast.error(apiErrorMessage(e) || "Extraction refused"),
   });
   const run = useMutation({
     mutationFn: (versionId: string) => analyseVersion(versionId),
-    onSuccess: () => { toast.success("Analysis started"); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Analysis refused"),
+    onSuccess: () => { toast.success("Analysis started"); setAction(null); onChanged(); },
+    onError: (e) => toast.error(apiErrorMessage(e) || "Analysis refused"),
   });
   const rankedModules = useMemo(() => [...modules].sort((a, b) => b.row_count - a.row_count || a.module.localeCompare(b.module)), [modules]);
   const columns = useMemo<ColumnDef<SystemModule>[]>(() => [
@@ -541,7 +578,7 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
     },
     { id: "enabled", header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
     { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
-    { id: "synced", header: "Last synced", cell: ({ row }) => when(row.original.last_synced_at) },
+    { id: "synced", header: "Last extracted", cell: ({ row }) => when(row.original.last_synced_at) },
     {
       id: "dqs",
       header: "Score",
@@ -564,7 +601,7 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
               <Button
                 variant="secondary"
                 disabled={again.isPending || !row.original.enabled}
-                onClick={(e) => { e.stopPropagation(); again.mutate(m); }}
+                onClick={(e) => { e.stopPropagation(); setAction({ kind: "extract", module: m }); }}
               >
                 Extract again
               </Button>
@@ -573,7 +610,7 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
               <Button
                 variant="ghost"
                 disabled={run.isPending || !version}
-                onClick={(e) => { e.stopPropagation(); if (version) run.mutate(version.id); }}
+                onClick={(e) => { e.stopPropagation(); if (version) setAction({ kind: "analyse", module: m, versionId: version.id }); }}
               >
                 Analyse
               </Button>
@@ -583,6 +620,7 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
       },
     },
   ], [again, run, canSync, canAnalyse, latest, versions]);
+  const scope = systemScope(system);
   return (
     <div className="flex flex-col [gap:var(--m-section-gap)]">
       {modules.length ? (
@@ -594,15 +632,35 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
           action={<Button render={<Link href={`/systems/${id}?tab=health`}>Discover design</Link>} />}
         />
       )}
-      {canSync ? <ScopePicker id={id} onDownloaded={onChanged} /> : null}
+      <ConfirmDialog
+        open={action?.kind === "extract"}
+        onOpenChange={(o) => { if (!o) setAction(null); }}
+        title={`Extract ${action ? formatModuleName(action.module) : ""} again from ${scope}`}
+        body={`Reads every table of ${action ? formatModuleName(action.module) : "this object"} in full, with no organisational filter, into a new run. ${READ_ONLY}`}
+        confirmLabel="Extract now"
+        cancelLabel="Not now"
+        pending={again.isPending}
+        onConfirm={() => { if (action?.kind === "extract") again.mutate(action.module); }}
+      />
+      <ConfirmDialog
+        open={action?.kind === "analyse"}
+        onOpenChange={(o) => { if (!o) setAction(null); }}
+        title={`Analyse ${action ? formatModuleName(action.module) : ""} from ${scope}`}
+        body={`Runs every rule over ${action ? formatModuleName(action.module) : "this object"} as already extracted, with its latest run as the scope. ${READ_ONLY}`}
+        confirmLabel="Analyse"
+        cancelLabel="Not now"
+        pending={run.isPending}
+        onConfirm={() => { if (action?.kind === "analyse") run.mutate(action.versionId); }}
+      />
     </div>
   );
 }
 
 /* ── Runs ──────────────────────────────────────────────────────────────── */
 
-function Runs({ systemId, versions, loading, canSync }: { systemId: string; versions: SystemVersion[]; loading: boolean; canSync: boolean }) {
+function Runs({ versions, loading, canSync, onExtract }: { versions: SystemVersion[]; loading: boolean; canSync: boolean; onExtract: () => void }) {
   const router = useRouter();
+  const { systemId } = useParams<{ systemId: string }>();
   const columns = useMemo(() => runColumns(systemId), [systemId]);
   if (loading) return <Skeleton height={240} />;
   if (!versions.length) {
@@ -610,7 +668,7 @@ function Runs({ systemId, versions, loading, canSync }: { systemId: string; vers
       <EmptyState
         title="Nothing extracted yet"
         detail="Run an extraction to create the first run."
-        action={canSync ? <Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} /> : undefined}
+        action={canSync ? <Button onClick={onExtract}>Extract</Button> : undefined}
       />
     );
   }
@@ -628,7 +686,7 @@ function Runs({ systemId, versions, loading, canSync }: { systemId: string; vers
 
 function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: {
   id: string;
-  system: { health_status: keyof typeof HEALTH_LABEL; health_message: string | null; last_health_check: string | null; discovery_status?: string | null; system_type: SystemType };
+  system: { name: string; environment: string; health_status: keyof typeof HEALTH_LABEL; health_message: string | null; last_health_check: string | null; discovery_status?: string | null; system_type: SystemType };
   canSync: boolean;
   canManage: boolean;
   onChanged: () => void;
@@ -644,12 +702,12 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
   const snap = design?.snapshot;
   const running = ["queued", "running"].includes(design?.discovery_status ?? "");
   const [part, setPart] = useUrlState("part", "tables");
+  const discoveryStatus = design?.discovery_status ?? system.discovery_status;
 
-  const cfg = useConfigLoad(id);
   const discover = useMutation({
     mutationFn: () => discoverSystem(id),
     onSuccess: () => { toast.success("Discovery started"); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Could not start discovery"),
+    onError: (e) => toast.error(apiErrorMessage(e) || "Could not start discovery"),
   });
 
   const verdict = system.health_status === "healthy"
@@ -664,9 +722,6 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
         actions={
           <>
             {canSync ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
-            {canSync && !hasNoConfig(system.system_type) ? (
-              <ConfigLoadButton running={cfg.running} loaded={!!cfg.load} onClick={() => cfg.start.mutate()} />
-            ) : null}
             {canSync ? (
               <Button variant="secondary" disabled={discover.isPending || running} onClick={() => discover.mutate()}>
                 {running ? "Discovering" : snap ? "Discover again" : "Discover design"}
@@ -678,7 +733,7 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
         <p className="m-text-body m-ink-2">{verdict}</p>
         <dl className="mt-2 grid grid-cols-2 gap-2 m-text-body">
           <Field label="Last health check"><span>{when(system.last_health_check, "Never")}</span></Field>
-          <Field label="Discovery status"><span>{design?.discovery_status ?? system.discovery_status ?? "Never run"}</span></Field>
+          <Field label="Discovery status"><span>{discoveryStatus ? <Status kind="lifecycle" value={discoveryStatus} /> : "Never run"}</span></Field>
           <Field label="SAP release"><Mono>{design?.sap_release ?? "Unknown"}</Mono></Field>
         </dl>
         {snap?.error ? (
@@ -686,7 +741,8 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
         ) : null}
       </Card>
 
-      <ConfigLoadPanel systemId={id} systemType={system.system_type} canLoad={canSync} />
+      {/* The one Configuration home: its own Load button lives on the panel, nowhere else. */}
+      <ConfigLoadPanel systemId={id} systemType={system.system_type} system={system} canLoad={canSync} />
       <SchedulesPanel id={id} canManage={canManage} />
       {canManage ? <ReferencePanel id={id} /> : null}
 
@@ -704,7 +760,7 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
             onValueChange={setPart}
             items={[
               { value: "tables", label: "Data dictionary", content: <TablesTab id={id} /> },
-              { value: "config", label: "Configuration", content: design ? <ConfigTab id={id} tables={design.configuration} /> : null },
+              { value: "config", label: "Configuration tables", content: design ? <ConfigTab id={id} tables={design.configuration} /> : null },
               { value: "coverage", label: "Coverage", content: <CoverageTab id={id} /> },
               { value: "snapshots", label: "History", content: <SnapshotsTab id={id} /> },
             ]}
@@ -716,8 +772,10 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
 
 /* ── Edit ──────────────────────────────────────────────────────────────── */
 
+const SECRET = { password: "", client_secret: "" };
+
 function EditForm({ system, targets, onDone, onDeleted }: {
-  system: { id: string; name: string; environment: "PRD" | "QAS" | "DEV"; description: string | null; is_active: boolean; role: "source" | "target"; target_system_id: string | null };
+  system: SAPSystemExtended;
   targets: { id: string; name: string }[];
   onDone: () => void;
   onDeleted: () => void;
@@ -729,25 +787,57 @@ function EditForm({ system, targets, onDone, onDeleted }: {
   const [role, setRole] = useState<"source" | "target">(system.role);
   const [target, setTarget] = useState<string>(system.target_system_id ?? "none");
   const [confirming, setConfirming] = useState(false);
+  // Connection and credentials: the stored secrets are never shown; an empty secret keeps the stored one.
+  const rfc = RFC_TYPES.includes(system.system_type);
+  const [conn, setConn] = useState({
+    host: system.host ?? "", client: system.client ?? "", sysnr: system.sysnr ?? "", username: system.username ?? "",
+    base_url: system.base_url ?? "", company_id: system.company_id ?? "", client_id: "", ...SECRET,
+  });
+  const bind = (key: keyof typeof conn) => ({ value: conn[key], onChange: (e: { target: { value: string } }) => setConn((c) => ({ ...c, [key]: e.target.value })) });
+  const credentials = () => Object.fromEntries(
+    (["password", "client_id", "client_secret"] as const).filter((k) => conn[k]).map((k) => [k, conn[k]]),
+  );
+  const connection = () => rfc
+    ? { host: conn.host.trim(), client: conn.client.trim(), sysnr: conn.sysnr.trim(), username: conn.username.trim() }
+    : { base_url: conn.base_url.trim(), ...(conn.company_id.trim() ? { company_id: conn.company_id.trim() } : {}), username: conn.username.trim() };
+  const profilesQ = useQuery({ queryKey: queryKeys.syncProfiles(system.id), queryFn: () => getSyncProfiles(system.id) });
+  const schedules = profilesQ.data?.length;
+
+  // Test before save: with a retyped secret the draft is tried as a whole; without, the stored credentials are.
+  const test = useMutation({
+    mutationFn: () => {
+      const creds = credentials();
+      return Object.keys(creds).length
+        ? testDraftConnection({ name: name.trim(), system_type: system.system_type, environment, auth_type: system.auth_type ?? undefined, ...connection(), credentials: creds })
+        : testConnection(system.id).then((r) => ({ connected: r.status === "healthy", message: r.message }));
+    },
+    onSuccess: (r) => (r.connected ? toast.success(`Connected. ${r.message ?? ""}`.trim()) : toast.error(`Not connected. ${r.message ?? ""}`.trim())),
+    onError: (e) => toast.error(`Not connected. ${apiErrorMessage(e)}`),
+  });
   const save = useMutation({
-    mutationFn: () => updateSystem(system.id, {
-      name: name.trim(), environment, description, is_active: active, role,
-      ...(role === "source" ? { target_system_id: target === "none" ? "" : target } : {}),
-    }),
+    mutationFn: () => {
+      const creds = credentials();
+      return updateSystem(system.id, {
+        name: name.trim(), environment, description, is_active: active, role,
+        ...(role === "source" ? { target_system_id: target === "none" ? "" : target } : {}),
+        ...connection(),
+        ...(Object.keys(creds).length ? { credentials: creds } : {}),
+      });
+    },
     onSuccess: () => { toast.success("System saved"); onDone(); },
-    onError: (e) => toast.error((e as Error).message || "Not saved"),
+    onError: (e) => toast.error(apiErrorMessage(e) || "Not saved"),
   });
   const del = useMutation({
     mutationFn: () => deleteSystem(system.id),
     onSuccess: () => { toast.success(`${system.name} removed`); onDeleted(); },
-    onError: (e) => toast.error((e as Error).message || "Not removed"),
+    onError: (e) => toast.error(apiErrorMessage(e) || "Not removed"),
   });
   return (
     <form
       className="flex flex-col gap-4"
       onSubmit={(e) => { e.preventDefault(); if (name.trim()) save.mutate(); }}
     >
-      <Field label="Alias">
+      <Field label="Name">
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -757,7 +847,7 @@ function EditForm({ system, targets, onDone, onDeleted }: {
         <Select
           value={environment}
           onValueChange={setEnvironment}
-          options={["DEV", "QAS", "PRD"].map((v) => ({ value: v, label: v }))}
+          options={ENVIRONMENTS}
         />
       </Field>
       <Field label="Role">
@@ -786,23 +876,60 @@ function EditForm({ system, targets, onDone, onDeleted }: {
         <Checkbox aria-label="Active" checked={active} onChange={(e) => setActive(e.target.checked)} />
         Active
       </label>
+
+      <fieldset className="flex flex-col gap-3 border-t pt-4 [border-color:var(--m-line)]">
+        <legend className="m-text-body font-semibold m-ink">Connection and credentials</legend>
+        <p className="m-text-meta m-ink-3">Stored secrets are never shown. Leave a secret empty to keep the stored one.</p>
+        {rfc ? (
+          <>
+            <Field label="Host"><Input {...bind("host")} /></Field>
+            <Hint text={HINT.host} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-3">
+                <Field label="Client"><Input {...bind("client")} inputMode="numeric" maxLength={3} /></Field>
+                <Hint text={HINT.client} />
+              </div>
+              <div className="flex flex-col gap-3">
+                <Field label="Instance number"><Input {...bind("sysnr")} inputMode="numeric" maxLength={2} /></Field>
+                <Hint text={HINT.sysnr} />
+              </div>
+            </div>
+            <Field label="User (optional)"><Input {...bind("username")} autoComplete="off" /></Field>
+            <Hint text={HINT.username} />
+            <Field label="Password"><Input {...bind("password")} type="password" autoComplete="new-password" placeholder="Unchanged" /></Field>
+          </>
+        ) : (
+          <>
+            <Field label="Base URL"><Input {...bind("base_url")} type="url" /></Field>
+            <Hint text={HINT.base_url} />
+            {NEEDS_TOKEN_URL.includes(system.system_type) ? <p className="m-text-meta m-ink-3">Token URL: {HINT.token_url}. It is set when the system is connected and cannot be changed here.</p> : null}
+            {system.system_type === "successfactors" ? <Field label="Company ID"><Input {...bind("company_id")} /></Field> : null}
+            <Field label="Client ID"><Input {...bind("client_id")} autoComplete="off" placeholder="Unchanged" /></Field>
+            <Hint text={HINT.client_id} />
+            <Field label="Client secret"><Input {...bind("client_secret")} type="password" autoComplete="new-password" placeholder="Unchanged" /></Field>
+          </>
+        )}
+        <div>
+          <Button type="button" variant="secondary" pending={test.isPending} onClick={() => test.mutate()}>Test connection</Button>
+        </div>
+      </fieldset>
+
       <div className="flex gap-2">
         <Button type="submit" disabled={!name.trim() || save.isPending}>Save</Button>
-        {!confirming ? <Button type="button" variant="secondary" onClick={() => setConfirming(true)}>Delete</Button> : null}
+        <Button type="button" variant="danger" onClick={() => setConfirming(true)}>Delete system</Button>
       </div>
-      {confirming ? (
-        <Notice
-          tone="danger"
-          action={
-            <>
-              <Button type="button" variant="secondary" disabled={del.isPending} onClick={() => del.mutate()}>Remove</Button>
-              <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>Keep</Button>
-            </>
-          }
-        >
-          Remove {system.name}? Its credentials and sync profiles go with it. Downloaded runs and findings stay.
-        </Notice>
-      ) : null}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={`Delete ${system.name}`}
+        tone="danger"
+        typeToConfirm={system.name}
+        confirmLabel="Delete system"
+        cancelLabel="Keep"
+        pending={del.isPending}
+        body={`${schedules == null ? "Its schedules and stored credentials" : `${schedules.toLocaleString()} ${schedules === 1 ? "schedule" : "schedules"} and its stored credentials`} go with it. Extracted runs and findings stay.`}
+        onConfirm={() => del.mutate()}
+      />
     </form>
   );
 }

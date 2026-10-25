@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "../primitives/Button";
+import { Status } from "../primitives/Status";
 import { useJobs } from "../../hooks/use-jobs";
 import type { DayOneStep } from "../../hooks/use-day-one";
 import { IconCheck, IconGauge, IconGear, IconImport, IconServer, type Icon } from "../icons";
@@ -66,11 +67,11 @@ export function JourneyStepper({
           <p className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{step.label}</p>
           <p className="m-text-body" style={{ color: "var(--m-ink-2)", maxWidth: "56ch" }}>{step.detail}</p>
           {step.key === "running" && runningJob ? (
-            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
-              {runningJob.label}: {runningJob.status}, {runningJob.percent}%
+            <p className="m-text-body inline-flex items-center gap-2" style={{ color: "var(--m-ink-2)" }}>
+              {runningJob.label} <Status kind="lifecycle" value={runningJob.status} /> {Math.round(runningJob.percent)}%
             </p>
           ) : !step.actionable || !step.href ? null : (
-            <Button render={<Link href={step.href}>{step.label}</Link>} className="self-start" />
+            <Button render={<Link href={step.href}>{step.actionLabel ?? step.label}</Link>} className="self-start" />
           )}
         </div>
       )}

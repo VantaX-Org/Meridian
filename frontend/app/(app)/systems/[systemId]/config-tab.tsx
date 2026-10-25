@@ -21,7 +21,7 @@ import { useRowDrawer } from "./row-drawer";
 const STATUS_TONE: Record<string, PillTone> = { active: "go", partial: "at-risk", dormant: "at-risk", inactive: "no-go", ghost: "no-go" };
 const n = (v: number) => v.toLocaleString();
 const dash = (v: string | null | undefined) => v ?? "—";
-const analyseAction = <Button render={<Link href="/analyse">Run an analysis</Link>} />;
+const analyseAction = <Button render={<Link href="/runs">Open runs</Link>} />;
 
 /** One config-intelligence list: loading, 404 (no analysis yet) as an honest empty state, error, then the body. */
 function Feed<T>({ q, empty, children }: { q: UseQueryResult<T>; empty: string; children: (data: T) => ReactNode }) {
@@ -102,7 +102,7 @@ function InventorySection() {
         }
         return (
           <div className="flex flex-col gap-4">
-            <Card title="By module" meta="Select a module for its elements">
+            <Card title="By module" meta="All systems; select a module for its elements">
               <DataTable columns={moduleCols} data={[...byModule.values()]} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar dense height="auto" tableId="config-inventory-modules" />
             </Card>
             <DataTable columns={cols} data={d.elements} getRowId={(e) => `${e.module}/${e.element_type}/${e.element_value}`} height={420} exportName="config-inventory" />
@@ -205,7 +205,7 @@ function AlignmentSection() {
         return (
           <div className="flex flex-col gap-4">
             {byModule.size > 0 ? (
-              <Card title="By module" meta="Select a module for its findings">
+              <Card title="By module" meta="All systems; select a module for its findings">
                 <DataTable columns={moduleCols} data={[...byModule.values()].sort((a, b) => SEVERITY_ORDER.indexOf(a.worst) - SEVERITY_ORDER.indexOf(b.worst) || b.total - a.total)} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar dense height="auto" tableId="config-alignment-modules" />
               </Card>
             ) : null}
@@ -223,10 +223,10 @@ function GhostShadowSection() {
   const shadow = useCfg("shadow", getConfigShadow);
   return (
     <div className="flex flex-col gap-4">
-      <Card title="Ghost configuration" meta="Configured in SAP but never used in a transaction.">
+      <Card title="Ghost configuration" meta="All systems; configured in SAP but never used in a transaction">
         <Feed q={ghost} empty="Ghost configuration is configured but unused.">{(d) => <FindingsTable rows={d.findings} name="config-ghost" />}</Feed>
       </Card>
-      <Card title="Shadow configuration" meta="Used in transactions but missing from the configuration.">
+      <Card title="Shadow configuration" meta="All systems; used in transactions but missing from the configuration">
         <Feed q={shadow} empty="Shadow configuration is used but not configured.">{(d) => <FindingsTable rows={d.findings} name="config-shadow" />}</Feed>
       </Card>
     </div>
@@ -293,8 +293,7 @@ export function ConfigurationTab({ systemId, canPropose }: { systemId: string; c
   const discover = useRerun({
     run: () => discoverConfigNow(systemId),
     queryKey: ["config-intelligence"],
-    queued: "Discovery queued. Results refresh as it finishes",
-    done: "Configuration results refreshed",
+    queued: "Discovery started",
   });
   return (
     <div className="flex flex-col gap-3">

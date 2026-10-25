@@ -9,6 +9,7 @@ import { LiveSection } from "../_live";
 
 let allowed = true;
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => allowed }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/home/basis", useSearchParams: () => new URLSearchParams() }));
 
 const system: SAPSystemExtended = {
   id: "sys-1",
@@ -47,7 +48,9 @@ describe("LiveSection", () => {
     renderWithQuery(<LiveSection />);
 
     expect(await screen.findByText("ECC Prod")).toBeInTheDocument();
-    expect(await screen.findByText("Healthy")).toBeInTheDocument();
+    // Connection health reads as the verdict vocabulary, and the row opens the system's Health tab.
+    expect(await screen.findByText("Go")).toBeInTheDocument();
+    expect(screen.getByText("Go").closest("[data-status]")).toHaveAttribute("data-status", "verdict");
     expect(await screen.findByText("Nothing is running")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Run extraction" })).toBeInTheDocument();
   });
@@ -64,5 +67,24 @@ describe("LiveSection", () => {
     expect(screen.queryByRole("link", { name: "Run extraction" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Connect a system" })).toBeNull();
     allowed = true;
+  });
+
+  it("offers one Connect a system action that opens the connect dialog", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+
+    renderWithQuery(<LiveSection />);
+
+    expect(await screen.findByRole("link", { name: "Connect a system" })).toHaveAttribute("href", "/systems?connect=1");
+  });
+
+  it("says an untested system is not tested instead of guessing a verdict", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...system, health_status: "unknown" }]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+
+    renderWithQuery(<LiveSection />);
+
+    expect(await screen.findByText("Not tested")).toBeInTheDocument();
+    expect(screen.queryByText("Go")).toBeNull();
   });
 });

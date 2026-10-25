@@ -10,16 +10,29 @@ import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "./use-role";
 
+interface StepBase {
+  label: string;
+  detail: string;
+  actionable: boolean;
+  /** The button's text when it differs from the label ("Open the failed run"). */
+  actionLabel?: string;
+}
 export type DayOneStep =
-  | { key: "connect"; href: "/systems" | null; label: string; detail: string; actionable: boolean }
-  | { key: "import"; href: "/import" | null; label: string; detail: string; actionable: boolean }
-  | { key: "config"; href: `/systems/${string}` | null; label: string; detail: string; actionable: boolean }
-  | { key: "extract"; href: `/systems/${string}` | null; label: string; detail: string; actionable: boolean }
-  | { key: "running"; href: `/runs/${string}`; label: string; detail: string; actionable: boolean }
-  | { key: "failed"; href: `/runs/${string}`; label: string; detail: string; actionable: boolean };
+  | ({ key: "connect"; href: "/systems" | "/systems?connect=1" | null } & StepBase)
+  | ({ key: "import"; href: "/import" | null } & StepBase)
+  | ({ key: "config"; href: `/systems/${string}` | null } & StepBase)
+  | ({ key: "extract"; href: `/systems/${string}` | null } & StepBase)
+  | ({ key: "running"; href: `/runs/${string}` } & StepBase)
+  | ({ key: "failed"; href: `/runs/${string}` } & StepBase);
 
 const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 const FAILED = new Set(["failed", "agents_failed"]);
+const CONFIG_MISSING = new Set(["not_loaded", "failed"]);
+
+/** The permission each step needs: connecting and configuring a system, extracting from it, importing a file. */
+const NEEDS: Record<DayOneStep["key"], string | null> = {
+  connect: "manage_systems", config: "manage_systems", extract: "trigger_sync", import: "upload", running: null, failed: null,
+};
 
 /**
  * Single source for "what should the tenant do next", derived from live
@@ -43,17 +56,11 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
   const systems = systemsQ.data ?? [];
   const landscape = landscapeQ.data;
   const versions = versionsQ.data?.versions ?? [];
-  const canManage = can("manage_system");
 
   const gate = (step: DayOneStep): DayOneStep => {
-    if (step.key === "running" || step.key === "failed") return step;
-    if (step.key === "import" && !can("upload")) {
-      return { ...step, actionable: false, href: null, label: "Ask an administrator to import a file." };
-    }
-    if (!canManage) {
-      return { ...step, actionable: false, href: null, label: `Ask an administrator to ${step.label.toLowerCase()}.` };
-    }
-    return step;
+    const needs = NEEDS[step.key];
+    if (!needs || can(needs)) return step;
+    return { ...step, actionable: false, href: null, actionLabel: undefined, label: `Ask an administrator to ${step.label.toLowerCase()}.` } as DayOneStep;
   };
 
   if (versions.some((v) => FINISHED.has(v.status))) {
@@ -68,31 +75,33 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
     const failed = versions.find((v) => FAILED.has(v.status))!;
     return {
       status: "ready",
-      step: gate({ key: "failed", href: `/runs/${failed.id}`, label: "The last run failed", detail: "Open the run to see which step failed.", actionable: true }),
+      step: gate({ key: "failed", href: `/runs/${failed.id}`, label: "The last run failed", detail: "Open the run to see which step failed.", actionable: true, actionLabel: "Open the failed run" }),
     };
   }
   if (versions.length > 0 && newestRunning) {
     return {
       status: "ready",
-      step: gate({ key: "running", href: `/runs/${newestRunning.id}`, label: "Analysis is running", detail: "Objects, findings and insights appear when it finishes.", actionable: true }),
+      step: gate({ key: "running", href: `/runs/${newestRunning.id}`, label: "Analysis is running", detail: "Objects, findings and insights appear when it finishes.", actionable: true, actionLabel: "Open the job" }),
     };
   }
   if (systems.length === 0) {
     return {
       status: "ready",
-      step: gate({ key: "connect", href: "/systems", label: "Connect a system", detail: "Add an SAP system, or import a file if you have an export.", actionable: true }),
+      step: gate({ key: "connect", href: "/systems?connect=1", label: "Connect a system", detail: "Add an SAP system, or import a file if you have an export.", actionable: true }),
     };
   }
-  const first = systems[0]!;
-  if (landscape && landscape.loaded === 0 && (first.config_sync_status === "not_loaded" || first.config_sync_status === "failed")) {
+  // The first system still missing the step, so the button opens the system that needs the work.
+  const unconfigured = systems.find((s) => CONFIG_MISSING.has(s.config_sync_status ?? ""));
+  if (landscape && landscape.loaded === 0 && unconfigured) {
     return {
       status: "ready",
-      step: gate({ key: "config", href: `/systems/${first.id}`, label: "Load configuration", detail: "Configuration tells rules which checks apply to this system.", actionable: true }),
+      step: gate({ key: "config", href: `/systems/${unconfigured.id}?tab=health&part=config`, label: "Load configuration", detail: `${unconfigured.name} has no configuration loaded yet. Configuration tells rules which checks apply to this system.`, actionable: true }),
     };
   }
+  const unextracted = systems.find((s) => !s.last_sync_at) ?? systems[0]!;
   return {
     status: "ready",
-    step: gate({ key: "extract", href: `/systems/${first.id}`, label: "Run an extraction", detail: "Extraction creates the first run and starts analysis.", actionable: true }),
+    step: gate({ key: "extract", href: `/systems/${unextracted.id}?extract=1`, label: "Run an extraction", detail: `Nothing has been extracted from ${unextracted.name} yet. Extraction creates the first run and starts analysis.`, actionable: true }),
   };
 }
 
@@ -105,5 +114,5 @@ export function DayOneAction({ step, fallbackHref, fallbackLabel }: { step: DayO
   if (step && (!step.actionable || !step.href)) {
     return <span style={{ color: "var(--m-ink-3)" }}>{step.label}</span>;
   }
-  return <Button render={<Link href={step?.href ?? fallbackHref}>{step?.label ?? fallbackLabel}</Link>} />;
+  return <Button render={<Link href={step?.href ?? fallbackHref}>{step?.actionLabel ?? step?.label ?? fallbackLabel}</Link>} />;
 }

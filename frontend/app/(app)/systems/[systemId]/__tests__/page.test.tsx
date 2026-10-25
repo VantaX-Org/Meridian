@@ -150,8 +150,8 @@ describe("system detail page", () => {
     const bench = await screen.findByTestId("system-workbench");
     expect(within(bench).getByText("Extract this object to score it.")).toBeInTheDocument();
     const empty = within(bench).getByText("Not analysed yet").closest("[data-state='empty']") as HTMLElement;
-    expect(within(empty).getByRole("link", { name: "Extract" })).toHaveAttribute("href", "/systems/s1?tab=objects");
-    expect(within(bench).getAllByRole("link")).toHaveLength(1);
+    expect(within(empty).getByRole("button", { name: "Extract" })).toBeInTheDocument();
+    expect(within(bench).queryAllByRole("link")).toHaveLength(0); // the one action is the Extract button, which opens the Extract drawer
   });
 
   it("shows the system role in the header", async () => {
@@ -206,7 +206,7 @@ describe("system detail page", () => {
       fireEvent.click((await screen.findAllByText("Extract"))[0]);
       fireEvent.click(await screen.findByText("Material master"));
       fireEvent.click(screen.getByText("Extract 1 object"));
-      fireEvent.click(await screen.findByText("Confirm"));
+      fireEvent.click(await screen.findByRole("button", { name: "Extract now" }));
       await waitFor(() => expect(systemObjectsApi.startDownload).toHaveBeenCalled());
 
       await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
@@ -235,7 +235,7 @@ describe("system detail page", () => {
         versions: [],
         download: { status: "complete", job_id: "dl-9", started_at: "2026-01-01T10:00:00Z", label: null, objects: [] },
       });
-      fireEvent.click(await screen.findByText("Confirm"));
+      fireEvent.click(await screen.findByRole("button", { name: "Extract now" }));
       await waitFor(() => expect(systemObjectsApi.startDownload).toHaveBeenCalled());
 
       await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });

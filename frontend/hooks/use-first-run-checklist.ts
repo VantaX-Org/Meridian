@@ -15,22 +15,25 @@ const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 /**
  * The first-run checklist's items, each derived from the same queries the pages use, so the list is
  * never a second record of what has been done. An item whose data the viewer cannot read (a 403, or a
- * permission they lack) is left out rather than shown as undone.
+ * permission they lack) is left out rather than shown as undone, so Basis never sees the fix step and a
+ * steward never sees the team step.
  */
 export function useFirstRunChecklist(): { items: ChecklistItem[]; loading: boolean } {
   const { can } = useRole();
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const versionsQ = useQuery(runListQuery());
-  const batchesQ = useQuery({ queryKey: queryKeys.remediationBatches(), queryFn: listBatches, retry: false });
+  const batchesQ = useQuery({ queryKey: queryKeys.remediationBatches(), queryFn: listBatches, enabled: can("apply"), retry: false });
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users"), retry: false });
   const channelsQ = useQuery({ queryKey: queryKeys.alertChannels(), queryFn: getAlertChannels, enabled: can("manage_settings"), retry: false });
 
   const items: ChecklistItem[] = [];
-  if (systemsQ.data) {
-    items.push({ id: "system", label: "Connect a system", done: systemsQ.data.length > 0, href: "/systems" });
+  const firstSystem = systemsQ.data?.[0];
+  if (systemsQ.data && can("manage_systems")) {
+    items.push({ id: "system", label: "Connect a system", done: systemsQ.data.length > 0, href: "/systems?connect=1" });
   }
-  if (versionsQ.data) {
-    items.push({ id: "run", label: "Complete a first run", done: versionsQ.data.versions.some((v) => FINISHED.has(v.status)), href: "/systems" });
+  if (versionsQ.data && can("trigger_sync")) {
+    // The run item opens the extract step of the first system, the same step the day-one journey offers.
+    items.push({ id: "run", label: "Complete a first run", done: versionsQ.data.versions.some((v) => FINISHED.has(v.status)), href: firstSystem ? `/systems/${firstSystem.id}?extract=1` : "/systems" });
   }
   if (batchesQ.data) {
     items.push({ id: "fix", label: "Create a first fix batch", done: batchesQ.data.items.length > 0, href: "/fix?tab=batches" });

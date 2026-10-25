@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Notice, ReportPage, Status } from "@/design";
+import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Notice, ReportPage, Skeleton, Status } from "@/design";
+import { runName } from "@/lib/run-scope";
 import { JobProgress } from "@/design/shell/JobProgress";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { getJob } from "@/lib/api/jobs";
@@ -81,7 +82,7 @@ export default function ExtractionPage() {
   const v = version.data;
   const narrative = (
     <>
-      {v ? <>Extracted {formatDate(v.run_at, "datetime")}{v.label ? <>, run <Mono>{v.label}</Mono></> : null}.</> : <>Run <Mono>{runId}</Mono></>}
+      {v ? <>Extracted {formatDate(v.run_at, "datetime")}, run {runName(v)}.</> : version.isPending ? <Skeleton width={240} height={20} /> : <>The run of this extraction could not be read.</>}
       {activeJob ? (
         <>
           <RunProgressBanner
@@ -98,7 +99,17 @@ export default function ExtractionPage() {
         </>
       ) : null}
       {failedStep ? (
-        <Notice tone="danger">{failedStep.step_name} failed: {failedStep.error_detail}</Notice>
+        <Notice
+          tone="danger"
+          action={
+            <>
+              <Button variant="secondary" render={<Link href={`/systems/${systemId}?tab=health`}>Test connection</Link>} />
+              <Button variant="secondary" render={<Link href={`/systems/${systemId}?extract=1`}>Extract again</Link>} />
+            </>
+          }
+        >
+          {failedStep.step_name} failed: {failedStep.error_detail}
+        </Notice>
       ) : null}
     </>
   );

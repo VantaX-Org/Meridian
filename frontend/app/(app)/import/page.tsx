@@ -4,15 +4,16 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Score, Skeleton, type PillTone, PageFrame, Status, ProgressFill } from "@/design";
+import { DrillLink, Button, Card, DataTable, EmptyState, ErrorState, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, type PillTone, PageFrame, Status, ProgressFill, toast } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
+import { getModuleFieldMappings } from "@/lib/api/field-mappings";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
 import { getVersions } from "@/lib/api/versions";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { runName } from "@/lib/run-scope";
 import { formatSize, readHeaderSample } from "@/lib/upload-preview";
 import type { Version } from "@/types/api";
 import { clsx } from "clsx";
@@ -27,6 +28,7 @@ const stepLabel = (step: string) => STEP_LABEL[step] ?? labelOf(step);
 
 const ACCEPT = ".csv,.tsv,.txt,.xlsx,.xls,.json,.parquet";
 const TERMINAL = new Set(["complete", "agents_complete", "ai_enriched", "failed", "agents_failed"]);
+const NOT_MAPPED = "";
 
 type Job = { versionId: string; status: "queued" | "processing" | "completed" | "failed"; percent: number; step: string; error: string | null };
 
@@ -44,6 +46,8 @@ export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [match, setMatch] = useState<MatchResponse | null>(null);
   const [targetModule, setTargetModule] = useState<string | null>(null);
+  // The user's corrections to the proposed mapping, by source column; the proposal stands where there is none.
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [uploadPct, setUploadPct] = useState(0);
   const [job, setJob] = useState<Job | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -53,6 +57,13 @@ export default function ImportPage() {
     queryKey: queryKeys.versionsList({ limit: 50 }),
     queryFn: () => getVersions({ limit: 50 }),
     refetchInterval: (q) => (q.state.data?.versions.some((v) => !TERMINAL.has(v.status)) ? 5000 : false),
+  });
+  const fieldsQ = useQuery({
+    queryKey: ["field-mappings", "module", targetModule],
+    queryFn: () => getModuleFieldMappings(targetModule!),
+    enabled: !!targetModule,
+    retry: false,
+    meta: { ignoreError: true },
   });
 
   const matchMut = useMutation({
@@ -65,15 +76,17 @@ export default function ImportPage() {
   });
   useEffect(() => {
     if (!file) return;
-    setMatch(null); setTargetModule(null); setJob(null); setUploadPct(0);
+    setMatch(null); setTargetModule(null); setOverrides({}); setJob(null); setUploadPct(0);
     matchMut.mutate(file);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file]);
 
+  const targetOf = (m: MatchResponse["mappings"][number]) => overrides[m.source_column] ?? m.target_field ?? NOT_MAPPED;
   const run = useMutation({
     mutationFn: async () => {
-      if (!file || !targetModule) throw new Error("Pick a file and a module first");
-      const up = await uploadFile(file, targetModule, null, setUploadPct);
+      if (!file || !targetModule || !match) throw new Error("Pick a file and a module first");
+      const mapping = Object.fromEntries(match.mappings.flatMap((m) => (targetOf(m) ? [[m.source_column, targetOf(m)]] : [])));
+      const up = await uploadFile(file, targetModule, Object.keys(mapping).length ? mapping : null, setUploadPct);
       setJob({ versionId: up.version_id, status: "queued", percent: 0, step: "queued", error: null });
       const final = await pollAnalysisStatus(up.version_id, (s) => setJob({
         versionId: up.version_id, status: s.status, percent: s.progress?.percent_complete ?? 0,
@@ -89,16 +102,16 @@ export default function ImportPage() {
   });
 
   const noHeaders = !!match && match.mappings.length === 0;
-  const mapped = match?.mappings.filter((m) => m.target_field).length ?? 0;
+  const mapped = match?.mappings.filter((m) => targetOf(m)).length ?? 0;
   const canRun = !!file && !!match && !!targetModule && !matchMut.isPending && !run.isPending && !job;
 
   const pick = (f: File | null) => { if (f) setFile(f); };
-  const clear = () => { setFile(null); setMatch(null); setTargetModule(null); setJob(null); setUploadPct(0); if (inputRef.current) inputRef.current.value = ""; };
+  const clear = () => { setFile(null); setMatch(null); setTargetModule(null); setOverrides({}); setJob(null); setUploadPct(0); if (inputRef.current) inputRef.current.value = ""; };
 
   const columns = useMemo<ColumnDef<Version>[]>(() => [
     {
       id: "file", header: "File",
-      cell: ({ row }) => <Link href={`/runs/${row.original.id}`} className="underline">{row.original.metadata?.file_name ?? row.original.label ?? row.original.id.slice(0, 8)}</Link>,
+      cell: ({ row }) => <Link href={`/runs/${row.original.id}`} className="underline">{row.original.metadata?.file_name ?? runName(row.original)}</Link>,
     },
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
     { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <DrillLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</DrillLink> : "") },
@@ -107,15 +120,33 @@ export default function ImportPage() {
     { id: "when", header: "Imported", cell: ({ row }) => relativeTime(row.original.run_at) },
     { id: "open", header: "", size: 80, cell: ({ row }) => <Link href={`/runs/${row.original.id}`} className="m-ink-accent-ink underline">Open</Link> },
   ], []);
+  // The module's standard fields, so a wrong proposal can be corrected before the import; read-only until they load.
+  const fieldOptions = useMemo(() => [
+    { value: NOT_MAPPED, label: "Not mapped" },
+    ...(fieldsQ.data?.mappings ?? []).map((f) => ({ value: f.standard_field, label: f.standard_label ? `${f.standard_field}, ${f.standard_label}` : f.standard_field })),
+  ], [fieldsQ.data]);
+  const editable = (fieldsQ.data?.mappings.length ?? 0) > 0 && !job;
   const mapColumns = useMemo<ColumnDef<MatchResponse["mappings"][number]>[]>(() => [
     { id: "source", header: "Your column", cell: ({ row }) => row.original.source_column },
-    { id: "target", header: "Standard field", cell: ({ row }) => <>{row.original.target_field ? <Mono>{row.original.target_field}</Mono> : <span className="m-ink-3">Not mapped</span>}{row.original.is_required ? " (required)" : ""}</> },
-    { id: "confidence", header: "Confidence", cell: ({ row }) => `${Math.round(row.original.confidence * 100)}%` },
-    { id: "match", header: "Match", cell: ({ row }) => <Pill tone={confidenceTone(row.original.confidence)}>{labelOf(row.original.match_type)}</Pill> },
-  ], []);
+    {
+      id: "target", header: "Standard field",
+      cell: ({ row }) => {
+        const target = targetOf(row.original);
+        if (editable) {
+          const options = target && !fieldOptions.some((o) => o.value === target) ? [...fieldOptions, { value: target, label: target }] : fieldOptions;
+          return <Select label={`Standard field for ${row.original.source_column}`} value={target} options={options} onValueChange={(v) => setOverrides((o) => ({ ...o, [row.original.source_column]: v }))} />;
+        }
+        return <>{target ? <Mono>{target}</Mono> : <span className="m-ink-3">Not mapped</span>}{row.original.is_required ? " (required)" : ""}</>;
+      },
+    },
+    { id: "confidence", header: "Confidence", cell: ({ row }) => (overrides[row.original.source_column] !== undefined ? "Set by you" : `${Math.round(row.original.confidence * 100)}%`) },
+    { id: "match", header: "Match", cell: ({ row }) => (overrides[row.original.source_column] !== undefined ? <Pill tone="go">Chosen</Pill> : <Pill tone={confidenceTone(row.original.confidence)}>{labelOf(row.original.match_type)}</Pill>) },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [editable, fieldOptions, overrides]);
   const rankedMappings = useMemo(
-    () => [...(match?.mappings ?? [])].sort((a, b) => Number(!!a.target_field) - Number(!!b.target_field) || a.confidence - b.confidence),
-    [match],
+    () => [...(match?.mappings ?? [])].sort((a, b) => Number(!!targetOf(a)) - Number(!!targetOf(b)) || a.confidence - b.confidence),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [match, overrides],
   );
   const versions = (recent.data?.versions ?? []).filter((v) => v.metadata?.source !== "extraction");
 
@@ -130,7 +161,7 @@ export default function ImportPage() {
     <PageFrame>
       <PageHeader
         title="Import file"
-        meta="Check how columns map to standard SAP fields, then run the analysis, and every import becomes a version"
+        meta="Check how columns map to standard SAP fields, then run the analysis, and every import becomes a run"
         actions={canUpload ? <Button variant="primary" onClick={() => inputRef.current?.click()}>Choose file</Button> : undefined}
       />
 
@@ -173,7 +204,7 @@ export default function ImportPage() {
                   <button
                     key={m.value}
                     type="button"
-                    onClick={() => setTargetModule(m.value)}
+                    onClick={() => { setTargetModule(m.value); setOverrides({}); }}
                     aria-pressed={targetModule === m.value}
                     className="px-2 py-0.5 m-text-meta rounded-full border m-ink [border-color:var(--m-line)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[color:var(--m-accent)]"
                   >
@@ -188,7 +219,13 @@ export default function ImportPage() {
                 <Notice tone="warning">{match.unmapped_required.length} required fields have no column: {match.unmapped_required.join(", ")}. Checks that need them are skipped</Notice>
               ) : null}
               {match.mappings.length ? (
-                <DataTable columns={mapColumns} data={rankedMappings.slice(0, 14)} getRowId={(m) => m.source_column} />
+                <>
+                  <DataTable columns={mapColumns} data={rankedMappings} getRowId={(m) => m.source_column} />
+                  <p className="m-text-meta m-ink-3">
+                    {editable ? "Change a standard field here for this import only. " : ""}
+                    Standing mappings for this object are under <Link href="/admin/mappings" className="underline">Field mapping</Link>.
+                  </p>
+                </>
               ) : null}
             </section>
           ) : null}
@@ -200,6 +237,8 @@ export default function ImportPage() {
           <div className="flex flex-col gap-1" aria-busy="true">
             {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} height={36} />)}
           </div>
+        ) : recent.isError ? (
+          <ErrorState {...apiErrorState(recent.error)} onRetry={() => void recent.refetch()} />
         ) : versions.length ? (
           <DataTable columns={columns} data={versions} getRowId={(v) => v.id} />
         ) : (
@@ -219,9 +258,9 @@ export default function ImportPage() {
 
       {systemsQ.data?.length ? (
         <Notice>
-          {systemsQ.data.length} SAP {systemsQ.data.length === 1 ? "system is" : "systems are"} connected. Pulling objects straight
-          from a system keeps versions comparable run to run; file imports suit one-off assessments.{" "}
-          <Link href="/systems" className="underline">Download from the source</Link>
+          {systemsQ.data.length} SAP {systemsQ.data.length === 1 ? "system is" : "systems are"} connected. Extracting objects straight
+          from a system keeps runs comparable run to run; file imports suit one-off assessments.{" "}
+          <Link href="/systems" className="underline">Extract from a system</Link>
         </Notice>
       ) : null}
     </PageFrame>

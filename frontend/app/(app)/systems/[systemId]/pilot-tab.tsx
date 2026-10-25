@@ -4,8 +4,8 @@ import { useMemo, useRef } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
-import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, Stat } from "@/design";
+
+import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, Stat, toast } from "@/design";
 import { getScorecard, uploadKnownIssues, type KnownIssue, type RuleScore } from "@/lib/api/pilot";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
@@ -37,7 +37,7 @@ export function PilotTab({ id }: { id: string }) {
   const ruleCols = useMemo<ColumnDef<RuleScore, unknown>[]>(() => [
     { id: "rule", header: "Rule", cell: ({ row }) => (
       <span className="flex flex-col">
-        <Link href={`/findings?${new URLSearchParams({ check_id: row.original.check_id, module: row.original.module })}`} className="m-ink-accent"><Mono>{row.original.check_id}</Mono></Link>
+        <Link href={`/rules/${encodeURIComponent(row.original.check_id)}`} className="m-ink-accent"><Mono>{row.original.check_id}</Mono></Link>
         <span className="m-text-meta m-ink-3">{formatModuleName(row.original.module)}{row.original.message ? `. ${row.original.message}` : ""}</span>
       </span>) },
     { id: "flagged", header: "Flagged", cell: ({ row }) => n(row.original.flagged) },
@@ -49,7 +49,7 @@ export function PilotTab({ id }: { id: string }) {
       ? <Pill tone="at-risk">Needs tuning</Pill>
       : row.original.rated ? <Pill tone="go">On target</Pill> : <Pill>Too few reviews</Pill> },
     { id: "open", header: "", size: 80, cell: ({ row }) => (
-      <Link href={`/findings?${new URLSearchParams({ check_id: row.original.check_id, module: row.original.module })}`} className="m-ink-accent-ink underline">Open</Link>
+      <Link href={`/objects/${row.original.module}`} className="m-ink-accent-ink underline">Open</Link>
     ) },
   ], []);
 
@@ -84,7 +84,7 @@ export function PilotTab({ id }: { id: string }) {
           <DataTable columns={ruleCols} data={[...data.rules].sort((a, b) => Number(b.needs_tuning) - Number(a.needs_tuning) || b.false_positive - a.false_positive)} getRowId={(r) => `${r.module}/${r.check_id}`} height={420} />
         ) : (
           <EmptyState title="No record issues yet" detail="Run an analysis of this system first."
-            action={<Button render={<Link href="/analyse">Run analysis</Link>} />} />
+            action={<Button render={<Link href="/runs">Open runs</Link>} />} />
         )}
       </Card>
 

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
@@ -100,9 +100,7 @@ describe("systems list page", () => {
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
   });
 
-  it("shows the next run time in SAST, not UTC", async () => {
-    // Fixed instant: 2026-01-02T22:00:00Z is 2026-01-03T00:00 in SAST (UTC+2) — a date-crossing
-    // instant, so a test that silently stayed in UTC would show the wrong day too.
+  it("shows the next run time in the user's time zone, labelled (UTC when none is chosen)", async () => {
     const PROFILE: SyncProfile = {
       id: "p1", system_id: "s1", domain: "material_master", tables: [], schedule_cron: "0 0 * * *",
       active: true, last_run_at: null, next_run_at: "2026-01-02T22:00:00Z", extraction_mode: "full",
@@ -113,7 +111,36 @@ describe("systems list page", () => {
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([PROFILE]);
     vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
-    await waitFor(() => expect(screen.getByText(/3 Jan 2026, 00:00 SAST/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Next 2 Jan 2026, 22:00 UTC/)).toBeInTheDocument());
+  });
+
+  it("?connect=1 lands with the connect dialog open", async () => {
+    currentSearch = "connect=1";
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
+    renderWithQuery(<SystemsPage />);
+    expect(await screen.findByRole("dialog", { name: "Connect a system" })).toBeInTheDocument();
+    currentSearch = "";
+  });
+
+  it("leads the empty state with Connect system, Import file second", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
+    renderWithQuery(<SystemsPage />);
+    expect(await screen.findByText("No systems yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Import file" })).toHaveAttribute("href", "/import");
+  });
+
+  it("names the system type as its product and reads connection health as a verdict", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    await waitFor(() => expect(screen.getByText("ECC")).toBeInTheDocument());
+    const rows = screen.getAllByRole("row");
+    expect(rows.some((r) => within(r).queryByText("Go"))).toBe(true);
   });
 
   it("shows an up/down trend arrow with an aria-label once the DQS move passes the 0.05 threshold", async () => {

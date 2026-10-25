@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Drawer, Input, Pager, Pill, Select, type PillTone } from "@/design";
+import { Button, Card, Drawer, EmptyState, ErrorState, Input, Pager, Pill, Select, Skeleton, type PillTone } from "@/design";
+import { apiErrorState } from "@/lib/error";
 import {
   getConfigDeviation,
   getDesignConfig,
@@ -33,10 +34,11 @@ export function TablesTab({ id }: { id: string }) {
   const [customerOnly, setCustomerOnly] = useState(false);
   const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
-  const { data } = useQuery({
+  const tablesQ = useQuery({
     queryKey: queryKeys.designTables(id, { search, customerOnly, offset }),
     queryFn: () => getDesignTables(id, { search: search || undefined, customer_only: customerOnly, limit: PAGE, offset }),
   });
+  const data = tablesQ.data;
   const total = data?.total ?? 0;
   return (
     <div className="flex flex-col gap-3">
@@ -47,6 +49,10 @@ export function TablesTab({ id }: { id: string }) {
           Customer extensions only
         </Button>
       </div>
+      {tablesQ.isLoading ? <div aria-busy="true"><Skeleton height={200} /></div>
+        : tablesQ.isError ? <ErrorState {...apiErrorState(tablesQ.error)} onRetry={() => void tablesQ.refetch()} />
+        : !data?.items.length ? <EmptyState title="No tables match" detail={search || customerOnly ? "Clear the search or the filter." : "Discover design reads the data dictionary."} ghost="table" />
+        : (
       <table className="w-full m-text-body">
         <thead><tr>
           <th className={clsx(th, "m-ink-3")}>Table</th><th className={clsx(th, "m-ink-3")}>Description</th>
@@ -68,6 +74,7 @@ export function TablesTab({ id }: { id: string }) {
           ))}
         </tbody>
       </table>
+        )}
       <Pager page={Math.floor(offset / PAGE) + 1} pageCount={Math.max(1, Math.ceil(total / PAGE))} pageSize={PAGE} total={total}
         onPageChange={(p) => setOffset((p - 1) * PAGE)} />
       <TableDrawer id={id} table={open} onClose={() => setOpen(null)} />
@@ -84,8 +91,8 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
   const deviations = data?.fields.filter((f) => f.deviation).length ?? 0;
   return (
     <Drawer open={Boolean(table)} onOpenChange={(next) => { if (!next) onClose(); }} title={table ?? ""}>
-      {error ? <p className={clsx(muted, "m-ink-critical")}>{(error as Error).message}</p>
-        : !data ? <p className={clsx(muted, "m-ink-2")}>Reading the table definition…</p> : (
+      {error ? <ErrorState {...apiErrorState(error)} />
+        : !data ? <div aria-busy="true"><Skeleton height={160} /></div> : (
         <div className="flex flex-col gap-3">
           <p className={clsx(muted, "m-ink-2")}>{data.description}</p>
           <div className="flex flex-wrap gap-2">
@@ -109,7 +116,7 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
                   <td className={`${td} font-mono [border-color:var(--m-line)]`}>{f.type}({f.length}{f.decimals ? `,${f.decimals}` : ""}) {f.domain ?? ""}</td>
                   <td className={`${td} font-mono [border-color:var(--m-line)]`}>{f.standard ? `${f.standard.type}(${f.standard.length}) ${f.standard.domain ?? ""}` : "—"}</td>
                   <td className={`${td} font-mono [border-color:var(--m-line)]`}>{f.check_table ?? ""}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{f.deviation && <Pill tone={f.deviation === "customer_field" ? "neutral" : "at-risk"}>{f.deviation}</Pill>}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{f.deviation && <Pill tone={f.deviation === "customer_field" ? "neutral" : "at-risk"}>{labelOf(f.deviation)}</Pill>}</td>
                 </tr>
               ))}
             </tbody>
@@ -130,7 +137,7 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
   const [open, setOpen] = useState(tables.find((t) => t.table === wanted)?.table ?? tables[0]?.table ?? "");
   const { data } = useQuery({ queryKey: queryKeys.designConfig(id, open), queryFn: () => getDesignConfig(id, open), enabled: Boolean(open) });
   const cols = data?.rows[0] ? Object.keys(data.rows[0]) : [];
-  if (!tables.length) return <p className={clsx(muted, "m-ink-2")}>No configuration read yet.</p>;
+  if (!tables.length) return <EmptyState title="No configuration tables read yet" detail="Discover design reads them from the system." ghost="table" />;
   return (
     <div className="flex flex-col gap-3">
       <DeviationPanel id={id} />
@@ -195,8 +202,8 @@ export function CoverageTab({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-4">
       <p className={clsx(muted, "m-ink-2")}>
-        Every object Meridian tried to read, and the outcome. &ldquo;not_found&rdquo; means the object does not exist in
-        this release; &ldquo;failed&rdquo; usually means a missing RFC authorisation (S_TABU_DIS / S_TABU_NAM).
+        Every object Meridian tried to read, and the outcome. &ldquo;Not found&rdquo; means the object does not exist in
+        this release; &ldquo;Failed&rdquo; usually means a missing RFC authorisation (S_TABU_DIS / S_TABU_NAM).
       </p>
       {parts.map(([part, items]) => (
         <Card key={part} title={part}>
@@ -214,7 +221,8 @@ export function CoverageTab({ id }: { id: string }) {
 }
 
 export function SnapshotsTab({ id }: { id: string }) {
-  const { data: snaps = [] } = useQuery({ queryKey: queryKeys.designSnapshots(id), queryFn: () => getDesignSnapshots(id) });
+  const snapsQ = useQuery({ queryKey: queryKeys.designSnapshots(id), queryFn: () => getDesignSnapshots(id) });
+  const snaps = snapsQ.data ?? [];
   const done = snaps.filter((s) => s.status !== "failed" && s.status !== "running");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -222,6 +230,9 @@ export function SnapshotsTab({ id }: { id: string }) {
   const b = to || done[0]?.id || "";
   const { data: diff } = useQuery({ queryKey: queryKeys.designDiff(id, a, b), queryFn: () => getDesignDiff(id, a, b), enabled: Boolean(a && b && a !== b) });
   const opts = done.map((s) => ({ value: s.id, label: `${s.started_at ? formatDate(s.started_at, "datetime") : s.id}, ${s.tables} tables` }));
+  if (snapsQ.isLoading) return <div aria-busy="true"><Skeleton height={160} /></div>;
+  if (snapsQ.isError) return <ErrorState {...apiErrorState(snapsQ.error)} onRetry={() => void snapsQ.refetch()} />;
+  if (!snaps.length) return <EmptyState title="No discovery yet" detail="Each discovery is kept here, so two can be compared." ghost="list" />;
   return (
     <div className="flex flex-col gap-4">
       <table className="w-full m-text-body">

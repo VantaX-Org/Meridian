@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Score, Skeleton, Stat, emptyExportOptions, type PillTone, type Verdict } from "@/design";
-import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
+import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Score, Skeleton, Stat, Status, emptyExportOptions } from "@/design";
+import { HEALTH_LABEL, HEALTH_VERDICT, dqsTrend, latestDqs, nextRun } from "./_health";
+import { usePreferences } from "@/hooks/use-preferences";
 import { useUrlState } from "@/hooks/use-url-state";
 import { usePermissions, useSystemScope } from "@/lib/permissions";
 import { ConnectSystemDialog } from "@/components/systems/connect-system-dialog";
@@ -16,29 +17,22 @@ import { getSyncProfiles } from "@/lib/api/systems";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
 import { exportRuns } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatDate, relativeTime } from "@/lib/format";
+import { formatDate, relativeTime, systemTypeLabel } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
 
-/** A connection's health as the verdict vocabulary; an untested system has no verdict. */
-const HEALTH_VERDICT: Record<HealthStatus, Verdict | null> = {
-  healthy: "go",
-  degraded: "at-risk",
-  unreachable: "no-go",
-  auth_failed: "no-go",
-  unknown: null,
-};
 /** Worst first, so the ledger leads with what needs a hand. */
 const HEALTH_RANK: Record<HealthStatus, number> = { unreachable: 0, auth_failed: 0, degraded: 1, unknown: 2, healthy: 3 };
 const isDown = (h: HealthStatus) => h === "unreachable" || h === "auth_failed";
 
-const CONFIG_TONE: Record<SystemConfigState, PillTone> = {
-  loaded: "go",
-  with_gaps: "at-risk",
-  loading: "neutral",
-  not_loaded: "neutral",
-  failed: "no-go",
-  not_available: "neutral",
+/** A configuration load as the lifecycle vocabulary; the states outside it (not loaded, not available) render neutral by name. */
+const CONFIG_LIFECYCLE: Record<SystemConfigState, string> = {
+  loaded: "done",
+  with_gaps: "done",
+  loading: "running",
+  not_loaded: "not_loaded",
+  failed: "failed",
+  not_available: "not_available",
 };
 const CONFIG_LABEL: Record<SystemConfigState, string> = {
   loaded: "Loaded",
@@ -63,8 +57,9 @@ function configSub(c: {
     case "not_available":
       return "No configuration to read";
     case "loaded":
-    case "with_gaps":
       return c.loaded_at ? `${relativeTime(c.loaded_at)}, ${c.areas_loaded} of ${c.areas_total} areas` : "—";
+    case "with_gaps":
+      return c.loaded_at ? `With gaps: ${c.areas_loaded} of ${c.areas_total} areas, ${relativeTime(c.loaded_at)}` : "With gaps";
     default:
       return "—";
   }
@@ -72,6 +67,9 @@ function configSub(c: {
 
 export default function SystemsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { prefs } = usePreferences();
+  const tz = prefs.timezone || "UTC";
   const systemScope = useSystemScope();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, select: systemScope });
   const systems = data ?? [];
@@ -126,7 +124,7 @@ export default function SystemsPage() {
 
   const columns: ColumnDef<SAPSystemExtended>[] = [
     { accessorKey: "name", header: "System", size: 240, cell: ({ row }) => (<span className="inline-flex items-baseline gap-2">{row.original.name}<Mono>{row.original.client ? `${row.original.environment}/${row.original.client}` : row.original.environment}</Mono></span>) },
-    { accessorKey: "system_type", header: "Type", size: 110, cell: ({ row }) => `${row.original.system_type}${row.original.role === "target" ? ", target" : ""}` },
+    { accessorKey: "system_type", header: "Type", size: 150, cell: ({ row }) => `${systemTypeLabel(row.original.system_type)}${row.original.role === "target" ? ", target" : ""}` },
     {
       accessorKey: "health_status",
       header: "Health",
@@ -136,9 +134,11 @@ export default function SystemsPage() {
         const verdict = HEALTH_VERDICT[h];
         return (
           <span className="inline-flex flex-col items-start">
-            <Pill tone={verdict ?? "neutral"}>{HEALTH_LABEL[h]}</Pill>
+            {verdict ? <Status kind="verdict" value={verdict} /> : <span className="m-ink-3">{HEALTH_LABEL.unknown}</span>}
             <span className="m-text-meta m-ink-3">
-              {row.original.last_health_check ? `Checked ${relativeTime(row.original.last_health_check)}` : verdict ? "Never checked" : ""}
+              {row.original.last_health_check
+                ? `${verdict && verdict !== "go" ? `${HEALTH_LABEL[h]}, checked` : "Checked"} ${relativeTime(row.original.last_health_check)}`
+                : verdict ? `${HEALTH_LABEL[h]}, never checked` : ""}
             </span>
           </span>
         );
@@ -181,7 +181,7 @@ export default function SystemsPage() {
         if (!c) return "No configuration yet";
         return (
           <Link href={`/systems/${row.original.id}?tab=health&part=config`} className="flex flex-col items-start" onClick={(e) => e.stopPropagation()}>
-            <Pill tone={CONFIG_TONE[c.status]}>{CONFIG_LABEL[c.status]}</Pill>
+            <Status kind="lifecycle" value={CONFIG_LIFECYCLE[c.status]} />
             <span className="m-text-meta m-ink-2">{configSub(c)}</span>
           </Link>
         );
@@ -189,14 +189,14 @@ export default function SystemsPage() {
     },
     {
       id: "last_sync",
-      header: "Last extraction",
-      size: 170,
+      header: "Last extracted",
+      size: 190,
       cell: ({ row }) => {
         const n = nextRunById.get(row.original.id);
         return (
           <span className="inline-flex flex-col items-start">
             {row.original.last_sync_at ? relativeTime(row.original.last_sync_at) : "Never"}
-            <span className="m-text-meta m-ink-3">{n ? `Next ${formatDate(n, "datetime", "SAST")}` : "Manual only"}</span>
+            <span className="m-text-meta m-ink-3">{n ? `Next ${formatDate(n, "datetime")} ${tz}` : "Manual only"}</span>
           </span>
         );
       },
@@ -226,7 +226,12 @@ export default function SystemsPage() {
   const attention = systems.length - healthy;
   const filtering = Boolean(configFilter || healthFilter);
   const canConnect = usePermissions().has("systems", "create");
-  const [connecting, setConnecting] = useState(false);
+  // `/systems?connect=1` (the day-one step, the home empty state) lands with the connect dialog open.
+  const [connecting, setConnecting] = useState(searchParams.get("connect") === "1");
+  const openConnect = (open: boolean) => {
+    setConnecting(open);
+    if (!open && searchParams.get("connect")) router.replace("/systems", { scroll: false });
+  };
 
   return (
     <>
@@ -237,7 +242,7 @@ export default function SystemsPage() {
           actions={
             <>
               <ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
-              {canConnect ? <Button onClick={() => setConnecting(true)}>Connect system</Button> : null}
+              {canConnect ? <Button onClick={() => openConnect(true)}>Connect system</Button> : null}
             </>
           }
           meta={isLoading ? "\u00a0" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}`}
@@ -275,12 +280,17 @@ export default function SystemsPage() {
       emptyProps={{
         title: "No systems yet",
         detail: "Connect an SAP system or import a file.",
-        action: <Button render={<Link href="/import">Import file</Link>} />,
+        action: (
+          <div className="flex gap-2">
+            {canConnect ? <Button onClick={() => openConnect(true)}>Connect system</Button> : null}
+            <Button variant={canConnect ? "secondary" : "primary"} render={<Link href="/import">Import file</Link>} />
+          </div>
+        ),
         ghost: "table",
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}
     />
-    <ConnectSystemDialog open={connecting} onOpenChange={setConnecting} />
+    <ConnectSystemDialog open={connecting} onOpenChange={openConnect} />
     </>
   );
 }
