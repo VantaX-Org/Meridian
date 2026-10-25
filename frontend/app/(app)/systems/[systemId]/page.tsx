@@ -24,18 +24,19 @@ import { getFindingsAggregate } from "@/lib/api/findings";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
-import { deleteSystem, getSyncProfiles, testDraftConnection, updateSystem } from "@/lib/api/systems";
+import { deleteSystem, getSyncProfiles, testEditedConnection, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
 import { formatDate, formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
-import { GatedPrimary } from "@/components/gated-primary";
-import { ENVIRONMENTS, HINT, Hint, NEEDS_TOKEN_URL, RFC_TYPES, environmentLabel } from "@/components/systems/connect-system-dialog";
+import { GatedPrimary, primaryRole } from "@/components/gated-primary";
+import { ConnectionFields, ENVIRONMENTS, RFC_TYPES, TestOutcome, authFor, connectionKey, connectionOf, environmentLabel, schemaFor, testBlockedHint, type ConnectionValues, type TestOutcomeValue } from "@/components/systems/connect-system-dialog";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { useFormErrors } from "@/lib/forms";
 import { runPageHref } from "@/lib/runs";
 import { runName } from "@/lib/run-scope";
-import type { SAPSystemExtended, SystemModule, SystemType } from "@/types/api";
+import type { SAPSystemExtended, SystemModule, SystemType, TestConnectionResponse } from "@/types/api";
 import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
 import { PilotTab } from "./pilot-tab";
 import { ScopePicker } from "./scope-picker";
@@ -101,9 +102,11 @@ export default function SystemPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const qc = useQueryClient();
-  const { can } = useRole();
+  const { can, loading: permsLoading } = useRole();
   const [editOpen, setEditOpen] = useState(false);
-  const [extractOpen, setExtractOpen] = useState(searchParams.get("extract") === "1");
+  // `?extract=1` asks for the Extract drawer; it only renders for trigger_sync, else the page says why below.
+  const extractAsked = searchParams.get("extract") === "1";
+  const [extractOpen, setExtractOpen] = useState(extractAsked);
   const [confirmAnalyse, setConfirmAnalyse] = useState(false);
   const [awaitedJobId, setAwaitedJobId] = useState<string | null>(null); // job id of the download just started, while its progress is awaited
   const initialTab = searchParams.get("tab") ?? "overview";
@@ -152,10 +155,12 @@ export default function SystemPage() {
       if (r.status === "healthy") {
         toast.success(`Connection healthy, ${r.latency_ms} ms`);
       } else {
-        // The cause is the message; the fix is usually the credentials, one click away.
-        toast.error(`${HEALTH_LABEL[r.status as keyof typeof HEALTH_LABEL] ?? labelOf(r.status)}${r.message ? `: ${r.message}` : ""}`, {
-          action: { label: "Update credentials", onClick: () => setEditOpen(true) },
-        });
+        // The cause is the message; the fix is usually the credentials: one click away for whoever may edit
+        // the system, a pointer to an admin for everyone else.
+        const cause = `${HEALTH_LABEL[r.status as keyof typeof HEALTH_LABEL] ?? labelOf(r.status)}${r.message ? `: ${r.message}` : ""}`;
+        toast.error(cause, can("manage_systems")
+          ? { action: { label: "Update credentials", onClick: () => setEditOpen(true) } }
+          : { description: "Ask an admin to update the credentials." });
       }
       refresh();
     },
@@ -242,6 +247,17 @@ export default function SystemPage() {
         />
       ) : null}
 
+      {extractAsked && !permsLoading && !can("trigger_sync") ? (
+        // A link asked for the Extract drawer, which this role cannot open: say why instead of opening nothing.
+        <Notice
+          tone="info"
+          title={`You cannot extract from ${system.name}`}
+          action={<GatedPrimary kind="extract" allowed={false} variant="secondary" systemId={systemId} scopeLabel={system.name}>Extract</GatedPrimary>}
+        >
+          Extraction needs the {primaryRole("extract")} role on this system. Request access to extract from it.
+        </Notice>
+      ) : null}
+
       {versionsQ.data?.download?.status === "running" || versionsQ.data?.download?.status === "queued" ? (
         <Notice tone="info">
           Extraction in progress.
@@ -325,14 +341,17 @@ export default function SystemPage() {
         </Drawer>
       ) : null}
 
-      <Drawer open={editOpen} onOpenChange={setEditOpen} title={`Edit ${system.name}`}>
-        <EditForm
-          system={system}
-          targets={(systemsQ.data ?? []).filter((s) => s.role === "target" && s.id !== system.id)}
-          onDone={() => { setEditOpen(false); refresh(); }}
-          onDeleted={() => { setEditOpen(false); refresh(); router.push("/systems"); }}
-        />
-      </Drawer>
+      {/* Edit (and Remove system inside it) is for manage_systems only, like the Edit button. */}
+      {can("manage_systems") ? (
+        <Drawer open={editOpen} onOpenChange={setEditOpen} title={`Edit ${system.name}`}>
+          <EditForm
+            system={system}
+            targets={(systemsQ.data ?? []).filter((s) => s.role === "target" && s.id !== system.id)}
+            onDone={() => { setEditOpen(false); refresh(); }}
+            onDeleted={() => { setEditOpen(false); refresh(); router.push("/systems"); }}
+          />
+        </Drawer>
+      ) : null}
     </div>
   );
 }
@@ -776,7 +795,12 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
 
 /* ── Edit ──────────────────────────────────────────────────────────────── */
 
-const SECRET = { password: "", client_secret: "" };
+/** The edit form's values from the stored system. Stored secrets are never shown, so they start empty ("Unchanged"). */
+const editValues = (s: SAPSystemExtended): ConnectionValues => ({
+  name: s.name, system_type: s.system_type, environment: s.environment, auth_type: authFor(s.system_type, s.auth_type),
+  host: s.host ?? "", client: s.client ?? "", sysnr: s.sysnr ?? "", username: s.username ?? "", password: "",
+  base_url: s.base_url ?? "", token_url: s.token_url ?? "", company_id: s.company_id ?? "", client_id: "", client_secret: "", api_key: "",
+});
 
 function EditForm({ system, targets, onDone, onDeleted }: {
   system: SAPSystemExtended;
@@ -784,51 +808,53 @@ function EditForm({ system, targets, onDone, onDeleted }: {
   onDone: () => void;
   onDeleted: () => void;
 }) {
-  const [name, setName] = useState(system.name);
-  const [environment, setEnvironment] = useState<string>(system.environment);
+  const [v, setV] = useState<ConnectionValues>(() => editValues(system));
   const [description, setDescription] = useState(system.description ?? "");
   const [active, setActive] = useState(system.is_active);
   const [role, setRole] = useState<"source" | "target">(system.role);
   const [target, setTarget] = useState<string>(system.target_system_id ?? "none");
   const [confirming, setConfirming] = useState(false);
-  // Connection and credentials: the stored secrets are never shown; an empty secret keeps the stored one.
-  const rfc = RFC_TYPES.includes(system.system_type);
-  const [conn, setConn] = useState({
-    host: system.host ?? "", client: system.client ?? "", sysnr: system.sysnr ?? "", username: system.username ?? "",
-    base_url: system.base_url ?? "", token_url: system.token_url ?? "", company_id: system.company_id ?? "", client_id: "", ...SECRET,
+  // The connect dialog's rules, with every secret optional: an empty secret keeps the stored one.
+  const type = system.system_type;
+  const rfc = RFC_TYPES.includes(type);
+  const auth = authFor(type, v.auth_type);
+  const schema = useMemo(() => schemaFor(type, auth, { secretsOptional: true }), [type, auth]);
+  const form = useFormErrors(schema, v);
+  const update = (patch: Partial<ConnectionValues>) => setV((cur) => ({ ...cur, ...patch }));
+  const bind = (key: keyof ConnectionValues) => ({
+    value: v[key], onChange: (e: { target: { value: string } }) => update({ [key]: e.target.value }), onBlur: () => form.blur(key),
   });
-  const bind = (key: keyof typeof conn) => ({ value: conn[key], onChange: (e: { target: { value: string } }) => setConn((c) => ({ ...c, [key]: e.target.value })) });
-  const credentials = () => Object.fromEntries(
-    (["password", "client_id", "client_secret"] as const).filter((k) => conn[k]).map((k) => [k, conn[k]]),
-  );
-  const connection = () => rfc
-    ? { host: conn.host.trim(), client: conn.client.trim(), sysnr: conn.sysnr.trim(), username: conn.username.trim() }
-    : { base_url: conn.base_url.trim(), token_url: conn.token_url.trim(), ...(conn.company_id.trim() ? { company_id: conn.company_id.trim() } : {}), username: conn.username.trim() };
-  const needsTokenUrl = NEEDS_TOKEN_URL.includes(system.system_type);
-  const tokenUrlMissing = !rfc && needsTokenUrl && !conn.token_url.trim();
+  /** The connection as edited: the user is always sent (empty clears it), and so is a cloud token URL ("" clears it). */
+  const draft = () => {
+    const { connection, credentials } = connectionOf(v);
+    return { connection: { ...connection, username: v.username.trim(), ...(rfc ? {} : { token_url: v.token_url.trim() }) }, credentials };
+  };
   const profilesQ = useQuery({ queryKey: queryKeys.syncProfiles(system.id), queryFn: () => getSyncProfiles(system.id) });
   const schedules = profilesQ.data?.length;
 
-  // Test before save: with a retyped secret the draft is tried as a whole; without, the stored credentials are.
-  const test = useMutation({
+  // Test before save: the edited fields are tried as they stand, the stored secret standing in for one left empty.
+  // The result is kept with the values it tried; once a connection field changes it is marked out of date.
+  const [outcome, setOutcome] = useState<{ value: TestOutcomeValue; key: string } | null>(null);
+  const currentKey = connectionKey(v);
+  const blocked = testBlockedHint(form.errors, type);
+  // The variable is the connection key the test ran with, so its outcome can tell when it goes out of date.
+  const test = useMutation<TestConnectionResponse, unknown, string>({
     mutationFn: () => {
-      const creds = credentials();
-      return Object.keys(creds).length
-        ? testDraftConnection({ name: name.trim(), system_type: system.system_type, environment, auth_type: system.auth_type ?? undefined, ...connection(), credentials: creds })
-        : testConnection(system.id).then((r) => ({ connected: r.status === "healthy", message: r.message }));
+      const { connection, credentials } = draft();
+      return testEditedConnection(system.id, { name: v.name.trim(), system_type: type, environment: v.environment, ...connection, credentials });
     },
-    onSuccess: (r) => (r.connected ? toast.success(`Connected. ${r.message ?? ""}`.trim()) : toast.error(`Not connected. ${r.message ?? ""}`.trim())),
-    onError: (e) => toast.error(`Not connected. ${apiErrorMessage(e)}`),
+    onMutate: () => setOutcome(null),
+    onSuccess: (r, key) => setOutcome({ value: r, key }),
+    onError: (e, key) => setOutcome({ value: { failed: apiErrorMessage(e) }, key }),
   });
-  const [tried, setTried] = useState(false);
   const save = useMutation({
     mutationFn: () => {
-      const creds = credentials();
+      const { connection, credentials } = draft();
       return updateSystem(system.id, {
-        name: name.trim(), environment, description, is_active: active, role,
+        name: v.name.trim(), environment: v.environment, description, is_active: active, role,
         ...(role === "source" ? { target_system_id: target === "none" ? "" : target } : {}),
-        ...connection(),
-        ...(Object.keys(creds).length ? { credentials: creds } : {}),
+        ...connection,
+        ...(Object.keys(credentials).length ? { credentials } : {}),
       });
     },
     onSuccess: () => { toast.success("System saved"); onDone(); },
@@ -841,26 +867,24 @@ function EditForm({ system, targets, onDone, onDeleted }: {
   });
   return (
     <form
+      noValidate
       className="flex flex-col gap-4"
-      onSubmit={(e) => { e.preventDefault(); setTried(true); if (name.trim() && !tokenUrlMissing) save.mutate(); }}
+      onSubmit={(e) => { e.preventDefault(); form.touchAll(); if (form.valid) save.mutate(); }}
     >
-      <Field label="Name" error={tried && !name.trim() ? "Give the system a name" : undefined}>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+      <Field label="Name" error={form.error("name")}>
+        <Input {...bind("name")} />
       </Field>
       <Field label="Environment">
         <Select
-          value={environment}
-          onValueChange={setEnvironment}
+          value={v.environment}
+          onValueChange={(env) => update({ environment: env })}
           options={ENVIRONMENTS}
         />
       </Field>
       <Field label="Role">
         <Select
           value={role}
-          onValueChange={(v) => setRole(v === "target" ? "target" : "source")}
+          onValueChange={(r) => setRole(r === "target" ? "target" : "source")}
           options={[{ value: "source", label: "Source" }, { value: "target", label: "Target" }]}
         />
       </Field>
@@ -887,40 +911,15 @@ function EditForm({ system, targets, onDone, onDeleted }: {
       <fieldset className="flex flex-col gap-3 border-t pt-4 [border-color:var(--m-line)]">
         <legend className="m-text-body font-semibold m-ink">Connection and credentials</legend>
         <p className="m-text-meta m-ink-3">Stored secrets are never shown. Leave a secret empty to keep the stored one.</p>
-        {rfc ? (
-          <>
-            <Field label="Host"><Input {...bind("host")} /></Field>
-            <Hint text={HINT.host} />
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-3">
-                <Field label="Client"><Input {...bind("client")} inputMode="numeric" maxLength={3} /></Field>
-                <Hint text={HINT.client} />
-              </div>
-              <div className="flex flex-col gap-3">
-                <Field label="Instance number"><Input {...bind("sysnr")} inputMode="numeric" maxLength={2} /></Field>
-                <Hint text={HINT.sysnr} />
-              </div>
-            </div>
-            <Field label="User (optional)"><Input {...bind("username")} autoComplete="off" /></Field>
-            <Hint text={HINT.username} />
-            <Field label="Password"><Input {...bind("password")} type="password" autoComplete="new-password" placeholder="Unchanged" /></Field>
-          </>
-        ) : (
-          <>
-            <Field label="Base URL"><Input {...bind("base_url")} type="url" /></Field>
-            <Hint text={HINT.base_url} />
-            <Field label={needsTokenUrl ? "Token URL" : "Token URL (optional)"} error={tried && tokenUrlMissing ? "Enter the token URL" : undefined}>
-              <Input {...bind("token_url")} type="url" placeholder="https://" />
-            </Field>
-            <Hint text={HINT.token_url} />
-            {system.system_type === "successfactors" ? <Field label="Company ID"><Input {...bind("company_id")} /></Field> : null}
-            <Field label="Client ID"><Input {...bind("client_id")} autoComplete="off" placeholder="Unchanged" /></Field>
-            <Hint text={HINT.client_id} />
-            <Field label="Client secret"><Input {...bind("client_secret")} type="password" autoComplete="new-password" placeholder="Unchanged" /></Field>
-          </>
-        )}
-        <div>
-          <Button type="button" variant="secondary" pending={test.isPending} onClick={() => test.mutate()}>Test connection</Button>
+        <ConnectionFields v={v} bind={bind} error={form.error} onAuthChange={(a) => update({ auth_type: a })} secretPlaceholder="Unchanged" />
+        {outcome ? <TestOutcome outcome={outcome.value} stale={outcome.key !== currentKey} /> : null}
+        <div className="flex flex-col gap-1">
+          <div>
+            <Button type="button" variant="secondary" pending={test.isPending} disabled={blocked !== null} onClick={() => test.mutate(currentKey)}>
+              Test connection
+            </Button>
+          </div>
+          {blocked ? <p className="m-text-meta m-ink-3">{blocked}</p> : null}
         </div>
       </fieldset>
 

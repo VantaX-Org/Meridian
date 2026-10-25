@@ -15,6 +15,8 @@ import { getVersion } from "@/lib/api/versions";
 import { apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { GatedPrimary } from "@/components/gated-primary";
+import { useRole } from "@/hooks/use-role";
 
 // A run repeats a step per object, so a step is named by its number and when it started.
 const stepId = (st: RunStep, i: number) => `${st.step_number}-${st.started_at}-${i}`;
@@ -46,6 +48,7 @@ const columns: ColumnDef<RunStep>[] = [
 
 export default function ExtractionPage() {
   const { systemId, runId } = useParams<{ systemId: string; runId: string }>();
+  const { can } = useRole();
 
   const steps = useQuery({
     queryKey: [...queryKeys.run(runId), "steps"],
@@ -105,7 +108,10 @@ export default function ExtractionPage() {
           action={
             <>
               <Button variant="secondary" render={<Link href={`/systems/${systemId}?tab=health`}>Check the connection</Link>} />
-              <Button variant="secondary" render={<Link href={`/systems/${systemId}?extract=1`}>Extract again</Link>} />
+              {/* Only trigger_sync opens the Extract drawer; without it the control stays, disabled, saying why. */}
+              <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} variant="secondary" render={<Link href={`/systems/${systemId}?extract=1`} />}>
+                Extract again
+              </GatedPrimary>
             </>
           }
         >

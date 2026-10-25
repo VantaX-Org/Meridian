@@ -551,6 +551,30 @@ def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[s
             connector.close()
 
 
+_SECRET_KEYS = ("password", "client_id", "client_secret", "api_key")
+
+
+def _draft_params(body: RegisterSystemRequest, system_type: str, secrets: dict[str, str]) -> dict:
+    """Connector params for a draft connection: the typed fields plus the given secrets."""
+    import os
+
+    return {
+        "host": body.host,
+        "client": body.client,
+        "sysnr": body.sysnr,
+        "user": body.username or os.getenv("SAP_RFC_USER", "RFC_USER"),
+        "password": secrets.get("password", ""),
+        "base_url": body.base_url,
+        "company_id": body.company_id,
+        "auth_type": body.auth_type,
+        "username": (body.username or "") if system_type in CLOUD_SYSTEM_TYPES else "",
+        "client_id": secrets.get("client_id", ""),
+        "client_secret": secrets.get("client_secret", ""),
+        "api_key": secrets.get("api_key", ""),
+        "token_url": body.token_url or "",
+    }
+
+
 @router.post("/systems/test-connection", response_model=TestConnectionResponse)
 async def test_draft_connection(
     body: RegisterSystemRequest,
@@ -564,30 +588,61 @@ async def test_draft_connection(
     if body.system_type not in RFC_SYSTEM_TYPES and body.system_type not in CLOUD_SYSTEM_TYPES:
         raise HTTPException(status_code=400, detail=f"Unsupported system_type: {body.system_type}")
 
-    import os
+    secrets = {k: body.credentials.get(k, "") for k in _SECRET_KEYS}
+    params = _draft_params(body, body.system_type, secrets)
+    return _run_connection_test(body.system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
 
-    password = body.credentials.get("password", "")
-    client_id = body.credentials.get("client_id", "")
-    client_secret = body.credentials.get("client_secret", "")
-    api_key = body.credentials.get("api_key", "")
 
-    rfc_user = body.username or os.getenv("SAP_RFC_USER", "RFC_USER")
-    params = {
-        "host": body.host,
-        "client": body.client,
-        "sysnr": body.sysnr,
-        "user": rfc_user,
-        "password": password,
-        "base_url": body.base_url,
-        "company_id": body.company_id,
-        "auth_type": body.auth_type,
-        "username": (body.username or "") if body.system_type in CLOUD_SYSTEM_TYPES else "",
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "api_key": api_key,
-        "token_url": body.token_url or "",
-    }
-    return _run_connection_test(body.system_type, params, [password, client_secret, api_key])
+@router.post("/systems/{system_id}/test-connection", response_model=TestConnectionResponse)
+async def test_edited_connection(
+    system_id: str,
+    body: RegisterSystemRequest,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
+) -> TestConnectionResponse:
+    """Test an existing system's edited, unsaved connection fields.
+
+    The edit form sends the fields as they stand; a secret left empty falls back to the one
+    stored for this system in this tenant, so changing the host or base URL without retyping
+    the password still tries the new values. Nothing is saved and the system's health is not
+    touched: the result describes the draft, not the stored connection.
+    """
+    if not _as_uuid(system_id):
+        raise HTTPException(status_code=404, detail="System not found")
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    row = (await db.execute(
+        text("""
+            SELECT s.system_type, s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
+                   s.api_key_encrypted, sc.encrypted_password
+            FROM sap_systems s
+            LEFT JOIN system_credentials sc ON sc.system_id = s.id
+            WHERE s.id = :sid AND s.tenant_id = :tid
+        """),
+        {"sid": system_id, "tid": str(tenant.id)},
+    )).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="System not found")
+    system_type, stored_auth_type, cid_enc, csecret_enc, api_key_enc, pw_enc = row
+
+    from api.services.credential_store import decrypt_password
+
+    stored = {"password": pw_enc, "client_id": cid_enc, "client_secret": csecret_enc, "api_key": api_key_enc}
+    secrets: dict[str, str] = {}
+    for key in _SECRET_KEYS:
+        typed = body.credentials.get(key, "")
+        if typed:
+            secrets[key] = typed
+            continue
+        try:
+            secrets[key] = decrypt_password(str(tenant.id), stored[key]) if stored[key] else ""
+        except Exception:
+            return TestConnectionResponse(connected=False, message="Failed to decrypt the stored credentials")
+
+    # The type is the stored one (an edit cannot change it); an absent auth type keeps the stored one.
+    draft = body.model_copy(update={"auth_type": body.auth_type or stored_auth_type})
+    params = _draft_params(draft, system_type, secrets)
+    return _run_connection_test(system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
 
 
 @router.post("/systems/{system_id}/test", response_model=TestConnectionResponse)

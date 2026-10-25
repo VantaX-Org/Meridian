@@ -94,6 +94,21 @@ export async function testDraftConnection(body: {
   return data;
 }
 
+/**
+ * Tests an existing system's edited, unsaved connection fields. A secret left out of
+ * `credentials` falls back to the one stored for this system; nothing is saved.
+ */
+export async function testEditedConnection(
+  systemId: string,
+  body: Parameters<typeof testDraftConnection>[0]
+): Promise<TestConnectionResponse> {
+  const { data } = await apiClient.post<TestConnectionResponse>(
+    `/api/v1/systems/${systemId}/test-connection`,
+    body
+  );
+  return data;
+}
+
 export async function triggerSync(
   systemId: string
 ): Promise<{ status: string; profile_count: number; job_ids: string[] }> {
