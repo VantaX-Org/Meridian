@@ -29,7 +29,7 @@ import { getCleaningItem, type CleaningQueueItem } from "@/lib/api/cleaning";
 import { getContracts } from "@/lib/api/contracts";
 import { getGlossaryTerm } from "@/lib/api/glossary";
 import { getMasterRecord } from "@/lib/api/master-records";
-import { getReviewPair } from "@/lib/api/match-review";
+import { getReviewPair, type ReviewPair } from "@/lib/api/match-review";
 import { getException } from "@/lib/api/exceptions";
 import { getRules } from "@/lib/api/rules";
 import { getCostModel } from "@/lib/api/settings";
@@ -211,7 +211,9 @@ export default function InboxPage() {
   const [rootCause, setRootCause] = useState("other");
   const [escalateIds, setEscalateIds] = useState<string[] | null>(null);
   const [approveIds, setApproveIds] = useState<string[] | null>(null);
-  /** The task `r` armed; Enter approves it. There is no un-approve endpoint, so no undo toast. */
+  /** The one task the detail pane's Approve asks about. There is no un-approve endpoint, so it confirms first. */
+  const [approveOne, setApproveOne] = useState<StewardshipQueueItem | null>(null);
+  /** The task `r` armed; Enter approves it (the keyboard's confirm step). There is no un-approve endpoint, so no undo toast. */
   const [armed, setArmed] = useState<string | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [ruleDraft, setRuleDraft] = useState({ name: "", description: "", rule_type: "field_condition", object_type: "", condition: "", severity: "medium" as Severity });
@@ -378,11 +380,12 @@ export default function InboxPage() {
       ids.length === 1 ? resolveItem(ids[0], "approve").then(() => ({ approved: 1, asked: 1 })) : bulkApprove(ids, BULK_CONFIDENCE).then((d) => ({ approved: d.approved, asked: ids.length })),
     onSuccess: ({ approved, asked }) => {
       setApproveIds(null);
+      setApproveOne(null);
       toast(`Approved ${plural(approved, "task")}`);
       if (asked > approved) toast(`${asked - approved} below ${HIGH_CONFIDENCE_LABEL} or already closed, left for manual review`);
       refresh();
     },
-    onError: (e, _ids, ctx) => { setApproveIds(null); rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`); },
+    onError: (e, _ids, ctx) => { setApproveIds(null); setApproveOne(null); rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`); },
   });
   // Rejecting overrides the model's recommendation: the correction reason is recorded on the task
   // and fed to the AI-feedback loop that proposes new match rules (/ai/rules).
@@ -471,16 +474,17 @@ export default function InboxPage() {
         if (ev.key === "Enter" && t && t.id === armed && canApprove && !busy) { ev.preventDefault(); approve.mutate([t.id]); return; }
       }
       switch (ev.key) {
-        case "Escape": setRejectIds(null); setEscalateIds(null); setApproveIds(null); setRulesOpen(false); return;
+        case "Escape": setRejectIds(null); setEscalateIds(null); setApproveIds(null); setApproveOne(null); setRulesOpen(false); return;
         case "a": if (t && canApprove && !busy && user) { ev.preventDefault(); assign.mutate({ ids: [t.id], userId: user.id }); } else if (e && canSeeTeam && !busy && user) { ev.preventDefault(); excAssign.mutate({ ids: [e.id], userId: user.id }); } return;
-        case "r": if (t && canApprove && !busy) { ev.preventDefault(); setArmed(t.id); toast("Press Enter to approve"); } else if (e && canApprove && !busy) { ev.preventDefault(); setRejectIds([e.id]); } return;
+        // The keyboard's confirm step: `r` says what Enter will approve, in the same words as the Approve dialog.
+        case "r": if (t && canApprove && !busy) { ev.preventDefault(); setArmed(t.id); toast(`Press Enter to ${approveCopy(t, qc.getQueryData<CleaningQueueItem>(proposalKey(t.source_id)) ?? null, qc.getQueryData<ReviewPair>(pairKey(t.source_id)) ?? null).action}`); } else if (e && canApprove && !busy) { ev.preventDefault(); setRejectIds([e.id]); } return;
         case "x": if (t && canApprove) { ev.preventDefault(); setRejectIds([t.id]); } return;
         default: inboxKeyHandler(ev, { focusedIndex, rowCount, setFocus: setFocusedIndex, onOpen: openRecord });
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [keysLive, armed, focusedIndex, rowCount, openRecord, isExceptions, items, excItems, canApprove, canSeeTeam, busy, user, assign, approve, excAssign]);
+  }, [keysLive, armed, focusedIndex, rowCount, openRecord, isExceptions, items, excItems, canApprove, canSeeTeam, busy, user, assign, approve, excAssign, qc]);
 
   const createRule = useMutation({
     mutationFn: () => createExceptionRule({ ...ruleDraft, auto_assign_to: undefined }),
@@ -711,7 +715,7 @@ export default function InboxPage() {
                 canAssign={canApprove && !!user && selectedTask.assigned_to !== user.id}
                 canRelease={canApprove && !!selectedTask.assigned_to}
                 people={canReassign ? people : []}
-                onApprove={() => approve.mutate([selectedTask.id])}
+                onApprove={() => setApproveOne(selectedTask)}
                 onReject={() => setRejectIds([selectedTask.id])}
                 onEscalate={() => escalate.mutate([selectedTask.id])}
                 onAssign={() => user && assign.mutate({ ids: [selectedTask.id], userId: user.id })}
@@ -795,6 +799,14 @@ export default function InboxPage() {
             pending={approve.isPending}
             onConfirm={() => approveIds && approve.mutate(approveIds)}
           />
+          {approveOne ? (
+            <ApproveTaskDialog
+              t={approveOne}
+              onOpenChange={(open) => !open && setApproveOne(null)}
+              pending={approve.isPending}
+              onConfirm={() => approve.mutate([approveOne.id])}
+            />
+          ) : null}
           <Drawer open={rulesOpen} onOpenChange={setRulesOpen} title="Exception rules">
             <div className="flex flex-col gap-4">
               <p className="m-text-body m-ink-2">A rule raises an exception when a new finding matches its condition. Turn a rule off to stop new exceptions from it.</p>
@@ -882,12 +894,77 @@ async function resolveTaskLink(qc: QueryClient, t: StewardshipQueueItem) {
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
+const pairKey = (id: string) => ["mdm", "match-review", "pair", id] as const;
+
+/** The match pair a merge decision approves (the same query TaskSource reads, so it comes from the cache). */
+function usePair(t: StewardshipQueueItem) {
+  return useQuery({ queryKey: pairKey(t.source_id), queryFn: () => getReviewPair(t.source_id), enabled: t.item_type === "merge_decision", retry: false, meta: { ignoreError: true } });
+}
+
+/**
+ * What approving one task does, in the words of its type: the write-back names the field, value and record,
+ * the merge names both records. `action` completes "Press Enter to …" and the dialog's body; there is no undo.
+ */
+function approveCopy(t: StewardshipQueueItem, proposal: CleaningQueueItem | null, pair: ReviewPair | null): {
+  title: string; confirmLabel: string; action: string; body: React.ReactNode;
+} {
+  if (t.item_type === "writeback_approval") {
+    const p = proposal ? proposalOf(proposal) : null;
+    if (proposal && p) {
+      const value = p.value || "(blank)";
+      const before = p.before ? p.before : "blank";
+      const field = p.field ? ` into ${p.field}` : "";
+      return {
+        title: "Approve this write-back?",
+        confirmLabel: "Approve write-back",
+        action: `write ${value}${field} on ${proposal.record_key} in SAP`,
+        body: <>Writes <Mono>{value}</Mono>{p.field ? <> into <Mono>{p.field}</Mono></> : null} on <Mono>{proposal.record_key}</Mono> in SAP, replacing {p.before ? <Mono>{before}</Mono> : before}. An approved write-back cannot be undone here.</>,
+      };
+    }
+    return { title: "Approve this write-back?", confirmLabel: "Approve write-back", action: "approve the write-back to SAP", body: "The proposed value is written to SAP. An approved write-back cannot be undone here." };
+  }
+  if (t.item_type === "merge_decision") {
+    if (pair) {
+      return {
+        title: "Approve this merge?",
+        confirmLabel: "Approve merge",
+        action: `merge ${pair.a} and ${pair.b}`,
+        body: <>Merges <Mono>{pair.a}</Mono> and <Mono>{pair.b}</Mono> (match score {pct(pair.total)}) into one golden record. An approved merge cannot be undone here.</>,
+      };
+    }
+    return { title: "Approve this merge?", confirmLabel: "Approve merge", action: "approve the merge", body: "The two records are merged into one golden record. An approved merge cannot be undone here." };
+  }
+  const what = labelOf(t.item_type).toLowerCase();
+  return { title: `Approve this ${what}?`, confirmLabel: "Approve", action: `approve this ${what}`, body: "The task closes as approved. It cannot be reopened here." };
+}
+
+/** The detail pane's single Approve: one ConfirmDialog worded by the task's type, as bulk approve has. */
+function ApproveTaskDialog({ t, pending, onOpenChange, onConfirm }: {
+  t: StewardshipQueueItem; pending: boolean; onOpenChange: (open: boolean) => void; onConfirm: () => void;
+}) {
+  const proposal = useProposal(t);
+  const pair = usePair(t);
+  const copy = approveCopy(t, proposal.data ?? null, pair.data ?? null);
+  return (
+    <ConfirmDialog
+      open
+      onOpenChange={onOpenChange}
+      title={copy.title}
+      body={copy.body}
+      confirmLabel={copy.confirmLabel}
+      cancelLabel="Keep open"
+      pending={pending}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
 /** What the task decides on, from the source it points at: the proposal, the pair, the golden record, the exception, the contract or the term. */
 function TaskSource({ t }: { t: StewardshipQueueItem }) {
   const proposal = useProposal(t);
   const opts = { retry: false, meta: { ignoreError: true } } as const;
   const exception = useQuery({ queryKey: ["exceptions", "detail", t.source_id], queryFn: () => getException(t.source_id), enabled: t.item_type === "exception", ...opts });
-  const pair = useQuery({ queryKey: ["mdm", "match-review", "pair", t.source_id], queryFn: () => getReviewPair(t.source_id), enabled: t.item_type === "merge_decision", ...opts });
+  const pair = usePair(t);
   const golden = useQuery({ queryKey: ["master-records", t.source_id], queryFn: () => getMasterRecord(t.source_id), enabled: t.item_type === "golden_record_review", ...opts });
   const term = useQuery({ queryKey: ["glossary", "term", t.source_id], queryFn: () => getGlossaryTerm(t.source_id), enabled: t.item_type === "glossary_review", ...opts });
   const contracts = useQuery({ queryKey: ["contracts", "active"], queryFn: () => getContracts("active"), enabled: t.item_type === "contract_breach", staleTime: 60_000, ...opts });
@@ -901,10 +978,21 @@ function TaskSource({ t }: { t: StewardshipQueueItem }) {
   if (t.item_type === "writeback_approval") {
     if (!proposal.data) return null;
     const p = proposalOf(proposal.data);
+    // A rules row is named "<check id>: <message>"; ruleId is its UUID, which no steward reads.
     const name = ruleId ? rules.data?.rules.find((r) => r.id === ruleId)?.name : undefined;
+    const split = name ? name.indexOf(":") : -1;
+    const checkId = name ? (split >= 0 ? name.slice(0, split).trim() : name) : null;
+    const message = name && split >= 0 ? name.slice(split + 1).trim() : null;
     return facts(<>
       <Fact label="Record"><Mono>{proposal.data.record_key}</Mono></Fact>
-      {ruleId ? <Fact label="Rule"><span className="inline-flex items-baseline gap-2"><Mono>{ruleId}</Mono>{name ? <span>{name}</span> : null}</span></Fact> : null}
+      {ruleId ? (
+        <Fact label="Rule">
+          <span className="inline-flex flex-wrap items-baseline gap-2">
+            <Link href={`/rules/${encodeURIComponent(ruleId)}`} className="m-ink-accent underline underline-offset-2">{checkId ? <Mono>{checkId}</Mono> : "Open the rule"}</Link>
+            {message ? <span>{message}</span> : null}
+          </span>
+        </Fact>
+      ) : null}
       {p?.field ? <Fact label="Field"><Mono>{p.field}</Mono></Fact> : null}
       <Fact label="Current value">{p?.before ? <Mono>{p.before}</Mono> : "blank"}</Fact>
       <Fact label="Proposed value"><ProposalCell proposal={p} /></Fact>

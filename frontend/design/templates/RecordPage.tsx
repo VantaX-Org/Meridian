@@ -10,9 +10,17 @@ import { formatModuleName } from "../../lib/format";
 import { PageFrame } from "./PageFrame";
 
 export interface RecordStatus {
-  label: "passing" | "failing" | "in batch" | "fixed";
+  /** `checking` while the verdict's findings load; `unknown` when they could not be read (never shown as passing). */
+  label: "passing" | "failing" | "in batch" | "fixed" | "checking" | "unknown";
   tone: PillTone;
 }
+
+/** Statuses outside the go / no-go verdict, drawn as a Pill with their own words. */
+const PILL_LABEL: Partial<Record<RecordStatus["label"], string>> = {
+  "in batch": "in batch",
+  checking: "Checking…",
+  unknown: "Couldn't check",
+};
 
 export function RecordPage({
   recordKey, object, status, children, stats, actions, meta, loading = false, mono = true,
@@ -50,7 +58,7 @@ export function RecordPage({
         </span>
         <span style={{ color: "var(--m-ink-3)" }}>{formatModuleName(object)}</span>
         <DomainChip moduleId={object} />
-        {status ? (status.label === "in batch" ? <Pill tone={status.tone}>{status.label}</Pill> : <Status kind="verdict" value={status.label === "failing" ? "no-go" : "go"} />) : null}
+        {status ? (PILL_LABEL[status.label] ? <Pill tone={status.tone}>{PILL_LABEL[status.label]}</Pill> : <Status kind="verdict" value={status.label === "failing" ? "no-go" : "go"} />) : null}
         {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
       </header>
       {meta != null && <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{meta}</div>}
