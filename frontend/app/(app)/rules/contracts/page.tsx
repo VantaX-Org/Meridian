@@ -6,6 +6,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button, Card, DataTable, Drawer, EmptyState, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Skeleton, Stat, Textarea, type PillTone } from "@/design";
+import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
+import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -86,7 +88,7 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
 
   return (
     <ExplorerPage
-      header={<PageHeader title="Data contracts" meta={q.isLoading ? "\u00a0" : `${all.length.toLocaleString()} contracts`} actions={canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined} />}
+      header={<PageHeader title="Data contracts" meta={q.isLoading ? "\u00a0" : `${all.length.toLocaleString()} contracts`} actions={<><InsightActions />{canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : null}</>} tabs={<InsightTabs />} />}
       filterBar={
         <div className="flex items-end gap-3">
           <div className="flex items-end gap-3">

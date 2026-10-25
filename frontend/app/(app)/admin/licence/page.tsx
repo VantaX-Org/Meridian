@@ -19,6 +19,9 @@ export default function AdminLicencePage() {
   const seats = l?.features?.max_users ?? 0;
   const features = Object.entries(l?.features ?? {}).filter(([, v]) => typeof v === "boolean") as [string, boolean][];
   const days = l?.days_remaining;
+  // Seat use against the grant: a warning at 75% and 90%, danger when every seat is taken.
+  const used = l?.seats_used;
+  const usePct = seats && used != null ? used / seats : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,6 +48,12 @@ export default function AdminLicencePage() {
         </Notice>
       ) : null}
 
+      {usePct != null && usePct >= 0.75 ? (
+        <Notice tone={usePct >= 1 ? "danger" : "warning"} title={`${used!.toLocaleString()} of ${seats.toLocaleString()} seats in use`}>
+          {usePct >= 1 ? "Every seat is taken: a new invite fails until a user is removed or the licence grants more seats" : "Add seats in Meridian HQ before the team grows further, or remove users who no longer need access"}
+        </Notice>
+      ) : null}
+
       {q.isLoading ? <Skeleton height={120} /> : null}
       {q.isError ? (
         <ErrorState message={apiErrorMessage(q.error) || "The licence could not be read"} onRetry={() => q.refetch()} />
@@ -57,7 +66,7 @@ export default function AdminLicencePage() {
               <dt className="m-ink-3">Tenant</dt><dd>{l.company_name ?? "Not set"}</dd>
               <dt className="m-ink-3">Tier</dt><dd>{l.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
               <dt className="m-ink-3">Status</dt><dd>{labelOf(l.status)}</dd>
-              <dt className="m-ink-3">Seats</dt><dd>{seats ? String(seats) : "Unlimited"}</dd>
+              <dt className="m-ink-3">Seats</dt><dd>{seats ? (used != null ? `${used.toLocaleString()} of ${seats.toLocaleString()} in use` : seats.toLocaleString()) : "Unlimited"}</dd>
               <dt className="m-ink-3">Days remaining</dt><dd className={days !== undefined && days !== null && days < 30 ? "[color:var(--m-medium)]" : undefined}>{days ?? "—"}</dd>
               <dt className="m-ink-3">Renews</dt><dd>{l.expiry_date ? formatDate(l.expiry_date) : "Not set"}</dd>
               <dt className="m-ink-3">Last validated</dt><dd>{l.last_validated ? formatDate(l.last_validated, "datetime") : "Not validated yet"}</dd>

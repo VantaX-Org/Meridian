@@ -55,7 +55,7 @@ export interface FindingsAggregate {
   cost_at_risk?: number;
   by_dimension: { dimension: string; findings: number; avg_pass_rate: number | null }[];
   avg_pass_rate: number | null;
-  dqs: { composite: number | null; raw?: number | null; dimension_scores: Record<string, number>; modules: Record<string, number>; capped?: boolean;
+  dqs: { composite: number | null; raw?: number | null; dimension_scores: Record<string, number>; modules: Record<string, number>; capped?: boolean; cap_reason?: string | null;
     tier?: "pass" | "warn" | "fail" | null };
   previous_dqs: number | null;
 }

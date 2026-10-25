@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, Status } from "@/design";
+import { PageHeader, Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, Status, useBreadcrumbTitle } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { ACTIVE_RUN, getCatalogue, getRun, startRuns } from "@/lib/api/process-discovery";
@@ -60,6 +60,8 @@ export default function ProcessRunPage() {
     },
   });
 
+  const runName = run.data ? catalogue.data?.find((c) => c.l1 === run.data!.l1)?.name ?? run.data.l1 : null;
+  useBreadcrumbTitle(runName ? { label: `${runName} discovery run`, parent: { label: "Discovery runs", href: "/process/runs" } } : null);
   if (run.isError) return <ProcessFrame><ErrorState {...apiErrorState(run.error)} onRetry={() => run.refetch()} /></ProcessFrame>;
   if (!run.data) return <ProcessFrame><PageHeader title="Discovery run" /><BodySkeleton rows={4} /></ProcessFrame>;
   const r = run.data;

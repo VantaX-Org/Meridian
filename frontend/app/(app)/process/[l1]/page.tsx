@@ -10,8 +10,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Button, EmptyState, Input, PageHeader, ErrorState, Field, InsightHeader, Mono, Notice, Pill, Select, Tabs, type TabItem,
-} from "@/design";
+  Button, EmptyState, Input, PageHeader, ErrorState, Field, InsightHeader, Mono, Notice, Pill, Select, Tabs, type TabItem, useBreadcrumbTitle } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue, getRun, getRunModel, type DiscoveryRunDetail, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { getReference } from "@/lib/api/process-designer";
@@ -62,6 +61,8 @@ export default function ProcessL1Page() {
     queryKey: queryKeys.processRunView(runId, "model"), queryFn: () => getRunModel(runId), enabled: !!runId && discovered,
   });
   const reference = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference });
+  // The process is the page's h1, under As-is processes.
+  useBreadcrumbTitle(row ? { label: row.name, parent: { label: "As-is processes", href: "/process" } } : null);
 
   const wrap = (n: ReactNode) => <ProcessFrame>{n}</ProcessFrame>;
   if (systems.isError) return wrap(<ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} />);

@@ -273,7 +273,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     renderWithQuery(<LeadHomePage />);
 
     const stat = (await screen.findByText("Blocking findings")).closest("a");
-    expect(stat).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical");
+    expect(stat).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(stat).toHaveTextContent("1");
   });
 

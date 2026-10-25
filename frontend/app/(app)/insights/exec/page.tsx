@@ -59,14 +59,14 @@ const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
 ];
 
 export default function ExecPage() {
-  const { run } = useInsightScope();
+  const { run, mode } = useInsightScope();
   const dayOne = useDayOne();
   const finding = useFindingOpener(run);
   const rules = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "top10"), queryFn: () => getRuleRanking({ version_id: run, limit: 10 }), enabled: !!run });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.insights("exec", run),
-    queryFn: () => getExec({ version_id: run }),
+    queryKey: queryKeys.insights("exec", mode === "current" ? "current" : run),
+    queryFn: () => getExec(mode === "current" ? { scope: "current" } : { version_id: run }),
     enabled: !!run,
   });
 

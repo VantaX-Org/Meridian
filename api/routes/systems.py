@@ -499,6 +499,25 @@ async def delete_system(
     return {"status": "deleted"}
 
 
+@router.delete("/systems/{system_id}/profiles/{profile_id}", status_code=204)
+async def delete_sync_profile(
+    system_id: str,
+    profile_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
+):
+    """Delete one extraction schedule (sync profile). Its extraction log (sync_runs) cascades; analysis runs stay."""
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    result = await db.execute(
+        text("DELETE FROM sync_profiles WHERE id = :pid AND system_id = :sid AND tenant_id = :tid RETURNING id"),
+        {"pid": profile_id, "sid": system_id, "tid": str(tenant.id)},
+    )
+    if not result.fetchone():
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    await db.commit()
+
+
 def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[str]) -> TestConnectionResponse:
     """Connect + ping with the given params, masking any secret that leaks into an error message."""
     from sap.base import SAPConnectorError

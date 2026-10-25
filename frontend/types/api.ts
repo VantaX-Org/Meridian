@@ -883,6 +883,10 @@ export interface StewardshipMetrics {
   sla_compliance_rate: number;
   ai_acceptance_rate: number | null;
   steward_breakdown: StewardBreakdown[] | null;
+  /** Medians over the last 30 days, in hours: creation to first acknowledgement, and to resolution. */
+  median_time_to_response_hours?: number | null;
+  median_time_to_fixed_hours?: number | null;
+  timing_by_domain?: { domain: string; median_response_hours: number | null; median_fixed_hours: number | null; resolved: number }[];
 }
 
 export interface StewardBreakdown {

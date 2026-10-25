@@ -243,7 +243,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/inbox/notifications": "Notifications",
   // Insight views carry short rail labels; the pages keep their full titles.
   "/insights/exec": "Executive summary",
-  "/insights/progress": "Since baseline",
+  "/insights/progress": "Progress",
   "/insights/trends": "Trends",
   "/insights/forecast": "Forecast",
   "/insights/rules": "Failing rules",

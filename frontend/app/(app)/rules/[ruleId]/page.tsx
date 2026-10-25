@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status } from "@/design";
+import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status, useBreadcrumbTitle } from "@/design";
 import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
 import { getReference } from "@/lib/api/process-designer";
 import { useRole } from "@/hooks/use-role";
@@ -223,6 +223,9 @@ export default function RulePage() {
     },
     onError: (e) => toast.error((e as Error).message || "Not saved"),
   });
+
+  // The rule is the page's h1, under Rules.
+  useBreadcrumbTitle(data ? { label: data.name, parent: { label: "Rules", href: "/rules" } } : null);
 
   if (isLoading) {
     return (

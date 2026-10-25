@@ -8,6 +8,8 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
 import Link from "next/link";
 import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat, Status, asyncStateOf, statusLabel } from "@/design";
+import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
+import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
@@ -111,7 +113,7 @@ export default function MigrationPage() {
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Migration" meta={waves.isPending ? "\u00a0" : `${data.length} ${data.length === 1 ? "wave" : "waves"}`} actions={createButton} />}
+        header={<PageHeader title="Migration" meta={waves.isPending ? "\u00a0" : `${data.length} ${data.length === 1 ? "wave" : "waves"}`} actions={<><InsightActions />{createButton}</>} tabs={<InsightTabs />} />}
         summary={data.length > 0 ? (
           <div className="m-stat-grid">
             <Stat label="Waves" help="wave" value={data.length} />

@@ -397,7 +397,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const blocking = blockingTotal(state);
   // The findings behind the count: one run's findings tab, critical first (the run page's own drill); several runs
   // have no one findings list, so the objects not ready stand in.
-  const blockingHref = scopeRuns.length === 1 ? `/runs/${scopeRuns[0].id}?tab=findings&severity=critical` : objectsHref({ readiness: "fail" });
+  const blockingHref = scopeRuns.length === 1 ? `/runs/${scopeRuns[0].id}?tab=findings&severity=critical,high` : objectsHref({ readiness: "fail" });
   const countsReady = !!counts;
   const queueItems = queueQ.data?.items ?? [];
   const inboxCard = role === "steward" ? (

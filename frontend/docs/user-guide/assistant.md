@@ -43,7 +43,7 @@ Every built-in answer is computed from the figures the Insights pages show, for 
 
 The AI is only the fallback. When a question matches none of the built-in answers, and your administrator has set up a language model, Meridian passes the model your question and a summary of the run: the overview sentences, each object's score and the top ten failing rules by rule ID, object, severity and number of failing records. The model never sees a record key, a field value or any other row of your SAP data. Each call is listed on the **AI audit** tab of the audit log.
 
-An answer the model wrote carries the line "AI-generated from aggregated findings; no built-in answer fitted". Check its figures on the page it links to.
+An answer the model wrote starts with the line "Written by the model from aggregated findings". Check its figures on the page it links to.
 
 When no model is set up, or the model does not answer in time, Meridian says it has no built-in answer and lists the four example questions instead.
 

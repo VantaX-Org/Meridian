@@ -311,23 +311,28 @@ async def create_merge_proposals(
     return {"created": created}
 
 
+def l1_label(key: str) -> str:
+    """An L1 key as a reader says it: "procure_to_pay" reads "procure to pay" (sentence case mid-sentence)."""
+    return key.replace("_", " ")
+
+
 def exec_narrative(no_go: int, cells: int, priced: int, worst_name: Optional[str], worst_amount: float,
                    owners: int, top_cost: Optional[dict], currency: Optional[str]) -> str:
     """The exec Situation text: one sentence per fact that has something to say and none for a
     zero, so a quiet run reads "" and the page shows its own fallback. Deterministic, no LLM."""
     out: list[str] = []
+    unit = f" {currency}" if currency else ""
     if no_go:
-        out.append(f"{no_go} of {cells} readiness cells {'is' if no_go == 1 else 'are'} no-go.")
+        out.append(f"{no_go} of {cells} object and wave {'pair cannot' if no_go == 1 else 'pairs cannot'} load.")
     if priced:
         noun = "feature is" if priced == 1 else "features are"
-        where = f" in {worst_name.replace('_', ' ')}" if worst_name else ""
-        tail = f"; the largest exposure is {worst_amount:,.2f}{where}." if worst_amount else "."
+        where = f" in {l1_label(worst_name)}" if worst_name else ""
+        tail = f"; the largest exposure is {worst_amount:,.2f}{unit}{where}." if worst_amount else "."
         out.append(f"{priced} priced {noun} affected{tail}")
     if owners:
         out.append(f"{owners} {'owner has' if owners == 1 else 'owners have'} open digests.")
     if top_cost and (top_cost.get("amount") or 0) > 0:
-        unit = f" {currency}" if currency else ""
-        l1 = str(top_cost.get("l1") or "").replace("_", " ")
+        l1 = l1_label(str(top_cost.get("l1") or ""))
         out.append(f"The largest proven cost is {top_cost['amount']:,.2f}{unit} lost or held in transactions in {l1}.")
     return " ".join(out)
 

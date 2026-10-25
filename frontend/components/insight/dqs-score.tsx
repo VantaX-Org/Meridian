@@ -35,7 +35,7 @@ export function DqsScore({ agg, versionId, cap: capValue, capReason }: { agg: Fi
       explain={{
         band: { label: tier ? statusLabel("verdict", tier === "pass" ? "go" : tier === "warn" ? "at-risk" : "no-go") : "Scored", tone: tier === "pass" ? "go" : tier === "warn" ? "at-risk" : tier === "fail" ? "no-go" : "neutral" },
         dimensions: measured.map(([d, score]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score })),
-        capReason: cap != null ? (capReason ? shortCapReason(capReason) : "a critical finding is open") : undefined,
+        capReason: cap != null ? ((capReason ?? agg.dqs.cap_reason) ? shortCapReason((capReason ?? agg.dqs.cap_reason)!) : "a critical finding is open") : undefined,
         // weight descends with rank so the explainer's recordsFailed * weight sort keeps the impact order
         rules: (top.data?.findings ?? []).map((f, i, all) => ({ ruleId: f.check_id, object: f.module, recordsFailed: f.affected_count, weight: (all.length - i) / all.length })),
         historyHref: versionId ? `/insights/trends?run=${versionId}` : "/insights/trends",

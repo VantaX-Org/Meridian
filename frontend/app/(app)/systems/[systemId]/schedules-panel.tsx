@@ -192,7 +192,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
           onOpenChange={(o) => { if (!o) setRemoving(null); }}
           title={`Delete the ${removing ? formatModuleName(removing.domain) : ""} schedule`}
           tone="danger"
-          body={`${removing ? formatModuleName(removing.domain) : "This object"} is no longer extracted on a schedule (${presetLabel(removing?.schedule_cron ?? null).toLowerCase()}). Runs already extracted stay.`}
+          body={`${removing ? formatModuleName(removing.domain) : "This object"} is no longer extracted on a schedule (${presetLabel(removing?.schedule_cron ?? null).toLowerCase()}). Its extraction log goes with it; runs and findings already analysed stay.`}
           confirmLabel="Delete schedule"
           cancelLabel="Keep"
           pending={remove.isPending}

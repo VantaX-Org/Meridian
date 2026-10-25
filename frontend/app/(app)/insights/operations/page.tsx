@@ -6,7 +6,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, Card, DataTable, EmptyState, Mono, Select, Stat } from "@/design";
+import { Bar, Button, Card, DataTable, DrillLink, EmptyState, Mono, Select, Stat } from "@/design";
+import { getMetrics } from "@/lib/api/stewardship";
+import { formatModuleName } from "@/lib/format";
 import { getAssignableUsers } from "@/lib/api/users";
 import {
   getOperational, getSprints, getTeamPerformance, type Bottleneck, type SprintPlan,
@@ -84,6 +86,8 @@ export default function OperationsPage() {
   const { run } = useInsightScope();
   const ops = useQuery({ queryKey: ["analytics", "operational"], queryFn: getOperational });
   const sprints = useQuery({ queryKey: ["analytics", "sprints"], queryFn: () => getSprints() });
+  const timing = useQuery({ queryKey: ["stewardship", "metrics"], queryFn: getMetrics, meta: { ignoreError: true } });
+  const t = timing.data;
   const k = ops.data?.kpis;
   const bottlenecks = ops.data?.bottlenecks ?? [];
   const plans = sprints.data?.sprints ?? [];
@@ -136,6 +140,28 @@ export default function OperationsPage() {
           <Stat label="Average queue age" href="/inbox" value={k ? hours(k.avg_queue_age_hours) : "—"} />
           <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
           <Stat label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} />
+        </div>
+      </Section>
+      <Section title="Time to response and time to fixed" height={160} query={timing}
+        meta="Medians over the last 30 days: from a task opening to someone picking it up, and to it being resolved">
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Stat label="Time to response" href="/inbox" value={t?.median_time_to_response_hours != null ? hours(t.median_time_to_response_hours) : "—"} />
+            <Stat label="Time to fixed" href="/inbox" value={t?.median_time_to_fixed_hours != null ? hours(t.median_time_to_fixed_hours) : "—"} />
+          </div>
+          {t?.timing_by_domain?.length ? (
+            <DataTable
+              columns={[
+                { id: "domain", header: "Object", accessorFn: (r) => formatModuleName(r.domain), cell: ({ row }) => <DrillLink object={row.original.domain}>{formatModuleName(row.original.domain)}</DrillLink> },
+                { id: "response", header: "Time to response", accessorFn: (r) => r.median_response_hours ?? -1, meta: { numeric: true }, cell: ({ row }) => (row.original.median_response_hours != null ? hours(row.original.median_response_hours) : "—") },
+                { id: "fixed", header: "Time to fixed", accessorFn: (r) => r.median_fixed_hours ?? -1, meta: { numeric: true }, cell: ({ row }) => (row.original.median_fixed_hours != null ? hours(row.original.median_fixed_hours) : "—") },
+                { id: "resolved", header: "Resolved", accessorFn: (r) => r.resolved, meta: { numeric: true }, cell: ({ row }) => row.original.resolved.toLocaleString() },
+              ]}
+              data={[...t.timing_by_domain].sort((a, b) => (b.median_fixed_hours ?? 0) - (a.median_fixed_hours ?? 0))}
+              getRowId={(r) => r.domain}
+              hideToolbar dense height="auto"
+            />
+          ) : <EmptyState variant="inline" title="No task resolved in the last 30 days" />}
         </div>
       </Section>
       <Section title="Queue age by stage" height={160} query={ops}>
