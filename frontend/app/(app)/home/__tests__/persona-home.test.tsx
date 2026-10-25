@@ -156,7 +156,7 @@ describe("PersonaHomePage Brief geometry", () => {
   it("keeps the onboarding as one row under the ledger, before the work row", async () => {
     renderWithQuery(<LeadHomePage />);
     const ledger = await screen.findByText("What moves the score");
-    const work = screen.getByText("Objects not ready");
+    const work = screen.getByText("Objects below target");
     expect(ledger.compareDocumentPosition(work) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId("home-trend")).toBeInTheDocument();
   });
@@ -405,7 +405,7 @@ describe("PersonaHomePage current state across objects", () => {
     const dqs = screen.getByTestId("home-dqs");
     expect(dqs).toHaveTextContent("vs before the latest run");
     expect(dqs).toHaveTextContent("2.0");
-    const notReady = (screen.getByText("Objects not ready")).closest("a");
+    const notReady = (screen.getByText("Objects below target")).closest("a");
     expect(notReady).toHaveTextContent("of 3");
     expect(notReady).toHaveAttribute("href", "/objects?readiness=fail");
     // critical and high: controlling 2 + 1, material master 1, accounts payable 4
@@ -451,7 +451,7 @@ describe("PersonaHomePage current state across objects", () => {
       expect(screen.getByRole("link", { name: "Back to all runs" })).toHaveAttribute("href", "/home/lead");
       expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 1 object is not ready for go-live.");
       expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
-      expect((screen.getByText("Objects not ready")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=fail");
+      expect((screen.getByText("Objects below target")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=fail");
     } finally {
       nav.search = "";
     }

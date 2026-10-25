@@ -74,7 +74,44 @@ describe("CompareRunsPage", () => {
       // A lead can step back to the Progress view, the compared run carried along.
       expect(screen.getByRole("navigation", { name: "Progress views" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Progress" })).toHaveAttribute("href", "/insights/progress?run=v2");
-      expect(screen.getAllByText("Mean of 1 object").length).toBe(2);
+      expect(screen.getAllByText("Mean of 1 object in both runs; objects in only one run are left out").length).toBe(2);
+    } finally {
+      searchParams.delete("change");
+    }
+  });
+
+  it("lists rules failing in both runs whose records moved as worse and better, with the rule's words beside its id", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({
+      ...cmp,
+      checks: {
+        ...cmp.checks,
+        worse: [{ check_id: "MM010", module: "material_master", severity: "high", message: "Material has no base unit", v1_affected: 100, v2_affected: 50_000 }],
+        better: [{ check_id: "MM020", module: "material_master", severity: "medium", message: null, v1_affected: 5_000, v2_affected: 4_000 }],
+      },
+    });
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByText("MM010")).toBeInTheDocument());
+    const rows = screen.getAllByRole("row").map((r) => r.textContent ?? "");
+    // Ranked by the change in failing records: 100 -> 50,000 first, 5,000 -> 4,000 last.
+    expect(rows.findIndex((t) => t.includes("MM010"))).toBeLessThan(rows.findIndex((t) => t.includes("MM041")));
+    expect(rows.find((t) => t.includes("MM010"))).toContain("Material has no base unit");
+    expect(rows.find((t) => t.includes("MM010"))).toContain("Worse");
+    expect(rows.find((t) => t.includes("MM020"))).toContain("Better");
+    expect(rows.findIndex((t) => t.includes("MM020"))).toBe(rows.length - 1);
+  });
+
+  it("narrows the ledger to the worse rules from ?change=worse", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({
+      ...cmp,
+      checks: { ...cmp.checks, worse: [{ check_id: "MM010", module: "material_master", severity: "high", v1_affected: 100, v2_affected: 50_000 }], better: [] },
+    });
+    searchParams.set("change", "worse");
+    try {
+      renderWithQuery(<CompareRunsPage />);
+      await waitFor(() => expect(screen.getByText("MM010")).toBeInTheDocument());
+      expect(screen.queryByText("MM041")).toBeNull();
+      expect(screen.queryByText("MM002")).toBeNull();
+      expect(screen.getByRole("combobox", { name: "Change" })).toHaveTextContent("Worse");
     } finally {
       searchParams.delete("change");
     }
@@ -95,7 +132,17 @@ describe("CompareRunsPage", () => {
     // a report page's export menu also offers Print, so the single PDF option sits in the menu
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /PDF/ }));
-    await waitFor(() => expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", "comparison.pdf"));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", expect.stringMatching(/^Meridian run comparison – Oct 8 vs Oct 1 – \d{4}-\d{2}-\d{2}\.pdf$/)));
+  });
+
+  it("names the PDF without characters a file name cannot hold", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({ ...cmp, v1: version("v1", "Q3: ECC/PRD"), v2: version("v2", 'Run "B" <new>') });
+    const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /PDF/ }));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith(expect.any(String), expect.stringMatching(/^Meridian run comparison – Run -B- -new- vs Q3- ECC-PRD – \d{4}-\d{2}-\d{2}\.pdf$/)));
   });
 
   it("creates a fix batch for a newly failing rule from its drawer", async () => {

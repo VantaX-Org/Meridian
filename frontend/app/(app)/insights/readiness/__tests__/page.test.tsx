@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
@@ -129,5 +129,18 @@ describe("ReadinessPage", () => {
     const strip = await screen.findByTestId("s4-strip");
     await waitFor(() => expect(strip).toHaveTextContent("Blockers2"));
     expect(strip).toHaveTextContent("Warnings3");
+    // Each count opens the rules it counts: the blocking S/4 rules and the warning S/4 rules, not every S/4 or medium rule.
+    expect(within(strip).getByRole("link", { name: /Blockers/ })).toHaveAttribute("href", "/insights/rules?run=v1&s4=blocking");
+    expect(within(strip).getByRole("link", { name: /Warnings/ })).toHaveAttribute("href", "/insights/rules?run=v1&s4=warning");
+  });
+
+  it("opens an object's blocking rules without a wave parameter the object page never reads", async () => {
+    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({
+      version_id: "v1", threshold: 70, configured: true,
+      cells: [{ module: "material_master", wave: "Wave 2", verdict: "no_go", blocker_count: 1, dqs: 60, score: 50, records_blocked: 3 }],
+    });
+    renderWithQuery(<ReadinessPage />);
+    const fix = await screen.findByRole("link", { name: "Fix the blockers of Material master in wave Wave 2" });
+    expect(fix).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules&blocking=true");
   });
 });

@@ -236,6 +236,32 @@ describe("RunDetailPage", () => {
     expect(screen.getByRole("link", { name: "Material master" })).toHaveAttribute("href", "/objects/material_master?run=v2");
   });
 
+  it("prints the capped composite in the hero and draws the measured value only as the ghost beyond the cap", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+      ...EMPTY_AGGREGATE, total: 2, severity: { critical: 2, high: 0, medium: 0, low: 0 },
+      dqs: { composite: 70, raw: 82.4, capped: true, dimension_scores: {}, modules: {} },
+    });
+    renderWithQuery(<RunDetailPage />);
+    const hero = await screen.findByTestId("score-hero");
+    expect(screen.getByRole("img", { name: /score 82\.4, capped at 70/i })).toBeInTheDocument();
+    expect(hero).toHaveTextContent("Capped at 70, 2 critical");
+    expect(hero.textContent).not.toMatch(/82\.4/);
+  });
+
+  it("prints object counts with thousands separators on the objects tab", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v2",
+      objects: [{ module: "material_master", label: "Material master", composite_score: 91.2, readiness: "pass", failing_checks: 1234, affected_records: 50000 }],
+    });
+    renderWithQuery(<RunDetailPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Objects" }));
+    expect(await screen.findByRole("link", { name: "1,234" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "50,000" })).toBeInTheDocument();
+  });
+
   it("renders a sparkline trend column on the objects tab from the per-module score history", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({

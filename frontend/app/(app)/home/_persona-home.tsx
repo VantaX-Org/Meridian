@@ -182,13 +182,14 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const findings = (findingsQ.data?.findings ?? []).filter((f) => (!scopeFilter.modules || scopeFilter.modules.has(f.module)) && f.version_id === runOf.get(f.module)?.id);
   const scored = worstObjectsFirst(objects);
   const worst = scored[0];
-  const notReady = objects.filter((o) => o.readiness === "fail");
+  // Objects whose score is below the warning band ("fail"); "not ready" is kept for wave readiness.
+  const belowTarget = objects.filter((o) => o.readiness === "fail");
   const systems = systemsQ.data ?? [];
   const activeSystems = systems.filter((s) => s.is_active);
 
   const action =
     role === "lead"
-      ? { label: notReady.length ? "Open objects not ready" : "Open objects", href: objectsHref(notReady.length ? { readiness: "fail" } : {}) }
+      ? { label: belowTarget.length ? "Open objects below target" : "Open objects", href: objectsHref(belowTarget.length ? { readiness: "fail" } : {}) }
       : role === "steward"
         ? { label: "Open worst object", href: worst ? `/objects/${worst.module}?run=${worst.run_id}` : objectsHref() }
         : (() => {
@@ -396,7 +397,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   // Failing critical and high checks of every object in scope.
   const blocking = blockingTotal(state);
   // The findings behind the count: one run's findings tab, critical first (the run page's own drill); several runs
-  // have no one findings list, so the objects not ready stand in.
+  // have no one findings list, so the objects below target stand in.
   const blockingHref = scopeRuns.length === 1 ? `/runs/${scopeRuns[0].id}?tab=findings&severity=critical,high` : objectsHref({ readiness: "fail" });
   const countsReady = !!counts;
   const queueItems = queueQ.data?.items ?? [];
@@ -420,7 +421,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const work =
     role === "lead" ? (
       <WorkRow>
-        <Stat label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={objectsHref({ readiness: "fail" })} />
+        <Stat label="Objects below target" value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTarget.length ? "no-go" : "go"} href={objectsHref({ readiness: "fail" })} />
         <Stat label="Blocking findings" value={blocking.toLocaleString()} hint={blocking ? "critical and high" : "none"} tone={blocking ? "no-go" : "go"} href={blockingHref} />
         <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>

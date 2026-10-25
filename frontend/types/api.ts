@@ -80,11 +80,16 @@ export interface ModuleDelta {
   dimensions: Record<string, { v1: number | null; v2: number | null; change: number | null }>;
 }
 
-/** A check that ran cleanly in both versions and failed in only one of them. */
+/**
+ * A check that ran cleanly in both versions and either failed in only one of them, or failed in both with
+ * materially more or fewer records (10% of the earlier count and at least 10 records).
+ */
 export interface CheckChange {
   check_id: string;
   module: string;
   severity: string;
+  /** The rule's message in plain words, shown beside its id; null for runs that stored none. */
+  message?: string | null;
   v1_affected: number;
   v2_affected: number;
 }
@@ -93,7 +98,8 @@ export interface VersionComparison {
   v1: Version;
   v2: Version;
   delta: Record<string, ModuleDelta>;
-  checks: { newly_failing: CheckChange[]; fixed: CheckChange[] };
+  /** `worse` and `better`: failing in both runs with materially more or fewer records (absent from older APIs). */
+  checks: { newly_failing: CheckChange[]; fixed: CheckChange[]; worse?: CheckChange[]; better?: CheckChange[] };
 }
 
 /* ─── Finding ─── */

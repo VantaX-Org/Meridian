@@ -24,7 +24,7 @@ import { DqsScore } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, formatMoney, labelOf, runAxisLabels } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, formatMoney, formatNumber, labelOf, runAxisLabels } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
@@ -100,12 +100,12 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     {
       accessorKey: "failing_checks",
       header: "Failing checks",
-      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{row.original.failing_checks}</DrillLink>,
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.failing_checks)}</DrillLink>,
     },
     {
       accessorKey: "affected_records",
       header: "Affected records",
-      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{row.original.affected_records}</DrillLink>,
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.affected_records)}</DrillLink>,
     },
     {
       id: "trend",
@@ -251,7 +251,8 @@ function SummaryTab({
   const composite = a.dqs.composite;
   const delta = composite != null && a.previous_dqs != null ? Math.round((composite - a.previous_dqs) * 10) / 10 : null;
   const blocking = a.severity.critical + a.severity.high;
-  // A critical finding holds the score at the cap: the ruler draws the measured value beyond it.
+  // A critical finding holds the score at the cap: the numeral is the capped composite (the score every other
+  // page shows, and the one the delta compares), and the ruler draws the measured value as a ghost beyond it.
   const raw = a.dqs.raw ?? composite;
   const capped = a.dqs.capped === true && composite != null && raw != null && raw > composite;
 
@@ -295,7 +296,8 @@ function SummaryTab({
         <div className="flex min-w-0 flex-col gap-4">
           <Score
             size="hero"
-            value={raw}
+            value={composite}
+            measured={capped ? raw : undefined}
             cap={capped ? composite ?? undefined : undefined}
             criticals={a.severity.critical}
             versionId={versionId}

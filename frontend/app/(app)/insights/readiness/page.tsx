@@ -30,7 +30,7 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
   ) },
   { accessorKey: "wave", header: "Wave" },
   { id: "verdict", header: "Verdict", accessorFn: (c) => statusLabel("verdict", c.verdict), cell: ({ row }) => (
-      <DrillLink href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`}>
+      <DrillLink href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true" })}`}>
         <span aria-label={`${formatModuleName(row.original.module)}, wave ${row.original.wave}: ${statusLabel("verdict", row.original.verdict)}`}>
           <Status kind="verdict" value={row.original.verdict} />
         </span>
@@ -53,7 +53,7 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (
-      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`} aria-label={`Fix the blockers of ${formatModuleName(row.original.module)} in wave ${row.original.wave}`} className="m-ink-accent underline underline-offset-2">Fix</Link>
+      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true" })}`} aria-label={`Fix the blockers of ${formatModuleName(row.original.module)} in wave ${row.original.wave}`} className="m-ink-accent underline underline-offset-2">Fix</Link>
     ),
   },
 ];
@@ -61,8 +61,8 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
 /** Without waves, the blockers table lists the S/4 simplification areas whose rules fail. */
 const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
   { accessorKey: "label", header: "S/4 area" },
-  { accessorKey: "blocking_failing", header: "Blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "yes" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
-  { accessorKey: "warning_failing", header: "Warning rules", meta: { numeric: true }, cell: ({ row }) => row.original.warning_failing.toLocaleString() },
+  { accessorKey: "blocking_failing", header: "Blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "blocking" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
+  { accessorKey: "warning_failing", header: "Warning rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "warning" })}>{row.original.warning_failing.toLocaleString()}</DrillLink> },
   { accessorKey: "failing_records", header: "Records failing", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
   { id: "action", header: "", enableSorting: false, cell: () => <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="m-ink-accent underline underline-offset-2">Open rules</Link> },
 ];
@@ -97,7 +97,7 @@ export default function ReadinessPage() {
   let warningGaps = 0;
   for (const a of areas) {
     blockingGaps += a.blocking_failing;
-    warningGaps += Math.max(0, a.failing - a.blocking_failing);
+    warningGaps += a.warning_failing;
   }
   const failingAreas = areas.filter((a) => a.failing > 0).sort((a, b) => b.blocking_failing - a.blocking_failing || b.failing_records - a.failing_records);
 
@@ -183,8 +183,8 @@ export default function ReadinessPage() {
         meta={s4.data ? (
           // What the ledger's rules do to an S/4 load, as two drills into the rules; the counts are not a second stat row.
           <span data-testid="s4-strip" className="inline-flex flex-wrap items-center gap-x-4">
-            <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="underline-offset-2 hover:underline"><span>Blockers</span><span className="ml-1 font-medium m-numeric">{blockingGaps.toLocaleString()}</span></Link>
-            <Link href={withScope("/insights/rules", { run, severity: "medium" })} className="underline-offset-2 hover:underline"><span>Warnings</span><span className="ml-1 font-medium m-numeric">{warningGaps.toLocaleString()}</span></Link>
+            <Link href={withScope("/insights/rules", { run, s4: "blocking" })} className="underline-offset-2 hover:underline"><span>Blockers</span><span className="ml-1 font-medium m-numeric">{blockingGaps.toLocaleString()}</span></Link>
+            <Link href={withScope("/insights/rules", { run, s4: "warning" })} className="underline-offset-2 hover:underline"><span>Warnings</span><span className="ml-1 font-medium m-numeric">{warningGaps.toLocaleString()}</span></Link>
           </span>
         ) : cells.length ? undefined : failingAreas.length ? "By S/4 simplification area, since no wave is defined" : undefined}
       >

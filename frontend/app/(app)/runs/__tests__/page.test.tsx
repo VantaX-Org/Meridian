@@ -95,8 +95,9 @@ describe("RunsPage", () => {
     renderWithQuery(<RunsPage />);
     expect(await screen.findByRole("navigation", { name: "Operate views" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Runs" })).toHaveAttribute("aria-current", "page");
-    // One run: the score tile says what the number is a mean of.
-    expect(await screen.findByText("Mean of 1 object")).toBeInTheDocument();
+    // One run: the score tile names its system, its run and day, and what the number is a mean of.
+    expect(await screen.findByText("Latest DQS, ECC Prod")).toBeInTheDocument();
+    expect(await screen.findByText("Oct 8 upload, 8 Oct 2026, mean of 1 object")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Run analysis" }));
     expect(await screen.findByRole("dialog", { name: "Run analysis" })).toBeInTheDocument();
     expect(await screen.findByTestId("scope-picker")).toBeInTheDocument();
@@ -111,6 +112,18 @@ describe("RunsPage", () => {
     expect(links.length).toBeGreaterThan(1); // stat tile and table cell
     for (const link of links) expect(link).toHaveAttribute("href", "/runs/v2");
     expect(screen.getByText("Score per run, ECC Prod")).toBeInTheDocument();
+    expect(screen.getByText("Latest DQS, ECC Prod")).toBeInTheDocument();
+    expect(screen.getByText("Oct 8 upload, 8 Oct 2026, vs previous run")).toBeInTheDocument();
+  });
+
+  it("names uploads, never a made-up system, when the latest run has no system", async () => {
+    const meta = { modules: ["material_master"], file_name: "upload.csv", row_count: 10 };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...newer, metadata: meta }, { ...older, metadata: meta }] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    expect(await screen.findByText("Score per run, uploads")).toBeInTheDocument();
+    expect(screen.getByText("Latest DQS, uploads")).toBeInTheDocument();
+    expect(screen.queryByText(/latest system/)).toBeNull();
   });
 
   it("groups the ledger by day, newest first: the day is printed on the first run of each day only, and each row ends in Open", async () => {

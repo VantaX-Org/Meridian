@@ -179,6 +179,8 @@ def test_drilldown_routes(app_engine):
             assert ap["dimensions"]["completeness"] == {"v1": 70.0, "v2": 80.0, "change": 10.0}
             assert [x["check_id"] for x in cmp["checks"]["newly_failing"]] == ["BP-1", "CHK-B"]
             assert [x["check_id"] for x in cmp["checks"]["fixed"]] == ["CHK-C"]  # CHK-E errored in v1
+            # CHK-A fails in both, 2 -> 1: one record is under the materiality threshold, so neither worse nor better
+            assert cmp["checks"]["worse"] == [] and cmp["checks"]["better"] == []
             one = (await c.get("/api/v1/versions/compare", headers=h,
                                params={"v1": v1, "v2": v2, "module": "accounts_payable"})).json()
             assert list(one["delta"]) == ["accounts_payable"]

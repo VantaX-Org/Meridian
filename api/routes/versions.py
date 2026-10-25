@@ -141,18 +141,45 @@ async def restore_versions(db: AsyncSession = Depends(get_db), tenant: Tenant = 
     return {"restored": res.rowcount}
 
 
-# a check changed state only when it ran cleanly in both versions
+# A rule that fails in both runs still changed when its failing records moved materially: by at least
+# CHANGE_MIN_PERCENT per cent of the earlier count AND at least CHANGE_MIN_RECORDS records. Both bounds hold, so
+# 2 -> 1 (a 50% move of one record) and 100,000 -> 100,500 (500 records, 0.5%) are noise, while
+# 100 -> 50,000 is "worse" and 5,000 -> 4,000 is "better".
+CHANGE_MIN_PERCENT = 10
+CHANGE_MIN_RECORDS = 10
+
+# A check is compared only when it ran cleanly in both versions. It is kept when its pass/fail flipped
+# (newly failing, fixed) or when it failed in both and its failing records moved materially (worse, better).
 _CHECK_CHANGES_SQL = """
-    SELECT f2.check_id, f2.module, f2.severity, f1.affected_count AS v1_affected, f2.affected_count AS v2_affected
+    SELECT f2.check_id, f2.module, f2.severity, f1.affected_count AS v1_affected, f2.affected_count AS v2_affected,
+           COALESCE(NULLIF(f2.details->>'message', ''), NULLIF(f1.details->>'message', '')) AS message
       FROM findings f1
-      JOIN findings f2 ON f2.check_id = f1.check_id AND f2.version_id = :v2
-     WHERE f1.version_id = :v1
+      JOIN findings f2 ON f2.check_id = f1.check_id AND f2.version_id = :v2 AND f2.tenant_id = CAST(:tid AS uuid)
+     WHERE f1.version_id = :v1 AND f1.tenant_id = CAST(:tid AS uuid)
        AND f1.details->>'error' IS NULL AND f2.details->>'error' IS NULL
-       AND (f1.affected_count > 0) <> (f2.affected_count > 0)
+       AND ((f1.affected_count > 0) <> (f2.affected_count > 0)
+            OR (f1.affected_count > 0 AND f2.affected_count > 0
+                AND abs(f2.affected_count - f1.affected_count) >= CAST(:min_records AS integer)
+                AND abs(CAST(f2.affected_count AS bigint) - f1.affected_count) * 100
+                    >= CAST(:min_percent AS bigint) * f1.affected_count))
        AND (CAST(:module AS text) IS NULL OR f2.module = CAST(:module AS text))
      ORDER BY CASE f2.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
               f2.check_id
 """
+
+
+def change_kind(v1_affected: int, v2_affected: int) -> Optional[str]:
+    """How a cleanly-run check moved between two runs: ``newly_failing``, ``fixed``, ``worse``, ``better``,
+    or None when it did not change materially (the same rule as ``_CHECK_CHANGES_SQL``)."""
+    if v1_affected == 0 and v2_affected > 0:
+        return "newly_failing"
+    if v1_affected > 0 and v2_affected == 0:
+        return "fixed"
+    if v1_affected > 0 and v2_affected > 0:
+        moved = abs(v2_affected - v1_affected)
+        if moved >= CHANGE_MIN_RECORDS and moved * 100 >= CHANGE_MIN_PERCENT * v1_affected:
+            return "worse" if v2_affected > v1_affected else "better"
+    return None
 
 
 @router.get("/versions/compare")
@@ -164,7 +191,8 @@ async def compare_versions(
     tenant: Tenant = Depends(get_tenant),
 ):
     """Per-object DQS and dimension deltas (v2 − v1), and the checks that started
-    or stopped failing between the two versions. 404 ``{"reason": "no_baseline"}``
+    or stopped failing between the two versions (``newly_failing``, ``fixed``) or failed in both with
+    materially more or fewer records (``worse``, ``better``; see ``CHANGE_MIN_PERCENT``). 404 ``{"reason": "no_baseline"}``
     when ``v1`` is omitted and the system has no earlier finished run."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid1, vid2 = await _resolve_pair(db, v1, v2)
@@ -182,17 +210,20 @@ async def compare_versions(
 
     delta = {m: d for m, d in module_deltas(summary1, summary2).items() if not module or m == module}
 
-    rows = (await db.execute(text(_CHECK_CHANGES_SQL), {"v1": vid1, "v2": vid2, "module": module})).fetchall()
-    changes = [{"check_id": r.check_id, "module": r.module, "severity": r.severity,
-                "v1_affected": r.v1_affected, "v2_affected": r.v2_affected} for r in rows]
+    rows = (await db.execute(text(_CHECK_CHANGES_SQL), {
+        "v1": vid1, "v2": vid2, "tid": str(tenant.id), "module": module,
+        "min_records": CHANGE_MIN_RECORDS, "min_percent": CHANGE_MIN_PERCENT})).fetchall()
+    checks: dict[str, list[dict]] = {"newly_failing": [], "fixed": [], "worse": [], "better": []}
+    for r in rows:
+        kind = change_kind(r.v1_affected, r.v2_affected)
+        if kind is not None:
+            checks[kind].append({"check_id": r.check_id, "module": r.module, "severity": r.severity,
+                                 "message": r.message, "v1_affected": r.v1_affected, "v2_affected": r.v2_affected})
     return {
         "v1": _version_to_response(ver1),
         "v2": _version_to_response(ver2),
         "delta": delta,
-        "checks": {
-            "newly_failing": [c for c in changes if c["v2_affected"] > 0],
-            "fixed": [c for c in changes if c["v1_affected"] > 0],
-        },
+        "checks": checks,
     }
 
 

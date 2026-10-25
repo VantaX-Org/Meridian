@@ -52,7 +52,7 @@ export function GalleryMore() {
       </Card>
       <Card title="The Rule" meta="One instrument for every score: hero, row and inline share one geometry">
         <div className="flex flex-col gap-6">
-          <Score size="hero" value={71.7} cap={70} criticals={6} versionId="gallery" />
+          <Score size="hero" value={70} measured={71.7} cap={70} criticals={6} versionId="gallery" />
           <div className="flex flex-wrap items-center gap-6">
             <span className="inline-flex items-center gap-2"><Rule size="row" value={92.4} /><span className="m-numeric">92.4</span></span>
             <span className="inline-flex items-center gap-2"><Rule size="row" value={64.3} /><span className="m-numeric">64.3</span></span>
