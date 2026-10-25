@@ -64,6 +64,22 @@ describe("CompareRunsPage", () => {
     expect(rules.findIndex((t) => t.includes("MM041"))).toBeLessThan(rules.findIndex((t) => t.includes("MM002"))); // largest regression first
   });
 
+  it("narrows the ledger to the newly failing or the fixed rules from ?change=, under the Progress view tabs", async () => {
+    searchParams.set("change", "new");
+    try {
+      renderWithQuery(<CompareRunsPage />);
+      await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
+      expect(screen.queryByText("MM002")).toBeNull();
+      expect(screen.getByRole("combobox", { name: "Change" })).toHaveTextContent("Newly failing");
+      // A lead can step back to the Progress view, the compared run carried along.
+      expect(screen.getByRole("navigation", { name: "Progress views" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Progress" })).toHaveAttribute("href", "/insights/progress?run=v2");
+      expect(screen.getAllByText("Mean of 1 object").length).toBe(2);
+    } finally {
+      searchParams.delete("change");
+    }
+  });
+
   it("asks the API to resolve the baseline when b is the literal", async () => {
     params = { versionId: "v2", b: "baseline" };
     renderWithQuery(<CompareRunsPage />);

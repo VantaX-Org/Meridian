@@ -86,16 +86,20 @@ describe("TrendsPage", () => {
     expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
-  it("refetches trends scoped to the chosen system", async () => {
+  it("reads the trend of the scoped run's own system: no second System choice, the window is the only control", async () => {
     const spy = vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [run("v1", 60), run("v2", 70)], annotations: [] });
     mount();
     await screen.findAllByText(/rose from 60 to 70/);
-    expect(spy).toHaveBeenLastCalledWith({ version_id: "v2", system_id: undefined, limit: 12 });
-    fireEvent.click(await screen.findByRole("combobox", { name: "System" }));
-    const option = await screen.findByRole("option", { name: "S4" });
+    expect(spy).toHaveBeenLastCalledWith({ version_id: "v2", limit: 12 });
+    expect(screen.queryByRole("combobox", { name: "System" })).toBeNull();
+    // The ledger's Change column says what it is measured against.
+    expect(screen.getByRole("button", { name: "About Previous run" })).toBeInTheDocument();
+    expect(screen.getByText("Ranked by impact on the score, against the run before")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("combobox", { name: "Window" }));
+    const option = await screen.findByRole("option", { name: "Last 6 runs" });
     fireEvent.mouseMove(option);
     await waitFor(() => expect(option).toHaveAttribute("data-highlighted"));
     fireEvent.click(option);
-    await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ version_id: "v2", system_id: "s2", limit: 12 }));
+    await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ version_id: "v2", limit: 6 }));
   });
 });

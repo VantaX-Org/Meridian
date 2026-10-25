@@ -91,7 +91,11 @@ function Presentation({ children }: { children: ReactNode }) {
     router.replace(params.size ? `${pathname}?${params}` : pathname);
   };
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") exit(); };
+    // Escape leaves the presentation unless something else already took it, or an open dialog or drawer owns it.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || document.querySelector('[role="dialog"]')) return;
+      exit();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps

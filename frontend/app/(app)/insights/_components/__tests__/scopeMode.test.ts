@@ -28,6 +28,11 @@ describe("insightScopeMode", () => {
     expect(insightScopeMode("/insights", { explicit: null, module: null })).toBe("current");
   });
 
+  it("is the current state on the executive summary too, so it answers with Home's number", () => {
+    expect(insightScopeMode("/insights/exec", {})).toBe("current");
+    expect(insightScopeMode("/insights/exec", { explicit: "co1" })).toBe("run");
+  });
+
   it("is one run with ?run=, or with an object filter that pins one lineage", () => {
     expect(insightScopeMode("/insights", { explicit: "co1" })).toBe("run");
     expect(insightScopeMode("/insights", { module: "material_master" })).toBe("run");
@@ -41,7 +46,7 @@ describe("insightScopeMode", () => {
     const tabs = new Set(VIEWS.flatMap((v) => v.tabs.map(([href]) => href)));
     for (const path of [...CURRENT_STATE_VIEWS, ...ONE_RUN_VIEWS]) expect(tabs.has(path)).toBe(true);
     expect(ONE_RUN_VIEWS.filter((p) => CURRENT_STATE_VIEWS.includes(p))).toEqual([]);
-    expect(ONE_RUN_VIEWS).toContain("/insights/exec");
+    expect(CURRENT_STATE_VIEWS).toContain("/insights/exec");
     expect(ONE_RUN_VIEWS).toContain("/insights/trends");
   });
 });

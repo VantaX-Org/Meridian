@@ -147,6 +147,8 @@ export async function getPredictiveAnalytics(
 export async function getPrescriptiveAnalytics(params?: {
   limit?: number;
   type?: NextBestAction["type"];
+  /** The run whose findings the actions come from; default the latest finished run. */
+  version_id?: string;
 }): Promise<PrescriptiveResponse> {
   const { data } = await apiClient.get<PrescriptiveResponse>(
     "/api/v1/analytics/prescriptive",

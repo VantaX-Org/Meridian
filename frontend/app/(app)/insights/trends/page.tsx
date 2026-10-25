@@ -8,8 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, DataTable, Delta, EmptyState, Heatmap, HelpHint, Line, Pill, Select, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
-import { getSystems } from "@/lib/api/connectivity";
-import { useSystemScope } from "@/lib/permissions";
 import { getRuleRanking, getTrends, type RuleRow, type TrendRun } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf, plural, trendSentence } from "@/lib/format";
@@ -41,7 +39,8 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
       ),
     },
     { id: "score", header: "Score", accessorFn: (r) => r.composite ?? -1, meta: num, cell: ({ row }) => (row.original.composite == null ? "—" : row.original.composite.toFixed(1)) },
-    { id: "change", header: "Change", accessorFn: (r) => r.change ?? 0, meta: num, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
+    // Not sortable: the ledger reads in run order, and a sort button cannot hold the hint's own button.
+    { id: "change", header: () => <span className="inline-flex items-center gap-1">Change <HelpHint term="previous_run" /></span>, accessorFn: (r) => r.change ?? 0, meta: num, enableSorting: false, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
     { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => count(row.original.critical) },
     { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => count(row.original.high) },
     { id: "fixed", header: "Rules fixed", accessorFn: (r) => r.rules_fixed ?? -1, meta: num, cell: ({ row }) => (row.original.rules_fixed == null ? "—" : row.original.rules_fixed > 0 ? <Delta value={row.original.rules_fixed} /> : "0") },
@@ -54,11 +53,8 @@ export default function TrendsPage() {
   const { run, runs, versions, resolving } = useInsightScope();
   const finding = useFindingOpener(run);
   const [win, setWin] = useState("12");
-  const systemScope = useSystemScope();
-  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true }, select: systemScope });
-  const [systemChoice, setSystem] = useState("all");
-  const systemId = systemChoice === "all" ? undefined : systemChoice;
-  const q = useQuery({ queryKey: queryKeys.insights("trends", run, win, systemId ?? "all"), queryFn: () => getTrends({ version_id: run, system_id: systemId, limit: Number(win) }), enabled: !!run });
+  // The run fixes the system: the trend is the lineage of the scoped run, never a second system choice.
+  const q = useQuery({ queryKey: queryKeys.insights("trends", run, win), queryFn: () => getTrends({ version_id: run, limit: Number(win) }), enabled: !!run });
   const moved = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "moved"), queryFn: () => getRuleRanking({ version_id: run, limit: 200 }), enabled: !!run });
   const router = useRouter();
   // A dot opens its own run, with ?run= naming that run so the page and the shell agree.
@@ -104,9 +100,7 @@ export default function TrendsPage() {
       run={run}
       controls={
         <>
-          {(systems.data?.length ?? 0) > 1 ? (
-            <Select label="System" value={systemChoice} onValueChange={setSystem} options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]} />
-          ) : null}
+          {/* No System select: the scoped run fixes the system, and the header's run picker reaches every other one. */}
           <span className="inline-flex items-center gap-1"><Select label="Window" value={win} onValueChange={setWin} options={WINDOWS} /><HelpHint term="window" /></span>
         </>
       }
@@ -133,7 +127,7 @@ export default function TrendsPage() {
           </Card>
         </div>
         <div className="@5xl:col-span-12">
-          <Card title="Rules that moved most" meta="Ranked by impact on the score">
+          <Card title="Rules that moved most" meta="Ranked by impact on the score, against the run before">
             <DataTable columns={movedCols} data={movedRows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
             {finding.drawer}
           </Card>

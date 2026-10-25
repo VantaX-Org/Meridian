@@ -83,7 +83,7 @@ export function CardSkeleton({ height }: { height: number }) {
  * lineage's latest run, "Back to latest" while pinned. On a view that can show the current state, the way back is
  * "Back to current state" instead.
  */
-function InsightRunScope() {
+function InsightRunScope({ present }: { present: boolean }) {
   const { scope, explicit } = useInsightScope();
   // Both hooks return null outside the App Router (unit tests, static export).
   const pathname = usePathname() ?? "";
@@ -95,11 +95,11 @@ function InsightRunScope() {
     <span data-testid="insight-scope" data-scope="run" className="inline-flex flex-wrap items-center gap-2">
       <span className="font-medium m-ink">One run</span>
       <RunScope
-        scope={{ run: scope.run, latestId: canShowCurrent ? undefined : scope.latestId, pinned: canShowCurrent ? false : scope.pinned, choices }}
-        picker
+        scope={{ run: scope.run, latestId: canShowCurrent ? undefined : scope.latestId, pinned: !present && !canShowCurrent && scope.pinned, choices }}
+        picker={!present}
         hrefFor={(id) => hrefWithRun(pathname, search, id)}
       />
-      {canShowCurrent && explicit && (
+      {!present && canShowCurrent && explicit && (
         <Link href={hrefWithRun(pathname, search, null)} className="m-ink-accent underline-offset-2 hover:underline">Back to current state</Link>
       )}
     </span>
@@ -107,7 +107,7 @@ function InsightRunScope() {
 }
 
 /** The current-state header line: what the numbers cover, and a picker that opens one run instead. */
-function InsightCurrentScope() {
+function InsightCurrentScope({ present }: { present: boolean }) {
   const { objects, runs, newest } = useCurrentState();
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -117,7 +117,7 @@ function InsightCurrentScope() {
   return (
     <span data-testid="insight-scope" data-scope="current" className="inline-flex flex-wrap items-center gap-2">
       <span data-testid="run-scope">{stateScopeLine(objects.length, newest.run_at)}</span>
-      <Select
+      {!present && <Select
         label="Showing"
         value="current"
         onValueChange={(id) => {
@@ -125,15 +125,15 @@ function InsightCurrentScope() {
         }}
         options={[{ value: "current", label: "Current state" }, ...runs.map((r) => ({ value: r.id, label: labels.get(r.id) ?? r.id }))]}
         className="m-input inline-flex max-w-[320px] items-center justify-between gap-2"
-      />
+      />}
     </span>
   );
 }
 
-/** The scope line of the header: the current state across objects, or one run. */
-function InsightScopeLine() {
+/** The scope line of the header: the current state across objects, or one run. In presentation mode it only names the scope. */
+function InsightScopeLine({ present }: { present: boolean }) {
   const { mode } = useInsightScope();
-  return mode === "current" ? <InsightCurrentScope /> : <InsightRunScope />;
+  return mode === "current" ? <InsightCurrentScope present={present} /> : <InsightRunScope present={present} />;
 }
 
 export { SLOW_LOAD_MESSAGE } from "@/design";
@@ -144,6 +144,9 @@ export function InsightFrame({
   // A skeleton that never resolves becomes an error with Retry after the shared timeout (inside Async); the
   // header gives way with it.
   const stuck = useLoadingTimeout(state === "loading");
+  // On a boardroom screen the page only tells: no scope pickers, no Do-next button.
+  const present = useSearchParams()?.get("present") === "1";
+  const shown = insight && present ? { ...insight, next: { ...insight.next, action: undefined } } : insight;
   // Empty without empty copy keeps the children (a page that renders its own empty cards).
   const body = (
     <Async
@@ -169,16 +172,16 @@ export function InsightFrame({
         title={title}
         meta={scope ? (
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-            <InsightScopeLine />
+            <InsightScopeLine present={present} />
             {meta != null && meta !== "" && <span>{meta}</span>}
           </span>
         ) : meta}
         actions={actionBar}
         tabs={<InsightTabs />}
       />
-      {toolbar && <div className="flex flex-wrap items-end gap-2">{toolbar}</div>}
+      {toolbar && !present && <div className="flex flex-wrap items-end gap-2">{toolbar}</div>}
       <div className="flex flex-col [gap:var(--m-section-gap)]">
-        {showInsight && <InsightHeader {...insight} loading={insight.loading ?? state === "loading"} />}
+        {showInsight && shown && <InsightHeader {...shown} loading={shown.loading ?? state === "loading"} />}
         {body}
       </div>
     </div>

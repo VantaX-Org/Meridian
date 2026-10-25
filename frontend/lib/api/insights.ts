@@ -195,7 +195,15 @@ export async function createMergeProposals(
 export type ExecWaterfallPoint = ChartPoint & { l1?: string | null };
 
 export interface ExecResponse {
+  /** Null for a day-one tenant, and for `scope=current` (the current state of every lineage, not one run). */
   version_id: string | null;
+  /** "current" when the summary describes the current state across objects (api/routes/insights.py:get_exec). */
+  scope?: "run" | "current";
+  /** The DQS the summary describes: the run's composite, or the current-state composite. Null when nothing is scored. */
+  composite?: number | null;
+  /** The cap a critical finding holds the score at, when it does (the ruler draws the measured value beyond it). */
+  cap?: number | null;
+  cap_reason?: string | null;
   narrative: string;
   readiness_cells: ReadinessCell[];
   waterfall: ExecWaterfallPoint[];
@@ -204,7 +212,8 @@ export interface ExecResponse {
   proven_cost_by_l1?: CostL1[];
 }
 
-export async function getExec(params?: { version_id?: string }): Promise<ExecResponse> {
+/** One run (`version_id`, default the latest), or `scope: "current"` for every object at the latest run of its lineage. */
+export async function getExec(params?: { version_id?: string; scope?: "run" | "current" }): Promise<ExecResponse> {
   const { data } = await apiClient.get<ExecResponse>("/api/v1/insights/exec", { params });
   return data;
 }

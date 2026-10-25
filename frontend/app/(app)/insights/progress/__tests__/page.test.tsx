@@ -1,6 +1,6 @@
 // frontend/app/(app)/insights/progress/__tests__/page.test.tsx
 import { AxiosError, AxiosHeaders } from "axios";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as findingsApi from "@/lib/api/findings";
@@ -65,8 +65,9 @@ describe("ProgressPage", () => {
     } as never);
     vi.spyOn(versionsApi, "compareRecords").mockResolvedValue({ v1: "bp1", v2: "bp2", totals: { new: 0, resolved: 0, persisting: 0 }, checks: [] });
     mount();
-    const select = await screen.findByRole("combobox", { name: "Compare with" });
-    fireEvent.click(select);
+    // The default choice names the resolved run once the comparison is in; open the list after that.
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Compare with" })).toHaveTextContent("Previous run (business_partner_1k, 2 Oct 2026)"));
+    fireEvent.click(screen.getByRole("combobox", { name: "Compare with" }));
     expect(await screen.findByRole("option", { name: "business_partner_1k" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "controlling_1k" })).toBeNull();
     expect(screen.queryByRole("option", { name: "business_partner_100k" })).toBeNull();
@@ -114,7 +115,7 @@ describe("ProgressPage", () => {
     expect(getVersion).toHaveBeenCalledWith("bp2");
     expect(screen.queryByText(/the previous run/)).toBeNull();
     expect(await screen.findByText(/^DQS unchanged since business_partner_1k, /)).toBeInTheDocument();
-    expect(screen.getByText("Unchanged since baseline")).toBeInTheDocument();
+    expect(screen.getByText("Mean of 1 object in this run")).toBeInTheDocument();
     // Hero numbers carry thousands separators, as the sentences do.
     expect(screen.getByLabelText("10,521")).toBeInTheDocument();
     expect(screen.getByText("1 object")).toBeInTheDocument();
@@ -122,6 +123,52 @@ describe("ProgressPage", () => {
     expect(await screen.findByRole("option", { name: "business_partner_1k, 2 Oct 2026, 05:17:01" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "business_partner_1k, 2 Oct 2026, 05:17:02" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /controlling_1k/ })).toBeNull();
+  });
+
+  const compared = (v1Baseline: boolean) => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({
+      v1: { id: "bp1", label: "business_partner_1k", run_at: "2026-10-02T05:00:00Z", dqs_summary: null, metadata: v1Baseline ? { baseline: true } : null },
+      v2: { id: "bp2", label: "business_partner_100k", run_at: "2026-10-16T05:00:00Z", dqs_summary: null },
+      delta: {}, checks: { newly_failing: [], fixed: [], persisting: [] },
+    } as never);
+    vi.spyOn(versionsApi, "compareRecords").mockResolvedValue({ v1: "bp1", v2: "bp2", totals: { new: 3, resolved: 12, persisting: 0 }, checks: [] });
+  };
+
+  it("reads Since previous run while no baseline is pinned, and drills the tiles to the compare page rows", async () => {
+    compared(false);
+    mount();
+    expect(await screen.findByRole("heading", { level: 2, name: "Since previous run" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Compare with" })).toHaveTextContent("Previous run (business_partner_1k, 2 Oct 2026)"));
+    expect(await screen.findByText("No baseline pinned")).toBeInTheDocument();
+    expect(screen.getByText("Objects since previous run")).toBeInTheDocument();
+    expect(screen.getByLabelText("12").closest("a")).toHaveAttribute("href", "/runs/bp2/vs/bp1?change=resolved");
+    expect(screen.getByLabelText("3").closest("a")).toHaveAttribute("href", "/runs/bp2/vs/bp1?change=new");
+  });
+
+  it("reads Since baseline when the run compared with is the pinned baseline", async () => {
+    compared(true);
+    mount([RUNS[0], RUNS[1], { ...RUNS[2], metadata: { ...RUNS[2].metadata, baseline: true } }]);
+    expect(await screen.findByRole("heading", { level: 2, name: "Since baseline" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Compare with" })).toHaveTextContent("Baseline (business_partner_1k, 2 Oct 2026)"));
+    expect(await screen.findByText("Baseline: business_partner_1k, 2 Oct 2026")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pin as baseline" })).toBeInTheDocument();
+  });
+
+  it("pins the shown run as baseline, and unpins it when it already is", async () => {
+    compared(false);
+    const pin = vi.spyOn(versionsApi, "pinBaseline").mockResolvedValue({ baseline: true });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Pin as baseline" }));
+    await waitFor(() => expect(pin).toHaveBeenCalledWith("bp2", true));
+  });
+
+  it("offers Unpin on the pinned run itself", async () => {
+    compared(false);
+    const pin = vi.spyOn(versionsApi, "pinBaseline").mockResolvedValue({ baseline: false });
+    mount([{ ...RUNS[0], metadata: { ...RUNS[0].metadata, baseline: true } }, RUNS[1], RUNS[2]]);
+    expect(await screen.findByText("Baseline: business_partner_100k, 16 Oct 2026")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Unpin baseline" }));
+    await waitFor(() => expect(pin).toHaveBeenCalledWith("bp2", false));
   });
 
   it("shows a real error with Retry when the comparison fails for another reason", async () => {

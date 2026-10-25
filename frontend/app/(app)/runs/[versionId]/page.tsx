@@ -18,11 +18,13 @@ import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
+import { getCostModel } from "@/lib/api/settings";
 import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/api/versions";
+import { DqsScore } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, labelOf, runAxisLabels } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, formatMoney, labelOf, runAxisLabels } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
@@ -222,10 +224,14 @@ function SummaryTab({
   lineage: Version[];
 }) {
   const router = useRouter();
-  const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
+  // Next actions come from this run's findings, not the newest run of the tenant.
+  const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", versionId], queryFn: () => getPrescriptiveAnalytics({ limit: 5, version_id: versionId }) });
   // Shared with the Objects tab: the score, blocking rule and readiness of each object.
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
   const objectByModule = new Map((objects.data?.objects ?? []).map((o) => [o.module, o]));
+  const cost = aggregate.data?.cost_at_risk;
+  // The tenant currency names the cost; until it is known the figure prints as plain digits.
+  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: cost != null, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
 
   if (aggregate.isLoading) {
     return (
@@ -240,18 +246,8 @@ function SummaryTab({
   }
 
   const a = aggregate.data;
-  if (a.total === 0) {
-    return (
-      <div>
-        <EmptyState
-          title="No findings in this run"
-          detail="Open steps to see what ran."
-          action={<Button render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
-        />
-      </div>
-    );
-  }
-
+  // A run with nothing failing still has a score: the hero stays, the ledger and next actions give way.
+  const clean = a.total === 0;
   const composite = a.dqs.composite;
   const delta = composite != null && a.previous_dqs != null ? Math.round((composite - a.previous_dqs) * 10) / 10 : null;
   const blocking = a.severity.critical + a.severity.high;
@@ -290,7 +286,7 @@ function SummaryTab({
     impact: [`${act.affected_count.toLocaleString()} records`, `${act.impact_points.toLocaleString()} impact points`],
     verb: act.type === "finding" ? "Open finding" : act.type === "cleaning" ? "Open cleaning" : "Open exception",
     href: act.type === "finding" ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}` : "/inbox",
-    why: `Ranked by impact points per hour of effort (${act.value_per_hour.toFixed(1)}), ${act.severity} severity.`,
+    why: `Impact points weigh the failing records by severity; ranked by impact points per hour of effort (${act.value_per_hour.toFixed(1)}), ${act.severity} severity.`,
   }));
 
   return (
@@ -304,13 +300,26 @@ function SummaryTab({
             criticals={a.severity.critical}
             versionId={versionId}
             delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
+            hint={clean ? "Nothing failed in this run" : undefined}
             href={`/runs/${versionId}?tab=findings`}
           />
           <div className="m-stat-grid">
-            <Stat label="Blocking findings" value={blocking.toLocaleString()} tone={blocking > 0 ? "no-go" : undefined} href={`/runs/${versionId}?tab=findings&severity=critical`} />
+            {/* The findings list filters by one severity, so the two that block are two drills. */}
+            <Stat
+              label="Blocking findings"
+              help="blocking_finding"
+              value={blocking.toLocaleString()}
+              tone={blocking > 0 ? "no-go" : undefined}
+              hint={
+                <span className="inline-flex gap-2">
+                  <DrillLink href={`/runs/${versionId}?tab=findings&severity=critical`}>{a.severity.critical.toLocaleString()} critical</DrillLink>
+                  <DrillLink href={`/runs/${versionId}?tab=findings&severity=high`}>{a.severity.high.toLocaleString()} high</DrillLink>
+                </span>
+              }
+            />
             <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
-            {a.cost_at_risk != null ? (
-              <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+            {cost != null ? (
+              <Stat label="Cost at risk" value={formatMoney(Math.round(cost), costModel.data?.currency)} href={`/runs/${versionId}?tab=findings`} />
             ) : null}
           </div>
         </div>
@@ -319,20 +328,31 @@ function SummaryTab({
           <DimensionBars items={dimensions} label="Score by dimension" />
         </div>
       </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="font-semibold m-text-h">Objects in this run</h2>
-        <RunLedger versionId={versionId} rows={ledgerRows} objects={objectByModule} />
-      </section>
-      <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
-        <h2 className="font-semibold m-text-h">Next actions</h2>
-        {prescriptive.isLoading ? (
-          <Skeleton height={96} />
-        ) : next.length > 0 ? (
-          <NextActions actions={next} />
-        ) : (
-          <p className="text-sm m-ink-3">No next actions for this run</p>
-        )}
-      </section>
+      {clean ? (
+        <EmptyState
+          variant="inline"
+          title="Nothing failed in this run"
+          detail="Open steps to see what ran."
+          action={<Button variant="ghost" render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
+        />
+      ) : (
+        <>
+          <section className="flex flex-col gap-2">
+            <h2 className="font-semibold m-text-h">Objects in this run</h2>
+            <RunLedger versionId={versionId} rows={ledgerRows} objects={objectByModule} />
+          </section>
+          <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
+            <h2 className="font-semibold m-text-h">Next actions</h2>
+            {prescriptive.isLoading ? (
+              <Skeleton height={96} />
+            ) : next.length > 0 ? (
+              <NextActions actions={next} />
+            ) : (
+              <EmptyState variant="inline" title="No next actions for this run" />
+            )}
+          </section>
+        </>
+      )}
       <Card title="Composite over runs">
         {versionLoading || (systemId != null && history.isLoading) ? (
           <Skeleton height={160} />
@@ -646,6 +666,8 @@ export default function RunDetailPage() {
         <>
           <Status kind="lifecycle" value={v.status} />
           {isBaseline ? <Pill>Baseline</Pill> : null}
+          {/* The score explainer: formula, weights, cap and costliest rules behind this run's number. */}
+          {aggregate.data && aggregate.data.dqs.composite != null ? <DqsScore agg={aggregate.data} versionId={versionId} /> : null}
         </>
       }
       actions={
@@ -666,7 +688,7 @@ export default function RunDetailPage() {
                 Rename
               </Tooltip>
               <Tooltip
-                label={isBaseline ? "Stop comparing later runs in this system with this run" : "Later runs in this system are compared with this run on the Monitor tab"}
+                label={isBaseline ? "Stop comparing later runs in this system with this run" : "Later runs in this system are compared with this run on Insights › Since baseline"}
                 render={<Button variant="ghost" onClick={() => pin.mutate()} pending={pin.isPending} />}
               >
                 {isBaseline ? "Unpin baseline" : "Pin as baseline"}

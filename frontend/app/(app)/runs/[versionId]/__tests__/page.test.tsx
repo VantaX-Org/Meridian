@@ -8,6 +8,7 @@ import * as findingsApi from "@/lib/api/findings";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as runsApi from "@/lib/api/v1/runs";
+import * as settingsApi from "@/lib/api/settings";
 import * as versionsApi from "@/lib/api/versions";
 import * as systemObjectsApi from "@/lib/api/system-objects";
 import { toast } from "sonner";
@@ -90,6 +91,38 @@ describe("RunDetailPage", () => {
       expect(await screen.findByText("No next actions for this run")).toBeInTheDocument();
       expect(screen.getByTestId("next-actions-slot")).toBeInTheDocument();
     });
+  });
+
+  it("asks for next actions scoped to this run", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    const spy = vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(spy).toHaveBeenCalledWith({ limit: 5, version_id: "v2" }));
+  });
+
+  it("keeps the hero score on a run with nothing failing", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    renderWithQuery(<RunDetailPage />);
+    expect((await screen.findAllByText("Nothing failed in this run")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("region", { name: "Score" })).toBeInTheDocument();
+    expect(screen.queryByText("Next actions")).toBeNull();
+  });
+
+  it("drills blocking findings to critical and to high, and prices cost at risk in the tenant currency", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR" } as never);
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue({} as never);
+    vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+      ...EMPTY_AGGREGATE, total: 5, severity: { critical: 2, high: 3, medium: 0, low: 0 }, cost_at_risk: 1500,
+      dqs: { composite: 70, dimension_scores: { completeness: 70 }, modules: { material_master: 70 } },
+    });
+    renderWithQuery(<RunDetailPage />);
+    expect(await screen.findByRole("link", { name: "2 critical" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=critical");
+    expect(screen.getByRole("link", { name: "3 high" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=high");
+    expect(await screen.findByText(/ZAR\s?1,500/)).toBeInTheDocument();
   });
 
   it("renders the decisive error of a failed step", async () => {

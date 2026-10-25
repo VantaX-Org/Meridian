@@ -9,7 +9,7 @@ export interface InsightView { id: string; label: string; question: string; tabs
 
 export const VIEWS: InsightView[] = [
   { id: "summary", label: "Summary", question: "How are we, since when, what next", tabs: [["/insights/exec", "Executive summary"], ["/insights", "Overview"], ["/insights/reports", "Reports"]] },
-  { id: "progress", label: "Progress", question: "Did it get better, and why", tabs: [["/insights/progress", "Since baseline"], ["/insights/trends", "Trends"], ["/insights/forecast", "Forecast"]] },
+  { id: "progress", label: "Progress", question: "Did it get better, and why", tabs: [["/insights/progress", "Progress"], ["/insights/trends", "Trends"], ["/insights/forecast", "Forecast"]] },
   { id: "explore", label: "Explore", question: "Where exactly is it, from every angle", tabs: [["/insights/rules", "Failing rules"], ["/insights/impact", "Value at risk"], ["/insights/lineage", "Lineage"], ["/insights/mining", "Patterns"], ["/insights/duplicates", "Duplicates"]] },
   { id: "readiness", label: "Readiness", question: "Can we load, can we run the process", tabs: [["/insights/readiness", "Waves"], ["/insights/process", "Processes"], ["/migration", "Migration cockpit"]] },
   { id: "operate", label: "Operate", question: "Who does what today", tabs: [["/insights/owners", "Owners"], ["/insights/operations", "Operations"], ["/runs", "Runs"], ["/fix", "Fix queue"], ["/rules/contracts", "Data contracts"]] },
@@ -19,13 +19,17 @@ export function viewOf(pathname: string): InsightView | undefined {
   return VIEWS.find((v) => v.tabs.some(([href]) => href === pathname));
 }
 
-/** Link strip under the page header: the tabs of the current view, the pinned run carried to the other insight tabs only. */
-export function InsightTabs() {
+/**
+ * Link strip under the page header: the tabs of the current view, the pinned run carried to the other insight tabs
+ * only. A page outside the five views that belongs to one (a run compared with its baseline) names its `view`
+ * and the run its tabs should carry.
+ */
+export function InsightTabs({ view: viewId, run: runId }: { view?: string; run?: string } = {}) {
   // Both hooks return null outside the App Router (unit tests, static export).
   const pathname = usePathname() ?? "";
   const search = useSearchParams();
-  const run = search?.get("run") ?? undefined;
-  const view = viewOf(pathname);
+  const run = runId ?? search?.get("run") ?? undefined;
+  const view = viewId ? VIEWS.find((v) => v.id === viewId) : viewOf(pathname);
   if (!view || search?.get("present") === "1") return null;
   return (
     <nav aria-label={`${view.label} views`} data-tour="insight-views" className="flex flex-wrap items-center gap-1 border-b [border-color:var(--m-line)]">

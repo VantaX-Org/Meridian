@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, EmptyState, Line, Select, Status } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, Line, Select, Status, statusLabel } from "@/design";
 import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning, type PredictiveResponse } from "@/lib/api/analytics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
@@ -28,7 +28,17 @@ const warningColumns: ColumnDef<EarlyWarning>[] = [
   },
   { accessorKey: "message", header: "Message" },
   { accessorKey: "recommended_action", header: "Recommended action" },
+  {
+    id: "open", header: "", enableSorting: false, size: 90,
+    cell: ({ row }) => <Link href={`/objects/${row.original.module_id}`} aria-label={`Open ${formatModuleName(row.original.module_id)}`} className="m-ink-accent underline-offset-2 hover:underline">Open</Link>,
+  },
 ];
+
+/** The verdict of a forecast: its early warning's signal when one is open, else what its trend says. */
+const forecastVerdict = (f: DqsForecast, warnings: EarlyWarning[]): string => {
+  const w = warnings.find((x) => x.module_id === f.module_id);
+  return w ? SIGNAL_VERDICT[w.signal] : f.trend === "critical" ? "no-go" : f.trend === "declining" ? "at-risk" : "go";
+};
 
 /** Why there is no forecast yet, from the API's `reason`, `runs_seen` and `days_seen`. */
 export function forecastEmptyDetail(d: Pick<PredictiveResponse, "reason" | "runs_seen" | "days_seen"> | undefined): string {
@@ -100,7 +110,7 @@ export default function ForecastPage() {
       meta={seen ? `Every object, ${seen}` : undefined}
       insight={{
         situation: {
-          sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d} in 30 days` : "Not enough runs to forecast",
+          sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d} in 30 days: ${statusLabel("verdict", forecastVerdict(worst, warnings))}` : "Not enough runs to forecast",
           tone: declining.length ? "at-risk" : "go",
         },
         changed: { sentence: `${plural(declining.length, "object is", "objects are")} declining` },

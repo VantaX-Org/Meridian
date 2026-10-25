@@ -7,7 +7,9 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, HelpHint, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
+import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, EmptyState, ExplorerPage, emptyExportOptions, Field, HelpHint, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
+import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
+import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -17,7 +19,7 @@ import { exportRuns } from "@/lib/api/v1/runs";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatDate, runAxisLabels } from "@/lib/format";
+import { formatDate, plural, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
 import { runName } from "@/lib/run-scope";
@@ -300,15 +302,15 @@ export default function RunsPage() {
       toast.error(blocked ? `Not deleted: ${blocked}` : errorText(e));
     },
   });
-  const firstSystem = systems.data?.[0];
-
+  // Runs is a tab of the Operate view: the same spine (view tabs, Run analysis, Review fixes, Present, Export) as
+  // every insight page, so the thread from a run to its results never breaks.
   const header = (
     <PageHeader
       title="Runs"
       meta={<span className="inline-flex items-center gap-1">Every analysis, newest first; change is against the previous run of the same system <HelpHint term="previous_run" /></span>}
+      tabs={<InsightTabs />}
       actions={
         <>
-          <ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />
           {can("analyse") ? (
             showArchived ? (
               <Tooltip label="Bring every archived run back into the lists" render={<Button variant="secondary" onClick={() => restore.mutate()} pending={restore.isPending} />}>
@@ -320,15 +322,7 @@ export default function RunsPage() {
               </Tooltip>
             )
           ) : null}
-          {firstSystem ? (
-            <Tooltip label="Extract and check the connected system now" render={<Button render={<Link href={`/systems/${firstSystem.id}`} />} />}>
-              Run analysis
-            </Tooltip>
-          ) : (
-            <Tooltip label="Connect a system first" render={<Button aria-disabled="true" onClick={() => undefined} />}>
-              Run analysis
-            </Tooltip>
-          )}
+          <InsightActions options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />
         </>
       }
     />
@@ -351,8 +345,8 @@ export default function RunsPage() {
         {points.length > 1 ? (
           <Line data={points} height={120} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
         ) : (
-          <div className="flex items-center justify-center text-sm [height:120px] [background:var(--m-sheet-sunken)] m-ink-3">
-            Trend appears after two runs
+          <div className="flex items-center justify-center [height:120px] [background:var(--m-sheet-sunken)]">
+            <EmptyState variant="inline" title="Trend appears after two runs" />
           </div>
         )}
       </div>
@@ -365,7 +359,7 @@ export default function RunsPage() {
             bar={latest && latestDqs !== null ? latestDqs : undefined}
             rule={{}}
             delta={delta !== null ? <Delta value={delta} /> : undefined}
-            hint={delta === null ? "No earlier run" : "vs previous"}
+            hint={delta === null ? (latest ? `Mean of ${plural(Object.keys(latest.dqs_summary ?? {}).length, "object")}` : "No earlier run") : "vs previous run"}
             href={latest ? `/runs/${latest.id}` : undefined}
           />
           <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > headVersions.length ? `latest ${headVersions.length} used for the figures above` : undefined} />

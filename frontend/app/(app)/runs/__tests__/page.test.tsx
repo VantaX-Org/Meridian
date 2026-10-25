@@ -19,6 +19,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParams,
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+// The Run analysis drawer's object picker reads a system's objects; the page test only needs it to appear.
+vi.mock("@/app/(app)/systems/[systemId]/scope-picker", () => ({ ScopePicker: () => <div data-testid="scope-picker" /> }));
 // useDayOne() shares the systems/versions query keys with this page's own queries;
 // mocking it outright avoids a real-vs-mocked getSystems collision on queryKeys.systems().
 vi.mock("@/hooks/use-day-one", () => ({
@@ -85,6 +87,19 @@ describe("RunsPage", () => {
       expect(within(screen.getByTestId("runs-chart-slot")).getByText("Score per run, ECC Prod")).toBeInTheDocument();
       expect(screen.queryByText("Trend appears after two runs")).toBeNull();
     });
+  });
+
+  it("opens Run analysis as the system-picker drawer, under the Operate view tabs", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    expect(await screen.findByRole("navigation", { name: "Operate views" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Runs" })).toHaveAttribute("aria-current", "page");
+    // One run: the score tile says what the number is a mean of.
+    expect(await screen.findByText("Mean of 1 object")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run analysis" }));
+    expect(await screen.findByRole("dialog", { name: "Run analysis" })).toBeInTheDocument();
+    expect(await screen.findByTestId("scope-picker")).toBeInTheDocument();
   });
 
   it("shows the DQS column and a score chart for the latest system", async () => {

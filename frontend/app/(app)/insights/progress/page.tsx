@@ -47,14 +47,27 @@ export default function ProgressPage() {
   const recs = useQuery({ queryKey: ["versions", "compare-records", run, baseline, module], queryFn: () => compareRecords(run ?? "", baseline, module), enabled: !!run });
   const history = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: SCORE_HISTORY_LIMIT }) });
 
-  const pin = useMutation({
-    mutationFn: () => pinBaseline(run ?? ""),
-    onSuccess: () => { toast.success("Pinned as baseline. Later runs compare against it."); void qc.invalidateQueries({ queryKey: queryKeys.run("list") }); },
-    onError: (e) => toast.error(apiErrorMessage(e)),
-  });
-
   const v1 = cmp.data?.v1;
   const v2 = cmp.data?.v2;
+  // "Compare with" offers runs of the current run's own lineage: the same system, or uploads of the same objects.
+  const current = runs.find((r) => r.id === run);
+  const comparableRuns = current ? runs.filter((r) => r.id !== run && lineageOf(r) === lineageOf(current)) : runs.filter((r) => r.id !== run);
+  // The pinned baseline of this run's lineage, if any; the shown run itself may be it.
+  const pinnedRun = current ? runs.find((r) => lineageOf(r) === lineageOf(current) && r.metadata?.baseline === true) : undefined;
+  const pinnedHere = !!run && pinnedRun?.id === run;
+  // The page reads "Since baseline" only when the run compared with is the pinned baseline; else it is the previous run.
+  const againstBaseline = !!v1 && (v1.metadata?.baseline === true || runs.find((r) => r.id === v1.id)?.metadata?.baseline === true);
+  const title = againstBaseline ? "Since baseline" : "Since previous run";
+
+  const pin = useMutation({
+    mutationFn: () => pinBaseline(run ?? "", !pinnedHere),
+    onSuccess: (r) => {
+      toast.success(r.baseline ? "Pinned as baseline. Later runs compare against it." : "Baseline unpinned. Later runs compare against the previous run.");
+      void qc.invalidateQueries({ queryKey: queryKeys.run("list") });
+      void qc.invalidateQueries({ queryKey: ["versions"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
   // The compare response carries both runs, so their labels never depend on the run list.
   const label = (v?: { label: string | null; run_at: string; metadata?: Version["metadata"]; dqs_summary?: Version["dqs_summary"] } | null) => (v ? runScopeLabel(v) : "the baseline");
   const composite = (v?: { dqs_summary: Record<string, { composite_score: number | null }> | null } | null) => {
@@ -101,11 +114,13 @@ export default function ProgressPage() {
 
   const t = recs.data?.totals;
   const noEarlier = cmp.isError && (apiErrorReason(cmp.error) === "no_baseline" || (isNotFound(cmp.error) && !baseline) || /earlier run|different systems/i.test(apiErrorMessage(cmp.error)));
-  // "Compare with" offers runs of the current run's own lineage: the same system, or uploads of the same objects.
-  const current = runs.find((r) => r.id === run);
-  const comparableRuns = current ? runs.filter((r) => r.id !== run && lineageOf(r) === lineageOf(current)) : runs.filter((r) => r.id !== run);
   // Runs that share a label ("controlling_1k" ten times) are told apart by date and time.
   const optionLabels = runOptionLabels(comparableRuns);
+  // The default choice names what the API resolved once it has: the pinned baseline, or the previous run.
+  const defaultChoice = v1 ? `${againstBaseline ? "Baseline" : "Previous run"} (${label(v1)})` : "Pinned baseline or previous run";
+  // Every delta's rows live on the compare page: the fixed ones, or the newly failing ones.
+  const compareHref = (change: "resolved" | "new") => `/runs/${run}/vs/${baseline ?? v1?.id ?? "baseline"}?change=${change}`;
+  const objectsNow = Object.keys(v2?.dqs_summary ?? {}).length;
   const state: "loading" | "empty" | "error" | undefined = resolving || cmp.isLoading || dayOne.status === "loading"
     ? "loading"
     : noEarlier || !run ? "empty"
@@ -117,21 +132,23 @@ export default function ProgressPage() {
 
   return (
     <InsightFrame
-      title="Since baseline"
+      title={title}
       scope
       meta={v1 && v2 ? `compared with ${label(v1)}` : undefined}
       toolbar={
         <>
           <span className="inline-flex items-center gap-1">
             <Select
+              key={defaultChoice}
               label="Compare with"
               value={baseline ?? ""}
               onValueChange={(id) => router.replace(withScope(path, { run, module, baseline: id || undefined }))}
-              options={[{ value: "", label: "Pinned baseline or previous run" }, ...comparableRuns.map((r) => ({ value: r.id, label: `${optionLabels.get(r.id) ?? formatDate(r.run_at, "datetime")}${r.metadata?.baseline ? " (baseline)" : ""}` }))]}
+              options={[{ value: "", label: defaultChoice }, ...comparableRuns.map((r) => ({ value: r.id, label: `${optionLabels.get(r.id) ?? formatDate(r.run_at, "datetime")}${r.metadata?.baseline ? " (baseline)" : ""}` }))]}
             />
             <HelpHint term="baseline" />
           </span>
-          {can("analyse") && run ? <Button variant="secondary" onClick={() => pin.mutate()} pending={pin.isPending}>Pin as baseline</Button> : null}
+          <span className="m-text-meta m-ink-3" data-testid="baseline-line">{pinnedRun ? `Baseline: ${runScopeLabel(pinnedRun)}` : "No baseline pinned"}</span>
+          {can("analyse") && run ? <Button variant="secondary" onClick={() => pin.mutate()} pending={pin.isPending}>{pinnedHere ? "Unpin baseline" : "Pin as baseline"}</Button> : null}
         </>
       }
       exportOptions={run ? [
@@ -141,9 +158,9 @@ export default function ProgressPage() {
       insight={{
         hero: true,
         stats: [
-          { label: "DQS now", value: now ?? "—", decimals: 1, tone: dqsDelta == null ? undefined : dqsDelta >= 0 ? "go" : "at-risk", hint: dqsDelta == null ? undefined : dqsDelta === 0 ? "Unchanged since baseline" : `${dqsDelta > 0 ? "+" : ""}${dqsDelta} since baseline`, to: withScope("/insights/trends", { run }) },
-          { label: "Records fixed", value: t?.resolved ?? "—", tone: t?.resolved ? "go" : undefined, to: withScope("/fix", { run }) },
-          { label: "New failures", value: t?.new ?? "—", tone: t?.new ? "no-go" : "go", to: withScope("/insights/rules", { run }) },
+          { label: "DQS now", value: now ?? "—", decimals: 1, tone: dqsDelta == null ? undefined : dqsDelta >= 0 ? "go" : "at-risk", hint: objectsNow ? `Mean of ${plural(objectsNow, "object")} in this run` : undefined, to: withScope("/insights/trends", { run }) },
+          { label: "Records fixed", value: t?.resolved ?? "—", tone: t?.resolved ? "go" : undefined, to: compareHref("resolved") },
+          { label: "New failures", value: t?.new ?? "—", tone: t?.new ? "no-go" : "go", to: compareHref("new") },
           { label: "Still failing", value: t?.persisting ?? "—", to: withScope("/insights/rules", { run }) },
         ],
         situation: { sentence: dqsDelta == null ? "Not enough scored runs to compare" : dqsDelta === 0 ? `DQS unchanged since ${label(v1)}` : `DQS ${dqsDelta > 0 ? "up" : "down"} ${Math.abs(dqsDelta)} since ${label(v1)}`, tone: dqsDelta == null ? undefined : dqsDelta >= 0 ? "go" : "at-risk" },
@@ -163,7 +180,7 @@ export default function ProgressPage() {
       }}
       errorProps={{ message: apiErrorMessage(cmp.error), onRetry: () => { void cmp.refetch(); void recs.refetch(); } }}
     >
-      <Card title="Objects since baseline" meta={rows.length ? plural(rows.length, "object") : undefined} actions={<Link href={withScope("/objects", { run })} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}>
+      <Card title={againstBaseline ? "Objects since baseline" : "Objects since previous run"} meta={rows.length ? plural(rows.length, "object") : undefined} actions={<Link href={withScope("/objects", { run })} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}>
         {rows.length === 0 ? <p className="m-text-body m-ink-3">No object is scored in both runs.</p>
           : <DataTable columns={objectColumns} data={rows} getRowId={(r) => r.module} hideToolbar dense height="auto" />}
       </Card>

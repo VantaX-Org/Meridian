@@ -34,8 +34,9 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { createBatch, errorText } from "@/lib/api/remediation";
 import { getComparisonReportUrl } from "@/lib/api/reports";
 import { compareRecordKeys, compareRecords, compareVersions } from "@/lib/api/versions";
-import { formatDate, formatModuleName, roundedDelta } from "@/lib/format";
+import { formatDate, formatModuleName, plural, roundedDelta } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
+import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { compareNarrative } from "@/lib/narrative";
 import { queryKeys } from "@/lib/query-keys";
 import type { CheckChange, Version } from "@/types/api";
@@ -129,6 +130,8 @@ export default function CompareRunsPage() {
   const { versionId, b } = useParams<{ versionId: string; b: string }>();
   const { can } = useRole();
   const [module, setModule] = useUrlState("module");
+  // `?change=new|resolved` (from the Progress tiles) narrows the ledger to the newly failing or the fixed rules.
+  const [changeFilter, setChangeFilter] = useUrlState("change");
   const v1Param = b === "baseline" ? undefined : b;
   const moduleParam = module || undefined;
 
@@ -171,8 +174,10 @@ export default function CompareRunsPage() {
   const diff = diffQ.data ?? null;
   const sentences = useMemo(() => (cmp ? compareNarrative(cmp, diff) : []), [cmp, diff]);
   const rows = useMemo(
-    () => (cmp ? [...cmp.checks.newly_failing, ...cmp.checks.fixed].sort((x, y) => change(y) - change(x)) : []),
-    [cmp],
+    () => (cmp
+      ? [...(changeFilter === "resolved" ? [] : cmp.checks.newly_failing), ...(changeFilter === "new" ? [] : cmp.checks.fixed)].sort((x, y) => change(y) - change(x))
+      : []),
+    [cmp, changeFilter],
   );
 
   const moduleOptions: SelectOption[] = Object.keys(allModulesQ.data?.delta ?? cmp?.delta ?? {}).map((m) => ({
@@ -207,6 +212,7 @@ export default function CompareRunsPage() {
       title={`${runLabel(cmp.v2)} vs ${runLabel(cmp.v1)}`}
       meta={`${formatDate(cmp.v2.run_at, "datetime")} and ${formatDate(cmp.v1.run_at, "datetime")}`}
       status={b === "baseline" ? <Pill>Baseline</Pill> : undefined}
+      tabs={<InsightTabs view="progress" run={versionId} />}
     />
   ) : (
     <Skeleton height={48} width={320} />
@@ -214,7 +220,10 @@ export default function CompareRunsPage() {
 
   const narrative = (
     <div className="flex flex-col gap-2">
-      <Select label="Object" value={module} onValueChange={setModule} options={[{ value: "", label: "All objects" }, ...moduleOptions]} placeholder="All objects" />
+      <div className="flex flex-wrap items-center gap-2">
+        <Select label="Object" value={module} onValueChange={setModule} options={[{ value: "", label: "All objects" }, ...moduleOptions]} placeholder="All objects" />
+        <Select label="Change" value={changeFilter} onValueChange={setChangeFilter} options={[{ value: "", label: "All changes" }, { value: "new", label: "Newly failing" }, { value: "resolved", label: "Fixed" }]} placeholder="All changes" />
+      </div>
       {sentences.map((s) => (
         <p key={s}>{s}</p>
       ))}
@@ -223,8 +232,8 @@ export default function CompareRunsPage() {
 
   const charts = cmp ? (
     <div className="grid grid-cols-3 gap-3">
-      <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
-      <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
+      <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" hint={`Mean of ${plural(deltas.length, "object")}`} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
+      <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" hint={`Mean of ${plural(deltas.length, "object")}`} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
       <Stat label="Change" value={<Delta value={roundedDelta(before, after)} />} />
     </div>
   ) : (

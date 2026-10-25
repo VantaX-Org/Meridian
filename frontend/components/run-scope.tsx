@@ -62,7 +62,7 @@ export function RunScope({ scope, hrefFor, picker = false }: RunScopeProps) {
         <span>As of {runScopeLabel(run)}</span>
       )}
       {pinned && (
-        <Link href={hrefFor(null)} className="underline-offset-2 hover:underline" style={{ color: "var(--m-accent)" }}>
+        <Link href={hrefFor(null)} className="m-ink-accent underline-offset-2 hover:underline">
           Back to latest
         </Link>
       )}
@@ -98,7 +98,7 @@ export function StateScope({ runs, pinned, objectCount, systemName, hrefFor }: {
         className="m-input inline-flex max-w-[360px] items-center justify-between gap-2"
       />
       {pinned ? (
-        <Link href={hrefFor(null)} className="underline-offset-2 hover:underline" style={{ color: "var(--m-accent)" }}>
+        <Link href={hrefFor(null)} className="m-ink-accent underline-offset-2 hover:underline">
           Back to all runs
         </Link>
       ) : (
@@ -107,7 +107,7 @@ export function StateScope({ runs, pinned, objectCount, systemName, hrefFor }: {
           {runs.map((r, i) => (
             <Fragment key={r.id}>
               {i > 0 && "; "}
-              <Link href={hrefFor(r.id)} className="underline-offset-2 hover:underline" style={{ color: "var(--m-accent)" }}>{source(r)}</Link>
+              <Link href={hrefFor(r.id)} className="m-ink-accent underline-offset-2 hover:underline">{source(r)}</Link>
             </Fragment>
           ))}
         </span>
