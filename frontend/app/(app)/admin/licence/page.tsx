@@ -1,18 +1,25 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Button, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/design";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, ErrorState, Notice, PageHeader, Pill, Skeleton, toast } from "@/design";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { useUpdateModal } from "@/context/update-modal-context";
-import { getLicenceManifest } from "@/lib/api/licence";
+import { getLicenceManifest, validateLicence } from "@/lib/api/licence";
 import { getUpdateStatus } from "@/lib/api/system-update";
 import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName, formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 export default function AdminLicencePage() {
+  const qc = useQueryClient();
+  const canValidate = useRole().can("manage_system");
   const q = useQuery({ queryKey: queryKeys.licenceManifest(), queryFn: getLicenceManifest });
+  const validate = useMutation({
+    mutationFn: validateLicence,
+    onSuccess: () => { toast.success("Licence checked with Meridian HQ"); void qc.invalidateQueries({ queryKey: queryKeys.licenceManifest() }); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
   const l = q.data;
   const modules = l?.enabled_modules ?? [];
   const all = modules.includes("*");
@@ -29,6 +36,7 @@ export default function AdminLicencePage() {
         title="Licence"
         meta="What this deployment is licensed for: objects, seats and features. Plan changes and invoices are handled in Meridian HQ"
         status={l?.valid === false ? <Pill tone="no-go">Not valid</Pill> : l?.valid ? <Pill tone="go">Valid</Pill> : undefined}
+        actions={canValidate ? <Button variant="secondary" pending={validate.isPending} onClick={() => validate.mutate()}>Validate now</Button> : undefined}
       />
 
       {l?.valid === false ? (

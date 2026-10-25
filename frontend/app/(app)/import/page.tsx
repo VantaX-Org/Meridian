@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Card, DataTable, EmptyState, ErrorState, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, type PillTone, PageFrame, Status, ProgressFill, toast } from "@/design";
+import { DrillLink, Button, Card, DataTable, EmptyState, ErrorState, Field, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, type PillTone, PageFrame, Status, ProgressFill, toast } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { getModuleFieldMappings } from "@/lib/api/field-mappings";
@@ -29,6 +29,7 @@ const stepLabel = (step: string) => STEP_LABEL[step] ?? labelOf(step);
 const ACCEPT = ".csv,.tsv,.txt,.xlsx,.xls,.json,.parquet";
 const TERMINAL = new Set(["complete", "agents_complete", "ai_enriched", "failed", "agents_failed"]);
 const NOT_MAPPED = "";
+const NO_SYSTEM = "";
 
 type Job = { versionId: string; status: "queued" | "processing" | "completed" | "failed"; percent: number; step: string; error: string | null };
 
@@ -46,6 +47,7 @@ export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [match, setMatch] = useState<MatchResponse | null>(null);
   const [targetModule, setTargetModule] = useState<string | null>(null);
+  const [systemId, setSystemId] = useState(NO_SYSTEM);
   // The user's corrections to the proposed mapping, by source column; the proposal stands where there is none.
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [uploadPct, setUploadPct] = useState(0);
@@ -86,7 +88,7 @@ export default function ImportPage() {
     mutationFn: async () => {
       if (!file || !targetModule || !match) throw new Error("Pick a file and a module first");
       const mapping = Object.fromEntries(match.mappings.flatMap((m) => (targetOf(m) ? [[m.source_column, targetOf(m)]] : [])));
-      const up = await uploadFile(file, targetModule, Object.keys(mapping).length ? mapping : null, setUploadPct);
+      const up = await uploadFile(file, targetModule, Object.keys(mapping).length ? mapping : null, setUploadPct, { systemId });
       setJob({ versionId: up.version_id, status: "queued", percent: 0, step: "queued", error: null });
       const final = await pollAnalysisStatus(up.version_id, (s) => setJob({
         versionId: up.version_id, status: s.status, percent: s.progress?.percent_complete ?? 0,
@@ -222,6 +224,18 @@ export default function ImportPage() {
                   </button>
                 ))}
               </div>
+              {systemsQ.data?.length ? (
+                <div className="flex flex-col gap-1.5">
+                  <Field label="System">
+                    <Select
+                      value={systemId}
+                      onValueChange={setSystemId}
+                      options={[{ value: NO_SYSTEM, label: "No system: a one-off file" }, ...systemsQ.data.map((s) => ({ value: s.id, label: s.name }))]}
+                    />
+                  </Field>
+                  <p className="m-text-meta m-ink-3">Attach the file to a system so its runs compare with that system&apos;s extractions</p>
+                </div>
+              ) : null}
               {noHeaders ? (
                 <Notice tone="warning">Columns cannot be previewed for this format. Pick the object above; the columns are read from the file when it imports</Notice>
               ) : null}

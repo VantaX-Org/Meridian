@@ -8,13 +8,15 @@ Used by the customer frontend to:
 - Show expiry countdown
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from api.deps import Tenant, get_db, get_tenant
+from api.middleware import licence as licence_mw
 from api.middleware.licence import get_cached_manifest
+from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["licence"])
 
@@ -30,6 +32,24 @@ async def get_licence(request: Request, db: AsyncSession = Depends(get_db), tena
     Platform-update UI should prefer GET /api/v1/system/update-status instead
     (api/routes/system_update.py) — it does the version comparison server-side.
     """
+    return await _with_seats(db, tenant)
+
+
+@router.post("/licence/validate", dependencies=[Depends(require_permission("manage_system"))])
+async def validate_licence(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Check the licence with Meridian HQ now instead of waiting for the 6-hour refresh.
+
+    Updates the same in-memory caches the licence middleware does and returns the
+    fresh manifest in the shape of GET /api/v1/licence. 503 when HQ cannot be reached.
+    """
+    result, outcome = await licence_mw.revalidate()
+    if result is None or outcome == "cutoff":
+        raise HTTPException(status_code=503, detail="Meridian HQ could not be reached. Try again shortly")
+    return await _with_seats(db, tenant)
+
+
+async def _with_seats(db: AsyncSession, tenant: Tenant) -> dict:
+    """The cached manifest with the tenant's seats in use."""
     manifest = dict(get_cached_manifest())
     # Seats in use: active users of this tenant. ``seats`` comes from the manifest when the licence sets one.
     await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))

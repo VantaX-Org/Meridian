@@ -66,4 +66,10 @@ export async function getLicenceManifest(): Promise<LicenceManifest> {
   }
 }
 
+/** Check the licence with Meridian HQ now (licence admins). Rejects with the server's message when HQ is unreachable. */
+export async function validateLicence(): Promise<LicenceManifest> {
+  const { data } = await apiClient.post<LicenceManifest>("/api/v1/licence/validate");
+  return data;
+}
+
 export { DEFAULT_MANIFEST };

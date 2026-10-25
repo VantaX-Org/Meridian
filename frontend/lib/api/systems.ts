@@ -42,6 +42,7 @@ export async function updateSystem(
     base_url?: string;
     company_id?: string;
     auth_type?: string;
+    token_url?: string; // "" clears it
     description?: string;
     environment?: string;
     is_active?: boolean;

@@ -45,12 +45,13 @@ export async function matchColumns(
 
 /* ─── File upload ─── */
 
+/** `systemId` attaches the file to a connected system, so its run joins that system's lineage. */
 export async function uploadFile(
   file: File,
   module: string,
   columnMapping: Record<string, string> | null,
   onProgress: (pct: number) => void,
-  signal?: AbortSignal
+  { systemId, signal }: { systemId?: string | null; signal?: AbortSignal } = {},
 ): Promise<UploadResponse> {
   const form = new FormData();
   form.append("file", file);
@@ -58,6 +59,7 @@ export async function uploadFile(
   if (columnMapping) {
     form.append("column_mapping", JSON.stringify(columnMapping));
   }
+  if (systemId) form.append("system_id", systemId);
 
   const { data } = await apiClient.post<UploadResponse>(
     "/api/v1/upload",

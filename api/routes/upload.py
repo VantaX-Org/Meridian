@@ -6,6 +6,7 @@ import uuid
 import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import settings
@@ -54,6 +55,7 @@ async def upload_file(
     file: UploadFile = File(...),
     module: str = Form(...),
     column_mapping: str = Form(None),
+    system_id: str = Form(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -61,6 +63,12 @@ async def upload_file(
     from api.middleware.licence import enforce_licensed_modules
 
     enforce_licensed_modules(request, [module])
+
+    # An upload attached to a system joins that system's lineage (frontend lib/runs.ts
+    # lineageOf reads metadata.system_id), so its runs compare with the extractions.
+    # Checked before anything is stored, so a bad id leaves no orphan file behind.
+    if system_id:
+        system_id = await _tenant_system(db, tenant.id, system_id)
 
     # Step 1-2: Read in chunks — abort early if file exceeds MAX_FILE_SIZE (OOM prevention)
     chunks: list[bytes] = []
@@ -261,6 +269,8 @@ async def upload_file(
         "standard_fields_missing": sorted(missing_standard),
         "custom_fields": sorted(custom_fields),
     }
+    if system_id:
+        metadata["system_id"] = system_id
     # Default label from the filename stem (e.g. "business-partner-clean.csv"
     # -> "business-partner-clean") so the Reports / Versions pages don't show
     # "Unlabelled run" for every upload. Capped at 120 chars for safety.
@@ -297,6 +307,20 @@ async def upload_file(
         job_id=job_id,
         status="pending",
     )
+
+
+async def _tenant_system(db: AsyncSession, tenant_id: uuid.UUID, system_id: str) -> str:
+    """The id of the tenant's sap_systems row, or 404."""
+    try:
+        sid = str(uuid.UUID(system_id))
+    except ValueError:
+        raise HTTPException(status_code=404, detail="System not found")
+    found = (await db.execute(
+        text("SELECT 1 FROM sap_systems WHERE id = CAST(:s AS uuid) AND tenant_id = :t"),
+        {"s": sid, "t": tenant_id})).scalar()
+    if not found:
+        raise HTTPException(status_code=404, detail="System not found")
+    return sid
 
 
 async def _enqueue_checks(db: AsyncSession, tenant_id: uuid.UUID, version_id: uuid.UUID,

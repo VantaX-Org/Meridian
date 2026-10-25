@@ -581,6 +581,7 @@ export interface SAPSystem {
   base_url: string | null;
   company_id: string | null;
   auth_type: AuthType | null;
+  token_url?: string | null;
   description: string | null;
   environment: "PRD" | "QAS" | "DEV";
   is_active: boolean;
@@ -966,6 +967,7 @@ export interface SAPSystemExtended {
   base_url: string | null;
   company_id: string | null;
   auth_type: AuthType | null;
+  token_url?: string | null;
   description: string | null;
   environment: "PRD" | "QAS" | "DEV";
   is_active: boolean;
