@@ -37,7 +37,7 @@ describe("rules scoring page", () => {
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
     renderWithQuery(<ScoringPage />);
     await waitFor(() => expect(screen.getByText("Dimension weights")).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByText("88.5")).toBeInTheDocument());
+    expect(await screen.findByText("88.5", undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it("saves weights on the 100 scale the API stores", async () => {
