@@ -8,7 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import case, func, or_, select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
+from api.services.run_context import latest_run
 from api.services.run_lineage import lineage_sql
+from api.services.version_status import finished_sql
 
 from api.deps import Tenant, get_db, get_tenant
 from api.models.config_score import ConfigAwareScore, RuleApplicability
@@ -41,7 +43,7 @@ def check_class_of(module: str, check_id: str) -> Optional[str]:
     return _check_classes().get((module, check_id))
 
 
-_COMPLETE = "status IN ('complete', 'agents_running', 'agents_complete', 'agents_failed', 'ai_enriching', 'ai_enriched')"
+_COMPLETE = finished_sql()
 
 
 async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUID]:
@@ -157,10 +159,7 @@ async def config_aware_score(
     if version_id:
         vid = version_id
     else:
-        vid = (await db.execute(text(f"""
-            SELECT id::text FROM analysis_versions WHERE tenant_id = :tid AND {_COMPLETE}
-               AND (CAST(:sid AS text) IS NULL OR metadata->>'system_id' = :sid) ORDER BY run_at DESC LIMIT 1
-        """), {"tid": tid, "sid": system_id})).scalar()
+        vid = await latest_run(db, tid, system_id)
     if not vid:
         raise HTTPException(404, "No completed analysis")
     findings = [dict(r) for r in (await db.execute(text(
@@ -679,8 +678,7 @@ async def s4_readiness(
         except ValueError:
             raise HTTPException(status_code=422, detail="version_id must be a UUID")
     else:
-        vid = (await db.execute(text(f"SELECT id FROM analysis_versions WHERE tenant_id = :tid AND {_COMPLETE} "
-                                     "ORDER BY run_at DESC LIMIT 1"), {"tid": str(tenant.id)})).scalar()
+        vid = await latest_run(db, tenant.id)
     rows = [] if vid is None else (await db.execute(
         select(Finding.check_id, Finding.module, Finding.severity, Finding.affected_count,
                Finding.pass_rate, Finding.details)

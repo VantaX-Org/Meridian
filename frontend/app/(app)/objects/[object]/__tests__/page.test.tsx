@@ -71,8 +71,8 @@ describe("ObjectDetailPage", () => {
     expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
     expect(getObject).toHaveBeenCalledWith("material_master", "mm-latest");
     expect(getObject).not.toHaveBeenCalledWith("material_master", "bp-new");
-    // The header names the run, offers its lineage, and nothing is pinned, so there is no "Back to latest".
-    expect(screen.getByRole("combobox", { name: "Showing run" })).toHaveTextContent("material_master_25k, 14 Oct 2026");
+    // The header names the run (the scope bar picks it), and nothing is pinned, so there is no "Back to latest".
+    expect(screen.getByTestId("run-scope")).toHaveTextContent("As of material_master_25k, 14 Oct 2026");
     expect(screen.queryByRole("link", { name: "Back to latest" })).toBeNull();
     expect(replace).not.toHaveBeenCalled();
   });

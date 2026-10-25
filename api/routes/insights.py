@@ -19,6 +19,7 @@ from api.services.insights_impact import by_l1, feature_l1, tenant_currency, val
 from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
 from api.services.insights_readiness import build_wave_cells
 from api.services.rbac import require_permission
+from api.services.run_context import latest_run
 from api.services.scoring import scoring_config
 
 router = APIRouter(prefix="/api/v1/insights", tags=["insights"])
@@ -347,11 +348,7 @@ async def get_exec(
     narrative is a deterministic string built from these numbers — no LLM call."""
     await _rls(db, tenant)
     if version_id is None:
-        version_id = (await db.execute(
-            text("SELECT id FROM analysis_versions WHERE tenant_id = :t "
-                 "AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery' ORDER BY run_at DESC LIMIT 1"),
-            {"t": str(tenant.id)},
-        )).scalar()
+        version_id = await latest_run(db, tenant.id)
         if version_id is None:
             # No analysis run at all for this tenant — not an error, just a day-one
             # tenant. 200 with empty fields so the page renders its empty state.

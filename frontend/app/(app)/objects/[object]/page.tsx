@@ -447,7 +447,7 @@ export default function ObjectDetailPage() {
   ].filter(Boolean).join(", ");
   const meta = (
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-      <RunScope scope={scope} picker hrefFor={(id) => hrefWithRun(`/objects/${object}`, search, id)} />
+      <RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}`, search, id)} />
       {counts && <span>{counts}</span>}
     </span>
   );

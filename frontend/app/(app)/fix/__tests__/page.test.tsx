@@ -97,3 +97,20 @@ describe("FixPage", () => {
     expect(await screen.findByText("No cleaning proposals")).toBeInTheDocument();
   });
 });
+
+describe("FixPage under a chosen run", () => {
+  it("shows that run's proposals and the matcher's, which carry no run", async () => {
+    searchParams.set("run", "R1");
+    try {
+      vi.mocked(getCleaningGroups).mockResolvedValue({
+        groups: [group({ records: 5 }), group({ version_id: "R2", records: 7 }), group({ version_id: null, kind: "match", records: 3 })],
+        records: 15, confident: 3, runs: 2,
+      });
+      renderWithQuery(<FixPage />);
+      expect(await screen.findByText("8")).toBeInTheDocument();
+      expect(screen.getAllByRole("link", { name: /^Review/ })).toHaveLength(2);
+    } finally {
+      searchParams.delete("run");
+    }
+  });
+});

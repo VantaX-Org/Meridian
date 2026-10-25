@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
-from api.services import remediation
+from api.services import remediation, worklist
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
@@ -113,6 +113,7 @@ async def create_batch(
     uid, label = current_user_id(request), current_user_label()
     out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), body.name, f.model_dump_json(),
                                                               issues, uid, label))
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
     await db.commit()
     return out
 
@@ -165,6 +166,7 @@ async def create_batch_from_cleaning(
     uid, label = current_user_id(request), current_user_label()
     filt = json.dumps({"source": "cleaning", "ids": sorted(str(r["id"]) for r in rows)})
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
     await db.commit()
     return out
 
@@ -191,6 +193,7 @@ async def create_batch_from_simulation(
     uid, label = current_user_id(request), current_user_label()
     filt = json.dumps({"source": "simulation", "simulation_id": body.simulation_id})
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
     await db.commit()
     return out
 
@@ -279,6 +282,7 @@ async def update_item(
                           ":old, :new)"),
                      {"tid": str(tenant.id), "bid": batch_id, "iid": item_id, "uid": current_user_id(request),
                       "label": current_user_label(), "old": old[0], "new": body.proposed_value})
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     await db.commit()
     return {"id": str(item_id), "proposed_value": body.proposed_value}
 
@@ -331,6 +335,7 @@ async def approve_batch(
                           "approved_by_label = :label, approved_at = now() WHERE id = :id"),
                      {"uid": uid, "label": current_user_label(), "id": batch_id})
     await _event(db, tenant, batch_id, "approved", request)
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     await db.commit()
     return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label()}
 
@@ -419,6 +424,7 @@ async def export_batch(
         {"tid": str(tenant.id), "bid": batch_id, "fmt": format, "fn": filename, "sha": digest, "size": len(data),
          "cnt": len(items), "uid": uid, "label": current_user_label(), "approved_label": b["approved_by_label"]})
     await _event(db, tenant, batch_id, "exported", request, to_value=format)
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     await db.commit()
     return StreamingResponse(io.BytesIO(data), media_type=_MEDIA[ext], headers={
         "Content-Disposition": f"attachment; filename={filename}",

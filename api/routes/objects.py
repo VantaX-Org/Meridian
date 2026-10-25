@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from api.services.run_context import latest_run
 from api.services.run_lineage import lineage_sql
 
 from api.deps import Tenant, get_db, get_tenant
@@ -27,6 +28,7 @@ from api.services.branded_xlsx import (
 from api.routes.sync_trigger import module_label
 from api.services.rbac import require_permission, scope_from_path
 from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config, tier
+from api.services.version_status import FINISHED
 
 router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
 
@@ -67,7 +69,6 @@ class ObjectsListOut(BaseModel):
 # Finished runs, as api/routes/versions.py's _DONE minus 'failed': run_agents.py and
 # ai_enrich_report.py move a run past 'complete' once checks are in, so the newest
 # finished run is often not status = 'complete'.
-FINISHED = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched")
 
 
 async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> Optional[str]:
@@ -75,11 +76,7 @@ async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> Optional[s
     when the tenant has none — an empty tenant is not an error), otherwise
     validate the value as a run id."""
     if run == "latest":
-        row = (await db.execute(text(
-            "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND status = ANY(:done) "
-            "ORDER BY run_at DESC LIMIT 1"
-        ), {"t": str(tenant.id), "done": list(FINISHED)})).fetchone()
-        return row[0] if row else None
+        return await latest_run(db, tenant.id)
     try:
         uuid.UUID(run)
     except ValueError:
