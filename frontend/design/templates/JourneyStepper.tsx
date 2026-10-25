@@ -71,7 +71,10 @@ export function JourneyStepper({
               {runningJob.label} <Status kind="lifecycle" value={runningJob.status} /> {Math.round(runningJob.percent)}%
             </p>
           ) : !step.actionable || !step.href ? null : (
-            <Button render={<Link href={step.href}>{step.actionLabel ?? step.label}</Link>} className="self-start" />
+            <div className="flex flex-wrap items-center gap-2 self-start">
+              <Button render={<Link href={step.href}>{step.actionLabel ?? step.label}</Link>} />
+              {step.secondary ? <Button variant="secondary" render={<Link href={step.secondary.href}>{step.secondary.label}</Link>} /> : null}
+            </div>
           )}
         </div>
       )}

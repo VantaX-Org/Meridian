@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ROLES, isRole, legacyRole } from "@/hooks/use-role";
-import { PERSONA_OPTIONS, homeHrefForRole, personaForRole } from "../persona";
+import { PERSONA_OPTIONS, homeHrefForRole, homeRoleFrom, personaForRole } from "../persona";
 
 describe("personaForRole", () => {
   it("maps every legacy role to a persona (rbac.md 1.1)", () => {
@@ -58,5 +58,19 @@ describe("personaForRole", () => {
   it("offers every persona a role can land on, and only those, under View as", () => {
     const landed = new Set(ROLES.map(personaForRole));
     expect(new Set(PERSONA_OPTIONS.map((o) => o.value))).toEqual(landed);
+  });
+});
+
+describe("homeRoleFrom", () => {
+  it("lands a scoped-only steward (users.role viewer) on Fix, not the lead home", () => {
+    const role = homeRoleFrom("viewer", ["data_steward", "viewer"]);
+    expect(role).toBe("data_steward");
+    expect(homeHrefForRole(role)).toBe("/fix");
+  });
+
+  it("keeps users.role when it already has a persona, or no grant has one", () => {
+    expect(homeRoleFrom("sap_basis", ["data_steward"])).toBe("sap_basis");
+    expect(homeRoleFrom("viewer", ["viewer", "custom:x", "analyst"])).toBe("viewer");
+    expect(homeRoleFrom("viewer", [])).toBe("viewer");
   });
 });

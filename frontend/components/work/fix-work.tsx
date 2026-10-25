@@ -16,7 +16,7 @@ import {
 } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
-import { RecordPanel } from "./record-panel";
+import { RecordPanel, invalidateAfterDecision, toastDraftBatch } from "./record-panel";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 
 const PAGE = 50;
@@ -143,7 +143,7 @@ function SetValueDialog({ group, open, onOpenChange, run }: { group: WorkGroup; 
   const [onlyBlank, setOnlyBlank] = useState(true);
   const m = useMutation({
     mutationFn: () => setGroupValue(group.check_id, value, onlyBlank, run),
-    onSuccess: (r) => { toast.success(`${plural(r.updated, "record")} set to "${value}": they wait in your draft batch for approval`); onOpenChange(false); void qc.invalidateQueries({ queryKey: ["work"] }); },
+    onSuccess: (r) => { toastDraftBatch(`${plural(r.updated, "record")} set to "${value}": they wait in your draft batch for approval`); onOpenChange(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   return (
@@ -212,12 +212,12 @@ export function FixWork() {
 
   const bulk = useMutation({
     mutationFn: (d: Decision[]) => decide(d, run),
-    onSuccess: (r) => { toast.success(`${plural(r.updated, "change")} saved`); setChecked(new Set()); setSignOff(false); void qc.invalidateQueries({ queryKey: ["work"] }); },
+    onSuccess: (r) => { toast.success(`${plural(r.updated, "change")} saved`); setChecked(new Set()); setSignOff(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const groupAccept = useMutation({
     mutationFn: (check: string) => acceptAllInGroup(check, run),
-    onSuccess: (r) => { toast.success(`${plural(r.accepted, "suggested value")} accepted: they wait in your draft batch for approval`); setAcceptAll(false); void qc.invalidateQueries({ queryKey: ["work"] }); },
+    onSuccess: (r) => { toastDraftBatch(`${plural(r.accepted, "suggested value")} accepted: they wait in your draft batch for approval`); setAcceptAll(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const build = useMutation({

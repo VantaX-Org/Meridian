@@ -259,6 +259,47 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
     )
     count += result3.rowcount or 0
 
+    # Writeback approvals whose cleaning proposal was applied, rejected or
+    # rolled back elsewhere (Fix) — it is no longer waiting at 'approved'.
+    result4 = session.execute(
+        text("""
+            UPDATE stewardship_queue sq
+            SET status = 'resolved', updated_at = now(), resolved_at = now()
+            WHERE sq.tenant_id = :tid
+              AND sq.item_type = 'writeback_approval'
+              AND sq.status IN ('open', 'in_progress')
+              AND NOT EXISTS (
+                  SELECT 1 FROM cleaning_queue cq
+                  WHERE cq.id = sq.source_id AND cq.tenant_id = :tid AND cq.status = 'approved'
+              )
+        """),
+        {"tid": tid},
+    )
+    count += result4.rowcount or 0
+
+    # Contract breaches whose contract is no longer active, or whose latest
+    # compliance record (if any) is compliant again.
+    result5 = session.execute(
+        text("""
+            UPDATE stewardship_queue sq
+            SET status = 'resolved', updated_at = now(), resolved_at = now()
+            WHERE sq.tenant_id = :tid
+              AND sq.item_type = 'contract_breach'
+              AND sq.status IN ('open', 'in_progress')
+              AND NOT EXISTS (
+                  SELECT 1 FROM contracts c
+                  WHERE c.id = sq.source_id AND c.tenant_id = :tid AND c.status = 'active'
+                    AND (
+                        SELECT cch.overall_compliant FROM contract_compliance_history cch
+                        WHERE cch.contract_id = c.id AND cch.tenant_id = :tid
+                        ORDER BY cch.recorded_at DESC LIMIT 1
+                    ) IS NOT TRUE
+              )
+        """),
+        {"tid": tid},
+    )
+    count += result5.rowcount or 0
+
     return count
 
 

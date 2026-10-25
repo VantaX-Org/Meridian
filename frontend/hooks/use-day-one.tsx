@@ -16,6 +16,8 @@ interface StepBase {
   actionable: boolean;
   /** The button's text when it differs from the label ("Open the failed run"). */
   actionLabel?: string;
+  /** A second, lesser way to do the step ("Import a file" beside "Connect a system"). */
+  secondary?: { label: string; href: "/import" };
 }
 export type DayOneStep =
   | ({ key: "connect"; href: "/systems" | "/systems?connect=1" | null } & StepBase)
@@ -85,9 +87,19 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
     };
   }
   if (systems.length === 0) {
+    if (!can("manage_systems") && can("upload")) {
+      // Connecting needs an administrator, but an import gets this user to a first score on their own.
+      return {
+        status: "ready",
+        step: { key: "import", href: "/import", label: "Import a file", detail: "Import an SAP export to get a first score. Connecting a live system needs an administrator.", actionable: true },
+      };
+    }
     return {
       status: "ready",
-      step: gate({ key: "connect", href: "/systems?connect=1", label: "Connect a system", detail: "Add an SAP system, or import a file if you have an export.", actionable: true }),
+      step: gate({
+        key: "connect", href: "/systems?connect=1", label: "Connect a system", detail: "Add an SAP system, or import a file if you have an export.", actionable: true,
+        secondary: can("upload") ? { label: "Import a file", href: "/import" } : undefined,
+      }),
     };
   }
   // The first system still missing the step, so the button opens the system that needs the work.
@@ -114,5 +126,12 @@ export function DayOneAction({ step, fallbackHref, fallbackLabel }: { step: DayO
   if (step && (!step.actionable || !step.href)) {
     return <span style={{ color: "var(--m-ink-3)" }}>{step.label}</span>;
   }
-  return <Button render={<Link href={step?.href ?? fallbackHref}>{step?.actionLabel ?? step?.label ?? fallbackLabel}</Link>} />;
+  const primary = <Button render={<Link href={step?.href ?? fallbackHref}>{step?.actionLabel ?? step?.label ?? fallbackLabel}</Link>} />;
+  if (!step?.secondary) return primary;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      {primary}
+      <Button variant="secondary" render={<Link href={step.secondary.href}>{step.secondary.label}</Link>} />
+    </span>
+  );
 }

@@ -45,3 +45,15 @@ export function homeHrefForRole(role: Role, can?: (action: string) => boolean): 
   if (persona !== "steward") return `/home/${persona}`;
   return !can || can("approve") || can("apply") ? "/fix" : "/home/steward";
 }
+
+/**
+ * The role whose persona decides the home. users.role is the tenant-wide baseline (an invite with only
+ * scoped grants keeps it at viewer, so the grant never widens to every system), so a scoped steward would
+ * otherwise land on the lead home. When users.role maps to the lead persona, the first granted role
+ * (`/me/permissions` roles, strongest first as granted) with a non-lead persona decides instead.
+ */
+export function homeRoleFrom(role: Role, grantKeys: readonly string[]): Role {
+  if (personaForRole(role) !== "lead") return role;
+  const known = grantKeys.filter((k): k is Role => Object.hasOwn(PERSONA_BY_ROLE, k));
+  return known.find((k) => personaForRole(k) !== "lead") ?? role;
+}

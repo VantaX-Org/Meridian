@@ -2,12 +2,13 @@
 
 import { Fragment, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Card, ErrorState, Input, Mono, Notice, Pill, SeverityDot, Skeleton, Textarea, isSeverity } from "@/design";
 import { decide, getWorkRecord, type Decision, type WorkAllowedValue, type WorkIssue, type WorkRecordDetail } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, formatMoney, formatNumber, plural } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 import { SOURCE, STATUS, dueLabel } from "./status";
 
 export const workRecordKey = (module: string, key: string, run?: string) => ["work", "record", module, key, run ?? "latest"];
@@ -144,15 +145,33 @@ function RecordContext({ rec }: { rec: WorkRecordDetail }) {
   );
 }
 
+/** Where a proposed fix waits: the draft batch under Fix › Approvals and export. */
+export const DRAFT_BATCH_HREF = "/fix?tab=batches";
+
+/** A "waits in your draft batch" toast with the way there. A Link (styled as the toast button) needs no router. */
+export function toastDraftBatch(message: string): void {
+  toast.success(message, { action: <Link href={DRAFT_BATCH_HREF} data-button="">Open draft batch</Link> });
+}
+
+/** Everything a work decision changes: the work list, the draft batches, the rail counts and the steward home's tasks. */
+export function invalidateAfterDecision(qc: QueryClient): void {
+  void qc.invalidateQueries({ queryKey: ["work"] });
+  void qc.invalidateQueries({ queryKey: queryKeys.remediationBatches() });
+  void qc.invalidateQueries({ queryKey: queryKeys.shellCounts() });
+  void qc.invalidateQueries({ queryKey: ["home-inbox-top"] });
+}
+
 function useDecide(module: string, recordKey: string, run: string | undefined, onDone?: () => void) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (items: Decision[]) => decide(items, run),
     onSuccess: (r, items) => {
       const a = items[0]?.action;
-      toast.success(a === "undo" ? "Decision undone" : a === "assign" ? "Assignment saved" : a === "comment" ? "Comment added"
-        : a === "not_an_issue" || a === "accept_risk" ? "Signed off" : "Fix proposed: it waits in your draft batch for approval");
-      void qc.invalidateQueries({ queryKey: ["work"] });
+      const said = a === "undo" ? "Decision undone" : a === "assign" ? "Assignment saved" : a === "comment" ? "Comment added"
+        : a === "not_an_issue" || a === "accept_risk" ? "Signed off" : null;
+      if (said) toast.success(said);
+      else toastDraftBatch("Fix proposed: it waits in your draft batch for approval");
+      invalidateAfterDecision(qc);
       if (r.updated > 0 && a !== "comment" && a !== "assign") onDone?.();
     },
     onError: (e) => toast.error(apiErrorMessage(e)),

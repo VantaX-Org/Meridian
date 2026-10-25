@@ -196,6 +196,22 @@ async def update_user(
 # ── POST /api/v1/users/invite ───────────────────────────────────────────────
 
 
+def invite_users_role(body: InviteUserBody) -> str:
+    """users.role for an invite.
+
+    users.role always counts tenant-wide (rbac.require_permission checks it before any grant), so it
+    may only mirror an *unscoped* grant. An invite whose grants are all scoped (a steward for one
+    system) keeps users.role at viewer: storing the scoped role there would widen it to every system.
+    The persona home follows the strongest granted role instead (frontend lib/persona.ts
+    homeRoleFrom over /me/permissions roles). users.role must also stay a built-in key (legacy
+    guards read it directly); a custom first grant is still granted, and users.role falls back to viewer.
+    """
+    if not body.grants:
+        return body.role
+    first = next((g.role_key for g in body.grants if g.system_id is None and g.module is None), None)
+    return first if first in VALID_ROLES else "viewer"
+
+
 @router.post("/users/invite", status_code=200)
 async def invite_user(
     body: InviteUserBody,
@@ -206,10 +222,7 @@ async def invite_user(
 ):
     await _set_rls(db, tenant.id)
 
-    # users.role must stay a built-in key (legacy guards read it directly); a custom first grant is
-    # still granted below, and users.role falls back to viewer.
-    first = next((g.role_key for g in body.grants if g.system_id is None and g.module is None), None)
-    role = (first if first in VALID_ROLES else "viewer") if body.grants else body.role
+    role = invite_users_role(body)
     if role not in VALID_ROLES:
         raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
     grants = list(body.grants)

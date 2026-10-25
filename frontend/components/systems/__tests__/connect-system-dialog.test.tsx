@@ -6,6 +6,8 @@ import * as systemsApi from "@/lib/api/systems";
 import { ConnectSystemDialog } from "../connect-system-dialog";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 const type = (label: string, value: string) => {
   const input = screen.getByLabelText(label);
@@ -162,5 +164,6 @@ describe("ConnectSystemDialog", () => {
       auth_type: "rfc", credentials: { password: "s3cret" },
     });
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(push).toHaveBeenCalledWith("/systems/s1?tab=health");
   });
 });

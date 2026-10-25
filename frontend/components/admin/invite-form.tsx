@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Field, toast } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { queryKeys } from "@/lib/query-keys";
@@ -23,6 +23,7 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
   const [grants, setGrants] = useState<(GrantRowView & GrantInput)[]>([]);
   const values = { email, name };
   const form = useFormErrors(SCHEMA, values);
+  const qc = useQueryClient();
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const m = useMutation({
@@ -30,7 +31,13 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
       email, name: name || undefined,
       grants: grants.map((g) => ({ role_key: g.role_key, system_id: g.system_id, module: g.module })),
     }),
-    onSuccess: () => { toast.success(`Invitation sent to ${email}`); onDone(); },
+    onSuccess: () => {
+      toast.success(`Invitation sent to ${email}`);
+      // Users (both admin pages) and Roles and access list the invitee at once.
+      void qc.invalidateQueries({ queryKey: queryKeys.users() });
+      void qc.invalidateQueries({ queryKey: ["access-requests"] });
+      onDone();
+    },
     onError: (e) => toast.error(`Invitation not sent. ${apiErrorMessage(e)}`),
   });
   return (

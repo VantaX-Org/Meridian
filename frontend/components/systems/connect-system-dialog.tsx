@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { Button, Dialog, Field, Input, Notice, Select, toast } from "@/design";
 import { registerSystem, testDraftConnection } from "@/lib/api/systems";
 import { apiErrorMessage } from "@/lib/error";
@@ -263,6 +264,7 @@ export function TestOutcome({ outcome, stale = false }: { outcome: TestOutcomeVa
 /** Connect an SAP system: registers it with its credentials (stored encrypted by the API, never shown again). */
 export function ConnectSystemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const qc = useQueryClient();
+  const router = useRouter();
   const [v, setV] = useState<ConnectionValues>(EMPTY);
   const [outcome, setOutcome] = useState<TestOutcomeValue | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -292,9 +294,12 @@ export function ConnectSystemDialog({ open, onOpenChange }: { open: boolean; onO
     onSuccess: (system) => {
       toast.success(`${system.name} connected`);
       void qc.invalidateQueries({ queryKey: queryKeys.systems() });
+      void qc.invalidateQueries({ queryKey: queryKeys.configLandscape() });
       setV(EMPTY);
       setOutcome(null);
       onOpenChange(false);
+      // The next step is on the new system: its health tab shows the first check and what to extract.
+      router.push(`/systems/${system.id}?tab=health`);
     },
     onError: (e) => setSaveError(apiErrorMessage(e)),
   });

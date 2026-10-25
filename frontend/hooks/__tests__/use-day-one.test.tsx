@@ -81,6 +81,28 @@ describe("useDayOne", () => {
     const { step } = await run();
     expect(step?.key).toBe("connect");
     expect(step?.href).toBe("/systems?connect=1");
+    expect(step?.secondary).toEqual({ label: "Import a file", href: "/import" });
+  });
+
+  it("offers no import beside connect without upload", async () => {
+    permissions = ["manage_systems"];
+    getSystems.mockResolvedValue([]);
+    getConfigLandscape.mockResolvedValue(landscape({ loaded: 0, total: 0 }));
+    getVersions.mockResolvedValue({ versions: [] });
+    const { step } = await run();
+    expect(step?.key).toBe("connect");
+    expect(step?.secondary).toBeUndefined();
+  });
+
+  it("an upload-only user with no system gets an actionable import step", async () => {
+    permissions = ["upload"];
+    getSystems.mockResolvedValue([]);
+    getConfigLandscape.mockResolvedValue(landscape({ loaded: 0, total: 0 }));
+    getVersions.mockResolvedValue({ versions: [] });
+    const { step } = await run();
+    expect(step?.key).toBe("import");
+    expect(step?.href).toBe("/import");
+    expect(step?.actionable).toBe(true);
   });
 
   it("system connected but configuration not loaded → step config", async () => {

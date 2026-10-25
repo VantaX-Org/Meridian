@@ -351,6 +351,9 @@ export default function InboxPage() {
     void qc.invalidateQueries({ queryKey: queryKeys.stewardshipMetrics() });
     void qc.invalidateQueries({ queryKey: queryKeys.exceptionMetrics() });
     void qc.invalidateQueries({ queryKey: queryKeys.unreadNotifications() });
+    // The rail's Inbox count and the steward home's top tasks read the same queue.
+    void qc.invalidateQueries({ queryKey: queryKeys.shellCounts() });
+    void qc.invalidateQueries({ queryKey: ["home-inbox-top"] });
   }, [qc]);
   const done = useCallback((verb: string, r: { ok: number; failed: number }) => {
     if (r.ok) toast(`${verb} ${plural(r.ok, "task")}`);

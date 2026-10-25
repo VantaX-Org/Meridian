@@ -8,12 +8,14 @@
 
 import { createContext, useContext, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ErrorState, Field, Mono, Notice, Pill, Radio, Skeleton, Textarea, toast } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { GatedPrimary, primaryRole } from "@/components/gated-primary";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName } from "@/lib/format";
 import { getReviewPair, mergePair, type ReviewPairDetail } from "@/lib/api/match-review";
 import { clearPairConstraint, decidePair, undoLastMerge, type AttributeExplanation } from "@/lib/api/merge-explain";
@@ -103,6 +105,7 @@ const PICK_COLUMNS: ColumnDef<FieldRow>[] = [
 
 export function PairReview({ pairId, onDone, onLater }: { pairId: string; onDone: () => void; onLater: () => void }) {
   const qc = useQueryClient();
+  const router = useRouter();
   const canDecide = useRole().can("approve");
   const detail = useQuery({ queryKey: [...matchReviewKey, "pair", pairId], queryFn: () => getReviewPair(pairId) });
   const [survivorPick, setSurvivorPick] = useState<Side | null>(null);
@@ -140,10 +143,17 @@ export function PairReview({ pairId, onDone, onLater }: { pairId: string; onDone
   const merge = useMutation({
     mutationFn: () => mergePair(pairId, { survivor: survivorKey, overrides, reason: reason.trim() }),
     onSuccess: (r) => {
-      toast.undoable(`Merged ${r.merged_key} into ${r.survivor_key}`, {
-        undo: async () => { await undoLastMerge(r.golden_record_id, "Undone from match review"); await refresh(); },
+      const undo = async () => { await undoLastMerge(r.golden_record_id, "Undone from match review"); await refresh(); };
+      // Undo stays the action; the golden record the merge produced is one click away beside it.
+      toast(`Merged ${r.merged_key} into ${r.survivor_key}`, {
+        duration: 8000,
+        action: { label: "Undo", onClick: () => { undo().then(() => { toast("Undone"); }, () => { toast.error("Could not undo"); }); } },
+        cancel: r.golden_record_id ? { label: "Open golden record", onClick: () => router.push(`/mdm/golden/${r.golden_record_id}`) } : undefined,
       });
       void refresh();
+      // The pair's merge_decision task in the Inbox is resolved by the merge.
+      void qc.invalidateQueries({ queryKey: ["inbox"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.shellCounts() });
       onDone();
     },
     onError: (e) => toast.error(apiErrorMessage(e)),

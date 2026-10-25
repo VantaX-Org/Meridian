@@ -489,7 +489,18 @@ async def resolve_queue_item(
     user_id = await _resolve_user_id(db, tenant, request)
 
     # Apply the resolution to the source record
-    await _apply_source_action(db, item, body.action, user_id, body.notes)
+    try:
+        await _apply_source_action(db, item, body.action, user_id, body.notes)
+    except HTTPException as e:
+        if e.status_code == 409 and item.item_type == "writeback_approval":
+            # Close the stale task so the inbox stops offering it, then report the conflict.
+            await db.execute(
+                text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now() "
+                     "WHERE id = :id AND tenant_id = :tid AND status IN ('open', 'in_progress')"),
+                {"id": item_id, "tid": str(tenant.id)},
+            )
+            await db.commit()
+        raise
 
     # Mark queue item resolved
     await db.execute(
@@ -540,21 +551,30 @@ async def _apply_source_action(
                 {"sid": item.source_id, "notes": notes or "Resolved via stewardship workbench"},
             )
 
-    elif item.item_type == "writeback_approval":
+    elif item.item_type == "writeback_approval" and action in ("approve", "reject"):
         if action == "approve":
-            await db.execute(
+            res = await db.execute(
                 # Same semantics as POST /cleaning/apply: the corrected value is
                 # accepted in Meridian (export/load file) with a 72h rollback
                 # window. No SAP write happens here.
                 text("UPDATE cleaning_queue SET status = 'applied', applied_at = now(), "
                      "rollback_deadline = now() + interval '72 hours', "
-                     "approved_by = COALESCE(approved_by, CAST(:uid AS uuid)) WHERE id = :sid"),
-                {"sid": item.source_id, "uid": current_user_id()},
+                     "approved_by = COALESCE(approved_by, CAST(:uid AS uuid)) "
+                     "WHERE id = :sid AND tenant_id = :tid AND status = 'approved'"),
+                {"sid": item.source_id, "tid": item.tenant_id, "uid": current_user_id()},
             )
-        elif action == "reject":
-            await db.execute(
-                text("UPDATE cleaning_queue SET status = 'rejected' WHERE id = :sid"),
-                {"sid": item.source_id},
+        else:
+            res = await db.execute(
+                text("UPDATE cleaning_queue SET status = 'rejected' "
+                     "WHERE id = :sid AND tenant_id = :tid AND status = 'approved'"),
+                {"sid": item.source_id, "tid": item.tenant_id},
+            )
+        if res.rowcount == 0:
+            # The proposal was applied, rejected or rolled back on Fix after this
+            # item was queued; acting on it again would rewrite its history.
+            raise HTTPException(
+                status_code=409,
+                detail="This fix was already applied, rejected or rolled back. Refresh the inbox.",
             )
 
     elif item.item_type == "glossary_review":
@@ -692,7 +712,18 @@ async def bulk_approve(
             continue
 
         # Apply source action individually
-        await _apply_source_action(db, item, "approve", user_id, "Bulk approved via stewardship workbench")
+        try:
+            await _apply_source_action(db, item, "approve", user_id, "Bulk approved via stewardship workbench")
+        except HTTPException as e:
+            if e.status_code != 409 or item.item_type != "writeback_approval":
+                raise
+            # The fix moved on (applied/rejected on Fix): close the stale task, don't count it.
+            await db.execute(
+                text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now() "
+                     "WHERE id = :id AND tenant_id = :tid"),
+                {"id": iid, "tid": str(tenant.id)},
+            )
+            continue
         approved += 1
 
         # Individual history row for golden_record_review items
