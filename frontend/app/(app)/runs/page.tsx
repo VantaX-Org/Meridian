@@ -216,20 +216,36 @@ export default function RunsPage() {
   const failedOnly = rawStatus === "failed";
   const dayOne = useDayOne();
 
-  const [page, setPage] = useState(1);
+  // The page belongs to one filter set: changing a filter starts again at page 1.
+  const filterKey = `${system}|${failedOnly ? "failed" : ""}|${showArchived ? "1" : ""}`;
+  const [paging, setPaging] = useState({ key: filterKey, page: 1 });
+  const page = paging.key === filterKey ? paging.page : 1;
+  const setPage = (p: number) => setPaging({ key: filterKey, page: p });
   const all = useQuery({
     // Nested under the shared list's key so invalidating it refreshes this page too, but never the same key:
     // the shared list holds the paginated newest runs (hooks/use-run-list) and must not be replaced by one page.
-    queryKey: [...queryKeys.run("list"), "page", page, showArchived] as const,
-    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, ...(showArchived ? { include_archived: true } : {}) }),
+    // System and status are filtered on the server, so `total` and the pager count the filtered set, not one page.
+    queryKey: [...queryKeys.run("list"), "page", page, showArchived, system, failedOnly] as const,
+    queryFn: () => getVersions({
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+      ...(system ? { system_id: system } : {}),
+      ...(failedOnly ? { status: "failed" as const } : {}),
+      ...(showArchived ? { include_archived: true } : {}),
+    }),
     placeholderData: keepPreviousData,
     // Keep the list fresh while any run on this page is still being analysed.
     refetchInterval: (query) => (query.state.data?.versions?.some((v) => IN_PROGRESS.has(v.status)) ? 5000 : false),
   });
-  // Summary stats and the trend use the newest page only, whichever table page is showing. Page 1 shares the cache key above.
+  const total = all.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Archiving or deleting can shrink the set under the current page: step back to the last page that exists.
+  if (all.data && !all.isPlaceholderData && page > pageCount) setPage(pageCount);
+  // Summary stats and the trend use the newest page of the chosen system, whichever table page is showing.
+  // Unfiltered, page 1 shares the cache key above.
   const head = useQuery({
-    queryKey: [...queryKeys.run("list"), "page", 1, false] as const,
-    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: 0 }),
+    queryKey: [...queryKeys.run("list"), "page", 1, false, system, false] as const,
+    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: 0, ...(system ? { system_id: system } : {}) }),
     placeholderData: keepPreviousData,
   });
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -242,22 +258,23 @@ export default function RunsPage() {
     () => makeColumns(allVersions, canPurge ? setDeleteTarget : undefined),
     [allVersions, canPurge],
   );
-  // The upload scope has no system_id to filter by, so only real systems are offered.
-  const systemOptions = useMemo(() => {
-    const ids = [...new Set(allVersions.map(scopeOf))].filter((id) => id !== "upload");
-    return [{ value: "", label: "All systems" }, ...ids.map((id) => ({ value: id, label: systemName.get(id) ?? id }))];
-  }, [allVersions, systemName]);
-  const scoped = useMemo(() => (system ? allVersions.filter((v) => v.metadata?.system_id === system) : allVersions), [allVersions, system]);
-  const headVersions = useMemo(() => head.data?.versions ?? [], [head.data]);
-  const headScoped = useMemo(() => (system ? headVersions.filter((v) => v.metadata?.system_id === system) : headVersions), [headVersions, system]);
+  // Every connected system, not only the ones on the current page. The upload scope has no system_id to filter by.
+  const systemOptions = useMemo(
+    () => [{ value: "", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))],
+    [systems.data],
+  );
+  // The server already scoped both lists to the chosen system.
+  const headScoped = useMemo(() => head.data?.versions ?? [], [head.data]);
+  const headVersions = headScoped;
   const failedCount = headScoped.filter((v) => toLifecycle(v.status) === "failed").length;
   // Newest first, so the day groups of the ledger read top-down.
   const rows = useMemo(
-    () => [...(failedOnly ? scoped.filter((v) => toLifecycle(v.status) === "failed") : scoped)].sort((a, b) => (a.run_at < b.run_at ? 1 : a.run_at > b.run_at ? -1 : 0)),
-    [scoped, failedOnly],
+    () => [...allVersions].sort((a, b) => (a.run_at < b.run_at ? 1 : a.run_at > b.run_at ? -1 : 0)),
+    [allVersions],
   );
 
-  const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 ? "empty" : undefined;
+  // Empty only when the filtered set is: a page past the end steps back above instead of reading as "No runs match".
+  const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 && total === 0 ? "empty" : undefined;
 
   const latest = headScoped[0];
   const latestDqs = latest ? overallDqs(latest) : null;
@@ -449,8 +466,8 @@ export default function RunsPage() {
           onRowClick={(row) => router.push(`/runs/${row.id}`)}
           bulkActions={(selected) => <CompareBar selected={selected} onCompare={compare} />}
         />
-        {(all.data?.total ?? 0) > PAGE_SIZE && (
-          <Pager page={page} pageCount={Math.ceil((all.data?.total ?? 0) / PAGE_SIZE)} pageSize={PAGE_SIZE} total={all.data?.total ?? 0} onPageChange={setPage} />
+        {total > PAGE_SIZE && (
+          <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
         )}
         </>
       }

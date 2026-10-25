@@ -25,6 +25,8 @@ const JOB_HREF: Record<Job["kind"], string> = {
 };
 const SYSTEM_JOBS = new Set<Job["kind"]>(["extraction", "config_sync", "config_load"]);
 const ACTIVE = new Set<JobStatus>(["queued", "running"]);
+/** The job registry keeps the newest 200 per tenant (api/services/jobs.py INDEX_KEEP), so this page loads all it holds. */
+const JOBS_KEPT = 200;
 
 /** The job's own place: its extraction log or system Health tab, its run, else the page of its kind. */
 function jobHref(j: Job): string {
@@ -70,7 +72,7 @@ export default function JobsPage() {
   // The SSE stream patches this list too; the poll covers a dropped stream while anything is still queued or running.
   const q = useQuery({
     queryKey: JOBS_HISTORY_QUERY_KEY,
-    queryFn: () => getJobs({ limit: 200 }),
+    queryFn: () => getJobs({ limit: JOBS_KEPT }),
     refetchInterval: (query) => (query.state.data?.some((j) => ACTIVE.has(j.status)) ? 5_000 : false),
   });
   const jobs = useMemo(() => q.data ?? [], [q.data]);
@@ -108,7 +110,7 @@ export default function JobsPage() {
       header={
         <PageHeader
           title="Jobs"
-          meta={<>Every extraction, analysis, upload and simulation that ran, newest first. Times are in the tenant time zone, <Link href={TENANT_TIMEZONE_HREF} className="m-ink-accent underline underline-offset-2">{tz.replace(/_/g, " ")}</Link>. Expand a failed job to read why it stopped and what to do next</>}
+          meta={<>The newest {JOBS_KEPT} extractions, analyses, uploads and simulations, latest first; older jobs are not kept, and the filters apply to these. Times are in the tenant time zone, <Link href={TENANT_TIMEZONE_HREF} className="m-ink-accent underline underline-offset-2">{tz.replace(/_/g, " ")}</Link>. Expand a failed job to read why it stopped and what to do next</>}
         />
       }
       filterBar={jobs.length ? (

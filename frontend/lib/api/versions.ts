@@ -8,6 +8,8 @@ export async function getVersions(params?: {
   module?: string;
   system_id?: string;
   include_archived?: boolean;
+  /** `failed`: only failed runs (failed, agents_failed, error, errored), filtered before paging and `total`. */
+  status?: "failed";
 }): Promise<VersionList> {
   const { data } = await apiClient.get<VersionList>("/api/v1/versions", {
     params,

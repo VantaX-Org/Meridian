@@ -23,7 +23,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { createBatchFromCleaning, HIGH_CONFIDENCE_LABEL } from "@/lib/api/remediation";
 import { getVersion } from "@/lib/api/versions";
 import { getCleaningReportUrl } from "@/lib/api/reports";
-import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
+import { apiErrorMessage, isListFailure, isNotFound, apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { runName } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
@@ -183,6 +183,8 @@ export default function ProposalsPage() {
     },
     onError: (e) => setFailure(`No batch drafted: ${apiErrorMessage(e)}`),
   });
+  // While a decision is in flight no row takes a second one, so a double click never sends the same approval twice.
+  const busy = approve.isPending || reject.isPending;
   const columns: ColumnDef<CleaningQueueItem>[] = [
     { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
     { id: "proposed", header: "Proposed value", enableSorting: false, cell: ({ row }) => <ProposalCell proposal={proposalOf(row.original)} /> },
@@ -203,9 +205,9 @@ export default function ProposalsPage() {
       // A proposal decided a moment ago (before the list refreshes) takes no second decision.
       cell: ({ row }) => !isWaiting(row.original.status) ? null : (
         <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-          <GatedPrimary kind="approve" allowed={canApprove} variant="secondary" onClick={() => approve.mutate([row.original.id])}>Approve</GatedPrimary>
+          <GatedPrimary kind="approve" allowed={canApprove} variant="secondary" disabled={busy} onClick={() => approve.mutate([row.original.id])}>Approve</GatedPrimary>
           {canApprove ? (
-            <Button variant="ghost" onClick={() => setRejecting([row.original.id])}>
+            <Button variant="ghost" disabled={busy} onClick={() => setRejecting([row.original.id])}>
               Reject
             </Button>
           ) : null}
@@ -238,7 +240,11 @@ export default function ProposalsPage() {
 
   const objectName = items[0] ? formatModuleName(items[0].object_type) : null;
   const total = data?.total ?? 0;
-  const busy = approve.isPending || reject.isPending;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Deciding the last proposals of the last page shrinks the list under it: step back to the last page that exists.
+  if (data && page > pageCount) setPage(pageCount);
+  // A run that was deleted (its version 404s) has no proposals to show, which is not the same as none waiting.
+  const runMissing = !!runId && isNotFound(version.error);
 
   return (
     <div className="flex flex-col gap-4">
@@ -269,8 +275,12 @@ export default function ProposalsPage() {
     />
     <EntityTabs entityType="cleaning" entityId={segment} audit={<BatchAudit runId={runId} backHref={backHref} />} exportOptions={exportOptions} overview={
     <ExplorerPage
-      state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{
+      state={runMissing ? "empty" : isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 && page <= pageCount ? "empty" : undefined}
+      emptyProps={runMissing ? {
+        title: "Run not found",
+        detail: "This run was deleted or never existed, so it has no proposals to review.",
+        action: <Button render={<Link href={backHref}>Back to the cleaning queue</Link>} />,
+      } : {
         title: "No proposals waiting",
         detail: "Every proposal here has been approved, rejected or drafted into a fix batch.",
         action: <Button render={<Link href={backHref}>Back to the cleaning queue</Link>} />,
@@ -297,7 +307,7 @@ export default function ProposalsPage() {
               </>
             ) : undefined}
           />
-          {total > PAGE_SIZE ? <Pager page={page} pageCount={Math.ceil(total / PAGE_SIZE)} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} /> : null}
+          {total > PAGE_SIZE ? <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} /> : null}
         </div>
       }
     />

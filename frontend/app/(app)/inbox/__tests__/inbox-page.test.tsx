@@ -230,7 +230,44 @@ describe("InboxPage workbench", () => {
     renderWithQuery(<InboxPage />);
     expect(await screen.findByText("Newest 1 of 450 loaded")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
-    await waitFor(() => expect(get).toHaveBeenCalledWith(expect.objectContaining({ limit: 400 })));
+    // The next page by offset: the API takes at most 200 a call.
+    await waitFor(() => expect(get).toHaveBeenCalledWith(expect.objectContaining({ status: "open", limit: 200, offset: 200 })));
+    expect(get).not.toHaveBeenCalledWith(expect.objectContaining({ limit: 400 }));
+  });
+
+  it("keeps the loaded tasks on screen and Load more disabled while the next page loads", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    let release: () => void = () => {};
+    const later = new Promise<void>((r) => { release = r; });
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => {
+      if ((p?.offset ?? 0) > 0) await later;
+      const open = p?.status === "open";
+      return { items: open ? [task((p?.offset ?? 0) > 0 ? "b" : "a", "material_master")] : [], total: open ? 450 : 0 } as never;
+    });
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    await waitFor(() => expect(screen.getByRole("list", { name: "Tasks" }).querySelectorAll("li")).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Load more" })).toBeDisabled());
+    expect(screen.getByRole("list", { name: "Tasks" }).querySelectorAll("li")).toHaveLength(1);
+    release();
+    await waitFor(() => expect(screen.getByRole("list", { name: "Tasks" }).querySelectorAll("li")).toHaveLength(2));
+  });
+
+  it("counts open tasks from the server total and says overdue covers only the loaded tasks", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("a", "material_master", { due_at: "2020-01-01T00:00:00Z" })] : [],
+      total: p?.status === "open" ? 450 : p?.status === "escalated" ? 50 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    expect(await screen.findByText(/^500 open, 1 overdue in the newest 1\. /)).toBeInTheDocument();
+    expect(screen.getByText("in the newest 1 loaded")).toBeInTheDocument();
   });
 
   it("shows the selected exception with its severity and SLA", async () => {

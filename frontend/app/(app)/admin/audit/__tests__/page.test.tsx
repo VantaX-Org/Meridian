@@ -57,4 +57,15 @@ describe("admin audit page", () => {
     expect(get).toHaveBeenCalledWith(expect.objectContaining({ path_contains: "/users" }));
     expect(get.mock.calls.every(([p]) => p?.method === undefined)).toBe(true);
   });
+
+  it("pages through every AI call, not only the newest 100", async () => {
+    tab = "ai";
+    const call = { id: "c1", service_name: "nlq", called_at: "2026-01-02T22:00:00Z", model_version: null, prompt_hash: null, token_count: 10, latency_ms: 5, success: true, deterministic_hit: false, skip_reason: null };
+    const get = vi.spyOn(auditApi, "getLlmAudit").mockResolvedValue({ entries: [call], total: 230, limit: 100, offset: 0, cache: [] });
+    renderWithQuery(<AdminAuditPage />);
+    await screen.findByText("1–100 of 230");
+    expect(get).toHaveBeenCalledWith({ limit: 100, offset: 0 });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(get).toHaveBeenLastCalledWith({ limit: 100, offset: 100 }));
+  });
 });

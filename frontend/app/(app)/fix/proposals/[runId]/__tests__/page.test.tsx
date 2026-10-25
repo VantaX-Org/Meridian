@@ -5,6 +5,8 @@ import { renderWithQuery } from "@/__tests__/render";
 import ProposalsPage from "../page";
 import { approveCleaning, bulkApprove, getCleaningAudit, getCleaningGroups, getCleaningQueue, rejectCleaning, type CleaningQueueItem } from "@/lib/api/cleaning";
 import { createBatchFromCleaning } from "@/lib/api/remediation";
+import { getVersion } from "@/lib/api/versions";
+import { AxiosError, AxiosHeaders } from "axios";
 
 let searchParams = new URLSearchParams("kind=MARA.MEINS");
 let routeRun = "R1";
@@ -176,5 +178,47 @@ describe("ProposalsPage", () => {
     expect(screen.queryByRole("button", { name: /Draft fix batch/ })).not.toBeInTheDocument();
     routeRun = "R1";
     searchParams = new URLSearchParams("kind=MARA.MEINS");
+  });
+});
+
+describe("ProposalsPage paging and missing runs", () => {
+  it("steps back a page when the proposals of the last page are all decided, never a false empty", async () => {
+    let total = 101;
+    vi.mocked(getCleaningQueue).mockImplementation(async (p) => {
+      if (p.status === "approved") return { items: [], total: 0, page: 1, per_page: 1 };
+      const pg = p.page ?? 1;
+      const n = Math.max(0, Math.min(100, total - (pg - 1) * 100));
+      return { items: Array.from({ length: n }, (_, i) => item({ id: `p${pg}-${i}`, record_key: `K${pg}-${i}` })), total, page: pg, per_page: 100 };
+    });
+    vi.mocked(approveCleaning).mockImplementation(async () => { total = 100; return { id: "p2-0", status: "approved" }; });
+    renderWithQuery(<ProposalsPage />);
+    await screen.findByText("K1-0");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByText("K2-0");
+    await userEvent.click(screen.getByRole("button", { name: /^approve$/i }));
+    expect(await screen.findByText("K1-0")).toBeInTheDocument();
+    expect(screen.queryByText("No proposals waiting")).toBeNull();
+  });
+
+  it("says the run was not found, with a way back, when the run was deleted", async () => {
+    queue([]);
+    const res = { status: 404, statusText: "Not Found", headers: {}, config: { headers: new AxiosHeaders() }, data: {} };
+    vi.mocked(getVersion).mockRejectedValueOnce(new AxiosError("Not Found", "ERR_BAD_REQUEST", res.config, null, res));
+    renderWithQuery(<ProposalsPage />);
+    expect(await screen.findByText("Run not found")).toBeInTheDocument();
+    expect(screen.queryByText("No proposals waiting")).toBeNull();
+    expect(screen.getByRole("link", { name: "Back to the cleaning queue" })).toBeInTheDocument();
+  });
+
+  it("disables every row decision while an approval is in flight", async () => {
+    queue([item({}), item({ id: "i2", record_key: "100002" })]);
+    vi.mocked(approveCleaning).mockReturnValue(new Promise(() => {}));
+    renderWithQuery(<ProposalsPage />);
+    await screen.findByText("100002");
+    const approves = screen.getAllByRole("button", { name: /^approve$/i });
+    await userEvent.click(approves[0]);
+    await waitFor(() => {
+      for (const b of screen.getAllByRole("button", { name: /^(approve|reject)$/i })) expect(b).toBeDisabled();
+    });
   });
 });

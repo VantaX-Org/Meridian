@@ -78,4 +78,11 @@ describe("admin jobs page", () => {
     expect(await screen.findByRole("link", { name: "Extract material_master again" })).toHaveAttribute("href", "/systems/s-1?extract=1");
     expect(screen.queryByRole("button", { name: /^Retry/ })).toBeNull();
   });
+
+  it("says the list is the newest 200 jobs the registry keeps, and asks for all of them", async () => {
+    const get = vi.spyOn(jobsApi, "getJobs").mockResolvedValue([BASE]);
+    renderWithQuery(<JobsPage />);
+    expect(await screen.findByText(/^The newest 200 extractions, analyses, uploads and simulations, latest first; older jobs are not kept, and the filters apply to these\./)).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith({ limit: 200 });
+  });
 });

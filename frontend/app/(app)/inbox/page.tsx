@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button, Card, ConfirmDialog, Drawer, ErrorState, ExplorerPage, Field, FilterChip, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, toast, type PillTone, Input, Mono, Status } from "@/design";
 import { ProposalCell, proposalOf } from "@/components/fix/proposal";
@@ -85,7 +85,7 @@ const PURPOSE: Record<string, string> = {
   sap: "Live signals from SAP, such as failed jobs and locked records. Open one to see what happened",
   approvals: "Changes to SAP that wait for a second person. Approve the ones you did not request",
 };
-/** How many tasks per status the list loads at a time; "Load more" widens it. */
+/** How many tasks per status the list loads at a time (the API's ceiling, api/routes/stewardship.py); "Load more" adds the next page. */
 const PAGE = 200;
 /** The exception engine's rule kinds (api/services/exception_engine.py). */
 const RULE_TYPES = [
@@ -218,16 +218,19 @@ export default function InboxPage() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [ruleDraft, setRuleDraft] = useState({ name: "", description: "", rule_type: "field_condition", object_type: "", condition: "", severity: "medium" as Severity });
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
-  const [limit, setLimit] = useState(PAGE);
+  const [pages, setPages] = useState(1);
   const [excPages, setExcPages] = useState(1);
 
+  // One query per status and page, by offset: "Load more" adds the next page and keeps the rows already on screen
+  // (the API takes at most PAGE a call, so widening one limit would be refused). Page-major, so new pages append.
   const queues = useQueries({
-    queries: LIVE.map((status) => ({
-      queryKey: queryKeys.inbox({ status, limit }),
-      queryFn: () => getQueueItems({ status, limit }),
+    queries: Array.from({ length: pages }, (_, i) => i * PAGE).flatMap((offset) => LIVE.map((status) => ({
+      queryKey: queryKeys.inbox({ status, limit: PAGE, offset }),
+      queryFn: () => getQueueItems({ status, limit: PAGE, offset }),
+      placeholderData: keepPreviousData,
       refetchInterval: 60_000,
       enabled: !isExceptions,
-    })),
+    }))),
   });
   // Amounts print in the tenant's currency code (the cost model); without it the number stands alone.
   const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: isExceptions, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
@@ -253,7 +256,9 @@ export default function InboxPage() {
   const excMetricsQ = useQuery({ queryKey: queryKeys.exceptionMetrics(), queryFn: () => getExceptionMetrics(), enabled: isExceptions });
   const excRulesQ = useQuery({ queryKey: queryKeys.exceptionRules(), queryFn: getExceptionRules, enabled: isExceptions && rulesOpen });
 
-  const isLoading = queues.some((q) => q.isLoading);
+  // Only the first page decides "loading": a page being added never blanks the list already shown.
+  const isLoading = queues.slice(0, LIVE.length).some((q) => q.isLoading);
+  const queueFetching = queues.some((q) => q.isFetching);
   // A 404 means no queue yet: that is the empty state, not an error.
   const failedQueue = queues.find((q) => q.isError && !isNotFound(q.error));
   const isError = !!failedQueue;
@@ -261,8 +266,12 @@ export default function InboxPage() {
   const firstError = isExceptions ? excQ.error : failedQueue?.error;
   // SLA maths runs against the last fetch time, so it stays pure and refreshes with the data.
   const now = isExceptions ? excQ.dataUpdatedAt : Math.max(0, ...queues.map((q) => q.dataUpdatedAt));
-  const all = useMemo(() => queues.flatMap((q) => q.data?.items ?? []), [queues]);
-  const queueTotal = queues.reduce((n, q) => n + (q.data?.total ?? 0), 0);
+  // Deduplicated: a task decided between two page loads shifts the offsets, so one may arrive on two pages.
+  const all = useMemo(() => [...new Map(queues.flatMap((q) => q.data?.items ?? []).map((t) => [t.id, t])).values()], [queues]);
+  // The server's count of every open task, from the first page of each status, however many pages are loaded.
+  const queueTotal = queues.slice(0, LIVE.length).reduce((n, q) => n + (q.data?.total ?? 0), 0);
+  /** More tasks are open than are loaded, so counts taken from the loaded rows cover only the newest ones. */
+  const partial = queueTotal > all.length;
 
   // Guarded: an unexpected payload must not take the whole inbox down.
   const assignable = useMemo(() => (Array.isArray(assignableQ.data) ? assignableQ.data : []), [assignableQ.data]);
@@ -547,13 +556,16 @@ export default function InboxPage() {
     <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ value: k.value, label: k.label, content: null }))} value={kind} onValueChange={setKind} />
   );
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.overdue;
-  const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
+  // Open is the server's total. Overdue has no server count for tasks (the SLA is worked out per row), so while only
+  // part of the queue is loaded it says which part it counts.
+  const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : queueTotal;
+  const overdueScope = !isExceptions && partial ? ` in the newest ${formatInt(all.length)}` : "";
   // Counts belong to the tasks and exceptions lists; the other tabs load their own and say only what they are for.
   const counted = kind === "task" || kind === "exception";
   const header = (
     <PageHeader
       title="Inbox"
-      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue. ${PURPOSE[kind]}` : PURPOSE[kind]}
+      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue${overdueScope}. ${PURPOSE[kind]}` : PURPOSE[kind]}
       tabs={kindToggle}
       actions={
         isExceptions
@@ -598,11 +610,11 @@ export default function InboxPage() {
       summary={
         <div className="flex flex-col gap-4">
           <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,240px))]">
-            <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} onClick={isExceptions ? undefined : () => setWhen("overdue")} />
+            <Stat label="Overdue" value={overdue} hint={overdueScope ? `${overdueScope.trim()} loaded` : undefined} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} onClick={isExceptions ? undefined : () => setWhen("overdue")} />
             {!isExceptions && <Stat label="Due in 24 hours" value={counts.soon} tone={counts.soon > 0 ? "at-risk" : undefined} loading={isLoading} onClick={() => setWhen("soon")} />}
           </div>
-          {!isExceptions && !isLoading && queueTotal > all.length && (
-            <Notice action={<Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)}>Load more</Button>}>
+          {!isExceptions && !isLoading && partial && (
+            <Notice action={<Button variant="secondary" disabled={queueFetching} onClick={() => setPages((n) => n + 1)}>Load more</Button>}>
               Newest {all.length.toLocaleString()} of {queueTotal.toLocaleString()} loaded
             </Notice>
           )}

@@ -126,11 +126,21 @@ function AuditTable({ params, empty }: { params: AuditListParams; empty: string 
   );
 }
 
+/** AI calls per page of the AI audit tab. */
+const LLM_PAGE = 100;
+
 function LlmAudit() {
   const tz = useTenantTimezone();
   const columns = useMemo(() => llmColumns(tz), [tz]);
-  const q = useQuery({ queryKey: ["audit", "llm"], queryFn: () => getLlmAudit({ limit: 100 }) });
+  // Newest first, a page at a time: the pager reaches every recorded call, not only the newest page.
+  const [page, setPage] = useState(1);
+  const q = useQuery({
+    queryKey: ["audit", "llm", page],
+    queryFn: () => getLlmAudit({ limit: LLM_PAGE, offset: (page - 1) * LLM_PAGE }),
+    placeholderData: keepPreviousData,
+  });
   const entries = q.data?.entries ?? [];
+  const total = q.data?.total ?? 0;
   return (
     <ExplorerPage
       summary={q.data?.cache.length ? (
@@ -141,7 +151,12 @@ function LlmAudit() {
       state={asyncStateOf(q, () => entries.length === 0, true)}
       emptyProps={{ title: "No AI calls recorded", detail: "Every call to a model is listed here with its latency and outcome", action: <Button variant="secondary" render={<Link href="/admin/ai">Open AI settings</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
-      table={<DataTable columns={columns} data={entries} getRowId={(r) => r.id} />}
+      table={
+        <div className="flex flex-col gap-2">
+          <DataTable columns={columns} data={entries} getRowId={(r) => r.id} />
+          {total > LLM_PAGE ? <Pager page={page} pageCount={Math.ceil(total / LLM_PAGE)} pageSize={LLM_PAGE} total={total} onPageChange={setPage} /> : null}
+        </div>
+      }
     />
   );
 }

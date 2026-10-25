@@ -1,6 +1,7 @@
 // frontend/app/(app)/runs/__tests__/page.test.tsx
 import Link from "next/link";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import { Button } from "@/design";
@@ -271,15 +272,61 @@ describe("RunsPage status param", () => {
     searchParams.delete("status");
   });
 
-  it("?status=failed shows only failed runs", async () => {
+  it("?status=failed asks the server for failed runs only", async () => {
     searchParams.set("status", "failed");
     const failed = version({ id: "v3", label: "Broken run", status: "failed" });
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, failed] });
+    const get = vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [failed], total: 1 });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Broken run")).toBeInTheDocument());
-    expect(screen.queryByText("Oct 8 upload")).not.toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith(expect.objectContaining({ status: "failed", offset: 0 }));
     searchParams.delete("status");
+  });
+});
+
+describe("RunsPage server-side filters and paging", () => {
+  const page = (n: number, prefix: string) =>
+    Array.from({ length: n }, (_, i) => version({ id: `${prefix}${i}`, label: `${prefix} run ${i}`, run_at: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z` }));
+
+  it("sends the system filter to the server and keeps the pager for a filtered set over one page", async () => {
+    searchParams.set("system", "sys-1");
+    searchParams.set("status", "failed");
+    const get = vi.spyOn(versionsApi, "getVersions").mockImplementation(async (p) => ({ versions: page(100, `p${(p?.offset ?? 0) / 100}-`), total: 150 }));
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    expect(await screen.findByText("1–100 of 150")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith(expect.objectContaining({ system_id: "sys-1", status: "failed", limit: 100, offset: 0 }));
+    expect(screen.queryByText("No runs match")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith(expect.objectContaining({ system_id: "sys-1", status: "failed", offset: 100 })));
+    searchParams.delete("system");
+    searchParams.delete("status");
+  });
+
+  it("steps back to the last page when the set shrinks under the current page, never a false empty", async () => {
+    let total = 150;
+    const get = vi.spyOn(versionsApi, "getVersions").mockImplementation(async (p) =>
+      (p?.offset ?? 0) >= total ? { versions: [], total } : { versions: page(Math.min(100, total - (p?.offset ?? 0)), `o${p?.offset ?? 0}-`), total });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={queryClient}><RunsPage /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "Next" }));
+    expect(await screen.findByText("101–150 of 150")).toBeInTheDocument();
+    total = 100;
+    await queryClient.invalidateQueries();
+    await waitFor(() => expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 0 })));
+    expect(await screen.findByText("o0- run 0")).toBeInTheDocument();
+    expect(screen.queryByText("No runs yet")).toBeNull();
+  });
+
+  it("offers every connected system in the system filter, not only those on the current page", async () => {
+    const other: SAPSystemExtended = { ...system, id: "sys-2", name: "S4 Quality" };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer], total: 1 });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system, other]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("combobox", { name: "System" }));
+    expect(await screen.findByRole("option", { name: "S4 Quality" })).toBeInTheDocument();
   });
 });
 

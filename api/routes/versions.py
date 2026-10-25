@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -26,6 +26,11 @@ from db.schema import AnalysisVersion
 
 router = APIRouter(prefix="/api/v1", tags=["versions"])
 logger = logging.getLogger("meridian.versions")
+
+
+# Raw statuses the run ledger reads as "failed" (frontend/design/primitives/Status.tsx LIFECYCLE_ALIAS), so the
+# server-side filter and the Status pill agree on which runs are failed.
+FAILED_STATUSES: tuple[str, ...] = ("failed", "agents_failed", "error", "errored")
 
 
 class VersionResponse(BaseModel):
@@ -62,6 +67,8 @@ async def list_versions(
     module: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
     include_archived: bool = Query(False),
+    status: Optional[Literal["failed"]] = Query(
+        None, description="`failed`: only runs that failed (status failed, agents_failed, error or errored)"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -82,6 +89,8 @@ async def list_versions(
         )
     if system_id:
         stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("system_id") == system_id)
+    if status == "failed":
+        stmt = stmt.where(AnalysisVersion.status.in_(FAILED_STATUSES))
     # total of the filtered set, so a capped list can say "N of total" instead of silently stopping
     total = (await db.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))).scalar() or 0
     stmt = stmt.offset(offset).limit(limit)
