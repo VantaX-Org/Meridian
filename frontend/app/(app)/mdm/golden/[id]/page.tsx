@@ -1,19 +1,18 @@
 // frontend/app/(app)/mdm/golden/[id]/page.tsx
 "use client";
 
-import { toast } from "sonner";
 import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, DataTable, Dialog, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, Status, toast } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
-import { formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MasterRecordDetail } from "@/types/api";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -23,7 +22,6 @@ type Hist = { id: string; changed_at: string; change_type: string; changed_by?: 
 type FieldRow = { field: string; value: unknown };
 type SourceRow = { system: string; value: unknown; confidence: number; ai: string | null | undefined };
 
-const STATUS_LABEL: Record<string, string> = { candidate: "Candidate", pending_review: "Pending review", golden: "Golden", superseded: "Superseded" };
 const show = (v: unknown) => (v == null ? "None" : String(v));
 
 const relCols: ColumnDef<Rel>[] = [
@@ -32,8 +30,8 @@ const relCols: ColumnDef<Rel>[] = [
   { id: "domain", header: "Object", accessorFn: (r) => formatModuleName(r.to_domain) },
 ];
 const histCols: ColumnDef<Hist>[] = [
-  { id: "when", header: "When", accessorFn: (e) => e.changed_at },
-  { id: "type", header: "Type", accessorFn: (e) => e.change_type },
+  { id: "when", header: "When", accessorFn: (e) => e.changed_at, cell: ({ row }) => formatDate(row.original.changed_at, "datetime") },
+  { id: "type", header: "Change", accessorFn: (e) => labelOf(e.change_type) },
   { id: "by", header: "By", accessorFn: (e) => e.changed_by ?? "System" },
 ];
 const fieldCols: ColumnDef<FieldRow>[] = [
@@ -54,6 +52,7 @@ export default function MasterRecordPage() {
   const canApprove = can("approve");
   const canApply = can("apply");
   const [confirmPromote, setConfirmPromote] = useState(false);
+  const [confirmWriteback, setConfirmWriteback] = useState(false);
 
   const recordQuery = useQuery<MasterRecordDetail>({
     queryKey: queryKeys.masterRecord(id),
@@ -83,7 +82,12 @@ export default function MasterRecordPage() {
   });
   const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(id),
+    onSuccess: (r) => {
+      setConfirmWriteback(false);
+      if (r.writeback_supported) toast.success(r.message); else toast(r.message);
+    },
     onError: (error) => {
+      setConfirmWriteback(false);
       toast.error(apiErrorMessage(error));
     },
   });
@@ -116,12 +120,6 @@ export default function MasterRecordPage() {
     );
   }
 
-  const status: RecordStatus = record.status === "golden"
-    ? { label: "passing", tone: "go" }
-    : record.status === "superseded"
-      ? { label: "failing", tone: "no-go" }
-      : { label: "in batch", tone: "at-risk" };
-
   const fields = Object.entries(record.golden_fields);
   const sources = Object.entries(record.source_contributions);
   const relationships = relationshipsQuery.data?.relationships ?? [];
@@ -130,13 +128,13 @@ export default function MasterRecordPage() {
   const sourceRows: SourceRow[] = sources.map(([system, c]) => ({ system, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
 
   return (
-    <RecordPage recordKey={record.sap_object_key} object={record.domain} status={status}>
+    <RecordPage recordKey={record.sap_object_key} object={record.domain}>
       <EntityTabs entityType="master-records" entityId={id}
         related={<>
       <section aria-label="Related records">
         <LedgerHead title="Related records" meta={String(relationships.length)} />
         {relationships.length === 0 ? (
-          <p className="m-text-body m-ink-3">No related records found</p>
+          <EmptyState variant="inline" title="No related records" />
         ) : (
           <DataTable columns={relCols} getRowId={(r) => r.id} data={relationships as Rel[]} height="auto" />
         )}
@@ -146,7 +144,7 @@ export default function MasterRecordPage() {
       <section aria-label="History">
         <LedgerHead title="History" meta={String(history.length)} />
         {history.length === 0 ? (
-          <p className="m-text-body m-ink-3">No changes recorded</p>
+          <EmptyState variant="inline" title="No changes recorded" />
         ) : (
           <DataTable columns={histCols} getRowId={(r) => r.id} data={history as Hist[]} height="auto" />
         )}
@@ -154,9 +152,7 @@ export default function MasterRecordPage() {
         </>}
         overview={<>
       <section className="flex items-center gap-2">
-        <Pill tone={record.status === "golden" ? "go" : record.status === "superseded" ? "no-go" : "at-risk"}>
-          {STATUS_LABEL[record.status] ?? record.status.replace(/_/g, " ")}
-        </Pill>
+        <Status kind="lifecycle" value={record.status} />
         <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
         {canApprove ? (
           <Button
@@ -171,32 +167,42 @@ export default function MasterRecordPage() {
           allowed={canApply}
           variant="secondary"
           disabled={writeback.isPending || (writeback.data ? !writeback.data.writeback_supported : false)}
-          onClick={() => writeback.mutate()}
+          onClick={() => setConfirmWriteback(true)}
         >
           {writeback.isPending ? "Writing back…" : "Write back"}
         </GatedPrimary>
         <Button variant="ghost" render={<Link href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
       </section>
-      {writeback.data ? (
-        <p className="m-text-body m-ink-3">{writeback.data.message}</p>
-      ) : null}
-
-      <Dialog open={confirmPromote} onOpenChange={setConfirmPromote} title="Promote to golden record?">
-        <p className="m-text-body mb-4 m-ink-2">
-          This replaces the current golden fields for {record.sap_object_key} with the merged values. This cannot be undone.
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setConfirmPromote(false)}>Keep as is</Button>
-          <Button disabled={promote.isPending} onClick={() => promote.mutate()}>
-            {promote.isPending ? "Promoting…" : "Promote"}
-          </Button>
-        </div>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmPromote}
+        onOpenChange={setConfirmPromote}
+        title="Promote to golden record?"
+        body={<>This replaces the current golden fields for <Mono>{record.sap_object_key}</Mono> with the merged values. This cannot be undone.</>}
+        confirmLabel="Promote"
+        cancelLabel="Keep as is"
+        pending={promote.isPending}
+        onConfirm={() => promote.mutate()}
+      />
+      <ConfirmDialog
+        open={confirmWriteback}
+        onOpenChange={setConfirmWriteback}
+        title={`Write back ${record.sap_object_key}?`}
+        body={
+          <div className="flex flex-col gap-2">
+            <p>Fields: {fields.length ? fields.map(([f]) => f).join(", ") : "none"}</p>
+            <p>Target system{sources.length === 1 ? "" : "s"}: {sources.length ? sources.map(([s]) => s).join(", ") : "none recorded"}</p>
+          </div>
+        }
+        confirmLabel="Write back"
+        cancelLabel="Keep"
+        pending={writeback.isPending}
+        onConfirm={() => writeback.mutate()}
+      />
 
       <section aria-label="Golden fields">
         <LedgerHead title="Golden fields" meta={String(fields.length)} />
         {fields.length === 0 ? (
-          <p className="m-text-body m-ink-3">No golden fields recorded</p>
+          <EmptyState variant="inline" title="No golden fields recorded" />
         ) : (
           <DataTable columns={fieldCols} getRowId={(r) => r.field} data={fieldRows} height="auto" />
         )}
@@ -205,7 +211,7 @@ export default function MasterRecordPage() {
       <section aria-label="Source contributions">
         <LedgerHead title="Source contributions" meta={String(sources.length)} />
         {sources.length === 0 ? (
-          <p className="m-text-body m-ink-3">No sources recorded</p>
+          <EmptyState variant="inline" title="No sources recorded" />
         ) : (
           <DataTable columns={sourceCols} getRowId={(r) => r.system} data={sourceRows} height="auto" />
         )}

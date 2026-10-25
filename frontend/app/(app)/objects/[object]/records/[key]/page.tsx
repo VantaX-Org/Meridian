@@ -122,7 +122,7 @@ export default function RecordFixSheetPage() {
   const exportOptions = [
     {
       format: "pdf" as const,
-      label: "Fix sheet (PDF)",
+      label: "Record sheet (PDF)",
       run: () =>
         downloadAuthenticated(getRecordReportUrl(run, material.matnr), `meridian-fix-sheet-${material.matnr}.pdf`),
     },
@@ -201,7 +201,7 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p className="m-ink-3">No failing rules on this run.</p>
+            <EmptyState variant="inline" title="No failing rules on this run" />
           )}
         </Card>
       )}
@@ -228,14 +228,16 @@ export default function RecordFixSheetPage() {
             <ul className="flex flex-col gap-1">
               {findings.by_view.flatMap((view) =>
                 view.failing.map((rule) => (
-                  <li key={`${view.view}-${rule.check_id}`}>
-                    <Mono>{rule.check_id}</Mono> (<Mono>{rule.severity}</Mono>) — {rule.message}
+                  <li key={`${view.view}-${rule.check_id}`} className="flex flex-wrap items-baseline gap-2">
+                    <Status kind="severity" value={rule.severity} />
+                    <Mono>{rule.check_id}</Mono>
+                    <span>{rule.message}</span>
                   </li>
                 )),
               )}
             </ul>
           ) : (
-            <p className="m-ink-3">No failing rules on this run.</p>
+            <EmptyState variant="inline" title="No failing rules on this run" />
           )}
         </Card>
       )}
@@ -254,7 +256,7 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p className="m-ink-3">Not superseded at any plant.</p>
+            <EmptyState variant="inline" title="Not superseded at any plant" />
           )}
         </Card>
       )}
@@ -273,7 +275,7 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p className="m-ink-3">No duplicate candidates for this record.</p>
+            <EmptyState variant="inline" title="No duplicate candidates for this record" />
           )}
         </Card>
       )}

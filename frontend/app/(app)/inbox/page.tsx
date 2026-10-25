@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 /**
  * Steward inbox: every open stewardship task in one list. Ports the legacy
  * workbench inbox's data wiring (views, sorts, assign, resolve, escalate,
@@ -15,7 +14,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type PillTone, Input, Mono, Status } from "@/design";
+import { Button, Card, ConfirmDialog, Drawer, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, emptyExportOptions, toast, type PillTone, Input, Mono, Status } from "@/design";
+import { ProposalCell, proposalOf } from "@/components/fix/proposal";
 import { Fact, Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -24,6 +24,12 @@ import { exportIssues } from "@/lib/api/issues";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
+import { getCleaningItem } from "@/lib/api/cleaning";
+import { getException } from "@/lib/api/exceptions";
+import { getRules } from "@/lib/api/rules";
+import { getCostModel } from "@/lib/api/settings";
+import type { RootCauseType } from "@/lib/api/config-intelligence";
+import { HIGH_CONFIDENCE_LABEL } from "@/lib/api/remediation";
 import {
   assignException,
   createExceptionRule,
@@ -34,8 +40,8 @@ import {
   resolveException,
   updateExceptionRule,
 } from "@/lib/api/exceptions";
-import { apiErrorMessage, isNotFound } from "@/lib/error";
-import { formatDate, formatInt, formatModuleName, labelOf, relativeTime } from "@/lib/format";
+import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
+import { MODULE_LABELS, formatDate, formatInt, formatModuleName, formatMoney, labelOf, relativeTime } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, IssuesPanel, SapMonitorPanel } from "./inbox-panels";
@@ -47,18 +53,43 @@ const HOUR = 3_600_000;
 const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
 const STATUS_TONE: Record<StewardshipStatus, PillTone> = { open: "neutral", in_progress: "at-risk", escalated: "no-go", resolved: "go" };
 const EXC_STATUS_TONE: Record<ExceptionStatus, PillTone> = { open: "neutral", investigating: "at-risk", pending_approval: "at-risk", resolved: "go", verified: "go", closed: "neutral" };
+/** Each tab with its one-line definition, printed under the tab strip. */
 const KINDS = [
-  { value: "task", label: "Tasks" }, { value: "exception", label: "Exceptions" }, { value: "issues", label: "Issues" },
-  { value: "sap", label: "SAP monitor" }, { value: "approvals", label: "Approvals" },
+  { value: "task", label: "Tasks", meta: "Decisions waiting on a steward: merges, golden records, write-backs and reviews" },
+  { value: "exception", label: "Exceptions", meta: "Signals raised by exception rules on new findings, with an SLA" },
+  { value: "issues", label: "Issues", meta: "One open issue per failing SAP record, closed when the record passes" },
+  { value: "sap", label: "SAP monitor", meta: "Failed jobs, locked records and other live signals from SAP" },
+  { value: "approvals", label: "Approvals", meta: "Write-backs waiting for a second person before they reach SAP" },
 ];
 const VIEWS = [
   { value: "all", label: "All open" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" },
-  { value: "breached", label: "SLA breached" }, { value: "today", label: "Due today" }, { value: "escalated", label: "Escalated" },
+  { value: "breached", label: "Overdue" }, { value: "today", label: "Due today" }, { value: "escalated", label: "Escalated" },
 ];
 const VIEW_BANNER: Record<string, string> = {
-  mine: "tasks assigned to me", unassigned: "unassigned tasks", breached: "tasks with a breached SLA",
-  today: "tasks due today", escalated: "escalated tasks", all: "all tasks",
+  mine: "Tasks assigned to me", unassigned: "Unassigned tasks", breached: "Overdue tasks",
+  today: "Tasks due today", escalated: "Escalated tasks", all: "All tasks",
 };
+/** How many tasks per status the list loads at a time; "Load more" widens it. */
+const PAGE = 200;
+/** The exception engine's rule kinds (api/services/exception_engine.py). */
+const RULE_TYPES = [
+  { value: "field_condition", label: "Field condition" }, { value: "threshold", label: "Threshold" },
+  { value: "temporal", label: "Temporal" }, { value: "relationship", label: "Relationship" },
+];
+const OBJECT_OPTIONS = Object.keys(MODULE_LABELS).sort().map((m) => ({ value: m, label: formatModuleName(m) }));
+const SEVERITY_OPTIONS: { value: Severity; label: string }[] = [
+  { value: "critical", label: "Critical" }, { value: "high", label: "High" }, { value: "medium", label: "Medium" }, { value: "low", label: "Low" },
+];
+/** The resolution kinds the exceptions API bills (api/routes/exceptions.py billing_map). */
+const RESOLUTION_TYPES = [
+  { value: "steward_resolved", label: "Resolved by a steward" }, { value: "auto_resolved", label: "Resolved itself" },
+  { value: "dedup", label: "Resolved by a merge" }, { value: "custom_rule", label: "Resolved by a custom rule" },
+];
+/** The root-cause vocabulary the config-intelligence API uses for findings. */
+const ROOT_CAUSES: { value: RootCauseType | "other"; label: string }[] = [
+  { value: "bad_data", label: "Bad data" }, { value: "bad_config", label: "Bad configuration" },
+  { value: "bad_data_and_config", label: "Bad data and bad configuration" }, { value: "process_gap", label: "Process gap" }, { value: "other", label: "Other" },
+];
 /** Stands in for "no due date" so those tasks sort last. */
 const NO_DUE = Number.MAX_SAFE_INTEGER;
 const BULK_CONFIDENCE = 0.85;
@@ -139,20 +170,33 @@ export default function InboxPage() {
     if (alsoSearch) setSearch("");
   };
   const [rawFocusedIndex, setFocusedIndex] = useState(0);
+  // `?focus=` (a link from MDM or a notification) lands on that task once the list holds it.
+  const focusId = urlParams.get("focus");
+  const [focusDone, setFocusDone] = useState<string | null>(null);
   const [rollbackNote, setRollbackNote] = useState<string | null>(null);
   const [rejectIds, setRejectIds] = useState<string[] | null>(null);
   const [reason, setReason] = useState("");
+  const [resolutionType, setResolutionType] = useState("steward_resolved");
+  const [rootCause, setRootCause] = useState("other");
+  const [escalateIds, setEscalateIds] = useState<string[] | null>(null);
+  const [approveIds, setApproveIds] = useState<string[] | null>(null);
+  /** The task `r` armed; Enter approves it. There is no un-approve endpoint, so no undo toast. */
+  const [armed, setArmed] = useState<string | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [ruleDraft, setRuleDraft] = useState({ name: "", description: "", rule_type: "", object_type: "", condition: "", severity: "medium" as Severity });
+  const [ruleDraft, setRuleDraft] = useState({ name: "", description: "", rule_type: "field_condition", object_type: "", condition: "", severity: "medium" as Severity });
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+  const [limit, setLimit] = useState(PAGE);
 
   const queues = useQueries({
     queries: LIVE.map((status) => ({
-      queryKey: queryKeys.inbox({ status, limit: 200 }),
-      queryFn: () => getQueueItems({ status, limit: 200 }),
+      queryKey: queryKeys.inbox({ status, limit }),
+      queryFn: () => getQueueItems({ status, limit }),
       refetchInterval: 60_000,
       enabled: !isExceptions,
     })),
   });
+  // Amounts print in the tenant's currency code (the cost model); without it the number stands alone.
+  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: isExceptions, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
   const weekQ = useQuery({ queryKey: queryKeys.triageMetrics(8), queryFn: () => getTriageMetrics(8), refetchInterval: 60_000, enabled: !isExceptions });
   const metricsQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, refetchInterval: 60_000, enabled: !isExceptions });
   // The user list needs `manage_users`; without it assignees show as "You" or an id prefix.
@@ -180,7 +224,7 @@ export default function InboxPage() {
 
   const names = useMemo(() => new Map((usersQ.data?.users ?? []).map((u) => [u.id, u.name])), [usersQ.data]);
   const who = useCallback(
-    (id: string | null) => (!id ? "Unassigned" : id === user?.id ? "You" : names.get(id) ?? id.slice(0, 8)),
+    (id: string | null) => (!id ? "Unassigned" : id === user?.id ? "You" : names.get(id) ?? "Unknown user"),
     [names, user?.id],
   );
 
@@ -212,6 +256,11 @@ export default function InboxPage() {
   // Clamped at read time (not in an effect) so a shrinking list never points past its last row.
   const rowCount = isExceptions ? excItems.length : items.length;
   const focusedIndex = Math.min(rawFocusedIndex, Math.max(rowCount - 1, 0));
+  // State adjusted during render (the React-documented pattern): the linked task is focused once, when it first appears.
+  if (focusId && focusDone !== focusId) {
+    const at = (isExceptions ? excItems : items).findIndex((x) => x.id === focusId);
+    if (at >= 0) { setFocusDone(focusId); setFocusedIndex(at); }
+  }
 
   const typeOptions = useMemo(
     () => [{ value: "", label: "All types" }, ...[...new Set(all.map((t) => t.item_type))].sort().map((t) => ({ value: t, label: labelOf(t) }))],
@@ -230,6 +279,7 @@ export default function InboxPage() {
   }, [all, now, user?.id]);
 
   const refresh = useCallback(() => {
+    setChecked(new Set());
     void qc.invalidateQueries({ queryKey: ["inbox"] });
     void qc.invalidateQueries({ queryKey: queryKeys.stewardshipMetrics() });
     void qc.invalidateQueries({ queryKey: queryKeys.exceptionMetrics() });
@@ -262,11 +312,12 @@ export default function InboxPage() {
     mutationFn: (ids: string[]) =>
       ids.length === 1 ? resolveItem(ids[0], "approve").then(() => ({ approved: 1, asked: 1 })) : bulkApprove(ids, BULK_CONFIDENCE).then((d) => ({ approved: d.approved, asked: ids.length })),
     onSuccess: ({ approved, asked }) => {
+      setApproveIds(null);
       toast(`Approved ${plural(approved, "task")}`);
-      if (asked > approved) toast(`${asked - approved} below ${BULK_CONFIDENCE * 100}% model confidence or already closed — left for manual review`);
+      if (asked > approved) toast(`${asked - approved} below ${HIGH_CONFIDENCE_LABEL} or already closed, left for manual review`);
       refresh();
     },
-    onError: (e, _ids, ctx) => rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`),
+    onError: (e, _ids, ctx) => { setApproveIds(null); rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`); },
   });
   // Rejecting overrides the model's recommendation: the correction reason is recorded on the task
   // and fed to the AI-feedback loop that proposes new match rules (/ai/rules).
@@ -284,6 +335,7 @@ export default function InboxPage() {
   const escalate = useMutation({
     mutationFn: (ids: string[]) => each(ids, escalateItem),
     onSuccess: (r) => done("Escalated", r),
+    onError: (e) => toast.error(`Not escalated: ${apiErrorMessage(e)}`),
   });
   const assign = useMutation({
     onMutate: async ({ ids, userId }: { ids: string[]; userId: string }) => { setRollbackNote(null); return { snap: await patchQueue(ids, (t) => ({ ...t, assigned_to: userId })) }; },
@@ -298,16 +350,18 @@ export default function InboxPage() {
   const excAssign = useMutation({
     mutationFn: ({ ids, userId }: { ids: string[]; userId: string }) => each(ids, (id) => assignException(id, { user_id: userId })),
     onSuccess: (r) => done("Assigned", r),
+    onError: (e) => toast.error(`Not assigned: ${apiErrorMessage(e)}`),
   });
   const excEscalate = useMutation({
-    mutationFn: (ids: string[]) => each(ids, (id) => escalateException(id, { reason: "Escalated from the inbox" })),
-    onSuccess: (r) => done("Escalated", r),
+    mutationFn: ({ ids, reason: why }: { ids: string[]; reason: string }) => each(ids, (id) => escalateException(id, { reason: why })),
+    onSuccess: (r) => { setEscalateIds(null); setReason(""); done("Escalated", r); },
+    onError: (e) => toast.error(`Not escalated: ${apiErrorMessage(e)}`),
   });
   const excResolve = useMutation({
     mutationFn: ({ ids, reason: why }: { ids: string[]; reason: string }) =>
-      each(ids, (id) => resolveException(id, { resolution_type: "fixed", resolution_notes: why, root_cause_category: "other" })),
+      each(ids, (id) => resolveException(id, { resolution_type: resolutionType, resolution_notes: why, root_cause_category: rootCause })),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Resolved", r); },
-    onError: () => toast.error("Not resolved"),
+    onError: (e) => toast.error(`Not resolved: ${apiErrorMessage(e)}`),
   });
   const busy = isExceptions
     ? excAssign.isPending || excEscalate.isPending || excResolve.isPending
@@ -316,33 +370,41 @@ export default function InboxPage() {
   const openRecord = useCallback((index: number) => {
     if (isExceptions) return; // exceptions have no object/record to open — the row carries its own detail.
     const t = items[index];
-    if (t) router.push(`/objects/${t.domain}/records/${t.source_id}`);
+    if (t) router.push(`/objects/${t.domain}/records/${encodeURIComponent(t.source_id)}`);
   }, [isExceptions, items, router]);
 
+  // The keys belong to the task and exception workbenches only; the other tabs own their tables.
+  const keysLive = kind === "task" || kind === "exception";
   useEffect(() => {
+    if (!keysLive) return;
     const onKey = (ev: KeyboardEvent) => {
       const el = ev.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
       if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
       const t = isExceptions ? null : items[focusedIndex];
       const e = isExceptions ? excItems[focusedIndex] : null;
+      // `r` arms the focused task; the next Enter approves it and any other key disarms it.
+      if (armed) {
+        setArmed(null);
+        if (ev.key === "Enter" && t && t.id === armed && canApprove && !busy) { ev.preventDefault(); approve.mutate([t.id]); return; }
+      }
       switch (ev.key) {
-        case "Escape": setRejectIds(null); setRulesOpen(false); return;
+        case "Escape": setRejectIds(null); setEscalateIds(null); setApproveIds(null); setRulesOpen(false); return;
         case "a": if (t && canApprove && !busy && user) { ev.preventDefault(); assign.mutate({ ids: [t.id], userId: user.id }); } else if (e && canSeeTeam && !busy && user) { ev.preventDefault(); excAssign.mutate({ ids: [e.id], userId: user.id }); } return;
-        case "r": if (t && canApprove && !busy) { ev.preventDefault(); approve.mutate([t.id]); } else if (e && canApprove && !busy) { ev.preventDefault(); setRejectIds([e.id]); } return;
+        case "r": if (t && canApprove && !busy) { ev.preventDefault(); setArmed(t.id); toast("Press Enter to approve"); } else if (e && canApprove && !busy) { ev.preventDefault(); setRejectIds([e.id]); } return;
         case "x": if (t && canApprove) { ev.preventDefault(); setRejectIds([t.id]); } return;
         default: inboxKeyHandler(ev, { focusedIndex, rowCount, setFocus: setFocusedIndex, onOpen: openRecord });
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focusedIndex, rowCount, openRecord, isExceptions, items, excItems, canApprove, canSeeTeam, busy, user, assign, approve, excAssign]);
+  }, [keysLive, armed, focusedIndex, rowCount, openRecord, isExceptions, items, excItems, canApprove, canSeeTeam, busy, user, assign, approve, excAssign]);
 
   const createRule = useMutation({
     mutationFn: () => createExceptionRule({ ...ruleDraft, auto_assign_to: undefined }),
     onSuccess: () => {
       toast("Exception rule created");
-      setRuleDraft({ name: "", description: "", rule_type: "", object_type: "", condition: "", severity: "medium" });
+      setRuleDraft({ name: "", description: "", rule_type: "field_condition", object_type: "", condition: "", severity: "medium" });
       void qc.invalidateQueries({ queryKey: queryKeys.exceptionRules() });
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
@@ -350,6 +412,7 @@ export default function InboxPage() {
   const toggleRule = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => updateExceptionRule(id, { is_active }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.exceptionRules() }),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   const taskRows = useMemo<WorkbenchItem[]>(() => items.map((t) => {
@@ -374,7 +437,6 @@ export default function InboxPage() {
       tone: e.severity === "critical" || e.severity === "high" || e.severity === "medium" || e.severity === "low" ? e.severity : "low",
     };
   }), [excItems, now, who]);
-  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const onCheck = useCallback((id: string, on: boolean) => setChecked((prev) => {
     const next = new Set(prev);
     if (on) next.add(id); else next.delete(id);
@@ -391,7 +453,10 @@ export default function InboxPage() {
     : isLoading ? "loading" : isError ? "error" : items.length === 0 ? (dayOne.status === "loading" ? "loading" : "empty") : undefined;
 
   const kindToggle = (
-    <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ ...k, content: null }))} value={kind} onValueChange={setKind} />
+    <div className="flex flex-col gap-1">
+      <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ value: k.value, label: k.label, content: null }))} value={kind} onValueChange={setKind} />
+      <p className="m-text-meta m-ink-3">{KINDS.find((k) => k.value === kind)?.meta}</p>
+    </div>
   );
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.breached;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
@@ -425,7 +490,7 @@ export default function InboxPage() {
             ? {
                 title: "No exceptions",
                 detail: "Exceptions are raised by exception rules on new findings.",
-                action: <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button>,
+                action: canManageRules ? <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button> : <Button variant="secondary" render={<Link href="/objects">Open objects</Link>} />,
               }
             : { title: "No exceptions in this view", detail: "Clear the search to see all exceptions", action: <Button variant="secondary" onClick={() => setSearch("")}>Clear search</Button> }
           : all.length === 0
@@ -442,8 +507,12 @@ export default function InboxPage() {
           <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,240px))]">
             <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} href={isExceptions ? undefined : "/inbox?view=breached"} />
             {!isExceptions && <Stat label="Due today" value={counts.today} loading={isLoading} href="/inbox?view=today" />}
-            {!isExceptions && !isLoading && queueTotal > all.length && <Stat label="Tasks loaded" value={all.length.toLocaleString()} hint={`of ${queueTotal.toLocaleString()}`} />}
           </div>
+          {!isExceptions && !isLoading && queueTotal > all.length && (
+            <Notice action={<Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)}>Load more</Button>}>
+              Newest {all.length.toLocaleString()} of {queueTotal.toLocaleString()} loaded
+            </Notice>
+          )}
           {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
         </div>
       }
@@ -475,7 +544,7 @@ export default function InboxPage() {
           </Field>
           {!isExceptions && (view !== "all" || type !== "all") && (
             <Notice action={<Button variant="ghost" onClick={() => showAll(false)}>Show all</Button>}>
-              Showing {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null].filter(Boolean).join(", ")} only.
+              {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null].filter(Boolean).join(", ")} only
             </Notice>
           )}
           {rollbackNote && <Notice tone="danger">{rollbackNote}</Notice>}
@@ -493,7 +562,7 @@ export default function InboxPage() {
             bulk={(ids) => (
               <>
                 {canSeeTeam && user && <Button variant="secondary" disabled={busy} onClick={() => excAssign.mutate({ ids, userId: user.id })}>Assign to me</Button>}
-                <Button variant="secondary" disabled={busy} onClick={() => excEscalate.mutate(ids)}>Escalate</Button>
+                <Button variant="secondary" disabled={busy} onClick={() => setEscalateIds(ids)}>Escalate</Button>
                 {canApprove && <Button variant="secondary" disabled={busy} onClick={() => setRejectIds(ids)}>Resolve with notes</Button>}
               </>
             )}
@@ -505,8 +574,9 @@ export default function InboxPage() {
                 busy={busy}
                 canResolve={canApprove}
                 canAssign={canSeeTeam && !!user}
+                currency={costModel.data?.currency}
                 onResolve={() => setRejectIds([selectedExc.id])}
-                onEscalate={() => excEscalate.mutate([selectedExc.id])}
+                onEscalate={() => setEscalateIds([selectedExc.id])}
                 onAssign={() => user && excAssign.mutate({ ids: [selectedExc.id], userId: user.id })}
               />
             ) : null}
@@ -521,7 +591,7 @@ export default function InboxPage() {
             listLabel="Tasks"
             bulk={(ids) => (
               <>
-                {canApprove && <Button variant="secondary" disabled={busy} onClick={() => approve.mutate(ids)}>Approve</Button>}
+                {canApprove && <Button variant="secondary" disabled={busy} onClick={() => setApproveIds(ids)}>Approve {ids.length.toLocaleString()} at {HIGH_CONFIDENCE_LABEL}</Button>}
                 {canApprove && <Button variant="secondary" disabled={busy} onClick={() => setRejectIds(ids)}>Reject with reason</Button>}
                 <Button variant="secondary" disabled={busy} onClick={() => escalate.mutate(ids)}>Escalate</Button>
                 {canApprove && user && <Button variant="secondary" disabled={busy} onClick={() => assign.mutate({ ids, userId: user.id })}>Assign to me</Button>}
@@ -553,8 +623,18 @@ export default function InboxPage() {
             title={isExceptions ? "Resolve exception" : "Reject with reason"}
           >
             <div className="flex flex-col gap-3">
-              <Field label="Reason">
-                <textarea className="m-input [height:auto] [padding:6px_10px]"
+              {isExceptions ? (
+                <>
+                  <Field label="Resolution">
+                    <Select value={resolutionType} onValueChange={setResolutionType} options={RESOLUTION_TYPES} />
+                  </Field>
+                  <Field label="Root cause">
+                    <Select value={rootCause} onValueChange={setRootCause} options={ROOT_CAUSES} />
+                  </Field>
+                </>
+              ) : null}
+              <Field label={isExceptions ? "Notes" : "Reason"}>
+                <Textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={4}
@@ -575,23 +655,53 @@ export default function InboxPage() {
               </div>
             </div>
           </Drawer>
+          <Drawer
+            open={escalateIds !== null}
+            onOpenChange={(open) => !open && setEscalateIds(null)}
+            title="Escalate exception"
+          >
+            <div className="flex flex-col gap-3">
+              <Field label="Reason">
+                <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4} />
+              </Field>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" onClick={() => setEscalateIds(null)}>Keep as is</Button>
+                <Button variant="primary" disabled={!reason.trim() || excEscalate.isPending} onClick={() => escalateIds && excEscalate.mutate({ ids: escalateIds, reason })}>
+                  Escalate
+                </Button>
+              </div>
+            </div>
+          </Drawer>
+          <ConfirmDialog
+            open={approveIds !== null}
+            onOpenChange={(open) => !open && setApproveIds(null)}
+            title={`Approve ${plural(approveIds?.length ?? 0, "task")}?`}
+            body={`Each task whose model suggestion is at ${HIGH_CONFIDENCE_LABEL} is approved. The rest stay open for a manual decision.`}
+            confirmLabel={`Approve ${(approveIds?.length ?? 0).toLocaleString()}`}
+            cancelLabel="Keep open"
+            pending={approve.isPending}
+            onConfirm={() => approveIds && approve.mutate(approveIds)}
+          />
           <Drawer open={rulesOpen} onOpenChange={setRulesOpen} title="Exception rules">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                {(excRulesQ.data?.rules ?? []).map((r: ExceptionRule) => (
+                {excRulesQ.isLoading ? (
+                  <Skeleton height={96} />
+                ) : excRulesQ.isError ? (
+                  <ErrorState {...apiErrorState(excRulesQ.error)} onRetry={() => void excRulesQ.refetch()} />
+                ) : (excRulesQ.data?.rules ?? []).length === 0 ? (
+                  <EmptyState variant="inline" title="No exception rules yet" detail="Create one below" />
+                ) : (excRulesQ.data?.rules ?? []).map((r: ExceptionRule) => (
                   <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2">
                     <div className="flex flex-col">
                       <span className="m-text-body font-medium">{r.name}</span>
-                      <span className="m-text-body m-ink-3">{r.object_type}, {r.rule_type}</span>
+                      <span className="m-text-body m-ink-3">{formatModuleName(r.object_type)}, {labelOf(r.rule_type)}</span>
                     </div>
-                    <Button variant="secondary" onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
+                    <Button variant="secondary" disabled={toggleRule.isPending} onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
                       {r.is_active ? "Disable" : "Enable"}
                     </Button>
                   </div>
                 ))}
-                {excRulesQ.data && excRulesQ.data.rules.length === 0 && (
-                  <span className="m-text-body m-ink-3">No exception rules yet.</span>
-                )}
               </div>
               <div className="flex flex-col gap-2">
                 <span className="m-text-body font-medium">New rule</span>
@@ -602,16 +712,13 @@ export default function InboxPage() {
                   />
                 </Field>
                 <Field label="Rule type">
-                  <Input
-                    value={ruleDraft.rule_type}
-                    onChange={(e) => setRuleDraft({ ...ruleDraft, rule_type: e.target.value })}
-                  />
+                  <Select value={ruleDraft.rule_type} options={RULE_TYPES} onValueChange={(v) => setRuleDraft({ ...ruleDraft, rule_type: v })} />
                 </Field>
-                <Field label="Object type">
-                  <Input
-                    value={ruleDraft.object_type}
-                    onChange={(e) => setRuleDraft({ ...ruleDraft, object_type: e.target.value })}
-                  />
+                <Field label="Object">
+                  <Select value={ruleDraft.object_type} options={OBJECT_OPTIONS} placeholder="Choose an object" onValueChange={(v) => setRuleDraft({ ...ruleDraft, object_type: v })} />
+                </Field>
+                <Field label="Severity">
+                  <Select value={ruleDraft.severity} options={SEVERITY_OPTIONS} onValueChange={(v) => setRuleDraft({ ...ruleDraft, severity: v as Severity })} />
                 </Field>
                 <Field label="Condition">
                   <Input
@@ -619,10 +726,11 @@ export default function InboxPage() {
                     onChange={(e) => setRuleDraft({ ...ruleDraft, condition: e.target.value })}
                   />
                 </Field>
+                <p className="m-text-meta m-ink-3">A field condition such as MARA.MATKL = &apos;&apos;, a threshold such as count &gt; 100, a temporal window or a relationship between two fields</p>
                 <div className="flex justify-end">
                   <Button
                     variant="primary"
-                    disabled={!ruleDraft.name.trim() || !ruleDraft.condition.trim() || createRule.isPending}
+                    disabled={!ruleDraft.name.trim() || !ruleDraft.object_type || !ruleDraft.condition.trim() || createRule.isPending}
                     onClick={() => createRule.mutate()}
                   >
                     Create rule
@@ -635,6 +743,54 @@ export default function InboxPage() {
       }
     />
   );
+}
+
+/** What the task decides on, from the source it points at: the proposal (rule, field, current and proposed value) or the exception. */
+function TaskSource({ t }: { t: StewardshipQueueItem }) {
+  const proposal = useQuery({
+    queryKey: ["cleaning", "item", t.source_id],
+    queryFn: () => getCleaningItem(t.source_id),
+    enabled: t.item_type === "writeback_approval",
+    retry: false,
+    meta: { ignoreError: true },
+  });
+  const exception = useQuery({
+    queryKey: ["exceptions", "detail", t.source_id],
+    queryFn: () => getException(t.source_id),
+    enabled: t.item_type === "exception",
+    retry: false,
+    meta: { ignoreError: true },
+  });
+  const ruleId = proposal.data?.rule_id ?? null;
+  const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), enabled: !!ruleId, staleTime: 300_000, meta: { ignoreError: true } });
+  if (t.item_type === "writeback_approval") {
+    if (proposal.isLoading) return <Skeleton height={64} />;
+    if (!proposal.data) return null;
+    const p = proposalOf(proposal.data);
+    const name = ruleId ? rules.data?.rules.find((r) => r.id === ruleId)?.name : undefined;
+    return (
+      <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]" data-testid="task-source">
+        {ruleId ? <Fact label="Rule"><span className="inline-flex items-baseline gap-2"><Mono>{ruleId}</Mono>{name ? <span>{name}</span> : null}</span></Fact> : null}
+        {p?.field ? <Fact label="Field"><Mono>{p.field}</Mono></Fact> : null}
+        <Fact label="Current value">{p?.before ? <Mono>{p.before}</Mono> : "blank"}</Fact>
+        <Fact label="Proposed value"><ProposalCell proposal={p} /></Fact>
+      </dl>
+    );
+  }
+  if (t.item_type === "exception") {
+    if (exception.isLoading) return <Skeleton height={64} />;
+    if (!exception.data) return null;
+    return (
+      <div className="flex flex-col gap-1" data-testid="task-source">
+        <p className="m-text-body font-medium">{exception.data.title}</p>
+        {exception.data.description ? <p className="m-text-body m-ink-2">{exception.data.description}</p> : null}
+      </div>
+    );
+  }
+  if (t.item_type === "golden_record_review") {
+    return <Link href={`/mdm/golden/${encodeURIComponent(t.source_id)}`} className="m-ink-accent m-text-body">Open the golden record</Link>;
+  }
+  return null;
 }
 
 /** The selected task: what it is, where it stands against its SLA, the model's suggestion and the one decision. */
@@ -666,6 +822,7 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, onAppr
           <Fact label="Raised">{formatDate(t.created_at, "datetime")}</Fact>
           <Fact label="Due">{t.due_at ? formatDate(t.due_at, "datetime") : t.sla_hours ? `${t.sla_hours}h after it was raised` : "No due date"}</Fact>
         </dl>
+        <TaskSource t={t} />
         {t.ai_recommendation ? (
           <p className="m-text-body m-ink-2">
             Suggested decision: {labelOf(t.ai_recommendation)}
@@ -673,7 +830,7 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, onAppr
           </p>
         ) : null}
         <div>
-          <Button variant="secondary" render={<Link href={`/objects/${t.domain}/records/${t.source_id}`} />}>Open record</Button>
+          <Button variant="secondary" render={<Link href={`/objects/${t.domain}/records/${encodeURIComponent(t.source_id)}`} />}>Open record</Button>
         </div>
       </div>
     </Card>
@@ -681,8 +838,8 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, onAppr
 }
 
 /** The selected exception: severity, SLA, what happened and the one decision. */
-function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, onResolve, onEscalate, onAssign }: {
-  e: Exception; now: number; assignee: string; busy: boolean; canResolve: boolean; canAssign: boolean;
+function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, currency, onResolve, onEscalate, onAssign }: {
+  e: Exception; now: number; assignee: string; busy: boolean; canResolve: boolean; canAssign: boolean; currency?: string | null;
   onResolve: () => void; onEscalate: () => void; onAssign: () => void;
 }) {
   const sla = excSla(e.sla_deadline, now);
@@ -707,7 +864,7 @@ function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, onReso
           <Fact label="Assignee">{assignee}</Fact>
           <Fact label="Raised">{relativeTime(e.created_at)}</Fact>
           {e.source_system ? <Fact label="Source">{e.source_system}</Fact> : null}
-          {e.estimated_impact_zar != null ? <Fact label="Estimated impact">{`${e.estimated_impact_zar.toLocaleString()} ZAR`}</Fact> : null}
+          {e.estimated_impact_zar != null ? <Fact label="Estimated impact">{formatMoney(e.estimated_impact_zar, currency)}</Fact> : null}
         </dl>
         {e.description ? <p className="m-text-body m-ink-2">{e.description}</p> : null}
       </div>
@@ -729,7 +886,7 @@ function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRung
           <span key={r.label} className="inline-flex items-baseline gap-3">
             <span>{r.label}</span>
             <span className="m-ink-2">{formatInt(r.open)} open across all queues</span>
-            <span className="m-ink-2">{formatInt(r.breached)} breached</span>
+            <span className="m-ink-2">{formatInt(r.breached)} overdue</span>
           </span>
         ))
       ) : (

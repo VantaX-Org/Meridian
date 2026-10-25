@@ -262,8 +262,8 @@ export default function ObjectsPage() {
         <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
-        <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" />
-        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" />}
+        <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="across all objects" href={runId ? `/insights/rules?run=${runId}` : "/insights/rules"} />
+        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} href={runId ? `/runs/${runId}?tab=findings&severity=critical` : "/insights/rules?severity=critical"} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />

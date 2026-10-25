@@ -7,22 +7,32 @@
 // since that's the only merge-relevant data the brief's named API wrappers expose.
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Button, DataTable, EmptyState, ErrorState, Mono, PageHeader, Skeleton } from "@/design";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, DataTable, EmptyState, ErrorState, Mono, PageHeader, Skeleton, toast } from "@/design";
 import type { ColumnDef } from "@tanstack/react-table";
 import { LedgerHead } from "@/components/mdm/ledger";
+import { useRole } from "@/hooks/use-role";
 import { getMasterRecord } from "@/lib/api/master-records";
-import { apiErrorState } from "@/lib/error";
+import { setStewardOverrides } from "@/lib/api/merge-explain";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 export default function GoldenRecordMergePage() {
   const sp = useSearchParams();
   const id = sp.get("id") ?? "";
+  const qc = useQueryClient();
+  const canResolve = useRole().can("approve");
 
   const query = useQuery({
     queryKey: queryKeys.masterRecord(id),
     queryFn: () => getMasterRecord(id),
     enabled: !!id,
+  });
+  // A steward's choice is recorded as an override on the golden record; the merge keeps it on the next build.
+  const useValue = useMutation({
+    mutationFn: ({ field, value }: { field: string; value: string }) => setStewardOverrides(id, { [field]: value }, "Chosen on the merge conflicts page"),
+    onSuccess: (_r, { field }) => { toast.success(`${field} now uses the chosen value`); void qc.invalidateQueries({ queryKey: queryKeys.masterRecord(id) }); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   const header = <PageHeader title="Merge conflicts" meta="Field-by-field comparison of a golden record against every contributing source" />;
@@ -81,8 +91,13 @@ export default function GoldenRecordMergePage() {
         const c = s as { value: unknown; confidence: number };
         const conflicts = c.value !== row.original.value;
         return (
-          <span className={conflicts ? "m-ink-critical" : undefined}>
+          <span className={`inline-flex items-center gap-2 ${conflicts ? "m-ink-critical" : ""}`}>
             {c.value == null ? "None" : String(c.value)} ({Math.round(c.confidence * 100)}%)
+            {conflicts && canResolve && c.value != null ? (
+              <Button variant="ghost" size="sm" disabled={useValue.isPending} onClick={() => useValue.mutate({ field: row.original.field, value: String(c.value) })}>
+                Use this value
+              </Button>
+            ) : null}
           </span>
         );
       },
@@ -109,7 +124,7 @@ export default function GoldenRecordMergePage() {
         )}
       </section>
       <div>
-        <Button variant="ghost" render={<Link href="/fix?tab=dedup">Review other duplicate pairs</Link>} />
+        <Button variant="ghost" render={<Link href="/insights/duplicates">Review other duplicate pairs</Link>} />
       </div>
     </div>
   );

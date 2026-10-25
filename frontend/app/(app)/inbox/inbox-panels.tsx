@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
 import Link from "next/link";
-import { Button, Card, DataTable, EmptyState, ErrorState, ExportMenu, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone, Input, Status } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, EmptyState, ErrorState, ExportMenu, Field, Mono, Notice, Pill, Select, Skeleton, Stat, Textarea, toast, type PillTone, Input, Status } from "@/design";
 import { Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -14,8 +13,14 @@ import {
   commentIssue, exportIssues, getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue,
 } from "@/lib/api/issues";
 import { approveWriteback, getPendingApprovals, type PendingApproval } from "@/lib/api/writeback";
+import { getFindingReportContext } from "@/lib/api/findings";
+import { getVersion } from "@/lib/api/versions";
+import { getUsers } from "@/lib/api/users";
+import { writeBackModeSentence } from "@/lib/api/remediation";
 import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
+import { runName } from "@/lib/run-scope";
+import { queryKeys } from "@/lib/query-keys";
 import type { Exception } from "@/types/api";
 
 const SLA_TONE: Record<string, PillTone> = { on_track: "go", at_risk: "at-risk", breached: "no-go" };
@@ -58,7 +63,7 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
       )}
       {can("analyse") ? (
         <Field label="Add a comment">
-          <textarea className="m-input [height:auto] [padding:6px_10px]" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+          <Textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} />
         </Field>
       ) : null}
       {can("analyse") ? <div><Button variant="secondary" disabled={!text.trim() || post.isPending} onClick={() => post.mutate()}>Post comment</Button></div> : null}
@@ -174,44 +179,83 @@ export function SapMonitorPanel() {
 
 /* ─── Approvals: live write-back requests waiting for a second person ─── */
 
+/** The rule behind a write-back request, from its finding: the check id in mono with the object beside it. */
+function FindingRule({ findingId }: { findingId: string | null }) {
+  const q = useQuery({ queryKey: ["findings", "context", findingId ?? ""], queryFn: () => getFindingReportContext(findingId as string), enabled: !!findingId, retry: false, meta: { ignoreError: true } });
+  if (!findingId) return <>—</>;
+  if (!q.data) return <Mono>{findingId}</Mono>;
+  return <span className="inline-flex items-baseline gap-2"><Mono>{q.data.check_id}</Mono><span className="m-ink-3">{formatModuleName(q.data.module)}</span></span>;
+}
+
+/** The run a write-back request was raised from, by name. */
+function RunName({ versionId }: { versionId: string | null }) {
+  const q = useQuery({ queryKey: queryKeys.run(versionId ?? ""), queryFn: () => getVersion(versionId as string), enabled: !!versionId, retry: false, meta: { ignoreError: true } });
+  if (!versionId) return <>—</>;
+  return <>{q.data ? runName(q.data) : "Run"}</>;
+}
+
 export function ApprovalsPanel() {
   const { user } = useAuth();
+  const { can } = useRole();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["inbox", "approvals"], queryFn: getPendingApprovals, retry: false });
+  // The user list needs `manage_users`; without it a requester reads as "You" or "Unknown user", never an id.
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users"), meta: { ignoreError: true } });
+  const names = useMemo(() => new Map((usersQ.data?.users ?? []).map((u) => [u.id, u.name])), [usersQ.data]);
+  const who = (id: string | null) => (!id ? "Unknown user" : id === user?.id ? "You" : names.get(id) ?? "Unknown user");
+  const [asking, setAsking] = useState<PendingApproval | null>(null);
   const approve = useMutation({
     mutationFn: (id: string) => approveWriteback(id),
     onSuccess: (r) => {
+      setAsking(null);
       if (r.errors.length) toast.error(r.errors.join("; "));
-      else toast.success(`${r.applied} records written back`);
+      else toast.success(`${r.applied.toLocaleString()} records written back`);
       void qc.invalidateQueries({ queryKey: ["inbox", "approvals"] });
     },
     // The server enforces 4-eyes and the live switch; show its reason rather than guess.
-    onError: (e) => toast.error(apiErrorMessage(e)),
+    onError: (e) => { setAsking(null); toast.error(apiErrorMessage(e)); },
   });
   const cols = useMemo<ColumnDef<PendingApproval, unknown>[]>(() => [
-    { id: "finding", header: "Finding", cell: ({ row }) => <Mono>{row.original.finding_id?.slice(0, 8) ?? "—"}</Mono> },
-    { id: "run", header: "Run", cell: ({ row }) => <Mono>{row.original.version_id ?? "—"}</Mono> },
+    { id: "finding", header: "Rule", cell: ({ row }) => <FindingRule findingId={row.original.finding_id} /> },
+    { id: "run", header: "Run", cell: ({ row }) => <RunName versionId={row.original.version_id} /> },
     { id: "host", header: "SAP host", cell: ({ row }) => row.original.sap_host ?? "—" },
     { id: "records", header: "Records", cell: ({ row }) => row.original.records_updated.toLocaleString() },
-    { id: "by", header: "Requested by", cell: ({ row }) => <Mono>{row.original.requested_by?.slice(0, 8) ?? "—"}</Mono> },
+    { id: "by", header: "Requested by", cell: ({ row }) => who(row.original.requested_by) },
     { id: "when", header: "Requested", cell: ({ row }) => row.original.created_at ? relativeTime(row.original.created_at) : "—" },
     { id: "act", header: "", cell: ({ row }) => (
       <Button variant="secondary" disabled={approve.isPending || !q.data?.live_enabled || (user != null && row.original.requested_by === user.id)}
         title={user != null && row.original.requested_by === user.id ? "You requested this; another approver must approve it" : undefined}
-        onClick={() => approve.mutate(row.original.id)}>Approve</Button>
+        onClick={() => setAsking(row.original)}>Approve</Button>
     ) },
-  ], [approve, q.data?.live_enabled, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `who` closes over names and user
+  ], [approve, q.data?.live_enabled, user, names]);
   const list = q.data?.approvals ?? [];
   return (
     <Panel q={q}>
       <div className="flex flex-col gap-3">
-        {q.data && !q.data.live_enabled ? (
-          <Notice>Live SAP write-back is off on this deployment. Export fixes as an LSMW or BAPI file and load them in SAP.</Notice>
-        ) : null}
+        <Notice>
+          {writeBackModeSentence(q.data?.live_enabled)}
+          {q.data && !q.data.live_enabled ? " Live SAP write-back is off on this deployment: export fixes as an LSMW or BAPI file and load them in SAP." : ""}
+        </Notice>
         <p className="m-text-body m-ink-2">A different person than the requester must approve each request.</p>
         {list.length === 0 ? <EmptyState title="No write-backs waiting" detail="Approved fixes queue here before they reach SAP" action={<Button variant="secondary" render={<Link href="/fix">Open fixes</Link>} />} /> : (
           <DataTable columns={cols} data={list} getRowId={(a) => a.id} height={380} exportName="writeback-approvals" />
         )}
+        <ConfirmDialog
+          open={asking !== null}
+          onOpenChange={(open) => { if (!open) setAsking(null); }}
+          title="Write these records back to SAP?"
+          body={asking ? (
+            <div className="flex flex-col gap-1">
+              <p>Rule: <FindingRule findingId={asking.finding_id} /></p>
+              <p>{asking.records_updated.toLocaleString()} record{asking.records_updated === 1 ? "" : "s"} on {asking.sap_host ?? "the connected SAP system"}, requested by {who(asking.requested_by)}.</p>
+            </div>
+          ) : null}
+          confirmLabel="Approve and write back"
+          cancelLabel="Keep waiting"
+          pending={approve.isPending}
+          onConfirm={() => asking && approve.mutate(asking.id)}
+        />
       </div>
     </Panel>
   );

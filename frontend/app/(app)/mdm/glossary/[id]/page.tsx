@@ -6,11 +6,12 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, Status, Textarea, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { AIDraftResponse, GlossaryTermDetail } from "@/types/api";
@@ -25,14 +26,15 @@ const approvedCols: ColumnDef<Approved>[] = [
   { id: "label", header: "Label", accessorFn: (r) => r.label || "None" },
 ];
 const ruleCols: ColumnDef<Rule>[] = [
-  { id: "rule", header: "Rule", cell: ({ row }) => <Mono>{row.original.rule_id}</Mono> },
-  { id: "sev", header: "Severity", accessorFn: (r) => r.severity ?? "None" },
-  { id: "pass", header: "Pass rate", accessorFn: (r) => (r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "None") },
-  { id: "aff", header: "Affected of total", accessorFn: (r) => `${r.affected_count} of ${r.total_count ?? "None"}` },
+  { id: "rule", header: "Rule", cell: ({ row }) => <DrillLink href={`/rules/${encodeURIComponent(row.original.rule_id)}`}><Mono>{row.original.rule_id}</Mono></DrillLink> },
+  { id: "sev", header: "Severity", accessorFn: (r) => r.severity ?? "", cell: ({ row }) => (row.original.severity ? <Status kind="severity" value={row.original.severity} /> : "—") },
+  { id: "pass", header: "Pass rate", accessorFn: (r) => (r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "—") },
+  { id: "aff", header: "Affected of total", accessorFn: (r) => `${(r.affected_count ?? 0).toLocaleString()} of ${r.total_count?.toLocaleString() ?? "—"}` },
 ];
 const changeCols: ColumnDef<Change>[] = [
+  { id: "when", header: "When", accessorFn: (e) => e.changed_at, cell: ({ row }) => formatDate(row.original.changed_at, "datetime") },
   { id: "field", header: "Field", accessorFn: (e) => e.field_changed },
-  { id: "by", header: "By", accessorFn: (e) => e.changed_by },
+  { id: "by", header: "By", accessorFn: (e) => e.changed_by || "Unknown user" },
   { id: "change", header: "Change", accessorFn: (e) => e.new_value ?? "" },
 ];
 
@@ -122,7 +124,7 @@ export default function GlossaryTermPage() {
     : { label: "passing", tone: "go" };
 
   return (
-    <RecordPage recordKey={term.business_name} object={term.domain} status={status}>
+    <RecordPage recordKey={term.business_name} object={term.domain} status={status} mono={false}>
       <EntityTabs entityType="glossary" entityId={id} overview={<>
       <section className="flex items-center gap-2">
         <Pill tone={term.status === "active" ? "go" : term.status === "under_review" ? "at-risk" : "no-go"}>
@@ -160,7 +162,7 @@ export default function GlossaryTermPage() {
           </Card>
         ) : null}
         <Field label="Business definition">
-          <textarea className="m-input [height:auto] [padding:6px_10px]"
+          <Textarea rows={4}
             value={currentDef}
             readOnly={!canApprove}
             onChange={(e) => setEditDef(e.target.value)}
@@ -206,7 +208,7 @@ export default function GlossaryTermPage() {
       <section aria-label="Approved values">
         <LedgerHead title="Approved values" meta={String(approved.length)} />
         {approved.length === 0 ? (
-          <p className="m-text-body m-ink-3">{"No approved values are defined for this field"}</p>
+          <EmptyState variant="inline" title="No approved values are defined for this field" />
         ) : (
           <DataTable columns={approvedCols} getRowId={(r) => r.code} data={approved.map(([code, label]) => ({ code, label }))} height="auto" />
         )}
@@ -215,9 +217,7 @@ export default function GlossaryTermPage() {
       <section aria-label="Linked rules failing">
         <LedgerHead title="Linked rules failing" meta={String(failing.length)} />
         {failing.length === 0 ? (
-          <p className="m-text-body m-ink-3">
-            {term.linked_rules.length ? "Every linked rule passes in the latest analysis" : "No rules are linked to this term"}
-          </p>
+          <EmptyState variant="inline" title={term.linked_rules.length ? "Every linked rule passes in the latest analysis" : "No rules are linked to this term"} />
         ) : (
           <DataTable columns={ruleCols} getRowId={(r) => r.rule_id} data={failing} height="auto" />
         )}
@@ -226,7 +226,7 @@ export default function GlossaryTermPage() {
       <section aria-label="Change history">
         <LedgerHead title="Change history" meta={String(term.change_history.length)} />
         {term.change_history.length === 0 ? (
-          <p className="m-text-body m-ink-3">No changes recorded</p>
+          <EmptyState variant="inline" title="No changes recorded" />
         ) : (
           <DataTable columns={changeCols} getRowId={(r) => r.id} data={term.change_history} height="auto" />
         )}

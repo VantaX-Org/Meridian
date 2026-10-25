@@ -76,7 +76,7 @@ export default function GlossaryPage() {
   const domainOptions = useMemo(() => {
     const seen = new Set<string>();
     for (const t of terms) seen.add(t.domain);
-    return [{ value: "all", label: "All domains" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: formatModuleName(d) }))];
+    return [{ value: "all", label: "All objects" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: formatModuleName(d) }))];
   }, [terms]);
 
   const state = asyncStateOf(query, () => terms.length === 0, true);
@@ -94,7 +94,7 @@ export default function GlossaryPage() {
               placeholder="Term, SAP table or field"
             />
           </Field>
-          <Field label="Domain">
+          <Field label="Object">
             <Select value={domain} onValueChange={setDomain} options={domainOptions} />
           </Field>
           <Field label="Status">

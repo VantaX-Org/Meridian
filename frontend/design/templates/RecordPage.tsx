@@ -1,6 +1,7 @@
 // frontend/design/templates/RecordPage.tsx
 import type { ReactNode } from "react";
 import { Pill, type PillTone } from "../primitives/Pill";
+import { Status } from "../primitives/Status";
 import { DomainChip } from "../primitives/DomainChip";
 import { Mono } from "../primitives/Mono";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
@@ -14,11 +15,14 @@ export interface RecordStatus {
 }
 
 export function RecordPage({
-  recordKey, object, status, children, stats, actions, meta, loading = false,
+  recordKey, object, status, children, stats, actions, meta, loading = false, mono = true,
 }: {
   recordKey: string;
   object: string;
-  status: RecordStatus;
+  /** The record's verdict in this run; omit when the page carries its own status (a golden record's lifecycle). */
+  status?: RecordStatus;
+  /** `false` when the key is a business name, not an SAP identifier. */
+  mono?: boolean;
   children: ReactNode;
   /** Stat row under the header (rule failures, dimensions failing, fields failing, batches, last changed, owner). */
   stats?: Pick<StatProps, "label" | "value" | "hint" | "tone">[];
@@ -42,11 +46,11 @@ export function RecordPage({
     <PageFrame gap={4}>
       <header className="flex items-center gap-3">
         <span style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", fontWeight: 600 }}>
-          <Mono>{recordKey}</Mono>
+          {mono ? <Mono>{recordKey}</Mono> : recordKey}
         </span>
         <span style={{ color: "var(--m-ink-3)" }}>{formatModuleName(object)}</span>
         <DomainChip moduleId={object} />
-        <Pill tone={status.tone}>{status.label}</Pill>
+        {status ? (status.label === "in batch" ? <Pill tone={status.tone}>{status.label}</Pill> : <Status kind="verdict" value={status.label === "failing" ? "no-go" : "go"} />) : null}
         {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
       </header>
       {meta != null && <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{meta}</div>}

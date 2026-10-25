@@ -14,4 +14,4 @@ export const kindText = (kind: string, ruleName?: string | null) =>
 
 /** Where one group is reviewed: duplicates merge on the Duplicates tab, everything else on its own page. */
 export const groupHref = (g: { version_id: string; kind: string }) =>
-  g.kind === "duplicate" ? "/fix?tab=dedup" : `/fix/${g.version_id}?kind=${encodeURIComponent(g.kind)}`;
+  g.kind === "duplicate" ? "/fix?tab=dedup" : `/fix/proposals/${g.version_id}?kind=${encodeURIComponent(g.kind)}`;

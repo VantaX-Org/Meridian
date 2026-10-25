@@ -6,9 +6,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Button, Card, DataTable, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, ProgressFill, SeverityDot, Skeleton, Stat, Status, isSeverity } from "@/design";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Button, Card, DataTable, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, ProgressFill, SeverityDot, Skeleton, Stat, Status, isSeverity, toast } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { exportFindingRecords } from "@/lib/api/findings";
+import { createBatch } from "@/lib/api/remediation";
 import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
 import type { ObjectRule } from "@/lib/api/v1/objects";
 import { apiErrorState } from "@/lib/error";
@@ -29,7 +31,7 @@ const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2,
 type WorkRule = ObjectRule & { name: string | null; field: string | null; autoFixPct: number | null };
 
 /** The rules' names, fields and auto-fix shares come from the insights ranking; the workbench reads without them if it fails. */
-function useRuleDetails(object: string, run: string) {
+export function useRuleDetails(object: string, run: string) {
   return useQuery({
     queryKey: queryKeys.insights("rules", run, object, "workbench"),
     queryFn: () => getRuleRanking({ version_id: run, module: object, limit: 200 }),
@@ -52,9 +54,21 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
   const router = useRouter();
   const search = useSearchParams();
   const [page, setPage] = useState(1);
-  const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, rule.check_id, page));
   const grain = search.get("grain");
+  const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, rule.check_id, page, grain));
   const records = data?.records;
+  const canApply = useRole().can("apply");
+  /** Drafts a fix batch for this rule in this run, or for the records ticked in the table. */
+  const draft = useMutation({
+    mutationFn: (keys: string[] | null) =>
+      createBatch(`${rule.check_id} ${object}`, { check_id: rule.check_id, module: object, version_id: run, ...(keys ? { record_keys: keys } : {}) }),
+    onSuccess: (b) => {
+      toast.success(`Fix batch drafted with ${b.item_count.toLocaleString()} ${b.item_count === 1 ? "item" : "items"}`, {
+        action: { label: "Open batch", onClick: () => router.push(`/fix?tab=batches&batch=${b.id}`) },
+      });
+    },
+    onError: () => toast.error("Could not draft the fix batch"),
+  });
   useFixShortcut(object, run, records?.[0]?.record_key);
   const columns = useRecordColumns(object, run, records);
 
@@ -66,7 +80,6 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
     router.replace(`/objects/${object}?${params.toString()}`, { scroll: false });
   };
 
-  const first = records?.[0]?.record_key;
   const detailHref = `/objects/${object}/rules/${encodeURIComponent(rule.check_id)}?run=${run}`;
   const exportOptions = [{ format: "xlsx" as const, run: () => exportFindingRecords(run, rule.check_id, "xlsx") }];
   const pageCount = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
@@ -78,7 +91,7 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
         <>
           <ExportMenu options={exportOptions} />
           <Button variant="ghost" render={<Link href={detailHref}>Rule details</Link>} />
-          {first ? <Button render={<Link href={fixSheetHref(object, run, first)}>Propose fix</Link>} /> : <Button disabled>Propose fix</Button>}
+          {canApply ? <Button pending={draft.isPending} disabled={!data || data.records.length === 0} onClick={() => draft.mutate(null)}>Propose fix</Button> : null}
         </>
       }
     >
@@ -106,6 +119,9 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
               getRowId={(row) => row.record_key}
               rowHref={(row) => fixSheetHref(object, run, row.record_key)}
               onRowClick={(row) => router.push(fixSheetHref(object, run, row.record_key))}
+              bulkActions={canApply ? (selected) => (
+                <Button variant="secondary" disabled={draft.isPending} onClick={() => draft.mutate(selected.map((r) => r.record_key))}>Add to fix batch</Button>
+              ) : undefined}
             />
             <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
           </>
@@ -167,7 +183,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="m-stat-grid">
-        <Stat label="Failing checks" value={data.failing_checks.toLocaleString()} href={rulesHref} />
+        <Stat label="Failing rules" value={data.failing_checks.toLocaleString()} href={rulesHref} />
         <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         <Stat label="Records affected" value={data.affected_records.toLocaleString()} href={failing[0] ? tabHref(`records&check_id=${encodeURIComponent(failing[0].check_id)}`) : undefined} />
         <Stat

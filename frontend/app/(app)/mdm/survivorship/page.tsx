@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, PageHeader, Pill, type CellMeta, asyncStateOf } from "@/design";
+import { Button, DataTable, ExplorerPage, Notice, PageHeader, Pill, type CellMeta, asyncStateOf } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { getSurvivorshipRules, type SurvivorshipRule } from "@/lib/api/survivorship";
 import { apiErrorMessage } from "@/lib/error";
@@ -31,6 +31,7 @@ export default function SurvivorshipPage() {
       state={asyncStateOf(q, () => rules.length === 0, true)}
       emptyProps={{ title: "No survivorship rules", detail: "Until a rule exists for a field, the most recent source value wins.", action: <Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      filterBar={<Notice>Rules are read-only here. They are set by the model from steward decisions and changed by an administrator through the survivorship-rules API.</Notice>}
       table={<DataTable columns={columns} data={rules} getRowId={(r) => r.id} />}
     />
   );

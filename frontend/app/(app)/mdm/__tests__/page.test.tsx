@@ -24,7 +24,7 @@ describe("MdmOverviewPage", () => {
     expect(screen.getByText("12,480 golden records, 38 waiting on a steward")).toBeInTheDocument();
     expect(await screen.findByText("Match work")).toBeInTheDocument();
     expect(await screen.findByText("Merge decision")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/inbox?type=merge_decision");
+    expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/inbox?type=merge_decision&focus=q1");
   });
 
   it("says so when no match work is open", async () => {

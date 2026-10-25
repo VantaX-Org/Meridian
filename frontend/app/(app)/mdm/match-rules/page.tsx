@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input, PageFrame } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input, PageFrame, Textarea, toast } from "@/design";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -16,7 +16,7 @@ import {
   clearPairConstraint, getPairConstraints, matchTuningDryRun,
   type DryRunResult, type PairConstraint, type PairConstraintKind,
 } from "@/lib/api/merge-explain";
-import { apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MatchRule, MatchType, SimulationResult } from "@/types/api";
@@ -82,7 +82,7 @@ export default function MatchRulesPage() {
 function NeedsManageRules() {
   return (
     <EmptyState
-      title="Needs the manage_rules permission"
+      title="Only rule managers can edit match rules"
       detail="Ask an administrator for a role that manages rules, such as steward."
       ghost="list"
       action={<Button variant="secondary" render={<Link href="/mdm/glossary">Open glossary</Link>} />}
@@ -103,6 +103,7 @@ function RulesEditor() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editing, setEditing] = useState<MatchRule | null>(null);
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const rulesQuery = useQuery({
     queryKey: queryKeys.matchRules(domain),
@@ -116,14 +117,17 @@ function RulesEditor() {
   const save = useMutation({
     mutationFn: (d: Draft) => (editing ? updateMatchRule(editing.id, d) : createMatchRule(d)),
     onSuccess: () => { refresh(); close(); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const remove = useMutation({
     mutationFn: (r: MatchRule) => deleteMatchRule(r.id),
-    onSuccess: () => { refresh(); close(); },
+    onSuccess: () => { setConfirmDelete(false); refresh(); close(); },
+    onError: (e) => { setConfirmDelete(false); toast.error(apiErrorMessage(e)); },
   });
   const simulate = useMutation({
     mutationFn: (d: string) => simulateMatchRules({ domain: d }),
     onSuccess: setSimulation,
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   const columns = useMemo<ColumnDef<MatchRule>[]>(() => [
@@ -139,7 +143,7 @@ function RulesEditor() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <Select label="Domain" placeholder="All domains" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setSimulation(null); }} />
+        <Select label="Object" placeholder="All objects" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setSimulation(null); }} />
         <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>New rule</Button>
         <Button
           variant="secondary"
@@ -184,7 +188,7 @@ function RulesEditor() {
       {draft ? (
         <Card title={editing ? `Edit rule ${editing.field}` : "New match rule"}>
         <div className="flex flex-col gap-3">
-          <Field label="Domain"><Select value={draft.domain} options={domains} onValueChange={(v) => setDraft({ ...draft, domain: v })} /></Field>
+          <Field label="Object"><Select value={draft.domain} options={domains} onValueChange={(v) => setDraft({ ...draft, domain: v })} /></Field>
           <Field label="Field">
             <Input
               value={draft.field}
@@ -198,9 +202,9 @@ function RulesEditor() {
             <Input type="number" step="0.05" min="0" max="10"
               value={draft.weight} onChange={(e) => setDraft({ ...draft, weight: Number(e.target.value) })} />
           </Field>
-          <Field label="Threshold">
-            <Input type="number" step="0.01" min="0" max="1"
-              value={draft.threshold} onChange={(e) => setDraft({ ...draft, threshold: Number(e.target.value) })} />
+          <Field label="Threshold %">
+            <Input type="number" step="1" min="0" max="100"
+              value={Math.round(draft.threshold * 100)} onChange={(e) => setDraft({ ...draft, threshold: Math.min(100, Math.max(0, Number(e.target.value))) / 100 })} />
           </Field>
           <Field label="State">
             <Select value={draft.active ? "on" : "off"} options={[{ value: "on", label: "Active" }, { value: "off", label: "Off" }]}
@@ -208,11 +212,24 @@ function RulesEditor() {
           </Field>
           <div className="flex gap-2">
             <Button disabled={save.isPending || !draft.field.trim()} onClick={() => save.mutate(draft)}>{editing ? "Save" : "Create"}</Button>
-            {editing ? <Button variant="secondary" disabled={remove.isPending} onClick={() => remove.mutate(editing)}>Delete rule</Button> : null}
+            {editing ? <Button variant="secondary" disabled={remove.isPending} onClick={() => setConfirmDelete(true)}>Delete rule</Button> : null}
             <Button variant="ghost" onClick={close}>Discard changes</Button>
           </div>
         </div>
         </Card>
+      ) : null}
+      {editing ? (
+        <ConfirmDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title={`Delete the ${editing.field} rule?`}
+          tone="danger"
+          body={`The matcher stops comparing ${editing.field} for ${formatModuleName(editing.domain)}. Pairs already scored keep their score until the next run.`}
+          confirmLabel="Delete rule"
+          cancelLabel="Keep"
+          pending={remove.isPending}
+          onConfirm={() => remove.mutate(editing)}
+        />
       ) : null}
     </div>
   );
@@ -245,6 +262,7 @@ function TuningTab() {
       weights: Object.fromEntries(Object.entries(weights).filter(([f, v]) => Number(v) !== current[f]).map(([f, v]) => [f, Number(v)])),
     }),
     onSuccess: setResult,
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const fields = Object.keys(current).sort();
   const moves = Object.entries(result?.band_moves ?? {}).sort((a, b) => b[1] - a[1]);
@@ -254,9 +272,9 @@ function TuningTab() {
       <p className="m-text-body m-ink-3">
         Re-scores the newest 50,000 stored pairs in a domain with the weights below. Nothing is saved.
       </p>
-      <div ref={tuneRef}><Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} /></div>
+      <div ref={tuneRef}><Select label="Object" placeholder="Pick an object" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} /></div>
       {!domain ? (
-        <EmptyState title="Pick a domain to tune" detail="Choose one above to re-score its stored pairs" action={<Button variant="secondary" onClick={() => tuneRef.current?.querySelector("button")?.focus()}>Choose a domain</Button>} />
+        <EmptyState title="Pick an object to tune" detail="Choose one above to re-score its stored pairs" action={<Button variant="secondary" onClick={() => tuneRef.current?.querySelector("button")?.focus()}>Choose an object</Button>} />
       ) : rulesQuery.isLoading ? (
         <Skeleton height={160} />
       ) : rulesQuery.error ? (
@@ -277,9 +295,9 @@ function TuningTab() {
               ))}
             </div>
           ) : canReadRules ? (
-            <p className="m-text-body m-ink-3">No active match rules for {formatModuleName(domain)}, but thresholds can still be tried</p>
+            <EmptyState variant="inline" title={`No active match rules for ${formatModuleName(domain)}`} detail="Thresholds can still be tried" />
           ) : (
-            <Notice tone="info">Seeing and changing rule weights needs the manage_rules permission. Thresholds can still be tried.</Notice>
+            <Notice tone="info">Only rule managers can see and change rule weights. Thresholds can still be tried.</Notice>
           )}
           <div className="flex gap-3">
             <Field label="Auto-merge at">
@@ -311,7 +329,7 @@ function TuningTab() {
                   getRowId={([k]) => k}
                   height="auto"
                 />
-              ) : <p className="m-text-body m-ink-3">No pair changes band</p>}
+              ) : <EmptyState variant="inline" title="No pair changes band" />}
             </>
           ) : null}
         </div>
@@ -333,11 +351,15 @@ function ConstraintsTab() {
   const [domain, setDomain] = useState("");
   const [kind, setKind] = useState<PairConstraintKind | "">("");
   const [key, setKey] = useState("");
+  /** The constraint a reason is being written for; null closes the drawer. */
+  const [clearing, setClearing] = useState<PairConstraint | null>(null);
+  const [reason, setReason] = useState("");
   const params = { domain: domain || undefined, kind: kind || undefined, key: key.trim() || undefined };
   const list = useQuery({ queryKey: queryKeys.pairConstraints(params), queryFn: () => getPairConstraints(params) });
   const clear = useMutation({
-    mutationFn: (c: PairConstraint) => clearPairConstraint(c.id, window.prompt("Why clear this constraint? (optional)") ?? undefined),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pairConstraintsAll() }),
+    mutationFn: ({ c, why }: { c: PairConstraint; why: string }) => clearPairConstraint(c.id, why || undefined),
+    onSuccess: () => { setClearing(null); setReason(""); toast("Constraint cleared"); void qc.invalidateQueries({ queryKey: queryKeys.pairConstraintsAll() }); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const rows = list.data ?? [];
 
@@ -347,8 +369,8 @@ function ConstraintsTab() {
     { id: "a", header: "Record A", cell: ({ row }) => row.original.key_lo },
     { id: "b", header: "Record B", cell: ({ row }) => row.original.key_hi },
     { id: "reason", header: "Reason", cell: ({ row }) => row.original.reason ?? "None given" },
-    actionColumn((c) => (write ? <RowButton disabled={clear.isPending} onClick={() => clear.mutate(c)}>Clear</RowButton> : null)),
-  ], [write, clear]);
+    actionColumn((c) => (write ? <RowButton disabled={clear.isPending} onClick={() => setClearing(c)}>Clear</RowButton> : null)),
+  ], [write, clear.isPending]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -356,7 +378,7 @@ function ConstraintsTab() {
         Stewards create these by accepting or rejecting a pair, or by unmerging. They override the score until cleared.
       </p>
       <div className="flex items-center gap-2">
-        <Select label="Domain" placeholder="All domains" value={domain} options={domainOptions([])} onValueChange={setDomain} />
+        <Select label="Object" placeholder="All objects" value={domain} options={domainOptions([])} onValueChange={setDomain} />
         <Select label="Constraint kind" placeholder="Both kinds" value={kind} options={KINDS} onValueChange={(v) => setKind((v as PairConstraintKind) || "")} />
         <Input
           placeholder="Record key"
@@ -381,6 +403,22 @@ function ConstraintsTab() {
           action={<Button render={<Link href="/insights/duplicates">Open duplicates</Link>} />}
         />
       )}
+      <Drawer
+        open={clearing !== null}
+        onOpenChange={(open) => { if (!open) { setClearing(null); setReason(""); } }}
+        title="Clear this constraint"
+        subtitle={clearing ? `${clearing.key_lo} and ${clearing.key_hi}` : undefined}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => { setClearing(null); setReason(""); }}>Keep</Button>
+            <Button disabled={clear.isPending} onClick={() => clearing && clear.mutate({ c: clearing, why: reason.trim() })}>Clear constraint</Button>
+          </>
+        }
+      >
+        <Field label="Reason (optional)">
+          <Textarea rows={4} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      </Drawer>
     </div>
   );
 }

@@ -5,8 +5,8 @@
     "heading": "Fix"
   },
   {
-    "name": "fix-batch",
-    "path": "/fix/B1",
+    "name": "fix-proposals",
+    "path": "/fix/proposals/B1",
     "heading": "Fix",
     "mocked": true
   },

@@ -29,7 +29,8 @@ const columns: ColumnDef<StewardshipQueueItem>[] = [
   { id: "item", header: "Work", cell: ({ row }) => (row.original.item_type === "merge_decision" ? <Pill tone="info">{itemLabel(row.original.item_type)}</Pill> : itemLabel(row.original.item_type)) },
   { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.domain) },
   { id: "due", header: "Due", meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.due_at ? relativeTime(row.original.due_at) : `Opened ${relativeTime(row.original.created_at)}`) },
-  actionColumn((r) => <RowLink href={`/inbox?type=${encodeURIComponent(r.item_type)}`}>Open</RowLink>),
+  // `focus` lands the inbox on this task; `type` keeps the list to its kind.
+  actionColumn((r) => <RowLink href={`/inbox?type=${encodeURIComponent(r.item_type)}&focus=${encodeURIComponent(r.id)}`}>Open</RowLink>),
 ];
 
 export default function MdmOverviewPage() {

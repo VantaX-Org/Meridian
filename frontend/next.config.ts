@@ -82,6 +82,8 @@ const nextConfig: NextConfig = {
       { source: "/reports", destination: "/insights", permanent: false },
       { source: "/cleaning", destination: "/fix", permanent: false },
       { source: "/remediation", destination: "/fix?tab=batches", permanent: false },
+      // The proposals page moved under /fix/proposals/; the regex keeps /fix/what-if and /fix/proposals/* themselves out.
+      { source: "/fix/:id((?!what-if$|proposals$|proposals/).*)", destination: "/fix/proposals/:id", permanent: false },
       { source: "/settings/field-mapping", destination: "/admin/mappings", permanent: false },
       { source: "/settings/ai", destination: "/admin/ai", permanent: false },
       { source: "/settings/licence", destination: "/admin/licence", permanent: false },

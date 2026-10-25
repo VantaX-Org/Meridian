@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as masterRecordsApi from "@/lib/api/master-records";
+import * as mergeExplainApi from "@/lib/api/merge-explain";
 import type { MasterRecordDetail } from "@/types/api";
 import GoldenRecordMergePage from "../page";
 
@@ -10,6 +11,7 @@ const searchParams = new URLSearchParams({ id: "m1" });
 vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParams,
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const record: MasterRecordDetail = {
   id: "m1",
@@ -43,6 +45,16 @@ describe("GoldenRecordMergePage", () => {
     await waitFor(() => expect(screen.getByText(/MARA-1000/)).toBeInTheDocument());
     expect(screen.getByText("MATKL")).toBeInTheDocument();
     expect(screen.getByText(/HALB/)).toBeInTheDocument();
+    // The conflicting source offers its value; the agreeing one does not.
+    expect(screen.getAllByRole("button", { name: "Use this value" })).toHaveLength(1);
+  });
+
+  it("records a chosen value as a steward override", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    const override = vi.spyOn(mergeExplainApi, "setStewardOverrides").mockResolvedValue({ golden_record_id: "m1", event_id: "e1", golden_fields: {}, steward_overrides: {} });
+    renderWithQuery(<GoldenRecordMergePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Use this value" }));
+    await waitFor(() => expect(override).toHaveBeenCalledWith("m1", { MATKL: "HALB" }, expect.any(String)));
   });
 
   it("shows the API error message and retries on click", async () => {

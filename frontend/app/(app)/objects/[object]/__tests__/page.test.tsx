@@ -6,6 +6,8 @@ import * as objectsApi from "@/lib/api/v1/objects";
 import * as versionsApi from "@/lib/api/versions";
 import * as rulesApi from "@/lib/api/rules";
 import * as fieldProfileApi from "@/lib/api/field-profile";
+import * as insightsApi from "@/lib/api/insights";
+import * as remediationApi from "@/lib/api/remediation";
 import type { Version } from "@/types/api";
 import ObjectDetailPage from "../page";
 
@@ -123,7 +125,7 @@ describe("ObjectDetailPage", () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
     expect(screen.getByText("Material master")).toBeInTheDocument();
-    for (const label of ["Failing checks", "Blocking rules", "Records affected", "Auto-fixable"]) expect(await screen.findByText(label)).toBeInTheDocument();
+    for (const label of ["Failing rules", "Blocking rules", "Records affected", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
     const rules = await screen.findAllByTestId("workbench-rule-row");
     expect(rules.map((r) => r.textContent)).toEqual([expect.stringContaining("mm_missing_desc"), expect.stringContaining("mm_bad_uom")]);
     expect(rules[0]).toHaveAttribute("aria-current", "true");
@@ -142,7 +144,42 @@ describe("ObjectDetailPage", () => {
     const rows = screen.getAllByTestId("workbench-rule-row");
     expect(rows[1]).toHaveAttribute("aria-current", "true");
     expect(rows[0]).toHaveAttribute("href", "/objects/material_master?run=v1&rule=mm_missing_desc");
-    expect(screen.getByRole("link", { name: "Propose fix" })).toHaveAttribute("href", "/objects/material_master/records/MATNR%3D7?run=v1");
+    expect(screen.getByRole("button", { name: "Propose fix" })).toBeEnabled();
+  });
+
+  it("Propose fix drafts a fix batch for the selected rule in this run and offers to open it", async () => {
+    searchParams = new URLSearchParams("run=v1&rule=mm_bad_uom");
+    vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
+      version_id: "v1", check_id: "mm_bad_uom", total: 1,
+      records: [{ record_key: "MATNR=7", grain: "MATNR", module: "material_master", field_values: null }],
+    });
+    const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "mm_bad_uom material_master", status: "draft", item_count: 10 });
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("MATNR=7");
+    fireEvent.click(screen.getByRole("button", { name: "Propose fix" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith("mm_bad_uom material_master", { check_id: "mm_bad_uom", module: "material_master", version_id: "v1" }));
+  });
+
+  it("ticking records offers to add them to a fix batch", async () => {
+    searchParams = new URLSearchParams("run=v1&rule=mm_bad_uom");
+    vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
+      version_id: "v1", check_id: "mm_bad_uom", total: 1,
+      records: [{ record_key: "MATNR=7", grain: "MATNR", module: "material_master", field_values: null }],
+    });
+    const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "n", status: "draft", item_count: 1 });
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("MATNR=7");
+    fireEvent.click(screen.getByLabelText("Select row MATNR=7"));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to fix batch" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith("mm_bad_uom material_master", expect.objectContaining({ record_keys: ["MATNR=7"] })));
+  });
+
+  it("names the rule beside its id on the rules tab, without printing the id twice", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=rules");
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ rows: [{ check_id: "mm_missing_desc", name: "Description is mandatory" }] } as never);
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("Description is mandatory")).toBeInTheDocument();
+    expect(screen.getAllByText("mm_missing_desc")).toHaveLength(1);
   });
 
   it("lists rules on the rules tab and navigates to the records tab on row click", async () => {
@@ -238,7 +275,7 @@ describe("ObjectDetailPage", () => {
     });
     renderWithQuery(<ObjectDetailPage />);
     await waitFor(() => expect(screen.getByText("MATNR=100001")).toBeInTheDocument());
-    for (const link of screen.getAllByRole("link", { name: /open fix sheet/i })) {
+    for (const link of screen.getAllByRole("link", { name: /open record/i })) {
       expect(link).toHaveAttribute("href", "/objects/material_master/records/MATNR%3D100001?run=v1");
     }
   });
@@ -453,7 +490,7 @@ describe("ObjectDetailPage keyboard and gating", () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("Records affected")).toBeInTheDocument();
     expect(screen.getByText("120")).toBeInTheDocument();
-    expect(await screen.findByText(/1 failing checks, 120 affected records/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 failing rules, 120 affected records/)).toBeInTheDocument();
   });
 
   it("does not throw when composite_score is null and dimension_scores is empty", async () => {

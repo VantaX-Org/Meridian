@@ -14,7 +14,7 @@ import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
-import { Workbench } from "./_workbench";
+import { Workbench, useRuleDetails } from "./_workbench";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
 import { exportObject, getObject, type ObjectDetail, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -100,6 +100,8 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   };
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const batch = useQuery(historyQuery(object, run));
+  const details = useRuleDetails(object, run);
+  const nameOf = new Map((details.data?.rows ?? []).map((r) => [r.check_id, r.name]));
 
   const rulesRanked = data
     ? [...data.rules]
@@ -123,7 +125,14 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       cell: ({ row }) =>
         isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : row.original.severity,
     },
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+    {
+      accessorKey: "check_id",
+      header: "Rule",
+      cell: ({ row }) => {
+        const name = nameOf.get(row.original.check_id);
+        return <span className="inline-flex min-w-0 items-baseline gap-2"><Mono>{row.original.check_id}</Mono>{name ? <span className="truncate">{name}</span> : null}</span>;
+      },
+    },
     { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
     {
       accessorKey: "affected_count",
@@ -290,6 +299,8 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
   const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, checkId, page));
   useFixShortcut(object, run, data?.records[0]?.record_key);
   const columns = useRecordColumns(object, run, data?.records);
+  const details = useRuleDetails(object, run);
+  const ruleName = details.data?.rows.find((r) => r.check_id === checkId)?.name ?? null;
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
@@ -315,11 +326,11 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
         fields={Object.keys(data.records[0]?.field_values ?? {})}
       />
       <Card
-        title={checkId}
-        meta={<><Mono>{checkId}</Mono>, {data.total.toLocaleString()} record{data.total === 1 ? "" : "s"}</>}
+        title={ruleName ?? <Mono>{checkId}</Mono>}
+        meta={<>{ruleName ? <><Mono>{checkId}</Mono>, </> : null}{data.total.toLocaleString()} record{data.total === 1 ? "" : "s"}</>}
         actions={
           <>
-            <Button render={<Link href={fixSheetHref(object, run, data.records[0].record_key)}>Open fix sheet</Link>} />
+            <Button render={<Link href={fixSheetHref(object, run, data.records[0].record_key)}>Open record</Link>} />
             <ExportMenu options={exportOptions} />
           </>
         }
@@ -442,7 +453,7 @@ export default function ObjectDetailPage() {
     },
   ];
   const counts = [
-    summary ? `${summary.failing_checks.toLocaleString()} failing checks` : null,
+    summary ? `${summary.failing_checks.toLocaleString()} failing rules` : null,
     summary ? `${summary.affected_records.toLocaleString()} affected records` : null,
   ].filter(Boolean).join(", ");
   const meta = (

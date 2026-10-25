@@ -28,7 +28,8 @@ async function show(load: () => Promise<{ default: ComponentType }>, qs: string)
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Page /></QueryClientProvider>);
 }
 const selected = () => screen.getAllByRole("tab").find((t) => t.getAttribute("aria-selected") === "true")?.textContent ?? "";
-const showing = () => screen.queryByText(/^Showing/);
+// The filter banner names what is shown and ends in "only" (no "Showing" sentence).
+const showing = () => screen.queryByText(/ only$/);
 
 const fix = () => import("../fix/page");
 const inbox = () => import("../inbox/page");
@@ -50,7 +51,7 @@ describe("wave 10 URL params are whitelisted", () => {
     await show(fix, `tab=batches&status=${g}&sort=${g}`);
     expect(showing()).toBeNull();
   });
-  it("fix batches ?status=draft shows a Showing banner with Show all", async () => {
+  it("fix batches ?status=draft shows a filter banner with Show all", async () => {
     await show(fix, "tab=batches&status=draft");
     expect(showing()).not.toBeNull();
     expect(screen.getByRole("button", { name: "Show all" })).toBeTruthy();
@@ -60,7 +61,7 @@ describe("wave 10 URL params are whitelisted", () => {
     await show(inbox, `view=${g}&type=${g}&kind=${g}`);
     expect(showing()).toBeNull();
   });
-  it("inbox ?view=mine shows a Showing banner with Show all", async () => {
+  it("inbox ?view=mine shows a filter banner with Show all", async () => {
     await show(inbox, "view=mine");
     expect(showing()).not.toBeNull();
     expect(screen.getByRole("button", { name: "Show all" })).toBeTruthy();

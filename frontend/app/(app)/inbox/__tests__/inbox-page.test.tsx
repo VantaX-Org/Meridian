@@ -119,6 +119,89 @@ describe("InboxPage workbench", () => {
     const bar = await screen.findByTestId("inbox-bulk");
     expect(bar).toHaveTextContent("1 selected");
     expect(within(bar).getByRole("button", { name: "Reject with reason" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Approve 1 at 85%+ confidence" })).toBeInTheDocument();
+  });
+
+  it("confirms a bulk approve with its count before calling the API", async () => {
+    const bulk = vi.spyOn(stewardship, "bulkApprove").mockResolvedValue({ approved: 2, history_rows_created: 2 });
+    mountTasks();
+    fireEvent.click(await screen.findByLabelText("Select Exception rec-a"));
+    fireEvent.click(screen.getByLabelText("Select Exception rec-b"));
+    fireEvent.click(await screen.findByRole("button", { name: "Approve 2 at 85%+ confidence" }));
+    expect(bulk).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Approve 2" }));
+    await waitFor(() => expect(bulk).toHaveBeenCalledWith(["a", "b"], 0.85));
+  });
+
+  it("r arms the focused task and Enter approves it; another key disarms", async () => {
+    const resolve = vi.spyOn(stewardship, "resolveItem").mockResolvedValue({ id: "a", status: "resolved", action: "approve" });
+    mountTasks();
+    await screen.findByRole("list", { name: "Tasks" });
+    fireEvent.keyDown(window, { key: "r" });
+    fireEvent.keyDown(window, { key: "j" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(resolve).not.toHaveBeenCalled();
+    fireEvent.keyDown(window, { key: "r" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    await waitFor(() => expect(resolve).toHaveBeenCalledWith("b", "approve"));
+  });
+
+  it("ignores the keys on the tabs that own their own tables", async () => {
+    nav.qs = "kind=issues";
+    nav.can = true;
+    const resolve = vi.spyOn(stewardship, "resolveItem").mockResolvedValue({ id: "a", status: "resolved", action: "approve" });
+    vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [task("a", "material_master")], total: 1 } as never);
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({} as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({} as never);
+    renderWithQuery(<InboxPage />);
+    await screen.findByText("One open issue per failing SAP record, closed when the record passes");
+    fireEvent.keyDown(window, { key: "r" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it("focuses the task named by ?focus=", async () => {
+    nav.qs = "keep=1&focus=b";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("a", "material_master"), task("b", "business_partner")] : [],
+      total: p?.status === "open" ? 2 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    await screen.findByRole("list", { name: "Tasks" });
+    await waitFor(() => expect(screen.getByRole("region", { name: "Selected item" })).toHaveTextContent("rec-b"));
+  });
+
+  it("names an assignee it cannot resolve as Unknown user, never an id", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("a", "material_master", { assigned_to: "0f3c9d2e-aaaa" })] : [],
+      total: p?.status === "open" ? 1 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    const detail = await screen.findByRole("region", { name: "Selected item" });
+    expect(within(detail).getByText("Unknown user")).toBeInTheDocument();
+    expect(screen.queryByText(/0f3c9d2e/)).toBeNull();
+  });
+
+  it("offers Load more when the queue holds more than the newest page", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    const get = vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("a", "material_master")] : [],
+      total: p?.status === "open" ? 450 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    expect(await screen.findByText("Newest 1 of 450 loaded")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith(expect.objectContaining({ limit: 400 })));
   });
 
   it("shows the selected exception with its severity and SLA", async () => {

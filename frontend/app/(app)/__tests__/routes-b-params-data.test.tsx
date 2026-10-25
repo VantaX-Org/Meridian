@@ -45,7 +45,8 @@ async function show(load: () => Promise<{ default: ComponentType }>, qs: string)
   const { default: Page } = await load();
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Page /></QueryClientProvider>);
 }
-const showing = () => screen.queryByText(/^Showing/);
+// The filter banner names what is shown and ends in "only" (no "Showing" sentence).
+const showing = () => screen.queryByText(/ only$/);
 const GARBAGE = ["constructor", "__proto__", "zzz"];
 const inbox = () => import("../inbox/page");
 const fix = () => import("../fix/page");
@@ -55,7 +56,7 @@ describe("inbox filters against loaded tasks", () => {
     await show(inbox, "type=match_review");
     await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
     expect(screen.queryByText(/record rec-B/)).toBeNull();
-    expect(showing()?.textContent).toBe("Showing Match review tasks only.");
+    expect(showing()?.textContent).toBe("Match review tasks only");
   });
   it.each(GARBAGE)("type=%s applies no filter and shows no banner", async (g) => {
     await show(inbox, `type=${g}`);
@@ -67,11 +68,11 @@ describe("inbox filters against loaded tasks", () => {
     await show(inbox, "view=mine");
     await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
     expect(screen.queryByText(/record rec-B/)).toBeNull();
-    expect(showing()?.textContent).toBe("Showing tasks assigned to me only.");
+    expect(showing()?.textContent).toBe("Tasks assigned to me only");
   });
-  it("view=breached banner reads as a breached SLA, not a lowercased key", async () => {
+  it("view=breached banner reads as Overdue, not a lowercased key", async () => {
     await show(inbox, "view=breached");
-    await waitFor(() => expect(showing()?.textContent).toBe("Showing tasks with a breached SLA only."));
+    await waitFor(() => expect(showing()?.textContent).toBe("Overdue tasks only"));
   });
 });
 

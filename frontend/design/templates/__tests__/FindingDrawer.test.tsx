@@ -54,12 +54,24 @@ describe("FindingDrawer", () => {
     expect(screen.getByText("A missing description blocks procurement.")).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        screen.getAllByText((_, node) => node?.tagName === "LI" && (node.textContent?.includes("at risk per year") ?? false)),
+        screen.getAllByText((_, node) => node?.tagName === "LI" && (node.textContent?.includes("a year at risk") ?? false)),
       ).toHaveLength(1),
     );
+    expect(screen.queryByText(/per-record/)).toBeNull();
     expect(screen.getByText(/Populate MAKT-MAKTX/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open records" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open rule" })).toBeInTheDocument();
+  });
+
+  it("prints sample records as a field and value table", async () => {
+    vi.spyOn(findingsApi, "getFinding").mockResolvedValue({ ...finding, details: { message: "Description is blank.", sample_failing_records: [{ MATNR: "100001", MAKTX: null }] } });
+    vi.spyOn(analyticsApi, "getFindingImpact").mockResolvedValue(null);
+    renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
+    expect(await screen.findByText("MATNR")).toBeInTheDocument();
+    expect(screen.getByText("100001")).toBeInTheDocument();
+    expect(screen.getByText("MAKTX")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Field" })).toBeInTheDocument();
+    expect(screen.queryByText(/\{"MATNR"/)).toBeNull();
   });
 
   it("shows an empty state when the finding cannot be found", async () => {

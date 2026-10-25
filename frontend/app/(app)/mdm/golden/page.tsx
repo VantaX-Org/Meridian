@@ -23,7 +23,7 @@ const STATUS_OPTIONS = [
 ];
 
 const DOMAIN_OPTIONS = [
-  { value: "all", label: "All domains" },
+  { value: "all", label: "All objects" },
   { value: "material_master", label: "Material master" },
   { value: "business_partner", label: "Business partner" },
 ];
@@ -70,7 +70,8 @@ export default function GoldenRecordsPage() {
     queryFn: () => getMasterRecords({ ...filters, per_page: 100, page }),
   });
 
-  const records = useMemo(() => query.data?.records ?? [], [query.data]);
+  // The steward's work first: records waiting for review, then the rest in the API's order.
+  const records = useMemo(() => [...(query.data?.records ?? [])].sort((a, b) => Number(b.status === "pending_review") - Number(a.status === "pending_review")), [query.data]);
   const pageCount = Math.max(1, Math.ceil((query.data?.total ?? 0) / 100));
   const state = asyncStateOf(query, () => records.length === 0, true);
   const filtered = domain !== "all" || status !== "all" || !!minConfidence || !!maxConfidence;
@@ -80,7 +81,7 @@ export default function GoldenRecordsPage() {
       header={<PageHeader title="Golden records" meta={query.data ? `${query.data.total.toLocaleString()} records` : undefined} />}
       filterBar={
         <div className="flex items-end gap-3">
-          <Field label="Domain">
+          <Field label="Object">
             <Select value={domain} onValueChange={(v) => setParams({ domain: v })} options={DOMAIN_OPTIONS} />
           </Field>
           <Field label="Status">

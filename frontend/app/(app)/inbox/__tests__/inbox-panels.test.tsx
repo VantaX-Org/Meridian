@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as writeback from "@/lib/api/writeback";
@@ -38,6 +38,20 @@ describe("ApprovalsPanel", () => {
     expect(buttons[0]).toBeDisabled();
     expect(buttons[0]).toHaveAttribute("title", expect.stringMatching(/another approver/));
     expect(buttons[1]).toBeEnabled();
+  });
+
+  it("confirms an approval naming the records and the SAP host before writing back", async () => {
+    vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({
+      approvals: [{ id: "a2", finding_id: null, version_id: null, requested_by: "other", records_updated: 2, sap_host: "ecc-prd", created_at: null }],
+      live_enabled: true,
+    });
+    const approve = vi.spyOn(writeback, "approveWriteback").mockResolvedValue({ applied: 2, errors: [], status: "applied" });
+    renderWithQuery(<ApprovalsPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    expect(approve).not.toHaveBeenCalled();
+    expect(await screen.findByText(/2 records on ecc-prd, requested by Unknown user/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Approve and write back" }));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith("a2"));
   });
 
   it("shows an empty state when nothing is pending", async () => {

@@ -65,7 +65,7 @@ describe("FixPage", () => {
     expect(await screen.findByText("61,816")).toBeInTheDocument();
     expect(screen.getByText("40,000")).toBeInTheDocument();
     const review = screen.getByRole("link", { name: "Review Fix MARA.MEINS from material_master_25k" });
-    expect(review).toHaveAttribute("href", "/fix/R1?kind=MARA.MEINS");
+    expect(review).toHaveAttribute("href", "/fix/proposals/R1?kind=MARA.MEINS");
     const row = review.closest("tr") as HTMLElement;
     expect(row).toHaveTextContent("Material master");
     expect(row).toHaveTextContent("85%");
@@ -78,7 +78,7 @@ describe("FixPage", () => {
     renderWithQuery(<FixPage />);
 
     await userEvent.click(await screen.findByText("material_master_25k"));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/fix/R1?kind=MARA.MEINS"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/fix/proposals/R1?kind=MARA.MEINS"));
   });
 
   it("shows an empty state when there are no proposals", async () => {
