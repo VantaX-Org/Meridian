@@ -22,7 +22,7 @@ import { archiveVersions, compareVersions, getVersions, restoreVersions } from "
 import { formatDate, plural, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
-import { runName } from "@/lib/run-scope";
+import { runName, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 
@@ -264,6 +264,10 @@ export default function RunsPage() {
 
   // Chart scope: the chosen system, else the system of the latest run.
   const chartScope = system || (latest ? scopeOf(latest) : "");
+  // The name of a scope: the system's name, "uploads" for imported files; null until the systems load.
+  const scopeName = (scope: string): string | null => (scope === "upload" ? "uploads" : systemName.get(scope) ?? null);
+  const chartScopeName = chartScope ? scopeName(chartScope) : null;
+  const latestScopeName = latest ? scopeName(scopeOf(latest)) : null;
   const points = useMemo(() => {
     // Keyed by run id with a disambiguated date as the tick, so two runs on one day never merge into one point.
     const scoped = headScoped.filter((v) => isFinished(v) && scopeOf(v) === chartScope);
@@ -340,7 +344,7 @@ export default function RunsPage() {
     <div className="flex flex-col gap-4">
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
         <h2 className="font-semibold m-text-h">
-          {`Score per run, ${systemName.get(chartScope) ?? "latest system"}`}
+          {chartScopeName ? `Score per run, ${chartScopeName}` : "Score per run"}
         </h2>
         {points.length > 1 ? (
           <Line data={points} height={120} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
@@ -353,13 +357,13 @@ export default function RunsPage() {
       {rows.length > 0 || headScoped.length > 0 ? (
         <div className="m-stat-grid m-motion-stagger @5xl:[grid-template-columns:repeat(2,minmax(0,360px))]">
           <Stat
-            label="Latest DQS"
+            label={latestScopeName ? `Latest DQS, ${latestScopeName}` : "Latest DQS"}
             help="dqs"
             value={latest && latestDqs !== null ? latestDqs.toFixed(1) : "—"}
             bar={latest && latestDqs !== null ? latestDqs : undefined}
             rule={{}}
             delta={delta !== null ? <Delta value={delta} /> : undefined}
-            hint={delta === null ? (latest ? `Mean of ${plural(Object.keys(latest.dqs_summary ?? {}).length, "object")}` : "No earlier run") : "vs previous run"}
+            hint={!latest ? "No earlier run" : delta === null ? `${runScopeLabel(latest)}, mean of ${plural(Object.keys(latest.dqs_summary ?? {}).length, "object")}` : `${runScopeLabel(latest)}, vs previous run`}
             href={latest ? `/runs/${latest.id}` : undefined}
           />
           <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > headVersions.length ? `latest ${headVersions.length} used for the figures above` : undefined} />

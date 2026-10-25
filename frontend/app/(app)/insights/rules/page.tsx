@@ -47,6 +47,12 @@ function groupBy(rows: RuleRow[], axis: Axis): Group[] {
   return [...map.values()].map((g) => ({ ...g, autoFix: g.affected ? g.weighted / g.affected : 0 })).sort((a, b) => b.impact - a.impact);
 }
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
+// `?s4=`: yes (any S/4 rule), blocking or warning (the S/4 impact the readiness page counts by).
+const S4_FILTERS = [
+  { value: "yes", label: "Blocking or warning" },
+  { value: "blocking", label: "Blocking only" },
+  { value: "warning", label: "Warning only" },
+];
 
 export default function RulesPage() {
   const router = useRouter();
@@ -65,11 +71,14 @@ export default function RulesPage() {
   const severity = search.get("severity") ?? ANY;
   const dimension = search.get("dimension") ?? ANY;
   const auto = search.get("auto") ?? ANY;
-  const s4 = search.get("s4") ?? ANY;
+  const s4Param = search.get("s4");
+  const s4 = S4_FILTERS.some((f) => f.value === s4Param) ? s4Param ?? ANY : ANY;
+  // The API narrows to S/4 rules; blocking or warning keeps the rules of that impact (the readiness counts).
+  const s4Impact = s4 === "blocking" || s4 === "warning" ? s4 : null;
   const filters: Record<string, string | undefined> = {
     module, field, check, axis: axis === "rule" ? undefined : axis,
     severity: severity === ANY ? undefined : severity, dimension: dimension === ANY ? undefined : dimension,
-    auto: auto === "yes" ? "yes" : undefined, s4: s4 === "yes" ? "yes" : undefined,
+    auto: auto === "yes" ? "yes" : undefined, s4: s4 === ANY ? undefined : s4,
   };
   const go = (next: Record<string, string | undefined>) => router.replace(withScope(path, { run, ...filters, ...next }));
   const setSeverity = (v: string) => go({ severity: v === ANY ? undefined : v });
@@ -84,7 +93,7 @@ export default function RulesPage() {
       severity: severity === ANY ? undefined : severity,
       dimension: dimension === ANY ? undefined : dimension,
       auto_fixable: auto === "yes" ? true : undefined,
-      s4_only: s4 === "yes" ? true : undefined,
+      s4_only: s4 !== ANY ? true : undefined,
     }),
     enabled: !!run,
   });
@@ -99,13 +108,14 @@ export default function RulesPage() {
       severity: severity === ANY ? undefined : severity,
       dimension: dimension === ANY ? undefined : dimension,
       auto_fixable: auto === "yes" ? true : undefined,
-      s4_only: s4 === "yes" ? true : undefined,
+      s4_only: s4 !== ANY ? true : undefined,
     }),
     enabled: !!previous,
   });
 
-  const rows = useMemo(() => (q.data?.rows ?? []).filter((r) => (!field || r.field === field) && (checks.length === 0 || checks.includes(r.check_id))), [q.data, field, check]); // eslint-disable-line react-hooks/exhaustive-deps
-  const prevRows = (prevQ.data?.rows ?? []).filter((r) => (!field || r.field === field) && (checks.length === 0 || checks.includes(r.check_id)));
+  const keep = (r: RuleRow) => (!field || r.field === field) && (checks.length === 0 || checks.includes(r.check_id)) && (!s4Impact || r.s4 === s4Impact);
+  const rows = useMemo(() => (q.data?.rows ?? []).filter(keep), [q.data, field, check, s4Impact]); // eslint-disable-line react-hooks/exhaustive-deps
+  const prevRows = (prevQ.data?.rows ?? []).filter(keep);
   const groups = useMemo(() => (axis === "rule" ? [] : groupBy(rows, axis)), [rows, axis]);
   const groupLabel = (key: string) => (axis === "module" ? formatModuleName(key) : axis === "field" ? key : labelOf(key));
   /** A group's failing records in Fix work, where Fix work can filter by the axis (object or severity). */
@@ -124,7 +134,7 @@ export default function RulesPage() {
     else if (axis === "field") go({ ...back, field: g.key === "No field" ? undefined : g.key });
     else if (axis === "dimension") go({ ...back, dimension: g.key });
     else if (axis === "severity") go({ ...back, severity: g.key });
-    else go({ ...back, s4: g.key === "blocking" ? "yes" : undefined });
+    else go({ ...back, s4: g.key === "blocking" || g.key === "warning" ? g.key : undefined });
   };
   const groupColumns = useMemo<ColumnDef<Group>[]>(() => [
     { accessorKey: "key", header: AXES.find((a) => a.value === axis)?.label ?? "Group", cell: ({ row }) => (
@@ -215,7 +225,7 @@ export default function RulesPage() {
           <Select label="Severity" value={severity} onValueChange={setSeverity} options={opts(SEVERITIES, "Any severity")} />
           <Select label="Dimension" value={dimension} onValueChange={setDimension} options={opts(DIMENSIONS, "Any dimension")} />
           <Select label="Auto-fixable" value={auto} onValueChange={setAuto} options={yesNo("Any fix type")} />
-          <Select label="Blocks an S/4 load" value={s4} onValueChange={setS4} options={yesNo("Any S/4 status")} />
+          <Select label="S/4 impact" value={s4} onValueChange={setS4} options={[{ value: ANY, label: "Any S/4 status" }, ...S4_FILTERS]} />
           {field && <Button variant="secondary" onClick={() => go({ field: undefined })}>Clear field filter</Button>}
           {checks.length > 0 && <Button variant="secondary" onClick={() => go({ check: undefined })}>{`Every rule, not only ${checks.length === 1 ? checks[0] : plural(checks.length, "rule")}`}</Button>}
           {module && <Button variant="secondary" onClick={() => go({ module: undefined })}>Every object in this run</Button>}

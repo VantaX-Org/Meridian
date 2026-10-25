@@ -35,19 +35,61 @@ import { createBatch, errorText } from "@/lib/api/remediation";
 import { getComparisonReportUrl } from "@/lib/api/reports";
 import { compareRecordKeys, compareRecords, compareVersions } from "@/lib/api/versions";
 import { formatDate, formatModuleName, plural, roundedDelta } from "@/lib/format";
-import { runScopeLabel } from "@/lib/run-scope";
+import { runName, runScopeLabel } from "@/lib/run-scope";
 import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { compareNarrative } from "@/lib/narrative";
 import { queryKeys } from "@/lib/query-keys";
-import type { CheckChange, Version } from "@/types/api";
+import type { CheckChange, Version, VersionComparison } from "@/types/api";
 
 const KEYS_LIMIT = 50;
 const runLabel = (v: Version) => runScopeLabel(v);
 const change = (c: CheckChange) => c.v2_affected - c.v1_affected;
 const fmtN = (n: number) => n.toLocaleString();
 
-const columns: ColumnDef<CheckChange>[] = [
-  { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+/**
+ * The four change sets of a comparison: a rule that flipped (newly failing, fixed) or that failed in both runs
+ * with materially more or fewer records (worse, better; the API's threshold is 10% and 10 records).
+ * `filter` is the `?change=` value that narrows the ledger to the set.
+ */
+type ChangeKind = "newly_failing" | "worse" | "better" | "fixed";
+const CHANGE_SETS: { kind: ChangeKind; filter: string; label: string; tone: "no-go" | "at-risk" | "neutral" }[] = [
+  { kind: "newly_failing", filter: "new", label: "Newly failing", tone: "no-go" },
+  { kind: "worse", filter: "worse", label: "Worse", tone: "at-risk" },
+  { kind: "better", filter: "better", label: "Better", tone: "neutral" },
+  { kind: "fixed", filter: "resolved", label: "Fixed", tone: "neutral" },
+];
+type ChangeRow = CheckChange & { kind: ChangeKind };
+const setOf = (kind: ChangeKind) => CHANGE_SETS.find((c) => c.kind === kind)!;
+
+/** Every changed rule of a comparison, tagged with its set; `filter` keeps one set (the `?change=` value). */
+function changeRows(cmp: VersionComparison, filter: string): ChangeRow[] {
+  return CHANGE_SETS
+    .filter((c) => !filter || c.filter === filter)
+    .flatMap((c) => (cmp.checks[c.kind] ?? []).map((r) => ({ ...r, kind: c.kind })))
+    .sort((x, y) => change(y) - change(x));
+}
+
+/** "Meridian run comparison – Run A vs Run B – 2026-10-25.pdf", without characters a file name cannot hold. */
+function comparisonFilename(a: Version, b: Version, on: Date = new Date()): string {
+  const day = `${on.getFullYear()}-${String(on.getMonth() + 1).padStart(2, "0")}-${String(on.getDate()).padStart(2, "0")}`;
+  // Characters Windows, macOS or Linux refuse in a file name (and control characters) become a hyphen.
+  const clean = (t: string) =>
+    [...t].map((ch) => (ch.charCodeAt(0) < 32 || '\\/:*?"<>|'.includes(ch) ? "-" : ch)).join("").replace(/-+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
+  return `Meridian run comparison – ${clean(runName(a))} vs ${clean(runName(b))} – ${day}.pdf`;
+}
+
+const columns: ColumnDef<ChangeRow>[] = [
+  {
+    accessorKey: "check_id",
+    header: "Rule",
+    cell: ({ row }) => (
+      <span className="inline-flex min-w-0 items-baseline gap-2">
+        <Mono>{row.original.check_id}</Mono>
+        {row.original.message ? <span className="truncate m-ink-2">{row.original.message}</span> : null}
+      </span>
+    ),
+  },
+  { id: "kind", header: "Change set", accessorFn: (c) => setOf(c.kind).label, cell: ({ row }) => <Pill tone={setOf(row.original.kind).tone}>{setOf(row.original.kind).label}</Pill> },
   { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
   { id: "before", header: "Records before", accessorFn: (c) => c.v1_affected, cell: ({ row }) => fmtN(row.original.v1_affected) },
   { id: "after", header: "Records after", accessorFn: (c) => c.v2_affected, cell: ({ row }) => fmtN(row.original.v2_affected) },
@@ -62,7 +104,7 @@ const columns: ColumnDef<CheckChange>[] = [
   },
 ];
 
-function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versionId: string; v1: string | undefined; canFix: boolean }) {
+function RuleDrawer({ rule, versionId, v1, canFix }: { rule: ChangeRow; versionId: string; v1: string | undefined; canFix: boolean }) {
   const router = useRouter();
   const qc = useQueryClient();
   const regressed = change(rule) > 0;
@@ -94,7 +136,8 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
       <h2 className="font-semibold m-text-title">
         <Mono>{rule.check_id}</Mono>
       </h2>
-      <Pill tone={regressed ? "no-go" : "neutral"}>{regressed ? "Newly failing" : "Fixed"}</Pill>
+      {rule.message ? <p className="m-ink-2">{rule.message}</p> : null}
+      <Pill tone={setOf(rule.kind).tone}>{setOf(rule.kind).label}</Pill>
       {regressed ? (
         <>
           <p className="m-ink-2">Records that newly fail</p>
@@ -120,7 +163,7 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
           ) : null}
         </>
       ) : (
-        <p className="m-ink-2">{fmtN(rule.v1_affected)} records failed before; none fail now.</p>
+        <p className="m-ink-2">{fmtN(rule.v1_affected)} records failed before; {rule.v2_affected > 0 ? `${fmtN(rule.v2_affected)} fail now` : "none fail now"}.</p>
       )}
     </div>
   );
@@ -130,7 +173,7 @@ export default function CompareRunsPage() {
   const { versionId, b } = useParams<{ versionId: string; b: string }>();
   const { can } = useRole();
   const [module, setModule] = useUrlState("module");
-  // `?change=new|resolved` (from the Progress tiles) narrows the ledger to the newly failing or the fixed rules.
+  // `?change=new|worse|better|resolved` (`new` and `resolved` from the Progress tiles) narrows the ledger to one change set.
   const [changeFilter, setChangeFilter] = useUrlState("change");
   const v1Param = b === "baseline" ? undefined : b;
   const moduleParam = module || undefined;
@@ -173,12 +216,7 @@ export default function CompareRunsPage() {
   const cmp = cmpQ.data;
   const diff = diffQ.data ?? null;
   const sentences = useMemo(() => (cmp ? compareNarrative(cmp, diff) : []), [cmp, diff]);
-  const rows = useMemo(
-    () => (cmp
-      ? [...(changeFilter === "resolved" ? [] : cmp.checks.newly_failing), ...(changeFilter === "new" ? [] : cmp.checks.fixed)].sort((x, y) => change(y) - change(x))
-      : []),
-    [cmp, changeFilter],
-  );
+  const rows = useMemo(() => (cmp ? changeRows(cmp, changeFilter) : []), [cmp, changeFilter]);
 
   const moduleOptions: SelectOption[] = Object.keys(allModulesQ.data?.delta ?? cmp?.delta ?? {}).map((m) => ({
     value: m,
@@ -206,6 +244,8 @@ export default function CompareRunsPage() {
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0);
   const before = mean(deltas.map((d) => d.v1_score));
   const after = mean(deltas.map((d) => d.v2_score));
+  // The API compares only objects scored in both runs; an object only one run measured is left out of both means.
+  const bothHint = `Mean of ${plural(deltas.length, "object")} in both runs; objects in only one run are left out`;
 
   const header = cmp ? (
     <PageHeader
@@ -222,7 +262,7 @@ export default function CompareRunsPage() {
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <Select label="Object" value={module} onValueChange={setModule} options={[{ value: "", label: "All objects" }, ...moduleOptions]} placeholder="All objects" />
-        <Select label="Change" value={changeFilter} onValueChange={setChangeFilter} options={[{ value: "", label: "All changes" }, { value: "new", label: "Newly failing" }, { value: "resolved", label: "Fixed" }]} placeholder="All changes" />
+        <Select label="Change" value={changeFilter} onValueChange={setChangeFilter} options={[{ value: "", label: "All changes" }, ...CHANGE_SETS.map((c) => ({ value: c.filter, label: c.label }))]} placeholder="All changes" />
       </div>
       {sentences.map((s) => (
         <p key={s}>{s}</p>
@@ -232,8 +272,8 @@ export default function CompareRunsPage() {
 
   const charts = cmp ? (
     <div className="grid grid-cols-3 gap-3">
-      <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" hint={`Mean of ${plural(deltas.length, "object")}`} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
-      <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" hint={`Mean of ${plural(deltas.length, "object")}`} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
+      <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
+      <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
       <Stat label="Change" value={<Delta value={roundedDelta(before, after)} />} />
     </div>
   ) : (
@@ -272,7 +312,7 @@ export default function CompareRunsPage() {
       exportMenu={
         cmp && can("export") ? (
           <ExportMenu
-            options={[{ format: "pdf" as const, label: "Progress report (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), "comparison.pdf") }]}
+            options={[{ format: "pdf" as const, label: "Progress report (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), comparisonFilename(cmp.v2, cmp.v1)) }]}
           />
         ) : undefined
       }

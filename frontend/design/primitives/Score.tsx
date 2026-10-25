@@ -14,8 +14,13 @@ export type { ScoreDimension, ScoreRule, ScoreExplanation } from "./ScoreExplain
 export type ScoreSize = "sm" | "md" | "hero";
 
 export interface ScoreProps {
-  /** The score shown (0 to 100); null or undefined reads as "—". With `cap`, the measured value before the cap. */
+  /**
+   * The score shown (0 to 100); null or undefined reads as "—". At sm and md, with `cap`, the measured value
+   * before the cap. At hero size it is the numeral: pass the capped composite and the uncapped value as `measured`.
+   */
   value: number | null | undefined;
+  /** hero only: the measured value before the cap, drawn as the ghost beyond the cap tick; never the numeral. */
+  measured?: number | null;
   /**
    * sm: a 16px ring and the number, for a table cell or a line of text.
    * md: the 48px ring that carries the number, for a detail header or a stat tile; with `explain` it opens the explainer.
@@ -50,9 +55,12 @@ export interface ScoreProps {
 }
 
 /** The one way to draw a score. A block shows a score once, at one size. */
-export function Score({ value, size = "md", cap, criticals, bands, explain, children, label, help, delta, hint, href, tone, versionId, loading }: ScoreProps) {
+export function Score({ value, measured, size = "md", cap, criticals, bands, explain, children, label, help, delta, hint, href, tone, versionId, loading }: ScoreProps) {
   if (size === "hero") {
-    const capped = value != null && cap != null && value > cap;
+    // The ruler runs to the measured value so the ghost beyond the cap tick shows what the cap held down;
+    // the numeral is always `value`, the score every other page shows.
+    const ruled = measured ?? value;
+    const capped = ruled != null && cap != null && ruled > cap;
     return (
       <div className="m-score-hero" data-testid="score-hero">
         <Stat
@@ -60,7 +68,7 @@ export function Score({ value, size = "md", cap, criticals, bands, explain, chil
           label={label ?? "Data quality score"}
           help={help ?? "dqs"}
           value={value ?? "—"}
-          bar={value ?? undefined}
+          bar={ruled ?? undefined}
           rule={{ target: (bands ?? BANDS).target, cap: capped ? cap : undefined }}
           decimals={1}
           versionId={versionId}
