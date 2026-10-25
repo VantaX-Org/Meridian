@@ -7,6 +7,7 @@ import * as downloadApi from "@/lib/api/download";
 import * as insightsApi from "@/lib/api/insights";
 import * as reportsApi from "@/lib/api/reports";
 import * as versionsApi from "@/lib/api/versions";
+import { reportFilename } from "@/lib/report-filename";
 import ReportsPage from "../page";
 
 // The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
@@ -32,7 +33,7 @@ function mount() {
     { id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-02T05:00:00Z", metadata: { modules: ["business_partner"] } },
     { id: "co", label: "controlling_1k", status: "complete", run_at: "2026-10-03T05:00:00Z", metadata: { modules: ["controlling"] } },
   ] } as never);
-  vi.spyOn(reportsApi, "getReportCatalogue").mockResolvedValue([entry("board", "Board pack", "/api/v1/reports/board/v2.pdf"), entry("compare", "Run comparison", "/api/v1/reports/compare/v2.pdf"), entry("record", "Record fix sheet", null)]);
+  vi.spyOn(reportsApi, "getReportCatalogue").mockResolvedValue([entry("board", "Board pack", "/api/v1/reports/board/v2.pdf"), entry("compare", "Run comparison", "/api/v1/reports/compare/v2.pdf"), { ...entry("record", "Record fix sheet", null), requires: ["record"] }]);
   vi.spyOn(insightsApi, "getOverview").mockResolvedValue({
     version_id: "v2", run_label: "Run 2", run_at: null, previous_version_id: null,
     dqs: { composite: 80, previous: null, delta: null, tier: "go", capped: false, cap_reason: null },
@@ -81,7 +82,9 @@ describe("ReportsPage", () => {
     expect(screen.queryByRole("button", { name: "Copy link" })).toBeNull();
     expect(screen.getByText(/Key figures: DQS 80/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Download" }));
-    expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare/v2.pdf", "compare_v2.pdf");
+    // Named by the report, the run and the day, never the run id.
+    expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare/v2.pdf", reportFilename({ name: "Comparison report", ext: "pdf" }, "Run 2"));
+    expect(dl.mock.calls[0][1]).toMatch(/^Meridian comparison report – Run 2 – \d{4}-\d{2}-\d{2}\.pdf$/);
   });
 
   it("moves the selection with the arrow keys", async () => {
@@ -98,6 +101,9 @@ describe("ReportsPage", () => {
     mount();
     await userEvent.click(await screen.findByRole("option", { name: /Record fix sheet/ }));
     expect(screen.getByRole("button", { name: "Download" })).toBeDisabled();
+    // The API's requires token reads as the step to take, not "Needs: record."
+    expect(screen.getByText("Enter a record key")).toBeInTheDocument();
+    expect(screen.queryByText(/Needs:/)).toBeNull();
     await userEvent.type(screen.getByLabelText("Record key"), "M1");
     expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
   });
@@ -132,7 +138,7 @@ describe("ReportsPage scope and rendering", () => {
     mount();
     await screen.findByRole("listbox", { name: "Reports" });
     await userEvent.click(screen.getByRole("button", { name: "Download" }));
-    expect(dl).toHaveBeenCalledWith("/api/v1/reports/board/v2.pdf", "board_v2.pdf");
+    expect(dl).toHaveBeenCalledWith("/api/v1/reports/board/v2.pdf", reportFilename("board", "Run 2"));
     // The preview's Download button and the header's next step both say what is happening.
     const pending = await screen.findAllByRole("button", { name: /Rendering/ });
     expect(pending.some((b) => (b as HTMLButtonElement).disabled)).toBe(true);

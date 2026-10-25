@@ -1,18 +1,31 @@
 // frontend/app/(app)/insights/exec/__tests__/page.test.tsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as downloadApi from "@/lib/api/download";
 import ExecPage from "../page";
 
+const h = vi.hoisted(() => ({ qs: "run=v1", path: "/insights", versions: [] as unknown[] }));
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/insights",
+  usePathname: () => h.path,
   useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }),
-  useSearchParams: () => new URLSearchParams("run=v1"),
+  useSearchParams: () => new URLSearchParams(h.qs),
 }));
-vi.mock("@/lib/api/versions", () => ({ getVersions: async () => ({ versions: [] }) }));
+vi.mock("@/lib/api/versions", () => ({ getVersions: async () => ({ versions: h.versions }), getVersion: async () => null }));
+
+const TODAY = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+})();
+
+afterEach(() => {
+  h.qs = "run=v1";
+  h.path = "/insights";
+  h.versions = [];
+  vi.restoreAllMocks();
+});
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
@@ -39,16 +52,18 @@ describe("ExecPage", () => {
     });
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
     const download = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
+    h.versions = [{ id: "v1", label: "ECC PRD", status: "complete", run_at: "2026-10-20T08:00:00Z", metadata: {}, dqs_summary: {} }];
 
     renderWithQuery(<ExecPage />);
 
     expect(await screen.findByText(/readiness improved three points/i)).toBeInTheDocument();
+    // Files are named by the report, the run and the day, never the run id.
     fireEvent.click(await screen.findByRole("button", { name: /export/i }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /board pack/i }));
-    await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v1"), "board_v1.pdf"));
+    await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v1"), `Meridian board pack – ECC PRD – ${TODAY}.pdf`));
     fireEvent.click(await screen.findByRole("button", { name: /export/i }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /run data/i }));
-    await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/v1/export.json"), "run_v1.json"));
+    await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/v1/export.json"), `Meridian run data – ECC PRD – ${TODAY}.json`));
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getAllByRole("grid").length).toBeGreaterThan(0);
   });
@@ -89,7 +104,7 @@ describe("ExecPage", () => {
       value_at_risk: { worst_l1: null, worst_l1_amount: 0, currency: "ZAR", features_blocked: 0 }, narrative: [],
     });
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
-    vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: 120000, risk_mitigated: 0, roi_multiple: 0, payback_months: 0 }, cost_avoidance_history: [] });
+    vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: 120000, risk_mitigated: 0, roi_multiple: 0, payback_months: 0, currency: "ZAR" }, cost_avoidance_history: [] });
     renderWithQuery(<ExecPage />);
     // Not the page-level empty state: the hero carries the score and the first-run sentence.
     expect(await screen.findByText("First scored run")).toBeInTheDocument();
@@ -101,7 +116,9 @@ describe("ExecPage", () => {
     expect(screen.getByText("Objects blocked in a wave").closest("a")?.getAttribute("href")).toBe("/insights/readiness?run=v1");
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);
     fireEvent.click(screen.getByRole("button", { name: "Download board pack" }));
-    expect(dl).toHaveBeenCalledWith(expect.stringContaining("v1"), "board_v1.pdf");
+    expect(dl).toHaveBeenCalledWith(expect.stringContaining("v1"), `Meridian board pack – ${TODAY}.pdf`);
+    // The subscription is a rand amount and says so.
+    expect(await screen.findByText(/ZAR\s120,000/)).toBeInTheDocument();
     // ROI without any cost avoided says so instead of "0x" and "0 months".
     expect(await screen.findByText("No cost avoided yet")).toBeInTheDocument();
     expect(screen.queryByText("0x")).toBeNull();
@@ -128,5 +145,74 @@ describe("ExecPage", () => {
     vi.spyOn(analyticsApi, "getRoi").mockRejectedValue(new Error("roi down"));
     renderWithQuery(<ExecPage />);
     expect(await screen.findByText(/return on investment did not load/i)).toBeInTheDocument();
+  });
+
+  it("shows the current state, not an empty page, and exports the latest run", async () => {
+    h.qs = "";
+    h.path = "/insights/exec";
+    h.versions = [
+      { id: "v2", label: "ECC PRD", status: "complete", run_at: "2026-10-24T08:00:00Z", metadata: {}, dqs_summary: {} },
+      { id: "v1", label: "Uploads", status: "complete", run_at: "2026-10-01T08:00:00Z", metadata: {}, dqs_summary: {} },
+    ];
+    const getExec = vi.spyOn(insightsApi, "getExec").mockResolvedValue({
+      version_id: null, latest_version_id: "v2", scope: "current", composite: 64, cap: 64, cap_reason: "MM001: material type missing",
+      narrative: "Current state narrative.", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
+    });
+    const overview = vi.spyOn(insightsApi, "getCurrentOverview").mockResolvedValue({
+      dqs: { composite: 64, previous: null, delta: null, tier: "no_go", capped: true, cap_reason: "MM001: material type missing" },
+    } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v2", rows: [] } as never);
+    const download = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
+    renderWithQuery(<ExecPage />);
+
+    expect(await screen.findByText("Current state narrative.")).toBeInTheDocument();
+    expect(screen.queryByText("No executive summary yet")).toBeNull();
+    expect(getExec).toHaveBeenCalledWith({ scope: "current" });
+    expect(overview).toHaveBeenCalled();
+    // The hero reads the current-state composite and cap from the exec payload.
+    expect(await screen.findByText("Capped at 64")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /export/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /board pack, latest run/i }));
+    await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v2"), `Meridian board pack – ECC PRD – ${TODAY}.pdf`));
+  });
+
+  it("is empty only when the tenant has no run at all", async () => {
+    h.qs = "";
+    h.path = "/insights/exec";
+    h.versions = [{ id: "v1", label: "ECC PRD", status: "complete", run_at: "2026-10-24T08:00:00Z", metadata: {}, dqs_summary: {} }];
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
+      version_id: null, latest_version_id: null, scope: "current", composite: null, cap: null, cap_reason: null,
+      narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
+    });
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText("No executive summary yet")).toBeInTheDocument();
+  });
+
+  it("prints ROI amounts in the currency the API states", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [] });
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
+    vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "EUR" } as never);
+    vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: 180000, risk_mitigated: 540000, roi_multiple: 3, payback_months: 4, currency: "ZAR" }, cost_avoidance_history: [] });
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText(/ZAR\s540,000/)).toBeInTheDocument();
+    expect(screen.getByText(/ZAR\s180,000/)).toBeInTheDocument();
+    expect(screen.queryByText(/EUR\s540,000/)).toBeNull();
+  });
+
+  it("names waterfall steps by feature and captions the total and the top feature", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
+      version_id: "v1", narrative: "", readiness_cells: [], impact_rows: [], owner_rows: [],
+      waterfall: [
+        { x: "invoice_posting", y: 5672930, l1: "procure_to_pay" },
+        { x: "MIGO", y: 1200, l1: "procure_to_pay" },
+      ],
+    });
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
+    vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "ZAR" } as never);
+    renderWithQuery(<ExecPage />);
+    const caption = await screen.findByText(/at risk across 2 priced features/);
+    expect(caption.textContent).toMatch(/ZAR\s5,674,130 at risk across 2 priced features; Invoice posting carries the most, ZAR\s5,672,930$/);
+    const chart = screen.getByRole("img", { name: /Value at risk by feature/ });
+    expect(chart.getAttribute("aria-label")).toMatch(/Invoice posting ZAR\s5,672,930, MIGO ZAR\s1,200/);
   });
 });

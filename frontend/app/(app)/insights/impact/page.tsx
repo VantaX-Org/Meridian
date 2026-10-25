@@ -20,7 +20,7 @@ import {
 import { domainOf } from "@/design/tokens";
 import { getCostModel } from "@/lib/api/settings";
 import { drillLabel, fixHref } from "@/lib/drill";
-import { labelOf, plural } from "@/lib/format";
+import { featureLabel, plural } from "@/lib/format";
 import { previousInLineage } from "@/lib/runs";
 import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -37,9 +37,6 @@ import { PAGE_PURPOSE } from "../_components/InsightViews";
 function ruleRecordsHref(checkId: string, run?: string): string {
   return fixHref({ run, check: checkId });
 }
-
-/** A feature's display name: a machine id reads as words; a transaction code (MIGO) keeps its case. */
-const featureLabel = (feature: string) => (feature.includes("_") || feature === feature.toLowerCase() ? labelOf(feature) : feature);
 
 function CheckChips({ ids, run }: { ids: string[]; run?: string }) {
   return (

@@ -7,6 +7,7 @@ import type { FindingDetailData } from "@/lib/api/findings";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as configApi from "@/lib/api/config-intelligence";
 import * as exceptionsApi from "@/lib/api/exceptions";
+import * as settingsApi from "@/lib/api/settings";
 import { FindingDrawer } from "../FindingDrawer";
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -46,11 +47,15 @@ describe("FindingDrawer", () => {
       finding_id: "f1",
       finding,
       impacts: [
-        { category: "procurement", annual_risk_zar: 50000, mitigated_zar: 0, finding_count: 12, calculation_method: "per-record" },
+        { category: "procurement", annual_risk_zar: 50000, mitigated_zar: 0, finding_count: 12, calculation_method: "per-record", currency: "ZAR" },
       ],
     });
+    // A EUR tenant: the buckets are priced in rand, so they print as ZAR, never relabelled with the tenant's currency.
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "EUR" } as Awaited<ReturnType<typeof settingsApi.getCostModel>>);
     renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
     await waitFor(() => expect(screen.getByText("Description is blank.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/ZAR\s50,000 a year at risk/)).toBeInTheDocument());
+    expect(screen.queryByText(/EUR/)).toBeNull();
     expect(screen.getByText(/12 of 100 records affected/i)).toBeInTheDocument();
     expect(screen.getByText("A missing description blocks procurement.")).toBeInTheDocument();
     await waitFor(() =>

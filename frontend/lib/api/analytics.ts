@@ -92,6 +92,11 @@ export interface ImpactBucket {
   mitigated_zar: number;
   finding_count: number;
   calculation_method: string;
+  /**
+   * The currency of the amounts: the buckets are priced with fixed rand constants, not the tenant cost model, so the
+   * API says "ZAR" (api/services/analytics_engine.py:RISK_CURRENCY). Print with this, never the tenant currency.
+   */
+  currency: string;
 }
 
 export interface RoiSummary {
@@ -99,6 +104,8 @@ export interface RoiSummary {
   risk_mitigated: number;
   roi_multiple: number;
   payback_months: number;
+  /** The currency of the amounts ("ZAR": a fixed rand subscription and rand risk constants, not the cost model). */
+  currency: string;
 }
 
 export interface ImpactResponse {

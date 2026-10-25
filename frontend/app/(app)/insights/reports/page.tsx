@@ -16,6 +16,8 @@ import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
 import { lineageOf } from "@/lib/runs";
+import { reportFilename } from "@/lib/report-filename";
+import { runName } from "@/lib/run-scope";
 import { CardSkeleton, InsightFrame, formatMoney, useRunLabel } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
@@ -28,6 +30,13 @@ const REPORT_NAME: Record<string, string> = {
   workbook: "Comparison workbook", analysis: "Run report (analysis)", full: "Narrative report",
 };
 const nameOf = (e: CatalogueEntry) => REPORT_NAME[e.id] ?? e.name;
+/** What a report still needs before it can download, as the step the reader takes (the API's `requires` tokens). */
+const REQUIRES_STEP: Record<string, string> = { module: "Choose an object", record: "Enter a record key" };
+const requiresSentence = (requires: readonly string[]) =>
+  requires.map((t, i) => {
+    const step = REQUIRES_STEP[t] ?? `Add ${t.replace(/_/g, " ")}`;
+    return i === 0 ? step : step.charAt(0).toLowerCase() + step.slice(1);
+  }).join(" and ");
 
 export default function ReportsPage() {
   const { can, has } = usePermissions();
@@ -84,7 +93,8 @@ export default function ReportsPage() {
     if (!current || !href) return;
     setBuilding(current.id);
     try {
-      await downloadAuthenticated(href, `${current.id}_${versionId}.${EXT[current.format]}`);
+      const run = runs.find((r) => r.id === versionId);
+      await downloadAuthenticated(href, reportFilename({ name: nameOf(current), ext: EXT[current.format] }, run ? runName(run) : scopedLabel));
     } catch (e) {
       toast.error(apiErrorMessage(e));
     } finally {
@@ -172,7 +182,7 @@ export default function ReportsPage() {
                       {o.value_at_risk.worst_l1 ? `, largest L1 at risk ${l1Label(o.value_at_risk.worst_l1)} ${formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency)}` : ""}.
                     </p>
                   )}
-                  {current.requires.length > 0 && !href && <p className="m-text-meta m-ink-3">{`Needs: ${current.requires.join(", ")}.`}</p>}
+                  {current.requires.length > 0 && !href && <p className="m-text-meta m-ink-3">{requiresSentence(current.requires)}</p>}
                   {current.id === "record" && (
                     <Field label="Record key">
                       <Input value={recordKey} onChange={(e) => setRecordKey(e.target.value)} placeholder="For example a material number" />

@@ -10,9 +10,11 @@ import { DqsScore } from "@/components/insight/dqs-score";
 import { getRoi } from "@/lib/api/analytics";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecResponse, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
+import { getCurrentOverview, getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
-import { capRuleIds, deltaSentence, formatModuleName, labelOf, plural, shortCapReason } from "@/lib/format";
+import { capRuleIds, deltaSentence, featureLabel, formatCompact, formatModuleName, labelOf, plural, shortCapReason } from "@/lib/format";
+import { reportFilename } from "@/lib/report-filename";
+import { runName } from "@/lib/run-scope";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
@@ -28,10 +30,16 @@ import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 
 
-const plain = (n: number) => formatMoney(n);
+/** An axis tick of an amount: "ZAR 5.7M"; without a currency the compact number alone. */
+const moneyTick = (currency?: string | null) => (n: number) => (currency ? `${currency} ${formatCompact(n)}` : formatCompact(n));
 
-/** The cap and its reason, once the exec API carries them (optional until that lands; absent means no cap hint). */
-type ExecData = ExecResponse & { cap?: number | null; cap_reason?: string | null };
+/** One L1's waterfall caption: the total at risk and the feature carrying most of it. */
+function waterfallCaption(l1: string, points: readonly ExecWaterfallPoint[], currency?: string | null): string {
+  const total = points.reduce((s, p) => s + p.y, 0);
+  const top = points.reduce<ExecWaterfallPoint | undefined>((m, p) => (!m || p.y > m.y ? p : m), undefined);
+  const head = `${l1Label(l1)}: ${formatMoney(total, currency)} at risk across ${plural(points.length, "priced feature")}`;
+  return top && points.length > 1 ? `${head}; ${top.x} carries the most, ${formatMoney(top.y, currency)}` : head;
+}
 
 // Fix work has no "blocking" filter, so the blocking counts open the object's blocking rules; the object opens its records.
 const readinessColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
@@ -64,45 +72,64 @@ const ownerColumns = (run?: string): ColumnDef<OwnerCardResponse>[] => [
 ];
 
 export default function ExecPage() {
-  const { run, mode } = useInsightScope();
+  const { run, mode, runs } = useInsightScope();
+  const isCurrent = mode === "current";
   const dayOne = useDayOne();
   const finding = useFindingOpener(run);
   const rules = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "top10"), queryFn: () => getRuleRanking({ version_id: run, limit: 10 }), enabled: !!run });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.insights("exec", mode === "current" ? "current" : run),
-    queryFn: () => getExec(mode === "current" ? { scope: "current" } : { version_id: run }),
+    queryKey: queryKeys.insights("exec", isCurrent ? "current" : run),
+    queryFn: () => getExec(isCurrent ? { scope: "current" } : { version_id: run }),
     enabled: !!run,
   });
 
   const cost = useQuery({ queryKey: queryKeys.insights("proven-cost", run), queryFn: () => getProvenCost({ version_id: run }), enabled: !!run });
-  const overview = useQuery({ queryKey: queryKeys.insights("overview", run), queryFn: () => getOverview({ version_id: run }), enabled: !!run });
-  const aggregate = useQuery({ queryKey: queryKeys.findingsAggregate(run ?? "current"), queryFn: () => getFindingsAggregate(run), enabled: !!run });
-  const dqs = overview.data?.dqs;
+  // The tier and cap reason of what the hero shows: the current state in current mode, the run otherwise.
+  const overview = useQuery({
+    // Its own key: the cache holds the dqs block only, not the overview other pages read under the plain key.
+    queryKey: queryKeys.insights("overview", isCurrent ? "current" : run, undefined, "dqs"),
+    queryFn: async () => (isCurrent ? (await getCurrentOverview()).dqs : (await getOverview({ version_id: run })).dqs),
+    enabled: !!run,
+  });
+  const aggregate = useQuery({
+    queryKey: queryKeys.findingsAggregate(isCurrent ? "current" : run ?? "current"),
+    queryFn: () => getFindingsAggregate(isCurrent ? undefined : run),
+    enabled: !!run,
+  });
+  const dqs = overview.data;
   const VERDICT_SENTENCE: Record<string, string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
-  // The cap from the exec API when it carries one; the overview's reason otherwise. No cap value, no cap hint.
-  const exec = data as ExecData | undefined;
+  // The score, cap and reason from the exec API (the current-state composite in current mode); the overview's otherwise.
+  const exec = data;
+  const composite = exec?.composite ?? dqs?.composite;
   const cap = exec?.cap ?? undefined;
   const capReason = exec?.cap_reason ?? dqs?.cap_reason ?? null;
   const capped = cap != null || !!dqs?.capped;
   const capRule = capRuleIds(capReason)[0];
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
+  // The run the summary describes (null in current mode, which spans runs) and the run its exports are built from:
+  // that run, or in current mode the newest run of the current state.
+  const vid = data?.version_id ?? undefined;
+  const exportVid = data?.latest_version_id ?? vid;
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
     ? "loading"
     : isListFailure({ isError, error })
       ? "error"
-      // Only a missing run is empty: a scored run with no waves, features or owners still shows the score,
-      // Fix first and ROI, each section carrying its own empty line.
-      : !run || (data && !data.version_id)
+      // Only a tenant with no run is empty: a scored run with no waves, features or owners still shows the score,
+      // Fix first and ROI, each section carrying its own empty line; the current state has no version_id by design.
+      : !run || (data && !vid && !exportVid)
         ? "empty"
         : undefined;
 
-  const vid = data?.version_id ?? undefined;
-  const exportOptions: ExportOption[] = vid ? [
-    { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(vid), `board_${vid}.pdf`) },
-    { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(vid, {}), `workbook_${vid}.xlsx`) },
-    { format: "json", label: "Run data (JSON)", run: () => downloadAuthenticated(getReportJsonExportUrl(vid), `run_${vid}.json`) },
+  const exportRun = runs.find((r) => r.id === exportVid);
+  const scopeLabel = exportRun ? runName(exportRun) : isCurrent ? "latest run" : undefined;
+  const latest = isCurrent ? ", latest run" : "";
+  const boardFile = () => reportFilename("board", scopeLabel);
+  const exportOptions: ExportOption[] = exportVid ? [
+    { format: "pdf", label: `Board pack${latest} (PDF)`, run: () => downloadAuthenticated(getBoardReportUrl(exportVid), boardFile()) },
+    { format: "xlsx", label: `Analyst workbook${latest} (Excel)`, run: () => downloadAuthenticated(getWorkbookUrl(exportVid, {}), reportFilename("workbook", scopeLabel)) },
+    { format: "json", label: `Run data${latest} (JSON)`, run: () => downloadAuthenticated(getReportJsonExportUrl(exportVid), reportFilename("run_data", scopeLabel)) },
   ] : [];
   const noGo = data?.readiness_cells.filter((c) => c.verdict === "no_go").length ?? 0;
   const atRiskCells = data?.readiness_cells.filter((c) => c.verdict === "at_risk").length ?? 0;
@@ -115,10 +142,11 @@ export default function ExecPage() {
   const heatRows = [...new Set(cells.map((c) => formatModuleName(c.module)))];
   const heatCols = [...new Set(cells.map((c) => c.wave))];
   const byL1 = new Map<string, ExecWaterfallPoint[]>();
-  for (const pt of data?.waterfall ?? []) byL1.set(pt.l1 || "unassigned", [...(byL1.get(pt.l1 || "unassigned") ?? []), pt]);
+  // Each step reads by its feature's name, as on the Impact page, never the machine id.
+  for (const pt of data?.waterfall ?? []) byL1.set(pt.l1 || "unassigned", [...(byL1.get(pt.l1 || "unassigned") ?? []), { ...pt, x: featureLabel(String(pt.x)) }]);
   const l1Tabs = [...byL1].sort(([a], [b]) => a.localeCompare(b));
   const topRisk = data ? largestValueAtRisk(valueAtRiskByL1(data.impact_rows)) : null;
-  const boardPack = vid ? () => void downloadAuthenticated(getBoardReportUrl(vid), `board_${vid}.pdf`).catch((e: unknown) => toast.error(apiErrorMessage(e))) : undefined;
+  const boardPack = exportVid ? () => void downloadAuthenticated(getBoardReportUrl(exportVid), boardFile()).catch((e: unknown) => toast.error(apiErrorMessage(e))) : undefined;
   const pairs = (n: number) => plural(n, "object and wave pair", "object and wave pairs");
 
   return (
@@ -126,28 +154,29 @@ export default function ExecPage() {
       title="Executive summary"
       purpose={PAGE_PURPOSE["/insights/exec"]}
       scope
-      actions={<InsightActions run={vid} options={exportOptions} />}
+      actions={<InsightActions run={vid} current={isCurrent} options={exportOptions} />}
       insight={{
         hero: true,
-        lead: dqs && typeof dqs.composite === "number" ? (
+        lead: typeof composite === "number" ? (
           <div className="m-hero-lead">
             <div className="flex items-start gap-4">
               <Score
                   size="hero"
-                  value={dqs.composite}
+                  value={composite}
                   cap={cap}
                   versionId={vid}
                   hint={cap != null ? `Capped at ${cap}` : undefined}
-                  delta={dqs.delta != null ? <Delta value={dqs.delta} /> : undefined}
+                  delta={!isCurrent && dqs?.delta != null ? <Delta value={dqs.delta} /> : undefined}
                 />
               {aggregate.data && <div className="pt-6"><DqsScore agg={aggregate.data} versionId={vid} cap={cap} capReason={capReason} /></div>}
             </div>
             <div className="m-hero-verdict" data-testid="hero-verdict">
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
-                {dqs.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
+                {dqs?.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
               </span>
               <span className="m-text-body m-ink-2">
-                {capped && capReason ? `Capped: ${shortCapReason(capReason)}` : deltaSentence(dqs.delta)}
+                {/* The current state spans runs, so it has no single previous run to move from. */}
+                {capped && capReason ? `Capped: ${shortCapReason(capReason)}` : isCurrent ? "Every object at its latest run" : deltaSentence(dqs?.delta)}
               </span>
             </div>
           </div>
@@ -225,8 +254,8 @@ export default function ExecPage() {
                   label: l1Label(l1),
                   content: (
                     <>
-                      <Waterfall data={points} label={`Value at risk by feature, ${l1Label(l1)}`} />
-                      <p className="mt-2 m-text-body m-ink-2">{`${l1Label(l1)}: ${plural(points.length, "priced feature")}, from ${points[0].x} to ${points[points.length - 1].x}`}</p>
+                      <Waterfall data={points} label={`Value at risk by feature, ${l1Label(l1)}`} formatValue={(n) => formatMoney(n, currency)} formatTick={moneyTick(currency)} />
+                      <p className="mt-2 m-text-body m-ink-2">{waterfallCaption(l1, points, currency)}</p>
                     </>
                   ),
                 }))}
@@ -256,14 +285,14 @@ export default function ExecPage() {
                 // No multiple or payback can be stated before any cost is avoided; "0x" and "0 months" would read as a verdict.
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <Stat label="Cost avoided" value="No cost avoided yet" hint="Appears once approved fixes are applied" href={withScope("/fix", { run })} />
-                  <Stat label="Annual subscription" value={plain(roi.data.roi.subscription_annual)} />
+                  <Stat label="Annual subscription" value={formatMoney(roi.data.roi.subscription_annual, roi.data.roi.currency)} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.roi_multiple}x` : "—"} />
                   <Stat label="Payback" loading={roi.isLoading} value={roi.data ? `${plural(roi.data.roi.payback_months, "month")}` : "—"} />
-                  <Stat label="Risk mitigated" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.risk_mitigated) : "—"} />
-                  <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data ? plain(roi.data.roi.subscription_annual) : "—"} />
+                  <Stat label="Risk mitigated" loading={roi.isLoading} value={roi.data ? formatMoney(roi.data.roi.risk_mitigated, roi.data.roi.currency) : "—"} />
+                  <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data ? formatMoney(roi.data.roi.subscription_annual, roi.data.roi.currency) : "—"} />
                 </div>
               )}
           </Card>

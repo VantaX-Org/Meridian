@@ -368,6 +368,12 @@ class PrescriptiveAnalytics:
 # ── Business Impact Analytics ────────────────────────────────────────────────
 
 
+# The impact buckets and the ROI price risk with fixed rand constants (R8,500 an invoice, R35,000 a warranty claim,
+# a R15,000 monthly subscription), not the tenant cost model, so every amount they return is in rand whatever the
+# tenant's own currency: the payloads say so, and a page prints them as ZAR rather than in the tenant's currency.
+RISK_CURRENCY = "ZAR"
+
+
 class BusinessImpactAnalytics:
     """Rand risk quantification across 8 impact categories."""
 
@@ -469,6 +475,7 @@ class BusinessImpactAnalytics:
                     "mitigated_zar": round(data["mitigated_zar"], 2),
                     "finding_count": data["finding_count"],
                     "calculation_method": data["method"],
+                    "currency": RISK_CURRENCY,
                 }
             )
 
@@ -487,6 +494,7 @@ class BusinessImpactAnalytics:
                 "risk_mitigated": round(total_mitigated, 2),
                 "roi_multiple": 0,
                 "payback_months": 0,
+                "currency": RISK_CURRENCY,
             }
 
         roi_multiple = total_mitigated / annual_sub
@@ -497,6 +505,7 @@ class BusinessImpactAnalytics:
             "risk_mitigated": round(total_mitigated, 2),
             "roi_multiple": round(roi_multiple, 1),
             "payback_months": round(payback_months, 1),
+            "currency": RISK_CURRENCY,
         }
 
 

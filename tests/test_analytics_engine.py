@@ -86,3 +86,17 @@ def test_forecast_regresses_on_calendar_days():
     # missing stamps fall back to the run index without failing
     [h] = PredictiveAnalytics().forecast_dqs([{**p, "recorded_at": None} for p in weekly])
     assert h["forecast_7d"] == 80.0
+
+
+def test_impact_and_roi_amounts_say_they_are_rand() -> None:
+    """The buckets and the ROI price risk with fixed rand constants, not the tenant cost model: every payload says
+    ZAR, so a EUR tenant never reads rand as euros."""
+    from api.services.analytics_engine import RISK_CURRENCY, BusinessImpactAnalytics
+
+    bia = BusinessImpactAnalytics()
+    impacts = bia.quantify_impact([{"dimension": "uniqueness", "affected_count": 2, "module": "accounts_payable",
+                                    "check_id": "AP001"}], [])
+    assert RISK_CURRENCY == "ZAR"
+    assert impacts and all(i["currency"] == "ZAR" for i in impacts)
+    assert bia.calculate_roi(impacts, 15000.0)["currency"] == "ZAR"
+    assert bia.calculate_roi(impacts, 0.0)["currency"] == "ZAR"
