@@ -491,3 +491,51 @@ async def get_master_record_history(
 def _json_dumps(obj: dict) -> str:
     import json
     return json.dumps(obj, default=str)
+
+
+# ── POST /master-records/{id}/unmerge ────────────────────────────────────────
+
+
+@router.post("/master-records/{record_id}/unmerge")
+async def unmerge_master_record(
+    record_id: str,
+    request: Request,
+    role: str = Depends(require_permission("approve", scope=scope_from_path)),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Undo a merge: the superseded record stands on its own again as a candidate, and the history says so."""
+    tenant_id = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
+    user_id = getattr(request.state, "local_user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403, detail="Authentication required")
+
+    result = await db.execute(
+        text("SELECT status, merged_into, golden_fields FROM master_records WHERE id = :id AND tenant_id = :tid"),
+        {"id": record_id, "tid": tenant_id},
+    )
+    row = result.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Master record not found")
+    if row[0] != "superseded" and row[1] is None:
+        raise HTTPException(status_code=409, detail="This record was not merged into another")
+
+    now = datetime.now(timezone.utc)
+    await db.execute(
+        text("UPDATE master_records SET status = 'candidate', merged_into = NULL, updated_at = :now WHERE id = :id AND tenant_id = :tid"),
+        {"id": record_id, "tid": tenant_id, "now": now},
+    )
+    await db.execute(
+        text("""
+            INSERT INTO master_record_history (
+                id, tenant_id, master_record_id, changed_at, changed_by,
+                change_type, previous_fields, new_fields, ai_was_involved, ai_recommendation_accepted
+            ) VALUES (gen_random_uuid(), :tid, :rid, :now, :user_id, 'unmerged', CAST(:prev AS jsonb), CAST(:new AS jsonb), false, NULL)
+        """),
+        {"tid": tenant_id, "rid": record_id, "now": now, "user_id": str(user_id),
+         "prev": _json_dumps({"merged_into": str(row[1]) if row[1] else None, "status": row[0]}),
+         "new": _json_dumps({"merged_into": None, "status": "candidate"})},
+    )
+    await db.commit()
+    return {"id": record_id, "status": "candidate", "merged_into": None}

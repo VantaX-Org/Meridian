@@ -19,6 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.notifications import create_notification
 from api.services.rbac import current_user_id, dev_role_override, has_permission, require_permission, scope_from_path
 
 
@@ -94,6 +95,10 @@ class MetricsResponse(BaseModel):
     sla_compliance_rate: float
     ai_acceptance_rate: Optional[float] = None
     steward_breakdown: Optional[list[dict]] = None
+    # Incident timing over the last 30 days: hours from creation to first acknowledgement and to resolution.
+    median_time_to_response_hours: Optional[float] = None
+    median_time_to_fixed_hours: Optional[float] = None
+    timing_by_domain: list[dict] = Field(default_factory=list)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -348,6 +353,22 @@ async def get_stewardship_metrics(
             for r in result.fetchall()
         ]
 
+    # Time to response (first acknowledgement or assignment) and time to fixed, medians over 30 days.
+    timing_sql = """
+        SELECT {group} AS grp,
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (COALESCE(acknowledged_at, assigned_at) - created_at)) / 3600)
+                FILTER (WHERE COALESCE(acknowledged_at, assigned_at) IS NOT NULL) AS response_h,
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)
+                FILTER (WHERE resolved_at IS NOT NULL) AS fixed_h,
+            COUNT(*) FILTER (WHERE resolved_at IS NOT NULL) AS resolved
+        FROM stewardship_queue
+        WHERE tenant_id = :tid AND created_at >= now() - interval '30 days'
+        GROUP BY {group}
+    """
+    overall = (await db.execute(text(timing_sql.format(group="1")), {"tid": tid})).fetchone()
+    by_domain = (await db.execute(text(timing_sql.format(group="domain")), {"tid": tid})).fetchall()
+    hours = lambda v: round(float(v), 1) if v is not None else None  # noqa: E731
+
     return MetricsResponse(
         items_by_type=items_by_type,
         items_by_status=items_by_status,
@@ -356,6 +377,12 @@ async def get_stewardship_metrics(
         sla_compliance_rate=sla_compliance,
         ai_acceptance_rate=ai_acceptance_rate,
         steward_breakdown=steward_breakdown,
+        median_time_to_response_hours=hours(overall[1]) if overall else None,
+        median_time_to_fixed_hours=hours(overall[2]) if overall else None,
+        timing_by_domain=[
+            {"domain": r[0], "median_response_hours": hours(r[1]), "median_fixed_hours": hours(r[2]), "resolved": int(r[3] or 0)}
+            for r in by_domain
+        ],
     )
 
 
@@ -415,6 +442,8 @@ async def assign_queue_item(
     from api.services.triage import apply_sla
     tid = str(tenant.id)
     await db.run_sync(lambda s: apply_sla(s, tid, "queue", [item_id]))
+    await create_notification(tid, body.user_id, "assignment", "A task was assigned to you",
+                              "Open your inbox to work it.", f"/inbox?focus={item_id}", db)
     await db.commit()
     return {"id": item_id, "status": "in_progress", "assigned_to": body.user_id}
 

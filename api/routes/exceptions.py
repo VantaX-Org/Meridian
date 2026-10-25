@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.exception_engine import ExceptionBillingCalculator
+from api.services.notifications import create_notification
 from api.services.rbac import has_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["exceptions"])
@@ -28,6 +29,10 @@ class CreateExceptionBody(BaseModel):
     description: str
     affected_records: Optional[dict] = None
     object_type: Optional[str] = None
+    # Raised from a failing rule: the finding it tracks and where it came from.
+    linked_finding_id: Optional[str] = None
+    source_system: Optional[str] = None
+    source_reference: Optional[str] = None
 
 
 class AssignBody(BaseModel):
@@ -259,9 +264,11 @@ async def create_exception(
     await db.execute(
         text("""
             INSERT INTO exceptions (id, tenant_id, type, category, severity, status,
-                title, description, affected_records, escalation_tier, sla_deadline, created_at)
+                title, description, affected_records, escalation_tier, sla_deadline, created_at,
+                linked_finding_id, source_system, source_reference)
             VALUES (:id, :tid, :type, :category, :severity, 'open',
-                :title, :description, CAST(:affected_records AS jsonb), 1, :sla_deadline, now())
+                :title, :description, CAST(:affected_records AS jsonb), 1, :sla_deadline, now(),
+                CAST(:finding AS uuid), :source_system, :source_reference)
         """),
         {
             "id": new_id,
@@ -273,6 +280,9 @@ async def create_exception(
             "description": body.description,
             "affected_records": json.dumps(body.affected_records) if body.affected_records else None,
             "sla_deadline": sla_deadline,
+            "finding": body.linked_finding_id,
+            "source_system": body.source_system,
+            "source_reference": body.source_reference,
         },
     )
     await db.commit()
@@ -307,6 +317,11 @@ async def assign_exception(
         """),
         {"eid": exception_id, "tid": str(tenant.id), "txt": f"Assigned to {body.user_name}"},
     )
+    # The assignee hears about it in the bell (and in their digest or immediate email, per preferences).
+    title_row = await db.execute(text("SELECT title FROM exceptions WHERE id = :eid"), {"eid": exception_id})
+    title = (title_row.scalar() or "an exception")
+    await create_notification(str(tenant.id), body.user_id, "assignment", f"Assigned to you: {title}",
+                              "An exception was assigned to you.", f"/inbox?kind=exception&focus={exception_id}", db)
     await db.commit()
 
     return {"id": exception_id, "assigned_to": body.user_id}
