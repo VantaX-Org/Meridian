@@ -1,27 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Popover } from "@base-ui/react/popover";
 import { useMutation } from "@tanstack/react-query";
-import { askMeridian, type AskAnswer } from "../../lib/api/assistant";
+import { askMeridian, type AskAnswer, type AskFact } from "../../lib/api/assistant";
 import { useLicence } from "../../hooks/use-licence";
 import { Bar } from "../charts/Bar";
 import { Line } from "../charts/Line";
 import type { ChartPoint } from "../charts/theme";
 import { Button } from "../primitives/Button";
 import { IconButton } from "../primitives/IconButton";
+import { Notice } from "../primitives/Notice";
 import { IconArrowUp, IconClose } from "../icons";
 import { MeridianMark } from "../icons/Mark";
 
-/** Shown on an empty panel: the four the API lists when it has no answer (api/services/assistant.py EXAMPLES) plus one process question. */
+/** Shown on an empty panel: six of the questions the API lists when it has no answer (api/services/assistant.py EXAMPLES). */
 export const ASK_SUGGESTIONS = [
   "How has the score moved?",
   "Which objects are weakest?",
-  "What are the top failing rules in material master?",
-  "Who has the most open work?",
-  "Can procure to pay run on this data?",
+  "How many records fail MM045?",
+  "What is the value at risk?",
+  "When will the open records be fixed?",
+  "What will the score be in 30 days?",
 ] as const;
 
 /** The licence menu item that turns the assistant on (cloudflare/licence-worker DEFAULT_MENU_ITEMS). */
@@ -48,15 +50,52 @@ function AnswerChart({ answer }: { answer: AskAnswer }) {
   );
 }
 
+/** "Based on N figures": a closed disclosure listing each figure the answer was assembled from and where it comes from. */
+function AnswerFacts({ facts, onNavigate }: { facts: AskFact[]; onNavigate: () => void }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const n = facts.length;
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Button variant="ghost" size="sm" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}>
+        Based on {n.toLocaleString()} {n === 1 ? "figure" : "figures"}
+      </Button>
+      {open && (
+        <ol id={id} aria-label="Figures behind this answer" className="flex flex-col gap-2 px-2">
+          {facts.map((f, i) => (
+            <li key={`${i}-${f.statement}`} className="flex flex-col">
+              <span className="m-text-body m-ink m-numeric">{f.statement}</span>
+              {f.href && internal(f.href) ? (
+                <Link href={f.href} onClick={onNavigate} className="m-text-meta m-ink-3 underline underline-offset-2">
+                  {f.source}
+                </Link>
+              ) : (
+                <span className="m-text-meta m-ink-3">{f.source}</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 function AnswerBubble({ message, onNavigate }: { message: Extract<Message, { role: "assistant" }>; onNavigate: () => void }) {
   const a = message.answer;
   const links = (a?.links ?? []).filter((l) => internal(l.href));
+  // An older server sends none of the grounding fields: absent means nothing to show, never a failed check.
+  const refused = a?.intent === "refused";
+  const unchecked = a?.grounded === false;
+  const facts = refused || unchecked ? [] : (a?.facts ?? []);
+  const coverage = a?.coverage ?? 1;
   return (
     <li className="flex flex-col gap-2" data-role="assistant">
-      {/* Model-written text is labelled in words, above the answer, so a reader knows before they read it. */}
-      {a?.ai && <span className="m-text-meta m-ink-3">Written by the model from aggregated findings</span>}
-      <p className="m-text-body m-ink">{message.text}</p>
-      {a && <AnswerChart answer={a} />}
+      {/* Model-worded text is labelled in words, above the answer, so a reader knows before they read it. */}
+      {a?.phrased && !refused && !unchecked && <span className="m-text-meta m-ink-3">Worded by the model from these figures</span>}
+      <p className="m-text-body m-ink">{unchecked ? "This answer could not be checked against your figures" : message.text}</p>
+      {a && !refused && !unchecked && <AnswerChart answer={a} />}
+      {facts.length > 0 && coverage > 0 && coverage < 1 && <Notice tone="info" compact>Covers part of your question</Notice>}
+      {facts.length > 0 && <AnswerFacts facts={facts} onNavigate={onNavigate} />}
       {links.length > 0 && (
         <ul className="flex flex-wrap gap-x-4 gap-y-1">
           {links.map((l) => (
@@ -74,8 +113,9 @@ function AnswerBubble({ message, onNavigate }: { message: Extract<Message, { rol
 
 /**
  * "Ask Meridian": a launcher fixed bottom-right that opens a question panel. Questions go to
- * POST /api/v1/assistant/ask with the run the page shows (`?run=`); answers are computed from the figures, and only
- * when no built-in answer fits does the model write one from aggregated findings (labelled "Written by the model").
+ * POST /api/v1/assistant/ask with the run the page shows (`?run=`); answers are assembled from the run's figures, listed
+ * under each answer ("Based on N figures"). When the model rewords them the answer is labelled so; a refusal is a plain
+ * sentence with its suggestions, and an answer the server could not check against the figures is never shown.
  * Escape closes the panel and focus returns to the launcher. Hidden in print and when the licence turns it off.
  */
 export function AskMeridian() {
@@ -141,7 +181,7 @@ export function AskMeridian() {
                 <div className="min-w-0">
                   <Popover.Title className="m-text-h font-semibold m-ink">Ask Meridian</Popover.Title>
                   <Popover.Description className="m-text-meta m-ink-3">
-                    Answers come from your run&apos;s figures, or are written by the model from them
+                    Answers come from your run&apos;s figures
                   </Popover.Description>
                 </div>
                 <Popover.Close render={<IconButton aria-label="Close" size="sm" />}>
