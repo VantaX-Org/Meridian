@@ -5,12 +5,13 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Async, IconMore, toast } from "@/design";
+import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Field, Menu, Notice, PageHeader, Pill, Select, Skeleton, Stat, Async, IconMore, Tooltip, toast } from "@/design";
+import { useAuth } from "@/context/auth-context";
 import { permissionLabel } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorDetail, apiErrorMessage } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
 import { InviteForm } from "@/components/admin/invite-form";
 import { relativeTime } from "@/lib/format";
@@ -42,6 +43,8 @@ const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   platform_admin: { label: "Platform admin", desc: "Same access as Admin, including platform updates." },
 };
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
+/** Why your own row's role, Active and Remove are locked (the API refuses them too: api/routes/users.py). */
+const SELF_ACCESS_REASON = "You can't change your own access";
 
 export default function AdminUsersPage() {
   // Old links: ?tab=roles (the retired role matrix) and ?tab=audit point at the pages that own them now.
@@ -97,7 +100,7 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
     mutationFn: (u: User) => deleteUser(u.id),
     onSuccess: (_, u) => { toast.success(`${u.name} removed`); setEditing(null); refresh(); },
     onError: (e) => toast.error(
-      (e as { response?: { status?: number } }).response?.status === 409
+      (e as { response?: { status?: number } }).response?.status === 409 && !apiErrorDetail(e)?.includes("last active admin")
         ? "This user is referenced by audit or stewardship records, deactivate them instead"
         : `Not removed. ${apiErrorMessage(e)}`,
     ),
@@ -182,6 +185,8 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
   const [isActive, setActive] = useState(user.is_active);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const { user: me } = useAuth();
+  const self = !!me && me.id === user.id;
   const matrixQ = useQuery({ queryKey: queryKeys.authRoles(), queryFn: getRoleMatrix });
   const m = useMutation({
     mutationFn: () => updateUser(user.id, { role, is_active: isActive }),
@@ -200,13 +205,21 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
   return (
     <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (consequential) setConfirmSave(true); else m.mutate(); }}>
       <p className="m-text-body m-ink-3">{user.email}</p>
-      <Field label="Role">
-        <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
-      </Field>
+      {self ? <Notice tone="info">{SELF_ACCESS_REASON}. Another admin can change your role or access.</Notice> : null}
+      {self ? (
+        <div className="flex flex-col gap-1">
+          <span className="m-text-label m-ink-3">Role</span>
+          <span className="m-text-body">{ROLE_META[role]?.label ?? role}</span>
+        </div>
+      ) : (
+        <Field label="Role">
+          <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
+        </Field>
+      )}
       <p className="m-text-meta m-ink-3">{ROLE_META[role].desc}</p>
       <p className="m-text-meta m-ink-3">Scoped grants (a role at one system or module) are managed under <Link href={`/admin/roles?tab=users&user=${encodeURIComponent(user.id)}`} className="underline">Roles and access</Link>.</p>
       <label className="flex items-center gap-2 m-text-body">
-        <Checkbox aria-label="Active" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
+        <Checkbox aria-label="Active" checked={isActive} disabled={self} title={self ? SELF_ACCESS_REASON : undefined} onChange={(e) => setActive(e.target.checked)} />
         <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>
       </label>
       <div className="flex gap-2">
@@ -214,7 +227,15 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
         <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
       </div>
       <p className="m-text-meta m-ink-3">To stop someone signing in but keep their name on past work, untick Active and save instead of removing them.</p>
-      <div><Button type="button" variant="ghost" disabled={removing} onClick={() => setConfirmRemove(true)}>Remove user</Button></div>
+      <div>
+        {self ? (
+          <Tooltip label={SELF_ACCESS_REASON} render={<Button type="button" variant="ghost" disabled aria-disabled="true" aria-label={`Remove user. ${SELF_ACCESS_REASON}`} />}>
+            Remove user
+          </Tooltip>
+        ) : (
+          <Button type="button" variant="ghost" disabled={removing} onClick={() => setConfirmRemove(true)}>Remove user</Button>
+        )}
+      </div>
 
       <ConfirmDialog
         open={confirmSave}

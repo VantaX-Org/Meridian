@@ -15,7 +15,7 @@ import { getModuleFieldMappings } from "@/lib/api/field-mappings";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
-import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
+import { MODULE_LABELS, formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { runName } from "@/lib/run-scope";
 import { formatSize, readHeaderSample } from "@/lib/upload-preview";
@@ -82,20 +82,58 @@ export default function ImportPage() {
     meta: { ignoreError: true },
   });
 
+  // The file's header row and sample, read once per file, so choosing another object re-matches the same columns.
+  const sampleRef = useRef<{ headers: string[]; sample: string[][]; name: string } | null>(null);
+  // The object the user chose last; a re-match for an object they have since left is dropped.
+  const wantedModule = useRef<string | null>(null);
+  // What Meridian detected on the first read, so the note can tell a guess from the user's choice.
+  const [detected, setDetected] = useState<string | null>(null);
+  // The object was picked by hand after the columns could not be read.
+  const [manual, setManual] = useState(false);
   const matchMut = useMutation({
-    mutationFn: async (f: File) => {
-      const { headers, sample } = await readHeaderSample(f);
-      return { res: await matchColumns(headers, sample, f.name), parsed: headers.length > 0 };
+    mutationFn: async ({ f, hint }: { f: File; hint?: string }) => {
+      if (hint === undefined || !sampleRef.current) {
+        const { headers, sample } = await readHeaderSample(f);
+        sampleRef.current = { headers, sample, name: f.name };
+      }
+      const s = sampleRef.current;
+      return { res: await matchColumns(s.headers, s.sample, s.name, hint), parsed: s.headers.length > 0, hint };
     },
-    onSuccess: ({ res, parsed }) => { setMatch(res); setTargetModule(parsed ? res.detected_module : null); },
-    onError: (e) => toast.error(apiErrorMessage(e)),
+    onSuccess: ({ res, parsed, hint }) => {
+      if (hint !== undefined && hint !== wantedModule.current) return;
+      setMatch(res);
+      if (hint === undefined) { setDetected(res.detected_module); setTargetModule(parsed ? res.detected_module : null); }
+    },
+    onError: (e, { hint }) => { if (hint !== undefined) toast.error(apiErrorMessage(e)); },
   });
+  const readColumns = (f: File) => {
+    sampleRef.current = null; wantedModule.current = null; setManual(false);
+    setMatch(null); setDetected(null); setTargetModule(null); setOverrides({}); setJob(null); setUploadPct(0);
+    matchMut.mutate({ f });
+  };
   useEffect(() => {
     if (!file) return;
-    setMatch(null); setTargetModule(null); setOverrides({}); setJob(null); setUploadPct(0);
-    matchMut.mutate(file);
+    readColumns(file);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file]);
+  // Reading the columns failed (unreadable file or the match request): the object can still be chosen by hand,
+  // and the columns are then read from the file when it imports.
+  const readFailed = !!file && !match && matchMut.isError && matchMut.variables?.hint === undefined;
+  const chooseObject = (value: string) => {
+    setTargetModule(value); setOverrides({});
+    wantedModule.current = value;
+    // Re-match the columns against the chosen object: the guessed matches belong to the detected one.
+    if (file && match && sampleRef.current?.headers.length && value !== match.detected_module) matchMut.mutate({ f: file, hint: value });
+  };
+  const manualObject = (value: string) => {
+    wantedModule.current = value;
+    setManual(true);
+    setTargetModule(value); setOverrides({});
+    setMatch({
+      detected_module: value, module_confidence: 0, module_label: formatModuleName(value), mappings: [], unmapped_required: [],
+      available_modules: Object.keys(MODULE_LABELS).map((m) => ({ value: m, label: formatModuleName(m) })),
+    });
+  };
 
   const targetOf = (m: MatchResponse["mappings"][number]) => overrides[m.source_column] ?? m.target_field ?? NOT_MAPPED;
   const run = useMutation({
@@ -119,10 +157,19 @@ export default function ImportPage() {
 
   const noHeaders = !!match && match.mappings.length === 0;
   const mapped = match?.mappings.filter((m) => targetOf(m)).length ?? 0;
+  const rematching = !!match && matchMut.isPending;
+  // The object's required fields with no column in the mapping as it stands now, the user's corrections included.
+  const unmappedRequired = useMemo(() => {
+    if (!match) return [];
+    const required = new Set([...match.unmapped_required, ...match.mappings.flatMap((m) => (m.is_required && m.target_field ? [m.target_field] : []))]);
+    const covered = new Set(match.mappings.map(targetOf).filter(Boolean));
+    return [...required].filter((f) => !covered.has(f)).sort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match, overrides]);
   const canRun = !!file && !!match && !!targetModule && !matchMut.isPending && !run.isPending && !job;
 
   const pick = (f: File | null) => { if (f) setFile(f); };
-  const clear = () => { setFile(null); setMatch(null); setTargetModule(null); setOverrides({}); setJob(null); setUploadPct(0); if (inputRef.current) inputRef.current.value = ""; };
+  const clear = () => { sampleRef.current = null; wantedModule.current = null; matchMut.reset(); setManual(false); setFile(null); setMatch(null); setDetected(null); setTargetModule(null); setOverrides({}); setJob(null); setUploadPct(0); if (inputRef.current) inputRef.current.value = ""; };
 
   const columns = useMemo<ColumnDef<Version>[]>(() => [
     {
@@ -183,7 +230,9 @@ export default function ImportPage() {
   );
   const versions = (recent.data?.versions ?? []).filter((v) => v.metadata?.source !== "extraction");
 
-  const fileNote = matchMut.isPending ? "Reading the columns"
+  const fileNote = rematching ? `Matching the columns to ${formatModuleName(targetModule ?? "")}`
+    : matchMut.isPending ? "Reading the columns"
+    : match && targetModule && targetModule !== detected ? `${formatSize(file?.size ?? 0)}, set to ${match.module_label}, ${mapped} columns mapped`
     : match ? `${formatSize(file?.size ?? 0)}, looks like ${match.module_label} (${Math.round(match.module_confidence * 100)}% sure), ${mapped} columns mapped`
     : file ? formatSize(file.size) : "";
 
@@ -232,6 +281,22 @@ export default function ImportPage() {
             </Notice>
           ) : null}
 
+          {readFailed && file ? (
+            <section className="flex flex-col gap-3" aria-label="Columns not read">
+              <Notice tone="danger" action={<Button variant="secondary" onClick={() => readColumns(file)}>Retry</Button>}>
+                The columns could not be read. {apiErrorMessage(matchMut.error)}
+              </Notice>
+              <p className="m-text-body m-ink-2">Retry, or pick the SAP object this file holds; the columns are then read from the file when it imports.</p>
+              <Select
+                label="Object"
+                value=""
+                placeholder="Choose the object"
+                onValueChange={(v) => { if (v) manualObject(v); }}
+                options={Object.keys(MODULE_LABELS).map((m) => ({ value: m, label: formatModuleName(m) }))}
+              />
+            </section>
+          ) : null}
+
           {match ? (
             <section className="flex flex-col gap-3" aria-label="Column mapping">
               <header className="flex items-center gap-3">
@@ -247,7 +312,7 @@ export default function ImportPage() {
                   <button
                     key={m.value}
                     type="button"
-                    onClick={() => { setTargetModule(m.value); setOverrides({}); }}
+                    onClick={() => chooseObject(m.value)}
                     aria-pressed={targetModule === m.value}
                     className="px-2 py-0.5 m-text-meta rounded-full border m-ink [border-color:var(--m-line)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[color:var(--m-accent)]"
                   >
@@ -268,12 +333,20 @@ export default function ImportPage() {
                 </div>
               ) : null}
               {noHeaders ? (
-                <Notice tone="warning">Columns cannot be previewed for this format. Pick the object above; the columns are read from the file when it imports</Notice>
+                <Notice tone="warning">{manual
+                  ? "The columns were not read, so they cannot be previewed. The columns are read from the file when it imports"
+                  : "Columns cannot be previewed for this format. Pick the object above; the columns are read from the file when it imports"}</Notice>
               ) : null}
-              {match.unmapped_required.length ? (
-                <Notice tone="warning">{match.unmapped_required.length} required fields have no column: {match.unmapped_required.join(", ")}. Checks that need them are skipped</Notice>
+              {rematching ? (
+                <div className="flex flex-col gap-1" aria-busy="true">
+                  <p className="m-text-meta m-ink-3">Matching the columns to {formatModuleName(targetModule ?? "")}</p>
+                  <Skeleton height={120} />
+                </div>
               ) : null}
-              {match.mappings.length ? (
+              {!rematching && unmappedRequired.length ? (
+                <Notice tone="warning">{unmappedRequired.length} required {unmappedRequired.length === 1 ? "field has" : "fields have"} no column: {unmappedRequired.join(", ")}. Checks that need them are skipped</Notice>
+              ) : null}
+              {!rematching && match.mappings.length ? (
                 <>
                   <DataTable columns={mapColumns} data={rankedMappings} getRowId={(m) => m.source_column} />
                   <p className="m-text-meta m-ink-3">

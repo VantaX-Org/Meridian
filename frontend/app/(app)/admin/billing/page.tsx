@@ -78,7 +78,8 @@ export default function ExceptionBillingPage() {
       tables={
         b ? (
           <div className="flex flex-col gap-2">
-            {b.stripe_invoice_id ? <span className="m-text-meta m-ink-3">Invoice {b.stripe_invoice_id}</span> : null}
+            {/* The payment provider's internal id means nothing to a reader; the invoice itself is in Meridian HQ. */}
+            {b.stripe_invoice_id ? <span className="m-text-meta m-ink-3">Invoiced. The invoice is in Meridian HQ</span> : null}
             <DataTable columns={columns} data={rows} getRowId={(r) => String(r.tier)} />
           </div>
         ) : null

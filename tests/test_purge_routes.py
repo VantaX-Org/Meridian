@@ -110,6 +110,7 @@ def test_every_retention_route_needs_manage_settings(monkeypatch, role):
     assert c.get("/api/v1/settings/retention").status_code == 403
     assert c.put("/api/v1/settings/retention", json={"versions_days": 30}).status_code == 403
     assert c.get("/api/v1/settings/retention/preview").status_code == 403
+    assert c.post("/api/v1/settings/retention/preview", json={"versions_days": 30}).status_code == 403
     assert c.get("/api/v1/settings/purge-log").status_code == 403
     assert c.request("DELETE", f"/api/v1/versions/{VID}", json={"confirm": "x"}).status_code == 403
     assert c.post("/api/v1/admin/purge-tenant", json={}).status_code == 403
@@ -198,6 +199,43 @@ def test_preview_runs_the_dry_run_helper(monkeypatch):
     r = c.get("/api/v1/settings/retention/preview")
     assert r.status_code == 200 and r.json()["items"][0]["blocked_reason"] == "1 cleaning item not finished"
     assert seen == [str(TENANT)]
+
+
+def test_draft_preview_evaluates_the_body_not_the_saved_policy(monkeypatch):
+    """POST preview selects with the draft in the body; the saved policy is neither read nor changed."""
+    from api.services import retention as retention_service
+
+    seen_policies = []
+
+    class _Ctx:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, *a):
+            return False
+
+    def select(session, tenant_id, policy, now):
+        seen_policies.append((tenant_id, policy))
+        return [retention_service.ExpiredVersion(id=str(VID), label="Q1", run_at=NOW, system_id="upload",
+                                                 status="complete")] if policy.versions_days == 30 else []
+
+    def no_saved(*a):
+        raise AssertionError("the draft preview must not read the saved policy")
+
+    monkeypatch.setattr(routes, "_sync_session", lambda tid: _Ctx())
+    monkeypatch.setattr(routes, "load_policy", no_saved)
+    monkeypatch.setattr(routes, "select_expired_versions", select)
+    monkeypatch.setattr(routes, "purge_version", lambda *a, **k: {
+        "rows_by_table": {"findings": 4}, "bytes_freed": 10, "blocked_reason": None})
+    c, db = _client(monkeypatch, _DB(retention={"versions_days": 365}))
+    r = c.post("/api/v1/settings/retention/preview", json={"versions_days": 30, "keep_latest_per_system": 0})
+    assert r.status_code == 200, r.text
+    assert [i["version_id"] for i in r.json()["items"]] == [str(VID)]
+    assert seen_policies[0][0] == str(TENANT)
+    assert seen_policies[0][1].versions_days == 30 and seen_policies[0][1].keep_latest_per_system == 0
+    assert db.updates == [] and db.retention == {"versions_days": 365}
+    # the draft is validated like a PUT body
+    assert c.post("/api/v1/settings/retention/preview", json={"versions_days": 0}).status_code == 422
 
 
 def test_purge_log_honours_limit(monkeypatch):

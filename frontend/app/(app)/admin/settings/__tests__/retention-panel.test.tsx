@@ -23,7 +23,9 @@ describe("RetentionPanel", () => {
     });
     vi.spyOn(retentionApi, "getPurgeLog").mockResolvedValue([]);
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ id: "sys-1", name: "ECC Prod" }] as never);
-    vi.spyOn(retentionApi, "getRetentionPreview").mockResolvedValue([
+    // the saved policy selects nothing; the draft being saved selects one run
+    const saved = vi.spyOn(retentionApi, "getRetentionPreview").mockResolvedValue([]);
+    const draft = vi.spyOn(retentionApi, "previewRetentionDraft").mockResolvedValue([
       { version_id: "v-1", label: null, run_at: "2026-03-01T00:00:00Z", system_id: "sys-1", blocked_reason: null, rows_by_table: {}, bytes_freed: 0 },
     ]);
     const update = vi.spyOn(retentionApi, "updateRetention").mockResolvedValue(RESPONSE);
@@ -33,6 +35,8 @@ describe("RetentionPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
     expect(update).not.toHaveBeenCalled();
     expect(await screen.findByText(/1 run from ECC Prod will be purged nightly/)).toBeInTheDocument();
+    expect(draft.mock.calls[0][0]).toEqual({ ...RESPONSE.policy, versions_days: 30 });
+    expect(saved).not.toHaveBeenCalled();
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save policy" }));
     await waitFor(() => expect(update).toHaveBeenCalled());
   });
@@ -44,7 +48,7 @@ describe("RetentionPanel", () => {
     await waitFor(() => expect(screen.getByLabelText("Keep runs for (days)")).toHaveValue(180));
     expect(screen.getByLabelText("Keep reports for (days)")).toHaveValue(null);
     expect(screen.getByRole("switch", { name: "Keep the baseline run" })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByText(/Dry run until .*2026; set MERIDIAN_PURGE_ENABLED to enforce\./)).toBeInTheDocument();
+    expect(screen.getByText(/Dry run until .*2026\. Ask your platform operator to turn on enforced purges\./)).toBeInTheDocument();
     expect(screen.getByText("Dry run restarts when the policy changes")).toBeInTheDocument();
     const grid = screen.getByRole("grid");
     expect(within(grid).getByText("Dry run")).toBeInTheDocument();

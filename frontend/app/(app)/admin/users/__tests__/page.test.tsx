@@ -9,6 +9,8 @@ import AdminUsersPage from "../page";
 
 const role = { can: () => true, loading: false };
 vi.mock("@/hooks/use-role", () => ({ useRole: () => role }));
+const auth = vi.hoisted(() => ({ user: { id: "me" } as { id: string } | null }));
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: auth.user }) }));
 
 const USER: User = {
   id: "u1", tenant_id: "t1", clerk_user_id: null, email: "ana@example.com", name: "Ana Steward",
@@ -50,6 +52,30 @@ describe("admin users page", () => {
     expect(screen.queryByRole("tab", { name: "Roles" })).toBeNull();
     const dialog = await screen.findByRole("dialog", { name: "Ana Steward" });
     expect(within(dialog).getByRole("link", { name: "Roles and access" })).toHaveAttribute("href", "/admin/roles?tab=users&user=u1");
+  });
+
+  it("locks role, Active and Remove on your own row, with the reason", async () => {
+    const ME: User = { ...USER, id: "me", name: "Me Admin", email: "me@example.com", role: "admin" };
+    vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [ME, USER] });
+    vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });
+    renderWithQuery(<AdminUsersPage />);
+    fireEvent.click(await screen.findByText("Me Admin"));
+    const dialog = await screen.findByRole("dialog", { name: "Me Admin" });
+    expect(within(dialog).getByText(/You can't change your own access/)).toBeInTheDocument();
+    expect(within(dialog).queryByRole("combobox")).toBeNull();
+    expect(within(dialog).getByRole("checkbox", { name: "Active" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: /Remove user/ })).toBeDisabled();
+  });
+
+  it("leaves another user's role, Active and Remove editable", async () => {
+    vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });
+    vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });
+    renderWithQuery(<AdminUsersPage />);
+    fireEvent.click(await screen.findByText("Ana Steward"));
+    const dialog = await screen.findByRole("dialog", { name: "Ana Steward" });
+    expect(within(dialog).queryByText(/You can't change your own access/)).toBeNull();
+    expect(within(dialog).getByRole("checkbox", { name: "Active" })).toBeEnabled();
+    expect(within(dialog).getByRole("button", { name: "Remove user" })).toBeEnabled();
   });
 
   it("shows a retryable error when users fail to load", async () => {
