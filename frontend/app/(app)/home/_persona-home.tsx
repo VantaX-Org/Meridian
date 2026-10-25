@@ -36,7 +36,8 @@ import {
 } from "@/lib/current-state";
 import { formatDate, formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
-import { hrefWithRun, runScopeLabel } from "@/lib/run-scope";
+import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
+import { reportFilename } from "@/lib/report-filename";
 import { StateScope } from "@/components/run-scope";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
@@ -502,7 +503,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
               {
                 format: "pdf",
                 label: pinned ? "Executive report (PDF)" : "Executive report, latest run (PDF)",
-                run: () => downloadAuthenticated(getExecutiveReportUrl(newest.id), `meridian-executive-${newest.label ?? newest.id}.pdf`),
+                run: () => downloadAuthenticated(getExecutiveReportUrl(newest.id), reportFilename("executive", runName(newest))),
               },
             ]}
           /></span>

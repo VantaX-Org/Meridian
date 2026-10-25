@@ -176,7 +176,7 @@ export function CurrentOverview() {
         ),
         stats: [
           { label: "Blocking findings", value: newest ? blocking : "—", hint: blocking ? "critical and high" : "none", tone: newest ? (blocking ? "no-go" : "go") : undefined, to: objectsHref({ readiness: "fail" }), versionId: newest?.id },
-          { label: "Objects not ready", value: newest ? notReady.length : "—", hint: `of ${rows.length}`, tone: newest ? (notReady.length ? "no-go" : "go") : undefined, to: objectsHref({ readiness: "fail" }), versionId: newest?.id },
+          { label: "Objects below target", value: newest ? notReady.length : "—", hint: `of ${rows.length}`, tone: newest ? (notReady.length ? "no-go" : "go") : undefined, to: objectsHref({ readiness: "fail" }), versionId: newest?.id },
           { label: "Worst object", value: worst?.composite_score != null ? worst.composite_score.toFixed(1) : "—", hint: worst?.label, to: worstHref },
           {
             label: "Auto-fixable records",

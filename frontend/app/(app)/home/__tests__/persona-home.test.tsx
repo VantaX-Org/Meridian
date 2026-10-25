@@ -326,7 +326,7 @@ describe("PersonaHomePage header actions (T20)", () => {
     await waitFor(() =>
       expect(downloadApi.downloadAuthenticated).toHaveBeenCalledWith(
         "/api/v1/reports/executive/v1.pdf",
-        "meridian-executive-Oct 8.pdf",
+        expect.stringMatching(/^Meridian executive report – Oct 8 – \d{4}-\d{2}-\d{2}\.pdf$/),
       ),
     );
   });
