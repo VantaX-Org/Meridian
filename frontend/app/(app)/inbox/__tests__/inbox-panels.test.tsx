@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as writeback from "@/lib/api/writeback";
 import * as issues from "@/lib/api/issues";
+import * as rules from "@/lib/api/rules";
 import * as users from "@/lib/api/users";
 import { ApprovalsPanel, IssuesPanel } from "../inbox-panels";
 
@@ -111,5 +112,27 @@ describe("IssuesPanel", () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith({ ids: ["1", "2"], assigned_to: "" }));
     fireEvent.click(within(bar).getByRole("button", { name: "Fixed in SAP" }));
     await waitFor(() => expect(update).toHaveBeenCalledWith({ ids: ["1", "2"], status: "resolved", resolution: "fixed_in_source" }));
+  });
+
+  it("titles the selected issue by its rule, opens its record and marks it fixed in SAP on its own", async () => {
+    vi.spyOn(rules, "getRules").mockResolvedValue({ rules: [{ id: "MM101", name: "Base unit is set" }], total: 1 } as never);
+    mount();
+    const update = vi.spyOn(issues, "updateIssues").mockResolvedValue({ updated: 1 });
+    const detail = await screen.findByRole("region", { name: "Selected item" });
+    expect(await within(detail).findByText("Base unit is set in Material master")).toBeInTheDocument();
+    expect(within(detail).getByText("MM101")).toBeInTheDocument();
+    expect(within(detail).getByRole("link", { name: "Open record" })).toHaveAttribute("href", "/objects/material_master/records/MATNR%3D1");
+    fireEvent.click(within(detail).getByRole("button", { name: "Fixed in SAP" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ ids: ["1"], status: "resolved", resolution: "fixed_in_source" }));
+  });
+
+  it("says how many issues are loaded and loads more, rather than capping the list silently", async () => {
+    const get = vi.spyOn(issues, "getIssues").mockResolvedValue({ total: 450, counts: { open: 450 }, items: [issue("1"), issue("2")] } as never);
+    vi.spyOn(issues, "getIssue").mockResolvedValue({ issue: issue("1"), events: [], runs: [] } as never);
+    vi.spyOn(users, "getAssignableUsers").mockResolvedValue([]);
+    renderWithQuery(<IssuesPanel />);
+    expect(await screen.findByText(/^2 of 450 issues loaded/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith(expect.objectContaining({ limit: 400 })));
   });
 });

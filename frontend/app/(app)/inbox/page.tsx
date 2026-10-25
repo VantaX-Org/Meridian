@@ -12,9 +12,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, ConfirmDialog, Drawer, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, emptyExportOptions, toast, type PillTone, Input, Mono, Status } from "@/design";
+import { Button, Card, ConfirmDialog, Drawer, ErrorState, ExplorerPage, Field, FilterChip, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, toast, type PillTone, Input, Mono, Status } from "@/design";
 import { ProposalCell, proposalOf } from "@/components/fix/proposal";
 import { Fact, Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
 import { ExceptionThread } from "@/components/inbox/exception-thread";
@@ -22,11 +22,14 @@ import { QuickFilters } from "@/components/inbox/quick-filters";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
-import { exportIssues } from "@/lib/api/issues";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { bulkTriage, getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { getAssignableUsers, getUsers } from "@/lib/api/users";
-import { getCleaningItem } from "@/lib/api/cleaning";
+import { getCleaningItem, type CleaningQueueItem } from "@/lib/api/cleaning";
+import { getContracts } from "@/lib/api/contracts";
+import { getGlossaryTerm } from "@/lib/api/glossary";
+import { getMasterRecord } from "@/lib/api/master-records";
+import { getReviewPair } from "@/lib/api/match-review";
 import { getException } from "@/lib/api/exceptions";
 import { getRules } from "@/lib/api/rules";
 import { getCostModel } from "@/lib/api/settings";
@@ -47,6 +50,7 @@ import { MODULE_LABELS, formatDate, formatInt, formatModuleName, formatMoney, la
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, IssuesPanel, SapMonitorPanel } from "./inbox-panels";
+import { EXC_PAGE, taskSourceLink } from "./task-source";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
@@ -213,6 +217,7 @@ export default function InboxPage() {
   const [ruleDraft, setRuleDraft] = useState({ name: "", description: "", rule_type: "field_condition", object_type: "", condition: "", severity: "medium" as Severity });
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const [limit, setLimit] = useState(PAGE);
+  const [excPages, setExcPages] = useState(1);
 
   const queues = useQueries({
     queries: LIVE.map((status) => ({
@@ -231,12 +236,18 @@ export default function InboxPage() {
   // People a task can be handed to; needs `assign`, and also names assignees for roles without `manage_users`.
   const assignableQ = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: canReassign, staleTime: 300_000 });
 
-  const excQ = useQuery({
-    queryKey: queryKeys.inbox({ kind: "exception", per_page: 100 }),
-    queryFn: () => getExceptions({ per_page: 100 }),
-    refetchInterval: 60_000,
-    enabled: isExceptions,
+  // The exceptions API pages at most 100 a call; "Load more" adds the next page.
+  const excPageQs = useQueries({
+    queries: Array.from({ length: excPages }, (_, i) => ({
+      queryKey: queryKeys.inbox({ kind: "exception", per_page: EXC_PAGE, page: i + 1 }),
+      queryFn: () => getExceptions({ per_page: EXC_PAGE, page: i + 1 }),
+      refetchInterval: 60_000,
+      enabled: isExceptions,
+    })),
   });
+  const excQ = excPageQs[0]!;
+  const excLoaded = useMemo(() => excPageQs.flatMap((q) => q.data?.exceptions ?? []), [excPageQs]);
+  const excTotal = excQ.data?.total ?? 0;
   const excMetricsQ = useQuery({ queryKey: queryKeys.exceptionMetrics(), queryFn: () => getExceptionMetrics(), enabled: isExceptions });
   const excRulesQ = useQuery({ queryKey: queryKeys.exceptionRules(), queryFn: getExceptionRules, enabled: isExceptions && rulesOpen });
 
@@ -300,12 +311,12 @@ export default function InboxPage() {
   }, [all, type, prio, view, when, search, now, who, matchesWho, matchesWhen, assigneeIds]);
 
   const excItems = useMemo(() => {
-    const excAll = excQ.data?.exceptions ?? [];
+    const excAll = excLoaded;
     const q = search.trim().toLowerCase();
     const rows = excAll.filter((e) => !q || [e.id, e.title, e.category, e.type, e.status, who(e.assigned_to)].some((v) => v.toLowerCase().includes(q)));
     const due = (e: Exception) => (e.sla_deadline ? Date.parse(e.sla_deadline) : NO_DUE);
     return [...rows].sort((a, b) => due(a) - due(b));
-  }, [excQ.data, search, who]);
+  }, [excLoaded, search, who]);
 
   // Clamped at read time (not in an effect) so a shrinking list never points past its last row.
   const rowCount = isExceptions ? excItems.length : items.length;
@@ -435,11 +446,14 @@ export default function InboxPage() {
     ? excAssign.isPending || excEscalate.isPending || excResolve.isPending
     : approve.isPending || reject.isPending || escalate.isPending || assign.isPending || release.isPending || reassign.isPending;
 
+  // Enter opens what the task points at: its id is a pair, golden record, proposal, exception, contract or term id,
+  // never an SAP record key, so the target follows the task type (a proposal opens its record by its key).
   const openRecord = useCallback((index: number) => {
     if (isExceptions) return; // exceptions have no object/record to open — the row carries its own detail.
     const t = items[index];
-    if (t) router.push(`/objects/${t.domain}/records/${encodeURIComponent(t.source_id)}`);
-  }, [isExceptions, items, router]);
+    if (!t) return;
+    void resolveTaskLink(qc, t).then((link) => { if (link) router.push(link.href); });
+  }, [isExceptions, items, router, qc]);
 
   // The keys belong to the task and exception workbenches only; the other tabs own their tables.
   const keysLive = kind === "task" || kind === "exception";
@@ -487,9 +501,9 @@ export default function InboxPage() {
     const sla = slaOf(t, now);
     return {
       id: t.id,
-      label: `${labelOf(t.item_type)} ${t.source_id}`,
+      label: `${labelOf(t.item_type)} in ${formatModuleName(t.domain)}, raised ${formatDate(t.created_at, "datetime")}`,
       title: <>{labelOf(t.item_type)} in {formatModuleName(t.domain)}</>,
-      meta: `${who(t.assigned_to)}, priority ${t.priority}, record ${t.source_id}, raised ${span(now - Date.parse(t.created_at))} ago`,
+      meta: `${who(t.assigned_to)}, priority ${t.priority}, raised ${span(now - Date.parse(t.created_at))} ago`,
       aside: <Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>,
       tone: SLA_BAR[sla.state],
     };
@@ -526,7 +540,6 @@ export default function InboxPage() {
   );
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.overdue;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
-  const exportOptions = [{ format: "xlsx" as const, label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }];
   // Counts belong to the tasks and exceptions lists; the other tabs load their own and say only what they are for.
   const counted = kind === "task" || kind === "exception";
   const header = (
@@ -537,7 +550,7 @@ export default function InboxPage() {
       actions={
         isExceptions
           ? canManageRules ? <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button> : undefined
-          : kind === "task" ? <ExportMenu options={items.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} /> : undefined
+          : undefined
       }
     />
   );
@@ -583,6 +596,11 @@ export default function InboxPage() {
           {!isExceptions && !isLoading && queueTotal > all.length && (
             <Notice action={<Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)}>Load more</Button>}>
               Newest {all.length.toLocaleString()} of {queueTotal.toLocaleString()} loaded
+            </Notice>
+          )}
+          {isExceptions && !excQ.isLoading && excTotal > excLoaded.length && (
+            <Notice action={<Button variant="secondary" disabled={excPageQs.some((q) => q.isFetching)} onClick={() => setExcPages((n) => n + 1)}>Load more</Button>}>
+              {excLoaded.length.toLocaleString()} of {excTotal.toLocaleString()} exceptions loaded
             </Notice>
           )}
           {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
@@ -842,40 +860,57 @@ export default function InboxPage() {
   );
 }
 
-/** What the task decides on, from the source it points at: the proposal (rule, field, current and proposed value) or the exception. */
-function TaskSource({ t }: { t: StewardshipQueueItem }) {
-  const proposal = useQuery({
-    queryKey: ["cleaning", "item", t.source_id],
+const proposalKey = (id: string) => ["cleaning", "item", id] as const;
+
+/** The cleaning proposal a write-back task approves; it carries the SAP record key the task itself does not. */
+function useProposal(t: StewardshipQueueItem) {
+  return useQuery({
+    queryKey: proposalKey(t.source_id),
     queryFn: () => getCleaningItem(t.source_id),
     enabled: t.item_type === "writeback_approval",
     retry: false,
     meta: { ignoreError: true },
   });
-  const exception = useQuery({
-    queryKey: ["exceptions", "detail", t.source_id],
-    queryFn: () => getException(t.source_id),
-    enabled: t.item_type === "exception",
-    retry: false,
-    meta: { ignoreError: true },
-  });
+}
+
+/** The link for Enter: a proposal is fetched (or read from the cache) first, for its record key. */
+async function resolveTaskLink(qc: QueryClient, t: StewardshipQueueItem) {
+  if (t.item_type !== "writeback_approval") return taskSourceLink(t, null);
+  const proposal = await qc.fetchQuery({ queryKey: proposalKey(t.source_id), queryFn: () => getCleaningItem(t.source_id), retry: false }).catch((): CleaningQueueItem | null => null);
+  return taskSourceLink(t, proposal);
+}
+
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+
+/** What the task decides on, from the source it points at: the proposal, the pair, the golden record, the exception, the contract or the term. */
+function TaskSource({ t }: { t: StewardshipQueueItem }) {
+  const proposal = useProposal(t);
+  const opts = { retry: false, meta: { ignoreError: true } } as const;
+  const exception = useQuery({ queryKey: ["exceptions", "detail", t.source_id], queryFn: () => getException(t.source_id), enabled: t.item_type === "exception", ...opts });
+  const pair = useQuery({ queryKey: ["mdm", "match-review", "pair", t.source_id], queryFn: () => getReviewPair(t.source_id), enabled: t.item_type === "merge_decision", ...opts });
+  const golden = useQuery({ queryKey: ["master-records", t.source_id], queryFn: () => getMasterRecord(t.source_id), enabled: t.item_type === "golden_record_review", ...opts });
+  const term = useQuery({ queryKey: ["glossary", "term", t.source_id], queryFn: () => getGlossaryTerm(t.source_id), enabled: t.item_type === "glossary_review", ...opts });
+  const contracts = useQuery({ queryKey: ["contracts", "active"], queryFn: () => getContracts("active"), enabled: t.item_type === "contract_breach", staleTime: 60_000, ...opts });
   const ruleId = proposal.data?.rule_id ?? null;
   const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), enabled: !!ruleId, staleTime: 300_000, meta: { ignoreError: true } });
+  const loading = [proposal, exception, pair, golden, term, contracts].some((q) => q.isLoading);
+  if (loading) return <Skeleton height={64} />;
+  const facts = (children: React.ReactNode) => (
+    <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]" data-testid="task-source">{children}</dl>
+  );
   if (t.item_type === "writeback_approval") {
-    if (proposal.isLoading) return <Skeleton height={64} />;
     if (!proposal.data) return null;
     const p = proposalOf(proposal.data);
     const name = ruleId ? rules.data?.rules.find((r) => r.id === ruleId)?.name : undefined;
-    return (
-      <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]" data-testid="task-source">
-        {ruleId ? <Fact label="Rule"><span className="inline-flex items-baseline gap-2"><Mono>{ruleId}</Mono>{name ? <span>{name}</span> : null}</span></Fact> : null}
-        {p?.field ? <Fact label="Field"><Mono>{p.field}</Mono></Fact> : null}
-        <Fact label="Current value">{p?.before ? <Mono>{p.before}</Mono> : "blank"}</Fact>
-        <Fact label="Proposed value"><ProposalCell proposal={p} /></Fact>
-      </dl>
-    );
+    return facts(<>
+      <Fact label="Record"><Mono>{proposal.data.record_key}</Mono></Fact>
+      {ruleId ? <Fact label="Rule"><span className="inline-flex items-baseline gap-2"><Mono>{ruleId}</Mono>{name ? <span>{name}</span> : null}</span></Fact> : null}
+      {p?.field ? <Fact label="Field"><Mono>{p.field}</Mono></Fact> : null}
+      <Fact label="Current value">{p?.before ? <Mono>{p.before}</Mono> : "blank"}</Fact>
+      <Fact label="Proposed value"><ProposalCell proposal={p} /></Fact>
+    </>);
   }
   if (t.item_type === "exception") {
-    if (exception.isLoading) return <Skeleton height={64} />;
     if (!exception.data) return null;
     return (
       <div className="flex flex-col gap-1" data-testid="task-source">
@@ -884,10 +919,49 @@ function TaskSource({ t }: { t: StewardshipQueueItem }) {
       </div>
     );
   }
+  if (t.item_type === "merge_decision") {
+    if (!pair.data) return null;
+    return facts(<>
+      <Fact label="Records"><span className="inline-flex flex-wrap items-baseline gap-2"><Mono>{pair.data.a}</Mono><span className="m-ink-3">and</span><Mono>{pair.data.b}</Mono></span></Fact>
+      <Fact label="Match score">{pct(pair.data.total)}</Fact>
+    </>);
+  }
   if (t.item_type === "golden_record_review") {
-    return <Link href={`/mdm/golden/${encodeURIComponent(t.source_id)}`} className="m-ink-accent m-text-body">Open the golden record</Link>;
+    if (!golden.data) return null;
+    return facts(<>
+      <Fact label="Record"><Mono>{golden.data.sap_object_key}</Mono></Fact>
+      <Fact label="Confidence">{pct(golden.data.overall_confidence)}</Fact>
+      <Fact label="Golden record status">{labelOf(golden.data.status)}</Fact>
+    </>);
+  }
+  if (t.item_type === "glossary_review") {
+    if (!term.data) return null;
+    return facts(<>
+      <Fact label="Term">{term.data.business_name}</Fact>
+      <Fact label="Field"><Mono>{`${term.data.sap_table}.${term.data.sap_field}`}</Mono></Fact>
+      <Fact label="Last reviewed">{term.data.last_reviewed_at ? formatDate(term.data.last_reviewed_at) : "Never"}</Fact>
+      <Fact label="Review every">{`${term.data.review_cycle_days.toLocaleString()} days`}</Fact>
+    </>);
+  }
+  if (t.item_type === "contract_breach") {
+    const c = contracts.data?.contracts.find((x) => x.id === t.source_id);
+    if (!c) return null;
+    return facts(<>
+      <Fact label="Contract">{c.name}</Fact>
+      <Fact label="Producer">{c.producer}</Fact>
+      <Fact label="Consumer">{c.consumer}</Fact>
+      <Fact label="Last checked">{c.last_checked ? relativeTime(c.last_checked) : "Not checked yet"}</Fact>
+    </>);
   }
   return null;
+}
+
+/** The one link out of a task, to the page that holds what it decides on. */
+function TaskOpen({ t }: { t: StewardshipQueueItem }) {
+  const proposal = useProposal(t);
+  const link = taskSourceLink(t, proposal.data ?? null);
+  if (!link) return null;
+  return <div><Button variant="secondary" render={<Link href={link.href} />}>{link.label}</Button></div>;
 }
 
 /** The selected task: what it is, where it stands against its SLA, the model's suggestion and the one decision. */
@@ -913,7 +987,6 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, canRel
     >
       <div className="flex flex-col gap-4">
         <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-          <Fact label="Record"><Mono>{t.source_id}</Mono></Fact>
           <Fact label="Object">{formatModuleName(t.domain)}</Fact>
           <Fact label="Priority">{priorityLabel(t.priority)}</Fact>
           <Fact label="Status"><Pill tone={STATUS_TONE[t.status]}>{labelOf(t.status)}</Pill></Fact>
@@ -926,12 +999,10 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, canRel
         {t.ai_recommendation ? (
           <p className="m-text-body m-ink-2">
             Meridian suggests: {labelOf(t.ai_recommendation)}
-            {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}. Check the record before you decide.
+            {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}. Check it before you decide.
           </p>
         ) : null}
-        <div>
-          <Button variant="secondary" render={<Link href={`/objects/${t.domain}/records/${encodeURIComponent(t.source_id)}`} />}>Open record</Button>
-        </div>
+        <TaskOpen t={t} />
       </div>
     </Card>
   );

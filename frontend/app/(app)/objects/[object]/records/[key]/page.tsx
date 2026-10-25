@@ -124,7 +124,9 @@ export default function RecordFixSheetPage() {
 
   const hasMissing = material.views.some((view) => view.cells.some((cell) => cell.state === "missing"));
   const failingRules = genericFindingsQuery.data?.failing ?? [];
-  const failing = isMaterial ? hasMissing : failingRules.length > 0;
+  // A material fails on a missing field or on any rule its findings report, whichever view it sits in.
+  const materialRules = new Set((findingsQuery.data?.by_view ?? []).flatMap((view) => view.failing.map((rule) => rule.check_id)));
+  const failing = isMaterial ? hasMissing || materialRules.size > 0 : failingRules.length > 0;
   const status: RecordStatus = failing ? { label: "failing", tone: "no-go" } : { label: "passing", tone: "go" };
   const fieldRows = Object.entries(material.mara ?? {}).filter(([, v]) => v != null && String(v).trim() !== "");
   // Every field of the sheet plus the fields the checks read, grouped by table, the failing ones highlighted.
@@ -152,6 +154,7 @@ export default function RecordFixSheetPage() {
       meta={<RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}/records/${encodeURIComponent(key)}`, search, id)} />}
       actions={<ExportMenu options={exportOptions} />}
       stats={isMaterial ? [
+        { label: "Failing rules", value: materialRules.size, tone: materialRules.size ? "no-go" : "go" },
         { label: "Missing fields", value: material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0), tone: hasMissing ? "no-go" : "go" },
         { label: "Views", value: material.views.length },
       ] : [
@@ -226,7 +229,7 @@ export default function RecordFixSheetPage() {
       <FieldSheet fields={sheet} />
 
       {isMaterial && (
-        <Card title="Findings">
+        <Card title="Failing rules">
           {findingsQuery.isError ? (
             <SectionError what="this record's findings" query={findingsQuery} />
           ) : findings && findings.by_view.some((view) => view.failing.length > 0) ? (
@@ -235,7 +238,7 @@ export default function RecordFixSheetPage() {
                 view.failing.map((rule) => (
                   <li key={`${view.view}-${rule.check_id}`} className="flex flex-wrap items-baseline gap-2">
                     <Status kind="severity" value={rule.severity} />
-                    <Mono>{rule.check_id}</Mono>
+                    <Link href={hrefWithRun(`/objects/${object}/rules/${encodeURIComponent(rule.check_id)}`, null, scope.explicit ?? null)} className="m-ink-accent"><Mono>{rule.check_id}</Mono></Link>
                     <span>{rule.message}</span>
                   </li>
                 )),

@@ -56,6 +56,25 @@ describe("RecordFixSheetPage", () => {
     expect(exports[0].closest("header")).not.toBeNull();
   });
 
+  it("reads a material that fails a rule as No-go even with every field filled, and links the rule", async () => {
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue(material);
+    vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({
+      matnr: "100001", version_id: "v1", rules_total: 1,
+      by_view: [{
+        view: "basic", label: "Basic data", rules: 1, passing_count: 0, not_evaluated: [],
+        failing: [{ check_id: "MM101", message: "Base unit is not allowed", severity: "critical", field: "MARA.MEINS", level: "client", actual_value: "XX", record_key: "100001", issue_id: null, issue_status: null, record_fix: null }],
+      }],
+    } as never);
+    vi.spyOn(materialsApi, "getMaterialSupersession").mockResolvedValue({ matnr: "100001", plants: [], bom_usage: null });
+    vi.spyOn(materialsApi, "getMaterialDuplicates").mockResolvedValue({ matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [] });
+    renderWithQuery(<RecordFixSheetPage />);
+    expect(await screen.findByText("Base unit is not allowed")).toBeInTheDocument();
+    expect(screen.getByText("No-go")).toBeInTheDocument();
+    expect(screen.queryByText(/^Go$/)).toBeNull();
+    expect(screen.getByText("Failing rules", { selector: "h2, h3, [class*=title]" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "MM101" })).toHaveAttribute("href", expect.stringContaining("/objects/material_master/rules/MM101"));
+  });
+
   it("shows any other object's record: its fields and the rules it fails, looked up by the whole key", async () => {
     routeParams = { object: "accounts_payable", key: encodeURIComponent("LIFNR=V9|BUKRS=2000") };
     const record = vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({
