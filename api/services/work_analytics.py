@@ -21,7 +21,9 @@ Days are UTC calendar days. Deterministic, no model.
 """
 from __future__ import annotations
 
+import functools
 import math
+import time
 from datetime import date, timedelta
 from typing import Any
 
@@ -49,6 +51,27 @@ ORG_UNITS: dict[str, str] = {
 }
 SOURCES = ("rule", "steward", "cleaning", "simulation", "manual")
 SEVERITIES = ("critical", "high", "medium", "low")
+
+# The scans over every record issue of a tenant (burn-down, recurrence, root causes) take about a second at
+# millions of issues. A lead's progress view does not need them to the second: each answer is kept for
+# CACHE_TTL_S per (tenant, arguments), in this process.
+CACHE_TTL_S = 300.0
+_cache: dict[tuple, tuple[float, dict]] = {}
+
+
+def _memo(fn):
+    @functools.wraps(fn)
+    async def wrapper(db, tenant_id, *args):
+        key = (fn.__name__, str(tenant_id), *map(str, args))
+        hit = _cache.get(key)
+        if hit and time.monotonic() - hit[0] < CACHE_TTL_S:
+            return hit[1]
+        out = await fn(db, tenant_id, *args)
+        if len(_cache) > 2000:
+            _cache.clear()
+        _cache[key] = (time.monotonic(), out)
+        return out
+    return wrapper
 
 _DAY = "((CAST({c} AS timestamptz) AT TIME ZONE 'UTC')::date)"
 _MOD = "(CAST(:m AS text) IS NULL OR {c} = CAST(:m AS text))"
@@ -119,6 +142,7 @@ def projection(open_now: int, open_then: int, today: date, days: int = PACE_DAYS
     return round(pace, 2), today + timedelta(days=math.ceil(open_now / pace))
 
 
+@_memo
 async def burndown(db: AsyncSession, tenant_id: Any, version_id: str | None, module: str | None) -> dict:
     today = await _today(db)
     start = today - timedelta(days=BURNDOWN_DAYS - 1)
@@ -279,6 +303,7 @@ _RECUR_SQL = f"""
 """
 
 
+@_memo
 async def recurrence(db: AsyncSession, tenant_id: Any, module: str | None) -> dict:
     rows = (await db.execute(text(_RECUR_SQL), _p(tenant_id, module))).fetchall()
     rate = lambda r: round(100.0 * r.reopened / r.issues, 1) if r.issues else 0.0
@@ -333,6 +358,7 @@ def _roots_sql(source: str) -> str:
     """
 
 
+@_memo
 async def root_causes(db: AsyncSession, tenant_id: Any, version_id: str | None, module: str | None) -> dict:
     if not version_id:
         return {"version_id": None, "source": None, "total_records": 0, "dimensions": []}

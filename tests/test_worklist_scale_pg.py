@@ -21,6 +21,8 @@ pytestmark = [pytest.mark.perf,
 N = int(os.environ.get("WORKLIST_SCALE", "2000000"))
 CHECKS = 40
 BUDGET_MS = 300
+ANALYTICS_BUDGET_MS = 500
+ANALYTICS_FIRST_MS = 3000  # a scan of every issue, cached for work_analytics.CACHE_TTL_S after
 HEADERS = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
 
 
@@ -89,13 +91,14 @@ async def test_every_worklist_read_is_fast_at_scale(seeded, monkeypatch):
     monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
     monkeypatch.setitem(app.dependency_overrides, get_tenant, lambda: Tenant(uuid.UUID(tid), "T", []))
     await api_deps.engine.dispose()
-    timings = {}
+    timings, budgets = {}, {}
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        async def timed(name, path, **params):
+        async def timed(name, path, budget=BUDGET_MS, **params):
             await client.get(path, params={"version_id": vid, **params}, headers=HEADERS)  # warm
             t0 = time.perf_counter()
             r = await client.get(path, params={"version_id": vid, **params}, headers=HEADERS)
             timings[name] = (time.perf_counter() - t0) * 1000
+            budgets[name] = budget
             assert r.status_code == 200, r.text
             return r.json()
 
@@ -109,6 +112,16 @@ async def test_every_worklist_read_is_fast_at_scale(seeded, monkeypatch):
         await timed("record panel", f"/api/v1/work/records/{first['items'][0]['module']}/{key}")
         await timed("search by key", "/api/v1/work/search", q=key)
         await timed("search by value", "/api/v1/work/search", q=key.split("=")[1].lstrip("0")[:6])
+        from api.services import work_analytics
+        work_analytics._cache.clear()
+        for name in ("burndown", "time-to-fix", "throughput", "recurrence", "root-causes", "proposal-quality", "run-change"):
+            path = f"/api/v1/work/analytics/{name}"
+            t0 = time.perf_counter()  # the first, uncached answer
+            r = await client.get(path, params={"version_id": vid}, headers=HEADERS)
+            assert r.status_code == 200, r.text
+            timings[f"analytics {name} (first)"] = (time.perf_counter() - t0) * 1000
+            budgets[f"analytics {name} (first)"] = ANALYTICS_FIRST_MS
+            await timed(f"analytics {name}", path, budget=ANALYTICS_BUDGET_MS)
     print("\n" + "\n".join(f"{k:24s} {v:7.0f} ms" for k, v in timings.items()))
-    slow = {k: round(v) for k, v in timings.items() if v > BUDGET_MS}
-    assert not slow, f"over {BUDGET_MS} ms: {slow}"
+    slow = {k: round(v) for k, v in timings.items() if v > budgets[k]}
+    assert not slow, f"over budget (ms): {slow}"

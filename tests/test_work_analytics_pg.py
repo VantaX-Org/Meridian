@@ -262,3 +262,12 @@ async def test_empty_tenant_answers_empty(owner, client_for):
         assert (await _get(client, "/proposal-quality"))["totals"]["proposed"] == 0
         ch = await _get(client, "/run-change")
         assert ch["previous"] is None and ch["objects"] == []
+
+
+@pytest.fixture(autouse=True)
+def _fresh_analytics_cache():
+    """Each test reads its own seeded data, never another test's cached answer."""
+    from api.services import work_analytics
+    work_analytics._cache.clear()
+    yield
+    work_analytics._cache.clear()
