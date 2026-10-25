@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Drawer, EmptyState, ErrorState, Input, Mono, Pager, Pill, Select, Skeleton, type PillTone } from "@/design";
+import { Button, Card, Choice, Drawer, EmptyState, ErrorState, Input, Mono, Pager, Pill, Select, Skeleton, type PillTone } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import {
   getConfigDeviation,
@@ -53,11 +53,9 @@ export function TablesTab({ id }: { id: string }) {
       <div className="flex items-center gap-2">
         <Input key={search} defaultValue={search} className="w-full" placeholder="Search table or description, then Enter" aria-label="Search tables"
           onKeyDown={(e) => { if (e.key === "Enter") { setSearch(e.currentTarget.value); setOffset(0); } }} />
-        <Button variant="secondary" aria-pressed={customerOnly}
-          className="shrink-0 aria-pressed:[color:var(--m-accent-ink)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[background:var(--m-accent-soft)]"
-          onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
+        <Choice pressed={customerOnly} className="shrink-0" onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
           Customer extensions only
-        </Button>
+        </Choice>
       </div>
       <p className={clsx(muted, "m-ink-2")}>The tables Meridian found in this system. Open one to compare its fields with SAP standard.</p>
       <QueryGate q={tablesQ} />
