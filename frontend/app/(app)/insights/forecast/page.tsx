@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, EmptyState, Line, Select, Status, statusLabel } from "@/design";
+import { Button, Card, DataTable, EmptyState, Line, Select, Status, statusLabel, type LineSeries } from "@/design";
 import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning, type PredictiveResponse } from "@/lib/api/analytics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
@@ -53,6 +53,68 @@ export function forecastEmptyDetail(d: Pick<PredictiveResponse, "reason" | "runs
   return "A forecast needs runs on three different days.";
 }
 
+/** The projected horizons in days, each with the history span the API needs before it projects that far. */
+export const HORIZONS = [
+  { days: 7, minSpan: 0 },
+  { days: 30, minSpan: 10 },
+  { days: 90, minSpan: 30 },
+] as const;
+type Horizon = (typeof HORIZONS)[number]["days"];
+
+/** One projected horizon of a forecast: the point and its 95% range, or null when the API left it out. */
+export function horizonOf(f: DqsForecast, days: Horizon): { days: Horizon; value: number; low: number; high: number } | null {
+  const value = f[`forecast_${days}d`];
+  if (value == null) return null;
+  return { days, value, low: f[`forecast_${days}d_low`] ?? value, high: f[`forecast_${days}d_high`] ?? value };
+}
+
+/** The furthest horizon the API projected (30 days at most: 90 days is too far to rank objects on). */
+export function headlineHorizon(f: DqsForecast) {
+  return horizonOf(f, 30) ?? horizonOf(f, 7);
+}
+
+/** A point on the days axis as words: "Today", "4 days ago", "In 30 days". */
+export function dayLabel(day: number): string {
+  const n = Math.round(Math.abs(day));
+  if (n === 0) return "Today";
+  return day < 0 ? `${plural(n, "day")} ago` : `In ${plural(n, "day")}`;
+}
+
+/**
+ * One object's line on a days axis: its daily scores before today (negative days), today's score at 0 and each
+ * projected horizon at its day count, so the slope reads true. With `band`, the 95% range fans out from today.
+ */
+export function forecastSeries(f: DqsForecast, band: boolean): LineSeries {
+  const past = (f.history ?? []).filter((h) => h.day < 0).map((h) => {
+    const x = Math.round(h.day * 10) / 10;
+    return { x, y: h.score, label: dayLabel(x) };
+  });
+  const ahead = HORIZONS.map((h) => horizonOf(f, h.days)).filter((h) => h !== null);
+  return {
+    name: formatModuleName(f.module_id),
+    data: [...past, { x: 0, y: f.current_score, label: dayLabel(0) }, ...ahead.map((h) => ({ x: h.days, y: h.value, label: dayLabel(h.days) }))],
+    band: band && ahead.length ? [{ x: 0, low: f.current_score, high: f.current_score }, ...ahead.map((h) => ({ x: h.days, low: h.low, high: h.high }))] : undefined,
+  };
+}
+
+/** Axis ticks: the earliest day any shown line starts on, today, and every horizon a shown line reaches. */
+export function forecastTicks(lines: readonly LineSeries[]): { x: number; label: string }[] {
+  const xs = lines.flatMap((sr) => sr.data.map((p) => Number(p.x)));
+  if (xs.length === 0) return [];
+  const first = Math.min(0, ...xs);
+  const ticks = new Set<number>([first, 0, ...HORIZONS.map((h) => h.days).filter((d) => xs.includes(d))]);
+  return [...ticks].sort((a, b) => a - b).map((x) => ({ x, label: dayLabel(x) }));
+}
+
+/** The sentence under the chart: each horizon with its range, why a horizon is missing, and what the fit saw. */
+export function forecastDetail(f: DqsForecast): string {
+  const shown = HORIZONS.map((h) => horizonOf(f, h.days)).filter((h) => h !== null);
+  const parts = shown.map((h) => `in ${h.days} days ${h.value} (range ${Math.round(h.low)}–${Math.round(h.high)})`);
+  const missing = HORIZONS.find((h) => horizonOf(f, h.days) === null);
+  const why = missing ? ` No ${missing.days}-day point: the runs span ${plural(f.span_days, "day")}, and ${missing.days} days needs ${missing.minSpan}.` : "";
+  return `${formatModuleName(f.module_id)}: ${trendWords(f.trend)}, ${parts.join("; ")}.${why} From ${plural(f.points, "run")} across ${plural(f.span_days, "day")}.`;
+}
+
 /**
  * The forecast reads every object's score history across all runs (`GET /analytics/predictive`), not one run, so
  * the header names what it saw ("Every object, 6 runs on 1 day") rather than a run.
@@ -72,38 +134,20 @@ export default function ForecastPage() {
     [forecasts, moduleId],
   );
 
-  const points = useMemo(
-    () =>
-      selected
-        ? [
-            { x: "Now", y: selected.current_score },
-            { x: "7 days", y: selected.forecast_7d },
-            { x: "30 days", y: selected.forecast_30d },
-            { x: "90 days", y: selected.forecast_90d },
-          ]
-        : [],
-    [selected],
-  );
-
-  // One line per module in data order, so a hue always means the same module; the ten series hues cap it.
+  // One line per module in data order, so a hue always means the same module; the ten series hues cap it. The
+  // selected object is isolated and carries the range band; the others stay behind it, dimmed.
   const series = useMemo(
-    () => (selected && forecasts.indexOf(selected) >= 10 ? [selected] : forecasts.slice(0, 10)).map((f) => ({
-      name: formatModuleName(f.module_id),
-      data: [
-        { x: "Now", y: f.current_score },
-        { x: "7 days", y: f.forecast_7d },
-        { x: "30 days", y: f.forecast_30d },
-        { x: "90 days", y: f.forecast_90d },
-      ],
-    })),
+    () => (selected && forecasts.indexOf(selected) >= 10 ? [selected] : forecasts.slice(0, 10)).map((f) => forecastSeries(f, f === selected)),
     [forecasts, selected],
   );
+  const ticks = useMemo(() => forecastTicks(series), [series]);
   const hidden = Math.max(0, forecasts.length - 10);
 
   const state = isLoading ? "loading" : isListFailure({ isError: !!error, error }) ? "error" : forecasts.length === 0 ? "empty" : undefined;
 
   const declining = forecasts.filter((f) => f.trend === "declining" || f.trend === "critical");
-  const worst = [...forecasts].sort((x, y) => x.forecast_30d - y.forecast_30d)[0];
+  const worst = [...forecasts].sort((x, y) => (headlineHorizon(x)?.value ?? x.current_score) - (headlineHorizon(y)?.value ?? y.current_score))[0];
+  const worstAt = worst ? headlineHorizon(worst) : null;
   const seen = data && typeof data.runs_seen === "number" ? `${plural(data.runs_seen, "run")} on ${plural(data.days_seen ?? 0, "day")}` : undefined;
 
   return (
@@ -114,7 +158,9 @@ export default function ForecastPage() {
       run={run}
       insight={{
         situation: {
-          sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d} in 30 days: ${statusLabel("verdict", forecastVerdict(worst, warnings))}` : "Not enough runs to forecast",
+          sentence: worst && worstAt
+            ? `${formatModuleName(worst.module_id)} is predicted at ${worstAt.value} in ${worstAt.days} days (range ${Math.round(worstAt.low)}–${Math.round(worstAt.high)}): ${statusLabel("verdict", forecastVerdict(worst, warnings))}`
+            : "Not enough runs to forecast",
           tone: declining.length ? "at-risk" : "go",
         },
         changed: { sentence: `${plural(declining.length, "object is", "objects are")} heading down` },
@@ -136,7 +182,7 @@ export default function ForecastPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <Card title="Predicted score" meta="Today's score and the expected score in 7, 30 and 90 days if nothing changes">
+      <Card title="Predicted score" meta="Daily scores so far and the expected score if nothing changes; the shaded band is the range it is likely to fall in">
         <div className="flex flex-col gap-3">
           {forecasts.length > 0 && (
             <Select
@@ -146,13 +192,23 @@ export default function ForecastPage() {
               options={forecasts.map((f) => ({ value: f.module_id, label: formatModuleName(f.module_id) }))}
             />
           )}
-          {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this object" detail="It needs runs on three different days." action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
+          {selected ? (
+            <Line
+              data={[]}
+              series={series}
+              numericX
+              xDomain={ticks}
+              highlight={formatModuleName(selected.module_id)}
+              annotations={[{ x: 0, label: "Projected" }]}
+              label="Predicted score by day"
+            />
+          ) : <EmptyState title="No forecast for this object" detail="It needs runs on three different days." action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
           {hidden > 0 && (
             <p className="m-text-meta m-ink-3">{`${plural(hidden, "more object")}, shown one at a time when selected above`}</p>
           )}
           {selected && (
             <p className="m-text-body m-ink-2">
-              {`${formatModuleName(selected.module_id)}: ${trendWords(selected.trend)}, ${selected.confidence}% confidence, from ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
+              {forecastDetail(selected)}
             </p>
           )}
         </div>

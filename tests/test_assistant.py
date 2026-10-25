@@ -351,6 +351,19 @@ def test_forecast_names_the_lowest_object_and_its_confidence():
     assert out["chart"] == "line"
 
 
+def test_forecast_speaks_to_the_7_day_point_when_the_api_leaves_30_days_out():
+    class ShortHistory(FakeSources):
+        async def forecast(self, module):
+            return {"runs_seen": 3, "days_seen": 3, "early_warnings": [], "forecasts": [
+                {"module_id": "fi_gl", "current_score": 90.0, "forecast_7d": 88.0, "forecast_30d": None,
+                 "forecast_90d": None, "trend": "declining", "confidence": 64, "points": 3, "span_days": 2.0},
+            ]}
+
+    out = ask("What will the score be in 30 days?", src=ShortHistory())
+    assert "is forecast at 88.0 in 7 days, from 90.0 now" in out["answer"]
+    assert [d["label"] for d in out["data"]] == ["Now", "7 days"]
+
+
 def test_progress_projects_the_finish_from_the_pace():
     out = ask("When will the open records be fixed?")
     assert out["answer"] == ("840 records are open to fix, and 210 were fixed in the last 7 days. "

@@ -731,19 +731,26 @@ async def _forecast(src: Sources, vid: Optional[str], m: Match) -> dict:
         return _answer("forecast", f"A forecast needs runs on three different days; the runs so far cover {days} "
                        f"{_plural(days, 'day')}.", vid, links=[link, {"label": "Open runs", "href": "/runs"}],
                        facts=[fact(f"Days with a run: {days}", "Forecast", link["href"], days)])
-    f = rows[0] if m.module else min(rows, key=lambda r: float(r.get("forecast_30d") or 0))
+    # The API leaves a horizon out (None) when the history is too short to project that far: speak to the
+    # furthest one it gives.
+    def furthest(r: dict) -> tuple[str, float]:
+        return ("30 days", float(r["forecast_30d"])) if r.get("forecast_30d") is not None else ("7 days", float(r["forecast_7d"]))
+    f = rows[0] if m.module else min(rows, key=lambda r: furthest(r)[1])
     name = module_name(str(f["module_id"]))
-    text = (f"{name} is forecast at {float(f['forecast_30d']):.1f} in 30 days, from {float(f['current_score']):.1f} now, "
+    when, value = furthest(f)
+    text = (f"{name} is forecast at {value:.1f} in {when}, from {float(f['current_score']):.1f} now, "
             f"with {float(f['confidence']):.0f}% confidence over {f.get('points')} {_plural(int(f.get('points') or 0), 'run')}.")
     if not m.module and len(rows) > 1:
         text += f" It is the lowest of {len(rows)} forecast objects."
-    facts = [fact(f"{name}: {float(f['current_score']):.1f} now, {float(f['forecast_7d']):.1f} in 7 days, "
-                  f"{float(f['forecast_30d']):.1f} in 30 days", "Forecast", link["href"], float(f["forecast_30d"])),
+    later = f", {value:.1f} in {when}" if when != "7 days" else ""
+    facts = [fact(f"{name}: {float(f['current_score']):.1f} now, {float(f['forecast_7d']):.1f} in 7 days{later}",
+                  "Forecast", link["href"], value),
              fact(f"Confidence {float(f['confidence']):.0f}% over {f.get('points')} runs", "Forecast", link["href"],
                   float(f["confidence"])),
              fact(f"Objects forecast: {len(rows)}", "Forecast", link["href"], len(rows))]
-    data = [{"label": "Now", "value": float(f["current_score"])}, {"label": "7 days", "value": float(f["forecast_7d"])},
-            {"label": "30 days", "value": float(f["forecast_30d"])}]
+    data = [{"label": "Now", "value": float(f["current_score"])}, {"label": "7 days", "value": float(f["forecast_7d"])}]
+    if when != "7 days":
+        data.append({"label": when, "value": value})
     return _answer("forecast", text, vid, data=data, chart="line", links=[link], facts=facts)
 
 
