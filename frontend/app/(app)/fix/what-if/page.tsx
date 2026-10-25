@@ -63,7 +63,7 @@ export default function WhatIfPage() {
         ghost: "chart",
         action: <Button render={<Link href="/runs">Open runs</Link>} />,
       }}
-      errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
+      errorProps={{ error: versions.error, onRetry: () => void versions.refetch() }}
       narrative={
         result && o && delta != null
           ? `Applying every fix would move the score from ${(o.before ?? 0).toFixed(1)} to ${(o.after ?? 0).toFixed(1)}, resolving ${result.findings.resolved.toLocaleString()} findings across ${result.records.resolved.toLocaleString()} records.`

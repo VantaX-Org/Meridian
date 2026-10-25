@@ -8,7 +8,7 @@ import { Button, DataTable, ExplorerPage, ExportMenu, FilterChip, PageHeader, St
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadCleaningExport, getCleaningGroups, type CleaningGroup } from "@/lib/api/cleaning";
 import { KindLabel, groupHref, kindText } from "@/components/fix/kind";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { HIGH_CONFIDENCE_LABEL } from "@/lib/api/remediation";
@@ -78,7 +78,7 @@ function CleaningQueueTab() {
         action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
       }}
       filterBar={module ? <FilterChip label="Object" value={formatModuleName(module)} onRemove={() => setModule("")} /> : undefined}
-      errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
+      errorProps={{ error: error, onRetry: refetch }}
       toolbarEnd={<ExportMenu options={rows.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       summary={data && rows.length > 0 ? (
         <div className="m-stat-grid @5xl:[grid-template-columns:repeat(2,minmax(0,360px))]">

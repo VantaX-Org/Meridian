@@ -71,14 +71,26 @@ describe("SearchPage", () => {
     expect(screen.getByText("Nothing matches")).toBeInTheDocument();
   });
 
-  it("shows the API error message and retries on click", async () => {
+  it("keeps the other sources' results when one fails, with a notice and Retry for that source", async () => {
     vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("rules service unavailable"));
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ id: "s1", name: "Business ECC", health_status: "healthy" } as SAPSystemExtended]);
 
     renderWithQuery(<SearchPage />);
-    await screen.findByText(/could not reach the server/i);
+    expect(await screen.findByText("Rules could not be searched")).toBeInTheDocument();
+    expect(await screen.findByText("Business ECC")).toBeInTheDocument();
+    expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument();
     const calls = (rulesApi.getRules as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((rulesApi.getRules as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+  });
+
+  it("shows loaded results while a slow source is still on its way", async () => {
+    vi.spyOn(rulesApi, "getRules").mockReturnValue(new Promise(() => {}));
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ id: "s1", name: "Business ECC", health_status: "healthy" } as SAPSystemExtended]);
+
+    renderWithQuery(<SearchPage />);
+    expect(await screen.findByText("Business ECC")).toBeInTheDocument();
+    expect(screen.getByText(/still searching rules/i)).toBeInTheDocument();
   });
 
   it("finds glossary terms", async () => {
@@ -119,7 +131,8 @@ describe("SearchPage", () => {
     expect(screen.getByText("System")).toBeInTheDocument();
     expect(screen.queryByText(/^Batch b1/)).toBeNull();
     expect(screen.getByRole("link", { name: "Open Business partner VAT fixes" })).toHaveAttribute("href", "/fix?tab=batches&batch=b1");
-    expect(screen.getByRole("link", { name: "Open Business procure to pay" })).toHaveAttribute("href", "/process/PTP?system=s1");
+    // Results render as each source answers: the processes (read after the systems) arrive last.
+    expect(await screen.findByRole("link", { name: "Open Business procure to pay" })).toHaveAttribute("href", "/process/PTP?system=s1");
     expect(screen.getByRole("link", { name: "Open Business procure to pay, 12 Oct 2026" })).toHaveAttribute("href", "/process/runs/pr1");
     expect(screen.getByRole("link", { name: "Open Business target model" })).toHaveAttribute("href", "/insights/process/designer?model=m1");
     expect(screen.getByText("Process model")).toBeInTheDocument();

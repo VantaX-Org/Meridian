@@ -115,8 +115,10 @@ export default function LineagePage() {
   const [direction, setDirection] = useState<LineageDirection>("both");
   const [depth, setDepth] = useState(4);
   const [selId, setSelId] = useState<string | null>(null);
-  const { latest } = useLatestVersion();
+  const { latest, error: latestError, refetch: refetchLatest } = useLatestVersion();
   const dayOne = useDayOne();
+  // No run because the run list (or the day-one sources) failed: an error, never "No lineage yet".
+  const noRunError = latest ? null : latestError ?? (dayOne.status === "error" ? dayOne.error : null);
 
   const modelQ = useQuery({ queryKey: queryKeys.lineageModel(), queryFn: getLineageModel });
   const impactQ = useQuery({
@@ -201,7 +203,7 @@ export default function LineagePage() {
   const purpose = PAGE_PURPOSE["/insights/lineage"];
   if (modelQ.isLoading) return <InsightFrame title="Lineage" purpose={purpose} state="loading" />;
   if (modelQ.error) {
-    return <InsightFrame title="Lineage" purpose={purpose} state="error" errorProps={{ message: apiErrorMessage(modelQ.error), onRetry: () => void modelQ.refetch() }} />;
+    return <InsightFrame title="Lineage" purpose={purpose} state="error" errorProps={{ error: modelQ.error, onRetry: () => void modelQ.refetch() }} />;
   }
   if (!modelQ.data) return <InsightFrame title="Lineage" purpose={purpose} state="empty" emptyProps={{ title: "The lineage map could not be read", detail: "The server sent no lineage map.", action: <Button onClick={() => void modelQ.refetch()}>Retry</Button> }} />;
   const model = modelQ.data;
@@ -262,6 +264,7 @@ export default function LineagePage() {
           <Async query={impactQ} skeleton={160} notFoundIsEmpty>{rows.length === 0 ? (
               latest
                 ? <EmptyState title="No failing rule reaches a KPI, process or feature" detail="The failing rules in this run touch nothing the lineage map links to." action={<Button render={<Link href={`/insights/rules?run=${encodeURIComponent(latest.id)}`}>Open failing rules</Link>} />} />
+                : noRunError ? <ErrorState {...apiErrorState(noRunError)} onRetry={() => { void refetchLatest(); dayOne.refetch(); }} />
                 : <EmptyState title="No lineage yet" detail={dayOne.step?.detail ?? "Impact needs a completed analysis."} action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
             )
             : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar height="auto" />}</Async>

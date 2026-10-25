@@ -7,7 +7,8 @@ import * as authoring from "@/lib/api/rule-authoring";
 import type { RuleDraft } from "@/lib/api/rules";
 import RuleDraftsPage from "../page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const perms = vi.hoisted(() => ({ manageRules: true }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => a !== "manage_rules" || perms.manageRules }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const DRAFT: RuleDraft = {
@@ -25,6 +26,20 @@ beforeEach(() => {
 });
 
 describe("rules drafts page", () => {
+  it("says drafts need manage_rules, and never reads them, for a user without it (e.g. review_ai_rules only)", async () => {
+    perms.manageRules = false;
+    const read = vi.spyOn(api, "getRuleDrafts").mockResolvedValue([]);
+    try {
+      renderWithQuery(<RuleDraftsPage />);
+      expect(await screen.findByText("Rule drafts need the manage-rules permission")).toBeInTheDocument();
+      expect(screen.getByText(/ask an administrator/i)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Back to rules" })).toHaveAttribute("href", "/rules");
+      expect(read).not.toHaveBeenCalled();
+    } finally {
+      perms.manageRules = true;
+    }
+  });
+
   it("shows the empty sentence when there are no drafts", async () => {
     vi.spyOn(api, "getRuleDrafts").mockResolvedValue([]);
     renderWithQuery(<RuleDraftsPage />);

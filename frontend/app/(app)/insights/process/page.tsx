@@ -341,6 +341,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
 
   if (loading) return <ViewSkeleton stats={4} />;
   if (versionsError) return <ErrorState {...apiErrorState(versionsError)} onRetry={() => void refetchVersions()} />;
+  if (!latest && dayOne.status === "error") return <ErrorState {...apiErrorState(dayOne.error)} onRetry={dayOne.refetch} />;
   if (!latest) {
     return <EmptyState title="No process readiness yet" detail={dayOne.step?.detail ?? "Readiness is read from the latest completed analysis. Sync a system and run an analysis."}
       action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />} />;
@@ -549,6 +550,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
 
   if (isLoading || dayOne.status === "loading") return <ViewSkeleton stats={4} />;
   if (error) return <ErrorState {...apiErrorState(error)} onRetry={() => void refetch()} />;
+  if (!latest && dayOne.status === "error") return <ErrorState {...apiErrorState(dayOne.error)} onRetry={dayOne.refetch} />;
   if (!latest) {
     return <EmptyState title="No process map yet"
       detail={dayOne.step?.detail ?? "The map is mined from a completed analysis."}

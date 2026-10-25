@@ -141,7 +141,7 @@ export default function NotificationsAdminPage() {
         summary={<p className="m-text-body m-ink-3">Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>. A board pack channel gets the board pack and the analyst workbook for the latest finished run: weekly on Monday mornings, or monthly on the 1st.</p>}
         state={asyncStateOf(q, () => items.length === 0, true)}
         emptyProps={{ title: "No alert channels", detail: "Add email, Slack, Teams or a webhook to send critical alerts and digests.", action: canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined }}
-        errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+        errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
         table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
       />
       <AddChannel open={adding} onOpenChange={setAdding} />

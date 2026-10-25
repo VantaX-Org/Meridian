@@ -7,11 +7,13 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Field, Input, ReportPage, Stat } from "@/design";
+import { Button, DataTable, EmptyState, Field, Input, ReportPage, Skeleton, Stat } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { getExceptionBilling } from "@/lib/api/exceptions";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { formatNumber } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { ExceptionBilling } from "@/types/api";
@@ -36,10 +38,13 @@ interface TierRow { tier: Tier; count: number; amount: number }
 
 export default function ExceptionBillingPage() {
   const [period, setPeriod] = useState(thisMonth);
+  const { can, loading } = useRole();
+  // GET /exceptions/billing needs manage_settings (api/routes/exceptions.py); without it the read would only answer 403.
+  const allowed = can("manage_settings");
   const q = useQuery({
     queryKey: queryKeys.exceptionBilling(period),
     queryFn: () => getExceptionBilling(period),
-    enabled: /^\d{4}-\d{2}$/.test(period),
+    enabled: allowed && /^\d{4}-\d{2}$/.test(period),
   });
   const b = q.data;
   const tierCount = (bb: ExceptionBilling, t: Tier) => bb[`tier${t}_count` as keyof ExceptionBilling] as number;
@@ -57,6 +62,17 @@ export default function ExceptionBillingPage() {
   else if (isListFailure(q)) state = "error";
   else if (!b) state = "empty";
 
+  if (loading) return <Skeleton height={240} />;
+  if (!allowed) {
+    return (
+      <EmptyState
+        title="Exception billing needs the manage-settings permission"
+        detail="Ask an administrator for the manage-settings permission to see what resolved exceptions cost."
+        ghost="table"
+        action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />}
+      />
+    );
+  }
   return (
     <ReportPage
       title="Exception billing"
@@ -86,7 +102,7 @@ export default function ExceptionBillingPage() {
       }
       state={state}
       emptyProps={{ title: "No billable exceptions this period", detail: "Try an earlier month, or check back after the next billing run.", action: <Button variant="secondary" onClick={() => setPeriod(thisMonth())}>Back to this month</Button> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => q.refetch() }}
     />
   );
 }

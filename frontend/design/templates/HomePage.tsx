@@ -7,7 +7,7 @@ import { Delta } from "../primitives/Delta";
 import { Score, type ScoreBands } from "../primitives/Score";
 import { PageHeader } from "../primitives/PageHeader";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
-import { Async, type AsyncState } from "../primitives/Async";
+import { Async, type AsyncError, type AsyncState } from "../primitives/Async";
 import { PageFrame } from "./PageFrame";
 import { JourneyStepper } from "./JourneyStepper";
 import type { DayOneStep } from "../../hooks/use-day-one";
@@ -91,7 +91,8 @@ export function HomePage({
   /** Header meta in the data state: what the page's numbers belong to ("As of ..." or "Current state of ..."). */
   scope?: ReactNode;
   journey?: HomeJourney;
-  error?: { message: string; onRetry: () => void };
+  /** The failed request as `error` (read through `apiErrorState`), or an explicit title and message; Retry runs `onRetry`. */
+  error?: AsyncError;
   /** Right of the score in the hero (5/12): the object map. */
   aside?: ReactNode;
   /** Under `aside` in the hero: the dimension bars, compact. */
@@ -131,7 +132,7 @@ export function HomePage({
 
       {/* Loading and error go through Async; empty (the journey) and ready are this template's own geometry. */}
       {(state === "error" || state === "loading") && (
-        <Async state={state} error={{ message: error?.message ?? "Could not reach the server.", onRetry: error?.onRetry }} skeleton={loadingSkeleton}>
+        <Async state={state} error={error ?? { error: undefined }} skeleton={loadingSkeleton}>
           {null}
         </Async>
       )}

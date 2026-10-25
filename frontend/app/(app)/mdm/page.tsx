@@ -14,7 +14,7 @@ import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { getQueueItems } from "@/lib/api/stewardship";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import type { StewardshipQueueItem, StewardshipStatus } from "@/types/api";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 
 /** The statuses the inbox counts as live work (inbox/page.tsx LIVE). */
 const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
@@ -107,7 +107,7 @@ export default function MdmOverviewPage() {
         action: <Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} />,
         ghost: "chart",
       }}
-      errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void dash.refetch(); void health.refetch(); } }}
+      errorProps={{ error: failed?.error, onRetry: () => { void dash.refetch(); void health.refetch(); } }}
       table={
         <section aria-label="Match work">
           <LedgerHead title="Match work" meta={total > items.length ? `${items.length.toLocaleString()} of ${total.toLocaleString()} waiting` : `${total.toLocaleString()} waiting`} action={<Link href="/inbox" className="m-text-meta m-ink-accent-ink hover:underline">Open inbox</Link>} />

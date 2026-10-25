@@ -190,3 +190,22 @@ describe("WaveCockpitPage empty states", () => {
     expect(screen.queryByRole("button", { name: "Run now" })).toBeNull();
   });
 });
+
+describe("WaveCockpitPage not found", () => {
+  beforeEach(() => { allowed = true; vi.restoreAllMocks(); search = new URLSearchParams(); });
+
+  it("says the wave is not found with a link back to migration on a 404", async () => {
+    vi.spyOn(migrationApi, "getWaveCockpit").mockRejectedValue(Object.assign(new Error("nf"), { isAxiosError: true, response: { status: 404, data: {} } }));
+    renderWithQuery(<WaveCockpitPage />);
+    expect(await screen.findByText("Wave not found")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to migration" })).toHaveAttribute("href", "/migration");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+
+  it("keeps the error with Retry for any other failure", async () => {
+    vi.spyOn(migrationApi, "getWaveCockpit").mockRejectedValue(Object.assign(new Error("x"), { isAxiosError: true, response: { status: 500, data: {} } }));
+    renderWithQuery(<WaveCockpitPage />);
+    expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+});

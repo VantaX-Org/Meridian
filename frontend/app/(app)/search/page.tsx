@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, ExportMenu, Field, Input, PageHeader, Pill, emptyExportOptions } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, Field, Input, Notice, PageHeader, Pill, emptyExportOptions } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { getGlossaryTerms } from "@/lib/api/glossary";
 import { exportFindings } from "@/lib/api/findings";
@@ -19,7 +19,7 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { useRunList } from "@/hooks/use-run-list";
 import { useRole } from "@/hooks/use-role";
 import { useVisibleNav } from "@/hooks/use-nav";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorState, isListFailure } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { flattenNav, resolveNavHref } from "@/lib/nav";
 import { runScopeLabel } from "@/lib/run-scope";
@@ -115,12 +115,43 @@ export default function SearchPage() {
   const exportOptions = [
     { format: "xlsx" as const, label: "Findings (.xlsx)", run: () => exportFindings("xlsx", { version_id: run || undefined }) },
   ];
-  const queries = [rules, glossary, systems, batches, objects, runs, processes, models];
-  const loading = queries.some((query) => query.isLoading);
-  const failedQuery = queries.find((query) => isListFailure(query));
-  const refetchAll = () => {
-    for (const query of queries) void query.refetch();
+  // Each source is searched on its own: a loaded source's results show while a slow one is still on its way, and a
+  // source that failed says so in its own notice with its own Retry instead of hiding everything else.
+  const sources = [
+    { name: "Rules", query: rules },
+    { name: "Glossary terms", query: glossary },
+    { name: "Systems", query: systems },
+    { name: "Batches", query: batches },
+    { name: "Objects", query: objects },
+    { name: "Runs", query: runs },
+    { name: "Processes", query: processes },
+    { name: "Process models", query: models },
+  ];
+  const pending = sources.filter((s) => s.query.isLoading);
+  const failed = sources.filter((s) => isListFailure(s.query));
+  // Only a search with nothing to show yet waits for a skeleton; every source failing is a page error.
+  const loading = results.length === 0 && pending.length > 0 && failed.length < sources.length;
+  const allFailed = failed.length === sources.length;
+  const refetchFailed = () => {
+    for (const s of failed) void s.query.refetch();
   };
+  const notices = !allFailed && (failed.length || (pending.length && results.length)) ? (
+    <div className="flex flex-col gap-2" data-testid="search-source-notices">
+      {failed.map((s) => (
+        <Notice
+          key={s.name}
+          tone="warning"
+          title={`${s.name} could not be searched`}
+          action={<Button variant="secondary" onClick={() => void s.query.refetch()}>Retry</Button>}
+        >
+          {apiErrorState(s.query.error).title}
+        </Notice>
+      ))}
+      {pending.length && results.length ? (
+        <Notice compact>{`Still searching ${pending.map((s) => s.name.toLowerCase()).join(", ")}`}</Notice>
+      ) : null}
+    </div>
+  ) : undefined;
 
   return (
     <ExplorerPage
@@ -173,15 +204,16 @@ export default function SearchPage() {
           onRowClick={(r) => router.push(r.href)}
         />
       }
-      state={loading ? "loading" : failedQuery ? "error" : !q || results.length === 0 ? "empty" : undefined}
+      strip={notices}
+      state={loading ? "loading" : allFailed ? "error" : !q || results.length === 0 ? "empty" : undefined}
       emptyProps={
         q
           ? { title: "Nothing matches", detail: `No results for "${q}". Search matches the names and ids of ${INDEXED.charAt(0).toLowerCase()}${INDEXED.slice(1)}.` }
           : { title: "Search pages, objects, rules and processes", detail: `Type a name or id. ${INDEXED} are indexed.`, ghost: "table" }
       }
       errorProps={{
-        message: apiErrorMessage(failedQuery?.error),
-        onRetry: refetchAll,
+        error: failed[0]?.query.error,
+        onRetry: refetchFailed,
       }}
     />
   );

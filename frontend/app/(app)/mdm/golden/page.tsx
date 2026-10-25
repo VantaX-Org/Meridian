@@ -10,7 +10,6 @@ import { Button, DataTable, type CellMeta, ExplorerPage, Field, Input, Mono, Pag
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { GoldenStatusPill } from "@/components/mdm/golden-status";
 import { getMasterRecords } from "@/lib/api/master-records";
-import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MasterRecordSummary } from "@/types/api";
@@ -132,7 +131,7 @@ export default function GoldenRecordsPage() {
           : { title: "No golden records yet", detail: "They are built when a match run groups the same record from your systems. Set the match rules first.", action: <Button render={<Link href="/mdm/match-rules">Open match rules</Link>} /> }
       }
       errorProps={{
-        message: apiErrorMessage(query.error),
+        error: query.error,
         onRetry: () => query.refetch(),
       }}
     />

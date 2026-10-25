@@ -607,7 +607,7 @@ export default function InboxPage() {
             }
           : { title: "No tasks match these filters", detail: "Show all tasks to see the rest of the queue", action: <Button variant="secondary" onClick={() => showAll(true)}>Show all</Button> }
       }
-      errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
+      errorProps={{ error: firstError, onRetry: refresh }}
       summary={
         <div className="flex flex-col gap-4">
           <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,240px))]">

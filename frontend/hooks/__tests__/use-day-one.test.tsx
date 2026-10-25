@@ -174,4 +174,28 @@ describe("useDayOne", () => {
     const { result } = renderHook(() => useDayOne(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe("error"));
   });
+
+  it("exposes the failed request and a refetch that reads all three sources again", async () => {
+    const boom = new Error("runs down");
+    getSystems.mockResolvedValue([system()]);
+    getConfigLandscape.mockResolvedValue(landscape());
+    getVersions.mockRejectedValue(boom);
+    const { result } = renderHook(() => useDayOne(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.error).toBe(boom);
+    const calls = [getSystems.mock.calls.length, getConfigLandscape.mock.calls.length, getVersions.mock.calls.length];
+    result.current.refetch();
+    await waitFor(() => {
+      expect(getSystems.mock.calls.length).toBeGreaterThan(calls[0]);
+      expect(getConfigLandscape.mock.calls.length).toBeGreaterThan(calls[1]);
+      expect(getVersions.mock.calls.length).toBeGreaterThan(calls[2]);
+    });
+  });
+
+  it("has no error once the sources answer", async () => {
+    getSystems.mockResolvedValue([system()]);
+    getConfigLandscape.mockResolvedValue(landscape());
+    getVersions.mockResolvedValue({ versions: [version("complete")] });
+    expect((await run()).error).toBeNull();
+  });
 });

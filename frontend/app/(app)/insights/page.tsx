@@ -51,7 +51,9 @@ export default function InsightsOverviewPage() {
 function RunOverview() {
   const router = useRouter();
   const dayOne = useDayOne();
-  const { run, module, runs, versions, resolving } = useInsightScope();
+  const { run, module, runs, versions, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  // No run to show because the run list (or the day-one sources) failed: an error, never "No insights yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const finding = useFindingOpener(run);
   const on = !!run;
   const scope = { version_id: run, module };
@@ -110,6 +112,7 @@ function RunOverview() {
   const ovFailed = isListFailure(ov);
   const state: "loading" | "empty" | "error" | undefined =
     resolving || dayOne.status === "loading" ? "loading"
+    : loadError ? "error"
     : !run || (ov.isSuccess && !o) ? "empty" : undefined;
   const loading = ov.isLoading;
   const fallback = (s: string) => (loading ? "Loading" : s);
@@ -179,6 +182,7 @@ function RunOverview() {
         ghost: "table",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
+      errorProps={{ error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
     >
       <div className="flex flex-col [gap:var(--m-section-gap)]" data-testid="insights-overview">
         {ovFailed && (

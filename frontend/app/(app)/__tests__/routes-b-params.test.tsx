@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(h.qs),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
-vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ status: "loading", step: null }), DayOneAction: () => null }));
+vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ status: "loading", step: null, error: null, refetch: () => {} }), DayOneAction: () => null }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1", role: "admin" } }) }));
 
 const calls: { url?: string; params?: unknown }[] = [];

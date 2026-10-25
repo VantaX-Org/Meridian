@@ -7,7 +7,6 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Button, Card, ExplorerPage, PageHeader, Select, Switch, NotificationRow, NOTIFICATION_TYPE_LABEL, useNotificationMutations, asyncStateOf } from "@/design";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { getNotifications, getUnreadCount } from "@/lib/api/notifications";
-import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { Notification, NotificationType } from "@/types/api";
 
@@ -55,7 +54,7 @@ export default function NotificationsPage() {
         action: filtering ? <Button variant="secondary" onClick={() => { setType(""); setUnread(""); }}>Clear filters</Button> : undefined,
         ghost: "table",
       }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <Card padding="sm">
           <ul>{items.map((n) => <NotificationRow key={n.id} n={n} showBody onOpen={onOpen} />)}</ul>

@@ -1,14 +1,15 @@
 "use client";
 
 /** One discovery run (process-discovery spec §7.3): stages, tables read, the failure and its retry. */
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, Status, useBreadcrumbTitle } from "@/design";
+import { Button, PageHeader, Card, DataTable, EmptyState, ErrorState, InsightHeader, Mono, Notice, Pill, Status, useBreadcrumbTitle } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { ACTIVE_RUN, getCatalogue, getRun, startRuns } from "@/lib/api/process-discovery";
-import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "../../_components/process-header";
@@ -62,6 +63,17 @@ export default function ProcessRunPage() {
 
   const runName = run.data ? catalogue.data?.find((c) => c.l1 === run.data!.l1)?.name ?? run.data.l1 : null;
   useBreadcrumbTitle(runName ? { label: `${runName} discovery run`, parent: { label: "Discovery runs", href: sysId ? `/process/runs?system=${encodeURIComponent(sysId)}` : "/process/runs" } } : null);
+  if (run.isError && isNotFound(run.error)) {
+    return (
+      <ProcessFrame>
+        <EmptyState
+          title="Discovery run not found"
+          detail="This run does not exist, or it was removed."
+          action={<Button render={<Link href={sysId ? `/process/runs?system=${encodeURIComponent(sysId)}` : "/process/runs"}>Back to discovery runs</Link>} />}
+        />
+      </ProcessFrame>
+    );
+  }
   if (run.isError) return <ProcessFrame><ErrorState {...apiErrorState(run.error)} onRetry={() => run.refetch()} /></ProcessFrame>;
   if (!run.data) return <ProcessFrame><PageHeader title="Discovery run" meta={processMeta(PROCESS_PURPOSE.run)} /><BodySkeleton rows={4} /></ProcessFrame>;
   const r = run.data;

@@ -13,7 +13,6 @@ import { useRole } from "@/hooks/use-role";
 import { JOBS_HISTORY_QUERY_KEY } from "@/hooks/use-jobs";
 import { getJobs } from "@/lib/api/jobs";
 import { formatDate, labelOf } from "@/lib/format";
-import { apiErrorMessage } from "@/lib/error";
 import { explainJobError } from "@/lib/job-error";
 import { TENANT_TIMEZONE_HREF, useTenantTimezone } from "@/lib/tenant-zone";
 import type { Job, JobKind, JobStatus } from "@/types/jobs";
@@ -123,7 +122,7 @@ export default function JobsPage() {
       ) : undefined}
       state={asyncStateOf(q, () => jobs.length === 0, true)}
       emptyProps={{ title: "No jobs have run yet", detail: "Extractions, analyses, uploads and simulations are listed here.", action: <Button render={<Link href="/import">Import data</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <DataTable
           columns={columns}

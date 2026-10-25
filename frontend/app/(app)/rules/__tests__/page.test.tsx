@@ -6,11 +6,15 @@ import * as rulesApi from "@/lib/api/rules";
 import type { Rule } from "@/lib/api/rules";
 import RulesPage from "../page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const h = vi.hoisted(() => ({
+  can: (() => true) as (action: string) => boolean,
+  dayOne: { status: "ready", step: null, error: null as unknown, refetch: () => {} },
+}));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => h.can(a) }) }));
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
 // mock it wholesale so the page renders without an auth provider.
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => h.dayOne,
   DayOneAction: () => null,
 }));
 // Stable instance across re-renders: useUrlState's sync effect depends on this
@@ -48,6 +52,45 @@ describe("rules page", () => {
     spy.mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
     retry.click();
     await waitFor(() => expect(screen.getByText("Vendor number is mandatory")).toBeInTheDocument());
+  });
+
+  it("shows \"—\" in the stats above a failed read, never zeros", async () => {
+    vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("network down"));
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    renderWithQuery(<RulesPage />);
+    await screen.findByText(/could not reach the server/i);
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText("0")).toBeNull();
+  });
+
+  it("sends only a manage_settings user to settings from an empty library", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [], total: 0, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    h.can = (a) => a !== "manage_settings";
+    try {
+      renderWithQuery(<RulesPage />);
+      expect(await screen.findByText("No rules loaded")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Open settings" })).toBeNull();
+      expect(screen.getByText(/ask an administrator to check HQ sync/i)).toBeInTheDocument();
+    } finally {
+      h.can = () => true;
+    }
+  });
+
+  it("treats a failed day-one read as unknown: coverage shows the error, not \"measured on a finished run\"", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    const refetch = vi.fn();
+    h.dayOne = { status: "error", step: null, error: Object.assign(new Error("x"), { isAxiosError: true, response: { status: 500, data: {} } }), refetch };
+    try {
+      renderWithQuery(<RulesPage />);
+      expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+      expect(screen.queryByText("Coverage is measured on a finished run")).toBeNull();
+      screen.getByRole("button", { name: "Retry" }).click();
+      expect(refetch).toHaveBeenCalled();
+    } finally {
+      h.dayOne = { status: "ready", step: null, error: null, refetch: () => {} };
+    }
   });
 
   it("narrows the list to a material master view once one is selected", async () => {

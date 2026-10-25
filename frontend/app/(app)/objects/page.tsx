@@ -13,7 +13,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { getVersion } from "@/lib/api/versions";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { criticalHighHref, stateObjects, stateScopeLine } from "@/lib/current-state";
 import { fixHref } from "@/lib/drill";
@@ -240,13 +240,14 @@ export default function ObjectsPage() {
 
   let state: "loading" | "empty" | "error" | undefined;
   let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = { title: "No objects in this run", ghost: "table" };
+  const anyRun = current ? !!newest : !!data?.run_id;
   if (isLoading || dayOne.status === "loading") {
     state = "loading";
-  } else if (isListFailure(query)) {
+  } else if (isListFailure(query) || (loaded && objects.length === 0 && !anyRun && dayOne.status === "error")) {
+    // The list, or (no run yet) the sources the first step is read from, failed: never "No objects measured yet".
     state = "error";
   } else if (loaded && objects.length === 0) {
     state = "empty";
-    const anyRun = current ? !!newest : !!data?.run_id;
     emptyProps = anyRun && outOfScope > 0
       ? {
           title: `${plural(outOfScope, "object")} ${current ? "measured" : "in this run"} ${outOfScope === 1 ? "is" : "are"} outside your access`,
@@ -385,8 +386,8 @@ export default function ObjectsPage() {
       state={state}
       emptyProps={emptyProps}
       errorProps={{
-        message: apiErrorMessage(query.error),
-        onRetry: refetch,
+        error: query.isError ? query.error : dayOne.error,
+        onRetry: () => { refetch(); if (dayOne.status === "error") dayOne.refetch(); },
       }}
     />
   );

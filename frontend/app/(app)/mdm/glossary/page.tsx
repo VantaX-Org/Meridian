@@ -160,7 +160,7 @@ export default function GlossaryPage() {
             : <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />,
       }}
       errorProps={{
-        message: apiErrorMessage(query.error),
+        error: query.error,
         onRetry: () => query.refetch(),
       }}
     />

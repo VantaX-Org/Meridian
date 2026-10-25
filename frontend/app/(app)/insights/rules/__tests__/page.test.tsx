@@ -9,7 +9,7 @@ import RulesPage from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: () => null,
 }));
 let query = "run=v1";
@@ -126,5 +126,23 @@ describe("RulesPage", () => {
     vi.spyOn(insightsApi, "getRuleRanking").mockRejectedValue(new Error("network error"));
     mount();
     expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
+  });
+});
+
+describe("RulesPage when the run list fails", () => {
+  it("shows the error with Retry, never \"No failing rules yet\"", async () => {
+    query = "";
+    try {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const list = vi.spyOn(versionsApi, "getVersions").mockRejectedValue(Object.assign(new Error("x"), { isAxiosError: true, response: { status: 503, data: {} } }));
+      render(<QueryClientProvider client={qc}><RulesPage /></QueryClientProvider>);
+      expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+      expect(screen.queryByText("No failing rules yet")).toBeNull();
+      const calls = list.mock.calls.length;
+      screen.getByRole("button", { name: "Retry" }).click();
+      await vi.waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(calls));
+    } finally {
+      query = "run=v1";
+    }
   });
 });

@@ -42,17 +42,30 @@ const NEEDS: Record<DayOneStep["key"], string | null> = {
  * layout and every "no run yet" empty
  * state's action link — so the journey is always the same journey.
  */
-export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayOneStep | null } {
+export interface DayOne {
+  /** "error" when the run list, the systems or the configuration landscape could not be read. */
+  status: "loading" | "error" | "ready";
+  step: DayOneStep | null;
+  /** The failed request when `status` is "error" (for `apiErrorState`), else null. */
+  error: unknown;
+  /** Reads the three sources again: the Retry of an error state built on this hook. */
+  refetch: () => void;
+}
+
+export function useDayOne(): DayOne {
   const { can } = useRole();
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
   const versionsQ = useQuery(runListQuery());
+  const refetch = () => { void versionsQ.refetch(); void systemsQ.refetch(); void landscapeQ.refetch(); };
+  const done = (status: DayOne["status"], step: DayOneStep | null): DayOne => ({ status, step, error: null, refetch });
 
   if (systemsQ.isLoading || landscapeQ.isLoading || versionsQ.isLoading) {
-    return { status: "loading", step: null };
+    return done("loading", null);
   }
-  if (isListFailure(systemsQ) || isListFailure(landscapeQ) || isListFailure(versionsQ)) {
-    return { status: "error", step: null };
+  const failed = [versionsQ, systemsQ, landscapeQ].find((q) => isListFailure(q));
+  if (failed) {
+    return { status: "error", step: null, error: failed.error, refetch };
   }
 
   const systems = systemsQ.data ?? [];
@@ -66,7 +79,7 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
   };
 
   if (versions.some((v) => FINISHED.has(v.status))) {
-    return { status: "ready", step: null };
+    return done("ready", null);
   }
 
   const running = versions
@@ -76,13 +89,13 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
   if (versions.some((v) => FAILED.has(v.status)) && running.length === 0) {
     const failed = versions.find((v) => FAILED.has(v.status))!;
     return {
-      status: "ready",
+      status: "ready", error: null, refetch,
       step: gate({ key: "failed", href: `/runs/${failed.id}`, label: "The last run failed", detail: "Open the run to see which step failed.", actionable: true, actionLabel: "Open the failed run" }),
     };
   }
   if (versions.length > 0 && newestRunning) {
     return {
-      status: "ready",
+      status: "ready", error: null, refetch,
       step: gate({ key: "running", href: `/runs/${newestRunning.id}`, label: "Analysis is running", detail: "Objects, findings and insights appear when it finishes.", actionable: true, actionLabel: "Open the job" }),
     };
   }
@@ -90,12 +103,12 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
     if (!can("manage_systems") && can("upload")) {
       // Connecting needs an administrator, but an import gets this user to a first score on their own.
       return {
-        status: "ready",
+        status: "ready", error: null, refetch,
         step: { key: "import", href: "/import", label: "Import a file", detail: "Import an SAP export to get a first score. Connecting a live system needs an administrator.", actionable: true },
       };
     }
     return {
-      status: "ready",
+      status: "ready", error: null, refetch,
       step: gate({
         key: "connect", href: "/systems?connect=1", label: "Connect a system", detail: "Add an SAP system, or import a file if you have an export.", actionable: true,
         secondary: can("upload") ? { label: "Import a file", href: "/import" } : undefined,
@@ -106,13 +119,13 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
   const unconfigured = systems.find((s) => CONFIG_MISSING.has(s.config_sync_status ?? ""));
   if (landscape && landscape.loaded === 0 && unconfigured) {
     return {
-      status: "ready",
+      status: "ready", error: null, refetch,
       step: gate({ key: "config", href: `/systems/${unconfigured.id}?tab=health&part=config`, label: "Load configuration", detail: `${unconfigured.name} has no configuration loaded yet. Configuration tells rules which checks apply to this system.`, actionable: true }),
     };
   }
   const unextracted = systems.find((s) => !s.last_sync_at) ?? systems[0]!;
   return {
-    status: "ready",
+    status: "ready", error: null, refetch,
     step: gate({ key: "extract", href: `/systems/${unextracted.id}?extract=1`, label: "Run an extraction", detail: `Nothing has been extracted from ${unextracted.name} yet. Extraction creates the first run and starts analysis.`, actionable: true }),
   };
 }

@@ -126,7 +126,7 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
               action: canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : <Button variant="secondary" onClick={() => router.push("/rules")}>Open rules</Button>,
             }
       }
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => q.refetch() }}
       drawer={
         <>
           <Drawer open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)} title={selected?.name ?? "Contract"}>

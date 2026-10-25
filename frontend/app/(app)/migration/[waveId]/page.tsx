@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Bar, Button, Card, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, PageHeader, Skeleton, Sparkline, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel, toVerdict } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
 import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, runWave, signoffWave,
 } from "@/lib/api/migration";
@@ -84,6 +84,15 @@ export default function WaveCockpitPage() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={88} />)}</div>
         <Skeleton height={240} />
       </div>
+    );
+  }
+  if (cockpit.isError && isNotFound(cockpit.error)) {
+    return (
+      <EmptyState
+        title="Wave not found"
+        detail="This wave does not exist, or it was deleted."
+        action={<Button render={<Link href="/migration">Back to migration</Link>} />}
+      />
     );
   }
   if (cockpit.isError)
