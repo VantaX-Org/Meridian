@@ -135,7 +135,7 @@ describe("FixWork", () => {
     renderWithQuery(<FixWork />);
     await screen.findAllByTestId("work-record");
     expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ severity: "blocking", status: "all", system: "S1" }));
-    expect(screen.getAllByText("Blocking (critical or high)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Critical and high").length).toBeGreaterThan(0);
     expect(screen.getByText("one source system")).toBeInTheDocument();
   });
 

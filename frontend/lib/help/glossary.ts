@@ -207,9 +207,9 @@ export const GLOSSARY = {
   },
   blocking_finding: {
     term: "Blocking finding",
-    short: "A critical or high finding: one that holds the score down or stops a load",
-    long: "Findings are ranked critical, high, medium and low. Critical and high findings are the blocking ones: critical failures cap the score and either kind can stop an object from loading into S/4HANA. Counts of blocking findings always open the rows behind them.",
-    href: "/objects",
+    short: "A failing rule that is critical, or that the S/4HANA readiness pack counts as blocking",
+    long: "A blocking finding stops a migration wave: the rule is critical (it caps the score), or the S/4HANA readiness pack marks it as blocking the load. Pages that count every critical and high finding say \"Critical and high findings\" instead. Counts of blocking findings open the readiness view behind them.",
+    href: "/insights/readiness",
   },
 } as const satisfies Record<string, GlossaryEntry>;
 

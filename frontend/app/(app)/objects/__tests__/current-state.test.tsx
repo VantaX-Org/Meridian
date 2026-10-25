@@ -75,7 +75,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     expect(screen.queryByText("Back to latest")).toBeNull();
     // the stats read the merged list: one not ready, one at risk, one go, 0 critical + 3 high blocking
     expect(screen.getAllByText("No-go").map((e) => e.closest("a")).find((a) => a?.getAttribute("href")?.includes("readiness=fail"))).toHaveAttribute("href", "/objects?readiness=fail");
-    expect(within(screen.getByText("Blocking findings").closest("a, div") as HTMLElement).getByText("3")).toBeInTheDocument();
+    expect(within(screen.getByText("Critical and high findings").closest("a, div") as HTMLElement).getByText("3")).toBeInTheDocument();
   });
 
   it("?readiness=fail keeps only the not-ready objects of the merged list", async () => {

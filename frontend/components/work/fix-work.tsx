@@ -21,7 +21,7 @@ import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 
 const PAGE = 50;
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
-const SEVERITY_LABEL: Record<string, string> = { blocking: "Blocking (critical or high)" };
+const SEVERITY_LABEL: Record<string, string> = { blocking: "Critical and high" };
 const STATUS_FILTERS = ["open", ...STATUS_ORDER, "all"] as const;
 const STATUS_FILTER_LABEL: Record<(typeof STATUS_FILTERS)[number], string> = {
   open: "Still open", all: "Every status", ...Object.fromEntries(STATUS_ORDER.map((s) => [s, STATUS[s].label])) as Record<(typeof STATUS_ORDER)[number], string>,

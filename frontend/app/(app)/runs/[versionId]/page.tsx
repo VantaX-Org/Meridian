@@ -318,8 +318,7 @@ function SummaryTab({
           <div className="m-stat-grid">
             {/* The findings list filters by one severity, so the two that block are two drills. */}
             <Stat
-              label="Blocking findings"
-              help="blocking_finding"
+              label="Critical and high findings"
               value={blocking.toLocaleString()}
               tone={blocking > 0 ? "no-go" : undefined}
               hint={

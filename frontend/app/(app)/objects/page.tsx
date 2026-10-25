@@ -310,7 +310,7 @@ export default function ObjectsPage() {
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
         <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="across all objects" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
-        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="critical or high rules" href={current ? undefined : fixHref({ run, sev: "blocking" })} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" href={fixHref({ run: current ? undefined : run })} />}
+        {blockingFindings != null ? <Stat label="Critical and high findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="failing rules" href={current ? undefined : fixHref({ run, sev: "blocking" })} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" href={fixHref({ run: current ? undefined : run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />
