@@ -6,7 +6,7 @@
  * from one of two sources: the match engine's scored pairs (default; uncertain ones first, each opened in a
  * drawer to merge, mark not a match or leave for later) or, with `?source=cleaning`, the cleaning engine's
  * duplicate candidates (compare and keep one record). `?object=<module>&record=<key>` keeps one record's pairs
- * in either source. With `?id` it compares one golden record field by field against every contributing source.
+ * in either source. With `?id` it lists one golden record's fields with the source system each value came from.
  */
 
 import { useMemo, useState } from "react";
@@ -20,12 +20,12 @@ import {
 } from "@/design";
 import { CleaningPairs, cleaningPairsKey } from "@/components/mdm/cleaning-pairs";
 import { LedgerHead, RowButton, actionColumn } from "@/components/mdm/ledger";
+import { sourceSystems } from "@/components/mdm/golden-status";
 import { BAND_LABEL, pct, whyMatched } from "@/components/mdm/match-review-model";
 import { PairReview, matchReviewKey } from "@/components/mdm/pair-review";
 import { useRole } from "@/hooks/use-role";
 import { getDedupCandidates } from "@/lib/api/cleaning";
 import { getMasterRecord } from "@/lib/api/master-records";
-import { setStewardOverrides } from "@/lib/api/merge-explain";
 import { bulkMergePairs, getReviewPairs, type ReviewPair, type ScoreBand } from "@/lib/api/match-review";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
@@ -266,16 +266,20 @@ function BulkMerge({ open, onOpenChange, domain, floor }: { open: boolean; onOpe
 
 /* ---------- One golden record against its sources ---------- */
 
+type SourceFieldRow = { field: string; value: unknown; system: string | null; confidence: number | null };
+
+const sourceFieldCols: ColumnDef<SourceFieldRow>[] = [
+  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
+  { id: "golden", header: "Golden value", accessorFn: (r) => (r.value == null ? "None" : String(r.value)) },
+  { id: "system", header: "Source system", cell: ({ row }) => (row.original.system ? <Mono>{row.original.system}</Mono> : <span className="m-ink-3">Not recorded</span>) },
+  { id: "conf", header: "Confidence", accessorFn: (r) => (r.confidence == null ? "None" : `${Math.round(r.confidence * 100)}%`) },
+];
+
+/** source_contributions is keyed by field (api/services/golden_record_engine.py): each entry is the surviving
+ * value, the one source system it came from and the survivorship confidence. The API keeps no other source's
+ * value, so the page shows where each golden value came from, not a source-by-source diff. */
 function CompareSources({ id }: { id: string }) {
-  const qc = useQueryClient();
-  const canResolve = useRole().can("approve");
   const query = useQuery({ queryKey: queryKeys.masterRecord(id), queryFn: () => getMasterRecord(id) });
-  // A steward's choice is recorded as an override on the golden record; the merge keeps it on the next build.
-  const useValue = useMutation({
-    mutationFn: ({ field, value }: { field: string; value: string }) => setStewardOverrides(id, { [field]: value }, "Chosen on the merge conflicts page"),
-    onSuccess: (_r, { field }) => { toast.success(`${field} now uses the chosen value`); void qc.invalidateQueries({ queryKey: queryKeys.masterRecord(id) }); },
-    onError: (e) => toast.error(apiErrorMessage(e)),
-  });
   if (query.isLoading) {
     return (
       <div className="flex flex-col gap-2">
@@ -297,40 +301,21 @@ function CompareSources({ id }: { id: string }) {
   }
 
   const fields = Object.entries(record.golden_fields);
-  const sources = Object.entries(record.source_contributions);
-  const rows = fields.map(([field, value]) => ({ field, value }));
-  const conflicts = rows.filter((r) => sources.some(([, s]) => s.value !== r.value)).length;
-  const cols: ColumnDef<{ field: string; value: unknown }>[] = [
-    { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
-    { id: "golden", header: "Golden value", accessorFn: (r) => (r.value == null ? "None" : String(r.value)) },
-    ...sources.map(([system, s]): ColumnDef<{ field: string; value: unknown }> => ({
-      id: `src-${system}`,
-      header: () => <Mono>{system}</Mono>,
-      cell: ({ row }) => {
-        const differs = s.value !== row.original.value;
-        return (
-          <span className={`inline-flex items-center gap-2 ${differs ? "m-ink-critical" : ""}`}>
-            {s.value == null ? "None" : String(s.value)} ({Math.round(s.confidence * 100)}%){differs ? " differs" : ""}
-            {differs && canResolve && s.value != null ? (
-              <Button variant="ghost" size="sm" disabled={useValue.isPending} onClick={() => useValue.mutate({ field: row.original.field, value: String(s.value) })}>
-                Use this value
-              </Button>
-            ) : null}
-          </span>
-        );
-      },
-    })),
-  ];
+  const rows: SourceFieldRow[] = fields.map(([field, value]) => {
+    const c = record.source_contributions[field];
+    return { field, value, system: c?.source_system ?? null, confidence: c?.confidence ?? null };
+  });
+  const systems = sourceSystems(record.source_contributions);
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title={`Merge conflicts for ${record.sap_object_key}`}
-        meta="Each field's golden value against every source that contributed it. A source that differs is marked in red."
+        title={`Sources of ${record.sap_object_key}`}
+        meta="Each golden field with the source system its value came from and how confident the survivorship rule was."
         actions={<Button variant="secondary" render={<Link href={`/mdm/golden/${record.id}`}>Back to record</Link>} />}
       />
-      <section aria-label="Field comparison">
-        <LedgerHead title="Field comparison" meta={`${fields.length.toLocaleString()} fields, ${conflicts.toLocaleString()} with a differing source`} />
+      <section aria-label="Field sources">
+        <LedgerHead title="Field sources" meta={`${fields.length.toLocaleString()} ${fields.length === 1 ? "field" : "fields"} from ${systems.length.toLocaleString()} source ${systems.length === 1 ? "system" : "systems"}`} />
         {fields.length === 0 ? (
           <EmptyState
             title="No golden fields to compare"
@@ -338,7 +323,7 @@ function CompareSources({ id }: { id: string }) {
             action={<Button variant="secondary" render={<Link href={`/mdm/golden/${record.id}`}>Back to record</Link>} />}
           />
         ) : (
-          <DataTable columns={cols} getRowId={(r) => r.field} data={rows} height="auto" />
+          <DataTable columns={sourceFieldCols} getRowId={(r) => r.field} data={rows} height="auto" />
         )}
       </section>
       <div>

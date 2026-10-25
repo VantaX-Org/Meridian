@@ -24,10 +24,11 @@ const record: MasterRecordDetail = {
   id: "m1",
   domain: "material_master",
   sap_object_key: "MARA-1000",
-  golden_fields: { MATKL: "FERT" },
+  golden_fields: { MATKL: "FERT", MAKTX: "Bolt" },
+  // Keyed by field, as api/services/golden_record_engine.py writes it.
   source_contributions: {
-    ECC: { value: "FERT", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.9 },
-    SF: { value: "HALB", source_system: "SF", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.4 },
+    MATKL: { value: "FERT", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.9 },
+    MAKTX: { value: "Bolt", source_system: "S4HANA_CLOUD", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.4 },
   },
   overall_confidence: 0.9,
   status: "golden",
@@ -135,10 +136,33 @@ describe("One review screen for both sources", () => {
     expect(await screen.findByRole("button", { name: "Match engine (7)" })).toHaveAttribute("aria-pressed", "false");
     expect(counts).toHaveBeenCalledWith(expect.objectContaining({ limit: 1 }));
     expect(screen.queryByRole("group", { name: "Score band" })).not.toBeInTheDocument();
+    // The object reads by its module name, not a title-cased id.
+    expect(await screen.findAllByText("Material master")).not.toHaveLength(0);
     fireEvent.click(await screen.findByText("7"));
     expect(await screen.findByText("Bolt M8")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Keep B" }));
+    // A merge has no undo route, so it asks first and nothing is sent until confirmed.
+    const dialog = await screen.findByRole("dialog", { name: /Keep record B/ });
+    expect(within(dialog).getByText(/cannot be undone/)).toBeInTheDocument();
+    expect(merge).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Merge" }));
     await waitFor(() => expect(merge).toHaveBeenCalledWith({ candidate_id: "d1", survivor_key: "7" }));
+  });
+
+  it("cancelling the keep confirmation merges nothing", async () => {
+    nav.params = new URLSearchParams({ source: "cleaning", object: "sd_customer_master" });
+    vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue(list);
+    vi.spyOn(cleaningApi, "getDedupCandidates").mockResolvedValue({ items: [{ ...candidate, object_type: "sd_customer_master" }], total: 1 });
+    vi.spyOn(cleaningApi, "getDedupPreview").mockResolvedValue({ merge_preview: {} });
+    const merge = vi.spyOn(cleaningApi, "mergeDedupCandidate");
+    renderWithQuery(<GoldenRecordMergePage />);
+    fireEvent.click(await screen.findByText("7"));
+    expect(await screen.findByText(/SD customer master, 90% match/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Keep A" }));
+    const dialog = await screen.findByRole("dialog", { name: /Keep record A/ });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep both" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /Keep record A/ })).not.toBeInTheDocument());
+    expect(merge).not.toHaveBeenCalled();
   });
 
   it("keeps one record's pairs in both sources, with a chip to clear it", async () => {
@@ -225,24 +249,24 @@ describe("Reviewing one pair", () => {
 });
 
 describe("Comparing one golden record against its sources", () => {
-  it("renders a field-by-field comparison with the differing source marked", async () => {
+  it("lists one row per field with its golden value, source system and confidence", async () => {
     nav.params = new URLSearchParams({ id: "m1" });
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
     renderWithQuery(<GoldenRecordMergePage />);
-    await waitFor(() => expect(screen.getByText(/MARA-1000/)).toBeInTheDocument());
-    expect(screen.getByText("MATKL")).toBeInTheDocument();
-    expect(screen.getByText(/HALB.*differs/)).toBeInTheDocument();
-    // The differing source offers its value; the agreeing one does not.
-    expect(screen.getAllByRole("button", { name: "Use this value" })).toHaveLength(1);
-  });
-
-  it("records a chosen value as a steward override", async () => {
-    nav.params = new URLSearchParams({ id: "m1" });
-    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
-    const override = vi.spyOn(mergeExplainApi, "setStewardOverrides").mockResolvedValue({ golden_record_id: "m1", event_id: "e1", golden_fields: {}, steward_overrides: {} });
-    renderWithQuery(<GoldenRecordMergePage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Use this value" }));
-    await waitFor(() => expect(override).toHaveBeenCalledWith("m1", { MATKL: "HALB" }, expect.any(String)));
+    await screen.findByRole("heading", { name: /Sources of MARA-1000/ });
+    expect(screen.getByText("2 fields from 2 source systems")).toBeInTheDocument();
+    const matkl = screen.getByText("MATKL").closest("tr");
+    expect(matkl).not.toBeNull();
+    expect(within(matkl as HTMLElement).getByText("FERT")).toBeInTheDocument();
+    expect(within(matkl as HTMLElement).getByText("ECC")).toBeInTheDocument();
+    expect(within(matkl as HTMLElement).getByText("90%")).toBeInTheDocument();
+    const maktx = screen.getByText("MAKTX").closest("tr") as HTMLElement;
+    expect(within(maktx).getByText("S4HANA_CLOUD")).toBeInTheDocument();
+    expect(within(maktx).getByText("40%")).toBeInTheDocument();
+    // Field names are never read as systems: no field-by-field grid of differing sources.
+    expect(screen.queryByRole("columnheader", { name: "MATKL" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/differs/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Use this value" })).not.toBeInTheDocument();
   });
 
   it("shows the API error message and retries on click", async () => {
