@@ -198,4 +198,22 @@ describe("InboxPage urgency and stacked filters", () => {
     expect(await within(bar).findByLabelText("Reassign to")).toBeInTheDocument();
     expect(bulk).not.toHaveBeenCalled();
   });
+
+  it("releases every ticked task from the bulk bar", async () => {
+    mount();
+    const assign = vi.spyOn(stewardship, "assignItem").mockResolvedValue({ id: "x", status: "open", assigned_to: null });
+    fireEvent.click(await screen.findByLabelText("Select all 3"));
+    const bar = await screen.findByTestId("inbox-bulk");
+    fireEvent.click(within(bar).getByRole("button", { name: "Release" }));
+    await waitFor(() => expect(assign).toHaveBeenCalledTimes(3));
+    expect(assign.mock.calls.every((c) => c[1] === null)).toBe(true);
+  });
+
+  it("releases the selected task from its detail when it has an owner", async () => {
+    mount();
+    const assign = vi.spyOn(stewardship, "assignItem").mockResolvedValue({ id: "late", status: "open", assigned_to: null });
+    const detail = await screen.findByRole("region", { name: "Selected item" });
+    fireEvent.click(within(detail).getByRole("button", { name: "Release" }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith("late", null));
+  });
 });

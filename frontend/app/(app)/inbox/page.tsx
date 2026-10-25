@@ -336,6 +336,13 @@ export default function InboxPage() {
     onSuccess: (r) => done("Claimed", r),
     onError: (e, _v, ctx) => rollback(ctx?.snap, `Not claimed: ${apiErrorMessage(e)}`),
   });
+  // Release: back to the unassigned pool (same `approve` guard as Claim); a claimed task reopens.
+  const release = useMutation({
+    onMutate: async (ids: string[]) => { setRollbackNote(null); return { snap: await patchQueue(ids, (t) => ({ ...t, assigned_to: null, status: t.status === "in_progress" ? "open" : t.status })) }; },
+    mutationFn: (ids: string[]) => each(ids, (id) => assignItem(id, null)),
+    onSuccess: (r) => done("Released", r),
+    onError: (e, _v, ctx) => rollback(ctx?.snap, `Not released: ${apiErrorMessage(e)}`),
+  });
   // Hand tasks to someone else in one call; the server records each change and restarts the SLA clock.
   const reassign = useMutation({
     onMutate: async ({ ids, userId }: { ids: string[]; userId: string }) => { setRollbackNote(null); return { snap: await patchQueue(ids, (t) => ({ ...t, assigned_to: userId })) }; },
@@ -363,7 +370,7 @@ export default function InboxPage() {
   });
   const busy = isExceptions
     ? excAssign.isPending || excEscalate.isPending || excResolve.isPending
-    : approve.isPending || reject.isPending || escalate.isPending || assign.isPending || reassign.isPending;
+    : approve.isPending || reject.isPending || escalate.isPending || assign.isPending || release.isPending || reassign.isPending;
 
   const openRecord = useCallback((index: number) => {
     if (isExceptions) return; // exceptions have no object/record to open — the row carries its own detail.
@@ -592,6 +599,7 @@ export default function InboxPage() {
             bulk={(ids) => (
               <>
                 {canApprove && user && <Button variant="secondary" size="sm" disabled={busy} onClick={() => assign.mutate({ ids, userId: user.id })}>Claim</Button>}
+                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => release.mutate(ids)}>Release</Button>}
                 {canReassign && people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={(userId) => reassign.mutate({ ids, userId })} />}
                 {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => approve.mutate(ids)}>Approve</Button>}
                 {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setRejectIds(ids)}>Reject with reason</Button>}
@@ -607,12 +615,14 @@ export default function InboxPage() {
                 busy={busy}
                 canApprove={canApprove}
                 canAssign={canApprove && !!user && selectedTask.assigned_to !== user.id}
+                canRelease={canApprove && !!selectedTask.assigned_to}
                 people={canReassign ? people : []}
                 onApprove={() => approve.mutate([selectedTask.id])}
                 onReject={() => setRejectIds([selectedTask.id])}
                 onEscalate={() => escalate.mutate([selectedTask.id])}
                 onAssign={() => user && assign.mutate({ ids: [selectedTask.id], userId: user.id })}
                 onReassign={(userId) => reassign.mutate({ ids: [selectedTask.id], userId })}
+                onRelease={() => release.mutate([selectedTask.id])}
               />
             ) : null}
           />
@@ -722,10 +732,10 @@ export default function InboxPage() {
 }
 
 /** The selected task: what it is, where it stands against its SLA, the model's suggestion and the one decision. */
-function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, people, onApprove, onReject, onEscalate, onAssign, onReassign }: {
-  t: StewardshipQueueItem; sla: Sla; now: number; assignee: string; busy: boolean; canApprove: boolean; canAssign: boolean;
+function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, canRelease, people, onApprove, onReject, onEscalate, onAssign, onRelease, onReassign }: {
+  t: StewardshipQueueItem; sla: Sla; now: number; assignee: string; busy: boolean; canApprove: boolean; canAssign: boolean; canRelease: boolean;
   people: { value: string; label: string }[];
-  onApprove: () => void; onReject: () => void; onEscalate: () => void; onAssign: () => void; onReassign: (userId: string) => void;
+  onApprove: () => void; onReject: () => void; onEscalate: () => void; onAssign: () => void; onRelease: () => void; onReassign: (userId: string) => void;
 }) {
   return (
     <Card
@@ -736,6 +746,7 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, people
           {canApprove && <Button variant="primary" disabled={busy} onClick={onApprove}>Approve</Button>}
           {canApprove && <Button variant="secondary" disabled={busy} onClick={onReject}>Reject</Button>}
           {canAssign && <Button variant="ghost" disabled={busy} onClick={onAssign}>Claim</Button>}
+          {canRelease && <Button variant="ghost" disabled={busy} onClick={onRelease}>Release</Button>}
           {people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={onReassign} />}
           <Button variant="ghost" disabled={busy || t.status === "escalated"} onClick={onEscalate}>Escalate</Button>
         </div>
