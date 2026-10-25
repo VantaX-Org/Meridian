@@ -7,6 +7,7 @@ import * as exceptions from "@/lib/api/exceptions";
 import * as glossary from "@/lib/api/glossary";
 import * as masterRecords from "@/lib/api/master-records";
 import * as matchReview from "@/lib/api/match-review";
+import * as rules from "@/lib/api/rules";
 import * as stewardship from "@/lib/api/stewardship";
 import * as triage from "@/lib/api/triage";
 import * as users from "@/lib/api/users";
@@ -358,6 +359,51 @@ describe("InboxPage task sources", () => {
     expect(within(detail).getByText("100001")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "Enter" });
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/objects/material_master/records/100001"));
+  });
+
+  it("confirms a single write-back approve, naming the field, value and record, before calling the API", async () => {
+    vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({
+      id: "cq1", object_type: "material_master", record_key: "100001", rule_id: null,
+      record_data_before: { MEINS: "XX" }, record_data_after: { MEINS: "EA" },
+    } as never);
+    const resolve = vi.spyOn(stewardship, "resolveItem").mockResolvedValue({ id: "t1", status: "resolved", action: "approve" });
+    const detail = await mountOne({ item_type: "writeback_approval", source_id: "cq1" });
+    await within(detail).findByText("100001");
+    fireEvent.click(within(detail).getByRole("button", { name: "Approve" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Approve this write-back?");
+    expect(dialog).toHaveTextContent("Writes EA into MEINS on 100001 in SAP, replacing XX");
+    expect(resolve).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep open" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(resolve).not.toHaveBeenCalled();
+    fireEvent.click(within(detail).getByRole("button", { name: "Approve" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Approve write-back" }));
+    await waitFor(() => expect(resolve).toHaveBeenCalledWith("t1", "approve"));
+  });
+
+  it("confirms a single merge approve, naming both records", async () => {
+    vi.spyOn(matchReview, "getReviewPair").mockResolvedValue({ id: "ms1", a: "BP=1001", b: "BP=1002", total: 0.91 } as never);
+    const resolve = vi.spyOn(stewardship, "resolveItem").mockResolvedValue({ id: "t1", status: "resolved", action: "approve" });
+    const detail = await mountOne({ item_type: "merge_decision", source_id: "ms1" });
+    await within(detail).findByText("BP=1001");
+    fireEvent.click(within(detail).getByRole("button", { name: "Approve" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Approve this merge?");
+    expect(dialog).toHaveTextContent("Merges BP=1001 and BP=1002 (match score 91%)");
+    expect(resolve).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve merge" }));
+    await waitFor(() => expect(resolve).toHaveBeenCalledWith("t1", "approve"));
+  });
+
+  it("shows a write-back's rule by its check id and message, linked to the rule, not by its row id", async () => {
+    vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({ id: "cq1", object_type: "material_master", record_key: "100001", rule_id: "6f1c-uuid", record_data_before: null, record_data_after: null } as never);
+    vi.spyOn(rules, "getRules").mockResolvedValue({ rules: [{ id: "6f1c-uuid", name: "MM101: Base unit is not allowed" }], total: 1, limit: 1000, offset: 0 } as never);
+    const detail = await mountOne({ item_type: "writeback_approval", source_id: "cq1" });
+    const link = await within(detail).findByRole("link", { name: "MM101" });
+    expect(link).toHaveAttribute("href", "/rules/6f1c-uuid");
+    expect(within(detail).getByText("Base unit is not allowed")).toBeInTheDocument();
+    expect(within(detail).queryByText("6f1c-uuid")).toBeNull();
   });
 
   it("shows the glossary term under review and opens it", async () => {
