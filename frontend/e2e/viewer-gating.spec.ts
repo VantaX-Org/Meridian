@@ -30,11 +30,9 @@ const PRIMARY = /^(approve|write back|sign off|extract( now)?)\b/i;
  * the pages hide them for viewers (the test then flips to an unexpected pass).
  */
 const KNOWN_GAPS: Record<string, string> = {
-  "/runs": "\"Run analysis\" link to the system page is not gated by can(\"analyse\")",
   "/insights": "the current-state overview's \"Cleansing opportunity\" funnel shows its \"Create remediation batch\" link (to /fix) for a viewer",
   "/insights/readiness": "\"Create wave\" link shows for a viewer",
   [`/runs/${RECORDED.businessPartnerRunId}`]: "\"Import file\" action in the single-run empty state shows for a viewer",
-  [`/systems/${RECORDED.systemId}`]: "the Objects tab's per-object \"Extract\" links show for a viewer (the Extract primary itself is disabled)",
 };
 
 test.describe("viewer gating", () => {
@@ -103,7 +101,8 @@ test.describe("viewer gating", () => {
 test("an admin sees the Test connection and Extract controls", async ({ app }) => {
   await app.goto(`/systems/${RECORDED.systemId}`, { waitUntil: "load" });
   await expect(app.getByRole("button", { name: "Test connection" })).toBeEnabled({ timeout: 20_000 });
-  const extract = app.getByRole("button", { name: "Extract", exact: true });
+  // The header primary; an empty object list repeats it as its own call to action.
+  const extract = app.getByRole("button", { name: "Extract", exact: true }).first();
   await expect(extract).toBeEnabled({ timeout: 20_000 });
   await extract.click();
   await expect(app.getByText("Extract objects into a new run")).toBeVisible();

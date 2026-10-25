@@ -57,7 +57,8 @@ function Cell({ label, cell, loading, hero, children }: { label: string; cell: I
   return (
     <div className="grid content-start gap-1 py-2 pl-3 pr-2 @5xl:min-h-9" style={{ borderLeft: `2px solid ${(hero ? HERO_TONE : TONE)[cell.tone ?? "neutral"]}` }}>
       <span className="m-text-meta shrink-0 font-medium" style={{ color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{label}</span>
-      {cell.href && !loading ? (
+      {/* Only words become a link: a cell still loading (a skeleton node) or empty stays plain text. */}
+      {cell.href && !loading && typeof cell.sentence === "string" && cell.sentence ? (
         <Link href={cell.href} className="m-text-body underline-offset-2 hover:underline" style={{ color: ink }}>{body}</Link>
       ) : (
         <span className="m-text-body" style={{ color: ink }}>{body}</span>

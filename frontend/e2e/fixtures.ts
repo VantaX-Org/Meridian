@@ -51,6 +51,20 @@ export const RECORDED = {
   vendorRunId: "65988d5a-0243-4f9b-bdff-52779e71c6ed",
 } as const;
 
+/**
+ * The Executive summary now reads the current state (`GET /insights/exec?scope=current`), which the recording
+ * predates. On this recording the current state is the latest run, so the recorded exec of that run answers it.
+ */
+async function mockCurrentStateExec(page: Page, har: string) {
+  const entry = (JSON.parse(fs.readFileSync(har, "utf8")) as { log: { entries: { request: { url: string }; response: { content: { text?: string; encoding?: string } } }[] } })
+    .log.entries.find((e) => e.request.url.includes(`/api/v1/insights/exec?version_id=${RECORDED.latestRunId}`));
+  if (!entry?.response.content.text) return;
+  const { text, encoding } = entry.response.content;
+  const body = encoding === "base64" ? Buffer.from(text, "base64").toString("utf8") : text;
+  await page.route(/\/api\/v1\/insights\/exec\?(.*&)?scope=current/, (r) =>
+    r.request().method() === "GET" ? r.fulfill({ status: 200, contentType: "application/json", body }) : r.fallback());
+}
+
 /** The recording is stored gzipped against http://localhost:3000; replay it on whatever origin the suite runs. */
 function harFor(origin: string): string {
   const out = path.join(__dirname, "..", "test-results", `api.${origin.replace(/\W+/g, "_")}.har`);
@@ -85,6 +99,7 @@ export const test = base.extend<{ app: Page }>({
     await mockGlossaryTerm(page);
     await mockWrites(page);
     await mockRoutes18c(page);
+    await mockCurrentStateExec(page, harFor(origin));
     await provide(page);
   },
 });

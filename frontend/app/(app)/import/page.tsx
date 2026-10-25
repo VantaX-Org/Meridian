@@ -256,7 +256,7 @@ export default function ImportPage() {
         )}
       </Card>
 
-      {systemsQ.data?.length ? (
+      {systemsQ.data?.length && can("trigger_sync") ? (
         <Notice>
           {systemsQ.data.length} SAP {systemsQ.data.length === 1 ? "system is" : "systems are"} connected. Extracting objects straight
           from a system keeps runs comparable run to run; file imports suit one-off assessments.{" "}

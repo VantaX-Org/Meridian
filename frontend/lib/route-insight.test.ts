@@ -39,7 +39,7 @@ describe("route insight", () => {
     expect(h.changed.sentence).toBe("Up 2.4 points since the last run.");
     expect(h.why.sentence).toMatch(/3 critical findings are capping the score/);
     expect(h.next.href).toBe("/objects/material_master?run=r1");
-    expect(h.next.sentence).toBe("Start with Material master: 61 findings, 2 of them critical.");
+    expect(h.next.sentence).toBe("Material master needs the most work: 61 findings, 2 of them critical.");
   });
   it("builds the Changed cell from the compare delta and links the compare view", () => {
     const h = buildInsight("runs", {

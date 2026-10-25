@@ -12,7 +12,7 @@ test("steward accepts a proposal and sees the batch", async ({ app }) => {
 
   // app/(app)/fix/page.tsx: one row per run and kind, with a Review link to the run's page.
   await app.getByRole("link", { name: "Review Fix LFA1.NAME1 from business_partner_100k" }).click();
-  await expect(app).toHaveURL(/\/fix\/B1\?kind=LFA1\.NAME1/);
+  await expect(app).toHaveURL(/\/fix\/proposals\/B1\?kind=LFA1\.NAME1/);
 
   // app/(app)/fix/[batchId]/page.tsx: per-row "Approve" button, fires approveCleaning.
   await app.getByRole("button", { name: "Approve", exact: true }).first().click();
