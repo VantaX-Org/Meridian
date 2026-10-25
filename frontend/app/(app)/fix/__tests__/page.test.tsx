@@ -73,6 +73,15 @@ describe("FixPage", () => {
     expect(screen.getByRole("link", { name: "Review Duplicate records from material_master_25k" })).toHaveAttribute("href", "/fix?tab=dedup");
   });
 
+  it("lists the match engine's review pairs, which carry no run, on an every-run page", async () => {
+    vi.mocked(getCleaningGroups).mockResolvedValue({
+      groups: [group({ version_id: null, kind: "match", object_type: "business_partner", run_label: null, run_at: null })],
+      records: 2, confident: 1, runs: 0,
+    });
+    renderWithQuery(<FixPage />);
+    expect(await screen.findByRole("link", { name: "Review Match review from Matching" })).toHaveAttribute("href", "/fix/all?kind=match");
+  });
+
   it("opens the run and rule on row click", async () => {
     vi.mocked(getCleaningGroups).mockResolvedValue({ groups: [group({})], records: 2, confident: 1, runs: 1 });
     renderWithQuery(<FixPage />);

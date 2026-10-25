@@ -15,7 +15,7 @@ import { BatchesTab } from "./batches-tab";
 import { DedupTab } from "./monitor-dedup-tabs";
 import { MonitorTab } from "./monitor-tab";
 
-const runLabel = (g: CleaningGroup) => g.run_label ?? (g.run_at ? formatDate(g.run_at, "datetime") : "Run");
+const runLabel = (g: CleaningGroup) => (g.version_id ? g.run_label ?? (g.run_at ? formatDate(g.run_at, "datetime") : "Run") : "Matching");
 
 const columns: ColumnDef<CleaningGroup>[] = [
   { id: "object", accessorFn: (r) => formatModuleName(r.object_type), header: "Object" },

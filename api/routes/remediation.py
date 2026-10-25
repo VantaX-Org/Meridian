@@ -140,8 +140,8 @@ async def create_batch_from_cleaning(
     _perm: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     """Draft batch from approved cleaning items. Still needs a second person's approval before export."""
-    if not body.ids and not body.version_id:
-        raise HTTPException(status_code=422, detail="Give the cleaning item ids or the run they came from.")
+    if not body.ids and not body.version_id and not body.kind:
+        raise HTTPException(status_code=422, detail="Give the cleaning item ids, the run they came from or their kind.")
     await _rls(db, tenant)
     where, p = "tenant_id = :tid AND status = 'approved'", {"tid": str(tenant.id)}
     if body.ids:

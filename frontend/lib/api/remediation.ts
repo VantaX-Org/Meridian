@@ -310,7 +310,7 @@ export async function createBatchFromSimulation(name: string, simulationId: stri
 }
 
 /** POST /api/v1/remediation/batches/from-cleaning: a draft batch from the approved proposals a run found, optionally of one kind. */
-export async function createBatchFromCleaning(name: string, scope: { version_id: string; kind?: string }): Promise<BatchFromSimulation> {
+export async function createBatchFromCleaning(name: string, scope: { version_id?: string; kind?: string }): Promise<BatchFromSimulation> {
   const { data } = await apiClient.post<BatchFromSimulation>("/api/v1/remediation/batches/from-cleaning", { name, ...scope });
   return data;
 }
