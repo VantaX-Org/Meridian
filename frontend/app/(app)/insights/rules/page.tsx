@@ -13,7 +13,9 @@ import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
 import { getCostModel } from "@/lib/api/settings";
 import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, plural } from "@/lib/format";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
+import { DrillCount } from "../_components/DrillCount";
 import { rulesFor80 } from "../_components/rulesFor80";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { ruleColumns } from "../_components/RuleColumns";
@@ -84,7 +86,14 @@ export default function RulesPage() {
   const rows = useMemo(() => (q.data?.rows ?? []).filter((r) => !field || r.field === field), [q.data, field]);
   const groups = useMemo(() => (axis === "rule" ? [] : groupBy(rows, axis)), [rows, axis]);
   const groupLabel = (key: string) => (axis === "module" ? formatModuleName(key) : axis === "field" ? key : labelOf(key));
-  const pareto = axis === "rule" ? rows.slice(0, 20).map((r) => ({ x: r.check_id, y: r.impact })) : groups.slice(0, 20).map((g) => ({ x: groupLabel(g.key), y: g.impact }));
+  /** A group's failing records in Fix work, where Fix work can filter by the axis (object or severity). */
+  const groupHref = (key: string): string | undefined =>
+    axis === "module" ? fixHref({ run, module: key }) : axis === "severity" && SEVERITIES.includes(key) ? fixHref({ run, module, sev: key }) : undefined;
+  const groupDrillLabel = (g: Group, count?: number) =>
+    axis === "module" ? drillLabel({ count, what: "failing records", module: g.key }) : drillLabel({ count, sev: g.key, what: "failing records", module });
+  const pareto = axis === "rule"
+    ? rows.slice(0, 20).map((r) => ({ x: r.check_id, y: r.impact, object: r.module, ruleId: r.check_id }))
+    : groups.slice(0, 20).map((g) => ({ x: groupLabel(g.key), y: g.impact, dimension: g.key }));
   const n80 = rulesFor80((axis === "rule" ? rows : groups).map((r) => r.impact));
   const setAxis = (next: Axis | null) => go({ axis: next && next !== "rule" ? next : undefined });
   const drill = (g: Group) => {
@@ -96,14 +105,20 @@ export default function RulesPage() {
     else go({ ...back, s4: g.key === "blocking" ? "yes" : undefined });
   };
   const groupColumns = useMemo<ColumnDef<Group>[]>(() => [
-    { accessorKey: "key", header: AXES.find((a) => a.value === axis)?.label ?? "Group", cell: ({ row }) => (axis === "field" ? <Mono>{row.original.key}</Mono> : groupLabel(row.original.key)) },
+    { accessorKey: "key", header: AXES.find((a) => a.value === axis)?.label ?? "Group", cell: ({ row }) => (
+      axis === "field" ? <Mono>{row.original.key}</Mono>
+        : <DrillCount href={groupHref(row.original.key)} label={groupDrillLabel(row.original)}>{groupLabel(row.original.key)}</DrillCount>
+    ) },
     { accessorKey: "rules", header: "Rules", meta: { numeric: true } },
-    { accessorKey: "affected", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
+    // Field, dimension and S/4 groups have no Fix work filter: their row narrows this page instead.
+    { accessorKey: "affected", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => (
+      <DrillCount href={groupHref(row.original.key)} count={row.original.affected} label={groupDrillLabel(row.original, row.original.affected)}>{row.original.affected.toLocaleString()}</DrillCount>
+    ) },
     { accessorKey: "impact", header: "Impact on score", meta: { numeric: true }, cell: ({ row }) => row.original.impact.toLocaleString() },
     { accessorKey: "autoFix", header: "Auto-fixable", meta: { numeric: true }, cell: ({ row }) => `${Math.round(row.original.autoFix)}%` },
     { accessorKey: "worst", header: "Worst severity", cell: ({ row }) => (row.original.worst ? <Status kind="severity" value={row.original.worst} variant="solid" /> : "—") },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [axis]);
+  ], [axis, run, module]);
   // Cost at risk is in the tenant currency (cost model); the column appears once any rule carries a cost.
   const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
   const currency = costModel.data?.currency;
@@ -117,8 +132,15 @@ export default function RulesPage() {
     } satisfies ColumnDef<RuleRow>] : []),
     {
       id: "records", header: "Records", enableSorting: false,
-      // The records tab of the object, pre-filtered to this rule.
-      cell: ({ row }) => <Link href={withScope(`/objects/${row.original.module}`, { tab: "records", run, check: row.original.check_id })} onClick={(e) => e.stopPropagation()} className="underline-offset-2 hover:underline">Open records</Link>,
+      // The rule's failing records in Fix work.
+      cell: ({ row }) => (
+        <Link
+          href={fixHref({ run, module: row.original.module, check: row.original.check_id })}
+          aria-label={drillLabel({ count: row.original.affected, what: "failing records", check: row.original.check_id, module: row.original.module })}
+          onClick={(e) => e.stopPropagation()}
+          className="underline-offset-2 hover:underline"
+        >Open records</Link>
+      ),
     },
   ], [run, hasCost, currency]);
 
@@ -182,7 +204,19 @@ export default function RulesPage() {
             : <DataTable columns={groupColumns} data={groups} getRowId={(g) => g.key} onRowClick={drill} dense />}
           {pareto.length > 0 && (
             <Card title={`Impact by ${axisInTitle}`} meta={axis === "rule" ? `${plural(n80, "rule accounts", "rules account")} for 80% of impact` : `${n80} of ${groups.length} ${n80 === 1 ? "accounts" : "account"} for 80% of impact`}>
-              <Pareto data={pareto} label={`Impact by ${axisInTitle}, top 20`} height={160} />
+              <Pareto
+                data={pareto}
+                label={`Impact by ${axisInTitle}, top 20`}
+                height={160}
+                onPointClick={(p) => {
+                  if (p.ruleId) { router.push(fixHref({ run, module: p.object, check: p.ruleId })); return; }
+                  const g = groups.find((x) => x.key === p.dimension);
+                  if (!g) return;
+                  const href = groupHref(g.key);
+                  if (href) router.push(href);
+                  else drill(g);
+                }}
+              />
             </Card>
           )}
         </>

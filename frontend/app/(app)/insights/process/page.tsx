@@ -29,6 +29,7 @@ import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph } from "@/lib/api/process-mining";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { formatModuleName, formatDate, plural, runOptionLabels } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
@@ -84,8 +85,11 @@ function RunsWithProcess({ exclude }: { exclude?: string }) {
   );
 }
 
-/** A rule's own page, for a check with no failing records to open in this run. */
-const ruleHref = (checkId: string) => `/rules/${encodeURIComponent(checkId)}`;
+/**
+ * The rule library at the rule's object, for a check with no finding to open in this run. `/rules/<id>` takes the
+ * rules row id, not a check id, so it is not a target here.
+ */
+const ruleHref = (module: string) => `/rules?${new URLSearchParams({ module })}`;
 
 const openLink = (label: string, href: string) => <Button variant="secondary" render={<Link href={href}>{label}</Link>} />;
 
@@ -161,7 +165,7 @@ function NotApplicableList({ title, t, findingHref }: {
         {shown.map((na) => (
           <li key={na.check_id} className="flex items-center gap-3">
             {na.severity ? <Status kind="severity" value={na.severity} /> : <Pill>Unrated</Pill>}
-            <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? ruleHref(na.check_id)}>
+            <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? ruleHref(na.module)}>
               <Mono>{na.check_id}</Mono>
             </Link>
             <span className="m-text-body m-ink-2">
@@ -179,9 +183,11 @@ function NotApplicableList({ title, t, findingHref }: {
   );
 }
 
-function RulesBlock({ title, t, findingHref, configuredIn }: {
+function RulesBlock({ title, t, findingHref, configuredIn, run }: {
   title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
   configuredIn?: ConfiguredIn[];
+  /** The run the tally scores, so a failing rule opens its records in that run. */
+  run?: string;
 }) {
   const failing = t.applicable - t.passes;
   return (
@@ -200,7 +206,11 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
           {t.top_failing.slice(0, 5).map((f) => (
             <li key={f.check_id} className="flex items-center gap-3">
               {f.severity ? <Status kind="severity" value={f.severity} /> : <Pill>Unrated</Pill>}
-              <Link className="flex-1 underline" href={findingHref(f.module, f.check_id) ?? ruleHref(f.check_id)}>
+              <Link
+                className="flex-1 underline"
+                href={fixHref({ run, module: f.module, check: f.check_id })}
+                aria-label={drillLabel({ count: f.affected_count, what: "failing records", check: f.check_id, module: f.module })}
+              >
                 <Mono>{f.check_id}</Mono>
               </Link>
               <span className="m-text-body">{records(f.affected_count)}</span>
@@ -431,9 +441,9 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
                 <Link href="/systems" className="m-ink-accent underline underline-offset-2">Open systems</Link>
               </p>
             ) : null}
-            <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} />
+            <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} run={latest?.id} />
             {awareL1.l2.map((l2) => (
-              <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} configuredIn={l2.configured_in} />
+              <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} configuredIn={l2.configured_in} run={latest?.id} />
             ))}
           </div>
         </Card>

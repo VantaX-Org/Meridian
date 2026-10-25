@@ -79,7 +79,7 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
   }
   const d = q.data;
   if (!d.failing_records) {
-    return <EmptyState title="No failing records stored for this rule" detail="This run kept no failing records for the rule, so there is nothing to follow." action={<Link href={`/rules/${encodeURIComponent(checkId)}`} className="underline-offset-2 hover:underline">Open the rule</Link>} />;
+    return <EmptyState title="No failing records stored for this rule" detail="This run kept no failing records for the rule, so there is nothing to follow." action={<Link href={`/insights/rules?${new URLSearchParams({ run: versionId })}`} className="underline-offset-2 hover:underline">Open failing rules</Link>} />;
   }
   return (
     <div className="flex flex-col gap-2">

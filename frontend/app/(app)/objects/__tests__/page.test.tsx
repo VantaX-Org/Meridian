@@ -148,7 +148,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("mm_bad")).toBeInTheDocument());
-    expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=mm_bad");
+    expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&issue=mm_bad");
     expect(screen.getByText("Blocking findings")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
@@ -199,7 +199,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(wrap).toHaveAttribute("title", "DDIC-ADR6-TYPE");
     expect(wrap).toHaveClass("block", "truncate", "whitespace-nowrap");
     expect(wrap?.getAttribute("style")).toBeNull();
-    expect(id.closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=DDIC-ADR6-TYPE");
+    expect(id.closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&issue=DDIC-ADR6-TYPE");
   });
 
   it("lists the ledger columns in order and closes each row with an Open link to its records to fix", async () => {
@@ -264,10 +264,10 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     const order = rowLabels().join("|");
     expect(order.indexOf("BBB")).toBeLessThan(order.indexOf("AAA"));
     expect(order.indexOf("AAA")).toBeLessThan(order.indexOf("CCC"));
-    expect(ledger().getByRole("link", { name: "2,400" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix");
-    expect(ledger().getByRole("link", { name: "900" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&sev=critical");
-    expect(ledger().getByRole("link", { name: "1,200" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&suggested=1");
-    expect(ledger().getByRole("link", { name: "7" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&due=overdue");
+    expect(ledger().getByRole("link", { name: "Open the 2,400 records to fix of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix");
+    expect(ledger().getByRole("link", { name: "Open the 900 critical records of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&sev=critical");
+    expect(ledger().getByRole("link", { name: "Open the 1,200 records with a suggestion of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&suggested=1");
+    expect(ledger().getByRole("link", { name: "Open the 7 overdue records of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&due=overdue");
   });
 
   it("leaves the work-list columns out when the run's work list is not built", async () => {

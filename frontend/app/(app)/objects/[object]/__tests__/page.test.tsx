@@ -461,7 +461,9 @@ describe("ObjectDetailPage keyboard and gating", () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("Records affected")).toBeInTheDocument();
     expect(screen.getAllByText("120").length).toBeGreaterThan(0);
-    expect(await screen.findByText(/1 failing checks, 120 affected records/)).toBeInTheDocument();
+    // Each header count opens what it counts.
+    expect((await screen.findByText("1 failing checks")).closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
+    expect(screen.getByText("120 affected records").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fix");
   });
 
   it("does not throw when composite_score is null and dimension_scores is empty", async () => {

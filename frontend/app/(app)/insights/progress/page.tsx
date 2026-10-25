@@ -7,11 +7,12 @@
  * Every number comes from /api/v1/work/analytics (SQL over the work already recorded).
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Card, DataTable, DrillLink, EmptyState, Funnel, Line, Mono, Pareto, Select, Status } from "@/design";
+import { Bar, Card, DataTable, EmptyState, Funnel, Line, Mono, Pareto, Select, Status } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getComparisonReportUrl, getWorkbookUrl } from "@/lib/api/reports";
@@ -20,8 +21,10 @@ import {
   type DecisionKind, type PersonThroughput, type ProposalSourceStat, type Recurrence, type RootCauseValue,
   type RunChangeObject, type TimeToFix, type Workload,
 } from "@/lib/api/work-analytics";
+import { drillLabel, fixHref as fixLink, type FixStatus } from "@/lib/drill";
 import { apiErrorMessage } from "@/lib/error";
 import { formatDate, formatModuleName, plural } from "@/lib/format";
+import { DrillCount } from "../_components/DrillCount";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -31,6 +34,8 @@ const PURPOSE = "How fast the data is getting fixed, and what is slowing it down
 const n = (x: number) => x.toLocaleString();
 const KINDS: DecisionKind[] = ["accept", "edit", "not_an_issue", "accept_risk", "approve"];
 const linkClass = "m-ink-accent underline-offset-2 hover:underline";
+/** The proposal funnel's stages and the work status each one lists. */
+const STAGE_STATUS: Record<string, FixStatus> = { Proposed: "proposed", Approved: "approved", "Sent to SAP": "sent", Fixed: "fixed" };
 
 type CheckFix = TimeToFix["by_check"][number];
 type CheckRecurrence = Recurrence["by_check"][number];
@@ -38,6 +43,7 @@ type SystemRecurrence = Recurrence["by_system"][number];
 
 export default function ProgressPage() {
   const dayOne = useDayOne();
+  const router = useRouter();
   const { run, module, resolving } = useInsightScope();
   const scope = { versionId: run, module };
   const key = (name: string) => ["work-analytics", name, run ?? null, module ?? null];
@@ -53,7 +59,9 @@ export default function ProgressPage() {
 
   const b = burn.data;
   const chart = useMemo(() => (b ? burndownChart(b) : null), [b]);
-  const fixHref = withScope("/fix", { run, module });
+  const fixHref = fixLink({ run, module });
+  /** Fix work for these records, in this page's run and object scope. */
+  const fix = useCallback((f: Parameters<typeof fixLink>[0] = {}) => fixLink({ run, module, ...f }), [run, module]);
   const runsHref = "/runs";
 
   // ── columns ────────────────────────────────────────────────────────────────
@@ -64,45 +72,70 @@ export default function ProgressPage() {
   ], []);
 
   const workloadColumns = useMemo<ColumnDef<Workload>[]>(() => [
-    { id: "who", header: "Assigned to", accessorFn: (r) => r.name ?? "Nobody yet", cell: ({ row }) => row.original.name ?? <span className="m-ink-3">Nobody yet</span> },
-    { accessorKey: "open", header: "Open", meta: { numeric: true }, cell: ({ row }) => n(row.original.open) },
-    { accessorKey: "critical", header: "Critical", meta: { numeric: true }, cell: ({ row }) => n(row.original.critical) },
-    { accessorKey: "overdue", header: "Overdue", meta: { numeric: true }, cell: ({ row }) => (row.original.overdue ? <span className="m-ink-critical">{n(row.original.overdue)}</span> : "0") },
-  ], []);
+    { id: "who", header: "Assigned to", accessorFn: (r) => r.name ?? "Nobody yet", cell: ({ row }) => {
+      const w = row.original;
+      if (!w.name) return <span className="m-ink-3">Nobody yet</span>;
+      return <DrillCount href={w.assignee_id ? fix({ assignee: w.assignee_id }) : undefined} label={`Open the records assigned to ${w.name}`}>{w.name}</DrillCount>;
+    } },
+    { accessorKey: "open", header: "Open", meta: { numeric: true }, cell: ({ row }) => {
+      const w = row.original;
+      return <DrillCount href={w.assignee_id ? fix({ assignee: w.assignee_id }) : undefined} count={w.open} label={`${drillLabel({ count: w.open, what: "open records" })} assigned to ${w.name ?? "this person"}`}>{n(w.open)}</DrillCount>;
+    } },
+    { accessorKey: "critical", header: "Critical", meta: { numeric: true }, cell: ({ row }) => {
+      const w = row.original;
+      return <DrillCount href={w.assignee_id ? fix({ assignee: w.assignee_id, sev: "critical" }) : undefined} count={w.critical} label={`${drillLabel({ count: w.critical, sev: "critical" })} assigned to ${w.name ?? "this person"}`}>{n(w.critical)}</DrillCount>;
+    } },
+    { accessorKey: "overdue", header: "Overdue", meta: { numeric: true }, cell: ({ row }) => {
+      const w = row.original;
+      if (!w.overdue) return "0";
+      return <DrillCount href={w.assignee_id ? fix({ assignee: w.assignee_id, due: "overdue" }) : undefined} label={`${drillLabel({ count: w.overdue, what: "overdue records" })} assigned to ${w.name ?? "this person"}`}><span className="m-ink-critical">{n(w.overdue)}</span></DrillCount>;
+    } },
+  ], [fix]);
 
   const ttfColumns = useMemo<ColumnDef<CheckFix>[]>(() => [
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module) },
-    { accessorKey: "fixed", header: "Fixed", meta: { numeric: true }, cell: ({ row }) => n(row.original.fixed) },
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id })} label={drillLabel({ what: "open records", check: row.original.check_id, module: row.original.module })}><Mono>{row.original.check_id}</Mono></DrillCount> },
+    { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), cell: ({ row }) => <DrillCount href={fix({ module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount> },
+    { accessorKey: "fixed", header: "Fixed", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id, st: "fixed" })} count={row.original.fixed} label={drillLabel({ what: "fixed records", check: row.original.check_id, module: row.original.module, of: "this run" })}>{n(row.original.fixed)}</DrillCount> },
     { accessorKey: "median_days", header: "Typical time", meta: { numeric: true }, cell: ({ row }) => daysText(row.original.median_days) },
     { accessorKey: "p90_days", header: "9 in 10 within", meta: { numeric: true }, cell: ({ row }) => daysText(row.original.p90_days) },
-  ], []);
+  ], [fix]);
 
   const recurColumns = useMemo<ColumnDef<CheckRecurrence>[]>(() => [
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), cell: ({ row }) => <DrillLink object={row.original.module} ruleId={row.original.check_id} run={run}>{formatModuleName(row.original.module)}</DrillLink> },
-    { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => n(row.original.reopened) },
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id })} label={drillLabel({ what: "open records", check: row.original.check_id, module: row.original.module })}><Mono>{row.original.check_id}</Mono></DrillCount> },
+    { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), cell: ({ row }) => <DrillCount href={fix({ module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount> },
+    { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id })} count={row.original.reopened} label={`${drillLabel({ what: "open records", check: row.original.check_id, module: row.original.module })}; ${n(row.original.reopened)} came back after a fix`}>{n(row.original.reopened)}</DrillCount> },
     { accessorKey: "issues", header: "Tracked", meta: { numeric: true }, cell: ({ row }) => n(row.original.issues) },
     { accessorKey: "rate_pct", header: "Rate", meta: { numeric: true }, cell: ({ row }) => pct(row.original.rate_pct) },
-  ], [run]);
+  ], [fix]);
 
   const systemColumns = useMemo<ColumnDef<SystemRecurrence>[]>(() => [
     { id: "name", header: "System", accessorFn: (r) => r.name ?? r.scope, cell: ({ row }) => row.original.name ?? <Mono>{row.original.scope}</Mono> },
-    { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => n(row.original.reopened) },
+    // Fix work has no system filter: the count opens this run's open records (one system per run).
+    { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix()} count={row.original.reopened} label={`Open the open records of this run, ${row.original.name ?? row.original.scope} included`}>{n(row.original.reopened)}</DrillCount> },
     { accessorKey: "issues", header: "Tracked", meta: { numeric: true }, cell: ({ row }) => n(row.original.issues) },
     { accessorKey: "rate_pct", header: "Rate", meta: { numeric: true }, cell: ({ row }) => pct(row.original.rate_pct) },
-  ], []);
+  ], [fix]);
 
-  const rootColumns = useMemo<ColumnDef<RootCauseValue>[]>(() => [
-    { accessorKey: "value", header: "Value", cell: ({ row }) => <Mono>{row.original.value}</Mono> },
-    { accessorKey: "records", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => n(row.original.records) },
-    { accessorKey: "open", header: "Still to fix", meta: { numeric: true }, cell: ({ row }) => n(row.original.open) },
-    { accessorKey: "critical", header: "Critical", meta: { numeric: true }, cell: ({ row }) => n(row.original.critical) },
-    { accessorKey: "share_pct", header: "Share of run", meta: { numeric: true }, cell: ({ row }) => pct(row.original.share_pct) },
-  ], []);
+  const [dim, setDim] = useState<string>("");
+  const dims = roots.data?.dimensions ?? [];
+  const activeDim = dims.find((d) => d.field === dim) ?? dims[0];
+  const field = activeDim?.field ?? "";
+  const rootColumns = useMemo<ColumnDef<RootCauseValue>[]>(() => {
+    const at = (v: string) => `${field} ${v}`;
+    return [
+      { accessorKey: "value", header: "Value", cell: ({ row }) => <DrillCount href={fix({ part: { field, value: row.original.value } })} label={drillLabel({ what: "open records", of: at(row.original.value) })}><Mono>{row.original.value}</Mono></DrillCount> },
+      { accessorKey: "records", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => n(row.original.records) },
+      { accessorKey: "open", header: "Still to fix", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ part: { field, value: row.original.value } })} count={row.original.open} label={drillLabel({ count: row.original.open, what: "open records", of: at(row.original.value) })}>{n(row.original.open)}</DrillCount> },
+      { accessorKey: "critical", header: "Critical", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ part: { field, value: row.original.value }, sev: "critical" })} count={row.original.critical} label={drillLabel({ sev: "critical", what: "open records", of: at(row.original.value) })}>{n(row.original.critical)}</DrillCount> },
+      { accessorKey: "share_pct", header: "Share of run", meta: { numeric: true }, cell: ({ row }) => pct(row.original.share_pct) },
+    ];
+  }, [field, fix]);
 
   const sourceColumns = useMemo<ColumnDef<ProposalSourceStat>[]>(() => [
-    { id: "source", header: "Where the value came from", accessorFn: (r) => sourceLabel(r.source) },
+    // Fix work has no filter by proposal source: cleaning proposals have their own tab, every other value waits for approval on Approvals and export.
+    { id: "source", header: "Where the value came from", accessorFn: (r) => sourceLabel(r.source), cell: ({ row }) => (
+      <DrillCount href={row.original.source === "cleaning" ? "/fix?tab=cleaning" : "/fix?tab=batches"} label={row.original.source === "cleaning" ? "Open the cleaning proposals" : `Open approvals and export for ${sourceLabel(row.original.source).toLowerCase()} values`}>{sourceLabel(row.original.source)}</DrillCount>
+    ) },
     { accessorKey: "proposed", header: "Proposed", meta: { numeric: true }, cell: ({ row }) => n(row.original.proposed) },
     { accessorKey: "approval_rate_pct", header: "Approved", meta: { numeric: true }, cell: ({ row }) => `${n(row.original.approved)} (${pct(row.original.approval_rate_pct)})` },
     { accessorKey: "exported", header: "Sent to SAP", meta: { numeric: true }, cell: ({ row }) => n(row.original.exported) },
@@ -112,12 +145,12 @@ export default function ProgressPage() {
   ], []);
 
   const changeColumns = useMemo<ColumnDef<RunChangeObject>[]>(() => [
-    { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), cell: ({ row }) => <DrillLink object={row.original.module} run={run}>{formatModuleName(row.original.module)}</DrillLink> },
-    { accessorKey: "new", header: "New", meta: { numeric: true }, cell: ({ row }) => (row.original.new ? <span className="m-ink-critical">{n(row.original.new)}</span> : "0") },
-    { accessorKey: "fixed", header: "Fixed", meta: { numeric: true }, cell: ({ row }) => n(row.original.fixed) },
-    { accessorKey: "still_failing", header: "Still failing", meta: { numeric: true }, cell: ({ row }) => n(row.original.still_failing) },
+    { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), cell: ({ row }) => <DrillCount href={fixLink({ run, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount> },
+    { accessorKey: "new", header: "New", meta: { numeric: true }, cell: ({ row }) => (row.original.new ? <DrillCount href={fixLink({ run, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module, of: "this run" })}><span className="m-ink-critical">{n(row.original.new)}</span></DrillCount> : "0") },
+    { accessorKey: "fixed", header: "Fixed", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fixLink({ run, module: row.original.module, st: "fixed" })} count={row.original.fixed} label={drillLabel({ count: row.original.fixed, what: "fixed records", module: row.original.module })}>{n(row.original.fixed)}</DrillCount> },
+    { accessorKey: "still_failing", header: "Still failing", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fixLink({ run, module: row.original.module })} count={row.original.still_failing} label={drillLabel({ what: "open records", module: row.original.module })}>{n(row.original.still_failing)}</DrillCount> },
     { accessorKey: "not_comparable_checks", header: "Rules not in both runs", meta: { numeric: true }, cell: ({ row }) => n(row.original.not_comparable_checks) },
-    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <Link href={withScope(`/objects/${row.original.module}`, { run })} className={linkClass}>Open</Link> },
+    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <Link href={withScope(`/objects/${row.original.module}`, { run })} className={linkClass} aria-label={`Open ${formatModuleName(row.original.module)}`}>Open</Link> },
   ], [run]);
 
   // ── the four sentences and the KPI strip ───────────────────────────────────
@@ -129,10 +162,6 @@ export default function ProgressPage() {
     : burn.isError ? "error" : neverRan ? "empty" : undefined;
   const openLabel = b?.open_records != null ? "Open records" : "Open issues";
   const openValue = b ? (b.open_records ?? b.open_now) : "—";
-
-  const [dim, setDim] = useState<string>("");
-  const dims = roots.data?.dimensions ?? [];
-  const activeDim = dims.find((d) => d.field === dim) ?? dims[0];
 
   return (
     <InsightFrame
@@ -149,13 +178,13 @@ export default function ProgressPage() {
         hero: true,
         stats: [
           { label: openLabel, value: openValue, hint: b && b.open_records != null ? `${n(b.open_now)} open issues` : undefined, to: fixHref },
-          { label: "Fixed this week", value: b?.fixed_7d ?? "—", tone: b?.fixed_7d ? "go" : undefined, hint: "Last 7 days", to: fixHref },
-          { label: "Median time to fix", value: overall ? daysText(overall.median_days) : "—", hint: overall?.fixed ? `Over ${plural(overall.fixed, "fix", "fixes")}` : undefined },
-          { label: "Projected finish", value: b?.projected_finish ? formatDate(b.projected_finish) : b && b.open_now === 0 ? "Done" : "No date yet", tone: b?.projected_finish ? "go" : b && b.open_now > 0 ? "at-risk" : undefined, hint: b ? `At the last ${b.pace_window_days} days' pace` : undefined },
+          { label: "Fixed this week", value: b?.fixed_7d ?? "—", tone: b?.fixed_7d ? "go" : undefined, hint: "Last 7 days", to: fix({ st: "fixed" }) },
+          { label: "Median time to fix", value: overall ? daysText(overall.median_days) : "—", hint: overall?.fixed ? `Over ${plural(overall.fixed, "fix", "fixes")}` : undefined, to: overall?.fixed ? "#time-to-fix" : undefined },
+          { label: "Projected finish", value: b?.projected_finish ? formatDate(b.projected_finish) : b && b.open_now === 0 ? "Done" : "No date yet", tone: b?.projected_finish ? "go" : b && b.open_now > 0 ? "at-risk" : undefined, hint: b ? `At the last ${b.pace_window_days} days' pace` : undefined, to: b ? "#burndown" : undefined },
         ],
         situation: { sentence: b ? (b.open_now ? `${plural(b.open_now, "issue")} open across ${b.open_records != null ? plural(b.open_records, "record") : "the tracked records"}` : "Nothing is open") : "—", tone: b && b.open_now === 0 ? "go" : undefined },
         changed: { sentence: b ? `${plural(b.fixed_7d, "issue")} fixed in the last 7 days; ${b.pace_per_day >= 0 ? `${b.pace_per_day.toLocaleString()} a day net closed` : `${Math.abs(b.pace_per_day).toLocaleString()} a day net added`} over ${b.pace_window_days} days` : "—" },
-        why: { sentence: slowest ? `${formatModuleName(slowest.module)} takes longest to fix: typically ${daysText(slowest.median_days)}` : "No fixes recorded yet, so no fix times", href: slowest ? withScope(`/objects/${slowest.module}`, { run }) : undefined },
+        why: { sentence: slowest ? `${formatModuleName(slowest.module)} takes longest to fix: typically ${daysText(slowest.median_days)}` : "No fixes recorded yet, so no fix times", href: slowest ? fix({ module: slowest.module }) : undefined },
         next: b && b.projected_finish
           ? { sentence: finishSentence(b), tone: "go", action: { label: "Open fix list", href: fixHref } }
           : { sentence: b ? finishSentence(b) : "—", tone: b && b.open_now > 0 ? "at-risk" : undefined, action: { label: "Open fix list", href: fixHref } },
@@ -170,6 +199,7 @@ export default function ProgressPage() {
       }}
       errorProps={{ message: apiErrorMessage(burn.error), onRetry: () => void burn.refetch() }}
     >
+      <div id="burndown" className="scroll-mt-24">
       <Card
         title="Burn-down"
         meta={b && chart ? `Open issues per day over the last 90 days, at most ${n(chart.peak)}. ${finishSentence(b)}` : undefined}
@@ -181,7 +211,7 @@ export default function ProgressPage() {
             {b.runs.length > 1 && (
               <div>
                 <p className="m-text-meta m-ink-3">Failing record checks in each run of this system</p>
-                <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: r.label || formatDate(r.run_at, "datetime") }))} height={Math.max(120, b.runs.length * 28)} label="Failing record checks per run" />
+                <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: r.label || formatDate(r.run_at, "datetime"), runId: r.version_id }))} height={Math.max(120, b.runs.length * 28)} label="Failing record checks per run" onPointClick={(p) => { if (p.runId) router.push(fixLink({ run: p.runId, module })); }} />
               </div>
             )}
           </div>
@@ -189,6 +219,7 @@ export default function ProgressPage() {
           <EmptyState variant="inline" title="No open issues in the last 90 days" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
         )}
       </Card>
+      </div>
 
       <Section title="Decisions by person" height={240} query={thr} meta={thr.data ? `${plural(thr.data.totals.total, "decision")} in the last ${thr.data.window_days} days` : undefined}>
         {thr.data && thr.data.people.length ? (
@@ -207,10 +238,11 @@ export default function ProgressPage() {
         )}
       </Section>
 
+      <div id="time-to-fix" className="scroll-mt-24">
       <Section title="Time to fix" height={240} query={ttf} meta={overall?.fixed ? `Typically ${daysText(overall.median_days)} from first seen to fixed; 9 in 10 within ${daysText(overall.p90_days)}. ${plural(overall.fixed, "fix", "fixes")} in the last ${ttf.data?.window_days ?? 180} days` : undefined}>
         {ttf.data && ttf.data.by_object.length ? (
           <div className="flex flex-col gap-4">
-            <Bar data={ttf.data.by_object.map((o) => ({ x: o.module, y: o.median_days ?? 0, label: formatModuleName(o.module) }))} height={Math.max(120, ttf.data.by_object.length * 32)} label="Typical days to fix per object" />
+            <Bar data={ttf.data.by_object.map((o) => ({ x: o.module, y: o.median_days ?? 0, label: formatModuleName(o.module), object: o.module }))} height={Math.max(120, ttf.data.by_object.length * 32)} label="Typical days to fix per object" onPointClick={(p) => { if (p.object) router.push(fix({ module: p.object })); }} />
             {ttf.data.by_severity.length > 0 && (
               <p className="m-text-body m-ink-2 flex flex-wrap items-center gap-3">
                 {ttf.data.by_severity.map((s) => (
@@ -224,6 +256,7 @@ export default function ProgressPage() {
           <EmptyState variant="inline" title="Nothing fixed yet" detail="Fix times appear once a run shows a record passing" action={<Link href={fixHref} className={linkClass}>Open fix list</Link>} />
         )}
       </Section>
+      </div>
 
       <Section title="Problems that come back" height={200} query={rec} meta={rec.data?.totals.reopened ? `${plural(rec.data.totals.reopened, "issue")} failed again after a fix: ${pct(rec.data.totals.rate_pct)} of ${n(rec.data.totals.issues)} tracked` : undefined}>
         {rec.data && rec.data.by_check.length ? (
@@ -245,7 +278,7 @@ export default function ProgressPage() {
       >
         {activeDim ? (
           <div className="flex flex-col gap-4">
-            <Pareto data={activeDim.top.map((v) => ({ x: v.value, y: v.records }))} label={`Failing records by ${activeDim.label.toLowerCase()}`} />
+            <Pareto data={activeDim.top.map((v) => ({ x: v.value, y: v.records }))} label={`Failing records by ${activeDim.label.toLowerCase()}`} onPointClick={(p) => router.push(fix({ part: { field: activeDim.field, value: String(p.x) } }))} />
             <p className="m-text-meta m-ink-3">Read from the record key: <Mono>{activeDim.field}</Mono></p>
             <DataTable columns={rootColumns} data={activeDim.top} getRowId={(r) => r.value} hideToolbar dense height="auto" />
           </div>
@@ -262,7 +295,7 @@ export default function ProgressPage() {
               { label: "Approved", value: prop.data.totals.approved },
               { label: "Sent to SAP", value: prop.data.totals.exported },
               { label: "Fixed", value: prop.data.totals.fixed },
-            ]} />
+            ]} onStageClick={(stage) => { const st = STAGE_STATUS[stage.label]; if (st) router.push(fix({ st })); }} />
             <DataTable columns={sourceColumns} data={prop.data.sources.filter((s) => s.proposed || s.fixed || s.still_failing)} getRowId={(r) => r.source} hideToolbar dense height="auto" />
           </div>
         ) : (

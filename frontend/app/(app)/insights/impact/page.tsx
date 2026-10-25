@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat, Status } from "@/design";
+import { Button, chartSummary, DataTable, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat, Status } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -19,25 +19,29 @@ import {
 } from "@/lib/api/insights";
 import { domainOf } from "@/design/tokens";
 import { getCostModel } from "@/lib/api/settings";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { plural } from "@/lib/format";
 import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { DrillCount } from "../_components/DrillCount";
 import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 
-/** Real route for a single check/rule, independent of any module context —
- * unlike `/objects/[object]`, this resolves from the check id alone. */
-function ruleHref(checkId: string): string {
-  return `/rules/${encodeURIComponent(checkId)}`;
+/**
+ * A rule's failing records in Fix work, from the check id alone (an impact row names no object). `/rules/<id>` takes
+ * the rules row id, not a check id, so it is not a target here.
+ */
+function ruleRecordsHref(checkId: string, run?: string): string {
+  return fixHref({ run, check: checkId });
 }
 
-function CheckChips({ ids }: { ids: string[] }) {
+function CheckChips({ ids, run }: { ids: string[]; run?: string }) {
   return (
     <div className="flex flex-wrap gap-1">
       {ids.map((id) => (
-        <Link key={id} href={ruleHref(id)} aria-label={`Open rule ${id}`}>
+        <Link key={id} href={ruleRecordsHref(id, run)} aria-label={drillLabel({ what: "failing records", check: id })}>
           <Pill>
             <Mono>{id}</Mono>
           </Pill>
@@ -52,7 +56,7 @@ export function impactRows(rows: ImpactRow[]): ImpactRow[] {
   return rows.filter((r) => r.record_count > 0 || r.value_at_risk > 0);
 }
 
-const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
+const impactColumns = (currency?: string | null, run?: string): ColumnDef<ImpactRow>[] => [
   {
     // An SAP feature (a transaction or capability) is a name, not an object: it has no page of its own to open.
     accessorKey: "feature",
@@ -69,10 +73,13 @@ const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
     accessorKey: "record_count",
     header: "Blocked records",
     meta: { numeric: true },
-    // The count opens the rule that blocks the feature; with no rule named it is a plain figure.
-    cell: ({ row }) => (row.original.causing_rules[0]
-      ? <DrillLink href={ruleHref(row.original.causing_rules[0])}>{row.original.record_count.toLocaleString()}</DrillLink>
-      : row.original.record_count.toLocaleString()),
+    // The count opens the failing records of the rule that blocks the feature (the first, when several do); with no
+    // rule named it is a plain figure.
+    cell: ({ row }) => {
+      const [first, ...more] = row.original.causing_rules;
+      const label = `${drillLabel({ count: row.original.record_count, what: "blocked records", check: first })} that block ${row.original.feature}${more.length ? `; ${plural(more.length, "more rule")} in the rules column` : ""}`;
+      return <DrillCount href={first ? ruleRecordsHref(first, run) : undefined} count={row.original.record_count} label={label}>{row.original.record_count.toLocaleString()}</DrillCount>;
+    },
   },
   {
     accessorKey: "value_at_risk",
@@ -84,12 +91,12 @@ const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
   {
     id: "causing_rules",
     header: "Rules behind it",
-    cell: ({ row }) => <CheckChips ids={row.original.causing_rules} />,
+    cell: ({ row }) => <CheckChips ids={row.original.causing_rules} run={run} />,
   },
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (row.original.causing_rules[0]
-      ? <Link href={ruleHref(row.original.causing_rules[0])} className="m-ink-accent underline underline-offset-2">Open rule</Link>
+      ? <Link href={ruleRecordsHref(row.original.causing_rules[0], run)} aria-label={`Open the records that block ${row.original.feature}`} className="m-ink-accent underline underline-offset-2">Open records</Link>
       : "—"),
   },
 ];
@@ -107,20 +114,20 @@ const itemColumns: ColumnDef<ProvenCostItem>[] = [
   { accessorKey: "amount", header: "Amount", cell: ({ row }) => row.original.amount.toLocaleString() },
 ];
 
-const provenCostColumns: ColumnDef<ProvenCostRow>[] = [
+const provenCostColumns = (run?: string): ColumnDef<ProvenCostRow>[] => [
   { accessorKey: "label", header: "What it costs" },
   { accessorKey: "documents", header: "Documents", meta: { numeric: true } },
   { id: "amount", header: "Proven amount", meta: { numeric: true }, cell: ({ row }) => formatRowAmount(row.original) },
   {
     id: "check_ids",
     header: "Rules behind it",
-    cell: ({ row }) => <CheckChips ids={row.original.check_ids} />,
+    cell: ({ row }) => <CheckChips ids={row.original.check_ids} run={run} />,
   },
 ];
 
 /** Each insight query renders its own loading/error/empty state, so one query
  * failing or still loading never hides the other section's data. */
-function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, Error> }) {
+function ProvenCostPanel({ query, run }: { query: UseQueryResult<ProvenCostResponse, Error>; run?: string }) {
   if (query.isLoading) return <Skeleton height={120} />;
   if (isListFailure(query)) {
     return (
@@ -155,7 +162,7 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
         <EmptyState title="No proven cost yet" detail="Proven cost appears once a run finds posted documents that break a rule." action={<Link href="/rules" className="underline-offset-2 hover:underline">Open rules</Link>} />
       ) : (
         <DataTable
-          columns={provenCostColumns}
+          columns={provenCostColumns(run)}
           data={rows}
           getRowId={(row) => row.metric}
           renderDrawer={(row) => (
@@ -172,12 +179,14 @@ function ImpactPanel({
   dayOne,
   currency,
   unpriced,
+  run,
 }: {
   query: UseQueryResult<ImpactResponse, Error>;
   dayOne: ReturnType<typeof useDayOne>;
   currency?: string | null;
   /** True when the tenant's cost model prices no feature yet, so no value at risk can exist. */
   unpriced: boolean;
+  run?: string;
 }) {
   if (query.isLoading || dayOne.status === "loading") return <Skeleton height={160} />;
   if (isListFailure(query)) {
@@ -208,7 +217,7 @@ function ImpactPanel({
       />
     );
   }
-  return <DataTable columns={impactColumns(currency)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
+  return <DataTable columns={impactColumns(currency, run)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
 }
 
 export default function ImpactPage() {
@@ -273,13 +282,13 @@ export default function ImpactPage() {
           ? { sentence: "Give each SAP feature a value and the defects get a price", action: { label: "Open settings", href: "/admin/settings" } }
           : top
           ? top.causing_rules[0]
-            ? { sentence: `Fix the rule behind ${top.feature}`, action: { label: "Open the rule", href: ruleHref(top.causing_rules[0]) } }
+            ? { sentence: `Fix the rule behind ${top.feature}`, action: { label: "Open its records", href: ruleRecordsHref(top.causing_rules[0], run) } }
             : { sentence: `Fix the rules behind ${top.feature}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run }) } }
           : { sentence: "Nothing is blocked; keep the score where it is", action: { label: "Open failing rules", href: withScope("/insights/rules", { run }) } },
       }}
     >
       <Card title="SAP features at risk" meta="Ranked by value at risk: blocked records times the value of each">
-        <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} />
+        <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} run={run} />
       </Card>
       {byFeature.length > 0 && (
         <Card title="Value at risk by feature" meta="The few features that carry most of it come first">
@@ -287,7 +296,7 @@ export default function ImpactPage() {
         </Card>
       )}
       <Card title="Proven cost" meta="Money already lost in posted documents that break a rule">
-        <ProvenCostPanel query={provenCostQuery} />
+        <ProvenCostPanel query={provenCostQuery} run={run} />
       </Card>
     </InsightFrame>
   );

@@ -446,14 +446,19 @@ export default function ObjectDetailPage() {
         ),
     },
   ];
-  const counts = [
-    summary ? `${summary.failing_checks.toLocaleString()} failing checks` : null,
-    summary ? `${summary.affected_records.toLocaleString()} affected records` : null,
-  ].filter(Boolean).join(", ");
+  // The header's counts open what they count: the failing checks on the Rules tab, the records on Records to fix.
+  const tabHref = (t: string) => `/objects/${object}?${new URLSearchParams({ run, tab: t })}`;
+  const name = summary?.label ?? formatModuleName(object);
   const meta = (
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
       <RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}`, search, id)} />
-      {counts && <span>{counts}</span>}
+      {summary && (
+        <span>
+          <Link href={tabHref("rules")} aria-label={`Open the ${summary.failing_checks.toLocaleString()} failing checks of ${name}`} className="m-ink-accent underline underline-offset-2">{`${summary.failing_checks.toLocaleString()} failing checks`}</Link>
+          {", "}
+          <Link href={tabHref("fix")} aria-label={`Open the ${summary.affected_records.toLocaleString()} affected records of ${name}`} className="m-ink-accent underline underline-offset-2">{`${summary.affected_records.toLocaleString()} affected records`}</Link>
+        </span>
+      )}
     </span>
   );
 

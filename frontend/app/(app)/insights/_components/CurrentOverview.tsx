@@ -22,9 +22,11 @@ import { checkClassLabel, deltaSentence, formatModuleName, plural, round1, trend
 import { previousInLineage } from "@/lib/runs";
 import { runScopeLabel } from "@/lib/run-scope";
 import { apiErrorMessage } from "@/lib/error";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Finding } from "@/types/api";
+import { DrillCount } from "./DrillCount";
 import { InsightFrame, formatMoney } from "./InsightFrame";
 import { CleansingFunnel, RootCauseList, S4Chart, s4Totals } from "./RunAnalyses";
 import { InsightActions } from "./InsightActions";
@@ -36,6 +38,9 @@ import { withScope } from "./useInsightScope";
 const VERDICT = { pass: "Ready to load", warn: "At risk", fail: "Not ready" } as const;
 const TONE = { pass: "go", warn: "at-risk", fail: "no-go" } as const;
 
+/** A finding's failing records in Fix work, in the run that found them. */
+const findingRecords = (f: Finding) => fixHref({ run: f.version_id, module: f.module, check: f.check_id });
+
 const findingColumns: ColumnDef<Finding>[] = [
   {
     accessorKey: "check_id", header: "Rule",
@@ -45,18 +50,25 @@ const findingColumns: ColumnDef<Finding>[] = [
       return (
         <span className="flex flex-col [min-width:14rem]">
           {words ? <span className="line-clamp-2" title={words}>{words}</span> : null}
-          <span className={words ? "m-text-meta m-ink-3" : undefined}><Mono>{row.original.check_id}</Mono></span>
+          <span className={words ? "m-text-meta m-ink-3" : undefined}>
+            <DrillCount href={findingRecords(row.original)} label={drillLabel({ what: "failing records", check: row.original.check_id, module: row.original.module })}><Mono>{row.original.check_id}</Mono></DrillCount>
+          </span>
         </span>
       );
     },
   },
-  { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module) },
+  {
+    id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module),
+    cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount>,
+  },
   { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
-  { accessorKey: "affected_count", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.affected_count.toLocaleString() },
+  { accessorKey: "affected_count", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => (
+    <DrillCount href={findingRecords(row.original)} count={row.original.affected_count} label={drillLabel({ count: row.original.affected_count, what: "failing records", check: row.original.check_id, module: row.original.module })}>{row.original.affected_count.toLocaleString()}</DrillCount>
+  ) },
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (
-      <Link href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: row.original.version_id })} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline underline-offset-2">Open</Link>
+      <Link href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: row.original.version_id })} onClick={(e) => e.stopPropagation()} aria-label={`Open rule ${row.original.check_id} on ${formatModuleName(row.original.module)}`} className="m-ink-accent underline underline-offset-2">Open</Link>
     ),
   },
 ];
@@ -170,7 +182,7 @@ export function CurrentOverview() {
             label: "Auto-fixable records",
             value: ov ? ov.auto_fixable.records : "—",
             hint: ov?.auto_fixable.pct != null ? `${Math.round(ov.auto_fixable.pct)}% of failing records` : undefined,
-            to: withScope("/fix", { source: "rule", confidence: "high" }),
+            to: fixHref({ sugg: true }),
           },
         ],
         situation: {

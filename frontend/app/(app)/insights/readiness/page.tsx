@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Status, statusLabel } from "@/design";
+import { Button, buildDrillHref, Card, DataTable, DrillLink, EmptyState, Heatmap, Status, statusLabel } from "@/design";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName, plural } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { DrillCount } from "../_components/DrillCount";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
@@ -20,8 +22,11 @@ import { PAGE_PURPOSE } from "../_components/InsightViews";
 const HEAT: Record<ReadinessCell["verdict"], "go" | "at-risk" | "no-go"> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
 
 
+// Fix work has no "blocking" filter, so the blocking counts open the object's blocking rules; the object opens its records.
 const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
-  { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
+  { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module), cell: ({ row }) => (
+    <DrillCount href={fixHref({ run, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount>
+  ) },
   { accessorKey: "wave", header: "Wave" },
   { id: "verdict", header: "Readiness", accessorFn: (c) => statusLabel("verdict", c.verdict), cell: ({ row }) => (
       <DrillLink href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`}>
@@ -34,20 +39,20 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
     accessorKey: "blocker_count",
     header: "Blocking gaps",
     meta: { numeric: true },
-    cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }} run={run}>{row.original.blocker_count.toLocaleString()}</DrillLink>,
+    cell: ({ row }) => <DrillCount href={buildDrillHref({ object: row.original.module, filters: { blocking: "true" }, run })} count={row.original.blocker_count} label={`Open the ${plural(row.original.blocker_count, "blocking rule")} of ${formatModuleName(row.original.module)}`}>{row.original.blocker_count.toLocaleString()}</DrillCount>,
   },
   {
     accessorKey: "records_blocked",
     header: "Records blocked",
     meta: { numeric: true },
     cell: ({ row }) => (
-      <DrillLink object={row.original.module} filters={{ blocking: "true" }} run={run}>{row.original.records_blocked.toLocaleString()}</DrillLink>
+      <DrillCount href={buildDrillHref({ object: row.original.module, filters: { blocking: "true" }, run })} count={row.original.records_blocked} label={`Open the blocking rules behind the ${plural(row.original.records_blocked, "blocked record")} of ${formatModuleName(row.original.module)}`}>{row.original.records_blocked.toLocaleString()}</DrillCount>
     ),
   },
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (
-      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`} className="m-ink-accent underline underline-offset-2">Fix</Link>
+      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`} aria-label={`Fix the blockers of ${formatModuleName(row.original.module)} in wave ${row.original.wave}`} className="m-ink-accent underline underline-offset-2">Fix</Link>
     ),
   },
 ];

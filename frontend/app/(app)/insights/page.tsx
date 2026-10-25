@@ -15,6 +15,7 @@ import { getS4Readiness } from "@/lib/api/migration";
 import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason, trendSentence } from "@/lib/format";
+import { fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
@@ -87,8 +88,6 @@ function RunOverview() {
     { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), `workbook_${run}.xlsx`) },
   ] : [];
 
-  const fixHref = (extra: Record<string, string>) => withScope("/fix", { run, ...extra });
-
   const fixColumns: ColumnDef<RuleRow>[] = ruleColumns(run, true);
   // Only the run scope gates the page; each section follows its own query, so a slow or failed overview
   // leaves the hero blank with a retry and the other sections still render.
@@ -140,7 +139,7 @@ function RunOverview() {
         ),
         stats: [
           { label: "Blocking gaps", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
-          { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ source: "rule", confidence: "high" }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
+          { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ run, module, sugg: true }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
             label: "Value at risk, top process",
             value: o?.value_at_risk.worst_l1 ? formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency) : "—",

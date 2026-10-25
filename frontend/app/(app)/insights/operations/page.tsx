@@ -12,6 +12,7 @@ import {
   getOperational, getSprints, getTeamPerformance, type Bottleneck, type SprintPlan,
 } from "@/lib/api/analytics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { fixHref } from "@/lib/drill";
 import { labelOf, plural } from "@/lib/format";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
@@ -137,7 +138,7 @@ export default function OperationsPage() {
           <Stat label="In progress" href="/inbox" value={k?.items_in_flight ?? "—"} />
           <Stat label="Average queue age" href="/inbox" value={k ? hours(k.avg_queue_age_hours) : "—"} />
           <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
-          <Stat label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} />
+          <Stat label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} href={topRule ? fixHref({ check: topRule }) : undefined} />
         </div>
       </Section>
       <Section title="Queue age by stage" height={160} query={ops}>

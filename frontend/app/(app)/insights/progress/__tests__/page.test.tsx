@@ -36,7 +36,7 @@ const BURN: Burndown = {
     { version_id: "bp2", label: "material_master_100k", run_at: "2026-10-16T05:00:00Z", issues: 22, open_records: 9 }],
 };
 
-function mockAll(over: Partial<{ burn: Burndown | Error; previous: boolean; throughput: Error }> = {}) {
+function mockAll(over: Partial<{ burn: Burndown | Error; previous: boolean; throughput: Error; assignee: boolean }> = {}) {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: RUNS });
   const burn = over.burn ?? BURN;
   const burndown = vi.spyOn(wa, "getBurndown");
@@ -53,7 +53,10 @@ function mockAll(over: Partial<{ burn: Burndown | Error; previous: boolean; thro
   else thr.mockResolvedValue({
     window_days: 30, days: [], totals: { accept: 2, edit: 1, not_an_issue: 1, accept_risk: 0, approve: 1, total: 5 },
     people: [{ person: "Ann", total: 3, accept: 1, edit: 1, not_an_issue: 1, accept_risk: 0, approve: 0 }],
-    workload: [{ assignee_id: null, name: null, email: null, open: 3, critical: 1, overdue: 0 }],
+    workload: [
+      { assignee_id: null, name: null, email: null, open: 3, critical: 1, overdue: 0 },
+      ...(over.assignee ? [{ assignee_id: "u-7", name: "Bea", email: null, open: 4, critical: 2, overdue: 1 }] : []),
+    ],
   });
   vi.spyOn(wa, "getRecurrence").mockResolvedValue({
     totals: { issues: 8, reopened: 2, reopens: 3, rate_pct: 25 },
@@ -150,5 +153,27 @@ describe("ProgressPage", () => {
     mount();
     expect(await screen.findByText(/Decisions by person did not load/)).toBeInTheDocument();
     expect(screen.getByText("GL002")).toBeInTheDocument();
+  });
+
+  it("drills every number into exactly its records in Fix work", async () => {
+    mockAll({ assignee: true });
+    mount();
+    const link = (name: string | RegExp) => screen.getByRole("link", { name }).getAttribute("href");
+    expect(await screen.findByText("GL002")).toBeInTheDocument();
+    expect(screen.getByText("Fixed this week").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2&st=fixed");
+    expect(screen.getByText("Open records").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2");
+    expect(screen.getByText("Projected finish").closest("a")?.getAttribute("href")).toBe("#burndown");
+    expect(document.getElementById("burndown")).not.toBeNull();
+    expect(link("Open the open records of rule GL002 in FI general ledger")).toBe("/fix?run=bp2&module=fi_gl&check=GL002");
+    expect(link("Open the fixed records of rule GL002 in FI general ledger in this run")).toBe("/fix?run=bp2&module=fi_gl&check=GL002&st=fixed");
+    expect(link("Open the open records of rule MM001 in material master")).toBe("/fix?run=bp2&module=material_master&check=MM001");
+    expect(link("Open the records assigned to Bea")).toBe("/fix?run=bp2&assignee=u-7");
+    expect(link("Open the 2 critical records assigned to Bea")).toBe("/fix?run=bp2&sev=critical&assignee=u-7");
+    expect(link("Open the 1 overdue record assigned to Bea")).toBe("/fix?run=bp2&assignee=u-7&due=overdue");
+    expect(screen.queryByRole("link", { name: /assigned to this person/ })).toBeNull();
+    expect(link("Open the open records of WERKS 1000")).toBe("/fix?run=bp2&part=WERKS%3D1000");
+    expect(link("Open the critical open records of WERKS 1000")).toBe("/fix?run=bp2&sev=critical&part=WERKS%3D1000");
+    expect(link("Open the 2 fixed records of material master")).toBe("/fix?run=bp2&module=material_master&st=fixed");
+    expect(link("Open approvals and export for rule suggestion values")).toBe("/fix?tab=batches");
   });
 });

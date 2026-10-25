@@ -12,9 +12,11 @@ import { getSystems } from "@/lib/api/connectivity";
 import { useSystemScope } from "@/lib/permissions";
 import { getRuleRanking, getTrends, type RuleRow, type TrendRun } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { formatDate, labelOf, plural, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
+import { DrillCount } from "../_components/DrillCount";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -25,6 +27,7 @@ import { scopeTrendRuns, scopedComparisons, trendDomain, trendPoints } from "../
 const WINDOWS = [{ value: "6", label: "Last 6 runs" }, { value: "12", label: "Last 12 runs" }, { value: "24", label: "Last 24 runs" }];
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
 const num = { numeric: true } satisfies CellMeta;
+const runName = (r: TrendRun) => r.label || formatDate(r.run_at, "datetime");
 const count = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
 
 /** The run-by-run ledger: each run's results and what changed from the run before. Newest first. */
@@ -34,7 +37,7 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
       id: "run", header: "Run", accessorFn: (r) => r.run_at ?? "", enableSorting: false, size: 260,
       cell: ({ row }) => (
         <span className="inline-flex items-center gap-2 whitespace-nowrap">
-          <span>{row.original.label || formatDate(row.original.run_at, "datetime")}</span>
+          <span>{runName(row.original)}</span>
           {row.original.baseline ? <Pill>Baseline</Pill> : null}
           {row.original.version_id === current ? <Pill tone="info">This run</Pill> : null}
         </span>
@@ -42,11 +45,12 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
     },
     { id: "score", header: "Score", accessorFn: (r) => r.composite ?? -1, meta: num, cell: ({ row }) => (row.original.composite == null ? "—" : row.original.composite.toFixed(1)) },
     { id: "change", header: "Change", accessorFn: (r) => r.change ?? 0, meta: num, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
-    { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => count(row.original.critical) },
-    { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => count(row.original.high) },
+    // Each count opens that run's failing records in Fix work, at that severity.
+    { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id, sev: "critical" })} count={row.original.critical} label={`${drillLabel({ sev: "critical", what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.critical)}</DrillCount> },
+    { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id, sev: "high" })} count={row.original.high} label={`${drillLabel({ sev: "high", what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.high)}</DrillCount> },
     { id: "fixed", header: "Rules fixed", accessorFn: (r) => r.rules_fixed ?? -1, meta: num, cell: ({ row }) => (row.original.rules_fixed == null ? "—" : row.original.rules_fixed > 0 ? <Delta value={row.original.rules_fixed} /> : "0") },
     { id: "new", header: "Newly failing", accessorFn: (r) => r.rules_new ?? -1, meta: num, cell: ({ row }) => (row.original.rules_new == null ? "—" : row.original.rules_new > 0 ? <Delta value={row.original.rules_new} invert /> : "0") },
-    { id: "records", header: "Failing records", accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => count(row.original.affected_records) },
+    { id: "records", header: "Failing records", accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id })} count={row.original.affected_records} label={`${drillLabel({ count: row.original.affected_records, what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.affected_records)}</DrillCount> },
   ];
 }
 

@@ -72,6 +72,11 @@ describe("TrendsPage", () => {
     expect(rows[0]).toHaveTextContent("+10");
     expect(rows[0]).toHaveTextContent("900");
     expect(rows[1]).toHaveTextContent("first run");
+    // Each run's counts open that run's failing records in Fix work.
+    expect(screen.getByRole("link", { name: "Open the 900 failing records of run v2" })).toHaveAttribute("href", "/fix?run=v2");
+    expect(screen.getByRole("link", { name: "Open the critical failing records of run v2" })).toHaveAttribute("href", "/fix?run=v2&sev=critical");
+    expect(screen.getByRole("link", { name: "Open the high failing records of run v1" })).toHaveAttribute("href", "/fix?run=v1&sev=high");
+    expect(screen.queryByRole("link", { name: "Open the critical failing records of run v1" })).toBeNull();
   });
 
   it("shows the empty state", async () => {

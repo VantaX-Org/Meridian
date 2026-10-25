@@ -81,7 +81,7 @@ describe("ImpactPage", () => {
     expect(screen.getAllByText("Procure to pay, across 2 processes").length).toBeGreaterThan(0);
     expect(screen.getByText("Late purchase orders")).toBeInTheDocument();
     expect(screen.getByText("MM140")).toBeInTheDocument();
-    expect(screen.getByText("MM140").closest("a")?.getAttribute("href")).toBe("/rules/MM140");
+    expect(screen.getByText("MM140").closest("a")?.getAttribute("href")).toBe("/fix?run=v1&check=MM140");
   });
 
   it("keeps the impact table rendered when the proven-cost request fails", async () => {
@@ -96,7 +96,7 @@ describe("ImpactPage", () => {
 
     await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
     expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument();
-    expect(screen.getByText("MM-003").closest("a")?.getAttribute("href")).toBe("/rules/MM-003");
+    expect(screen.getByText("MM-003").closest("a")?.getAttribute("href")).toBe("/fix?run=v1&check=MM-003");
   });
 
   it("drops rows with nothing blocked, prints a dash for an unpriced value and names the currency in the header", async () => {
@@ -174,7 +174,7 @@ describe("ImpactPage", () => {
 });
 
 describe("ImpactPage links", () => {
-  it("never links an SAP feature as if it were an object, and opens the rule behind its records", async () => {
+  it("never links an SAP feature as if it were an object, and opens the records of the rule behind it", async () => {
     mockEmptyProvenCost();
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({
       version_id: "v1",
@@ -184,7 +184,7 @@ describe("ImpactPage links", () => {
     const name = await screen.findByText("SF Onboarding 2.0", { selector: "span" });
     expect(name.closest("a")).toBeNull();
     expect(document.querySelector('a[href^="/objects/SF"]')).toBeNull();
-    expect(screen.getByText("42").closest("a")?.getAttribute("href")).toBe("/rules/MM-003");
+    expect(screen.getByText("42").closest("a")?.getAttribute("href")).toBe("/fix?run=v1&check=MM-003");
     expect(screen.getByTestId("page-purpose")).toHaveTextContent(/What the failing records are worth/);
   });
 });

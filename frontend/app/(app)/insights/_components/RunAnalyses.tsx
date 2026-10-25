@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Bar, Button, Funnel, Mono } from "@/design";
 import type { CleansingStep, RootCauseCluster } from "@/lib/api/insights";
 import type { S4Area } from "@/lib/api/migration";
+import { drillLabel, fixHref, type FixFilter } from "@/lib/drill";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { withScope } from "./useInsightScope";
 
@@ -43,7 +44,12 @@ export function RootCauseList({ clusters, run, empty }: { clusters: Cluster[]; r
             </span>
             <span className="flex gap-3 m-text-body">
               <Link href={withScope("/insights/rules", { run: at, module: c.module, field: c.field ?? undefined })} className="underline-offset-2 hover:underline">Open rules</Link>
-              <Link href={withScope(`/objects/${c.module}`, { tab: "records", run: at, check: c.rules[0] })} className="underline-offset-2 hover:underline">Open records</Link>
+              {/* One rule opens exactly its records; a field failing several rules opens the object's records. */}
+              <Link
+                href={fixHref({ run: at, module: c.module, check: c.rules.length === 1 ? c.rules[0] : undefined })}
+                aria-label={drillLabel({ what: "failing records", module: c.module, check: c.rules.length === 1 ? c.rules[0] : undefined })}
+                className="underline-offset-2 hover:underline"
+              >Open records</Link>
             </span>
           </li>
         );
@@ -86,12 +92,23 @@ export function S4Chart({ areas, run }: { areas: S4Area[]; run?: string }) {
   );
 }
 
+/**
+ * Each funnel stage as the Fix work filter that lists its records. Fix work has no confidence filter, so the high
+ * confidence stage opens every record with a suggested value.
+ */
+export const CLEANSING_STAGE_FILTER: Record<CleansingStep["key"], FixFilter> = {
+  failing: {},
+  proposed: { sugg: true },
+  high: { sugg: true },
+  approved: { st: "approved" },
+  applied: { st: "sent" },
+};
+
 /** Failing records to applied fixes; each stage opens the fix queue at that status. */
 export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: string }) {
   const router = useRouter();
-  const fixHref = (extra: Record<string, string>) => withScope("/fix", { run, ...extra });
   if (steps.length === 0 || steps.every((s) => !s.records)) {
-    return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({})} className="m-ink-accent underline underline-offset-2">Open the fix queue</Link></p>;
+    return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({ run })} className="m-ink-accent underline underline-offset-2">Open the fix queue</Link></p>;
   }
   return (
     <>
@@ -100,12 +117,12 @@ export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: 
           stages={steps.map((s) => ({ label: s.label, value: s.records }))}
           onStageClick={(st) => {
             const key = steps.find((s) => s.label === st.label)?.key;
-            router.push(fixHref({ status: key ?? "" }));
+            router.push(fixHref({ run, ...(key ? CLEANSING_STAGE_FILTER[key] : {}) }));
           }}
         />
       </div>
       <div className="mt-3">
-        <Button variant="secondary" render={<Link href={fixHref({ source: "rule", confidence: "high" })}>Create remediation batch</Link>} />
+        <Button variant="secondary" render={<Link href={fixHref({ run, sugg: true })}>Create remediation batch</Link>} />
       </div>
     </>
   );

@@ -5,15 +5,17 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict, Score } from "@/design";
+import { Button, buildDrillHref, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict, Score } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { DrillCount } from "../_components/DrillCount";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
 import { Section } from "../_components/Section";
@@ -26,8 +28,9 @@ import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 const plain = (n: number) => formatMoney(n);
 
-const readinessColumns: ColumnDef<ReadinessCell>[] = [
-  { accessorKey: "module", header: "Object", cell: ({ row }) => <DrillLink object={row.original.module}>{formatModuleName(row.original.module)}</DrillLink> },
+// Fix work has no "blocking" filter, so the blocking counts open the object's blocking rules; the object opens its records.
+const readinessColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
+  { accessorKey: "module", header: "Object", cell: ({ row }) => <DrillCount href={fixHref({ run, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount> },
   { accessorKey: "wave", header: "Wave" },
   {
     accessorKey: "verdict",
@@ -38,13 +41,13 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
     accessorKey: "blocker_count",
     header: "Blocking rules",
     meta: { numeric: true },
-    cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }}>{row.original.blocker_count.toLocaleString()}</DrillLink>,
+    cell: ({ row }) => <DrillCount href={buildDrillHref({ object: row.original.module, filters: { blocking: "true" }, run })} count={row.original.blocker_count} label={`Open the ${plural(row.original.blocker_count, "blocking rule")} of ${formatModuleName(row.original.module)}`}>{row.original.blocker_count.toLocaleString()}</DrillCount>,
   },
   {
     accessorKey: "records_blocked",
     header: "Records blocked",
     meta: { numeric: true },
-    cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }}>{row.original.records_blocked.toLocaleString()}</DrillLink>,
+    cell: ({ row }) => <DrillCount href={buildDrillHref({ object: row.original.module, filters: { blocking: "true" }, run })} count={row.original.records_blocked} label={`Open the blocking rules behind the ${plural(row.original.records_blocked, "blocked record")} of ${formatModuleName(row.original.module)}`}>{row.original.records_blocked.toLocaleString()}</DrillCount>,
   },
 ];
 
@@ -184,7 +187,7 @@ export default function ExecPage() {
             {cells.length === 0 ? null : blocked.length === 0 ? (
               <p className="m-text-body m-ink-2">Every object and wave can load.</p>
             ) : (
-              <DataTable columns={readinessColumns} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
+              <DataTable columns={readinessColumns(run)} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar dense height="auto" />
             )}
           </Card>
         </div>

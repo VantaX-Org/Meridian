@@ -54,9 +54,10 @@ describe("RulesPage", () => {
     expect(screen.getAllByText("MTART").length).toBeGreaterThan(0);
     expect(await screen.findByRole("columnheader", { name: "Cost at risk (ZAR)" })).toBeInTheDocument();
     expect(screen.getAllByText(/ZAR[\u00a0 ]?1[,. \u00a0]250/).length).toBeGreaterThan(0);
-    const links = screen.getAllByRole("link", { name: "Open records" });
-    expect(links[0]).toHaveAttribute("href", "/objects/material_master?tab=records&run=v1&check=A1");
-    expect(links[0].getAttribute("href")).not.toContain("/records?");
+    // Each rule's failing records open in Fix work, filtered to that rule on its object.
+    const links = screen.getAllByText("Open records").map((e) => e.closest("a"));
+    expect(links[0]).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=A1");
+    expect(links[0]?.getAttribute("aria-label")).toMatch(/^Open the [\d,]+ failing records of rule A1 in material master$/);
     expect(screen.getByText("Impact by rule")).toBeInTheDocument();
     // The shared tab strip and action bar come with the frame.
   });
