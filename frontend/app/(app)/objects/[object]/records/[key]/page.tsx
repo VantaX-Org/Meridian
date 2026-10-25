@@ -9,13 +9,15 @@ import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, ExportMenu
 import { getObjectRecord, getObjectRecordFindings } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
 import { getRecordReportUrl } from "@/lib/api/reports";
 import { queryKeys } from "@/lib/query-keys";
 import { parseRecordKey } from "@/lib/record-key";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
+import { RecordPanel, workRecordKey } from "@/components/work/record-panel";
+import { getWorkRecord } from "@/lib/api/work";
 
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
@@ -72,6 +74,16 @@ export default function RecordFixSheetPage() {
     queryKey: [...queryKeys.record(object, key, run), "duplicates"],
     queryFn: () => getMaterialDuplicates(primary, { version_id: run }),
     enabled: !!run && isMaterial,
+  });
+
+  // The record's decisions for the run: what fails, the suggested values and the fix buttons. A record the run's work
+  // list does not hold (it passes, or the work list is not built) answers 404 and the panel is left out.
+  const workQuery = useQuery({
+    queryKey: workRecordKey(object, key, run),
+    queryFn: () => getWorkRecord(object, key, run),
+    enabled: !!run && !!key,
+    retry: false,
+    meta: { ignoreError: true },
   });
 
   if (recordQuery.isLoading || (!run && scope.resolving)) {
@@ -143,6 +155,7 @@ export default function RecordFixSheetPage() {
         { label: "Fields with a value", value: fieldRows.length },
       ]}
     >
+      {workQuery.isError && isNotFound(workQuery.error) ? null : <RecordPanel module={object} recordKey={key} run={run} fullRecordLink={false} />}
       <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} overview={<>
       <Card title="Identity" domain={domainOf(object)}>
         <dl className="m-text-body grid grid-cols-2 gap-x-6 gap-y-1">

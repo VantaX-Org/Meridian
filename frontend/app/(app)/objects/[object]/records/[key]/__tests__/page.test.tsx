@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as materialsApi from "@/lib/api/materials";
+import * as workApi from "@/lib/api/work";
 import RecordFixSheetPage from "../page";
 
 let routeParams = { object: "material_master", key: "100001" };
@@ -90,5 +91,41 @@ describe("RecordFixSheetPage", () => {
     });
     renderWithQuery(<RecordFixSheetPage />);
     await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
+  });
+
+  it("puts the record's fix panel for the run at the top, above the record sheet", async () => {
+    routeParams = { object: "accounts_payable", key: encodeURIComponent("LIFNR=V9|BUKRS=2000") };
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({ ...material, matnr: "LIFNR=V9|BUKRS=2000", views: [], mara: { LIFNR: "V9" }, labels: { LIFNR: "V9" } });
+    vi.spyOn(objectsApi, "getObjectRecordFindings").mockResolvedValue({ version_id: "v1", failing: [] });
+    const work = vi.spyOn(workApi, "getWorkRecord").mockResolvedValue({
+      version_id: "v1", module: "accounts_payable", record_key: "LIFNR=V9|BUKRS=2000", name: "Acme Ltd", status: "to_fix",
+      assigned_to: null, assignee_email: null, values: {}, events: [], can: { fix: true, sign_off: true, assign: true, comment: true },
+      issues: [{
+        check_id: "AP012", severity: "critical", dimension: "completeness", message: "Reconciliation account is missing", field: "LFB1.AKONT",
+        current_value: "", instruction: null, why_it_matters: null, sap_impact: null, suggestion: { value: "160000", source: "rule", confidence: "high", why: null },
+        status: "to_fix", issue_id: "i1", resolution: null, first_seen_at: null, reopened_count: 0, due_at: null, sla_state: null, decision: null,
+      }],
+    });
+    renderWithQuery(<RecordFixSheetPage />);
+    expect(await screen.findByTestId("record-panel")).toBeInTheDocument();
+    expect(work).toHaveBeenCalledWith("accounts_payable", "LIFNR=V9|BUKRS=2000", "v1");
+    expect(screen.getByRole("button", { name: 'Accept "160000"' })).toBeInTheDocument();
+    routeParams = { object: "material_master", key: "100001" };
+  });
+
+  it("leaves the fix panel out for a record the run's work list does not hold (404)", async () => {
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue(material);
+    vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({ matnr: "100001", version_id: "v1", rules_total: 0, by_view: [] });
+    vi.spyOn(materialsApi, "getMaterialSupersession").mockResolvedValue({ matnr: "100001", plants: [], bom_usage: null });
+    vi.spyOn(materialsApi, "getMaterialDuplicates").mockResolvedValue({ matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [] });
+    const { AxiosError, AxiosHeaders } = await import("axios");
+    vi.spyOn(workApi, "getWorkRecord").mockRejectedValue(new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, {
+      status: 404, data: { detail: "This record does not fail any check in this run." }, statusText: "", headers: {}, config: { headers: new AxiosHeaders() },
+    }));
+    renderWithQuery(<RecordFixSheetPage />);
+    await waitFor(() => expect(screen.getByText("Steel bolt")).toBeInTheDocument());
+    await waitFor(() => expect(workApi.getWorkRecord).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByTestId("record-panel")).toBeNull());
+    expect(screen.queryByText(/could not reach the server/i)).toBeNull();
   });
 });

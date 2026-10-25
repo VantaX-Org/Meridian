@@ -153,8 +153,10 @@ const STATUS_LABEL = (s: string) => ISSUE_STATUS[s] ?? s.replace(/_/g, " ");
  * the value now, the suggested value and where it comes from, and the decision buttons. Accept and edit put the
  * value in the user's draft fix batch; a second person approves it before it goes to SAP.
  */
-export function RecordPanel({ module, recordKey, run, onDecided, footer }: {
+export function RecordPanel({ module, recordKey, run, onDecided, footer, fullRecordLink = true }: {
   module: string; recordKey: string; run: string | undefined; onDecided?: () => void; footer?: ReactNode;
+  /** Off on the full record page itself. */
+  fullRecordLink?: boolean;
 }) {
   const q = useQuery({ queryKey: workRecordKey(module, recordKey, run), queryFn: () => getWorkRecord(module, recordKey, run) });
   const [editing, setEditing] = useState<string | null>(null);
@@ -171,7 +173,7 @@ export function RecordPanel({ module, recordKey, run, onDecided, footer }: {
     <Card
       title={<span className="flex flex-col"><span>{rec.name ?? <Mono inline>{rec.record_key}</Mono>}</span>{rec.name ? <span className="m-text-meta m-ink-3"><Mono inline>{rec.record_key}</Mono></span> : null}</span>}
       meta={<span className="flex flex-wrap items-center gap-2">{formatModuleName(module)}, {rec.issues.length} failing {rec.issues.length === 1 ? "check" : "checks"} <Pill tone={STATUS[rec.status].tone}>{STATUS[rec.status].label}</Pill></span>}
-      actions={<Button variant="ghost" render={<Link href={`/objects/${module}/records/${encodeURIComponent(recordKey)}${run ? `?run=${run}` : ""}`}>Full record</Link>} />}
+      actions={fullRecordLink && <Button variant="ghost" render={<Link href={`/objects/${module}/records/${encodeURIComponent(recordKey)}${run ? `?run=${run}` : ""}`}>Full record</Link>} />}
     >
       <div className="flex flex-col gap-4" data-testid="record-panel">
         {!rec.can.fix ? <Notice tone="info">Your role can view this record. Fixing it needs the apply permission.</Notice> : null}

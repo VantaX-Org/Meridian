@@ -15,6 +15,8 @@ import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
 import { Workbench } from "./_workbench";
+import { FixStrip, RecordsToFix } from "./_fix";
+import { workSummaryQuery } from "../_work";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
 import { exportObject, getObject, type ObjectDetail, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -30,7 +32,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { DIMENSIONS, formatDate, formatModuleName } from "@/lib/format";
 
 const RULE_HISTORY_RUNS = 8;
-const TAB_KEYS = ["overview", "rules", "fields", "records"] as const;
+const TAB_KEYS = ["fix", "overview", "rules", "fields", "records"] as const;
 const SEVERITIES = ["critical", "high", "medium", "low"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }));
 
 const historyQuery = (object: string, run: string) => ({
@@ -347,7 +349,8 @@ export default function ObjectDetailPage() {
   // `?run=` when the URL pins one, else this object's latest finished run; nothing is written onto the URL.
   const scope = useRunScope({ object });
   const run = scope.runId ?? "";
-  const tab = search.get("tab") ?? "overview";
+  // Records to fix is the default tab; an older `?rule=` link (no tab) still opens the Overview workbench on that rule.
+  const tab = search.get("tab") ?? (search.get("rule") ? "overview" : "fix");
   // `check` is the shared drill parameter (rule tables link with it); `check_id` is the older spelling.
   const checkId = search.get("check") ?? search.get("check_id") ?? "";
 
@@ -367,6 +370,8 @@ export default function ObjectDetailPage() {
   useQuery(historyQuery(object, run));
   useQuery(profileQuery(object, run));
   useQuery(recordsQuery(run, checkId, 1));
+  const work = useQuery(workSummaryQuery(run || undefined));
+  const workObject = work.data?.objects.find((o) => o.module === object);
 
   // Header content from the list cache while the detail request is in flight.
   // Seeded by the list on row click (keyed by resolved run id); falls back to the list cache on a direct load.
@@ -382,7 +387,7 @@ export default function ObjectDetailPage() {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable],[role=dialog]")) return;
-      const i = ["1", "2", "3", "4"].indexOf(e.key);
+      const i = ["1", "2", "3", "4", "5"].indexOf(e.key);
       if (i >= 0) setTab(TAB_KEYS[i]);
     };
     window.addEventListener("keydown", onKey);
@@ -472,16 +477,19 @@ export default function ObjectDetailPage() {
           </>
         }
       />
+      <p className="m-text-body m-ink-2">Records of {summary?.label ?? formatModuleName(object)} that fail a check in this run, worst first. Pick one and fix it.</p>
+      <FixStrip object={object} summary={summary} work={workObject} loading={work.isLoading} />
       <Tabs
         value={tab}
         onValueChange={setTab}
         items={[
+          { value: "fix", label: "Records to fix", count: workObject?.open, content: <RecordsToFix object={object} run={run} /> },
           { value: "overview", label: "Overview", content: <Workbench object={object} run={run} /> },
           { value: "rules", label: "Rules", content: <RulesTab object={object} run={run} /> },
           { value: "fields", label: "Fields", content: <FieldsTab object={object} run={run} /> },
           {
             value: "records",
-            label: "Records",
+            label: "Records by rule",
             content: checkId ? (
               <RecordsTab object={object} run={run} checkId={checkId} />
             ) : (
