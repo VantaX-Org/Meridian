@@ -56,7 +56,7 @@ const findingColumns: ColumnDef<Finding>[] = [
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (
-      <Link href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: row.original.version_id })} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline-offset-2 hover:underline">Open</Link>
+      <Link href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: row.original.version_id })} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline underline-offset-2">Open</Link>
     ),
   },
 ];
@@ -213,14 +213,14 @@ export function CurrentOverview() {
         <div className="grid gap-4 @5xl:grid-cols-12">
           <div className="@5xl:col-span-8">
             <Card title="Trend" meta={trendNote}>
-              {series.length < 2 ? <p className="m-text-body m-ink-3">A trend needs a second scored run. <Link href="/runs" className="m-ink-accent underline-offset-2 hover:underline">Open runs</Link></p> : (
+              {series.length < 2 ? <p className="m-text-body m-ink-3">A trend needs a second scored run. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p> : (
                 <Line data={series} label="DQS of all objects over runs" dqsThreshold={bands?.target} height={180} />
               )}
             </Card>
           </div>
           <div className="@5xl:col-span-4">
             <Card title="Dimensions" meta="The six measures behind the score, averaged over the objects">
-              {dims.length === 0 ? <p className="m-text-body m-ink-3">No object has dimension scores yet. <Link href="/runs" className="m-ink-accent underline-offset-2 hover:underline">Open runs</Link></p>
+              {dims.length === 0 ? <p className="m-text-body m-ink-3">No object has dimension scores yet. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p>
                 : dims.length < 3 ? <Bar data={dims} label="Dimension scores, all objects" height={140} />
                 : <Radar data={dims} label="Dimension scores, all objects" height={200} />}
             </Card>
@@ -257,7 +257,7 @@ export function CurrentOverview() {
                   <Stat label="SAP features blocked" value={ov.value_at_risk.features_blocked} href={withScope("/insights/impact", { run: newest?.id })} />
                 </div>
               ) : (
-                <p className="m-text-body m-ink-3">No priced SAP feature is blocked. <Link href="/insights/impact" className="m-ink-accent underline-offset-2 hover:underline">Open value at risk</Link></p>
+                <p className="m-text-body m-ink-3">No priced SAP feature is blocked. <Link href="/insights/impact" className="m-ink-accent underline underline-offset-2">Open value at risk</Link></p>
               )}
             </Section>
           </div>
@@ -279,7 +279,7 @@ export function CurrentOverview() {
 
           <div className="@5xl:col-span-12">
             <Card title="Object heatmap" meta="Each object's score per dimension at its latest run; select a cell to open it">
-              {heatCells.length === 0 ? <p className="m-text-body m-ink-3">No object is scored yet. <Link href="/runs" className="m-ink-accent underline-offset-2 hover:underline">Open runs</Link></p> : (
+              {heatCells.length === 0 ? <p className="m-text-body m-ink-3">No object is scored yet. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p> : (
                 <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
                   <Heatmap
                     rows={heatRows.map((r) => r.label)}

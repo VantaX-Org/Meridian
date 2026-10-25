@@ -89,7 +89,7 @@ const impactColumns = (currency?: string | null): ColumnDef<ImpactRow>[] => [
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (row.original.causing_rules[0]
-      ? <Link href={ruleHref(row.original.causing_rules[0])} className="m-ink-accent underline-offset-2 hover:underline">Open rule</Link>
+      ? <Link href={ruleHref(row.original.causing_rules[0])} className="m-ink-accent underline underline-offset-2">Open rule</Link>
       : "—"),
   },
 ];

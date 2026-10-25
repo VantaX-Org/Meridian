@@ -192,7 +192,7 @@ export default function LineagePage() {
     },
     {
       id: "action", header: "", enableSorting: false, size: 80,
-      cell: ({ row }) => <button type="button" className="m-ink-accent underline-offset-2 hover:underline" onClick={(e) => { e.stopPropagation(); trace(row.original.id); }}>Trace</button>,
+      cell: ({ row }) => <button type="button" className="m-ink-accent underline underline-offset-2" onClick={(e) => { e.stopPropagation(); trace(row.original.id); }}>Trace</button>,
     },
   ], [latest, moduleByCheck, trace]);
 

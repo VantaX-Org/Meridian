@@ -56,7 +56,7 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
     // The ledger's one action: the rule on its object.
     cols.push({
       id: "action", header: "", enableSorting: false,
-      cell: ({ row }) => <Link href={objectHref(row.original)} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline-offset-2 hover:underline">Open</Link>,
+      cell: ({ row }) => <Link href={objectHref(row.original)} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline underline-offset-2">Open</Link>,
     });
   }
   return cols;

@@ -47,7 +47,7 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (
-      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`} className="m-ink-accent underline-offset-2 hover:underline">Fix</Link>
+      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: row.original.wave })}`} className="m-ink-accent underline underline-offset-2">Fix</Link>
     ),
   },
 ];
@@ -58,7 +58,7 @@ const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
   { accessorKey: "blocking_failing", header: "Blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "yes" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
   { accessorKey: "warning_failing", header: "Warning rules", meta: { numeric: true }, cell: ({ row }) => row.original.warning_failing.toLocaleString() },
   { accessorKey: "failing_records", header: "Records failing", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
-  { id: "action", header: "", enableSorting: false, cell: () => <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="m-ink-accent underline-offset-2 hover:underline">Open rules</Link> },
+  { id: "action", header: "", enableSorting: false, cell: () => <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="m-ink-accent underline underline-offset-2">Open rules</Link> },
 ];
 
 export default function ReadinessPage() {

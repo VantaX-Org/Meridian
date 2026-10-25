@@ -19,7 +19,7 @@ export function RootCauseList({ clusters, run, empty }: { clusters: Cluster[]; r
     return (
       <p className="m-text-body m-ink-3">
         {empty}{" "}
-        <Link href={withScope("/insights/rules", { run })} className="m-ink-accent underline-offset-2 hover:underline">Open failing rules</Link>
+        <Link href={withScope("/insights/rules", { run })} className="m-ink-accent underline underline-offset-2">Open failing rules</Link>
       </p>
     );
   }
@@ -64,11 +64,11 @@ export function s4Totals(areas: readonly S4Area[]): { blocking: number; warning:
 export function S4Chart({ areas, run }: { areas: S4Area[]; run?: string }) {
   const router = useRouter();
   if (areas.length === 0) {
-    return <p className="m-text-body m-ink-3">No rule in this scope maps to an S/4 simplification area. <Link href={withScope("/insights/readiness", { run })} className="m-ink-accent underline-offset-2 hover:underline">Open waves</Link></p>;
+    return <p className="m-text-body m-ink-3">No rule in this scope maps to an S/4 simplification area. <Link href={withScope("/insights/readiness", { run })} className="m-ink-accent underline underline-offset-2">Open waves</Link></p>;
   }
   const failing = areas.filter((a) => a.failing > 0);
   if (failing.length === 0) {
-    return <p className="m-text-body m-ink-3">No S/4 rule fails, so nothing blocks an S/4 load. <Link href={withScope("/insights/readiness", { run })} className="m-ink-accent underline-offset-2 hover:underline">Open waves</Link></p>;
+    return <p className="m-text-body m-ink-3">No S/4 rule fails, so nothing blocks an S/4 load. <Link href={withScope("/insights/readiness", { run })} className="m-ink-accent underline underline-offset-2">Open waves</Link></p>;
   }
   return (
     <>
@@ -91,7 +91,7 @@ export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: 
   const router = useRouter();
   const fixHref = (extra: Record<string, string>) => withScope("/fix", { run, ...extra });
   if (steps.length === 0 || steps.every((s) => !s.records)) {
-    return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({})} className="m-ink-accent underline-offset-2 hover:underline">Open the fix queue</Link></p>;
+    return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({})} className="m-ink-accent underline underline-offset-2">Open the fix queue</Link></p>;
   }
   return (
     <>

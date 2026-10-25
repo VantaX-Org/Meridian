@@ -181,14 +181,14 @@ function RunOverview() {
         <div className="grid gap-4 @5xl:grid-cols-12">
           <div className="@5xl:col-span-8">
             <Section title="Trend" height={180} query={trends} meta={trendNote}>
-              {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs a second scored run of the same system or upload. <Link href="/runs" className="m-ink-accent underline-offset-2 hover:underline">Open runs</Link></p> : (
+              {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs a second scored run of the same system or upload. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p> : (
                 <Line data={trendLine} label="Composite score per run" annotations={annotations} height={180} />
               )}
             </Section>
           </div>
           <div className="@5xl:col-span-4">
             <Section title="Dimensions" height={180} query={trends} meta="The six measures behind the score">
-              {dims.length === 0 ? <p className="m-text-body m-ink-3">This run has no dimension scores. <Link href={withScope("/insights/rules", { run, module })} className="m-ink-accent underline-offset-2 hover:underline">Open failing rules</Link></p>
+              {dims.length === 0 ? <p className="m-text-body m-ink-3">This run has no dimension scores. <Link href={withScope("/insights/rules", { run, module })} className="m-ink-accent underline underline-offset-2">Open failing rules</Link></p>
                 : dims.length < 3 ? <Bar data={dims} label="Dimension scores, this run" height={140} />
                 : <Radar data={dims} label="Dimension scores, this run" height={200} />}
             </Section>
@@ -212,7 +212,7 @@ function RunOverview() {
 
           <div className="@5xl:col-span-12">
             <Section title="Object heatmap" height={240} query={heat} meta="Each object's score per dimension; select a cell to open it">
-              {heatRows.length === 0 ? <p className="m-text-body m-ink-3">This run has no object scores yet. <Link href="/runs" className="m-ink-accent underline-offset-2 hover:underline">Open runs</Link></p> : (
+              {heatRows.length === 0 ? <p className="m-text-body m-ink-3">This run has no object scores yet. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p> : (
                 <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
                   <Heatmap
                     rows={heatRows.map((r) => formatModuleName(r.module))}

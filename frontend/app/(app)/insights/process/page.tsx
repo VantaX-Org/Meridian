@@ -221,7 +221,7 @@ const blockingColumns: ColumnDef<BlockingRow>[] = [
   { accessorKey: "affected", header: "Records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
   {
     id: "action", header: "", enableSorting: false,
-    cell: ({ row }) => (row.original.href ? <Link href={row.original.href} className="m-ink-accent underline-offset-2 hover:underline">Fix</Link> : null),
+    cell: ({ row }) => (row.original.href ? <Link href={row.original.href} className="m-ink-accent underline underline-offset-2">Fix</Link> : null),
   },
 ];
 
@@ -428,7 +428,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
             {!aware.data?.config_load ? (
               <p className="m-text-body m-ink-2">
                 All {awareL1.applicable.toLocaleString()} rules apply by default. Load the system&apos;s configuration to leave out rules it does not use.{" "}
-                <Link href="/systems" className="m-ink-accent underline-offset-2 hover:underline">Open systems</Link>
+                <Link href="/systems" className="m-ink-accent underline underline-offset-2">Open systems</Link>
               </p>
             ) : null}
             <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} />
@@ -548,7 +548,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
                     { id: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.step_status} /> },
                     { id: "step", header: "Step", accessorFn: (b) => b.label },
                     { id: "records", header: "Records", meta: { numeric: true }, accessorFn: (b) => b.affected_records, cell: ({ row }) => records(row.original.affected_records) },
-                    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <button type="button" className="m-ink-accent underline-offset-2 hover:underline" onClick={() => setNode(row.original.id)}>Open</button> },
+                    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <button type="button" className="m-ink-accent underline underline-offset-2" onClick={() => setNode(row.original.id)}>Open</button> },
                   ] as ColumnDef<(typeof bottlenecks)[number]>[]}
                   data={bottlenecks.slice(0, 8)}
                   getRowId={(b) => b.id}
@@ -582,7 +582,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
               {picked.avg_pass_rate != null ? `, ${Math.round(picked.avg_pass_rate)}% pass rate` : ""}.
             </p>
             {active ? (
-              <p><Link href={withScope(`/objects/${active}`, { run: latest.id, tab: "rules" })} className="m-ink-accent underline-offset-2 hover:underline">Open the failing rules</Link></p>
+              <p><Link href={withScope(`/objects/${active}`, { run: latest.id, tab: "rules" })} className="m-ink-accent underline underline-offset-2">Open the failing rules</Link></p>
             ) : null}
           </div>
         ) : null}

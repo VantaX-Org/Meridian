@@ -28,8 +28,8 @@ export function RunAnalysis({ variant = "primary" }: { variant?: "primary" | "se
       <Drawer open={open} onOpenChange={setOpen} title="Run analysis" subtitle="Extract the objects you choose into a new run, then analyse them">
         <div className="flex flex-col gap-4">
           <Select label="System" value={chosen} onValueChange={setSystemId} placeholder="Choose a system" options={list.map((s) => ({ value: s.id, label: s.name }))} />
-          {systems.isError ? <p role="alert" className="m-text-body">The systems did not load. <button type="button" className="m-ink-accent underline-offset-2 hover:underline" onClick={() => void systems.refetch()}>Retry</button></p> : null}
-          {systems.isSuccess && list.length === 0 ? <p className="m-text-body m-ink-2">No SAP system is connected yet. <Link href="/systems" className="m-ink-accent underline-offset-2 hover:underline">Connect a system</Link></p> : null}
+          {systems.isError ? <p role="alert" className="m-text-body">The systems did not load. <button type="button" className="m-ink-accent underline underline-offset-2" onClick={() => void systems.refetch()}>Retry</button></p> : null}
+          {systems.isSuccess && list.length === 0 ? <p className="m-text-body m-ink-2">No SAP system is connected yet. <Link href="/systems" className="m-ink-accent underline underline-offset-2">Connect a system</Link></p> : null}
           {chosen ? <ScopePicker id={chosen} onDownloaded={() => { setOpen(false); router.push("/runs"); }} /> : null}
         </div>
       </Drawer>

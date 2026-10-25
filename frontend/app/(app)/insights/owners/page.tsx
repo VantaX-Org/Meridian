@@ -26,7 +26,7 @@ const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true } },
   { accessorKey: "delta", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
   { accessorKey: "fixed_since_baseline", header: "Fixed since the first run", meta: { numeric: true } },
-  { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline-offset-2 hover:underline">Open inbox</Link> },
+  { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline underline-offset-2">Open inbox</Link> },
 ];
 
 /** Writes the digest notification now. `owner` undefined sends to everyone. */

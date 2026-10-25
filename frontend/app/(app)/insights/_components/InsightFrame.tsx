@@ -106,7 +106,7 @@ function InsightRunScope() {
         hrefFor={(id) => hrefWithRun(pathname, search, id)}
       />
       {canShowCurrent && explicit && (
-        <Link href={hrefWithRun(pathname, search, null)} className="m-ink-accent underline-offset-2 hover:underline">Back to current state</Link>
+        <Link href={hrefWithRun(pathname, search, null)} className="m-ink-accent underline underline-offset-2">Back to current state</Link>
       )}
     </span>
   );

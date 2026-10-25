@@ -184,7 +184,7 @@ function Dependencies({ run }: { run?: string }) {
     { id: "rows", header: "Records", cell: ({ row }) => row.original.rows.toLocaleString() },
     { id: "violations", header: "Disagree", cell: ({ row }) => row.original.violations.toLocaleString() },
     { id: "samples", header: "Sample records", cell: ({ row }) => <Mono>{row.original.sample_keys.slice(0, 3).join(", ")}</Mono> },
-    { id: "review", header: "", cell: () => <Link href={profileHref} className="m-ink-accent underline-offset-2 hover:underline">Review in profile</Link> },
+    { id: "review", header: "", cell: () => <Link href={profileHref} className="m-ink-accent underline underline-offset-2">Review in profile</Link> },
   ], [profileHref]);
 
   if (systems.data && !systems.data.length) {
