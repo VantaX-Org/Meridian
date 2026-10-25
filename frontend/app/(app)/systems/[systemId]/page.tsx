@@ -795,7 +795,7 @@ function EditForm({ system, targets, onDone, onDeleted }: {
   const rfc = RFC_TYPES.includes(system.system_type);
   const [conn, setConn] = useState({
     host: system.host ?? "", client: system.client ?? "", sysnr: system.sysnr ?? "", username: system.username ?? "",
-    base_url: system.base_url ?? "", company_id: system.company_id ?? "", client_id: "", ...SECRET,
+    base_url: system.base_url ?? "", token_url: system.token_url ?? "", company_id: system.company_id ?? "", client_id: "", ...SECRET,
   });
   const bind = (key: keyof typeof conn) => ({ value: conn[key], onChange: (e: { target: { value: string } }) => setConn((c) => ({ ...c, [key]: e.target.value })) });
   const credentials = () => Object.fromEntries(
@@ -803,7 +803,9 @@ function EditForm({ system, targets, onDone, onDeleted }: {
   );
   const connection = () => rfc
     ? { host: conn.host.trim(), client: conn.client.trim(), sysnr: conn.sysnr.trim(), username: conn.username.trim() }
-    : { base_url: conn.base_url.trim(), ...(conn.company_id.trim() ? { company_id: conn.company_id.trim() } : {}), username: conn.username.trim() };
+    : { base_url: conn.base_url.trim(), token_url: conn.token_url.trim(), ...(conn.company_id.trim() ? { company_id: conn.company_id.trim() } : {}), username: conn.username.trim() };
+  const needsTokenUrl = NEEDS_TOKEN_URL.includes(system.system_type);
+  const tokenUrlMissing = !rfc && needsTokenUrl && !conn.token_url.trim();
   const profilesQ = useQuery({ queryKey: queryKeys.syncProfiles(system.id), queryFn: () => getSyncProfiles(system.id) });
   const schedules = profilesQ.data?.length;
 
@@ -840,7 +842,7 @@ function EditForm({ system, targets, onDone, onDeleted }: {
   return (
     <form
       className="flex flex-col gap-4"
-      onSubmit={(e) => { e.preventDefault(); setTried(true); if (name.trim()) save.mutate(); }}
+      onSubmit={(e) => { e.preventDefault(); setTried(true); if (name.trim() && !tokenUrlMissing) save.mutate(); }}
     >
       <Field label="Name" error={tried && !name.trim() ? "Give the system a name" : undefined}>
         <Input
@@ -907,7 +909,10 @@ function EditForm({ system, targets, onDone, onDeleted }: {
           <>
             <Field label="Base URL"><Input {...bind("base_url")} type="url" /></Field>
             <Hint text={HINT.base_url} />
-            {NEEDS_TOKEN_URL.includes(system.system_type) ? <p className="m-text-meta m-ink-3">Token URL: {HINT.token_url}. It is set when the system is connected and cannot be changed here.</p> : null}
+            <Field label={needsTokenUrl ? "Token URL" : "Token URL (optional)"} error={tried && tokenUrlMissing ? "Enter the token URL" : undefined}>
+              <Input {...bind("token_url")} type="url" placeholder="https://" />
+            </Field>
+            <Hint text={HINT.token_url} />
             {system.system_type === "successfactors" ? <Field label="Company ID"><Input {...bind("company_id")} /></Field> : null}
             <Field label="Client ID"><Input {...bind("client_id")} autoComplete="off" placeholder="Unchanged" /></Field>
             <Hint text={HINT.client_id} />

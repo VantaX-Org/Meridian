@@ -1,5 +1,6 @@
-import { screen, waitFor } from "@testing-library/react";
-import { vi, describe, it, expect } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { vi, describe, it, expect, beforeEach } from "vitest";
+import { toast } from "sonner";
 import { renderWithQuery } from "@/__tests__/render";
 import * as licenceApi from "@/lib/api/licence";
 import * as updateApi from "@/lib/api/system-update";
@@ -9,6 +10,7 @@ import AdminLicencePage from "../page";
 const h = vi.hoisted(() => ({ user: { role: "admin", permissions: ["view", "manage_system"] } }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: h.user }) }));
 vi.mock("@/context/update-modal-context", () => ({ useUpdateModal: () => ({ open: vi.fn() }) }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const MANIFEST: LicenceManifest = {
   valid: true, status: "active", tier: "professional", enabled_modules: ["*"], enabled_menu_items: [],
@@ -62,5 +64,47 @@ describe("admin licence page", () => {
     renderWithQuery(<AdminLicencePage />);
     await waitFor(() => expect(screen.getAllByText("Professional").length).toBeGreaterThan(0));
     expect(screen.queryByText(/seats in use$/)).toBeNull();
+  });
+});
+
+describe("validate now", () => {
+  beforeEach(() => {
+    h.user = { role: "admin", permissions: ["view", "manage_system"] };
+    vi.mocked(toast.success).mockReset();
+    vi.mocked(toast.error).mockReset();
+    vi.spyOn(updateApi, "getUpdateStatus").mockResolvedValue({
+      current_version: "1.0.0", latest_version: "1.0.0", update_available: false, release_notes: "", updater_configured: true,
+    });
+  });
+
+  it("checks the licence with HQ and reloads the manifest", async () => {
+    const get = vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue(MANIFEST);
+    const validate = vi.spyOn(licenceApi, "validateLicence").mockResolvedValue({ ...MANIFEST, tier: "enterprise" });
+    renderWithQuery(<AdminLicencePage />);
+    await waitFor(() => expect(screen.getAllByText("Professional").length).toBeGreaterThan(0));
+    const calls = get.mock.calls.length;
+    get.mockResolvedValue({ ...MANIFEST, tier: "enterprise" });
+    fireEvent.click(screen.getByRole("button", { name: "Validate now" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Licence checked with Meridian HQ"));
+    expect(validate).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(calls));
+    expect(await screen.findByText("Enterprise")).toBeInTheDocument();
+  });
+
+  it("says why when HQ cannot be reached", async () => {
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue(MANIFEST);
+    vi.spyOn(licenceApi, "validateLicence").mockRejectedValue(new Error("Meridian HQ could not be reached. Try again shortly"));
+    renderWithQuery(<AdminLicencePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Validate now" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("is not offered without manage_system", async () => {
+    h.user = { role: "manager", permissions: ["view", "manage_systems"] };
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue(MANIFEST);
+    renderWithQuery(<AdminLicencePage />);
+    await waitFor(() => expect(screen.getAllByText("Professional").length).toBeGreaterThan(0));
+    expect(screen.queryByRole("button", { name: "Validate now" })).toBeNull();
   });
 });

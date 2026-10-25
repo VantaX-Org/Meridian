@@ -67,6 +67,7 @@ class SystemResponse(BaseModel):
     base_url: Optional[str] = None
     company_id: Optional[str] = None
     auth_type: Optional[str] = None
+    token_url: Optional[str] = None  # not a secret: the edit form shows and changes it
     username: Optional[str] = None
     health_status: str = "unknown"
     health_message: Optional[str] = None
@@ -94,6 +95,7 @@ class UpdateSystemRequest(BaseModel):
     company_id: Optional[str] = None
     auth_type: Optional[str] = None
     username: Optional[str] = None
+    token_url: Optional[str] = None  # "" clears it
     description: Optional[str] = None
     environment: Optional[str] = None
     is_active: Optional[bool] = None
@@ -269,6 +271,7 @@ async def register_system(
         created_at=row[13],
         updated_at=row[14],
         role=body.role,
+        token_url=body.token_url,
     )
 
 
@@ -299,7 +302,7 @@ async def list_systems(
                    s.discovery_status, s.discovered_at::text, s.sap_release,
                    (SELECT max(v.run_at)::text FROM analysis_versions v
                     WHERE v.metadata->>'system_id' = s.id::text AND {finished_sql('v.status')}) AS last_analysis_at,
-                   s.role, s.target_system_id::text
+                   s.role, s.target_system_id::text, s.token_url
             FROM sap_systems s
             WHERE s.tenant_id = :tid
             ORDER BY s.created_at DESC
@@ -318,7 +321,7 @@ async def list_systems(
             config_last_synced_at=r[18], config_sync_status=r[19],
             last_sync_at=r[20], last_sync_status=r[21],
             discovery_status=r[22], discovered_at=r[23], sap_release=r[24], last_analysis_at=r[25],
-            role=r[26], target_system_id=r[27],
+            role=r[26], target_system_id=r[27], token_url=r[28],
         )
         for r in rows
     ]
@@ -369,6 +372,9 @@ async def update_system(
     if body.username is not None:
         set_parts.append("username = :username")
         updates["username"] = body.username
+    if body.token_url is not None:
+        set_parts.append("token_url = :token_url")
+        updates["token_url"] = body.token_url.strip() or None
     if body.description is not None:
         set_parts.append("description = :description")
         updates["description"] = body.description
@@ -456,7 +462,7 @@ async def update_system(
         text("""
             SELECT id, name, system_type, host, client, sysnr, username, base_url, company_id,
                    auth_type, description, environment, is_active,
-                   created_at::text, updated_at::text, role, target_system_id::text
+                   created_at::text, updated_at::text, role, target_system_id::text, token_url
             FROM sap_systems WHERE id = :sid AND tenant_id = :tid
         """),
         {"sid": system_id, "tid": str(tenant.id)},
@@ -470,6 +476,7 @@ async def update_system(
         sysnr=row[5], username=row[6], base_url=row[7], company_id=row[8], auth_type=row[9],
         description=row[10], environment=row[11], is_active=row[12],
         created_at=row[13], updated_at=row[14], role=row[15], target_system_id=row[16],
+        token_url=row[17],
     )
 
 

@@ -671,6 +671,57 @@ async def _serve_entitled(request: Request, call_next, manifest: dict):
     return await call_next(request)
 
 
+def _record_validation(result: dict) -> str:
+    """Apply a validation result to the in-memory caches.
+
+    Returns the outcome: ``cutoff`` (HQ unreachable past the hard cutoff, caches
+    untouched), ``grace`` (expired less than 7 days ago: the last signed
+    entitlements stay in ``_cache``), ``invalid`` or ``valid``.
+    """
+    now = time.time()
+    if result.get("reason") == "licence_server_unreachable_cutoff":
+        return "cutoff"
+    if not result.get("valid"):
+        reason = result.get("reason", "unknown")
+        last_known = _cache.get("response")
+        # Grace: HQ says the licence expired less than 7 days ago. Keep the
+        # last SIGNED entitlements, bounded by that manifest's own expiry
+        # date (not by the unsigned grace timestamp), and warn every caller.
+        if reason == "expired_grace" and last_known and last_known.get("valid") \
+                and _within_grace(last_known.get("expiry_date") or last_known.get("expiresAt")):
+            _manifest_cache.update({"status": "expired_grace",
+                                    "grace_period_ends": result.get("grace_period_ends")})
+            _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
+            _cache["grace"] = True
+            return "grace"
+        _cache["response"] = result
+        _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
+        _cache["grace"] = False
+        _manifest_cache.update({"valid": False, "status": reason})
+        return "invalid"
+
+    _cache["response"] = result
+    _cache["expires_at"] = now + CACHE_TTL_SECONDS
+    _cache["grace"] = False
+    # Populate full manifest cache for GET /api/v1/licence
+    _update_manifest_cache(result)
+    # Sync rules and field mappings from manifest asynchronously
+    _sync_manifest_to_db(result)
+    return "valid"
+
+
+async def revalidate() -> tuple[dict | None, str]:
+    """Validate with the licence server now and refresh the caches.
+
+    Used by the middleware on a cache miss and by POST /api/v1/licence/validate.
+    Returns ``(None, "unreachable")`` when the server could not be reached.
+    """
+    result = await _validate_licence()
+    if result is None:
+        return None, "unreachable"
+    return result, _record_validation(result)
+
+
 class LicenceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Only check /api/v1/* routes
@@ -710,7 +761,7 @@ class LicenceMiddleware(BaseHTTPMiddleware):
                 )
 
         # Cache miss — call licence server
-        result = await _validate_licence()
+        result, outcome = await revalidate()
 
         if result is None:
             # Licence server unreachable. FAIL CLOSED — granting ["*"] here let
@@ -739,40 +790,15 @@ class LicenceMiddleware(BaseHTTPMiddleware):
             )
 
         # Task 08: Check cutoff rejection reason
-        if result.get("reason") == "licence_server_unreachable_cutoff":
+        if outcome == "cutoff":
             return JSONResponse(
                 {"error": "licence_server_cutoff", "reason": "Licence server unreachable for >2hrs. Please restore connection."},
                 status_code=403,
             )
-
-        if not result.get("valid"):
-            reason = result.get("reason", "unknown")
-            last_known = _cache.get("response")
-            # Grace: HQ says the licence expired less than 7 days ago. Keep the
-            # last SIGNED entitlements, bounded by that manifest's own expiry
-            # date (not by the unsigned grace timestamp), and warn every caller.
-            if reason == "expired_grace" and last_known and last_known.get("valid") \
-                    and _within_grace(last_known.get("expiry_date") or last_known.get("expiresAt")):
-                _manifest_cache.update({"status": "expired_grace",
-                                        "grace_period_ends": result.get("grace_period_ends")})
-                _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
-                _cache["grace"] = True
-                response = await _serve_entitled(request, call_next, last_known)
-                response.headers["X-Licence-Warning"] = "expired_grace"
-                return response
-            _cache["response"] = result
-            _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
-            _cache["grace"] = False
-            _manifest_cache.update({"valid": False, "status": reason})
-            return JSONResponse({"error": "licence_invalid", "reason": reason}, status_code=402)
-
-        # Cache the result
-        _cache["response"] = result
-        _cache["expires_at"] = now + CACHE_TTL_SECONDS
-        _cache["grace"] = False
-
-        # Populate full manifest cache for GET /api/v1/licence
-        _update_manifest_cache(result)
-        # Sync rules and field mappings from manifest asynchronously
-        _sync_manifest_to_db(result)
+        if outcome == "grace":
+            response = await _serve_entitled(request, call_next, _cache["response"])
+            response.headers["X-Licence-Warning"] = "expired_grace"
+            return response
+        if outcome == "invalid":
+            return JSONResponse({"error": "licence_invalid", "reason": result.get("reason", "unknown")}, status_code=402)
         return await _serve_entitled(request, call_next, result)

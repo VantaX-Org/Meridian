@@ -20,7 +20,7 @@ class _Version:
         self.metadata = metadata
 
 
-def test_upload_persists_the_raw_key_next_to_the_parquet(monkeypatch):
+def _client(monkeypatch, db=None):
     monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
     stored: list[str] = []
     created: list[dict] = []
@@ -44,15 +44,23 @@ def test_upload_persists_the_raw_key_next_to_the_parquet(monkeypatch):
     app.include_router(routes.router)
 
     async def _db():
-        yield None
+        yield db
 
     app.dependency_overrides[get_db] = _db
     app.dependency_overrides[get_tenant] = lambda: Tenant(TENANT, "Acme", ["business_partner"])
     c = TestClient(app)
     c.headers.update({"X-User-Role": "admin"})
+    return c, stored, created
 
-    r = c.post("/api/v1/upload", data={"module": "business_partner"},
-               files={"file": ("partners.csv", b"PARTNER,NAME_ORG1\n1,Acme\n", "text/csv")})
+
+def _post(c, **data):
+    return c.post("/api/v1/upload", data={"module": "business_partner", **data},
+                  files={"file": ("partners.csv", b"PARTNER,NAME_ORG1\n1,Acme\n", "text/csv")})
+
+
+def test_upload_persists_the_raw_key_next_to_the_parquet(monkeypatch):
+    c, stored, created = _client(monkeypatch)
+    r = _post(c)
     assert r.status_code == 200, r.text
 
     meta = created[0]
@@ -61,6 +69,44 @@ def test_upload_persists_the_raw_key_next_to_the_parquet(monkeypatch):
     assert raw == f"uploads/{TENANT}/{file_id}.csv"
     assert parquet == f"staging/{TENANT}/{file_id}.parquet"
     assert sorted(stored) == sorted([raw, parquet])
+    assert "system_id" not in meta
+
+
+class _SystemsDB:
+    """Answers the sap_systems lookup: a row only for ``known`` under TENANT."""
+
+    def __init__(self, known: str):
+        self.known = known
+        self.params: list[dict] = []
+
+    async def execute(self, stmt, params=None):
+        self.params.append(params)
+        hit = params["s"] == self.known and params["t"] == TENANT
+
+        class _R:
+            def scalar(self):
+                return 1 if hit else None
+
+        return _R()
+
+
+def test_upload_attached_to_a_system_joins_its_lineage(monkeypatch):
+    sid = str(uuid.uuid4())
+    db = _SystemsDB(sid)
+    c, _, created = _client(monkeypatch, db)
+    r = _post(c, system_id=sid)
+    assert r.status_code == 200, r.text
+    assert created[0]["system_id"] == sid
+    assert db.params == [{"s": sid, "t": TENANT}]
+
+
+def test_upload_to_an_unknown_system_is_404_and_stores_nothing(monkeypatch):
+    db = _SystemsDB(str(uuid.uuid4()))
+    c, stored, created = _client(monkeypatch, db)
+    for bad in (str(uuid.uuid4()), "not-a-uuid"):
+        r = _post(c, system_id=bad)
+        assert r.status_code == 404, r.text
+    assert stored == [] and created == []
 
 
 def test_purge_targets_cover_an_upload_without_the_new_key():

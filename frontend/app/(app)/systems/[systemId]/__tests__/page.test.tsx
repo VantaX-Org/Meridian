@@ -7,6 +7,7 @@ import * as sourceDesignApi from "@/lib/api/source-design";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as configPairingApi from "@/lib/api/config-pairing";
 import * as pilotApi from "@/lib/api/pilot";
+import * as systemsApi from "@/lib/api/systems";
 import type { SAPSystemExtended } from "@/types/api";
 import SystemPage from "../page";
 
@@ -66,6 +67,33 @@ describe("system detail page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith("s1"));
     await waitFor(() => expect(screen.getByRole("button", { name: "Connection tested" })).toBeInTheDocument());
+  });
+
+  it("edits an OAuth system's token URL and sends it with the save", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{
+      ...SYSTEM, name: "BTP Prod", system_type: "btp", base_url: "https://api.example", auth_type: "oauth2_client_credentials",
+      token_url: "https://old.example/oauth/token",
+    }]);
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    const save = vi.spyOn(systemsApi, "updateSystem").mockResolvedValue({} as never);
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText("BTP Prod")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const field = await screen.findByLabelText("Token URL");
+    expect(field).toHaveValue("https://old.example/oauth/token");
+    expect(screen.queryByText(/cannot be changed here/)).toBeNull();
+
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Enter the token URL")).toBeInTheDocument();
+    expect(save).not.toHaveBeenCalled();
+
+    fireEvent.change(field, { target: { value: " https://new.example/oauth/token " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls[0][0]).toBe("s1");
+    expect(save.mock.calls[0][1]).toMatchObject({ token_url: "https://new.example/oauth/token", base_url: "https://api.example" });
   });
 
   it("clicking the Active text in the edit form toggles the box", async () => {
