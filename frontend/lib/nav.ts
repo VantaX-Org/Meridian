@@ -171,7 +171,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
           { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: IconTrend, keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
           { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: IconCompass, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
-          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers process l1 l5 ptp otc migration", aliases: ["/insights/process"] },
+          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers migration cutover process readiness", aliases: ["/insights/process"] },
           { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: IconPeople, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
         ],
       },
@@ -181,7 +181,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Process",
     anyOf: ["view"],
     items: [
-      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: IconProcess, keywords: "process discovery mining as-is l1 l5 variants conformance signavio bpmn" },
+      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: IconProcess, keywords: "process discovery mining as-is l1 l5 ptp otc variants conformance signavio bpmn",
+        children: [
+          { href: "/insights/process/designer", requires: req("process", "view"), label: "Process designer", icon: IconDraft, keywords: "bpmn designer model reference l1 l5 signavio export" },
+        ],
+      },
       { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, keywords: "process discovery run incremental extraction" },
     ],
   },
@@ -206,7 +210,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         keywords: "rules checks catalogue yaml contracts scoring alerts",
         children: [
           { href: "/rules/contracts", requires: req("contracts", "view"), label: "Data contracts", icon: IconContract, licenceKey: "contracts", keywords: "data contracts sla" },
-          { href: "/rules/drafts", requires: req("rules", "edit"), label: "Rule drafts", icon: IconDraft, anyOf: ["manage_rules"], keywords: "rule authoring draft" },
+          { href: "/rules/drafts", requires: [req("rules", "edit"), req("rules", "approve")], label: "Rule drafts", icon: IconDraft, anyOf: ["manage_rules", "review_ai_rules"], keywords: "rule authoring draft review ai proposals" },
           { href: "/rules/dictionary", requires: req("rules", "view"), label: "Dictionary", icon: IconBook, anyOf: ["view"], keywords: "ddic data dictionary fields" },
           { href: "/rules/scoring", requires: req("rules", "view"), label: "Scoring and alerts", icon: IconSliders, anyOf: ["view"], keywords: "weights thresholds" },
         ],
@@ -217,9 +221,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Admin",
     // rbac.md §5: users ★ | llm ★ | licence V | audit V.
     // rules/edit keeps the legacy steward's Admin › Settings nav.
-    requiresAny: [req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"), req("rules", "edit")],
+    // extraction/edit lets SAP Basis (manage_field_mappings) reach Settings › Field mapping, Jobs and Reference data.
+    requiresAny: [req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"), req("rules", "edit"), req("extraction", "edit")],
     items: [
-      { href: "/admin/users", requires: req("users", "admin"), label: "Users and audit", icon: IconUserShield, anyOf: ["manage_users"], keywords: "admin users roles audit" },
+      { href: "/admin/users", requires: req("users", "admin"), label: "Users", icon: IconUserShield, anyOf: ["manage_users"], keywords: "admin users invite suspend" },
+      { href: "/admin/roles", requires: req("users", "admin"), label: "Roles and access", icon: IconKey, anyOf: ["manage_users"], keywords: "roles grants scopes access requests permissions" },
       { href: "/admin/audit", requires: [req("audit", "view"), req("users", "admin")], label: "Audit log", icon: IconLog, anyOf: ["view_audit", "manage_users"], keywords: "audit log ai decisions role changes" },
       { href: "/admin/settings", requires: req("rules", "view"), label: "Settings", icon: IconGear, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
@@ -229,7 +235,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 /** Header titles for routes that are not in the nav. */
 const OFF_NAV_TITLES: Record<string, string> = {
   "/admin/billing": "Exception billing",
-  "/admin/roles": "Roles and access",
   "/design": "Design library",
   "/search": "Search",
   "/docs": "Documentation",
@@ -248,7 +253,6 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/insights/duplicates": "Duplicates",
   "/insights/readiness": "Waves",
   "/insights/process": "Process readiness",
-  "/insights/process/designer": "Process designer",
   "/insights/owners": "Owners",
   "/insights/operations": "Operations",
   "/insights/reports": "Reports",
