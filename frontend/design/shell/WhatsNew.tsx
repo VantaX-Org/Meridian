@@ -51,23 +51,23 @@ export function WhatsNew({
   return (
     <Drawer open={open} onOpenChange={onOpenChange} title="What's new" subtitle={`You are on version ${currentVersion}`}>
       {releases.length === 0 ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No release notes yet</p>
+        <p className="m-text-body m-ink-3">No release notes yet</p>
       ) : (
         <div className="flex flex-col gap-6" data-testid="whats-new">
           {releases.map((r) => (
             <section key={r.version} aria-labelledby={`release-${r.version}`}>
               <div className="mb-2 flex items-center gap-2">
-                <h3 id={`release-${r.version}`} className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Version {r.version}</h3>
+                <h3 id={`release-${r.version}`} className="m-text-h font-semibold m-ink">Version {r.version}</h3>
                 {r.version === currentVersion && <Pill tone="info">Current</Pill>}
-                <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{formatDate(r.date, "date")}</span>
+                <span className="m-text-meta m-ink-3">{formatDate(r.date, "date")}</span>
               </div>
               <ul className="flex flex-col gap-3">
                 {r.items.map((item) => (
                   <li key={item.title} className="m-text-body">
-                    <p className="font-medium" style={{ color: "var(--m-ink)" }}>
-                      {item.href ? <Link href={item.href} onClick={() => onOpenChange(false)} style={{ color: "var(--m-accent)" }}>{item.title}</Link> : item.title}
+                    <p className="font-medium m-ink">
+                      {item.href ? <Link href={item.href} onClick={() => onOpenChange(false)} className="m-ink-accent-ink">{item.title}</Link> : item.title}
                     </p>
-                    <p style={{ color: "var(--m-ink-2)" }}>{item.body}</p>
+                    <p className="m-ink-2">{item.body}</p>
                   </li>
                 ))}
               </ul>

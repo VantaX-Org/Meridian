@@ -12,8 +12,8 @@ const api = vi.hoisted(() => ({
 vi.mock("../../lib/api/notifications", () => api);
 vi.mock("../../hooks/use-jobs", () => ({ useJobs: () => ({ jobs: [], active: [] }) }));
 vi.mock("next/link", () => ({
-  default: ({ href, children, onClick, className }: { href: string; children: React.ReactNode; onClick?: () => void; className?: string }) => (
-    <a href={href} onClick={(e) => { e.preventDefault(); onClick?.(); }} className={className}>{children}</a>
+  default: ({ href, children, onClick, className, "aria-label": label }: { href: string; children: React.ReactNode; onClick?: () => void; className?: string; "aria-label"?: string }) => (
+    <a href={href} onClick={(e) => { e.preventDefault(); onClick?.(); }} className={className} aria-label={label}>{children}</a>
   ),
 }));
 
@@ -70,6 +70,8 @@ describe("NotificationBell", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Notifications/ }));
     expect(await screen.findByText("Quality alert")).toBeInTheDocument();
     expect(screen.getByText("New analysis complete: 172 findings in Accounts payable")).toBeInTheDocument();
+    // The accessible name is the humanised title as plain text, never a rendered element.
+    expect(screen.getByRole("link", { name: "Open notification: New analysis complete: 172 findings in Accounts payable" })).toBeInTheDocument();
   });
 
   it("marks a notification read when it is opened", async () => {

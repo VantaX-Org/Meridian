@@ -7,6 +7,7 @@ import { Card } from "../primitives/Card";
 import { Notice } from "../primitives/Notice";
 import { TOURS, tourById, type TourDef, type TourPlacement, type TourStep } from "@/lib/help/tours";
 import { isTourDone, markTourDone, subscribeStorage } from "@/lib/help/storage";
+import { shortcutLabel, useIsMac } from "@/lib/shortcuts";
 
 /* A tiny store so `startTour(id)` can be called from anywhere (the help menu, the first-run offer, a test). */
 let activeId: string | null = null;
@@ -104,6 +105,7 @@ export function TourHost(props: TourHostProps) {
 
 function TourRunner({ def, navigate, resolveHref }: { def: TourDef } & Pick<TourHostProps, "navigate" | "resolveHref">) {
   const [index, setIndex] = useState(0);
+  const isMac = useIsMac();
   const [box, setBox] = useState<Box | null>(null);
   const [missing, setMissing] = useState(false);
   const [ready, setReady] = useState(false);
@@ -243,7 +245,8 @@ function TourRunner({ def, navigate, resolveHref }: { def: TourDef } & Pick<Tour
           style={{ position: "fixed", top: pos.top, left: pos.left, transform: pos.transform, width: CARD_W, maxWidth: "calc(100vw - 32px)", boxShadow: "var(--m-elev-3)", borderRadius: "var(--m-radius-sheet)" }}
         >
           <Card title={step.title} meta={`Step ${index + 1} of ${def.steps.length}`}>
-            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{step.body}</p>
+            {/* A step body written with "⌘" reads "Ctrl" off macOS, the same as the shortcut sheet. */}
+            <p className="m-text-body m-ink-2">{shortcutLabel(step.body, isMac)}</p>
             {missing && (
               <div className="mt-3">
                 <Notice tone="warning">This part of the page is not available to you or has not loaded</Notice>

@@ -4,21 +4,34 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as rulesApi from "@/lib/api/rules";
 import * as connectivityApi from "@/lib/api/connectivity";
-import * as cleaningApi from "@/lib/api/cleaning";
+import * as remediationApi from "@/lib/api/remediation";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as versionsApi from "@/lib/api/versions";
 import * as glossaryApi from "@/lib/api/glossary";
+import * as processApi from "@/lib/api/process-discovery";
+import * as designerApi from "@/lib/api/process-designer";
+import type { SAPSystemExtended } from "@/types/api";
 import SearchPage from "../page";
 
+let params = "q=business";
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams("q=business"),
+  useSearchParams: () => new URLSearchParams(params),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true, role: "admin" }) }));
+
+const emptyRules = { rules: [], total: 0, limit: 100, offset: 0 };
 
 describe("SearchPage", () => {
   beforeEach(() => {
     vi.spyOn(glossaryApi, "getGlossaryTerms").mockResolvedValue({ terms: [], total: 0, page: 1, per_page: 20 });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(remediationApi, "listBatches").mockResolvedValue({ items: [] });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    vi.spyOn(designerApi, "listModels").mockResolvedValue([]);
+    vi.spyOn(processApi, "getCatalogue").mockResolvedValue([]);
+    vi.spyOn(processApi, "listRuns").mockResolvedValue([]);
   });
 
   it("ranks a matching rule into the results table", async () => {
@@ -45,32 +58,21 @@ describe("SearchPage", () => {
       limit: 100,
       offset: 0,
     });
-    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
-    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
     renderWithQuery(<SearchPage />);
     await waitFor(() => expect(screen.getByText("Business partner VAT check")).toBeInTheDocument());
   });
 
   it("shows an empty state when nothing matches", async () => {
-    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [], total: 0, limit: 100, offset: 0 });
-    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
-    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue(emptyRules);
 
     renderWithQuery(<SearchPage />);
     await waitFor(() => expect(screen.getByText(/no results for "business"/i)).toBeInTheDocument());
+    expect(screen.getByText("Nothing matches")).toBeInTheDocument();
   });
 
   it("shows the API error message and retries on click", async () => {
     vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("rules service unavailable"));
-    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
-    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
     renderWithQuery(<SearchPage />);
     await screen.findByText(/could not reach the server/i);
@@ -80,11 +82,7 @@ describe("SearchPage", () => {
   });
 
   it("finds glossary terms", async () => {
-    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [], total: 0, limit: 100, offset: 0 });
-    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 500 });
-    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue(emptyRules);
     vi.spyOn(glossaryApi, "getGlossaryTerms").mockResolvedValue({
       terms: [{
         id: "g1", sap_table: "BUT000", sap_field: "NAME_ORG1", technical_name: "BUT000.NAME_ORG1",
@@ -97,5 +95,45 @@ describe("SearchPage", () => {
     renderWithQuery(<SearchPage />);
     await waitFor(() => expect(screen.getByText("Business partner name")).toBeInTheDocument());
     expect(glossaryApi.getGlossaryTerms).toHaveBeenCalledWith({ search: "business" });
+  });
+
+  it("indexes systems as System, named batches, L1 processes, discovery runs, process models and nav pages", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue(emptyRules);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ id: "s1", name: "Business ECC", health_status: "healthy" } as SAPSystemExtended]);
+    vi.spyOn(remediationApi, "listBatches").mockResolvedValue({ items: [{
+      id: "b1", name: "Business partner VAT fixes", status: "draft", filter: {}, created_by: null, created_by_label: null,
+      created_at: "2026-10-10T00:00:00Z", approved_by: null, approved_by_label: null, approved_at: null, exported_at: null,
+      items: 3, with_proposal: 3, auto_approvable: 1, fixed: 0, still_failing: 0,
+    } as remediationApi.BatchSummary] });
+    vi.spyOn(processApi, "getCatalogue").mockResolvedValue([{
+      l1: "PTP", name: "Business procure to pay", coverage: "discovered", reason: null, last_run: null, in_progress: null, failed: null, sources: [],
+    }]);
+    vi.spyOn(processApi, "listRuns").mockResolvedValue([{
+      id: "pr1", l1: "PTP", mode: "full", status: "completed", coverage: "discovered", window_from: null, window_to: null, watermark: null,
+      extraction_version_id: null, job_id: null, filters: {}, stats: {}, error: null, started_at: "2026-10-12T09:00:00Z", finished_at: null,
+    }]);
+    vi.spyOn(designerApi, "listModels").mockResolvedValue([{ id: "m1", name: "Business target model", status: "draft", current_version: 1, updated_at: null }]);
+
+    renderWithQuery(<SearchPage />);
+    await waitFor(() => expect(screen.getByText("Business ECC")).toBeInTheDocument());
+    expect(screen.getByText("System")).toBeInTheDocument();
+    expect(screen.queryByText(/^Batch b1/)).toBeNull();
+    expect(screen.getByRole("link", { name: "Open Business partner VAT fixes" })).toHaveAttribute("href", "/fix?tab=batches&batch=b1");
+    expect(screen.getByRole("link", { name: "Open Business procure to pay" })).toHaveAttribute("href", "/process/PTP?system=s1");
+    expect(screen.getByRole("link", { name: "Open Business procure to pay, 12 Oct 2026" })).toHaveAttribute("href", "/process/runs/pr1");
+    expect(screen.getByRole("link", { name: "Open Business target model" })).toHaveAttribute("href", "/insights/process/designer?model=m1");
+    expect(screen.getByText("Process model")).toBeInTheDocument();
+    expect(processApi.listRuns).toHaveBeenCalledWith("s1", { limit: 50 });
+  });
+});
+
+describe("SearchPage pages", () => {
+  it("indexes the nav pages the viewer may see, with the home resolved for their persona", async () => {
+    params = "q=home";
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue(emptyRules);
+    renderWithQuery(<SearchPage />);
+    expect(await screen.findByRole("link", { name: "Open Home" })).toHaveAttribute("href", "/home/lead");
+    expect(screen.getByText("Page")).toBeInTheDocument();
+    params = "q=business";
   });
 });

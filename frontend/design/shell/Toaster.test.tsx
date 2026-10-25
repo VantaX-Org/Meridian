@@ -17,6 +17,15 @@ describe("Toaster", () => {
     expect(toasts.map((t) => t.getAttribute("data-expanded"))).toEqual(["true", "true"]);
   });
 
+  it("sits above the Ask Meridian launcher, never over it", async () => {
+    render(<Toaster />);
+    act(() => { toast("Saved"); });
+    await screen.findByText("Saved");
+    const viewport = document.querySelector("[data-sonner-toaster]") as HTMLElement;
+    expect(viewport.style.getPropertyValue("--offset-bottom")).toBe("64px");
+    expect(viewport.style.getPropertyValue("--offset-right")).toBe("16px");
+  });
+
   it("never gets an empty error message to show", () => {
     expect(apiErrorMessage(new Error(""))).toBe("Could not reach the server.");
     expect(apiErrorMessage(undefined)).toBe("Could not reach the server.");

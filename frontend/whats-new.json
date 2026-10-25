@@ -5,7 +5,7 @@
     "items": [
       {
         "title": "Five insight views on one spine",
-        "body": "Summary, Progress, Explore, Readiness and Operate replace fifteen pages. Each view keeps its detail screens in a tab strip, and every page offers Run analysis, Auto clean, Report library, Present and Export.",
+        "body": "Summary, Progress, Explore, Readiness and Operate replace fifteen pages. Each view keeps its detail screens in a tab strip, and every page offers Run analysis, Review fixes, Present and Export.",
         "href": "/insights/exec"
       },
       {
@@ -50,8 +50,8 @@
     "date": "2026-10-13",
     "items": [
       {
-        "title": "Process models export to PowerPoint",
-        "body": "Export a discovered L1 to L5 process model as a deck, next to the Signavio package.",
+        "title": "Reference model deck",
+        "body": "Export the L1 to L5 reference process model as a PowerPoint deck from a process page, next to the Signavio package of the discovered as-is model.",
         "href": "/process"
       },
       {

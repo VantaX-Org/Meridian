@@ -3,8 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { toast } from "sonner";
-import { Button, Mono } from "@/design";
+import { Button, Mono, toast } from "@/design";
 import { clientErrorId, reportClientError } from "@/lib/client-errors";
 
 /** Renders inside the shell frame, so the index bar and scope bar stay usable when a page crashes. One sheet, one action. */

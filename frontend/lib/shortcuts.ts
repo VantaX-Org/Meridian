@@ -5,11 +5,27 @@
  * handled by design/shell/CommandPalette.tsx's global key handler; the rest
  * are listed below next to the component that handles them.
  */
+import { useSyncExternalStore } from "react";
 import { NAV_GROUPS, flattenNav } from "@/lib/nav";
 
-export type ShortcutGroup = "Navigation" | "Tables" | "Inbox" | "Global";
+export type ShortcutGroup = "Navigation" | "Tables" | "Inbox" | "Designer" | "Global";
 
-export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ["Navigation", "Tables", "Inbox", "Global"];
+export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ["Navigation", "Tables", "Inbox", "Designer", "Global"];
+
+/**
+ * The registry writes a modifier shortcut as "⌘K"; `shortcutLabel` spells it for the viewer's platform
+ * ("⌘K" on macOS, "Ctrl K" elsewhere). The one helper the sheet, the palette and the tour read.
+ */
+export function shortcutLabel(keys: string, isMac: boolean): string {
+  return isMac ? keys : keys.replace(/⌘/g, "Ctrl ");
+}
+
+const noSubscribe = () => () => {};
+const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
+/** The viewer's platform. The server snapshot is "not Mac", so SSR and hydration agree. */
+export function useIsMac(): boolean {
+  return useSyncExternalStore(noSubscribe, readIsMac, () => false);
+}
 
 export interface Shortcut {
   group: ShortcutGroup;
@@ -37,6 +53,11 @@ export const INBOX_SHORTCUTS: readonly Shortcut[] = [
   { group: "Inbox", keys: "Escape", description: "Close the panel" },
 ];
 
+/** app/(app)/insights/process/designer/page.tsx key handler. */
+export const DESIGNER_SHORTCUTS: readonly Shortcut[] = [
+  { group: "Designer", keys: "⌘S", description: "Save model" },
+];
+
 /** design/shell/CommandPalette.tsx and the sheet itself. */
 export const GLOBAL_SHORTCUTS: readonly Shortcut[] = [
   { group: "Global", keys: "⌘K", description: "Search or jump to a page" },
@@ -51,7 +72,7 @@ export function navShortcuts(): Shortcut[] {
 }
 
 export function shortcutRegistry(): Shortcut[] {
-  return [...navShortcuts(), ...TABLE_SHORTCUTS, ...INBOX_SHORTCUTS, ...GLOBAL_SHORTCUTS];
+  return [...navShortcuts(), ...TABLE_SHORTCUTS, ...INBOX_SHORTCUTS, ...DESIGNER_SHORTCUTS, ...GLOBAL_SHORTCUTS];
 }
 
 export interface ShortcutSection {

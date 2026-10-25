@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { fireEvent, render, screen, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { JobTray } from "./JobTray";
+import { JobTray, jobHref } from "./JobTray";
 import { touchedPredicate } from "../../hooks/use-jobs";
+import { getJobs } from "@/lib/api/jobs";
 import type { Job } from "@/types/jobs";
 
 let capturedOnJob: ((job: Job) => void) | null = null;
@@ -68,6 +69,31 @@ describe("JobTray", () => {
   it("renders without crashing when there are no jobs", () => {
     renderWithClient(client);
     expect(screen.getByLabelText("Jobs")).toBeInTheDocument();
+  });
+
+  it("shows an empty state with a next step when there are no jobs", () => {
+    renderWithClient(client);
+    fireEvent.click(screen.getByLabelText("Jobs"));
+    expect(screen.getByText("No jobs yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Job history" })).toHaveAttribute("href", "/admin/jobs");
+  });
+
+  it("shows a failed job's lifecycle, its error and an Open link to its run", async () => {
+    vi.mocked(getJobs).mockResolvedValueOnce([
+      { ...completedJob, id: "j2", status: "failed", percent: 40, error: "RFC_COMMUNICATION_FAILURE on BUT000", version_id: "v-9" },
+    ]);
+    renderWithClient(client);
+    fireEvent.click(screen.getByLabelText("Jobs"));
+    const status = await screen.findByText("Failed");
+    expect(status).toHaveAttribute("data-status", "lifecycle");
+    expect(screen.getByTestId("job-error")).toHaveTextContent("RFC_COMMUNICATION_FAILURE on BUT000");
+    expect(screen.getByRole("link", { name: "Open Analysis" })).toHaveAttribute("href", "/runs/v-9");
+  });
+
+  it("links a discovery job to its discovery run and a system job to its system", () => {
+    expect(jobHref({ ...completedJob, kind: "process_discovery", run_ids: ["pr-1"], system_id: "s-1" })).toBe("/process/runs/pr-1");
+    expect(jobHref({ ...completedJob, kind: "extraction", system_id: "s-1" })).toBe("/systems/s-1");
+    expect(jobHref(completedJob)).toBeNull();
   });
 });
 

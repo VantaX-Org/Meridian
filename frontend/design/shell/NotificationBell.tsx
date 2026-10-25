@@ -73,9 +73,8 @@ export function useNotificationMutations() {
 /** One notification: unread dot, type pill, title (a link when it has an in-app target), body and age. */
 export function NotificationRow({ n, showBody, onOpen }: { n: Notification; showBody?: boolean; onOpen: (n: Notification) => void }) {
   const href = internalHref(n.link);
-  const title = (
-    <span className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}>{humanizeIds(n.title)}</span>
-  );
+  const titleText = humanizeIds(n.title);
+  const title = <span className="m-text-body font-medium m-ink">{titleText}</span>;
   return (
     <li className="flex items-start gap-3 px-3 py-2" data-unread={n.is_read ? undefined : "true"}>
       <span
@@ -87,14 +86,14 @@ export function NotificationRow({ n, showBody, onOpen }: { n: Notification; show
         <div className="flex items-center gap-2">
           <Pill tone={TONE[n.type] ?? "neutral"}>{NOTIFICATION_TYPE_LABEL[n.type] ?? humanizeIds(n.type)}</Pill>
           {!n.is_read && <span className="sr-only">Unread</span>}
-          <time className="m-text-meta" dateTime={n.created_at} style={{ color: "var(--m-ink-3)" }}>{relativeTime(n.created_at)}</time>
+          <time className="m-text-meta m-ink-3" dateTime={n.created_at}>{relativeTime(n.created_at)}</time>
         </div>
         {href ? (
-          <Link href={href} onClick={() => onOpen(n)} aria-label={`Open notification: ${title}`} className="underline-offset-2 hover:underline">{title}</Link>
+          <Link href={href} onClick={() => onOpen(n)} aria-label={`Open notification: ${titleText}`} className="underline-offset-2 hover:underline">{title}</Link>
         ) : (
-          <button type="button" onClick={() => onOpen(n)} aria-label={`Open notification: ${title}`} className="text-left">{title}</button>
+          <button type="button" onClick={() => onOpen(n)} aria-label={`Open notification: ${titleText}`} className="text-left">{title}</button>
         )}
-        {showBody && <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{humanizeIds(n.body)}</p>}
+        {showBody && <p className="m-text-body m-ink-2">{humanizeIds(n.body)}</p>}
       </div>
     </li>
   );
@@ -146,7 +145,7 @@ export function NotificationBell() {
         <Popover.Positioner side="bottom" align="end" sideOffset={8} className="z-50">
           <Popover.Popup className="m-popup flex flex-col" style={{ width: 380, maxWidth: "calc(100vw - 32px)", padding: 0 }} aria-label="Notifications">
             <div className="flex items-center justify-between gap-2 px-3 py-2" style={{ borderBottom: "1px solid var(--m-line)" }}>
-              <span className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Notifications</span>
+              <span className="m-text-h font-semibold m-ink">Notifications</span>
               <Button variant="ghost" disabled={unread === 0} pending={markAllRead.isPending} onClick={() => markAllRead.mutate()}>Mark all read</Button>
             </div>
             <div className="overflow-auto" style={{ maxHeight: 420 }}>
@@ -156,17 +155,17 @@ export function NotificationBell() {
                 </div>
               ) : list.isError ? (
                 <div className="flex items-center justify-between gap-2 p-3">
-                  <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Notifications did not load</span>
+                  <span className="m-text-body m-ink-2">Notifications did not load</span>
                   <Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>
                 </div>
               ) : items.length === 0 ? (
-                <p className="m-text-body p-3" style={{ color: "var(--m-ink-3)" }}>You are all caught up</p>
+                <p className="m-text-body p-3 m-ink-3">You are all caught up</p>
               ) : (
                 <ul>{items.map((n) => <NotificationRow key={n.id} n={n} onOpen={onOpen} />)}</ul>
               )}
             </div>
             <div className="px-3 py-2" style={{ borderTop: "1px solid var(--m-line)" }}>
-              <Link href="/inbox/notifications" onClick={() => setOpen(false)} className="m-text-body font-medium" style={{ color: "var(--m-accent)" }}>Open all</Link>
+              <Link href="/inbox/notifications" onClick={() => setOpen(false)} className="m-text-body font-medium m-ink-accent-ink">Open all</Link>
             </div>
           </Popover.Popup>
         </Popover.Positioner>

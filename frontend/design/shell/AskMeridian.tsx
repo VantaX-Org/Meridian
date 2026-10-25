@@ -15,12 +15,13 @@ import { IconButton } from "../primitives/IconButton";
 import { IconArrowUp, IconClose } from "../icons";
 import { MeridianMark } from "../icons/Mark";
 
-/** Shown on an empty panel; the same four the API lists when it has no answer (api/services/assistant.py EXAMPLES). */
+/** Shown on an empty panel: the four the API lists when it has no answer (api/services/assistant.py EXAMPLES) plus one process question. */
 export const ASK_SUGGESTIONS = [
   "How has the score moved?",
   "Which objects are weakest?",
   "What are the top failing rules in material master?",
   "Who has the most open work?",
+  "Can procure to pay run on this data?",
 ] as const;
 
 /** The licence menu item that turns the assistant on (cloudflare/licence-worker DEFAULT_MENU_ITEMS). */
@@ -52,23 +53,20 @@ function AnswerBubble({ message, onNavigate }: { message: Extract<Message, { rol
   const links = (a?.links ?? []).filter((l) => internal(l.href));
   return (
     <li className="flex flex-col gap-2" data-role="assistant">
-      <p className="m-text-body" style={{ color: "var(--m-ink)" }}>{message.text}</p>
+      {/* Model-written text is labelled in words, above the answer, so a reader knows before they read it. */}
+      {a?.ai && <span className="m-text-meta m-ink-3">Written by the model from aggregated findings</span>}
+      <p className="m-text-body m-ink">{message.text}</p>
       {a && <AnswerChart answer={a} />}
       {links.length > 0 && (
         <ul className="flex flex-wrap gap-x-4 gap-y-1">
           {links.map((l) => (
             <li key={l.href}>
-              <Link href={l.href} onClick={onNavigate} className="m-text-meta font-medium underline-offset-2 hover:underline" style={{ color: "var(--m-accent)" }}>
+              <Link href={l.href} onClick={onNavigate} className="m-text-meta font-medium underline-offset-2 hover:underline m-ink-accent-ink">
                 {l.label}
               </Link>
             </li>
           ))}
         </ul>
-      )}
-      {a?.ai && (
-        <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
-          AI-generated from aggregated findings; no built-in answer fitted
-        </span>
       )}
     </li>
   );
@@ -77,7 +75,7 @@ function AnswerBubble({ message, onNavigate }: { message: Extract<Message, { rol
 /**
  * "Ask Meridian": a launcher fixed bottom-right that opens a question panel. Questions go to
  * POST /api/v1/assistant/ask with the run the page shows (`?run=`); answers are computed from the figures, and only
- * when no built-in answer fits does the model write one from aggregated findings (marked "AI-generated").
+ * when no built-in answer fits does the model write one from aggregated findings (labelled "Written by the model").
  * Escape closes the panel and focus returns to the launcher. Hidden in print and when the licence turns it off.
  */
 export function AskMeridian() {
@@ -141,9 +139,9 @@ export function AskMeridian() {
             >
               <div className="flex shrink-0 items-start justify-between gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--m-line)" }}>
                 <div className="min-w-0">
-                  <Popover.Title className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Ask Meridian</Popover.Title>
-                  <Popover.Description className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
-                    Answers come from your run&apos;s figures
+                  <Popover.Title className="m-text-h font-semibold m-ink">Ask Meridian</Popover.Title>
+                  <Popover.Description className="m-text-meta m-ink-3">
+                    Answers come from your run&apos;s figures, or are written by the model from them
                   </Popover.Description>
                 </div>
                 <Popover.Close render={<IconButton aria-label="Close" size="sm" />}>
@@ -154,7 +152,7 @@ export function AskMeridian() {
               <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3">
                 {messages.length === 0 ? (
                   <div className="flex flex-col gap-2">
-                    <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Try one of these</p>
+                    <p className="m-text-meta m-ink-3">Try one of these</p>
                     <ul className="flex flex-col items-start gap-2">
                       {ASK_SUGGESTIONS.map((q) => (
                         <li key={q}>
@@ -175,7 +173,7 @@ export function AskMeridian() {
                       ),
                     )}
                     {ask.isPending && (
-                      <li className="m-text-meta inline-flex items-center gap-2" style={{ color: "var(--m-ink-3)" }} aria-busy="true">
+                      <li className="m-text-meta inline-flex items-center gap-2 m-ink-3" aria-busy="true">
                         <span className="m-spinner m-motion-spin" aria-hidden="true" />
                         Reading the figures
                       </li>

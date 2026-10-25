@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import { DomainChip } from "../primitives/DomainChip";
 import { parsePalette, type GrammarContext } from "@/lib/palette-grammar";
+import { shortcutLabel, useIsMac } from "@/lib/shortcuts";
 import { IconSearch } from "../icons";
 
-const noSubscribe = () => () => {};
-const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
 const DEFAULT_GROUP = "Pages";
 // SAP identifiers (check IDs like MM-001, TABLE.FIELD, run IDs like run_ab12) render in the mono face, spec 5.5.
 const SAP_ID = /\b([A-Z]{2,}-\d+|[A-Z][A-Z0-9_]+\.[A-Z][A-Z0-9_]+|run_[a-z0-9]+)\b/g;
@@ -33,8 +32,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const parsed = grammar && query.trim() ? parsePalette(query, grammar) : null;
-  // Server snapshot is "not Mac", so SSR and hydration agree; the client reads the real platform.
-  const isMac = useSyncExternalStore(noSubscribe, readIsMac, () => false);
+  const isMac = useIsMac();
   const router = useRouter();
   // The latest items for the global key handler, so it subscribes once.
   const itemsRef = useRef(items);
@@ -79,7 +77,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
           <IconSearch size={14} />
           <span className="hidden xl:inline">Search or jump to…</span>
         </span>
-        <kbd className="m-kbd hidden xl:inline-flex">{isMac ? "⌘K" : "Ctrl K"}</kbd>
+        <kbd className="m-kbd hidden xl:inline-flex">{shortcutLabel("⌘K", isMac)}</kbd>
       </button>
       <Command.Dialog
         open={open}
@@ -124,7 +122,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
                     {item.icon}
                     <span className="flex-1 truncate">{withMono(item.label)}</span>
                     {item.moduleId && <DomainChip moduleId={item.moduleId} />}
-                    {item.shortcut && <kbd className="m-kbd">{item.shortcut}</kbd>}
+                    {item.shortcut && <kbd className="m-kbd">{shortcutLabel(item.shortcut, isMac)}</kbd>}
                   </Command.Item>
                 ))}
               </Command.Group>

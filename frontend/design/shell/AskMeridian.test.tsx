@@ -45,7 +45,8 @@ describe("AskMeridian", () => {
     fireEvent.click(launcher());
     expect(await screen.findByRole("dialog", { name: "Ask Meridian" })).toBeInTheDocument();
     for (const q of ASK_SUGGESTIONS) expect(screen.getByRole("button", { name: q })).toBeInTheDocument();
-    expect(ASK_SUGGESTIONS).toHaveLength(4);
+    expect(ASK_SUGGESTIONS).toHaveLength(5);
+    expect(ASK_SUGGESTIONS).toContain("Can procure to pay run on this data?");
     await waitFor(() => expect(screen.getByLabelText("Your question")).toHaveFocus());
   });
 
@@ -63,7 +64,7 @@ describe("AskMeridian", () => {
     expect(screen.getByRole("link", { name: "Open Material master" })).toHaveAttribute("href", "/objects/material_master?run=run-1");
     expect(screen.queryByRole("link", { name: "Elsewhere" })).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Answer chart/ })).toBeInTheDocument();
-    expect(screen.queryByText(/AI-generated/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Written by the model/)).not.toBeInTheDocument();
     expect(input).toHaveValue("");
   });
 
@@ -80,15 +81,17 @@ describe("AskMeridian", () => {
     expect(screen.queryByText("Reading the figures")).not.toBeInTheDocument();
   });
 
-  it("marks an AI-generated answer", async () => {
+  it("labels a model-written answer in words, above the answer", async () => {
     api.askMeridian.mockResolvedValue(answer({ answer: "Material master is the object to watch.", intent: "ai", ai: true, data: null, chart: null }));
     renderAsk();
     fireEvent.click(launcher());
     const input = await screen.findByLabelText("Your question");
     fireEvent.change(input, { target: { value: "Anything odd?" } });
     fireEvent.submit(input.closest("form")!);
-    expect(await screen.findByText("Material master is the object to watch.")).toBeInTheDocument();
-    expect(screen.getByText(/AI-generated/)).toBeInTheDocument();
+    const answerText = await screen.findByText("Material master is the object to watch.");
+    const label = screen.getByText("Written by the model from aggregated findings");
+    expect(label.compareDocumentPosition(answerText) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(/AI-generated/)).not.toBeInTheDocument();
   });
 
   it("answers politely when the request fails", async () => {

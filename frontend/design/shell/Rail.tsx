@@ -9,6 +9,7 @@ import { getSystems } from "../../lib/api/connectivity";
 import { queryKeys } from "../../lib/query-keys";
 import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
+import { personaForRole, type Persona } from "../../lib/persona";
 import { MeridianMark } from "../icons/Mark";
 import { IconChevronDown } from "../icons";
 import { activeHref, flattenNav, resolveNavHref, type NavGroup, type NavItem } from "../../lib/nav";
@@ -21,11 +22,21 @@ import { Skeleton } from "../primitives/Skeleton";
  * visible page grouped as the nav defines them, and the shell's controls on the right (search, jobs,
  * notifications, help, the user). It replaces the sidebar: there is no collapsed state and no flyout.
  * Links never carry `?run=`: each section opens on its own latest run (lib/run-scope.ts).
+ * The process persona's strip swaps Fix for Processes: its day is the catalogue, not the fix queue.
  */
 
 const PRIMARY = ["/home/lead", "/objects", "/fix", "/inbox", "/runs", "/insights", "/systems"] as const;
+const PRIMARY_PROCESS = ["/home/lead", "/objects", "/process", "/inbox", "/runs", "/insights", "/systems"] as const;
+/** The pill label where the nav label is too long for the strip. */
+const PILL_LABEL: Record<string, string> = { "/process": "Processes" };
+/** Items whose children are tabs of the item's own page, so the panel lists the item once and not its tabs. */
+const FOLDED = new Set(["/admin/settings"]);
 const MORE_PANEL_ID = "topnav-more";
 const ICON_SIZE = 16;
+
+export function primaryHrefs(persona: Persona): readonly string[] {
+  return persona === "process" ? PRIMARY_PROCESS : PRIMARY;
+}
 
 /** Worst system health across all connected systems, for the Systems item's pip. Null when there are no systems at all. */
 function worstHealth(systems: readonly { health_status: string }[] | undefined): "critical" | "high" | "pass" | null {
@@ -41,13 +52,20 @@ const HEALTH_PIP_COLOR: Record<"critical" | "high" | "pass", string> = {
   pass: "var(--m-pass)",
 };
 
-/** The "More" panel's groups: every visible item that is not a primary pill, with its children, under its nav group. */
-function moreGroups(groups: readonly NavGroup[]): { group: string; items: NavItem[] }[] {
-  const primary = new Set<string>(PRIMARY);
+/**
+ * The "More" panel's groups: every visible item that is not a primary pill, with its children, under its nav
+ * group. A folded item (Settings) stands for its tabs; an href is listed once however the nav reaches it.
+ */
+export function moreGroups(groups: readonly NavGroup[], primaryList: readonly string[] = PRIMARY): { group: string; items: NavItem[] }[] {
+  const primary = new Set<string>(primaryList);
+  const seen = new Set<string>();
+  const children = (i: NavItem) => (FOLDED.has(i.href) ? [] : [...(i.children ?? [])]);
   return groups
     .map((g) => ({
       group: g.group,
-      items: g.items.flatMap((i) => (primary.has(i.href) ? [...(i.children ?? [])] : [i, ...(i.children ?? [])])),
+      items: g.items
+        .flatMap((i) => (primary.has(i.href) ? children(i) : [i, ...children(i)]))
+        .filter((i) => !seen.has(i.href) && seen.add(i.href)),
     }))
     .filter((g) => g.items.length > 0);
 }
@@ -83,11 +101,12 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
   );
 
   const topLevel = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  const primary = primaryHrefs(personaForRole(role));
   const primaryItems = useMemo(
-    () => PRIMARY.map((href) => topLevel.find((i) => i.href === href)).filter((i): i is NavItem => !!i),
-    [topLevel],
+    () => primary.map((href) => topLevel.find((i) => i.href === href)).filter((i): i is NavItem => !!i),
+    [topLevel, primary],
   );
-  const more = useMemo(() => moreGroups(groups), [groups]);
+  const more = useMemo(() => moreGroups(groups, primary), [groups, primary]);
   const moreActive = more.some((g) => g.items.some((i) => i.href === activeItemHref));
 
   // The panel closes on Escape, on a click outside it and when focus leaves it.
@@ -134,7 +153,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
               />
             )}
           </span>
-          <span>{item.label}</span>
+          <span>{PILL_LABEL[item.href] ?? item.label}</span>
           {count > 0 && (
             <span key={count} className="m-motion-rise" data-severity={item.badgeKey === "fix" ? "critical" : undefined}>
               <Badge count={count} tone={item.badgeKey === "fix" ? "critical" : undefined} />
