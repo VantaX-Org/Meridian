@@ -62,8 +62,9 @@ export interface BulkMergeResult {
   missing_record: number;
 }
 
+/** `record` keeps one record's pairs: either side's SAP key, whole or as the bare value of its first part. */
 export async function getReviewPairs(params: {
-  domain?: string; band?: ScoreBand; min_score?: number; max_score?: number; limit?: number; offset?: number;
+  domain?: string; band?: ScoreBand; min_score?: number; max_score?: number; record?: string; limit?: number; offset?: number;
 } = {}): Promise<ReviewPairList> {
   const { data } = await apiClient.get<ReviewPairList>("/api/v1/match-scores", { params });
   return data;

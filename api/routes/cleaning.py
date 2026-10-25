@@ -902,19 +902,27 @@ async def list_all_dedup_candidates(
     object_type: Optional[str] = None,
     min_score: int = Query(default=60, ge=0, le=100),
     status: str = "pending",
+    record: Optional[str] = Query(default=None, min_length=1, max_length=2000,
+                                  description="Only the pairs one of whose two records is this record key"),
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Candidate pairs across every object type (the matcher keys them by SAP module), one page at a
-    time: a deployment holds millions of pairs."""
+    time: a deployment holds millions of pairs. ``record`` keeps one record's pairs (Match review's
+    "Pairs of" filter), matched as the whole key or the bare value of its first part (MATNR=1 -> 1)."""
+    from api.routes.work import _key_candidates
+
     await _set_rls(db, tenant.id)
     where = "tenant_id = :tid AND match_score >= :ms AND status = :st"
     params: dict[str, object] = {"tid": str(tenant.id), "ms": min_score, "st": status}
     if object_type:
         where += " AND object_type = :ot"
         params["ot"] = object_type
+    if record:
+        where += " AND (record_key_a = ANY(:keys) OR record_key_b = ANY(:keys))"
+        params["keys"] = _key_candidates(record)
     total = (await db.execute(text(f"SELECT COUNT(*) FROM dedup_candidates WHERE {where}"), params)).scalar() or 0
     result = await db.execute(
         text(f"SELECT * FROM dedup_candidates WHERE {where} ORDER BY match_score DESC, object_type, id"
