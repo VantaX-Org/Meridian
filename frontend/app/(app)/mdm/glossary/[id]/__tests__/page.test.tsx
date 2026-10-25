@@ -1,8 +1,10 @@
 // frontend/app/(app)/mdm/glossary/[id]/__tests__/page.test.tsx
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import * as glossaryApi from "@/lib/api/glossary";
+import * as usersApi from "@/lib/api/users";
 import type { GlossaryTermDetail } from "@/types/api";
 import GlossaryTermPage from "../page";
 
@@ -94,5 +96,33 @@ describe("GlossaryTermPage", () => {
     renderWithQuery(<GlossaryTermPage />);
     await screen.findByDisplayValue("Groups materials for reporting.");
     expect(screen.queryByRole("button", { name: "Auto-draft" })).toBeNull();
+  });
+
+  it("names the steward instead of printing the user id", async () => {
+    perms.granted = new Set(["view", "assign"]);
+    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([{ id: "u-9", name: "Ana Silva", email: "ana@example.com", role: "steward" }]);
+    vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue({ ...term, data_steward_id: "u-9" });
+    renderWithQuery(<GlossaryTermPage />);
+    expect(await screen.findByText("Ana Silva")).toBeInTheDocument();
+    expect(screen.queryByText("u-9")).not.toBeInTheDocument();
+  });
+
+  it("says a user when the viewer cannot read the user list", async () => {
+    perms.granted = new Set(["view"]);
+    vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue({ ...term, data_steward_id: "u-9" });
+    renderWithQuery(<GlossaryTermPage />);
+    expect(await screen.findByText("A user")).toBeInTheDocument();
+  });
+
+  it("lets an approver hand the term to a steward", async () => {
+    perms.granted = new Set(["view", "approve", "assign"]);
+    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([{ id: "u-9", name: "Ana Silva", email: "ana@example.com", role: "steward" }]);
+    vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue(term);
+    const update = vi.spyOn(glossaryApi, "updateGlossaryTerm").mockResolvedValue({ status: "ok", changes: 1 });
+    renderWithQuery(<GlossaryTermPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("combobox", { name: "Steward" }));
+    await user.click(await screen.findByRole("option", { name: "Ana Silva" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("t1", { data_steward_id: "u-9" }));
   });
 });

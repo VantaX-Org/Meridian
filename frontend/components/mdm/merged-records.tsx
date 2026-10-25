@@ -81,7 +81,8 @@ export function MergedRecords({ id, onChanged }: { id: string; onChanged: () => 
         cancelLabel="Keep merged"
         tone="danger"
         pending={split.isPending}
-        onConfirm={() => { if (reason.trim()) split.mutate(); else toast.error("Give a reason for the split"); }}
+        confirmDisabled={!reason.trim()}
+        onConfirm={() => { if (reason.trim()) split.mutate(); }}
         body={
           <div className="flex flex-col gap-3 m-text-body">
             <p className="m-ink-2">It becomes its own record again and is marked not a match with the rest, so a later match run does not merge it back.</p>
@@ -103,9 +104,10 @@ export function MergedRecords({ id, onChanged }: { id: string; onChanged: () => 
             ) : (
               <p className="m-ink-3">No golden value changes; this record only added a duplicate.</p>
             )}
-            <Field label="Reason, kept in the merge history">
-              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Different legal entity" />
+            <Field label="Reason (required), kept in the merge history">
+              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Different legal entity" aria-required="true" />
             </Field>
+            {reason.trim() ? null : <p className="m-text-meta m-ink-3">Give a reason to split it out</p>}
           </div>
         }
       />

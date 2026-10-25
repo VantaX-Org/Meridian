@@ -6,10 +6,12 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, ConfirmDialog, DataTable, ExplorerPage, Input, Mono, PageHeader, Pill, Select, type CellMeta, asyncStateOf, toast } from "@/design";
+import { Button, ConfirmDialog, DataTable, Dialog, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, type CellMeta, asyncStateOf, toast } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
+import { TrustedSystemsPicker } from "@/components/mdm/trusted-systems";
 import { useRole } from "@/hooks/use-role";
 import { getSurvivorshipRules, putSurvivorshipRules, type SurvivorshipRule, type SurvivorshipRuleType } from "@/lib/api/survivorship";
+import { getRuleCoverage } from "@/lib/api/rules";
 import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 
@@ -28,19 +30,16 @@ const RULE_OPTIONS = (Object.keys(RULE_WORDS) as SurvivorshipRuleType[]).map((va
 /** The rule types that read the trusted systems list (api/services/survivorship.py evaluate_field). */
 const USES_SOURCES = new Set<SurvivorshipRuleType>(["trusted_source", "chain"]);
 
-/** An edit of one rule: its type and its trusted systems as typed, first wins. */
+/** An edit of one rule: its type and its trusted systems, first wins. */
 interface Draft {
   rule_type: SurvivorshipRuleType;
-  sources: string;
+  sources: string[];
 }
 
-const sourcesOf = (text: string): string[] | null => {
-  const list = text.split(",").map((s) => s.trim()).filter(Boolean);
-  return list.length ? list : null;
-};
-const draftOf = (r: SurvivorshipRule): Draft => ({ rule_type: r.rule_type, sources: (r.trusted_sources ?? []).join(", ") });
+const sourcesOf = (list: string[]): string[] | null => (list.length ? list : null);
+const draftOf = (r: SurvivorshipRule): Draft => ({ rule_type: r.rule_type, sources: r.trusted_sources ?? [] });
 const changed = (r: SurvivorshipRule, d: Draft | undefined) =>
-  !!d && (d.rule_type !== r.rule_type || (sourcesOf(d.sources) ?? []).join(",") !== (r.trusted_sources ?? []).join(","));
+  !!d && (d.rule_type !== r.rule_type || d.sources.join(",") !== (r.trusted_sources ?? []).join(","));
 
 const SourceList = ({ sources }: { sources: string[] | null }) =>
   sources?.length ? <>{sources.map((s, i) => <span key={s}>{i ? ", " : ""}<Mono>{s}</Mono></span>)}</> : <>Any system</>;
@@ -60,8 +59,7 @@ function SourcesCell({ rule }: { rule: SurvivorshipRule }) {
   const { drafts, edit } = useContext(Drafts);
   const d = drafts[rule.id] ?? draftOf(rule);
   if (!USES_SOURCES.has(d.rule_type)) return <SourceList sources={sourcesOf(d.sources)} />;
-  return <Input aria-label={`Trusted systems for ${rule.field}`} placeholder="ECC, S4H" value={d.sources}
-    onChange={(e) => edit(rule, { sources: e.target.value })} />;
+  return <TrustedSystemsPicker field={rule.field} value={d.sources} onChange={(sources) => edit(rule, { sources })} />;
 }
 
 export default function SurvivorshipPage() {
@@ -72,6 +70,7 @@ export default function SurvivorshipPage() {
   const rules = useMemo(() => q.data?.rules ?? [], [q.data]);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [confirming, setConfirming] = useState(false);
+  const [adding, setAdding] = useState(false);
   const edited = rules.filter((r) => changed(r, drafts[r.id]));
 
   const edit = useCallback((r: SurvivorshipRule, patch: Partial<Draft>) =>
@@ -123,6 +122,7 @@ export default function SurvivorshipPage() {
             actions={
               <>
                 <Button variant="secondary" render={<Link href="/mdm/golden/merge">Review match pairs</Link>} />
+                {editable ? <Button variant={rules.length ? "secondary" : "primary"} onClick={() => setAdding(true)}>New rule</Button> : null}
                 {editable && rules.length > 0 && (
                   <Button disabled={edited.length === 0} onClick={() => setConfirming(true)}>Save changes</Button>
                 )}
@@ -131,7 +131,8 @@ export default function SurvivorshipPage() {
           />
         }
         state={asyncStateOf(q, () => rules.length === 0, true)}
-        emptyProps={{ title: "No survivorship rules", detail: "Until a rule exists for a field, the newest source value wins. You can still pick a value per field when you merge a pair.", action: <Button variant="secondary" render={<Link href="/mdm/golden/merge">Review match pairs</Link>} /> }}
+        emptyProps={{ title: "No survivorship rules", detail: "Until a rule exists for a field, the newest source value wins. You can still pick a value per field when you merge a pair.",
+          action: editable ? <Button onClick={() => setAdding(true)}>New rule</Button> : <Button variant="secondary" render={<Link href="/mdm/golden/merge">Review match pairs</Link>} /> }}
         errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
         filterBar={editable ? undefined : <p className="m-text-meta m-ink-2">Only master data editors can change survivorship rules</p>}
         table={<Drafts.Provider value={draftContext}><DataTable columns={columns} data={rules} getRowId={(r) => r.id} /></Drafts.Provider>}
@@ -145,6 +146,63 @@ export default function SurvivorshipPage() {
         pending={save.isPending}
         onConfirm={() => save.mutate()}
       />
+      {adding ? <NewRuleDialog rules={rules} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); void qc.invalidateQueries({ queryKey: QUERY_KEY }); }} /> : null}
     </>
+  );
+}
+
+/**
+ * One new rule: object, field, which value is kept and, for the trusted-system types, the systems in order.
+ * PUT replaces the object's whole rule set, so the object's stored rules go with it unchanged.
+ */
+function NewRuleDialog({ rules, onClose, onSaved }: { rules: SurvivorshipRule[]; onClose: () => void; onSaved: () => void }) {
+  const coverage = useQuery({ queryKey: ["rule-coverage", "modules"], queryFn: () => getRuleCoverage(), staleTime: 60_000, meta: { ignoreError: true } });
+  const objects = [...new Set([...(coverage.data?.objects ?? []).map((o) => o.module), ...rules.map((r) => r.domain)])].sort();
+  const [domain, setDomain] = useState("");
+  const [field, setField] = useState("");
+  const [ruleType, setRuleType] = useState<SurvivorshipRuleType>("most_recent");
+  const [sources, setSources] = useState<string[]>([]);
+  const name = field.trim().toUpperCase();
+  const duplicate = !!domain && !!name && rules.some((r) => r.domain === domain && r.field.toUpperCase() === name);
+  const needsSources = USES_SOURCES.has(ruleType) && sources.length === 0;
+  const ready = !!domain && !!name && !duplicate && !needsSources;
+  const add = useMutation({
+    mutationFn: () => putSurvivorshipRules(domain, [
+      ...rules.filter((r) => r.domain === domain).map((r) => ({ field: r.field, rule_type: r.rule_type, trusted_sources: r.trusted_sources, weight: r.weight, active: r.active })),
+      { field: name, rule_type: ruleType, trusted_sources: USES_SOURCES.has(ruleType) ? sources : null, weight: 50, active: true },
+    ]),
+    onSuccess: () => { toast.success(`Rule added for ${name}`); onSaved(); },
+    onError: (e) => toast.error("Could not add the rule", { description: apiErrorMessage(e) }),
+  });
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => { if (!o && !add.isPending) onClose(); }}
+      title="New survivorship rule"
+      footer={<>
+        <Button variant="secondary" disabled={add.isPending} onClick={onClose}>Discard</Button>
+        <Button pending={add.isPending} disabled={!ready} onClick={() => add.mutate()}>Add rule</Button>
+      </>}
+    >
+      <div className="flex flex-col gap-3">
+        <Field label="Object">
+          <Select value={domain} onValueChange={setDomain} placeholder="Choose an object" options={objects.map((d) => ({ value: d, label: formatModuleName(d) }))} />
+        </Field>
+        <Field label="SAP field" error={duplicate ? `${formatModuleName(domain)} already has a rule for ${name}` : undefined}>
+          <Input value={field} onChange={(e) => setField(e.target.value)} placeholder="NAME_ORG1" />
+        </Field>
+        <Field label="Which value is kept">
+          <Select value={ruleType} onValueChange={(v) => setRuleType(v as SurvivorshipRuleType)} options={RULE_OPTIONS} />
+        </Field>
+        {USES_SOURCES.has(ruleType) ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="m-field-label">Trusted systems, first wins</span>
+            <TrustedSystemsPicker field={name || "the new rule"} value={sources} onChange={setSources} />
+            {needsSources ? <p className="m-text-meta m-ink-3">Pick at least one system for this rule type</p> : null}
+          </div>
+        ) : null}
+        <p className="m-text-meta m-ink-3">Golden records pick it up when the next analysis run or merge rebuilds them.</p>
+      </div>
+    </Dialog>
   );
 }

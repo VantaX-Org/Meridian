@@ -37,7 +37,8 @@ export async function updateContract(
     producer: string;
     consumer: string;
     schema_contract: Record<string, unknown>;
-    quality_contract: Record<string, number>;
+    /** Percentages by dimension, plus an optional "modules" scope list (api/services/contract_compliance.py). */
+    quality_contract: Record<string, unknown>;
     freshness_contract: Record<string, unknown>;
     volume_contract: Record<string, unknown>;
     status: string;
