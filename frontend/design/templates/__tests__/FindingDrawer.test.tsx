@@ -1,11 +1,12 @@
 // frontend/design/templates/__tests__/FindingDrawer.test.tsx
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as findingsApi from "@/lib/api/findings";
 import type { FindingDetailData } from "@/lib/api/findings";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as configApi from "@/lib/api/config-intelligence";
+import * as exceptionsApi from "@/lib/api/exceptions";
 import { FindingDrawer } from "../FindingDrawer";
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -113,5 +114,17 @@ describe("FindingDrawer", () => {
     renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
     await waitFor(() => expect(screen.getByText(/no impact model for this check/i)).toBeInTheDocument());
     await waitFor(() => expect(screen.queryByTestId("root-cause")).not.toBeInTheDocument());
+  });
+
+  it("raises an exception linked to the finding and then links to it", async () => {
+    vi.spyOn(findingsApi, "getFinding").mockResolvedValue(finding);
+    vi.spyOn(analyticsApi, "getFindingImpact").mockResolvedValue({ finding_id: "f1", finding, impacts: [] });
+    const create = vi.spyOn(exceptionsApi, "createException").mockResolvedValue({ id: "e9", status: "open" });
+    renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Raise exception" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      type: "dq_rule", severity: "high", linked_finding_id: "f1", title: "mm_missing_desc fails on 12 records",
+    })));
+    expect(await screen.findByRole("link", { name: "Open exception" })).toHaveAttribute("href", "/inbox?kind=exception&focus=e9");
   });
 });

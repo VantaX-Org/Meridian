@@ -50,4 +50,17 @@ describe("admin licence page", () => {
     await waitFor(() => expect(screen.getAllByText("Professional").length).toBeGreaterThan(0));
     expect(screen.queryByText("Platform version")).toBeNull();
   });
+
+  it("warns when seats run out, and names the count", async () => {
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, seats_used: 9 });
+    renderWithQuery(<AdminLicencePage />);
+    expect(await screen.findByText("9 of 10 seats in use")).toBeInTheDocument();
+  });
+
+  it("says nothing about seats below three quarters", async () => {
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, seats_used: 3 });
+    renderWithQuery(<AdminLicencePage />);
+    await waitFor(() => expect(screen.getAllByText("Professional").length).toBeGreaterThan(0));
+    expect(screen.queryByText(/seats in use$/)).toBeNull();
+  });
 });

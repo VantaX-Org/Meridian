@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, Status, toast } from "@/design";
-import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
+import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, unmergeMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
@@ -53,6 +53,7 @@ export default function MasterRecordPage() {
   const canApply = can("apply");
   const [confirmPromote, setConfirmPromote] = useState(false);
   const [confirmWriteback, setConfirmWriteback] = useState(false);
+  const [confirmUnmerge, setConfirmUnmerge] = useState(false);
 
   const recordQuery = useQuery<MasterRecordDetail>({
     queryKey: queryKeys.masterRecord(id),
@@ -79,6 +80,11 @@ export default function MasterRecordPage() {
     onError: (error) => {
       toast.error(apiErrorMessage(error));
     },
+  });
+  const unmerge = useMutation({
+    mutationFn: () => unmergeMasterRecord(id),
+    onSuccess: () => { invalidate(); setConfirmUnmerge(false); toast.success("Unmerged. The record is a candidate again"); },
+    onError: (error) => { setConfirmUnmerge(false); toast.error(apiErrorMessage(error)); },
   });
   const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(id),
@@ -171,6 +177,9 @@ export default function MasterRecordPage() {
         >
           {writeback.isPending ? "Writing back…" : "Write back"}
         </GatedPrimary>
+        {canApprove && record.status === "superseded" ? (
+          <Button variant="secondary" disabled={unmerge.isPending} onClick={() => setConfirmUnmerge(true)}>Unmerge</Button>
+        ) : null}
         <Button variant="ghost" render={<Link href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
       </section>
       <ConfirmDialog
@@ -182,6 +191,16 @@ export default function MasterRecordPage() {
         cancelLabel="Keep as is"
         pending={promote.isPending}
         onConfirm={() => promote.mutate()}
+      />
+      <ConfirmDialog
+        open={confirmUnmerge}
+        onOpenChange={setConfirmUnmerge}
+        title={`Unmerge ${record.sap_object_key}?`}
+        body={<>The record stops being part of the golden record it was merged into and becomes a candidate again. The history keeps both the merge and this unmerge.</>}
+        confirmLabel="Unmerge"
+        cancelLabel="Keep merged"
+        pending={unmerge.isPending}
+        onConfirm={() => unmerge.mutate()}
       />
       <ConfirmDialog
         open={confirmWriteback}

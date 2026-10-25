@@ -63,3 +63,9 @@ export async function getMasterRecordHistory(
   );
   return data;
 }
+
+/** Undo a merge: the superseded record stands on its own again as a candidate (history records it). */
+export async function unmergeMasterRecord(id: string): Promise<{ id: string; status: string }> {
+  const { data } = await apiClient.post(`/api/v1/master-records/${id}/unmerge`);
+  return data;
+}

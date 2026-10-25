@@ -34,6 +34,10 @@ export async function createException(body: {
   description: string;
   affected_records?: Record<string, unknown>;
   object_type?: string;
+  /** Raised from a failing rule: the finding it tracks, and the run and rule it came from. */
+  linked_finding_id?: string;
+  source_system?: string;
+  source_reference?: string;
 }): Promise<{ id: string; status: string }> {
   const { data } = await apiClient.post("/api/v1/exceptions", body);
   return data;

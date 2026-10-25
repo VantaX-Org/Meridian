@@ -65,4 +65,15 @@ describe("MasterRecordPage", () => {
     renderWithQuery(<MasterRecordPage />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Promote" })).toBeDisabled());
   });
+
+  it("unmerges a superseded record after confirmation", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({ ...record, status: "superseded" });
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    const unmerge = vi.spyOn(masterRecordsApi, "unmergeMasterRecord").mockResolvedValue({ id: "m1", status: "candidate" });
+    renderWithQuery(<MasterRecordPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Unmerge" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Unmerge", hidden: false }));
+    await waitFor(() => expect(unmerge).toHaveBeenCalledWith("m1"));
+  });
 });

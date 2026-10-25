@@ -304,6 +304,7 @@ async def finding_records(
     check_id: str,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
+    grain: Optional[str] = Query(None, description="Only records at this grain (e.g. MARA, MARC)"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -313,11 +314,14 @@ async def finding_records(
     if await _scope_of(db, version_id) is None:
         raise HTTPException(status_code=404, detail="Version not found")
     p = {"v": version_id, "cid": check_id}
-    total = (await db.execute(text("SELECT COUNT(*) FROM finding_records WHERE version_id = :v AND check_id = :cid"),
-                              p)).scalar()
-    rows = await db.execute(text("""
+    where = "version_id = :v AND check_id = :cid"
+    if grain:
+        where += " AND grain = :grain"
+        p["grain"] = grain
+    total = (await db.execute(text(f"SELECT COUNT(*) FROM finding_records WHERE {where}"), p)).scalar()
+    rows = await db.execute(text(f"""
         SELECT record_key, grain, module, field_values FROM finding_records
-         WHERE version_id = :v AND check_id = :cid
+         WHERE {where}
          ORDER BY record_key LIMIT :limit OFFSET :offset
     """), {**p, "limit": limit, "offset": offset})
     return {"version_id": str(version_id), "check_id": check_id, "total": int(total or 0),

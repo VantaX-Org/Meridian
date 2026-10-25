@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Button, Card, ConfirmDialog, Drawer, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, emptyExportOptions, toast, type PillTone, Input, Mono, Status } from "@/design";
 import { ProposalCell, proposalOf } from "@/components/fix/proposal";
 import { Fact, Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
+import { ExceptionThread } from "@/components/inbox/exception-thread";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -879,6 +880,7 @@ function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, curren
           {e.estimated_impact_zar != null ? <Fact label="Estimated impact">{formatMoney(e.estimated_impact_zar, currency)}</Fact> : null}
         </dl>
         {e.description ? <p className="m-text-body m-ink-2">{e.description}</p> : null}
+        <ExceptionThread id={e.id} />
       </div>
     </Card>
   );

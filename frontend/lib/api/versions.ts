@@ -114,7 +114,7 @@ export interface FindingRecord {
 export async function getFindingRecords(
   versionId: string,
   checkId: string,
-  params: { limit?: number; offset?: number } = {}
+  params: { limit?: number; offset?: number; grain?: string } = {}
 ): Promise<{ version_id: string; check_id: string; total: number; records: FindingRecord[] }> {
   const { data } = await apiClient.get(
     `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/records`, { params });

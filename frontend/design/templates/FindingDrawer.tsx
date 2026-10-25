@@ -21,6 +21,7 @@ import { isSeverity } from "../tokens";
 import { buildDrillHref } from "../shell/DrillLink";
 import { exportFindingRecords, getFinding } from "@/lib/api/findings";
 import { createBatch } from "@/lib/api/remediation";
+import { createException } from "@/lib/api/exceptions";
 import { useRole } from "@/hooks/use-role";
 import { getFindingImpact } from "@/lib/api/analytics";
 import { getCostModel } from "@/lib/api/settings";
@@ -105,6 +106,28 @@ function AutoCleanButton({ checkId, module, versionId }: { checkId: string; modu
   if (!can("apply")) return null;
   if (batchId) return <Button render={<Link href={`/fix?tab=batches&batch=${batchId}`}>Open fix batch</Link>} />;
   return <Button onClick={() => create.mutate()} pending={create.isPending}>Create fix batch</Button>;
+}
+
+/** Track this finding as an exception: an owner, a status, an SLA and a comment thread in the inbox. */
+function RaiseExceptionButton({ finding }: { finding: { id: string; check_id: string; module: string; severity: string; version_id: string; affected_count: number; details: { message?: string | null } } }) {
+  const { can } = useRole();
+  const [raised, setRaised] = useState<string | null>(null);
+  const raise = useMutation({
+    mutationFn: () => createException({
+      type: "dq_rule",
+      category: finding.module,
+      severity: isSeverity(finding.severity) ? finding.severity : "medium",
+      title: `${finding.check_id} fails on ${finding.affected_count.toLocaleString()} ${finding.affected_count === 1 ? "record" : "records"}`,
+      description: finding.details.message ?? `Raised from rule ${finding.check_id}.`,
+      linked_finding_id: finding.id,
+      source_reference: `${finding.version_id}:${finding.check_id}`,
+    }),
+    onSuccess: (r) => { setRaised(r.id); toast.success("Exception raised. It now has an owner, an SLA and a thread in the inbox"); },
+    onError: () => toast.error("Could not raise the exception"),
+  });
+  if (!can("analyse")) return null;
+  if (raised) return <Button variant="secondary" render={<Link href={`/inbox?kind=exception&focus=${raised}`}>Open exception</Link>} />;
+  return <Button variant="secondary" onClick={() => raise.mutate()} pending={raise.isPending}>Raise exception</Button>;
 }
 
 export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerProps) {
@@ -259,6 +282,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
 
               <div className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: "var(--m-line)" }}>
                 <AutoCleanButton checkId={finding.check_id} module={finding.module} versionId={finding.version_id} />
+                <RaiseExceptionButton finding={finding} />
                 <Button
                   variant="secondary"
                   render={<Link href={buildDrillHref({ object: finding.module, ruleId: finding.check_id, run: finding.version_id })}>Open records</Link>}
