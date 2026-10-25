@@ -67,7 +67,7 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
         {kind === "email" && <Field label="Board pack"><Select value={reportPack} onValueChange={(v) => setReportPack(v as AlertReportPack)} options={REPORT_PACKS} /></Field>}
         <div className="flex gap-2">
           <Button type="submit" pending={m.isPending} disabled={!form.valid}>Add channel</Button>
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Keep channels as they are</Button>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
         </div>
       </form>
     </Dialog>
@@ -97,9 +97,9 @@ export default function NotificationsAdminPage() {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const columns: ColumnDef<AlertChannel>[] = [
-    { accessorKey: "kind", header: "Type" },
-    { accessorKey: "target", header: "Target" },
-    { accessorKey: "digest", header: "Digest" },
+    { accessorKey: "kind", header: "Type", cell: ({ row }) => KINDS.find((k) => k.value === row.original.kind)?.label ?? row.original.kind },
+    { accessorKey: "target", header: "Sends to" },
+    { accessorKey: "digest", header: "Digest", cell: ({ row }) => DIGESTS.find((d) => d.value === row.original.digest)?.label ?? row.original.digest },
     {
       id: "pack", header: "Board pack",
       cell: ({ row }) => {
@@ -133,7 +133,7 @@ export default function NotificationsAdminPage() {
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Notifications" meta="Outbound alert channels" actions={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined} />}
+        header={<PageHeader title="Notifications" meta="Where Meridian sends alerts and digests outside the app: email, Slack, Teams or a webhook. Add a channel, then send it a test" actions={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined} />}
         summary={<p className="m-text-body m-ink-3">Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>. A board pack channel gets the board pack and the analyst workbook for the latest finished run: weekly on Monday mornings, or monthly on the 1st.</p>}
         state={asyncStateOf(q, () => items.length === 0, true)}
         emptyProps={{ title: "No alert channels", detail: "Add email, Slack, Teams or a webhook to send critical alerts and digests.", action: canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined }}

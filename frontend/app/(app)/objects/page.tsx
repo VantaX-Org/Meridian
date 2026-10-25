@@ -4,10 +4,10 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, ObjectMap, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ObjectMapItem, type ScoreBands, Status, Score } from "@/design";
+import { buildDrillHref, DataTable, DomainChip, useBreadcrumbScope, ExplorerPage, ExportMenu, Mono, ObjectMap, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ObjectMapItem, type ScoreBands, Status, Score } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -16,30 +16,38 @@ import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { stateScopeLine } from "@/lib/current-state";
-import { formatModuleName } from "@/lib/format";
+import { fixHref } from "@/lib/drill";
+import { formatModuleName, plural } from "@/lib/format";
+import { DrillCount } from "@/app/(app)/insights/_components/DrillCount";
 import { bySeverity } from "../_severity-sort";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
 import { FilterChips } from "./_header";
 import { useCurrentObjects } from "./_current";
+import { toFixHref, workSummaryQuery } from "./_work";
+import type { WorkObject } from "@/lib/api/work";
 
 /**
  * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
  * at its own latest run, and links to the object without `?run=` (the object page opens that run itself).
  * `affected_records` is null only when a current-state row's run could not be read and its records not attributed.
  */
-type ObjectRow = Omit<ObjectSummary, "affected_records"> & { affected_records: number | null; run_id?: string };
+type ObjectRow = Omit<ObjectSummary, "affected_records"> & { affected_records: number | null; run_id?: string; work?: WorkObject | null };
 
-/** Number cells drill to the object's rules tab; `run` undefined drills to the object's own latest run. */
+/** The score drills to the object's rules tab; `run` undefined drills to the object's own latest run. */
 const drill = (o: ObjectRow, run: string | undefined, n: number | string) => (
-  <DrillLink object={o.module} run={run === "latest" ? undefined : run} filters={{ tab: "rules" }}>{n}</DrillLink>
+  <DrillCount href={buildDrillHref({ object: o.module, run: run === "latest" ? undefined : run, filters: { tab: "rules" } })} label={`Open the failing rules of ${o.label}`}>{n}</DrillCount>
 );
 
 /** Findings that block a load: failing critical and high checks (absent on older backends, which rank on records alone). */
 const blockingOf = (o: ObjectRow) => (o.critical_checks ?? 0) + (o.high_checks ?? 0);
-/** The ledger's order: most blocking findings, then most records affected, then lowest DQS; unscored objects last. */
+/**
+ * The ledger's order, worst first: most critical records to fix, then most records to fix (from the work list, when
+ * built), then most blocking findings, then most records affected, then lowest DQS; unscored objects last.
+ */
 const ranked = (a: ObjectRow, b: ObjectRow) =>
+  (b.work?.critical ?? 0) - (a.work?.critical ?? 0) || (b.work?.open ?? 0) - (a.work?.open ?? 0) ||
   blockingOf(b) - blockingOf(a) || (b.affected_records ?? 0) - (a.affected_records ?? 0) || (a.composite_score ?? 101) - (b.composite_score ?? 101);
 
 const MAP_VERDICT = { fail: "no-go", warn: "at-risk", pass: "go" } as const;
@@ -57,8 +65,28 @@ const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[], openHref: (o: ObjectRow) => string): ColumnDef<ObjectRow>[] => {
   const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 1);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
-  return allColumns(run, bands, openHref).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking));
+  const hasWork = objects.some((o) => o.work !== undefined);
+  return allColumns(run, bands, openHref).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (!WORK_COLUMNS.has(c.id ?? "") || hasWork));
 };
+
+const WORK_COLUMNS = new Set(["work_open", "work_critical", "work_proposed", "work_overdue"]);
+
+/** A work-list count that opens the object's Records to fix with `filters`; "—" when the run's work list is not built. */
+const workCell = (o: ObjectRow, run: string | undefined, pick: (w: WorkObject) => number, what: [one: string, many: string], filters: Record<string, string> = {}) => {
+  if (!o.work) return "—";
+  const n = pick(o.work);
+  if (n === 0) return "0";
+  return <DrillCount href={toFixHref(o.module, run, filters)} label={`Open the ${plural(n, what[0], what[1])} of ${o.label}`}>{n.toLocaleString()}</DrillCount>;
+};
+/** `what` names the column's records in the accessible name, one and many: "Open the 3 critical records of Material master". */
+const workColumn = (id: string, header: string, pick: (w: WorkObject) => number, run: string | undefined, what: [one: string, many: string], filters?: Record<string, string>): ColumnDef<ObjectRow> => ({
+  id,
+  accessorFn: (o) => (o.work ? pick(o.work) : -1),
+  header,
+  size: 110,
+  meta: { numeric: true } satisfies CellMeta,
+  cell: ({ row }) => workCell(row.original, run, pick, what, filters),
+});
 
 const allColumns = (run: string | undefined, bands: ScoreBands | undefined, openHref: (o: ObjectRow) => string): ColumnDef<ObjectRow>[] => [
   { accessorKey: "label", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={row.original.label} /> },
@@ -74,9 +102,9 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
       return (
         // One line per row: a long check id or name is cut with an ellipsis; the id names the rule in full by its title.
         <span className="block max-w-[280px] truncate whitespace-nowrap" title={id} data-testid="blocking-rule-id">
-          <DrillLink href={`/objects/${row.original.module}?${run ? `run=${run}&` : ""}tab=records&check_id=${encodeURIComponent(id)}`}>
+          <DrillCount href={toFixHref(row.original.module, run, { issue: id })} label={`Open the records of ${row.original.label} failing rule ${id}`}>
             <Mono>{id}</Mono>
-          </DrillLink>
+          </DrillCount>
           {words && words !== id ? <span className="m-ink-2">{" "}{words}</span> : null}
         </span>
       );
@@ -88,8 +116,17 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     header: "Records",
     size: 110,
     meta: { numeric: true } satisfies CellMeta,
-    cell: ({ row }) => (row.original.affected_records == null ? "—" : drill(row.original, run, row.original.affected_records.toLocaleString())),
+    // The object's failing records in its own list of records to fix.
+    cell: ({ row }) => {
+      const n = row.original.affected_records;
+      if (n == null) return "—";
+      return <DrillCount href={toFixHref(row.original.module, run)} count={n} label={`Open the ${plural(n, "failing record")} of ${row.original.label}`}>{n.toLocaleString()}</DrillCount>;
+    },
   },
+  workColumn("work_open", "To fix", (w) => w.open, run, ["record to fix", "records to fix"]),
+  workColumn("work_critical", "Critical", (w) => w.critical, run, ["critical record", "critical records"], { sev: "critical" }),
+  workColumn("work_proposed", "With a suggestion", (w) => w.proposed, run, ["record with a suggestion", "records with a suggestion"], { suggested: "1" }),
+  workColumn("work_overdue", "Overdue", (w) => w.overdue, run, ["overdue record", "overdue records"], { due: "overdue" }),
   {
     accessorKey: "composite_score",
     header: "DQS",
@@ -172,9 +209,19 @@ export default function ObjectsPage() {
     enabled: !!runId,
   });
 
-  const objects: ObjectRow[] = current
+  const baseRows: ObjectRow[] = current
     ? currentQ.rows
     : (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
+  // The work list per run the rows come from (one run with ?run=, each lineage's latest run without it). A run whose
+  // work list is not built, or could not be read, leaves its rows without counts.
+  const workRuns = current ? [...new Set(baseRows.map((o) => o.run_id).filter((id): id is string => !!id))] : runId ? [runId] : [];
+  const workQs = useQueries({ queries: workRuns.map((id) => workSummaryQuery(id)) });
+  const workByRun = new Map(workRuns.map((id, i) => [id, workQs[i]?.data]));
+  const objects: ObjectRow[] = baseRows.map((o) => {
+    const summary = workByRun.get((current ? o.run_id : runId) ?? "");
+    if (!summary?.built) return o;
+    return { ...o, work: summary.objects.find((w) => w.module === o.module) ?? { module: o.module, records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0, statuses: {} } };
+  });
   const isLoading = current ? currentQ.isLoading : single.isLoading;
   const query = current ? { isError: currentQ.isError, error: currentQ.error } : { isError: single.isError, error: single.error };
   const refetch = current ? currentQ.refetch : () => void single.refetch();
@@ -262,8 +309,9 @@ export default function ObjectsPage() {
         <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="Not ready" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
-        <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" />
-        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" />}
+        <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
+        {/* Fix work has no "critical or high" filter, so the blocking count stays a figure; the not ready verdict lists those objects. */}
+        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" href={fixHref({ run: current ? undefined : run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />
@@ -273,11 +321,10 @@ export default function ObjectsPage() {
     </div>
   );
 
-  // Current state: the object page without ?run= opens the object's own latest run.
-  const objectHref = (row: ObjectRow) => `/objects/${row.module}?${current ? "" : `run=${runId ?? run}&`}tab=rules`;
-  // "Open" lands on the workbench with the object's blocking rule selected.
-  const openHref = (row: ObjectRow) =>
-    `/objects/${row.module}?${current ? "" : `run=${runId ?? run}&`}${row.blocking_rule_id ? `rule=${encodeURIComponent(row.blocking_rule_id)}` : ""}`.replace(/[?&]$/, "");
+  // A row and its "Open" land on the object's Records to fix, worst record first. Current state: the object page
+  // without ?run= opens the object's own latest run.
+  const openHref = (row: ObjectRow) => toFixHref(row.module, current ? undefined : runId ?? run);
+  const objectHref = openHref;
   const columns = makeColumns(current ? undefined : runId, bands, objects, openHref); // React Compiler memoizes on run and thresholds
 
   // The map is drawn from the rows the ledger shows: the same filters, the same objects.

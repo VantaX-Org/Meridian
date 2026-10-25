@@ -35,7 +35,11 @@ export function personaForRole(role: Role): Persona {
   return PERSONA_BY_ROLE[role];
 }
 
-/** The home route for this role's persona. */
+/**
+ * Where this role lands: its persona page, except stewards, who start on Fix work (the steward home,
+ * /home/steward, stays routable and is still what "View as: Steward" opens).
+ */
 export function homeHrefForRole(role: Role): string {
-  return `/home/${personaForRole(role)}`;
+  const persona = personaForRole(role);
+  return persona === "steward" ? "/fix" : `/home/${persona}`;
 }

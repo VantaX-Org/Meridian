@@ -38,7 +38,7 @@ export default function NotificationsPage() {
       header={
         <PageHeader
           title="Notifications"
-          meta={q.isLoading ? " " : `${total.toLocaleString()} ${total === 1 ? "notification" : "notifications"}`}
+          meta={`${q.isLoading ? "" : `${total.toLocaleString()} ${total === 1 ? "notification" : "notifications"}. `}Everything Meridian has told you, newest first. Open one to mark it read`}
           actions={<Button variant="secondary" pending={markAllRead.isPending} disabled={(unread.data ?? 0) === 0} onClick={() => markAllRead.mutate()}>Mark all read</Button>}
         />
       }

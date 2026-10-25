@@ -129,7 +129,7 @@ describe("LineagePage blast radius", () => {
       paths_to_kpis: [],
     } as never);
     const { container } = renderWithQuery(<LineagePage />);
-    fireEvent.change(await screen.findByLabelText("Node to trace"), { target: { value: "check:AP017" } });
+    fireEvent.change(await screen.findByLabelText("Item to trace"), { target: { value: "check:AP017" } });
     fireEvent.click(screen.getByRole("button", { name: "Trace" }));
     const node = await waitFor(() => {
       const g = Array.from(container.querySelectorAll("g.m-graph-node")).find((el) => el.querySelector("title")?.textContent === "AP017");
@@ -137,8 +137,8 @@ describe("LineagePage blast radius", () => {
       return g as SVGGElement;
     });
     fireEvent.click(node);
-    const empty = (await screen.findByText("No blast radius yet")).closest("[data-state='empty']") as HTMLElement;
-    expect(within(empty).getByText("Blast radius needs a completed analysis.")).toBeInTheDocument();
+    const empty = (await screen.findByText("Nothing to follow yet")).closest("[data-state='empty']") as HTMLElement;
+    expect(within(empty).getByText("Following a rule to what it reaches needs a completed analysis.")).toBeInTheDocument();
     expect(within(empty).getByRole("link", { name: "Open runs" })).toHaveAttribute("href", "/runs");
     vi.unstubAllGlobals();
   });

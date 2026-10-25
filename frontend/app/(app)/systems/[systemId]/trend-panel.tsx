@@ -34,14 +34,14 @@ export function TrendPanel({ systemId }: { systemId: string }) {
   const summary = q.data?.summary ?? [];
   const series = q.data?.series ?? {};
   return (
-    <Card title="Trend per object">
+    <Card title="Trend per object" meta="How each object's score moved across runs. Notes flag a change that is not a like-for-like comparison">
       {!summary.length ? (
         <EmptyState title="No analysed run yet" detail="Trends need at least one analysed run." action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run analysis</Link>} />} />
       ) : (
         <table className="w-full m-text-body">
           <thead>
             <tr>
-              <th className={clsx(th, "m-ink-3")}>Object</th><th className={clsx(th, "m-ink-3")}>DQS</th>
+              <th className={clsx(th, "m-ink-3")}>Object</th><th className={clsx(th, "m-ink-3")}>Score</th>
               <th className={clsx(th, "m-ink-3")}>Last change</th><th className={clsx(th, "m-ink-3")}>Trend</th>
               <th className={clsx(th, "m-ink-3")}>Since baseline</th><th className={clsx(th, "m-ink-3")}>Notes</th>
             </tr>

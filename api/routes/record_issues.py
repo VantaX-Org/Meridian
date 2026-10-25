@@ -261,6 +261,9 @@ async def bulk_update(
         from api.services import triage
         tid = str(tenant.id)
         await db.run_sync(lambda s: (triage.sync_pause(s, tid, "issue", ids), triage.apply_sla(s, tid, "issue", ids)))
+    if changed and (body.status or body.assigned_to is not None):
+        from api.services import worklist
+        await db.run_sync(lambda s: worklist.refresh_issues(s, str(tenant.id), ids))
     await db.commit()
     return {"updated": changed}
 

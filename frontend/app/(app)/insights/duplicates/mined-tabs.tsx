@@ -37,6 +37,7 @@ export function MineNow({ run, task }: { run?: string; task?: MiningTask }) {
 }
 
 function Feed<T>({ q, run, task, empty, children }: { q: UseQueryResult<T[]>; run?: string; task: MiningTask; empty: { title: string; detail: string }; children: (rows: T[]) => ReactNode }) {
+  if (!run) return <EmptyState title="No finished run yet" detail="Mining reads the records of a finished run." ghost="table" action={<MineNow run={run} task={task} />} />;
   if (q.isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   const rows = q.data ?? [];
@@ -49,42 +50,42 @@ function Feed<T>({ q, run, task, empty, children }: { q: UseQueryResult<T[]>; ru
 const recordHref = (module: string, key: string, run: string) => `/objects/${module}/records/${encodeURIComponent(key)}?run=${run}`;
 
 export function MinedDuplicates({ run }: { run: string }) {
-  const q = useQuery({ queryKey: ["mining", "duplicates", run], queryFn: () => getMiningDuplicates({ version_id: run || undefined, limit: LIMIT }) });
+  const q = useQuery({ queryKey: ["mining", "duplicates", run], queryFn: () => getMiningDuplicates({ version_id: run || undefined, limit: LIMIT }), enabled: !!run });
   const columns = useMemo<ColumnDef<MinedDuplicate>[]>(() => [
     { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module_id) },
     { id: "a", header: "Record A", cell: ({ row }) => <DrillLink href={recordHref(row.original.module_id, row.original.record_a, row.original.version_id)}><Mono>{row.original.record_a}</Mono></DrillLink> },
     { id: "b", header: "Record B", cell: ({ row }) => <DrillLink href={recordHref(row.original.module_id, row.original.record_b, row.original.version_id)}><Mono>{row.original.record_b}</Mono></DrillLink> },
-    { id: "score", header: "Match", cell: ({ row }) => pct(row.original.match_score), meta: { numeric: true } },
+    { id: "score", header: "Match score", cell: ({ row }) => pct(row.original.match_score), meta: { numeric: true } },
     { id: "fields", header: "Matched on", cell: ({ row }) => (row.original.matched_fields?.length ? <Mono>{row.original.matched_fields.join(", ")}</Mono> : "—") },
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
   ], []);
   return (
-    <Feed q={q} run={run} task="dedup" empty={{ title: "No duplicate pairs mined", detail: "Mining finds likely duplicates after an analysis" }}>
+    <Feed q={q} run={run} task="dedup" empty={{ title: "No likely duplicates found yet", detail: "Mining compares the records of the selected run and lists pairs that look like the same thing. Mine the run to find them." }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(d) => d.id} tableId="mined-duplicates" exportName="mined-duplicates" height={480} />}
     </Feed>
   );
 }
 
 export function MinedAnomalies({ run }: { run: string }) {
-  const q = useQuery({ queryKey: ["mining", "anomalies", run], queryFn: () => getMiningAnomalies({ version_id: run || undefined, limit: LIMIT }) });
+  const q = useQuery({ queryKey: ["mining", "anomalies", run], queryFn: () => getMiningAnomalies({ version_id: run || undefined, limit: LIMIT }), enabled: !!run });
   const columns = useMemo<ColumnDef<MinedAnomaly>[]>(() => [
     { id: "module", header: "Object", cell: ({ row }) => <DrillLink object={row.original.module_id} run={row.original.version_id}>{formatModuleName(row.original.module_id)}</DrillLink> },
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field_name}</Mono> },
     { id: "value", header: "Value", cell: ({ row }) => (row.original.field_value === null ? "—" : row.original.field_value.toLocaleString()), meta: { numeric: true } },
     { id: "method", header: "Method", cell: ({ row }) => labelOf(row.original.detection_method) },
-    { id: "z", header: "Z-score", cell: ({ row }) => (row.original.z_score === null ? "—" : row.original.z_score.toFixed(1)), meta: { numeric: true } },
+    { id: "z", header: "How unusual (z-score)", cell: ({ row }) => (row.original.z_score === null ? "—" : row.original.z_score.toFixed(1)), meta: { numeric: true } },
     { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
   ], []);
   return (
-    <Feed q={q} run={run} task="anomaly" empty={{ title: "No anomalies mined", detail: "Mining flags statistical outliers after an analysis" }}>
+    <Feed q={q} run={run} task="anomaly" empty={{ title: "No anomalies found yet", detail: "Mining flags values far outside the usual range. Mine the run to look for them." }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(a) => a.id} tableId="mined-anomalies" exportName="mined-anomalies" height={480} />}
     </Feed>
   );
 }
 
 export function MinedRelationships({ run }: { run: string }) {
-  const q = useQuery({ queryKey: ["mining", "relationships", run], queryFn: () => getMiningRelationships({ version_id: run || undefined, limit: LIMIT }) });
+  const q = useQuery({ queryKey: ["mining", "relationships", run], queryFn: () => getMiningRelationships({ version_id: run || undefined, limit: LIMIT }), enabled: !!run });
   const columns = useMemo<ColumnDef<MinedRelationship>[]>(() => [
     { id: "module", header: "Object", cell: ({ row }) => <DrillLink object={row.original.module_id} run={row.original.version_id}>{formatModuleName(row.original.module_id)}</DrillLink> },
     { id: "a", header: "Field A", cell: ({ row }) => <Mono>{row.original.field_a}</Mono> },
@@ -94,7 +95,7 @@ export function MinedRelationships({ run }: { run: string }) {
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
   ], []);
   return (
-    <Feed q={q} run={run} task="relationship" empty={{ title: "No relationships mined", detail: "Mining finds fields that move together after an analysis" }}>
+    <Feed q={q} run={run} task="relationship" empty={{ title: "No field relationships found yet", detail: "Mining finds fields whose values move together. Mine the run to look for them." }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(r) => r.id} tableId="mined-relationships" exportName="mined-relationships" height={480} />}
     </Feed>
   );

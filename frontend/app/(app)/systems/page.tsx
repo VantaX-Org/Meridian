@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Score, Skeleton, Stat, emptyExportOptions, type PillTone, type Verdict } from "@/design";
+import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, FilterChip, Mono, PageHeader, Pill, Score, Skeleton, Stat, emptyExportOptions, type PillTone, type Verdict } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { usePermissions, useSystemScope } from "@/lib/permissions";
@@ -157,7 +157,7 @@ export default function SystemsPage() {
     },
     {
       id: "dqs",
-      header: "Latest DQS",
+      header: "Quality score",
       size: 190,
       cell: ({ row }) => {
         const d = dqsById.get(row.original.id);
@@ -240,14 +240,15 @@ export default function SystemsPage() {
               {canConnect ? <Button onClick={() => setConnecting(true)}>Connect system</Button> : null}
             </>
           }
-          meta={isLoading ? "\u00a0" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}`}
+          meta={`${isLoading ? "" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}. `}The SAP systems Meridian reads from, worst first. Open one to test it, load its configuration or pull data`}
         />
       }
       filterBar={
         filtering ? (
-          <div className="flex items-center gap-2 m-text-body">
-            <Pill tone="neutral">{healthFilter ? (healthFilter === "unhealthy" ? "Unhealthy" : healthFilter === "down" ? "Unreachable" : HEALTH_LABEL[healthFilter as HealthStatus]) : `Configuration ${(CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter).toLowerCase()}`}</Pill>
-            <Button variant="ghost" onClick={() => { setConfigFilter(""); setHealthFilter(""); }}>Clear filter</Button>
+          <div className="flex flex-wrap items-center gap-2 m-text-body">
+            {healthFilter ? <FilterChip label="Health" value={healthFilter === "unhealthy" ? "Unhealthy" : healthFilter === "down" ? "Unreachable" : HEALTH_LABEL[healthFilter as HealthStatus]} onRemove={() => setHealthFilter("")} /> : null}
+            {configFilter ? <FilterChip label="Configuration" value={CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter} onRemove={() => setConfigFilter("")} /> : null}
+            <Button variant="ghost" size="sm" onClick={() => { setConfigFilter(""); setHealthFilter(""); }}>Clear filters</Button>
           </div>
         ) : undefined
       }
@@ -274,8 +275,12 @@ export default function SystemsPage() {
       state={state}
       emptyProps={{
         title: "No systems yet",
-        detail: "Connect an SAP system or import a file.",
-        action: <Button render={<Link href="/import">Import file</Link>} />,
+        detail: canConnect
+          ? "Connect an SAP system so Meridian can read its data, or import a file to start without a connection."
+          : "Ask an admin to connect an SAP system, or import a file to start without a connection.",
+        action: canConnect
+          ? <Button onClick={() => setConnecting(true)}>Connect system</Button>
+          : <Button variant="secondary" render={<Link href="/import">Import file</Link>} />,
         ghost: "table",
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}

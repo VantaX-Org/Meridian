@@ -2,6 +2,7 @@
 
 // The same ways out of every insight page: run an analysis, review fixes (the fix queue), present,
 // and export the failing-records list for manual cleaning. Reports is a tab of the Summary view.
+// None of them is primary: the page's one primary action is its "Do next" button in the InsightHeader.
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Button, ExportMenu, type ExportOption } from "@/design";
@@ -23,8 +24,8 @@ export function InsightActions({ run, module, options = [], current = false }: {
       : options;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <RunAnalysis />
-      <Button variant="secondary" render={<Link href={withScope("/fix", { run })}>Review fixes</Link>} />
+      <RunAnalysis variant="secondary" />
+      <Button variant="ghost" render={<Link href={withScope("/fix", { run })}>Review fixes</Link>} />
       <Button variant="ghost" render={<Link href={presentHref}>Present</Link>} />
       <ExportMenu options={list} />
     </div>

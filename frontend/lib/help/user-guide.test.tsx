@@ -12,7 +12,7 @@ describe("user guide", () => {
   const manifest = JSON.parse(readFileSync(path.join(DIR, "index.json"), "utf8")) as { sections: { title: string; pages: { slug: string; title: string }[] }[] };
 
   it("reads its sections and chapters from index.json, with a file for each and no others", () => {
-    expect(GUIDE_SECTIONS.map((s) => s.title)).toEqual(["Getting started", "Workspaces", "Administration", "Reference"]);
+    expect(GUIDE_SECTIONS.map((s) => s.title)).toEqual(["Getting started", "Daily work", "More", "Reference"]);
     expect(GUIDE_PAGES).toEqual(manifest.sections.flatMap((s) => s.pages));
     expect(readdirSync(DIR).filter((f) => f.endsWith(".md")).sort()).toEqual(GUIDE_PAGES.map((p) => `${p.slug}.md`).sort());
   });

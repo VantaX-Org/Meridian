@@ -77,7 +77,7 @@ export default function PreferencesPage() {
 
   return (
     <PageFrame gap={4}>
-      <PageHeader title="Preferences" meta="Saved to your account, so they follow you to any browser" />
+      <PageHeader title="Preferences" meta="How Meridian looks and when it tells you about new work. Changes save at once and follow you to any browser" />
       <Card title="Display">
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Theme"><Select value={theme} onValueChange={(v) => setTheme(v as Theme)} options={THEMES} /></Field>
@@ -105,7 +105,7 @@ export default function PreferencesPage() {
           </div>
         </div>
       </Card>
-      <Card title="Guidance and saved views">
+      <Card title="Guidance and saved views" meta="Show the first-visit tours again, or remove the table filters you saved">
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={replayTours}>Replay tours</Button>
           <Button variant="secondary" onClick={() => { resetSavedViews(); toast.success("Saved views removed"); }}>Reset saved views</Button>

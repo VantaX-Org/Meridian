@@ -3,9 +3,10 @@
  * the header page titles. Both surfaces filter it with `visibleNav()`, so a
  * role or licence never sees a page in one place and not the other.
  *
- * Eleven sections, each href appearing exactly once (enforced by a Rail test).
- * `children` collapse under their parent and only render expanded, or in
- * the collapsed flyout and tooltip. Routes removed from the nav stay
+ * Four main entries for everyone (the "Work" group: Fix work, Objects,
+ * Progress, Inbox) and five "More" sections (Analysis, Master data, Rules,
+ * Data in, Admin), each href appearing exactly once (enforced by nav and Rail
+ * tests). `splitNav()` gives the Rail its pills and its More menu. Routes removed from the nav stay
  * routable — their titles live in `OFF_NAV_TITLES` or come from the
  * surviving entry for the same href.
  *
@@ -60,6 +61,8 @@ export interface NavItem {
 
 export interface NavGroup {
   group: string;
+  /** A main group: its items are the Rail's pills. Every other group is a section of the "More" menu. */
+  main?: boolean;
   /** Hide the whole group unless the user holds one of these permissions. */
   anyOf?: readonly string[];
   /** Hide the whole group unless /me/permissions grants one of these pairs. */
@@ -102,46 +105,13 @@ export function resolveNavHref(href: string, role: Role): string {
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
-    group: "Home",
+    // The four entries everyone works from; the Rail shows them as pills. Every other group sits under "More".
+    group: "Work",
+    main: true,
     items: [
-      { href: "/home/lead", requires: req("analysis", "view"), label: "Home", icon: IconHome, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
-    ],
-  },
-  {
-    group: "Systems",
-    items: [
-      { href: "/systems", requires: req("systems", "view"), label: "Systems", icon: IconServer, keywords: "sap connect ecc s4hana discover objects health sync jobs download history schedule" },
-      { href: "/import", requires: req("extraction", "create"), label: "Import file", icon: IconImport, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
-      { href: "/migration", requires: req("analysis", "run"), label: "Migration", icon: IconMigration, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
-    ],
-  },
-  {
-    group: "Objects",
-    items: [
-      { href: "/objects", requires: req("findings", "view"), label: "Objects", icon: IconCube, licenceKey: "findings", keywords: "checks critical severity findings" },
-    ],
-  },
-  {
-    group: "Runs",
-    items: [
-      { href: "/runs", requires: req("analysis", "view"), label: "Runs", icon: IconHistory, licenceKey: "versions", keywords: "compare history snapshots baseline" },
-    ],
-  },
-  {
-    group: "Fix",
-    anyOf: ["approve", "apply"],
-    items: [
-      { href: "/fix", requires: req("fixes", "view"), label: "Fix", icon: IconEraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "cleaning corrections proposals apply batches",
-        children: [
-          { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: IconBranch, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after" },
-        ],
-      },
-    ],
-  },
-  {
-    group: "Inbox",
-    anyOf: ["view"],
-    items: [
+      { href: "/fix", requires: req("fixes", "view"), label: "Fix work", icon: IconEraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "fix cleaning corrections proposals apply batches" },
+      { href: "/objects", requires: req("findings", "view"), label: "Objects", icon: IconCube, licenceKey: "findings", keywords: "checks critical severity findings records" },
+      { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: IconTrend, anyOf: ["view"], keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
       {
         href: "/inbox",
         requires: req("stewardship", "view"),
@@ -158,39 +128,36 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   {
-    group: "Insights",
-    anyOf: ["view"],
+    group: "Analysis",
     items: [
+      { href: "/home/lead", requires: req("analysis", "view"), label: "Home", icon: IconHome, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
       {
         href: "/insights",
         requires: req("reports", "view"),
         label: "Insights",
         icon: IconChart,
+        anyOf: ["view"],
         keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
         children: [
           { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
-          { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: IconTrend, keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
           { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: IconCompass, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
           { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers process l1 l5 ptp otc migration", aliases: ["/insights/process"] },
           { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: IconPeople, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
         ],
       },
+      { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: IconBranch, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after fix" },
+      { href: "/runs", requires: req("analysis", "view"), label: "Runs", icon: IconHistory, licenceKey: "versions", keywords: "compare history snapshots baseline" },
+      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: IconProcess, anyOf: ["view"], keywords: "process discovery mining as-is l1 l5 variants conformance signavio bpmn" },
+      { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, anyOf: ["view"], keywords: "process discovery run incremental extraction" },
     ],
   },
   {
-    group: "Process",
-    anyOf: ["view"],
+    group: "Master data",
     items: [
-      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: IconProcess, keywords: "process discovery mining as-is l1 l5 variants conformance signavio bpmn" },
-      { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, keywords: "process discovery run incremental extraction" },
-    ],
-  },
-  {
-    group: "MDM",
-    items: [
-      { href: "/mdm", requires: req("mdm", "view"), label: "Overview", icon: IconDatabase, keywords: "mdm health score trend" },
+      { href: "/mdm", requires: req("mdm", "view"), label: "Overview", icon: IconDatabase, keywords: "mdm master data health score trend" },
       { href: "/mdm/survivorship", requires: req("mdm", "view"), label: "Survivorship", icon: IconSliders, keywords: "survivorship rules golden source precedence" },
       { href: "/mdm/golden", requires: req("mdm", "view"), label: "Golden records", icon: IconLayers, keywords: "master mdm" },
+      { href: "/mdm/golden/merge", requires: req("mdm", "view"), label: "Match review", icon: IconMerge, keywords: "duplicates match merge pairs survivor not a match" },
       { href: "/mdm/glossary", requires: req("glossary", "view"), label: "Glossary", icon: IconBook, keywords: "terms business" },
       { href: "/mdm/match-rules", requires: req("mdm", "view"), label: "Match rules", icon: IconMerge, keywords: "tuning constraints" },
     ],
@@ -214,6 +181,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   {
+    group: "Data in",
+    items: [
+      { href: "/systems", requires: req("systems", "view"), label: "Systems", icon: IconServer, keywords: "sap connect ecc s4hana discover objects health sync jobs download history schedule" },
+      { href: "/import", requires: req("extraction", "create"), label: "Import file", icon: IconImport, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
+      { href: "/migration", requires: req("analysis", "run"), label: "Migration", icon: IconMigration, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
+    ],
+  },
+  {
     group: "Admin",
     // rbac.md §5: users ★ | llm ★ | licence V | audit V.
     // rules/edit keeps the legacy steward's Admin › Settings nav.
@@ -225,6 +200,34 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * The Rail's split of an already-visible nav: the main groups' top-level items (the pills) and every other
+ * group under "More", each item followed by its children. A main item's children are not repeated in More:
+ * they stay reachable from the item's own page and the command palette. `resolve` maps an href to the one the
+ * viewer opens (`resolveNavHref`); an entry whose resolved href is already listed (a persona home that is
+ * Fix work) is dropped, so no link appears twice.
+ */
+export function splitNav(
+  groups: readonly NavGroup[],
+  resolve: (href: string) => string = (h) => h,
+): { main: NavItem[]; more: { group: string; items: NavItem[] }[] } {
+  const main = groups.filter((g) => g.main).flatMap((g) => g.items);
+  const seen = new Set(main.map((i) => resolve(i.href)));
+  const more = groups
+    .filter((g) => !g.main)
+    .map((g) => ({
+      group: g.group,
+      items: flattenNav(g.items).filter((i) => {
+        const href = resolve(i.href);
+        if (seen.has(href)) return false;
+        seen.add(href);
+        return true;
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
+  return { main, more };
+}
 
 /** Header titles for routes that are not in the nav. */
 const OFF_NAV_TITLES: Record<string, string> = {
@@ -241,9 +244,11 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/docs": "Documentation",
   "/me/preferences": "Preferences",
   "/inbox/notifications": "Notifications",
+  // The menu says "Fix work"; the page keeps its short title.
+  "/fix": "Fix",
   // Insight views carry short rail labels; the pages keep their full titles.
   "/insights/exec": "Executive summary",
-  "/insights/progress": "Since baseline",
+  "/insights/progress": "Progress",
   "/insights/trends": "Trends",
   "/insights/forecast": "Forecast",
   "/insights/rules": "Failing rules",

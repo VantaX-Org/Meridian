@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, Checkbox, DataTable, EmptyState, Field, Input, Mono, Notice, Skeleton } from "@/design";
+import { Button, Card, Checkbox, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Skeleton } from "@/design";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { getSystemObjects, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -23,7 +24,7 @@ const note = "m-text-body";
 /** Choose objects and scope, confirm inline, then extract into a new run. */
 export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (jobId: string) => void }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [scopeText, setScopeText] = useState<Partial<Record<ScopeKey, string>>>({});
   const [dates, setDates] = useState<{ date_from?: string; date_to?: string }>({});
@@ -53,7 +54,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
       qc.invalidateQueries({ queryKey: queryKeys.systemVersions(id) });
       onDownloaded(job.job_id);
     },
-    onError: (e) => toast.error((e as Error).message || "Extraction refused"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   const columns = useMemo<ColumnDef<Obj, unknown>[]>(() => [
@@ -71,6 +72,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
   return (
     <Card title="Extract objects into a new run" meta={chosen.length ? `${chosen.length} selected` : undefined}>
       {isLoading ? <Skeleton height={160} />
+        : isError ? <ErrorState {...apiErrorState(error)} onRetry={() => void refetch()} />
         : !objects.length ? <EmptyState title="No objects to extract" detail="This system exposes no objects yet. Check the connection on the Health tab." action={<Button render={<Link href={`/systems/${id}?tab=health`}>Test connection</Link>} />} /> : (
         <div className="flex flex-col gap-4">
           <DataTable columns={columns} data={objects} getRowId={(o) => o.object} onRowClick={(o) => toggle(o.object)} height={340} />
@@ -78,13 +80,13 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {filters.map((k) => (
-                  <Field key={k} label={`${SCOPE_LABEL[k]} — comma-separated, empty reads all`}>
+                  <Field key={k} label={`${SCOPE_LABEL[k]}, comma-separated (leave empty to read all)`}>
                     <Input className="w-full" value={scopeText[k] ?? ""} placeholder="1000, 2000" onChange={(e) => setScopeText({ ...scopeText, [k]: e.target.value })} />
                   </Field>
                 ))}
                 {windowed.length > 0 ? (
                   <>
-                    <Field label={`Documents from — replaces the default window for ${windowed.join(", ")}`}>
+                    <Field label={`Documents from (replaces the default window for ${windowed.map(formatModuleName).join(", ")})`}>
                       <Input className="w-full" type="date" value={dates.date_from ?? ""} onChange={(e) => setDates({ ...dates, date_from: e.target.value || undefined })} />
                     </Field>
                     <Field label="Documents to">
@@ -92,7 +94,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
                     </Field>
                   </>
                 ) : null}
-                <Field label="Run label — optional">
+                <Field label="Run label (optional)">
                   <Input className="w-full" value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
                 </Field>
               </div>
@@ -108,15 +110,15 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
               </p>
               {confirm === null ? (
                 <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => setConfirm(false)}>{`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"}`}</Button>
-                  <Button variant="secondary" onClick={() => setConfirm(true)}>Extract and analyse</Button>
+                  <Button onClick={() => setConfirm(true)}>Extract and analyse</Button>
+                  <Button variant="secondary" onClick={() => setConfirm(false)}>{`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"} only`}</Button>
                 </div>
               ) : (
                 <Notice
                   tone="warning"
                   title={`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"}${confirm ? " and analyse" : ""}?`}
                   action={<>
-                    <Button onClick={() => download.mutate(confirm)} disabled={download.isPending}>Confirm</Button>
+                    <Button onClick={() => download.mutate(confirm)} pending={download.isPending}>{confirm ? "Start extract and analysis" : "Start extract"}</Button>
                     <Button variant="ghost" onClick={() => setConfirm(null)}>Keep scope</Button>
                   </>}
                 >
@@ -124,7 +126,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
                 </Notice>
               )}
             </div>
-          ) : <p className={clsx(note, "m-ink-2")}>Select the objects to extract.</p>}
+          ) : <p className={clsx(note, "m-ink-2")}>Tick the objects to extract. Each extract becomes a new run you can analyse and compare.</p>}
         </div>
       )}
     </Card>

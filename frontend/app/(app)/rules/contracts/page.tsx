@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Stat, Textarea, type PillTone } from "@/design";
+import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Skeleton, Stat, Textarea, type PillTone } from "@/design";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -86,7 +86,7 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
 
   return (
     <ExplorerPage
-      header={<PageHeader title="Data contracts" meta={q.isLoading ? "\u00a0" : `${all.length.toLocaleString()} contracts`} actions={canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined} />}
+      header={<PageHeader title="Data contracts" meta={`A contract is a promise between the system that produces data and the one that uses it, checked on every analysis.${q.data ? ` ${all.length.toLocaleString()} contracts.` : ""}`} actions={canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined} />}
       filterBar={
         <div className="flex items-end gap-3">
           <div className="flex items-end gap-3">
@@ -140,12 +140,12 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
   const submit = useMutation({
     mutationFn: () => updateContract(c.id, { status: "pending_approval" }),
     onSuccess: () => { toast.success(`${c.name} is awaiting approval`); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Not submitted"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const activate = useMutation({
     mutationFn: () => activateContract(c.id),
     onSuccess: () => { toast.success(`${c.name} is active`); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Not activated"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const compliance = useQuery({ queryKey: queryKeys.contractCompliance(c.id), queryFn: () => getContractCompliance(c.id) });
   const terms = TERMS.filter(([k]) => c[k] && Object.keys(c[k] as object).length);
@@ -189,9 +189,9 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
       <div>
         <h3 className="m-text-body font-semibold mb-2">Compliance history</h3>
         {compliance.isLoading ? (
-          <p className="m-text-body m-ink-3">Reading compliance history.</p>
+          <Skeleton height={48} />
         ) : !history.length ? (
-          <p className="m-text-body m-ink-3">No compliance checks recorded yet.</p>
+          <p className="m-text-body m-ink-3">{c.status === "active" ? "No check has run yet. The next analysis checks it." : "Checks start once the contract is active."}</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {history.map((h) => (
@@ -211,7 +211,6 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
         {canActivate && !isAuthor && c.status === "pending_approval" ? (
           <Button onClick={() => activate.mutate()} disabled={activate.isPending}>{activate.isPending ? "Activating…" : "Activate"}</Button>
         ) : null}
-        <Mono>{c.id}</Mono>
       </div>
       {c.status === "draft" || c.status === "pending_approval" ? (
         <p className="m-text-meta m-ink-3">
@@ -236,7 +235,7 @@ function NewContractForm({ onDone }: { onDone: () => void }) {
   const create = useMutation({
     mutationFn: () => createContract({ name: d.name, producer: d.producer, consumer: d.consumer, description: d.description || undefined }),
     onSuccess: () => { toast.success("Contract created as a draft"); onDone(); },
-    onError: (e) => toast.error((e as Error).message || "Not created"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const form = useFormErrors(CONTRACT_SCHEMA, d);
   const valid = form.valid;

@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { clsx } from "clsx";
 import { toast } from "sonner";
-import { Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, emptyExportOptions, type Verdict, entityTabs, toVerdict, useBreadcrumbTitle, Score } from "@/design";
+import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, emptyExportOptions, type Verdict, entityTabs, toVerdict, useBreadcrumbTitle, Score } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
@@ -32,6 +32,7 @@ import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { runPageHref } from "@/lib/runs";
 import type { SystemModule, SystemType } from "@/types/api";
 import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
@@ -69,7 +70,7 @@ function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
     { id: "analysed", header: "Analysed", cell: ({ row }) => when(row.original.analysed_at) },
     {
       id: "dqs",
-      header: "DQS",
+      header: "Score",
       cell: ({ row }) => {
         const d = meanDqs(row.original);
         return d === null ? "—" : (
@@ -142,7 +143,7 @@ export default function SystemPage() {
   const test = useMutation({
     mutationFn: () => testConnection(systemId),
     onSuccess: (r) => { toast.success(`Connection ${r.status}, ${r.latency_ms} ms`); refresh(); },
-    onError: (e) => toast.error((e as Error).message || "Connection test failed"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const testLabel = test.isPending
     ? "Testing"
@@ -154,7 +155,7 @@ export default function SystemPage() {
   const analyse = useMutation({
     mutationFn: () => analyseVersion((latest ?? versions[0])!.id),
     onSuccess: () => { toast.success("Analysis started"); refresh(); },
-    onError: (e) => toast.error((e as Error).message || "Analysis refused"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   if (systemsQ.isLoading) {
@@ -166,11 +167,15 @@ export default function SystemPage() {
       </div>
     );
   }
-  if (systemsQ.isError || !system) {
+  if (systemsQ.isError) {
+    return <ErrorState {...apiErrorState(systemsQ.error)} onRetry={() => systemsQ.refetch()} />;
+  }
+  if (!system) {
     return (
-      <ErrorState
-        message={systemsQ.isError ? `Couldn't load this system. ${systemsQ.error?.message ?? ""}`.trim() : "No such system."}
-        onRetry={() => systemsQ.refetch()}
+      <EmptyState
+        title="System not found"
+        detail="It may have been removed, or the link is out of date. Pick a system from the list."
+        action={<Button variant="secondary" render={<Link href="/systems">Open systems</Link>} />}
       />
     );
   }
@@ -182,10 +187,10 @@ export default function SystemPage() {
       <PageHeader
         title={system.name}
         status={<Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>}
-        meta={[systemTypeLabel(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}
+        meta={`${[systemTypeLabel(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}. Pull data from this system with Extract, then analyse it to score its objects`}
         actions={
         <>
-          {can("manage_systems") ? <Button variant="secondary" onClick={() => setEditOpen(true)}>Edit</Button> : null}
+          {can("manage_systems") ? <Button variant="ghost" onClick={() => setEditOpen(true)}>Edit</Button> : null}
           {can("trigger_sync") ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
           <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
             onClick={() => setExtractOpen(true)}>
@@ -219,7 +224,7 @@ export default function SystemPage() {
         </Notice>
       ) : null}
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 @3xl:grid-cols-4">
         {/* Runs can exist without an extraction (uploads); "nothing extracted" must not sit beside their score. */}
         <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : versions.length ? "Runs come from uploads" : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
         <Stat
@@ -230,7 +235,7 @@ export default function SystemPage() {
           href={`/systems/${systemId}?tab=objects`}
         />
         <Stat
-          label="DQS"
+          label="Quality score"
           help="dqs"
           loading={versionsQ.isLoading}
           delta={dqsTrend(versions) != null && Math.abs(dqsTrend(versions) ?? 0) >= 0.05 ? <Delta value={dqsTrend(versions) ?? 0} run="the previous run" /> : undefined}
@@ -524,12 +529,12 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
   const again = useMutation({
     mutationFn: (module: string) => startDownload(id, { objects: [module], scope: {}, analyse: false }),
     onSuccess: () => { toast.success("Extraction started"); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Extraction refused"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const run = useMutation({
     mutationFn: (versionId: string) => analyseVersion(versionId),
     onSuccess: () => { toast.success("Analysis started"); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Analysis refused"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const rankedModules = useMemo(() => [...modules].sort((a, b) => b.row_count - a.row_count || a.module.localeCompare(b.module)), [modules]);
   const columns = useMemo<ColumnDef<SystemModule>[]>(() => [
@@ -543,7 +548,7 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
     { id: "synced", header: "Last synced", cell: ({ row }) => when(row.original.last_synced_at) },
     {
       id: "dqs",
-      header: "DQS",
+      header: "Score",
       cell: ({ row }) => {
         const d = latest?.dqs?.[row.original.module];
         return typeof d === "number" && latest ? (
@@ -589,8 +594,8 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
       ) : (
         <EmptyState
           title="No objects yet"
-          detail="Discover this system's design to list its objects."
-          action={<Button render={<Link href={`/systems/${id}?tab=health`}>Discover design</Link>} />}
+          detail="Meridian lists a system's objects once it has read the system's design. Start that from the Health tab."
+          action={<Button render={<Link href={`/systems/${id}?tab=health`}>Go to Health</Link>} />}
         />
       )}
       {canSync ? <ScopePicker id={id} onDownloaded={onChanged} /> : null}
@@ -648,7 +653,7 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
   const discover = useMutation({
     mutationFn: () => discoverSystem(id),
     onSuccess: () => { toast.success("Discovery started"); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Could not start discovery"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   const verdict = system.health_status === "healthy"
@@ -677,7 +682,7 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
         <p className="m-text-body m-ink-2">{verdict}</p>
         <dl className="mt-2 grid grid-cols-2 gap-2 m-text-body">
           <Field label="Last health check"><span>{when(system.last_health_check, "Never")}</span></Field>
-          <Field label="Discovery status"><span>{design?.discovery_status ?? system.discovery_status ?? "Never run"}</span></Field>
+          <Field label="Design discovery"><span>{(design?.discovery_status ?? system.discovery_status) ? labelOf(design?.discovery_status ?? system.discovery_status ?? "") : "Never run"}</span></Field>
           <Field label="SAP release"><Mono>{design?.sap_release ?? "Unknown"}</Mono></Field>
         </dl>
         {snap?.error ? (
@@ -693,7 +698,7 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
         <Card title="Design discovery">
           <EmptyState
             title="Not discovered yet"
-            detail="Discover design reads this system's data dictionary and configuration."
+            detail="Discovery reads this system's tables, fields and configuration, so Meridian knows what to extract and check."
             action={canSync ? <Button variant="secondary" disabled={discover.isPending || running} onClick={() => discover.mutate()}>Discover design</Button> : undefined}
           />
         </Card>
@@ -728,25 +733,26 @@ function EditForm({ system, targets, onDone, onDeleted }: {
   const [role, setRole] = useState<"source" | "target">(system.role);
   const [target, setTarget] = useState<string>(system.target_system_id ?? "none");
   const [confirming, setConfirming] = useState(false);
+  const [tried, setTried] = useState(false);
   const save = useMutation({
     mutationFn: () => updateSystem(system.id, {
       name: name.trim(), environment, description, is_active: active, role,
       ...(role === "source" ? { target_system_id: target === "none" ? "" : target } : {}),
     }),
     onSuccess: () => { toast.success("System saved"); onDone(); },
-    onError: (e) => toast.error((e as Error).message || "Not saved"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const del = useMutation({
     mutationFn: () => deleteSystem(system.id),
     onSuccess: () => { toast.success(`${system.name} removed`); onDeleted(); },
-    onError: (e) => toast.error((e as Error).message || "Not removed"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   return (
     <form
       className="flex flex-col gap-4"
-      onSubmit={(e) => { e.preventDefault(); if (name.trim()) save.mutate(); }}
+      onSubmit={(e) => { e.preventDefault(); setTried(true); if (name.trim()) save.mutate(); }}
     >
-      <Field label="Alias">
+      <Field label="Name" error={tried && !name.trim() ? "Give the system a name" : undefined}>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -786,22 +792,19 @@ function EditForm({ system, targets, onDone, onDeleted }: {
         Active
       </label>
       <div className="flex gap-2">
-        <Button type="submit" disabled={!name.trim() || save.isPending}>Save</Button>
-        {!confirming ? <Button type="button" variant="secondary" onClick={() => setConfirming(true)}>Delete</Button> : null}
+        <Button type="submit" pending={save.isPending}>Save</Button>
+        <Button type="button" variant="ghost" onClick={() => setConfirming(true)}>Remove system</Button>
       </div>
-      {confirming ? (
-        <Notice
-          tone="danger"
-          action={
-            <>
-              <Button type="button" variant="secondary" disabled={del.isPending} onClick={() => del.mutate()}>Remove</Button>
-              <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>Keep</Button>
-            </>
-          }
-        >
-          Remove {system.name}? Its credentials and sync profiles go with it. Downloaded runs and findings stay.
-        </Notice>
-      ) : null}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        tone="danger"
+        title={`Remove ${system.name}?`}
+        body="Its credentials and sync profiles go with it. Downloaded runs and findings stay."
+        confirmLabel="Remove system"
+        pending={del.isPending}
+        onConfirm={() => del.mutate()}
+      />
     </form>
   );
 }

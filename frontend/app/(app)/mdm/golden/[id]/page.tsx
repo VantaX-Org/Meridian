@@ -6,11 +6,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, DataTable, Dialog, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
+import { MergedRecords } from "@/components/mdm/merged-records";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
@@ -116,11 +117,11 @@ export default function MasterRecordPage() {
     );
   }
 
+  // RecordPage only speaks the record-quality vocabulary; the golden-record status is the Pill in the overview.
   const status: RecordStatus = record.status === "golden"
     ? { label: "passing", tone: "go" }
-    : record.status === "superseded"
-      ? { label: "failing", tone: "no-go" }
-      : { label: "in batch", tone: "at-risk" };
+    : { label: "in batch", tone: record.status === "superseded" ? "neutral" : "at-risk" };
+  const promotable = record.status !== "golden" && record.status !== "superseded";
 
   const fields = Object.entries(record.golden_fields);
   const sources = Object.entries(record.source_contributions);
@@ -130,13 +131,25 @@ export default function MasterRecordPage() {
   const sourceRows: SourceRow[] = sources.map(([system, c]) => ({ system, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
 
   return (
-    <RecordPage recordKey={record.sap_object_key} object={record.domain} status={status}>
+    <RecordPage
+      recordKey={record.sap_object_key}
+      object={record.domain}
+      status={status}
+      meta={record.status === "superseded"
+        ? "This record was merged into another golden record. Its own values are kept for an unmerge."
+        : `The one trusted version of this record, built from ${sources.length.toLocaleString()} ${sources.length === 1 ? "source" : "sources"}. ${promotable ? "Check the values, then promote it." : "It is the version other systems should use."}`}
+      actions={canApprove && promotable ? (
+        <Button disabled={promote.isPending} onClick={() => setConfirmPromote(true)}>Promote</Button>
+      ) : undefined}
+    >
       <EntityTabs entityType="master-records" entityId={id}
         related={<>
       <section aria-label="Related records">
         <LedgerHead title="Related records" meta={String(relationships.length)} />
-        {relationships.length === 0 ? (
-          <p className="m-text-body m-ink-3">No related records found</p>
+        {relationshipsQuery.isLoading ? <Skeleton height={80} /> : relationshipsQuery.isError ? (
+          <ErrorState {...apiErrorState(relationshipsQuery.error)} onRetry={() => void relationshipsQuery.refetch()} />
+        ) : relationships.length === 0 ? (
+          <EmptyState variant="inline" title="No related records found" detail="Links appear when another object refers to this key." action={<Link className="m-ink-accent-ink hover:underline" href={`/objects/${record.domain}`}>Open the object</Link>} />
         ) : (
           <DataTable columns={relCols} getRowId={(r) => r.id} data={relationships as Rel[]} height="auto" />
         )}
@@ -145,8 +158,10 @@ export default function MasterRecordPage() {
         history={<>
       <section aria-label="History">
         <LedgerHead title="History" meta={String(history.length)} />
-        {history.length === 0 ? (
-          <p className="m-text-body m-ink-3">No changes recorded</p>
+        {historyQuery.isLoading ? <Skeleton height={80} /> : historyQuery.isError ? (
+          <ErrorState {...apiErrorState(historyQuery.error)} onRetry={() => void historyQuery.refetch()} />
+        ) : history.length === 0 ? (
+          <EmptyState variant="inline" title="No changes recorded" detail="Promotions, merges and steward picks are listed here." action={<Link className="m-ink-accent-ink hover:underline" href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
         ) : (
           <DataTable columns={histCols} getRowId={(r) => r.id} data={history as Hist[]} height="auto" />
         )}
@@ -158,14 +173,6 @@ export default function MasterRecordPage() {
           {STATUS_LABEL[record.status] ?? record.status.replace(/_/g, " ")}
         </Pill>
         <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
-        {canApprove ? (
-          <Button
-            disabled={record.status === "golden" || record.status === "superseded" || promote.isPending}
-            onClick={() => setConfirmPromote(true)}
-          >
-            {promote.isPending ? "Promoting…" : "Promote"}
-          </Button>
-        ) : null}
         <GatedPrimary
           kind="writeback"
           allowed={canApply}
@@ -181,22 +188,21 @@ export default function MasterRecordPage() {
         <p className="m-text-body m-ink-3">{writeback.data.message}</p>
       ) : null}
 
-      <Dialog open={confirmPromote} onOpenChange={setConfirmPromote} title="Promote to golden record?">
-        <p className="m-text-body mb-4 m-ink-2">
-          This replaces the current golden fields for {record.sap_object_key} with the merged values. This cannot be undone.
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setConfirmPromote(false)}>Keep as is</Button>
-          <Button disabled={promote.isPending} onClick={() => promote.mutate()}>
-            {promote.isPending ? "Promoting…" : "Promote"}
-          </Button>
-        </div>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmPromote}
+        onOpenChange={setConfirmPromote}
+        title="Promote to golden record?"
+        body={<p className="m-text-body m-ink-2">This replaces the current golden fields for {record.sap_object_key} with the merged values. This cannot be undone.</p>}
+        confirmLabel="Promote"
+        cancelLabel="Keep as is"
+        pending={promote.isPending}
+        onConfirm={() => promote.mutate()}
+      />
 
       <section aria-label="Golden fields">
         <LedgerHead title="Golden fields" meta={String(fields.length)} />
         {fields.length === 0 ? (
-          <p className="m-text-body m-ink-3">No golden fields recorded</p>
+          <EmptyState variant="inline" title="No golden fields recorded" detail="Fields fill in when the golden record is built from its sources." action={<Link className="m-ink-accent-ink hover:underline" href="/mdm/survivorship">Survivorship rules</Link>} />
         ) : (
           <DataTable columns={fieldCols} getRowId={(r) => r.field} data={fieldRows} height="auto" />
         )}
@@ -205,18 +211,20 @@ export default function MasterRecordPage() {
       <section aria-label="Source contributions">
         <LedgerHead title="Source contributions" meta={String(sources.length)} />
         {sources.length === 0 ? (
-          <p className="m-text-body m-ink-3">No sources recorded</p>
+          <EmptyState variant="inline" title="No sources recorded" detail="A source is added each time an extraction carries this key." action={<Link className="m-ink-accent-ink hover:underline" href="/systems">Open systems</Link>} />
         ) : (
           <DataTable columns={sourceCols} getRowId={(r) => r.system} data={sourceRows} height="auto" />
         )}
       </section>
 
+      <MergedRecords id={record.id} onChanged={invalidate} />
+
         </>}
       />
 
       <section>
-        <Link href="/insights/duplicates" className="m-text-body m-ink-accent">
-          Review merge candidates in duplicates
+        <Link href={`/mdm/golden/merge?domain=${encodeURIComponent(record.domain)}`} className="m-text-body m-ink-accent">
+          Review match pairs for {formatModuleName(record.domain)}
         </Link>
       </section>
     </RecordPage>

@@ -48,7 +48,7 @@ describe("Rail (the index bar)", () => {
     pathname = "/objects/material_master";
     searchParams = new URLSearchParams("run=v-old&tab=rules");
     const { container } = renderRail();
-    await screen.findByRole("link", { name: "Runs" });
+    await screen.findByRole("link", { name: "Objects" });
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     const hrefs = [...container.querySelectorAll("a[href]")].map((a) => a.getAttribute("href") ?? "");
     expect(hrefs.length).toBeGreaterThan(5);
@@ -56,15 +56,37 @@ describe("Rail (the index bar)", () => {
   });
 
   it("marks exactly one nav link as the current page", async () => {
+    pathname = "/objects";
     renderRail();
     const current = await screen.findAllByRole("link", { current: "page" });
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Objects");
+  });
+
+  it("shows the four main entries as pills, in order, and everything else under More", async () => {
+    renderRail();
+    await screen.findByRole("link", { name: "Objects" });
+    const pills = [...screen.getByTestId("rail-nav-items").children].map((li) => li.textContent?.replace(/\d+$/, "").trim());
+    expect(pills).toEqual(["Fix work", "Objects", "Progress", "Inbox", "More"]);
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    const panel = screen.getByRole("group", { name: "More pages" });
+    for (const section of ["Analysis", "Master data", "Rules", "Data in", "Admin"]) expect(panel).toHaveTextContent(section);
+    expect(panel).toHaveTextContent("Systems");
+    expect(panel).toHaveTextContent("Runs");
+    expect(panel).not.toHaveTextContent("Fix work");
+  });
+
+  it("the More link for the current page is marked current inside the open panel", async () => {
+    renderRail();
+    fireEvent.click(await screen.findByRole("button", { name: "More" }));
+    const current = screen.getAllByRole("link", { current: "page" });
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveTextContent("Systems");
   });
 
   it("renders the Fix queue count as a critical badge inside a data-severity element", async () => {
     renderRail();
-    const fix = await screen.findByRole("link", { name: /^Fix/ });
+    const fix = await screen.findByRole("link", { name: /^Fix work/ });
     const badge = await screen.findByText("3");
     expect(fix).toContainElement(badge);
     expect(badge.closest("[data-severity='critical']")).not.toBeNull();
@@ -73,7 +95,7 @@ describe("Rail (the index bar)", () => {
 
   it("every nav href is unique across the pills and the More panel", async () => {
     const { container } = renderRail();
-    await screen.findByRole("link", { name: "Runs" });
+    await screen.findByRole("link", { name: "Objects" });
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     const hrefs = [...container.querySelectorAll("nav a[href]")].map((a) => a.getAttribute("href") ?? "");
     expect(new Set(hrefs).size).toBe(hrefs.length);

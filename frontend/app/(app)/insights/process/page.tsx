@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
+import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import { isCompleteVersion, useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -29,11 +29,13 @@ import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph } from "@/lib/api/process-mining";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { formatModuleName, formatDate, plural, runOptionLabels } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useRunList } from "@/hooks/use-run-list";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 /** Objects with an L1 to L5 definition (sap/process_definitions.py: procure to pay and order to cash). */
 export const PROCESS_MODULES = new Set(["accounts_payable", "fi_gl", "material_master", "mm_purchasing", "accounts_receivable", "sd_customer_master", "sd_sales_orders"]);
@@ -82,6 +84,12 @@ function RunsWithProcess({ exclude }: { exclude?: string }) {
     />
   );
 }
+
+/**
+ * The rule library at the rule's object, for a check with no finding to open in this run. `/rules/<id>` takes the
+ * rules row id, not a check id, so it is not a target here.
+ */
+const ruleHref = (module: string) => `/rules?${new URLSearchParams({ module })}`;
 
 const openLink = (label: string, href: string) => <Button variant="secondary" render={<Link href={href}>{label}</Link>} />;
 
@@ -157,7 +165,7 @@ function NotApplicableList({ title, t, findingHref }: {
         {shown.map((na) => (
           <li key={na.check_id} className="flex items-center gap-3">
             {na.severity ? <Status kind="severity" value={na.severity} /> : <Pill>Unrated</Pill>}
-            <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? "/analyse"}>
+            <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? ruleHref(na.module)}>
               <Mono>{na.check_id}</Mono>
             </Link>
             <span className="m-text-body m-ink-2">
@@ -175,16 +183,18 @@ function NotApplicableList({ title, t, findingHref }: {
   );
 }
 
-function RulesBlock({ title, t, findingHref, configuredIn }: {
+function RulesBlock({ title, t, findingHref, configuredIn, run }: {
   title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
   configuredIn?: ConfiguredIn[];
+  /** The run the tally scores, so a failing rule opens its records in that run. */
+  run?: string;
 }) {
   const failing = t.applicable - t.passes;
   return (
     <div className="flex flex-col gap-1">
       <h4 className="font-medium">{title}</h4>
       <p className="m-text-body m-ink-2">
-        {t.score === null ? "No rules apply" : `${fmt1(t.score)}%, ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} apply`}, {failing.toLocaleString()} failing
+        {t.score === null ? "No rules apply" : `${fmt1(t.score)}% pass: ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} rules that apply`}, {failing.toLocaleString()} failing
       </p>
       {configuredIn?.length ? (
         <p className="m-text-body m-ink-2">
@@ -196,7 +206,11 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
           {t.top_failing.slice(0, 5).map((f) => (
             <li key={f.check_id} className="flex items-center gap-3">
               {f.severity ? <Status kind="severity" value={f.severity} /> : <Pill>Unrated</Pill>}
-              <Link className="flex-1 underline" href={findingHref(f.module, f.check_id) ?? "/analyse"}>
+              <Link
+                className="flex-1 underline"
+                href={fixHref({ run, module: f.module, check: f.check_id })}
+                aria-label={drillLabel({ count: f.affected_count, what: "failing records", check: f.check_id, module: f.module })}
+              >
                 <Mono>{f.check_id}</Mono>
               </Link>
               <span className="m-text-body">{records(f.affected_count)}</span>
@@ -213,11 +227,11 @@ interface BlockingRow { id: string; severity: ReturnType<typeof sev>; checkId: s
 const blockingColumns: ColumnDef<BlockingRow>[] = [
   { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
   { id: "finding", header: "Finding", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.title}>{row.original.title}</span> },
-  { id: "gate", header: "Gate", accessorFn: (b) => b.gate },
+  { id: "gate", header: "Process step", accessorFn: (b) => b.gate },
   { accessorKey: "affected", header: "Records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
   {
     id: "action", header: "", enableSorting: false,
-    cell: ({ row }) => (row.original.href ? <Link href={row.original.href} className="m-ink-accent underline-offset-2 hover:underline">Fix</Link> : null),
+    cell: ({ row }) => (row.original.href ? <Link href={row.original.href} className="m-ink-accent underline underline-offset-2">Fix</Link> : null),
   },
 ];
 
@@ -293,8 +307,8 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
     l3.l4_subprocesses.flatMap((l4) => l4Fields(l4).filter((f) => f.dq_status === "red").map((f) => ({
       id: `${l3.l3_id}-${l4.l4_id}-${f.field}`, severity: sev(f), checkId: f.check_id ?? f.field,
       title: f.finding_message || f.description, gate: l3.l3_name, affected: f.affected_count,
-      href: f.check_id ? findingHref(object, f.check_id) : undefined,
-    }))))).sort((a, b) => b.affected - a.affected) : []), [l1, object, findingHref]);
+      href: f.check_id ? findingHref(object, f.check_id) ?? buildDrillHref({ object, ruleId: f.check_id, run: latest?.id }) : undefined,
+    }))))).sort((a, b) => b.affected - a.affected) : []), [l1, object, findingHref, latest?.id]);
   const failing = blockingFindings.reduce((a, b) => a + b.affected, 0);
   const firstHref = blockingFindings.find((b) => b.href)?.href;
   const worst = [...gates].sort((a, b) => b.blocking - a.blocking)[0];
@@ -313,14 +327,14 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
     }
     onInsight({
       situation: {
-        sentence: `${blockedGates} of ${plural(gates.length, "gate")} blocked, ${pct}% of fields pass in ${l1.l1_name}. Readiness is scored per step from the chosen run.`,
+        sentence: `${blockedGates} of ${plural(gates.length, "process step")} blocked, ${pct}% of fields pass in ${l1.l1_name}.`,
         tone: blockedGates ? "no-go" : pct >= 90 ? "go" : "at-risk",
       },
-      changed: { sentence: `Reading ${latest.label || formatDate(latest.run_at, "datetime")}; change appears when the next run of these objects finishes.` },
+      changed: { sentence: `From ${runScopeLabel(latest)}; it changes when the next run of this object finishes.` },
       why: { sentence: blocking ? `${plural(blocking, "blocking field fails", "blocking fields fail")} on ${records(failing)}.` : "No field blocks go-live.", tone: blocking ? "no-go" : "go" },
       next: blockedGates && worst
-        ? { sentence: `Clear the failing fields in ${worst.l3.l3_name}.`, action: { label: "Open findings", href: firstHref ?? "/inbox" } }
-        : { sentence: "No gate is blocked.", action: { label: "Open rules", href: "/rules" } },
+        ? { sentence: `Clear the failing fields in ${worst.l3.l3_name}.`, action: { label: "Open failing records", href: firstHref ?? withScope(`/objects/${object}`, { run: latest.id, tab: "rules" }) } }
+        : { sentence: "No step is blocked; keep an eye on the amber fields.", action: { label: "Open failing rules", href: withScope("/insights/rules", { run: latest.id, module: object }) } },
     });
   }, [loading, latest, l1, object, blockedGates, gates.length, pct, blocking, failing, worst, firstHref, onInsight]);
 
@@ -381,20 +395,17 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
             options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
             onValueChange={setSystem} />
         ) : null}
-        <span className="m-text-meta m-ink-3">
-          Version {latest.label ?? latest.id.slice(0, 8)}, run {formatDate(latest.run_at, "datetime")}
-        </span>
       </div>
 
       {/* The ledger: the blocking findings ranked by records affected, each with its one action. */}
-      <Card title="Blocking findings" meta={blockingFindings.length > 10 ? `Top 10 of ${blockingFindings.length.toLocaleString()}` : undefined}>
+      <Card title="Blocking findings" meta={`Fields that stop a process step, most records first${blockingFindings.length > 10 ? `; top 10 of ${blockingFindings.length.toLocaleString()}` : ""}`}>
         {blockingFindings.length ? (
           <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar dense height="auto" />
-        ) : <EmptyState title="Nothing blocks go-live" />}
+        ) : <EmptyState title="Nothing blocks go-live" detail="No mandatory field fails in this process." action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run: latest.id, module: object })}>Open failing rules</Link>} />} />}
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card title="Gates" meta={l1.l1_name}>
+        <Card title="Process steps" meta={`${l1.l1_name}: the share of fields passing in each step`}>
           <ul className="flex flex-col gap-2">
             {gates.map((g) => (
               <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
@@ -407,7 +418,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
             ))}
           </ul>
         </Card>
-        <Card title="Recommendations">
+        <Card title="What to clear first">
           {recommendations.length ? (
             <ul className="flex flex-col gap-2">
               {recommendations.map((r) => (
@@ -417,21 +428,22 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
                 </li>
               ))}
             </ul>
-          ) : <EmptyState title="No open recommendations" action={<Button variant="secondary" render={<Link href="/rules">Open rules</Link>} />} />}
+          ) : <EmptyState title="Nothing to clear" detail="Every step is green." action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run: latest.id, module: object })}>Open failing rules</Link>} />} />}
         </Card>
       </div>
 
       {awareL1 ? (
-        <Card title="Rules by step">
+        <Card title="Rules by step" meta="How many rules apply to each part of the process, and which fail">
           <div id="applicability" className="flex flex-col gap-3">
             {!aware.data?.config_load ? (
               <p className="m-text-body m-ink-2">
-                All {awareL1.applicable.toLocaleString()} rules apply by default. Load configuration to narrow this.
+                All {awareL1.applicable.toLocaleString()} rules apply by default. Load the system&apos;s configuration to leave out rules it does not use.{" "}
+                <Link href="/systems" className="m-ink-accent underline underline-offset-2">Open systems</Link>
               </p>
             ) : null}
-            <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} />
+            <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} run={latest?.id} />
             {awareL1.l2.map((l2) => (
-              <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} configuredIn={l2.configured_in} />
+              <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} configuredIn={l2.configured_in} run={latest?.id} />
             ))}
           </div>
         </Card>
@@ -491,7 +503,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
     if (isLoading || dayOne.status === "loading" || graphQ.isLoading) { onInsight({ loading: true, situation: { sentence: "" }, changed: { sentence: "" }, why: { sentence: "" }, next: { sentence: "" } }); return; }
     if (!latest || !modules.length) {
       onInsight({
-        situation: { sentence: !latest ? "No finished run to mine a process map from." : "No analysed object has a process map.", tone: "neutral" },
+        situation: { sentence: !latest ? "No finished run to build a process map from." : "No analysed object has a process map.", tone: "neutral" },
         changed: { sentence: "The map is mined from the run you choose." },
         why: { sentence: "Purchasing, sales, vendor, customer, material and G/L objects carry a map." },
         next: { sentence: "Analyse one of those objects.", action: { label: "Open runs", href: "/runs" } },
@@ -500,10 +512,10 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
     }
     onInsight({
       situation: {
-        sentence: `${plural(activities.length, "step")} mapped for ${formatModuleName(active ?? "")}, ${blockedSteps} blocked and ${degradedSteps} degraded, across ${plural(variants.length, "variant")}. The map is mined from the chosen run.`,
+        sentence: `${plural(activities.length, "step")} mapped for ${formatModuleName(active ?? "")}, ${blockedSteps} blocked and ${degradedSteps} degraded, across ${plural(variants.length, "variant")}.`,
         tone: blockedSteps ? "no-go" : degradedSteps ? "at-risk" : "go",
       },
-      changed: { sentence: `Reading ${latest.label || formatDate(latest.run_at, "datetime")}.` },
+      changed: { sentence: `From ${runScopeLabel(latest)}; it changes when the next run of this object finishes.` },
       why: { sentence: bottlenecks.length ? `${records(failingRecords)} fail in ${plural(bottlenecks.length, "step")}.` : "Every mapped step passes its checks.", tone: bottlenecks.length ? "no-go" : "go" },
       next: worstStep
         ? { sentence: `Open ${worstStep.label}, the worst step.`, action: { label: "Open step", onClick: () => setNode(worstStep.id) } }
@@ -531,30 +543,30 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
       ) : null}
 
       {graphQ.isLoading ? <ViewSkeleton stats={4} /> : graphQ.error ? (
-        <ErrorState message={(graphQ.error as Error).message} onRetry={() => void graphQ.refetch()} />
+        <ErrorState {...apiErrorState(graphQ.error)} onRetry={() => void graphQ.refetch()} />
       ) : (
         <>
           {activities.length ? (
             <Graph nodes={graphNodes} edges={graphEdges} onNodeClick={setNode} height={320} />
-          ) : <EmptyState title="No mined activities for this module" action={openLink("Open runs", "/runs")} />}
+          ) : <EmptyState title="No process steps found for this object" detail="The run holds no documents to build the map from." action={openLink("Open runs", "/runs")} />}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card title="Failing steps" meta={bottlenecks.length > 8 ? `Top 8 of ${bottlenecks.length.toLocaleString()}` : undefined}>
+            <Card title="Failing steps" meta={`Steps whose records fail checks, most records first${bottlenecks.length > 8 ? `; top 8 of ${bottlenecks.length.toLocaleString()}` : ""}`}>
               {bottlenecks.length ? (
                 <DataTable
                   columns={[
                     { id: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.step_status} /> },
                     { id: "step", header: "Step", accessorFn: (b) => b.label },
                     { id: "records", header: "Records", meta: { numeric: true }, accessorFn: (b) => b.affected_records, cell: ({ row }) => records(row.original.affected_records) },
-                    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <button type="button" className="m-ink-accent underline-offset-2 hover:underline" onClick={() => setNode(row.original.id)}>Open</button> },
+                    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <button type="button" className="m-ink-accent underline underline-offset-2" onClick={() => setNode(row.original.id)}>Open</button> },
                   ] as ColumnDef<(typeof bottlenecks)[number]>[]}
                   data={bottlenecks.slice(0, 8)}
                   getRowId={(b) => b.id}
                   hideToolbar dense height="auto"
                 />
-              ) : <EmptyState title="Every step passes its checks" action={openLink("Open rules", "/rules")} />}
+              ) : <EmptyState title="Every step passes its checks" detail="No record in a mapped step fails a rule." action={openLink("Open failing rules", withScope("/insights/rules", { run: latest.id, module: active ?? undefined }))} />}
             </Card>
-            <Card title="Variants">
+            <Card title="Variants" meta="The different paths a document takes through the process">
               {variants.length ? (
                 <ul className="flex flex-col gap-2">
                   {variants.slice(0, 8).map((v) => (
@@ -565,7 +577,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
                     </li>
                   ))}
                 </ul>
-              ) : <EmptyState title="No variants found for this module" action={openLink("Open objects", "/objects")} />}
+              ) : <EmptyState title="No variants found for this object" detail="Every document followed the same path, or none was found." action={openLink("Open the object", withScope(`/objects/${active ?? ""}`, { run: latest.id }))} />}
             </Card>
           </div>
         </>
@@ -579,6 +591,9 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
               {picked.tcode ? <><Mono>{picked.tcode}</Mono>, </> : null}{picked.affected_records.toLocaleString()} affected records, {picked.finding_count.toLocaleString()} findings
               {picked.avg_pass_rate != null ? `, ${Math.round(picked.avg_pass_rate)}% pass rate` : ""}.
             </p>
+            {active ? (
+              <p><Link href={withScope(`/objects/${active}`, { run: latest.id, tab: "rules" })} className="m-ink-accent underline underline-offset-2">Open the failing rules</Link></p>
+            ) : null}
           </div>
         ) : null}
       </Drawer>
@@ -600,7 +615,8 @@ export default function ProcessInsightsPage() {
   return (
     <InsightFrame
       title="Processes"
-      meta={latest ? `As of ${runScopeLabel(latest)}` : "Latest completed run"}
+      purpose={PAGE_PURPOSE["/insights/process"]}
+      meta={latest ? `As of ${runScopeLabel(latest)}` : "No finished run yet"}
       run={latest?.id ?? run}
       insight={insight ?? placeholder}
     >

@@ -21,7 +21,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, Stat, Switch, Tabs, Textarea, Status, emptyExportOptions, toast, type CellMeta, PageFrame } from "@/design";
+import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, Stat, Switch, Tabs, Textarea, Status, buildDrillHref, emptyExportOptions, toast, type CellMeta, PageFrame } from "@/design";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -368,6 +368,9 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
                 {selected.enabled ? "Disable rule" : "Enable rule"}
               </Button>
             ) : null}
+            {selected.last_run_at && codeOf(selected) ? (
+              <Button variant="secondary" render={<Link href={buildDrillHref({ object: selected.module, ruleId: codeOf(selected) })}>See failing records</Link>} />
+            ) : null}
             <Button render={<Link href={`/rules/${selected.id}`}>Open rule</Link>} />
           </>
         ) : undefined}
@@ -536,7 +539,7 @@ export default function RulesPage() {
     <PageFrame>
       <PageHeader
         title="Rules"
-        meta={summary.data ? `${total.toLocaleString()} rules, ${enabled.toLocaleString()} enabled` : "\u00a0"}
+        meta={`Every check that runs on an analysis, the most-failing first. Open one to see what it checks and which records fail it.${summary.data ? ` ${total.toLocaleString()} rules, ${enabled.toLocaleString()} switched on.` : ""}`}
         actions={<>
           <Button variant="secondary" render={<Link href="/rules/learned">Learned from your data</Link>} />
           {canManage ? <Button onClick={() => { setTab("all"); setAuthoring(true); }}>New rule</Button> : null}

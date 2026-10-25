@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { buildDrillHref } from "@/design";
 import { getFindings } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { isFinished } from "@/lib/runs";
@@ -23,21 +24,20 @@ export function useLatestVersion() {
 }
 
 /**
- * Finding detail link for a check in a version. The process APIs name checks, not findings;
- * the findings list (worst first, 200 rows) is the only way to reach Finding detail from them.
+ * Link for a check of a version that failed on that object: the object's records tab filtered to that check, in that
+ * run; undefined when the run's findings (worst first, 200 rows) do not hold the check on that object, so a caller
+ * that tries several objects lands on the one where it failed. The process APIs name checks, not findings, and the old
+ * `/analyse/finding/<id>` link only redirected to the objects list, so the rule's records were lost on the way.
  */
 export function useFindingHref(versionId: string | undefined) {
   const q = useQuery({
     queryKey: ["findings.by-check", versionId], enabled: !!versionId, retry: false, meta: { ignoreError: true },
     queryFn: () => getFindings({ version_id: versionId, sort: "impact", limit: 200 }),
   });
-  const byCheck = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const f of q.data?.findings ?? []) if (!m.has(`${f.module}:${f.check_id}`)) m.set(`${f.module}:${f.check_id}`, f.id);
-    return m;
-  }, [q.data]);
-  return useCallback((module: string, checkId: string) => {
-    const id = byCheck.get(`${module}:${checkId}`);
-    return id ? `/analyse/finding/${id}?v=${versionId}` : undefined;
-  }, [byCheck, versionId]);
+  const failed = useMemo(() => new Set((q.data?.findings ?? []).map((f) => `${f.module}:${f.check_id}`)), [q.data]);
+  return useCallback(
+    (module: string, checkId: string): string | undefined =>
+      failed.has(`${module}:${checkId}`) ? buildDrillHref({ object: module, ruleId: checkId, run: versionId }) : undefined,
+    [failed, versionId],
+  );
 }

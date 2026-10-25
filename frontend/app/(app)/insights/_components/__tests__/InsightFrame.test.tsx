@@ -83,3 +83,36 @@ describe("InsightFrame scope line", () => {
     expect(line).not.toHaveTextContent(/all objects|current state/i);
   });
 });
+
+describe("InsightFrame purpose line", () => {
+  it("puts the page's purpose under the title, before the run it is about", async () => {
+    path = "/insights/rules";
+    query = "";
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><InsightFrame title="Failing rules" purpose="Which checks cost the most, and where to start." scope /></QueryClientProvider>);
+    const purpose = screen.getByTestId("page-purpose");
+    expect(purpose).toHaveTextContent("Which checks cost the most, and where to start.");
+    const line = await screen.findByTestId("insight-scope");
+    // The purpose reads first, the "As of" line follows it.
+    expect(purpose.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(line).toHaveTextContent("As of");
+  });
+
+  it("keeps Run analysis out of the primary slot: the page's Do next action leads", async () => {
+    path = "/insights/rules";
+    query = "";
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <InsightFrame title="Failing rules" scope insight={{ situation: { sentence: "s" }, changed: { sentence: "c" }, why: { sentence: "w" }, next: { sentence: "n", action: { label: "Open the rule", onClick: () => {} } } }} />
+      </QueryClientProvider>,
+    );
+    const run = await screen.findByRole("button", { name: "Run analysis" });
+    const next = screen.getByRole("button", { name: "Open the rule" });
+    expect(run.className).toContain("m-btn-secondary");
+    expect(run.className).not.toContain("m-btn-primary");
+    expect(next.className).toContain("m-btn-primary");
+    expect(screen.getByRole("link", { name: "Review fixes" }).className).toContain("m-btn-ghost");
+  });
+});
+

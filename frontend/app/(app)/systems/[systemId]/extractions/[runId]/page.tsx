@@ -82,6 +82,7 @@ export default function ExtractionPage() {
   const narrative = (
     <>
       {v ? <>Extracted {formatDate(v.run_at, "datetime")}{v.label ? <>, run <Mono>{v.label}</Mono></> : null}.</> : <>Run <Mono>{runId}</Mono></>}
+      {" "}Each step Meridian ran to pull this data from SAP, and how long it took.
       {activeJob ? (
         <>
           <RunProgressBanner
@@ -98,7 +99,9 @@ export default function ExtractionPage() {
         </>
       ) : null}
       {failedStep ? (
-        <Notice tone="danger">{failedStep.step_name} failed: {failedStep.error_detail}</Notice>
+        <Notice tone="danger" action={<Button variant="secondary" render={<Link href={`/systems/${systemId}?tab=health`}>Check the connection</Link>} />}>
+          {failedStep.step_name} failed: {failedStep.error_detail}
+        </Notice>
       ) : null}
     </>
   );

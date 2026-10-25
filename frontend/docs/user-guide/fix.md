@@ -1,164 +1,94 @@
-# Fix
+# Fix work
 
-Fix turns failing records into reviewed corrections and hands them to SAP as files. Stewards accept proposals, a second person approves and exports, and the next run checks whether each fix held.
+Fix work is where failing records get cleaned. It lists every record that fails a check in the chosen run, worst first, says what is wrong with each one and what the value should be, and puts your decisions into a fix batch that a second person approves before anything goes to SAP. Data stewards start here every day; data owners use it to sign records off and approve batches.
 
-Open it from the **Fix** pill in the index bar. The pill shows only to roles that can approve or apply fixes (Admin, Manager, Steward and Approver), with a live count of waiting work.
+Open it with the **Fix work** pill in the index bar. The page is titled **Fix** and has five tabs: **Records to fix**, **Cleaning proposals**, **Approvals and export**, **Monitor** and **Duplicates**. This chapter covers **Records to fix** and the cleaning proposals; the other tabs are in [Approvals and export](/docs?page=approvals).
 
-## What you see
+## Step 1: pick the run
 
-The page header reads **Fix**, "Review proposals, approve batches and hand them to SAP". Below it are four tabs: **Cleaning queue**, **Batches**, **Monitor** and **Duplicates**. **What-if** is a separate page under Fix.
+The list belongs to one run. Use **Run** in the scope bar: **Latest run** follows the newest finished run, or pick an older one. Your choice stays as you move to Objects, Progress and back.
 
-## Cleaning queue
+If no run has finished yet the page reads **No finished run yet**. If the run has no work list, a notice reads **This run's work list is not built yet**; see [Troubleshooting](/docs?page=troubleshooting).
 
-A cleaning proposal is a suggested new value for a failing record. Meridian proposes them after every run. The queue groups the open proposals by the run that found them, the object and what they fix, so each row is one decision. Rows with the most records come first.
+## Step 2: find your records
 
-What a row fixes is either a field, shown as **Fix** and the field name, for example `MARA.MEINS`, or **Duplicate records**, a pair of records that look like the same thing.
+Four figures sit at the top. Each one filters the list when you select it:
 
-The figures above the table are **Records with a proposal** (with the number of groups and runs) and **At 85% confidence or higher**, the records ready to accept in one step.
+- **Records to fix**: open records, with how many issues across how many objects.
+- **Critical**: records with a critical issue. These block SAP processes.
+- **With a suggested value**: records you can accept in one step.
+- **Overdue**: records past their due date.
 
-The columns are **Object**, **What it fixes**, **Records**, **Confidence** (the mean confidence of the group), **At 85% or higher**, **Found by run** and **Review**.
+Under them are the filters: **Object**, **Severity**, **Status** (**Still open** by default, or one of the six statuses), the **Mine** switch for records assigned to you, the **Has a suggestion** switch, and **Find a record by key or name** (type, then press Enter). Every active filter shows as a chip; select a chip to remove it, or **Clear filters**.
 
-The export menu offers **Approved fixes (.xlsx)** and **Approved fixes (.csv)**.
+The screen then has three panes:
 
-## How to review cleaning proposals
+1. **Issues**, on the left: **Every issue**, then one row per rule that fails, worst first, with its message, the number of open records, the object and field, and how many have a suggested value. Pick one to work a single problem.
+2. **Records to fix**, in the middle: the records, worst first, 50 at a time (**Show 50 more**). Each row shows the name or key, the main problem and "and N more issues", the status, the number of suggested values, an **Overdue** or **Due today** pill, the assignee and the object.
+3. The record panel, on the right, for the record you picked. The first record is picked for you.
 
-1. In **Cleaning queue**, select a row or its **Review** link. The review page opens, titled with what the proposals fix and the run that found them. A **Duplicate records** row opens the **Duplicates** tab instead, where you merge them.
-2. Read the figures: **Waiting for review**, **At 85% or higher** and **Approved**.
-3. The table lists each proposal with **Record**, **Proposed value**, **Confidence** and **Status**, most confident first, 100 to a page.
-4. Select **Approve** or **Reject** on each row. A rejection is recorded with the reason "steward rejected".
-5. To approve in bulk, select **Accept N at 85% or higher** at the top. It approves every waiting proposal of this group with a confidence of 85% or higher, on every page, up to 5,000 at a time.
-6. When proposals are approved, select **Draft fix batch from N approved**. Meridian drafts a fix batch from them, which you then approve and export on the **Batches** tab (see below). A second person approves the batch before it is exported.
+## Step 3: read the record panel
 
-The review page also has **Related**, **History** and **Audit** tabs. **Audit** lists every approval, rejection and change with **When**, **Who**, **Action** and **Record**. If your role can export, the export menu offers the approved fixes of these proposals as .xlsx or .csv, and **PDF cleaning report (all batches)**. That report covers the whole tenant: proposals by object, rules applied, the audit trail, fix batches, proposed values, record-level fixes and duplicate candidates.
+The panel heads with the record's name and key, its object, how many checks it fails and its status. **Full record** opens the record's page under Objects.
 
-Approving and rejecting need the approve permission (Admin, Manager, Steward and Approver). Without it, **Approve** is greyed out and its tooltip names the role you need, with a **Request access** link.
+For each issue it shows the message, the field and rule ID, the status, then:
 
-## Fix batches
+- **Now**: the value the record holds. An empty value reads "blank"; a field the record lacks reads "missing".
+- **Suggested**: the proposed value and where it comes from, with its confidence.
+- **Decided**: a value already chosen, and the batch it waits in.
+- The rule's instruction, and **Why it matters**, with what goes wrong in SAP.
 
-A fix batch is a set of record-level corrections that move together. It has three states:
+At the foot are the assignee, **Add a note for the team** with **Add comment**, **History** (every status change, assignment and comment, with who and when) and **Fields the checks read**.
 
-1. **Draft**: proposals are still being reviewed.
-2. **Approved**: a second person has signed it off.
-3. **Exported**: the load file has been produced.
+## Step 4: decide
 
-Batches are drafted from several places. Creating one needs the apply permission (Admin, Manager and Steward).
+On each issue, choose one:
 
-- The cleaning queue: **Draft fix batch from N approved** on a review page.
-- A run comparison: **Create fix batch** on a rule that newly fails, or **Create fix batches** for several (see [Runs](/docs?page=runs)).
-- **What-if**: **Create fix batch from this simulation**.
-- A migration wave: **Create fix batch** on the **Blockers** or **S/4 areas** tab (see [Migration](/docs?page=migration)).
-- The monitor, which drafts a batch of regressed records on its own.
+- **Accept** the suggested value. It goes into your draft fix batch and the issue becomes **Fix proposed**.
+- **Enter value**, type the right value and select **Save value**. **Keep as is** backs out. On a proposed issue the button reads **Change value**.
+- **Not an issue** when the record is right as it is, or **Accept risk** when it is wrong but acceptable. Both ask for a reason, which is kept in the record's history, and both need the approve permission.
+- **Undo** takes a proposed value back out of your draft. **Withdraw sign-off** reopens a record marked not an issue.
 
-A batch holds at most 50,000 records.
+When a record has more than one suggestion, **Accept all N** at the top accepts them together. After each decision the next record comes up by itself.
 
-### The Batches tab
+## Step 5: take and release
 
-A notice at the top sums up monitoring, for example which systems regressed since their baseline, with **Open monitor**. Three figures follow, and each filters the list:
+**Take it** assigns the record to you, so colleagues see it is being worked; **Release** hands it back. Switch on **Mine** to see only your records. Taking needs the assign permission.
 
-- **Draft batches**.
-- **Waiting for export**: approved, not exported yet.
-- **Still failing after export**: exported records that fail again.
+## Bulk actions
 
-Under them are a **Search** box and status buttons (**All**, **Draft**, **Approved**, **Exported**, each with its count). The table shows **Batch**, **Status**, **Items**, **With proposal**, **Auto-approvable**, **Fixed**, **Still failing** and **Created**. Once a batch is exported, **Before vs after** opens the comparison of the latest run with the run the batch was cut from. Select a row or **Review** to open the batch in a side panel.
+Tick the box on each record you want, and a bar appears with **Accept suggestions**, **Take them**, **Release**, **Not an issue** (one reason for all of them), **Undo** and **Clear**.
 
-### The batch panel
+## A whole issue at once
 
-The panel lists the batch's status, item counts, who created and approved it, and when it was approved and exported. Below the buttons are:
+Pick an issue in the **Issues** pane. Two buttons appear above its records:
 
-- **Items**: **Record**, **Field**, **Current**, **Proposed**, **Source** (Rule, Steward, Manual, Cleaning or Simulation), **Confidence** (High, Medium or Low), **Accepted**, **Reconciled** and **Updated**.
-- **Before and after**: each changed field as `TABLE.FIELD` with its old and new value.
-- **Exported files**: each file produced, its format, who exported and approved it, and the start of its SHA-256 fingerprint. Hover to see the whole fingerprint, so you can check the file you load is the one Meridian produced.
-- **History**: Drafted, Proposal changed, Accepted, Approved, Exported and Reconciled events, with who and when.
+- **Accept N suggested** gives every open record of the issue its suggested value, in your draft batch. Confirm with **Accept them**.
+- **Set one value** gives every open record the same value. **Only records where the field is blank** is on by default, so filled values are left alone. Select **Set value**.
 
-## How to approve and export a batch
+Either action covers up to 50,000 records. If a check failed on more than 100,000 records, the run kept the first 100,000; fix those and the next run lists the rest.
 
-1. Open the batch from the **Batches** tab.
-2. To change a proposed value, select it in the **Proposed** column, type the new value and press `Enter`. `Escape` cancels. You can edit only while the batch is a draft and the proposal is not yet accepted.
-3. Select **Accept N high-confidence proposals** to accept every auto-approvable item at once. An item is auto-approvable when a rule proposed it with high confidence and it has a value.
-4. Select **Approve batch**. A card reminds you that Meridian never posts to SAP and approval is Meridian's record only. Select **Approve**, or **Not now**.
-5. When the batch is approved, select **Export batch**.
-6. Choose the **Export format** and select **Export**.
+## The fix sheet round trip
 
-The formats are:
+To work offline or share the work with SAP experts:
 
-- **Migration Cockpit workbook (xlsx)**
-- **Migration Cockpit CSV**
-- **Mass change CSV**
-- **Migration Cockpit object templates (xlsx)**
-- **MM17 / XD99 / XK99 mass maintenance (zip)**
-- **MDG change request file (json)**, which asks for a **Change request type**
+1. Filter the list, then select **Download fix sheet**. You get an `.xlsx` workbook with a **Fix sheet** tab: one row per record and failing check, with **Object**, **Record**, **Name**, **Check**, **Severity**, **Issue**, **Field**, **Current value** and **Suggested value**, up to 100,000 rows.
+2. Fill in **New value**, or a **Decision**: `fix` (take the suggested value), `not an issue` or `accept risk`, each sign-off with a **Reason**. Leave the other columns as they are.
+3. Select **Import fix sheet** and choose the file. Meridian reports how many rows it imported and lists the rows it skipped, such as a sign-off without a reason or a record that no longer fails.
 
-Items without a proposed value are not exported. They stay with the steward for a manual correction.
+Downloading needs the export permission and importing the apply permission. A file holds at most 5,000 decisions and 25 MB.
 
-### Four eyes
+## Keyboard
 
-A batch always needs two people:
+The keys work while you are not typing in a box: `j` and `k` (or the arrow keys) move, `a` accepts the record's suggestions, `t` takes it, `u` undoes, and `Enter` opens the full record.
 
-- The person who drafted a batch cannot accept its proposals, approve it or export it.
-- In a batch the monitor drafted, the person who accepted the proposals cannot also approve it.
+## Cleaning proposals
 
-Accepting and approving need the approve permission. Exporting needs the export permission (Admin, Manager, Steward, Analyst, Approver and Auditor). Editing a proposed value needs both approve and apply (Admin, Manager and Steward).
-
-## How fixes reach SAP
-
-Meridian does not change SAP on its own. An exported batch is a file that your team loads through its own controlled process, such as the Migration Cockpit or a mass change transaction.
-
-Live write-back is a separate, optional route. It is off unless your administrator turns it on for the deployment. Write-back requests appear in the [Inbox](/docs?page=inbox) under **Approvals**, where a different person from the requester must approve each one. While write-back is off, that tab says so and asks you to export the fixes and load them in SAP. Even when it is on, Meridian only sends a fix whose SAP field mapping has been verified for that object. Any other fix is refused with a message to load it through a fix batch instead.
-
-## Reconciliation
-
-After a batch is exported, the next run of the same system (or the next imported file, for imported data) checks each exported record again. Only runs that finish after the export count. The **Reconciled** column then shows:
-
-- **Fixed**: the rule ran cleanly and the record was present and passed.
-- **Still failing**: the record is still among the rule's failing records.
-- A dash: not reconciled yet, because the rule did not run or the record was not in the data.
-
-The batch list adds up **Fixed** and **Still failing** for exported batches, and **Still failing after export** totals them across all batches.
-
-## Monitor
-
-The **Monitor** tab watches every system with a pinned baseline: a run you mark as the cleaned state after a clean-up. Each system has a card with a pill: **Holding**, a count of rules that regressed, or **Stale check** if it was not checked in over 36 hours.
-
-Each card shows **Baseline score**, **Latest score** with its change, **New failing records**, **Resolved since baseline** and **Regressed rules**, each linking to the run comparison. A table lists each regressed rule with its severity and new failing records. Regressed records are drafted into a fix batch for you, with a link to it.
-
-The card also shows the re-check schedule, with **Set a schedule** or **Change**. **Re-check now** starts an extraction (needs the trigger sync permission). **Pin latest as baseline** makes the latest run the new baseline (needs the analyse permission).
-
-## Duplicates
-
-The **Duplicates** tab lists candidate pairs with **Object**, **Record A**, **Record B**, **Match**, **Method** and **Status**, 100 to a page, best matches first.
-
-## How to merge duplicates
-
-1. On the **Duplicates** tab, select a pair. A side panel opens.
-2. Compare the two records field by field.
-3. Select **Keep A** or **Keep B**. The record you keep survives, and the other is folded into it in the golden record.
-
-Merging needs the approve permission. To tune how pairs are found, use [Master data](/docs?page=mdm) match rules.
-
-## How to use What-if
-
-What-if applies every rule fix to a copy of a run and shows the score before and after. Nothing is written to your system.
-
-1. Open [What-if](/fix/what-if).
-2. Choose the **Analysis run**. It defaults to the run in the address, or the newest finished run.
-3. Select **Run simulation**. This needs the analyse permission (Admin, Manager, Steward and Analyst).
-4. Read the summary sentence and the figures: **Score before**, **Score after**, **Findings resolved**, **Findings introduced**, **Cells changed** and **Records fixed**.
-5. **Score change by object** shows how each object moves the score.
-6. Two tables follow: **Rules changed by the fixes** and **Side effects**. Each lists **Rule**, **Object**, **Field**, **Result**, **Failing before**, **Failing after**, **Records resolved** and **Records introduced**. Select a rule to see each record's current and simulated value.
-7. To keep the fixes, select **Create fix batch from this simulation**, name the batch and select **Create fix batch**. The new batch opens on the **Batches** tab as a draft. This needs the apply permission.
-
-## Good to know
-
-- "No cleaning proposals" means no run has found values a rule can correct yet.
-- "No batches" means nothing has been drafted. Batches come from the places listed above.
-- "Nothing is being monitored" means no baseline is pinned. Pin one from [Runs](/runs) after a clean-up.
-- A simulation result is kept for 24 hours. After that, "This simulation has expired. Run it again."
-- **Before vs after** is greyed out until a run has finished since the export.
+The **Cleaning proposals** tab lists values the cleaning engine proposes, grouped by object and kind, with their confidence and how many are at 85% or higher. Select **Review** on a group to approve or reject each proposal, or **Accept N at 85% or higher**, then draft a fix batch from the approved ones. Approving needs the approve permission.
 
 ## Related
 
-- [Inbox](/docs?page=inbox)
-- [Runs](/docs?page=runs)
-- [Migration](/docs?page=migration)
-- [Master data](/docs?page=mdm)
-- [Roles and permissions](/docs?page=roles)
+- [Approvals and export](/docs?page=approvals)
+- [Objects](/docs?page=objects)
+- [Key concepts](/docs?page=concepts)
+- [Keyboard shortcuts and search](/docs?page=shortcuts)

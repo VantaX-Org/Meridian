@@ -222,7 +222,7 @@
   {
     "name": "mdm-golden-merge",
     "path": "/mdm/golden/merge",
-    "heading": "Golden records"
+    "heading": "Match review"
   },
   {
     "name": "mdm-match-rules",
@@ -396,6 +396,6 @@
   {
     "name": "insights-progress",
     "path": "/insights/progress",
-    "heading": "Since baseline"
+    "heading": "Progress"
   }
 ]

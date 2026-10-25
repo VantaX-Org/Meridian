@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { fixHref } from "@/lib/drill";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ import { labelOf, plural, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 
 const openCount = (o: OwnerCardResponse) => Object.values(o.open_by_severity).reduce((a, b) => a + b, 0);
@@ -22,10 +24,12 @@ const openCount = (o: OwnerCardResponse) => Object.values(o.open_by_severity).re
 const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
   { accessorKey: "score", header: "Score", meta: { numeric: true, heat: "seq", heatRange: [0, 100] } },
-  { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true } },
+  { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true }, cell: ({ row }) => row.original.user_id
+    ? <Link href={fixHref({ assignee: row.original.user_id })} aria-label={`Open the ${openCount(row.original).toLocaleString()} open records of ${row.original.owner}`} className="m-ink-accent underline underline-offset-2">{openCount(row.original).toLocaleString()}</Link>
+    : openCount(row.original).toLocaleString() },
   { accessorKey: "delta", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
-  { accessorKey: "fixed_since_baseline", header: "Fixed since baseline", meta: { numeric: true } },
-  { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline-offset-2 hover:underline">Open</Link> },
+  { accessorKey: "fixed_since_baseline", header: "Fixed since the first run", meta: { numeric: true } },
+  { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline underline-offset-2">Open inbox</Link> },
 ];
 
 /** Writes the digest notification now. `owner` undefined sends to everyone. */
@@ -51,7 +55,7 @@ function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend
         ))}
       </div>
       <div className="m-text-body m-ink-3">
-        {`Fixed since baseline ${owner.fixed_since_baseline.toLocaleString()}, oldest open item ${plural(owner.oldest_item_age_days, "day")}`}
+        {`${owner.fixed_since_baseline.toLocaleString()} fixed since the first run, oldest open item ${plural(owner.oldest_item_age_days, "day")} old`}
       </div>
       <p className="m-text-body">{owner.digest}</p>
       <div className="m-text-meta m-ink-3">
@@ -90,18 +94,16 @@ export default function OwnersPage() {
   return (
     <InsightFrame
       title="Owners"
+      purpose={PAGE_PURPOSE["/insights/owners"]}
       run={run}
-      controls={
-        <>
-          {canSend && owners.length > 0 ? <Button variant="secondary" onClick={() => setConfirmAll(true)}>Send digests to everyone</Button> : null}
-          <Button variant="secondary" render={<Link href="/rules/scoring">Schedule digests</Link>} />
-        </>
-      }
+      controls={<Button variant="ghost" render={<Link href="/rules/scoring">Schedule digests</Link>} />}
       insight={{
-        situation: { sentence: below === undefined ? "—" : `${below} of ${plural(owners.length, "owner is", "owners are")} below the ${threshold}% threshold`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
-        changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground this run` },
+        situation: { sentence: below === undefined ? `${plural(owners.length, "owner")} with open items` : `${below} of ${plural(owners.length, "owner is", "owners are")} below the ${threshold}% target`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
+        changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground since the last run` },
         why: { sentence: openTotal ? `${plural(openTotal, "open item sits", "open items sit")} with owners` : "No open item sits with an owner" },
-        next: { sentence: worst ? `Start with ${worst.owner}` : "Assign owners", action: { label: "Open inbox", href: "/inbox" } },
+        next: canSend && owners.length
+          ? { sentence: worst ? `Start with ${worst.owner}, the lowest score, and send everyone their digest` : "Send everyone their digest", action: { label: "Send digests to everyone", onClick: () => setConfirmAll(true) } }
+          : { sentence: worst ? `Start with ${worst.owner}, the lowest score` : "Assign owners", action: { label: "Open inbox", href: "/inbox" } },
       }}
       skeleton={<CardSkeleton height={220} />}
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : owners.length === 0 ? "empty" : undefined}
@@ -113,7 +115,7 @@ export default function OwnersPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <Card title="Score by owner" meta="Lowest first" dataTour="owners">
+      <Card title="Score by owner" meta="Lowest score first" dataTour="owners">
         <DataTable columns={scoreColumns} data={ranked} getRowId={(o) => o.owner} hideToolbar dense height="auto" />
       </Card>
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">

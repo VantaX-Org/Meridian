@@ -84,8 +84,9 @@ describe("InsightsOverviewPage", () => {
       clusters: [{ key: "ap:LIFNR", kind: "field", module: "accounts_payable", table: "LFA1", field: "LIFNR", rules: ["AP083", "AP001"], dimension: "completeness", severity: "high", records: 12, records_estimated: false, impact: 40, auto_fix_pct: null }],
     } as never);
     mount();
-    const link = await screen.findByRole("link", { name: "Open records" });
-    expect(link).toHaveAttribute("href", "/objects/accounts_payable?tab=records&run=v1&check=AP083");
+    // A field failing two rules opens the object's failing records in Fix work.
+    const link = await screen.findByRole("link", { name: /^Open the failing records of accounts payable/i });
+    expect(link).toHaveAttribute("href", "/fix?run=v1&module=accounts_payable");
     expect(screen.getAllByText("1 blocking gap").length).toBeGreaterThan(0);
     expect(screen.queryByText(/across 0 waves/)).toBeNull();
     expect(screen.getByText("No wave defined")).toBeInTheDocument();
@@ -166,22 +167,22 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     mockCurrent();
     mount();
     // root causes of the current state, each linking into the run it was computed in
-    const records = await screen.findAllByRole("link", { name: "Open records" });
-    expect(records.map((a) => a.getAttribute("href"))).toEqual([
-      "/objects/controlling?tab=records&run=co2&check=CO001",
-      "/objects/material_master?tab=records&run=mm1&check=MM045",
-    ]);
+    const records = await screen.findAllByRole("link", { name: /^Open the failing records of rule (CO001|MM045)/ });
+    expect(records.map((a) => a.getAttribute("href"))).toEqual(expect.arrayContaining([
+      "/fix?run=co2&module=controlling&check=CO001",
+      "/fix?run=mm1&module=material_master&check=MM045",
+    ]));
     expect(screen.getByText("2 of 2, each object at its latest run")).toBeInTheDocument();
     // S/4 totals and the readiness link carry no run
     expect(await screen.findByText("2 blocking, 1 warning")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open readiness" })).toHaveAttribute("href", "/insights/readiness");
+    expect(screen.getByRole("link", { name: "Open waves" })).toHaveAttribute("href", "/insights/readiness");
     // the cleansing funnel and its batch link carry no run
     expect(screen.getByRole("group", { name: /Cleansing funnel/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Create remediation batch" })).toHaveAttribute("href", "/fix?source=rule&confidence=high");
+    expect(screen.getByRole("link", { name: "Create remediation batch" })).toHaveAttribute("href", "/fix?sugg=1");
     // auto-fixable records in the hero, value at risk of the worst L1 only
     expect(screen.getByText("Auto-fixable records")).toBeInTheDocument();
     expect(screen.getByText("50% of failing records")).toBeInTheDocument();
-    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Worst L1, Order to cash")).toBeInTheDocument();
+    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Most at risk, Order to cash")).toBeInTheDocument();
     // only the scope=current wrappers are read, never the one-run ones
     expect(insightsApi.getCurrentOverview).toHaveBeenCalledWith();
     expect(migrationApi.getS4Readiness).not.toHaveBeenCalled();

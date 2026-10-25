@@ -28,3 +28,14 @@ describe("import page", () => {
     await waitFor(() => expect(screen.getByText(/No imports yet/)).toBeInTheDocument());
   });
 });
+
+describe("import page errors", () => {
+  it("says why recent imports could not load and offers a retry", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(versionsApi, "getVersions").mockRejectedValue(new Error("down"));
+    renderWithQuery(<ImportPage />);
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.queryByText(/No imports yet/)).toBeNull();
+  });
+});

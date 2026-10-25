@@ -84,7 +84,8 @@ export async function getCleaningQueue(params: {
  * a cleaning rule id, "duplicate" (a merge) or the field the proposals change, e.g. "MARA.MEINS".
  */
 export interface CleaningGroup {
-  version_id: string;
+  /** The run that found them; null for proposals the match engine queued, which carry no run. */
+  version_id: string | null;
   object_type: string;
   kind: string;
   /** The cleaning rule's name when `kind` is a rule. */

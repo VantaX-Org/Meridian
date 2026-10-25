@@ -18,6 +18,7 @@ import { usePermissions } from "@/lib/permissions";
 import { lineageOf } from "@/lib/runs";
 import { CardSkeleton, InsightFrame, formatMoney, useRunLabel } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 const NONE = "none";
 const EXT: Record<CatalogueEntry["format"], string> = { PDF: "pdf", XLSX: "xlsx", JSON: "json" };
@@ -95,17 +96,23 @@ export default function ReportsPage() {
   return (
     <InsightFrame
       title="Reports"
-      meta={versionId ? `Scope: ${scopeLine}` : "Latest completed runs"}
+      purpose={PAGE_PURPOSE["/insights/reports"]}
+      scope
+      meta={versionId ? `${cmp ? `compared with ${runLabel(cmp)}` : "no comparison"}, ${mod ? formatModuleName(mod) : "every object in the run"}` : undefined}
       run={versionId || undefined}
       module={mod}
       skeleton={<CardSkeleton height={300} />}
       insight={{
-        situation: { sentence: `${plural(runs.length, "completed run is", "completed runs are")} available. Reports are rendered from the run you choose.`, tone: runs.length ? "go" : "at-risk" },
-        changed: { sentence: cmp ? `Comparing with ${runLabel(cmp)}.` : comparableRuns.length ? `${plural(comparableRuns.length, "earlier run")} of the same lineage can be compared.` : "No earlier run of the same lineage to compare with." },
+        situation: { sentence: `Reports are built from ${versionId ? runLabel(versionId) : "the selected run"}; ${plural(runs.length, "finished run is", "finished runs are")} available.`, tone: runs.length ? "go" : "at-risk" },
+        changed: { sentence: cmp ? `Comparing with ${runLabel(cmp)}.` : comparableRuns.length ? `${plural(comparableRuns.length, "earlier run")} of the same system or upload can be compared.` : "No earlier run of the same system or upload to compare with." },
         why: { sentence: can("export") ? `${plural(entries.length, "report")} in the library.` : "Export needs the auditor or analyst role." },
         next: can("export") && href
           ? { sentence: "Download the selected report.", action: { label: building ? "Rendering" : `Download ${current?.name ?? "report"}`, onClick: () => void download() } }
-          : { sentence: can("export") ? "Choose a run." : "Export needs the auditor or analyst role.", action: { label: "Open runs", href: "/runs" } },
+          : can("export")
+            ? current?.id === "record" && !key
+              ? { sentence: "Enter the record key in the preview, then download." }
+              : { sentence: "Choose a report from the list.", action: { label: "Open runs", href: "/runs" } }
+            : { sentence: "Ask an admin for the auditor or analyst role to export.", action: { label: "Open runs", href: "/runs" } },
       }}
       controls={
         <>
@@ -119,7 +126,7 @@ export default function ReportsPage() {
     >
       <>
       {!can("export") ? (
-        <Card title="Reports"><p className="m-text-body m-ink-2">Export needs the auditor or analyst role.</p></Card>
+        <Card title="Reports"><p className="m-text-body m-ink-2">Downloading reports needs the auditor or analyst role. Ask an admin to add it. <Link href="/insights" className="m-ink-accent underline underline-offset-2">Back to the overview</Link></p></Card>
       ) : catalogue.isError ? (
         <Card title="Reports">
           <div className="flex items-center gap-3 m-text-body" role="alert">
@@ -131,7 +138,9 @@ export default function ReportsPage() {
         <div className="grid gap-4 @5xl:grid-cols-12">
           <div className="@5xl:col-span-5">
             <Card title="Available reports">
-              {catalogue.isLoading ? <CardSkeleton height={300} /> : (
+              {catalogue.isLoading ? <CardSkeleton height={300} /> : entries.length === 0 ? (
+                <p className="m-text-body m-ink-2">No report is available for this run yet. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p>
+              ) : (
                 <div role="listbox" aria-label="Reports" onKeyDown={onKeys} className="flex flex-col gap-2">
                   {entries.map((e) => (
                     <button
@@ -152,7 +161,7 @@ export default function ReportsPage() {
               {current && (
                 <div className="flex flex-col gap-3">
                   <p className="m-text-body">{current.about}</p>
-                  <p className="m-text-meta m-ink-3">{`About ${current.page_estimate} pages. Scope: ${scopeLine}.`}</p>
+                  <p className="m-text-meta m-ink-3">{`About ${current.page_estimate} pages. Covers ${scopeLine}.`}</p>
                   {current.sections.length > 0 && (
                     <ul className="list-disc pl-5 m-text-body">{current.sections.map((s) => <li key={s}>{s}</li>)}</ul>
                   )}
@@ -181,11 +190,14 @@ export default function ReportsPage() {
       )}
       {canSeeAudit && (
         <div className="mt-4">
-          <Card title="Recent exports">
+          <Card title="Recent exports" meta="The last five reports anyone downloaded">
             {recent.isError ? (
-              <p className="m-text-body" role="alert">{`Recent exports did not load. ${apiErrorMessage(recent.error)}`}</p>
+              <div className="flex items-center gap-3 m-text-body" role="alert">
+                <span>{`Recent exports did not load. ${apiErrorMessage(recent.error)}`}</span>
+                <Button variant="secondary" onClick={() => void recent.refetch()}>Retry</Button>
+              </div>
             ) : (recent.data?.entries ?? []).length === 0 ? (
-              <p className="m-text-body m-ink-2">{recent.isLoading ? "Loading" : "No exports yet."}</p>
+              recent.isLoading ? <CardSkeleton height={60} /> : <p className="m-text-body m-ink-2">No report has been downloaded yet. Downloads from this page show here.</p>
             ) : (
               <ul className="flex flex-col gap-1 m-text-body">
                 {recent.data?.entries.map((e) => {

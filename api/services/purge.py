@@ -67,6 +67,8 @@ _VERSION_FINDINGS = "SELECT id FROM findings WHERE tenant_id = :t AND version_id
 # Every clause names the tenant as well as the version (RLS is the second line).
 DELETE_ORDER: tuple[tuple[str, str], ...] = (
     ("write_back_log", f"tenant_id = :t AND (version_id = :v OR finding_id IN ({_VERSION_FINDINGS}))"),
+    ("work_records", "tenant_id = :t AND version_id = :v"),
+    ("work_groups", "tenant_id = :t AND version_id = :v"),
     ("finding_records", "tenant_id = :t AND version_id = :v"),
     ("finding_root_causes", "tenant_id = :t AND version_id = :v"),
     ("findings", "tenant_id = :t AND version_id = :v"),

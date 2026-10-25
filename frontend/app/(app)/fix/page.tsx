@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -14,8 +14,9 @@ import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { BatchesTab } from "./batches-tab";
 import { DedupTab } from "./monitor-dedup-tabs";
 import { MonitorTab } from "./monitor-tab";
+import { FixWork } from "@/components/work/fix-work";
 
-const runLabel = (g: CleaningGroup) => g.run_label ?? (g.run_at ? formatDate(g.run_at, "datetime") : "Run");
+const runLabel = (g: CleaningGroup) => (g.version_id ? g.run_label ?? (g.run_at ? formatDate(g.run_at, "datetime") : "Run") : "Matching");
 
 const columns: ColumnDef<CleaningGroup>[] = [
   { id: "object", accessorFn: (r) => formatModuleName(r.object_type), header: "Object" },
@@ -46,7 +47,12 @@ function CleaningQueueTab() {
   const router = useRouter();
   const dayOne = useDayOne();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ["cleaning", "groups"], queryFn: getCleaningGroups });
-  const rows = data?.groups ?? [];
+  // The chosen run (scope bar): its proposals, plus the matcher's, which carry no run.
+  const run = useSearchParams()?.get("run");
+  const rows = (data?.groups ?? []).filter((g) => !run || !g.version_id || g.version_id === run);
+  const records = run ? rows.reduce((n, g) => n + g.records, 0) : data?.records ?? 0;
+  const confident = run ? rows.reduce((n, g) => n + g.confident, 0) : data?.confident ?? 0;
+  const runs = run ? new Set(rows.map((g) => g.version_id).filter(Boolean)).size : data?.runs ?? 0;
   // These call downloadCleaningExport, a plain cleaning-queue export of approved fixes, not a
   // mass-change template; the four-eyes export lives on the Batches tab.
   const exportOptions = [
@@ -66,8 +72,8 @@ function CleaningQueueTab() {
       toolbarEnd={<ExportMenu options={rows.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       summary={data && rows.length > 0 ? (
         <div className="m-stat-grid @5xl:[grid-template-columns:repeat(2,minmax(0,360px))]">
-          <Stat label="Records with a proposal" value={data.records.toLocaleString()} hint={`${rows.length.toLocaleString()} group${rows.length === 1 ? "" : "s"} across ${data.runs.toLocaleString()} run${data.runs === 1 ? "" : "s"}`} />
-          <Stat label="At 85% confidence or higher" value={data.confident.toLocaleString()} tone={data.confident > 0 ? "go" : undefined} hint="ready to accept in one step" />
+          <Stat label="Records with a proposal" value={records.toLocaleString()} hint={`${rows.length.toLocaleString()} group${rows.length === 1 ? "" : "s"} across ${runs.toLocaleString()} run${runs === 1 ? "" : "s"}`} />
+          <Stat label="At 85% confidence or higher" value={confident.toLocaleString()} tone={confident > 0 ? "go" : undefined} hint="ready to accept in one step" />
         </div>
       ) : undefined}
       table={
@@ -83,18 +89,19 @@ function CleaningQueueTab() {
 }
 
 export default function FixPage() {
-  const [tabRaw, setTab] = useUrlState("tab", "cleaning");
-  const tab = oneOf(tabRaw, ["cleaning", "batches", "monitor", "dedup"], "cleaning");
+  const [tabRaw, setTab] = useUrlState("tab", "work");
+  const tab = oneOf(tabRaw, ["work", "cleaning", "batches", "monitor", "dedup"], "work");
 
   return (
     <div className="flex flex-col gap-4">
-    <PageHeader title="Fix" meta="Review proposals, approve batches and hand them to SAP" />
+    <PageHeader title="Fix" meta="Every record that fails a check, worst first: see what is wrong, set the right value, and send it for approval." />
     <Tabs
       value={tab}
       onValueChange={setTab}
       items={[
-        { value: "cleaning", label: "Cleaning queue", content: <CleaningQueueTab /> },
-        { value: "batches", label: "Batches", content: <BatchesTab /> },
+        { value: "work", label: "Records to fix", content: <FixWork /> },
+        { value: "cleaning", label: "Cleaning proposals", content: <CleaningQueueTab /> },
+        { value: "batches", label: "Approvals and export", content: <BatchesTab /> },
         { value: "monitor", label: "Monitor", content: <MonitorTab /> },
         { value: "dedup", label: "Duplicates", content: <DedupTab /> },
       ]}

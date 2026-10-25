@@ -12,8 +12,8 @@ describe("useRole with persona role keys", () => {
   beforeEach(() => h.replace.mockClear());
 
   it.each([
-    ["data_steward", "/home/steward"],
-    ["data_owner", "/home/steward"],
+    ["data_steward", "/fix"],
+    ["data_owner", "/fix"],
     ["programme_lead", "/home/lead"],
     ["platform_admin", "/home/lead"],
     ["sap_basis", "/home/basis"],

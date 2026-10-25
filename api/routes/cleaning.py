@@ -39,8 +39,9 @@ class BulkApproveBody(BaseModel):
     max_count: int = Field(500, ge=1, le=5000)
     # Exactly these waiting items (a batch page's named selection); bypasses the automatic-rule gate.
     ids: Optional[list[uuid.UUID]] = Field(None, max_length=500)
-    # Or the waiting items one run found (with rule_id, one review page's group) at or above a
-    # confidence; a person names this scope too, so it also bypasses the automatic-rule gate.
+    # Or the waiting items of one review page: a run, a kind, or both (kind alone covers proposals
+    # with no run), at or above a confidence; a person names this scope too, so it also bypasses
+    # the automatic-rule gate.
     version_id: Optional[uuid.UUID] = None
     kind: Optional[str] = Field(None, max_length=200)
     min_confidence: Optional[float] = Field(None, ge=0, le=1)
@@ -248,16 +249,21 @@ _groups_cache: dict[str, tuple[float, dict]] = {}
 # Confidence is 0..100 from the cleaning engine and 0..1 from the match engine; read it as 0..1.
 CONF_SQL = "(CASE WHEN confidence > 1 THEN confidence / 100.0 ELSE confidence END)"
 _HAS_MERGE = "(merge_preview IS NOT NULL AND merge_preview <> '{}'::jsonb)"
+_NO_CHANGE = "(record_data_after IS NULL OR record_data_after = '{}'::jsonb)"
 # What a proposal does, the unit one person decides on: its cleaning rule when it has one, a
-# duplicate merge, or else the field it changes.
+# duplicate merge, the field it changes, or else 'match': a candidate pair the match engine
+# queued for review (api/services/match_engine.py writes those with no run, value or preview).
 KIND_SQL = f"""(CASE WHEN rule_id IS NOT NULL THEN rule_id::text WHEN {_HAS_MERGE} THEN 'duplicate'
-    ELSE (SELECT k FROM jsonb_object_keys(COALESCE(record_data_after, '{{}}'::jsonb)) k ORDER BY k LIMIT 1) END)"""
+    ELSE COALESCE((SELECT k FROM jsonb_object_keys(COALESCE(record_data_after, '{{}}'::jsonb)) k ORDER BY k LIMIT 1),
+                  'match') END)"""
 
 
 def kind_filter(kind: str, params: dict) -> str:
     """SQL predicate for one kind as KIND_SQL names it; adds its bind values to ``params``."""
     if kind == "duplicate":
         return f"rule_id IS NULL AND {_HAS_MERGE}"
+    if kind == "match":
+        return f"rule_id IS NULL AND NOT {_HAS_MERGE} AND {_NO_CHANGE}"
     try:
         params["kind_rid"] = str(uuid.UUID(kind))
         return "rule_id = :kind_rid"
@@ -274,8 +280,9 @@ async def list_cleaning_groups(
 ):
     """Open proposals grouped by the run that found them, the object and what they do (KIND_SQL):
     one row per decision on the Fix screen. Cleaning items carry their run (version_id) but no
-    batch, so the run is the batch. Cached for _TOTAL_TTL_S like the queue total; the table
-    holds millions of rows."""
+    batch, so the run is the batch; items with no run (the match engine's review pairs) group
+    under version_id null, never dropped. Cached for _TOTAL_TTL_S like the queue total; the
+    table holds millions of rows."""
     await _set_rls(db, tenant.id)
     key = str(tenant.id)
     hit = _groups_cache.get(key)
@@ -285,7 +292,7 @@ async def list_cleaning_groups(
         WITH open AS (
             SELECT version_id, object_type, {KIND_SQL} AS kind, {CONF_SQL} AS conf
               FROM cleaning_queue
-             WHERE tenant_id = :tid AND status IN ('detected', 'recommended') AND version_id IS NOT NULL
+             WHERE tenant_id = :tid AND status IN ('detected', 'recommended')
         )
         SELECT o.version_id, o.object_type, o.kind, COUNT(*) AS records, AVG(o.conf) AS avg_confidence,
                COUNT(*) FILTER (WHERE o.conf >= 0.85) AS confident,
@@ -297,7 +304,7 @@ async def list_cleaning_groups(
          ORDER BY records DESC, avg_confidence DESC
     """), {"tid": key})).mappings().all()
     groups = [{
-        "version_id": str(r["version_id"]), "object_type": r["object_type"], "kind": r["kind"] or "other",
+        "version_id": str(r["version_id"]) if r["version_id"] else None, "object_type": r["object_type"], "kind": r["kind"],
         "rule_name": r["rule_name"],
         "records": int(r["records"]), "avg_confidence": float(r["avg_confidence"] or 0),
         "confident": int(r["confident"]), "run_label": r["run_label"],
@@ -307,7 +314,7 @@ async def list_cleaning_groups(
         "groups": groups,
         "records": sum(g["records"] for g in groups),
         "confident": sum(g["confident"] for g in groups),
-        "runs": len({g["version_id"] for g in groups}),
+        "runs": len({g["version_id"] for g in groups if g["version_id"]}),
     }
     _groups_cache[key] = (time.monotonic(), out)
     return out
@@ -451,9 +458,11 @@ async def bulk_approve(
         # A person named these items (like approving each row), so no automatic-rule gate.
         where = "cq.status IN ('detected', 'recommended') AND cq.tenant_id = :tid AND cq.id = ANY(:ids)"
         params.update(ids=[str(i) for i in body.ids], max_count=len(body.ids))
-    elif body.version_id is not None:
-        where = "cq.status IN ('detected', 'recommended') AND cq.tenant_id = :tid AND cq.version_id = :vid"
-        params["vid"] = str(body.version_id)
+    elif body.version_id is not None or body.kind:
+        where = "cq.status IN ('detected', 'recommended') AND cq.tenant_id = :tid"
+        if body.version_id is not None:
+            where += " AND cq.version_id = :vid"
+            params["vid"] = str(body.version_id)
         if body.kind:
             where += " AND " + kind_filter(body.kind, params)
         if body.min_confidence is not None:

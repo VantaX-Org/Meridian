@@ -20,14 +20,21 @@ class _Res:
 
 
 class _Db:
-    def __init__(self, fix_count, inbox_count):
+    def __init__(self, fix_count, inbox_count, latest=None, to_fix=None):
         self.fix_count = fix_count
         self.inbox_count = inbox_count
+        self.latest, self.to_fix = latest, to_fix
         self.calls = []
 
     async def execute(self, stmt, params=None):
         sql = str(stmt)
         self.calls.append((sql, params or {}))
+        if "worklist_built_at" in sql:  # the run's work list finished building
+            return _Res(self.to_fix is not None)
+        if "FROM analysis_versions" in sql:
+            return _Res(self.latest)
+        if "FROM work_records" in sql:
+            return _Res(self.to_fix)
         if "cleaning_queue" in sql:
             return _Res(self.fix_count)
         if "stewardship_queue" in sql:
@@ -90,3 +97,15 @@ def test_shell_counts_none_scalar_yields_zero(monkeypatch):
     res = _get(app, "/api/v1/shell/counts")
 
     assert res.json() == {"fix": 0, "inbox": 0}
+
+
+def test_fix_counts_records_to_fix_of_the_latest_run(monkeypatch):
+    db = _Db(fix_count=99, inbox_count=0, latest=str(uuid.uuid4()), to_fix=7)
+    res = _get(_app(db, monkeypatch), "/api/v1/shell/counts")
+    assert res.json()["fix"] == 7
+    assert not any("cleaning_queue" in s for s, _ in db.calls)
+
+
+def test_fix_falls_back_to_cleaning_proposals_without_a_work_list(monkeypatch):
+    db = _Db(fix_count=4, inbox_count=0, latest=str(uuid.uuid4()), to_fix=None)
+    assert _get(_app(db, monkeypatch), "/api/v1/shell/counts").json()["fix"] == 4

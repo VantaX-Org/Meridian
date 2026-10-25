@@ -152,15 +152,15 @@ export default function DryRunPage() {
       }
       narrative={
         run
-          ? `Dry run against S/4HANA release ${run.target_release ?? "target"}: ${run.records_blocked.toLocaleString()} of ${run.records_total.toLocaleString()} records would fail to load`
+          ? `${running ? "Still checking. " : ""}Each record was checked against the S/4HANA ${run.target_release ?? "target"} load rules without loading anything: ${run.records_blocked.toLocaleString()} of ${run.records_total.toLocaleString()} would fail. The list below says why, so they can be fixed before the real load`
           : "S/4 load dry run results"
       }
       charts={
         <div className="flex flex-col [gap:var(--m-section-gap)]">
           {run ? (
             <div className="m-stat-grid">
-              <Stat label="Blocked" value={run.records_blocked.toLocaleString()} tone={run.records_blocked > 0 ? "no-go" : "go"} href={srcHref} />
-              <Stat label="Total" value={run.records_total.toLocaleString()} href={srcHref} />
+              <Stat label="Would fail to load" value={run.records_blocked.toLocaleString()} tone={run.records_blocked > 0 ? "no-go" : "go"} href={srcHref} />
+              <Stat label="Records checked" value={run.records_total.toLocaleString()} href={srcHref} />
             </div>
           ) : null}
           {moduleBadges.length ? <div className="flex flex-wrap items-center gap-3">{moduleBadges}</div> : null}
@@ -168,7 +168,7 @@ export default function DryRunPage() {
       }
       tables={<DataTable columns={columns} data={rows} getRowId={(row) => `${row.module}:${row.record_key}`} />}
       state={state}
-      emptyProps={{ title: "No failing records for this dry run" }}
+      emptyProps={{ title: "No records would fail", detail: "Every record passed the S/4HANA load rules in this dry run." }}
       errorProps={{
         message: runQuery.error ? apiErrorMessage(runQuery.error) : isListFailure(recordsQuery) ? apiErrorMessage(recordsQuery.error) : "Couldn't load the dry run. Try again.",
         onRetry: refetch,

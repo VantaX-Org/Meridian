@@ -29,8 +29,8 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     const checkbox = await screen.findByRole("checkbox", { name: "Skip records flagged for deletion" });
     expect(checkbox).not.toBeChecked();
 
-    fireEvent.click(screen.getByText("Extract 1 object"));
-    fireEvent.click(await screen.findByText("Confirm"));
+    fireEvent.click(screen.getByText("Extract 1 object only"));
+    fireEvent.click(await screen.findByText("Start extract"));
     await waitFor(() =>
       expect(startDownload).toHaveBeenCalledWith("sys1", expect.objectContaining({ scope: {} })),
     );
@@ -42,8 +42,8 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     const checkboxAgain = await screen.findByRole("checkbox", { name: "Skip records flagged for deletion" });
     fireEvent.click(checkboxAgain);
     expect(checkboxAgain).toBeChecked();
-    fireEvent.click(screen.getByText("Extract 1 object"));
-    fireEvent.click(await screen.findByText("Confirm"));
+    fireEvent.click(screen.getByText("Extract 1 object only"));
+    fireEvent.click(await screen.findByText("Start extract"));
     await waitFor(() =>
       expect(startDownload).toHaveBeenLastCalledWith(
         "sys1",

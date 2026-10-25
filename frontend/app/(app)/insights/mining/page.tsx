@@ -28,7 +28,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Tabs, type GraphEdge, type GraphNode, Status } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Graph, Mono, Pill, Select, Skeleton, Tabs, type GraphEdge, type GraphNode, Status } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import { domainOf } from "@/design/tokens";
 import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
@@ -41,6 +41,7 @@ import { formatModuleName, labelOf, plural, relativeTime, formatDate } from "@/l
 import { miningWhy } from "./sentences";
 import { MineNow } from "../duplicates/mined-tabs";
 import { useInsightScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { queryKeys } from "@/lib/query-keys";
 import type { RecordRelationship } from "@/types/api";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -92,14 +93,14 @@ function EntityLinks() {
   const shown = domain ? rels.filter((r) => r.from_domain === domain || r.to_domain === domain) : rels;
   const columns = useMemo<ColumnDef<RecordRelationship>[]>(() => [
     { id: "from", header: "From", cell: ({ row }) => formatModuleName(row.original.from_domain) },
-    { id: "fromKey", header: "From key", cell: ({ row }) => row.original.from_key },
+    { id: "fromKey", header: "From record", cell: ({ row }) => <Mono>{row.original.from_key}</Mono> },
     { id: "to", header: "To", cell: ({ row }) => formatModuleName(row.original.to_domain) },
-    { id: "toKey", header: "To key", cell: ({ row }) => row.original.to_key },
-    { id: "type", header: "Type", cell: ({ row }) => row.original.relationship_type },
+    { id: "toKey", header: "To record", cell: ({ row }) => <Mono>{row.original.to_key}</Mono> },
+    { id: "type", header: "Link", cell: ({ row }) => labelOf(row.original.relationship_type) },
     { id: "source", header: "Source", cell: ({ row }) => row.original.ai_inferred
-      ? <Pill tone="at-risk">inferred{row.original.ai_confidence != null ? `, ${pct(row.original.ai_confidence, 0)}` : ""}</Pill>
-      : <Pill>{row.original.sap_link_table ?? "SAP"}</Pill> },
-    { id: "state", header: "State", cell: ({ row }) => <Pill tone={row.original.active ? "go" : "at-risk"}>{row.original.active ? "active" : "inactive"}</Pill> },
+      ? <Pill tone="at-risk">Inferred{row.original.ai_confidence != null ? `, ${pct(row.original.ai_confidence, 0)} sure` : ""}</Pill>
+      : row.original.sap_link_table ? <Pill>From SAP table <Mono>{row.original.sap_link_table}</Mono></Pill> : <Pill>From SAP</Pill> },
+    { id: "state", header: "State", cell: ({ row }) => <Pill tone={row.original.active ? "go" : "at-risk"}>{row.original.active ? "Active" : "Inactive"}</Pill> },
     { id: "found", header: "Discovered", cell: ({ row }) => relativeTime(row.original.discovered_at) },
   ], []);
 
@@ -116,21 +117,21 @@ function EntityLinks() {
     <div className="flex flex-col gap-6">
       <div>
         <p className="m-text-body m-ink-2">
-          Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}.
+          Each circle is an object; each line shows how its records link to another object. Select an object to list only its links{domain ? `; showing ${formatModuleName(domain)}` : ""}.
         </p>
         {q.isLoading || dayOne.status === "loading" ? <Skeleton height={320} />
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={320} onNodeClick={(id) => setDomain(id === domain ? "" : id)} />
           : (
             <EmptyState
-              title="No relationships recorded yet"
-              detail={dayOne.step?.detail ?? "They appear once an analysis has linked records across domains."}
+              title="No record links found yet"
+              detail={dayOne.step?.detail ?? "They appear once an analysis has linked records across objects."}
               action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
             />
           )}
       </div>
       {/* With no graph the empty state above already says it; a second "No relationships" card repeated it. */}
       {q.isLoading || nodes.length ? (
-        <DataTableWithMaybeEmpty columns={columns} data={shown} getRowId={(r) => r.id} loading={q.isLoading} empty="No relationships for this domain." action={<Button variant="secondary" onClick={() => setDomain("")}>Show every domain</Button>} />
+        <DataTableWithMaybeEmpty columns={columns} data={shown} getRowId={(r) => r.id} loading={q.isLoading} empty="No links for this object." action={<Button variant="secondary" onClick={() => setDomain("")}>Show every object</Button>} />
       ) : null}
     </div>
   );
@@ -138,7 +139,7 @@ function EntityLinks() {
 
 /* ------------------------------------------------------- Mined dependencies */
 
-function Dependencies() {
+function Dependencies({ run }: { run?: string }) {
   const router = useRouter();
   const dayOne = useDayOne();
   const [systemId, setSystemId] = useState("");
@@ -147,12 +148,15 @@ function Dependencies() {
 
   const systemScope = useSystemScope();
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, select: systemScope });
-  const sid = systemId || systems.data?.[0]?.id || "";
+  // The header's run picks the system and run until the viewer chooses others here.
+  const { scope } = useInsightScope();
+  const runSystem = scope.run?.metadata?.system_id;
+  const sid = systemId || (runSystem && systems.data?.some((s) => s.id === runSystem) ? runSystem : "") || systems.data?.[0]?.id || "";
   const versions = useQuery({
     queryKey: queryKeys.systemVersions(sid), queryFn: () => getSystemVersions(sid), enabled: !!sid,
     select: (d) => d.versions,
   });
-  const vid = versionId || versions.data?.[0]?.id || "";
+  const vid = versionId || versions.data?.find((v) => v.id === run)?.id || versions.data?.[0]?.id || "";
   const profile = useQuery({
     queryKey: queryKeys.versionProfile(sid, vid, object),
     queryFn: () => getVersionProfile(sid, vid, object || undefined),
@@ -175,12 +179,12 @@ function Dependencies() {
   }, [deps]);
 
   const columns = useMemo<ColumnDef<FieldDependency>[]>(() => [
-    { id: "rule", header: "Candidate rule", cell: ({ row }) => `${row.original.determinant} decides ${row.original.dependent}` },
+    { id: "rule", header: "Candidate rule", cell: ({ row }) => <span><Mono>{row.original.determinant}</Mono> decides <Mono>{row.original.dependent}</Mono></span> },
     { id: "support", header: "Holds for", cell: ({ row }) => pct(row.original.support, 2) },
     { id: "rows", header: "Records", cell: ({ row }) => row.original.rows.toLocaleString() },
     { id: "violations", header: "Disagree", cell: ({ row }) => row.original.violations.toLocaleString() },
-    { id: "samples", header: "Sample records", cell: ({ row }) => row.original.sample_keys.slice(0, 3).join(", ") },
-    { id: "review", header: "", cell: () => <Link href={profileHref} className="underline">Review in profile</Link> },
+    { id: "samples", header: "Sample records", cell: ({ row }) => <Mono>{row.original.sample_keys.slice(0, 3).join(", ")}</Mono> },
+    { id: "review", header: "", cell: () => <Link href={profileHref} className="m-ink-accent underline underline-offset-2">Review in profile</Link> },
   ], [profileHref]);
 
   if (systems.data && !systems.data.length) {
@@ -215,13 +219,13 @@ function Dependencies() {
       ) : null}
       <div>
         <p className="m-text-body m-ink-2">
-          One field decides another in at least 99 % of records. Click a field to open its profile.
+          Candidate rules: one field decides another in at least 99% of records. The records that disagree are likely errors. Select a field to open its profile.
         </p>
         {profile.isLoading || systems.isLoading || versions.isLoading ? <Skeleton height={320} />
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={320} onNodeClick={() => router.push(profileHref)} />
-          : <EmptyState title="No candidate rules in this object's data" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
+          : <EmptyState title="No candidate rules in this object's data" detail="No field decides another reliably enough here. Try another object or run." action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />}
       </div>
-      <DataTableWithMaybeEmpty columns={columns} data={deps} getRowId={(d) => `${d.determinant}>${d.dependent}`} loading={profile.isLoading} empty="No candidate rules." action={<Button render={<Link href="/runs">Open runs</Link>} />} />
+      {deps.length ? <DataTableWithMaybeEmpty columns={columns} data={deps} getRowId={(d) => `${d.determinant}>${d.dependent}`} loading={profile.isLoading} empty="No candidate rules" action={null} /> : null}
     </div>
   );
 }
@@ -240,12 +244,12 @@ function Patterns({ run }: { run?: string }) {
   const columns = useMemo<ColumnDef<MiningPattern>[]>(() => [
     { id: "name", header: "Pattern", cell: ({ row }) => row.original.name },
     { id: "type", header: "Type", cell: ({ row }) => <Pill>{patternTypeLabel(row.original.pattern_type)}</Pill> },
-    { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "confidence", header: "Confidence", accessorFn: (p) => p.confidence, meta: { numeric: true, heat: "seq", heatRange: [0, 1] }, cell: ({ row }) => pct(row.original.confidence, 0) },
     { id: "occurrences", header: "Occurrences", cell: ({ row }) => row.original.occurrences.toLocaleString() },
     { id: "seen", header: "Last seen", cell: ({ row }) => relativeTime(row.original.last_seen) },
-    { id: "rule", header: "", cell: ({ row }) => row.original.promoted_to_rule ? <Pill tone="go">is a rule</Pill> : null },
+    { id: "rule", header: "", cell: ({ row }) => row.original.promoted_to_rule ? <Pill tone="go">Now a rule</Pill> : null },
   ], []);
 
   if (summary.error || patterns.error) {
@@ -298,23 +302,24 @@ export default function MiningPage() {
     <InsightFrame
       title="Patterns"
       scope
-      meta="Links and patterns from every mined run; Mine now mines the run shown"
+      purpose={PAGE_PURPOSE["/insights/mining"]}
+      meta="Links and patterns build up from every mined run"
       run={run}
       insight={{
         loading: rel.isLoading || sum.isLoading,
-        situation: { sentence: links ? `${plural(links, "link")} across ${plural(domains, "entity", "entities")}` : "No links found yet", tone: anomalies ? "at-risk" : "go" },
+        situation: { sentence: links ? `${plural(links, "record link")} across ${plural(domains, "object")}` : "No record links found yet", tone: anomalies ? "at-risk" : "go" },
         changed: { sentence: anomalies ? `${plural(anomalies, "new anomaly", "new anomalies")} in the last 30 days` : "No new anomalies in the last 30 days" },
         why: { sentence: miningWhy(links, inferred, patternsTotal) },
         next: anomalies
           ? { sentence: "Review the new anomalies", action: { label: "Open patterns", onClick: () => setTab("patterns") } }
           : links
-            ? { sentence: "Review the entity links", action: { label: "Open links", onClick: () => setTab("links") } }
-            : { sentence: "Mine the run to find links", action: { label: "Open links", onClick: () => setTab("links") } },
+            ? { sentence: "Review the record links", action: { label: "Open links", onClick: () => setTab("links") } }
+            : { sentence: "Mine the selected run to find links and patterns", action: { label: "Open patterns", onClick: () => setTab("patterns") } },
       }}
     >
       <Tabs value={tab} onValueChange={setTab} items={[
-        { value: "links", label: "Entity links", content: <EntityLinks /> },
-        { value: "dependencies", label: "Mined dependencies", content: <Dependencies /> },
+        { value: "links", label: "Record links", content: <EntityLinks /> },
+        { value: "dependencies", label: "Field dependencies", content: <Dependencies run={run} /> },
         { value: "patterns", label: "Patterns", content: <Patterns run={run} /> },
       ]} />
     </InsightFrame>

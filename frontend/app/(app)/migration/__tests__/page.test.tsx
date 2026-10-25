@@ -54,7 +54,7 @@ describe("MigrationPage", () => {
     expect(await screen.findByText(/no migration waves yet/i)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Create wave" })[0]);
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Wave 2" } });
-    fireEvent.change(screen.getByLabelText("Modules"), { target: { value: "material_master, fi_gl" } });
+    fireEvent.change(screen.getByLabelText("Objects"), { target: { value: "material_master, fi_gl" } });
     fireEvent.click(screen.getByRole("button", { name: "Save wave" }));
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
       name: "Wave 2", modules: ["material_master", "fi_gl"], stage: "plan", min_readiness: 95,
@@ -94,5 +94,20 @@ describe("MigrationPage verdict param", () => {
     expect(await screen.findByText("Wave 2")).toBeInTheDocument();
     expect(screen.queryByText("Wave 1")).not.toBeInTheDocument();
     currentSearch = "";
+  });
+});
+
+describe("CreateWaveDialog validation", () => {
+  it("says what is missing instead of sending an empty name", async () => {
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([]);
+    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
+    const create = vi.spyOn(migrationApi, "createWave");
+    renderWithQuery(<MigrationPage />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Create wave" }))[0]);
+    fireEvent.change(screen.getByLabelText("Ready at (%)"), { target: { value: "140" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save wave" }));
+    expect(await screen.findByText("Give the wave a name")).toBeInTheDocument();
+    expect(screen.getByText("Enter a number from 0 to 100")).toBeInTheDocument();
+    expect(create).not.toHaveBeenCalled();
   });
 });

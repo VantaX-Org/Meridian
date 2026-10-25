@@ -16,7 +16,8 @@ import { downloadRealignment } from "@/lib/api/config-pairing";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
-import { STAGE_LABEL } from "../create-wave-dialog";
+import { CreateWaveDialog, STAGE_LABEL } from "../create-wave-dialog";
+import { useState } from "react";
 import { BlockersTab } from "./blockers-tab";
 import { MappingTab } from "./mapping-tab";
 import { S4Tab } from "./s4-tab";
@@ -34,7 +35,7 @@ const objectColumns = (run: string | null): ColumnDef<WaveObject>[] => {
   { id: "records", header: "Records", cell: ({ row }) => drill(row.original.module, "records", row.original.records.toLocaleString()) },
   { id: "blocked", header: "Records blocked", cell: ({ row }) => drill(row.original.module, "records", row.original.records_blocked.toLocaleString()) },
   { id: "gaps", header: "Blocking gaps", cell: ({ row }) => drill(row.original.module, "rules", row.original.blocker_count.toLocaleString()) },
-  { id: "dqs", header: "DQS", cell: ({ row }) => (row.original.dqs == null ? "—" : drill(row.original.module, "overview", row.original.dqs.toFixed(1))) },
+  { id: "dqs", header: "Quality score", cell: ({ row }) => (row.original.dqs == null ? "—" : drill(row.original.module, "overview", row.original.dqs.toFixed(1))) },
   { id: "open", header: "", size: 80, cell: ({ row }) => (
       <Link href={run ? `/objects/${row.original.module}?run=${run}` : `/objects/${row.original.module}`} className="m-ink-accent-ink underline" onClick={(e) => e.stopPropagation()}>Open</Link>
     ) },
@@ -47,6 +48,7 @@ export default function WaveCockpitPage() {
   const searchParams = useSearchParams();
   const qc = useQueryClient();
   const { can } = useRole();
+  const [editing, setEditing] = useState(false);
   const cockpit = useQuery({ queryKey: queryKeys.migrationCockpit(waveId), queryFn: () => getWaveCockpit(waveId) });
   const signoff = useMutation({
     mutationFn: () => signoffWave(waveId),
@@ -107,18 +109,22 @@ export default function WaveCockpitPage() {
   const rawTab = searchParams.get("tab") ?? "overview";
   const tab = rawTab === "objects" ? "overview" : rawTab;
   const runAction = can("analyse") ? <Button onClick={() => runNow.mutate()} pending={runNow.isPending}>Run now</Button> : undefined;
-  // A wave's modules are set when it is created; the waves list is where that happens.
-  const wavesAction = <Button render={<Link href="/migration">Open waves</Link>} />;
+  // A wave's objects are edited here; without the analyse permission the waves list is the way back.
+  const wavesAction = can("analyse")
+    ? <Button onClick={() => setEditing(true)}>Add objects</Button>
+    : <Button variant="secondary" render={<Link href="/migration">Open waves</Link>} />;
+  const signable = c.verdict === "go" && !w.signed_off_at;
 
   return (
     <div className="flex flex-col [gap:var(--m-section-gap)]">
       <PageHeader
         title={w.name}
         status={<Status kind="verdict" value={c.verdict} />}
-        meta={`${STAGE_LABEL[w.stage]}, target ${w.target_date ? formatDate(w.target_date, "date") : "not set"}, ${w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", "SAST")}` : "not signed off"}`}
+        meta={`${STAGE_LABEL[w.stage]}, target ${w.target_date ? formatDate(w.target_date, "date") : "not set"}, ${w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", "SAST")}` : "not signed off"}. Clear the blockers until readiness reaches ${w.min_readiness}%, then sign the wave off`}
         actions={
           <>
-            {c.verdict === "go" && !w.signed_off_at ? (
+            {can("analyse") ? <Button variant="ghost" onClick={() => setEditing(true)}>Edit wave</Button> : null}
+            {signable ? (
               <GatedPrimary kind="signoff" allowed={can("approve")} disabled={signoff.isPending} onClick={() => signoff.mutate()}>Sign off</GatedPrimary>
             ) : null}
             {can("export") ? <ExportMenu options={exportOptions} /> : null}
@@ -148,7 +154,7 @@ export default function WaveCockpitPage() {
                 <DataTable columns={objectColumns(run)} data={ranked} getRowId={(o) => o.module} />
                 <Bar label="Objects by readiness verdict" height={96} data={funnel} />
               </div>
-            ) : <EmptyState title="No modules in this wave" detail="Modules are set when a wave is created, on the waves page." action={wavesAction} /> },
+            ) : <EmptyState title="No objects in this wave" detail="Add the SAP objects this wave moves, then run it to score their readiness." action={wavesAction} /> },
           { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} blockers={c.blockers} runAction={runAction} /> },
           { value: "mapping", label: "Mapping", content: (
               <MappingTab modules={w.modules} destType={c.dest_system_type} runAction={runAction} wavesAction={wavesAction} />) },
@@ -156,6 +162,7 @@ export default function WaveCockpitPage() {
           ...entityTabs({ entityType: "migration", entityId: waveId, auditPath: `/migration/waves/${waveId}` }),
         ]}
       />
+      {can("analyse") ? <CreateWaveDialog key={w.updated_at} open={editing} onOpenChange={setEditing} wave={w} /> : null}
     </div>
   );
 }

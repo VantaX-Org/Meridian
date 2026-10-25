@@ -37,7 +37,8 @@ export function DqsScore({ agg, versionId }: { agg: FindingsAggregate; versionId
         capReason: cap != null ? "a critical finding is open" : undefined,
         // weight descends with rank so the explainer's recordsFailed * weight sort keeps the impact order
         rules: (top.data?.findings ?? []).map((f, i, all) => ({ ruleId: f.check_id, object: f.module, recordsFailed: f.affected_count, weight: (all.length - i) / all.length })),
-        historyHref: "/insights/exec",
+        // "Score history" is the run-by-run trend of this run's system or upload, not the executive summary.
+        historyHref: versionId ? `/insights/trends?run=${encodeURIComponent(versionId)}` : "/insights/trends",
         run: versionId,
       }}
     />

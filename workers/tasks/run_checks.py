@@ -1111,6 +1111,19 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 reraise_soft_limit(e)
                 logger.error(f"triage auto-assign failed for {version_id}: {e}", exc_info=True)
 
+            # Step 9d: the steward work list (api/services/worklist.py), named from the frames still in hand
+            # (it commits per object, so what came before is committed first; it can be rebuilt on its own)
+            session.commit()
+            try:
+                from api.services import worklist
+                stats = worklist.build(session, str(tenant_id), str(version_id), frames)
+                logger.info(f"work list for {version_id}: {stats}")
+            except Exception as e:
+                reraise_soft_limit(e)
+                session.rollback()
+                logger.error(f"work list build failed for {version_id}: {e}", exc_info=True)
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+
             # Step 10: Update version with DQS summary + which rule set produced it
             analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set, "checks": len(all_results)}
             session.execute(

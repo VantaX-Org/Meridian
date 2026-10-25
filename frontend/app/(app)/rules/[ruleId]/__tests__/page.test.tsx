@@ -58,6 +58,7 @@ describe("rule detail page", () => {
     vi.spyOn(rulesApi, "getRuleVersions").mockResolvedValue({ rule_id: "AP001", shipped: null, versions: [] });
     vi.spyOn(ownersApi, "getOwners").mockResolvedValue([]);
     vi.spyOn(usersApi, "getAssignableUsers").mockRejectedValue(new Error("forbidden"));
+    vi.spyOn(rulesApi, "getRuleByCode").mockRejectedValue(new Error("not found"));
   });
 
   it("renders the rule once loaded", async () => {
@@ -122,6 +123,26 @@ describe("rule detail page", () => {
     renderWithQuery(<RulePage />);
     await waitFor(() => expect(screen.getByText("Pass rate over runs")).toBeInTheDocument());
     expect(screen.queryByText("Not run yet")).not.toBeInTheDocument();
+  });
+
+  it("says in plain words what the rule checks, why it matters and how many records fail now", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    const byCode = vi.spyOn(rulesApi, "getRuleByCode").mockResolvedValue({
+      message: "Every vendor has a tax number", why_it_matters: "Invoices without one are blocked for payment", sap_impact: "Payment run skips the vendor",
+      field: "LFA1.STCD1", check_class: "null_check",
+    } as rulesApi.RuleDetail);
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({
+      rule_id: "r1",
+      runs: [{ version_id: "v1", run_at: "2026-01-01T00:00:00Z", module: "business_partner", severity: "high", affected_count: 12, total_count: 400, pass_rate: 0.97, suppressed: false, hit_rate: null }],
+    });
+    renderWithQuery(<RulePage />);
+    expect(await screen.findByText("Every vendor has a tax number")).toBeInTheDocument();
+    expect(byCode).toHaveBeenCalledWith("AP001", "business_partner");
+    expect(screen.getByText("Invoices without one are blocked for payment")).toBeInTheDocument();
+    expect(screen.getByText("Payment run skips the vendor")).toBeInTheDocument();
+    expect(await screen.findByText("12")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Fix them on the object" })).toHaveAttribute("href", "/objects/business_partner?tab=records&check_id=AP001");
   });
 
   it("shows the not-run-yet empty state when there is no history", async () => {

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Button, Card, DrillLink, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, type PillTone, ProgressFill } from "@/design";
 import { getConfigLoad, startConfigLoad, type AreaObject, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
-import { apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemType } from "@/types/api";
@@ -123,7 +123,7 @@ export function useConfigLoad(systemId: string) {
   const start = useMutation({
     mutationFn: () => startConfigLoad(systemId),
     onSuccess: (r) => { qc.setQueryData(queryKeys.configLoadJobId(systemId), r.job_id); toast.success("Loading configuration"); },
-    onError: (e) => toast.error((e as Error).message || "Configuration not loaded"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const running = jobActive || start.isPending || load.data?.status === "running";
   return {

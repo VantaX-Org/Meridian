@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, Input, Pill, Select } from "@/design";
+import { Button, Card, ErrorState, Input, Pill, Select, Skeleton } from "@/design";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { createSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
@@ -55,13 +56,14 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
 
 export function SchedulesPanel({ id, canManage }: { id: string; canManage: boolean }) {
   const qc = useQueryClient();
-  const { data: profiles = [] } = useQuery({ queryKey: queryKeys.syncProfiles(id), queryFn: () => getSyncProfiles(id) });
+  const profilesQ = useQuery({ queryKey: queryKeys.syncProfiles(id), queryFn: () => getSyncProfiles(id) });
+  const profiles = profilesQ.data ?? [];
   const { data: catalogue } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id), enabled: canManage });
   const [adding, setAdding] = useState("");
   const [cron, setCron] = useState(PRESETS[1].value);
   const [mode, setMode] = useState<"full" | "delta">("full");
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.syncProfiles(id) });
-  const onError = (e: unknown) => toast.error((e as Error).message || "Could not save the schedule");
+  const onError = (e: unknown) => toast.error(apiErrorMessage(e));
 
   const update = useMutation({
     mutationFn: ({ p, body }: { p: SyncProfile; body: { schedule_cron?: string; active?: boolean; extraction_mode?: "full" | "delta" } }) => updateSyncProfile(id, p.id, body),
@@ -80,14 +82,16 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
   const addable = (catalogue?.objects ?? []).filter((o) => !scheduled.has(o.object));
 
   return (
-    <Card title="Scheduled re-evaluation" dataTour="schedules">
+    <Card title="Scheduled extracts" meta="Pull an object again on a timetable, so its score stays current without anyone pressing Extract" dataTour="schedules">
       <div className="flex flex-col gap-3">
         <p className="m-text-body m-ink-2">
-          Each schedule re-downloads the object and re-runs its checks, so the trends and alert thresholds pick up every run.
-          Times are server time; the scheduler looks for due runs every 5 minutes.
-          &ldquo;Changes only&rdquo; re-reads just the records SAP&rsquo;s change log shows changed since the last download, and does a full download at least weekly.
+          Each schedule downloads the object again and re-runs its checks, so trends and alerts see every run.
+          Times are server time; due runs start within 5 minutes.
+          &ldquo;Changes only&rdquo; reads just the records SAP changed since the last download, with a full download at least once a week.
         </p>
-        {profiles.length ? (
+        {profilesQ.isLoading ? <Skeleton height={120} /> : profilesQ.isError ? (
+          <ErrorState {...apiErrorState(profilesQ.error)} onRetry={() => void profilesQ.refetch()} />
+        ) : profiles.length ? (
           <table className="w-full m-text-body">
             <thead><tr>
               <th className={clsx(th, "m-ink-3")}>Object</th><th className={clsx(th, "m-ink-3")}>Schedule</th>
@@ -113,9 +117,9 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                           onValueChange={(v) => update.mutate({ p, body: { extraction_mode: v === "delta" ? "delta" : "full" } })} />
                       : <span>{modeLabel(p.extraction_mode)}</span>}
                   </td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.last_run_at ? relativeTime(p.last_run_at) : "never"}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.last_run_at ? relativeTime(p.last_run_at) : "Never"}</td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : "—"}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}><Pill tone={p.active ? "go" : "neutral"}>{p.active ? "active" : "paused"}</Pill></td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}><Pill tone={p.active ? "go" : "neutral"}>{p.active ? "Active" : "Paused"}</Pill></td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}>
                     {canManage && (
                       <Button variant="ghost" disabled={update.isPending}
@@ -130,7 +134,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
           </table>
         ) : (
           <p className="m-text-body m-ink-2">
-            No schedules yet — objects are only re-evaluated when someone downloads them.
+            No schedules yet. Objects are only checked again when someone presses Extract{canManage ? ". Pick an object below to schedule it" : ""}.
           </p>
         )}
         {canManage && addable.length > 0 && (

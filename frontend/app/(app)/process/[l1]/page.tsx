@@ -28,8 +28,8 @@ import { TABS, trail, useProcessDrill, type Tab } from "../_components/drill";
 import { ExportDialog } from "../_components/export-dialog";
 import { FlowView } from "../_components/flow-view";
 import { L5Table } from "../_components/l5-table";
-import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, useProcessSystem } from "../_components/shared";
-import { BodySkeleton, ProcessFrame } from "../_components/process-header";
+import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, useProcessSystem } from "../_components/shared";
+import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "../_components/process-header";
 import { VariantsTable } from "../_components/variants-table";
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -70,10 +70,10 @@ export default function ProcessL1Page() {
     if (q.isError) return wrap(<ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />);
   }
   if (!catalogue.data || !reference.data || (runId && !run.data) || (discovered && !model.data)) {
-    return wrap(<><PageHeader title={row?.name ?? l1} /><BodySkeleton rows={4} /></>);
+    return wrap(<><PageHeader title={row?.name ?? l1} meta={processMeta(PROCESS_PURPOSE.l1)} /><BodySkeleton rows={4} /></>);
   }
   if (!row) {
-    return wrap(<EmptyState title="Process not in catalogue" detail={`No level-1 process ${l1} exists.`}
+    return wrap(<EmptyState title="Process not in the catalogue" detail={`There is no end-to-end process with the code ${l1}. It may have been renamed.`}
       action={<Button render={<Link href="/process">Open the catalogue</Link>} />} />);
   }
 
@@ -91,10 +91,15 @@ export default function ProcessL1Page() {
 
   const clearFilters = () => drill.set(Object.fromEntries(Object.keys(filters).map((k) => [k, null])));
 
+  const canRun = can("run_process_discovery");
   const notDiscovered = (
-    <EmptyState title={isReference ? "Reference, not discovered" : "No completed discovery run yet"}
-      detail={isReference ? (reason ?? "This system has no source tables for this process.") : "Run discovery for this process, then come back."}
-      action={isReference ? undefined : <Button render={<Link href={`/process?system=${system!.id}`}>Open the catalogue</Link>} />} />
+    <EmptyState title={isReference ? "Reference only, not discovered" : "No completed discovery run yet"}
+      detail={isReference ? (reason ?? "This system has no source tables for this process, so only the SAP reference is shown.") : "Run discovery for this process, then come back."}
+      action={isReference
+        ? <Button variant="secondary" onClick={() => drill.set({ tab: "reference" })}>Open the reference</Button>
+        : canRun
+          ? <Button render={<Link href={`/process/runs?system=${system!.id}&new=1`}>Run discovery</Link>} />
+          : <Button variant="secondary" render={<Link href={`/process?system=${system!.id}`}>Open processes</Link>} />} />
   );
   const mined = (content: ReactNode) => (discovered && r ? content : notDiscovered);
   const content: Record<Tab, ReactNode> = {
@@ -113,7 +118,7 @@ export default function ProcessL1Page() {
     <ProcessFrame>
       <Header l1={l1} name={row.name} systemName={system!.name} systemId={system!.id} run={discovered ? r : undefined}
         reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)}
-        canRun={can("run_process_discovery")} />
+        canRun={canRun} />
       <nav aria-label="Process levels">
         <ol className="flex flex-wrap items-center gap-1">
           {crumbs.map((c, i) => (
@@ -145,12 +150,12 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
   if (!run) {
     return (
       <>
-        <PageHeader title={name} meta={`${l1} on ${systemName}`} actions={runLink} />
+        <PageHeader title={name} meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}</>)} actions={runLink} />
         <InsightHeader
           situation={{ sentence: `${name} on ${systemName} has no discovered flow.` }}
           changed={{ sentence: "No completed discovery run." }}
           why={{ sentence: reason ?? "Discovery has not run for this process yet." }}
-          next={{ sentence: "Read the reference model below." }} />
+          next={{ sentence: canRun ? "Run discovery, or read the SAP reference below." : "Read the SAP reference below." }} />
       </>
     );
   }
@@ -159,8 +164,8 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
   return (
     <>
       <PageHeader title={name}
-        meta={`${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants, fitness ${fmtFitness(fitness)}`}
-        status={<Pill tone={fitnessTone(fitness)}>{fmtFitness(fitness)}</Pill>}
+        meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}{run.finished_at ? `, discovered ${relativeTime(run.finished_at)}` : ""}</>)}
+        status={<Pill tone={fitnessTone(fitness)}>{`Fits the reference ${fmtFitness(fitness)}`}</Pill>}
         actions={<>
           {canExport && <Button variant="secondary" onClick={onExport} data-tour="process-export">Export</Button>}
           {runLink}
@@ -168,9 +173,10 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
       <InsightHeader
         situation={{ sentence: `${name} on ${systemName}: ${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants.` }}
         changed={{ sentence: run.finished_at ? `Discovered ${relativeTime(run.finished_at)}.` : "Discovery in progress." }}
-        why={{ sentence: `Fitness ${fmtFitness(fitness)} against the reference, median ${fmtSeconds(s.throughput?.median_seconds)} end to end.`,
+        why={{ sentence: `Cases follow the SAP reference ${fmtFitness(fitness)} of the way (fitness); a typical case takes ${fmtSeconds(s.throughput?.median_seconds)} end to end.`,
           tone: fitnessTone(fitness) }}
-        next={{ sentence: "Click a step to drill into it" }} />
+        next={{ sentence: "Select a step in the flow to drill into it, or see where cases leave the reference",
+          action: { label: "Open conformance", href: l1Href(l1, systemId, run.id, "conformance") } }} />
     </>
   );
 }

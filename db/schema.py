@@ -252,6 +252,8 @@ class CleaningQueue(Base):
     version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=True)
     golden_record_id = Column(UUID(as_uuid=True), nullable=True)  # migration 020
     golden_field_value = Column(Text, nullable=True)
+    check_id = Column(Text, nullable=True)  # the check this proposal fixes (migration 086)
+    field = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (
@@ -954,6 +956,55 @@ class RecordIssueEvent(Base):
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
     __table_args__ = (Index("ix_record_issue_events_issue", "issue_id", "created_at"),)
+
+
+class WorkGroup(Base):
+    """Steward work list: one row per (run, check) — api/services/worklist.py, migration 086."""
+    __tablename__ = "work_groups"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), primary_key=True)
+    check_id = Column(Text, primary_key=True)
+    module = Column(Text, nullable=False)
+    severity = Column(Text, nullable=False)
+    sev_rank = Column(SmallInteger, nullable=False)
+    dimension = Column(Text, nullable=True)
+    message = Column(Text, nullable=True)
+    field = Column(Text, nullable=True)
+    records = Column(Integer, nullable=False, server_default="0")
+    population = Column(Integer, nullable=True)
+    proposed = Column(Integer, nullable=False, server_default="0")
+    truncated = Column(Boolean, nullable=False, server_default=text("false"))
+    statuses = Column(JSONB, nullable=False, server_default="{}")
+    built_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (Index("ix_work_groups_rank", "tenant_id", "version_id", "sev_rank", "records"),)
+
+
+class WorkRecord(Base):
+    """Steward work list: one row per (run, object, record) — api/services/worklist.py, migration 086."""
+    __tablename__ = "work_records"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), primary_key=True)
+    scope = Column(Text, nullable=False)
+    module = Column(Text, primary_key=True)
+    record_key = Column(Text, primary_key=True)
+    name = Column(Text, nullable=True)
+    issues = Column(Integer, nullable=False)
+    sev_rank = Column(SmallInteger, nullable=False)
+    checks = Column(ARRAY(Text), nullable=False)
+    proposed = Column(Integer, nullable=False, server_default="0")
+    status = Column(Text, nullable=False, server_default="to_fix")  # worklist.STATUSES
+    assigned_to = Column(UUID(as_uuid=True), nullable=True)
+    due_at = Column(DateTime(timezone=True), nullable=True)  # earliest SLA due date of its open issues
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_work_records_rank", "tenant_id", "version_id", "module", "sev_rank", "record_key"),
+        Index("ix_work_records_all", "tenant_id", "version_id", "sev_rank", "module", "record_key"),
+        Index("ix_work_records_assignee", "tenant_id", "version_id", "assigned_to", "status"),
+    )
 
 
 class RemediationBatch(Base):

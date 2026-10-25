@@ -51,8 +51,13 @@ export default function MdmOverviewPage() {
       header={
         <PageHeader
           title="MDM overview"
-          meta={m ? `${m.golden_record_count.toLocaleString()} golden records, ${m.backlog_count.toLocaleString()} waiting on a steward` : undefined}
-          actions={<Button variant="secondary" render={<Link href="/mdm/survivorship">Survivorship rules</Link>} />}
+          meta={m
+            ? `${m.golden_record_count.toLocaleString()} golden records, ${m.backlog_count.toLocaleString()} waiting on a steward`
+            : "How complete and consistent your golden records are, and the match work waiting on a steward"}
+          actions={<>
+            <Button variant="secondary" render={<Link href="/mdm/survivorship">Survivorship rules</Link>} />
+            <Button render={<Link href="/mdm/golden/merge">Review match pairs</Link>} />
+          </>}
         />
       }
       summary={m ? (

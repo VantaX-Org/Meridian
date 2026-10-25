@@ -5,12 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, EmptyState, Mono, Notice, PageHeader, Pill, Score, Skeleton, type PillTone, PageFrame, Status, ProgressFill } from "@/design";
+import { DrillLink, Button, Card, DataTable, EmptyState, ErrorState, Mono, Notice, PageHeader, Pill, Score, Skeleton, type PillTone, PageFrame, Status, ProgressFill } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
 import { getVersions } from "@/lib/api/versions";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { formatSize, readHeaderSample } from "@/lib/upload-preview";
@@ -130,8 +130,8 @@ export default function ImportPage() {
     <PageFrame>
       <PageHeader
         title="Import file"
-        meta="Check how columns map to standard SAP fields, then run the analysis, and every import becomes a version"
-        actions={canUpload ? <Button variant="primary" onClick={() => inputRef.current?.click()}>Choose file</Button> : undefined}
+        meta="Score an SAP export without connecting a system. Choose a file, check which object and fields it maps to, then run the import"
+        actions={canUpload ? <Button variant={file ? "secondary" : "primary"} onClick={() => inputRef.current?.click()}>{file ? "Choose another file" : "Choose file"}</Button> : undefined}
       />
 
       <Card padding="lg">
@@ -146,7 +146,7 @@ export default function ImportPage() {
             onDrop={(e) => { e.preventDefault(); setDragging(false); if (canUpload) pick(e.dataTransfer.files?.[0] ?? null); }}
           >
             <input ref={inputRef} type="file" accept={ACCEPT} disabled={!canUpload} onChange={(e) => pick(e.target.files?.[0] ?? null)} hidden />
-            <strong className="m-text-h">{file ? file.name : canUpload ? "Drop a CSV or XLSX, or choose a file" : "Importing needs the upload permission"}</strong>
+            <strong className="m-text-h">{file ? file.name : canUpload ? "Drop a CSV or XLSX, or choose a file" : "Your role cannot import files. Ask an admin for upload access"}</strong>
             <span className="m-text-body m-ink-3">{file ? fileNote : "CSV, TSV, XLSX, XLS, JSON or Parquet, up to 2 GB"}</span>
           </label>
 
@@ -159,7 +159,14 @@ export default function ImportPage() {
             </div>
           ) : null}
           {job?.error ? <Notice tone="danger">Analysis failed: {job.error}</Notice> : null}
-          {job?.status === "completed" ? <Link href={`/runs/${job.versionId}`} className="underline">Open the run</Link> : null}
+          {job?.error ? (
+            <div><Button variant="secondary" onClick={() => { setJob(null); setUploadPct(0); }}>Try again</Button></div>
+          ) : null}
+          {job?.status === "completed" ? (
+            <Notice tone="success" action={<Button render={<Link href={`/runs/${job.versionId}`}>Open the run</Link>} />}>
+              The file is imported and scored.
+            </Notice>
+          ) : null}
 
           {match ? (
             <section className="flex flex-col gap-3" aria-label="Column mapping">
@@ -168,6 +175,9 @@ export default function ImportPage() {
                 <Button variant="ghost" onClick={clear}>Clear</Button>
                 <Button onClick={() => run.mutate()} disabled={!canRun}>{run.isPending ? `Uploading ${uploadPct}%` : job ? "Imported" : "Run import"}</Button>
               </header>
+              <p className="m-text-body m-ink-2">
+                {targetModule ? "Which SAP object this file holds. Change it if Meridian guessed wrong." : "Pick the SAP object this file holds to run the import."}
+              </p>
               <div className="flex flex-wrap gap-2" role="group" aria-label="Object">
                 {match.available_modules.map((m) => (
                   <button
@@ -200,6 +210,8 @@ export default function ImportPage() {
           <div className="flex flex-col gap-1" aria-busy="true">
             {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} height={36} />)}
           </div>
+        ) : recent.isError ? (
+          <ErrorState {...apiErrorState(recent.error)} onRetry={() => void recent.refetch()} />
         ) : versions.length ? (
           <DataTable columns={columns} data={versions} getRowId={(v) => v.id} />
         ) : (
@@ -221,7 +233,7 @@ export default function ImportPage() {
         <Notice>
           {systemsQ.data.length} SAP {systemsQ.data.length === 1 ? "system is" : "systems are"} connected. Pulling objects straight
           from a system keeps versions comparable run to run; file imports suit one-off assessments.{" "}
-          <Link href="/systems" className="underline">Download from the source</Link>
+          <Link href="/systems" className="underline">Open systems</Link>
         </Notice>
       ) : null}
     </PageFrame>

@@ -102,7 +102,7 @@ describe("system detail page", () => {
     renderWithQuery(<SystemPage />);
     const ring = await screen.findByRole("img", { name: "Score 70" });
     const stat = ring.closest("a");
-    expect(stat).toHaveTextContent("DQS");
+    expect(stat).toHaveTextContent("Quality score");
     expect(stat).not.toHaveTextContent("70.0");
   });
 
@@ -160,10 +160,17 @@ describe("system detail page", () => {
     expect(await screen.findByText("Source system")).toBeInTheDocument();
   });
 
+  it("says the system is gone and links back to the list when the id is unknown", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<SystemPage />);
+    expect(await screen.findByText("System not found")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open systems" })).toHaveAttribute("href", "/systems");
+  });
+
   it("shows a retryable error when the systems list fails to load", async () => {
     const refetch = vi.spyOn(connectivityApi, "getSystems").mockRejectedValue(new Error("network down"));
     renderWithQuery(<SystemPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     refetch.mockResolvedValue([SYSTEM]);
     retry.click();
@@ -205,8 +212,8 @@ describe("system detail page", () => {
       renderWithQuery(<SystemPage />);
       fireEvent.click((await screen.findAllByText("Extract"))[0]);
       fireEvent.click(await screen.findByText("Material master"));
-      fireEvent.click(screen.getByText("Extract 1 object"));
-      fireEvent.click(await screen.findByText("Confirm"));
+      fireEvent.click(screen.getByText("Extract 1 object only"));
+      fireEvent.click(await screen.findByText("Start extract"));
       await waitFor(() => expect(systemObjectsApi.startDownload).toHaveBeenCalled());
 
       await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
@@ -230,12 +237,12 @@ describe("system detail page", () => {
       renderWithQuery(<SystemPage />);
       fireEvent.click((await screen.findAllByText("Extract"))[0]);
       fireEvent.click(await screen.findByText("Material master"));
-      fireEvent.click(screen.getByText("Extract 1 object"));
+      fireEvent.click(screen.getByText("Extract 1 object only"));
       versions.mockResolvedValue({
         versions: [],
         download: { status: "complete", job_id: "dl-9", started_at: "2026-01-01T10:00:00Z", label: null, objects: [] },
       });
-      fireEvent.click(await screen.findByText("Confirm"));
+      fireEvent.click(await screen.findByText("Start extract"));
       await waitFor(() => expect(systemObjectsApi.startDownload).toHaveBeenCalled());
 
       await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });

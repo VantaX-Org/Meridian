@@ -8,6 +8,7 @@ import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as versionsApi from "@/lib/api/versions";
 import * as objectsApi from "@/lib/api/v1/objects";
+import * as workApi from "@/lib/api/work";
 import ObjectsPage from "../page";
 
 let currentSearch = "run=v1";
@@ -121,7 +122,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     const tiles = within(map).getAllByRole("link");
     expect(tiles).toHaveLength(1);
     expect(tiles[0]).toHaveAttribute("data-verdict", "no-go");
-    expect(tiles[0]).toHaveAttribute("href", "/objects/c?run=v1&rule=mm_bad");
+    expect(tiles[0]).toHaveAttribute("href", "/objects/c?run=v1&tab=fix");
     currentSearch = "run=v1";
   });
 
@@ -147,7 +148,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("mm_bad")).toBeInTheDocument());
-    expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=mm_bad");
+    expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&issue=mm_bad");
     expect(screen.getByText("Blocking findings")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
@@ -198,10 +199,10 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(wrap).toHaveAttribute("title", "DDIC-ADR6-TYPE");
     expect(wrap).toHaveClass("block", "truncate", "whitespace-nowrap");
     expect(wrap?.getAttribute("style")).toBeNull();
-    expect(id.closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=records&check_id=DDIC-ADR6-TYPE");
+    expect(id.closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&issue=DDIC-ADR6-TYPE");
   });
 
-  it("lists the ledger columns in order and closes each row with an Open link to the workbench", async () => {
+  it("lists the ledger columns in order and closes each row with an Open link to its records to fix", async () => {
     currentSearch = "run=v1";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
       run_id: "v1",
@@ -211,7 +212,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
     expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Records", "DQS", "Verdict", "Trend", "Action"]);
     expect(ledger().getByText("Bad data")).toBeInTheDocument();
-    expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&rule=mm_bad");
+    expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&tab=fix");
   });
 
   it("shows a sparkline for two or more runs and a muted \"1 run\" for an object's first run", async () => {
@@ -239,6 +240,45 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
     expect(screen.queryByRole("columnheader", { name: "Trend" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Blocking rule" })).toBeNull();
+  });
+
+  it("shows each object's records to fix, critical, with a suggestion and overdue from the work list, worst first, each opening Records to fix", async () => {
+    currentSearch = "run=v1";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [
+      mk("a", "AAA", "fail", 40, { critical_checks: 3, high_checks: 0 }),
+      mk("b", "BBB", "warn", 70, { critical_checks: 0, high_checks: 0 }),
+      mk("c", "CCC", "pass", 99),
+    ] });
+    const work = (module: string, open: number, critical: number, proposed: number, overdue: number) =>
+      ({ module, records: open, open, issues: open, critical, proposed, overdue, statuses: { to_fix: open } });
+    const summary = vi.spyOn(workApi, "getWorkSummary").mockResolvedValue({
+      version_id: "v1", scope: "s", built: true,
+      objects: [work("b", 2_400, 900, 1_200, 7), work("a", 10, 1, 0, 0)],
+      totals: { records: 2_410, open: 2_410, issues: 2_410, critical: 901, proposed: 1_200, overdue: 7 },
+    });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(ledger().getByRole("columnheader", { name: "To fix" })).toBeInTheDocument());
+    expect(summary).toHaveBeenCalledWith("v1");
+    for (const h of ["Critical", "With a suggestion", "Overdue"]) expect(ledger().getByRole("columnheader", { name: h })).toBeInTheDocument();
+    // BBB has the most critical records to fix, so it leads although AAA has more blocking checks; CCC has none.
+    const order = rowLabels().join("|");
+    expect(order.indexOf("BBB")).toBeLessThan(order.indexOf("AAA"));
+    expect(order.indexOf("AAA")).toBeLessThan(order.indexOf("CCC"));
+    expect(ledger().getByRole("link", { name: "Open the 2,400 records to fix of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix");
+    expect(ledger().getByRole("link", { name: "Open the 900 critical records of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&sev=critical");
+    expect(ledger().getByRole("link", { name: "Open the 1,200 records with a suggestion of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&suggested=1");
+    expect(ledger().getByRole("link", { name: "Open the 7 overdue records of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&due=overdue");
+  });
+
+  it("leaves the work-list columns out when the run's work list is not built", async () => {
+    currentSearch = "run=v1";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "fail", 40)] });
+    vi.spyOn(workApi, "getWorkSummary").mockResolvedValue({
+      version_id: "v1", scope: "s", built: false, objects: [], totals: { records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0 },
+    });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
+    expect(screen.queryByRole("columnheader", { name: "To fix" })).toBeNull();
   });
 
   it("row click seeds the object summary cache under the resolved run id", async () => {

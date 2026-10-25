@@ -19,6 +19,8 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { PermissionsProvider } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
+import { GlobalObjectPicker, GlobalRunPicker, RunCarrier } from "@/components/global-run";
+import { GlobalSearch } from "@/components/global-search";
 import { HelpSlot } from "@/components/help/help-slot";
 import { reportClientError } from "@/lib/client-errors";
 
@@ -26,7 +28,9 @@ import { reportClientError } from "@/lib/client-errors";
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
   const { role } = useRole();
-  const navItems = groups.flatMap((g) =>
+  // A persona home can resolve to another entry (a steward's home is Fix work): each page is listed once,
+  // and the dropped entry's key hint (Home's ⌘1) moves onto the one kept.
+  const all = groups.flatMap((g) =>
     flattenNav(g.items).map((item) => ({
       label: item.label,
       href: resolveNavHref(item.href, role),
@@ -35,6 +39,13 @@ function CommandPaletteSlot() {
       shortcut: item.shortcut,
     })),
   );
+  const byHref = new Map<string, (typeof all)[number]>();
+  for (const item of all) {
+    const kept = byHref.get(item.href);
+    if (!kept) byHref.set(item.href, { ...item });
+    else if (!kept.shortcut && item.shortcut) kept.shortcut = item.shortcut;
+  }
+  const navItems = [...byHref.values()];
   // The insight views' tabs are not nav entries; they stay reachable by name from the palette.
   const seen = new Set(navItems.map((i) => i.href));
   const insightsGroup = groups.find((g) => g.items.some((i) => i.href === "/insights"))?.group;
@@ -124,7 +135,8 @@ function Chrome({ children }: { children: ReactNode }) {
             userMenu={<UserMenu />}
           />
         </Suspense>
-        <TopBar trailing={<ScopedPill />} />
+        <Suspense fallback={null}><RunCarrier /></Suspense>
+        <TopBar trailing={<><Suspense fallback={null}><GlobalSearch /></Suspense><Suspense fallback={null}><GlobalObjectPicker /></Suspense><Suspense fallback={null}><GlobalRunPicker /></Suspense><ScopedPill /></>} />
         {/* Bottom room for the Ask Meridian launcher (fixed bottom-right), so the last row of a page never sits under it. */}
         <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)] [padding-bottom:calc(var(--m-space-10)+var(--m-space-8))]">
           <RootPageFrame>{children}</RootPageFrame>

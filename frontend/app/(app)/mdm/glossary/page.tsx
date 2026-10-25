@@ -84,7 +84,13 @@ export default function GlossaryPage() {
 
   return (
     <ExplorerPage
-      header={<PageHeader title="Glossary" meta={query.data ? `${query.data.total.toLocaleString()} terms` : undefined} />}
+      header={
+        <PageHeader
+          title="Glossary"
+          meta={`What each SAP field means in business words, and the rules that check it.${query.data ? ` ${query.data.total.toLocaleString()} terms.` : ""}`}
+          actions={canDraft ? <Button variant="secondary" pending={draft.isPending} onClick={() => draft.mutate()}>Draft terms from analysed objects</Button> : undefined}
+        />
+      }
       filterBar={
         <div className="flex items-end gap-3">
           <Field label="Search">

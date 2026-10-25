@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import Link from "next/link";
+import { AnalyseAction } from "./analyse-action";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ const n = (v: number) => v.toLocaleString();
 const SEVERITY_ORDER = ["critical", "high", "medium", "low"];
 const dash = (v: string | null | undefined) => v ?? "—";
 const day = (v: string | null | undefined) => (v ? formatDate(v, "date") : "—");
-const analyseAction = <Button render={<Link href="/analyse">Run an analysis</Link>} />;
+const analyseAction = <AnalyseAction />;
 
 function Feed<T>({ q, children }: { q: UseQueryResult<T>; children: (data: T) => ReactNode }) {
   if (q.isLoading) return <Skeleton height={200} />;
