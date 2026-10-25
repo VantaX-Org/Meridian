@@ -41,6 +41,7 @@ export const INBOX_SHORTCUTS: readonly Shortcut[] = [
 export const GLOBAL_SHORTCUTS: readonly Shortcut[] = [
   { group: "Global", keys: "⌘K", description: "Search or jump to a page" },
   { group: "Global", keys: "?", description: "Show keyboard shortcuts" },
+  { group: "Global", keys: "/", description: "Find a record by key or name" },
 ];
 
 /** Navigation shortcuts, derived from `lib/nav.ts` so a new `shortcut` field shows up here with no second edit. */

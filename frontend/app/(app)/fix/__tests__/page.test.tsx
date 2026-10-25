@@ -48,6 +48,8 @@ const group = (over: Partial<CleaningGroup>): CleaningGroup => ({
 });
 
 beforeEach(() => {
+  // These cover the cleaning proposals tab; Records to fix (the default) is covered in components/work.
+  searchParams.set("tab", "cleaning");
   push.mockClear();
   vi.mocked(getCleaningGroups).mockReset();
 });

@@ -100,14 +100,14 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
           <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (value.trim()) m.mutate([{ ...base, action: "edit", value }]); }}>
             <Input aria-label={`New value for ${issue.field ?? issue.check_id}`} value={value} onChange={(e) => setValue(e.target.value)} autoFocus className="m-input min-w-[200px] flex-1" />
             <Button type="submit" pending={m.isPending} disabled={!value.trim()}>Save value</Button>
-            <Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button type="button" variant="ghost" onClick={() => setEditing(false)}>Keep as is</Button>
           </form>
         ) : signOff ? (
           <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); if (reason.trim()) m.mutate([{ ...base, action: signOff, note: reason }]); }}>
             <Textarea aria-label="Reason" placeholder={signOff === "not_an_issue" ? "Why is this not an issue?" : "Why is the risk acceptable?"} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus rows={2} />
             <div className="flex gap-2">
               <Button type="submit" pending={m.isPending} disabled={!reason.trim()}>{signOff === "not_an_issue" ? "Mark not an issue" : "Accept the risk"}</Button>
-              <Button type="button" variant="ghost" onClick={() => setSignOff(null)}>Cancel</Button>
+              <Button type="button" variant="ghost" onClick={() => setSignOff(null)}>Keep it open</Button>
             </div>
           </form>
         ) : (
@@ -138,7 +138,7 @@ function History({ rec }: { rec: WorkRecordDetail }) {
           <span className="m-ink">{EVENT[e.action] ?? e.action}</span>
           {e.to_value && e.action === "status" ? <span className="m-ink-2"> to {STATUS_LABEL(e.to_value)}</span> : null}
           {e.note ? <span className="m-ink-2">: {e.note}</span> : null}
-          <span className="block m-text-meta m-ink-3">{e.user_label ?? "system"}{e.created_at ? `, ${formatDate(e.created_at, "datetime")}` : ""} · <Mono inline>{e.check_id}</Mono></span>
+          <span className="block m-text-meta m-ink-3">{e.user_label ?? "system"}{e.created_at ? `, ${formatDate(e.created_at, "datetime")}` : ""}, check <Mono inline>{e.check_id}</Mono></span>
         </li>
       ))}
     </ol>
@@ -170,13 +170,13 @@ export function RecordPanel({ module, recordKey, run, onDecided, footer }: {
   return (
     <Card
       title={<span className="flex flex-col"><span>{rec.name ?? <Mono inline>{rec.record_key}</Mono>}</span>{rec.name ? <span className="m-text-meta m-ink-3"><Mono inline>{rec.record_key}</Mono></span> : null}</span>}
-      meta={<span className="flex flex-wrap items-center gap-2">{formatModuleName(module)} · {rec.issues.length} failing {rec.issues.length === 1 ? "check" : "checks"} <Pill tone={STATUS[rec.status].tone}>{STATUS[rec.status].label}</Pill></span>}
+      meta={<span className="flex flex-wrap items-center gap-2">{formatModuleName(module)}, {rec.issues.length} failing {rec.issues.length === 1 ? "check" : "checks"} <Pill tone={STATUS[rec.status].tone}>{STATUS[rec.status].label}</Pill></span>}
       actions={<Button variant="ghost" render={<Link href={`/objects/${module}/records/${encodeURIComponent(recordKey)}${run ? `?run=${run}` : ""}`}>Full record</Link>} />}
     >
       <div className="flex flex-col gap-4" data-testid="record-panel">
         {!rec.can.fix ? <Notice tone="info">Your role can view this record. Fixing it needs the apply permission.</Notice> : null}
         {rec.can.fix && acceptable.length > 1 ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-[var(--m-radius-md)] bg-[var(--m-sheet-raised)] p-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-[var(--m-radius-control)] bg-[var(--m-sheet-raised)] p-3">
             <span className="m-text-body m-ink-2 flex-1">{acceptable.length} suggested values for this record.</span>
             <Button pending={m.isPending} onClick={() => m.mutate(acceptable.map((i) => ({ ...base, check_id: i.check_id, action: "accept" as const })))}>Accept all {acceptable.length}</Button>
           </div>

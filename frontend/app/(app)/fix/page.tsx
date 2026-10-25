@@ -14,6 +14,7 @@ import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { BatchesTab } from "./batches-tab";
 import { DedupTab } from "./monitor-dedup-tabs";
 import { MonitorTab } from "./monitor-tab";
+import { FixWork } from "@/components/work/fix-work";
 
 const runLabel = (g: CleaningGroup) => (g.version_id ? g.run_label ?? (g.run_at ? formatDate(g.run_at, "datetime") : "Run") : "Matching");
 
@@ -88,18 +89,19 @@ function CleaningQueueTab() {
 }
 
 export default function FixPage() {
-  const [tabRaw, setTab] = useUrlState("tab", "cleaning");
-  const tab = oneOf(tabRaw, ["cleaning", "batches", "monitor", "dedup"], "cleaning");
+  const [tabRaw, setTab] = useUrlState("tab", "work");
+  const tab = oneOf(tabRaw, ["work", "cleaning", "batches", "monitor", "dedup"], "work");
 
   return (
     <div className="flex flex-col gap-4">
-    <PageHeader title="Fix" meta="Review proposals, approve batches and hand them to SAP" />
+    <PageHeader title="Fix" meta="Every record that fails a check, worst first: see what is wrong, set the right value, and send it for approval." />
     <Tabs
       value={tab}
       onValueChange={setTab}
       items={[
-        { value: "cleaning", label: "Cleaning queue", content: <CleaningQueueTab /> },
-        { value: "batches", label: "Batches", content: <BatchesTab /> },
+        { value: "work", label: "Records to fix", content: <FixWork /> },
+        { value: "cleaning", label: "Cleaning proposals", content: <CleaningQueueTab /> },
+        { value: "batches", label: "Approvals and export", content: <BatchesTab /> },
         { value: "monitor", label: "Monitor", content: <MonitorTab /> },
         { value: "dedup", label: "Duplicates", content: <DedupTab /> },
       ]}

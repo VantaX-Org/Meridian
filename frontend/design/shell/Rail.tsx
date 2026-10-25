@@ -11,19 +11,18 @@ import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
 import { MeridianMark } from "../icons/Mark";
 import { IconChevronDown } from "../icons";
-import { activeHref, flattenNav, resolveNavHref, type NavGroup, type NavItem } from "../../lib/nav";
+import { activeHref, flattenNav, resolveNavHref, splitNav, type NavItem } from "../../lib/nav";
 import { Badge } from "../primitives/Badge";
 import { Skeleton } from "../primitives/Skeleton";
 
 /**
- * The index bar: the product's top row. The brand, the six places a person goes (Home, Objects, Fix, Inbox,
- * Runs, Insights, Systems) as one pill strip with live counts, a "More" disclosure holding every other
- * visible page grouped as the nav defines them, and the shell's controls on the right (search, jobs,
- * notifications, help, the user). It replaces the sidebar: there is no collapsed state and no flyout.
+ * The index bar: the product's top row. The brand, the four places everyone works from (Fix work, Objects,
+ * Progress, Inbox: lib/nav.ts's main group) as one pill strip with live counts, a "More" menu holding every
+ * other visible page under its section (Analysis, Master data, Rules, Data in, Admin), and the shell's controls
+ * on the right (search, jobs, notifications, help, the user). There is no sidebar, collapsed state or flyout.
  * Links never carry `?run=`: each section opens on its own latest run (lib/run-scope.ts).
  */
 
-const PRIMARY = ["/home/lead", "/objects", "/fix", "/inbox", "/runs", "/insights", "/systems"] as const;
 const MORE_PANEL_ID = "topnav-more";
 const ICON_SIZE = 16;
 
@@ -40,17 +39,6 @@ const HEALTH_PIP_COLOR: Record<"critical" | "high" | "pass", string> = {
   high: "var(--m-high)",
   pass: "var(--m-pass)",
 };
-
-/** The "More" panel's groups: every visible item that is not a primary pill, with its children, under its nav group. */
-function moreGroups(groups: readonly NavGroup[]): { group: string; items: NavItem[] }[] {
-  const primary = new Set<string>(PRIMARY);
-  return groups
-    .map((g) => ({
-      group: g.group,
-      items: g.items.flatMap((i) => (primary.has(i.href) ? [...(i.children ?? [])] : [i, ...(i.children ?? [])])),
-    }))
-    .filter((g) => g.items.length > 0);
-}
 
 export interface RailProps {
   commandPalette?: ReactNode;
@@ -82,12 +70,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
     [pathname, searchParams, flatItems],
   );
 
-  const topLevel = useMemo(() => groups.flatMap((g) => g.items), [groups]);
-  const primaryItems = useMemo(
-    () => PRIMARY.map((href) => topLevel.find((i) => i.href === href)).filter((i): i is NavItem => !!i),
-    [topLevel],
-  );
-  const more = useMemo(() => moreGroups(groups), [groups]);
+  const { main: primaryItems, more } = useMemo(() => splitNav(groups, (href) => resolveNavHref(href, role)), [groups, role]);
   const moreActive = more.some((g) => g.items.some((i) => i.href === activeItemHref));
 
   // The panel closes on Escape, on a click outside it and when focus leaves it.
@@ -112,10 +95,24 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
 
   const isActive = (item: NavItem) => item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref);
 
+  const hasPip = (item: NavItem) => item.href === "/systems" && healthTone !== null;
+  const renderIcon = (item: NavItem) => (
+    <span className="relative inline-flex shrink-0">
+      <item.icon size={ICON_SIZE} />
+      {hasPip(item) && healthTone && (
+        <span
+          aria-hidden="true"
+          className="absolute rounded-full"
+          style={{ width: 6, height: 6, top: -2, right: -2, background: HEALTH_PIP_COLOR[healthTone], border: "1.5px solid var(--m-sheet)" }}
+        />
+      )}
+    </span>
+  );
+
   const renderPill = (item: NavItem) => {
     const active = isActive(item);
     const count = item.badgeKey ? counts?.[item.badgeKey] ?? 0 : 0;
-    const showPip = item.href === "/systems" && healthTone !== null;
+    const showPip = hasPip(item);
     return (
       <li key={item.href}>
         <Link
@@ -124,16 +121,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
           aria-label={showPip && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
           className="m-topnav-link"
         >
-          <span className="relative inline-flex shrink-0">
-            <item.icon size={ICON_SIZE} />
-            {showPip && healthTone && (
-              <span
-                aria-hidden="true"
-                className="absolute rounded-full"
-                style={{ width: 6, height: 6, top: -2, right: -2, background: HEALTH_PIP_COLOR[healthTone], border: "1.5px solid var(--m-sheet)" }}
-              />
-            )}
-          </span>
+          {renderIcon(item)}
           <span>{item.label}</span>
           {count > 0 && (
             <span key={count} className="m-motion-rise" data-severity={item.badgeKey === "fix" ? "critical" : undefined}>
@@ -193,10 +181,11 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
                             key={item.href}
                             href={resolveNavHref(item.href, role)}
                             aria-current={item.href === activeItemHref ? "page" : undefined}
+                            aria-label={hasPip(item) && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
                             className="m-topnav-item"
                             onClick={() => setMoreOpen(false)}
                           >
-                            <item.icon size={ICON_SIZE} />
+                            {renderIcon(item)}
                             <span className="truncate">{item.label}</span>
                           </Link>
                         ))}

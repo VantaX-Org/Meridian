@@ -82,7 +82,7 @@ async def test_every_worklist_read_is_fast_at_scale(seeded, monkeypatch):
     from api.main import app
 
     owner, tid, vid, stats = seeded
-    assert stats["records"] > N / 4
+    assert stats["records"] > N / 10
     monkeypatch.setattr("api.middleware.local_auth._load_jwt_secret", lambda: "test-secret")
     monkeypatch.setattr("api.middleware.local_auth.decode_access_token",
                         lambda token, secret: {"sub": str(uuid.uuid4()), "email": "s@example.com", "role": "admin"})

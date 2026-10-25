@@ -1,7 +1,8 @@
 // frontend/lib/__tests__/nav.test.ts
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
-import { NAV_GROUPS, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, type NavItem } from "../nav";
+import { NAV_GROUPS, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, resolveNavHref, splitNav, visibleNav, type NavItem } from "../nav";
+import { LEGACY_ROLES, permissionsPayload } from "../../e2e/fixtures/legacy-permissions";
 
 describe("nav vs legacy redirects", () => {
   it("never points a nav item at a path that redirects elsewhere", async () => {
@@ -37,13 +38,13 @@ describe("NAV_GROUPS", () => {
 });
 
 describe("homeHrefForRole", () => {
-  it("routes steward and approver to the steward persona and every other role to lead", () => {
-    expect(homeHrefForRole("steward")).toBe("/home/steward");
+  it("routes steward and approver to Fix work and every other role to lead", () => {
+    expect(homeHrefForRole("steward")).toBe("/fix");
     expect(homeHrefForRole("admin")).toBe("/home/lead");
     expect(homeHrefForRole("manager")).toBe("/home/lead");
     expect(homeHrefForRole("viewer")).toBe("/home/lead");
     expect(homeHrefForRole("analyst")).toBe("/home/lead");
-    expect(homeHrefForRole("approver")).toBe("/home/steward"); // rbac.md 1.1: data_owner -> steward home
+    expect(homeHrefForRole("approver")).toBe("/fix"); // rbac.md 1.1: data_owner -> steward persona, which starts on Fix work
     expect(homeHrefForRole("auditor")).toBe("/home/lead");
     expect(homeHrefForRole("ai_reviewer")).toBe("/home/lead");
   });
@@ -105,18 +106,75 @@ describe("wave 18b gap routes", () => {
     expect(items.find((i) => i.href === "/admin/audit")?.anyOf).toEqual(["view_audit", "manage_users"]);
   });
 });
-describe("Process group", () => {
+describe("Process entries", () => {
   const flat = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
 
-  it("lists the catalogue and the runs, both gated on process/view", () => {
-    const group = NAV_GROUPS.find((g) => g.group === "Process");
-    expect(group?.items.map((i) => i.href)).toEqual(["/process", "/process/runs"]);
-    for (const item of group!.items) expect(item.requires).toEqual({ resource: "process", action: "view" });
+  it("lists the catalogue and the runs under Analysis, both gated on process/view", () => {
+    const group = NAV_GROUPS.find((g) => g.group === "Analysis");
+    const process = group!.items.filter((i) => i.href.startsWith("/process"));
+    expect(process.map((i) => i.href)).toEqual(["/process", "/process/runs"]);
+    for (const item of process) expect(item.requires).toEqual({ resource: "process", action: "view" });
   });
 
   it("highlights the runs entry on a run detail and the catalogue on an L1 drill", () => {
     expect(activeHref("/process/runs/abc", new URLSearchParams(), flat)).toBe("/process/runs");
     expect(activeHref("/process/PTP", new URLSearchParams(), flat)).toBe("/process");
     expect(activeHref("/insights/process", new URLSearchParams(), flat)).toBe("/insights/readiness");
+  });
+});
+
+describe("menu structure", () => {
+  it("has four main entries and five More sections", () => {
+    const main = NAV_GROUPS.filter((g) => g.main);
+    expect(main.flatMap((g) => g.items.map((i) => i.href))).toEqual(["/fix", "/objects", "/insights/progress", "/inbox"]);
+    expect(NAV_GROUPS.filter((g) => !g.main).map((g) => g.group)).toEqual(["Analysis", "Master data", "Rules", "Data in", "Admin"]);
+  });
+
+  it("files each page under its section", () => {
+    const sectionOf = (href: string) => NAV_GROUPS.find((g) => flattenNav(g.items).some((i) => i.href === href))?.group;
+    expect(sectionOf("/insights/exec")).toBe("Analysis");
+    expect(sectionOf("/insights/rules")).toBe("Analysis");
+    expect(sectionOf("/process")).toBe("Analysis");
+    expect(sectionOf("/fix/what-if")).toBe("Analysis");
+    expect(sectionOf("/mdm/glossary")).toBe("Master data");
+    expect(sectionOf("/rules/drafts")).toBe("Rules");
+    expect(sectionOf("/systems")).toBe("Data in");
+    expect(sectionOf("/import")).toBe("Data in");
+    expect(sectionOf("/migration")).toBe("Data in");
+    expect(sectionOf("/admin/ai")).toBe("Admin");
+    expect(sectionOf("/admin/users")).toBe("Admin");
+  });
+
+  it("keeps the /fix page title short while the menu says Fix work", () => {
+    expect(getPageTitle("/fix")).toBe("Fix");
+    expect(getPageTitle("/fix/B1")).toBe("Fix");
+    expect(getPageTitle("/insights/progress")).toBe("Since baseline");
+  });
+
+  it.each(LEGACY_ROLES)("%s: splitNav lists every visible page once, with no resolved href twice", (role) => {
+    const p = permissionsPayload(role);
+    const groups = visibleNav({ can: (a) => p.actions.includes(a), isMenuItemEnabled: () => true, has: (r, a) => p.resources[r]?.[a] === true });
+    const { main, more } = splitNav(groups, (h) => resolveNavHref(h, role));
+    const hrefs = [...main, ...more.flatMap((g) => g.items)].map((i) => resolveNavHref(i.href, role));
+    expect(new Set(hrefs).size).toBe(hrefs.length);
+    const visible = new Set(flattenNav(groups.flatMap((g) => g.items)).map((i) => resolveNavHref(i.href, role)));
+    const mainChildren = new Set(main.flatMap((i) => (i.children ?? []).map((c) => c.href)));
+    for (const h of visible) if (!mainChildren.has(h)) expect(hrefs, h).toContain(h);
+  });
+
+  it("gives a steward Fix work as a pill and no separate Home entry", () => {
+    const p = permissionsPayload("steward");
+    const groups = visibleNav({ can: (a) => p.actions.includes(a), isMenuItemEnabled: () => true, has: (r, a) => p.resources[r]?.[a] === true });
+    const { main, more } = splitNav(groups, (h) => resolveNavHref(h, "steward"));
+    expect(main.map((i) => i.label)).toEqual(["Fix work", "Objects", "Progress", "Inbox"]);
+    expect(more.flatMap((g) => g.items).some((i) => i.href === "/home/lead")).toBe(false);
+  });
+
+  it("hides Fix work from a role that cannot open it", () => {
+    const p = permissionsPayload("viewer");
+    const groups = visibleNav({ can: (a) => p.actions.includes(a), isMenuItemEnabled: () => true, has: (r, a) => p.resources[r]?.[a] === true });
+    const { main } = splitNav(groups);
+    expect(main.map((i) => i.href)).not.toContain("/fix");
+    expect(main.map((i) => i.href)).toContain("/objects");
   });
 });

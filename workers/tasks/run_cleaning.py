@@ -136,12 +136,12 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
                             id, tenant_id, rule_id, object_type, status, confidence,
                             record_key, record_data_before, record_data_after,
                             merge_preview, priority, version_id,
-                            golden_record_id, golden_field_value
+                            golden_record_id, golden_field_value, check_id, field
                         ) VALUES (
                             gen_random_uuid(), :tid, :rid, :ot, 'detected', :conf,
                             :rk, CAST(:before AS jsonb), CAST(:after AS jsonb),
                             CAST(:mp AS jsonb), :pri, :vid,
-                            CAST(:grid AS uuid), :gfv
+                            CAST(:grid AS uuid), :gfv, :check_id, :field
                         )
                     """),
                     {
@@ -157,6 +157,11 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
                         "vid": version_id,
                         "grid": c.get("golden_record_id"),
                         "gfv": c.get("golden_field_value"),
+                        # the issue this proposal fixes (worklist record panel): the check when the
+                        # candidate names one, the field when it changes exactly one
+                        "check_id": c.get("check_id"),
+                        "field": c.get("field") or (next(iter(c["record_data_after"]))
+                                                    if len(c.get("record_data_after") or {}) == 1 else None),
                     },
                 )
 
