@@ -22,6 +22,9 @@ class AskBody(BaseModel):
     question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
     version_id: Optional[uuid.UUID] = None
     module: Optional[str] = Field(None, max_length=64)
+    #: "current": score questions read the current state (every object at its latest run), as Home and Insights
+    #: show it; ignored when ``version_id`` names a run
+    scope: Optional[Literal["current"]] = None
 
 
 class DataPoint(BaseModel):
@@ -62,5 +65,6 @@ class AskAnswer(BaseModel):
 @router.post("/ask", response_model=AskAnswer, dependencies=[Depends(require_permission("view"))])
 async def ask(body: AskBody, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> AskAnswer:
     out = await assistant.ask(body.question, str(body.version_id) if body.version_id else None, body.module,
-                              assistant.DbSources(db, tenant), str(tenant.id))
+                              assistant.DbSources(db, tenant), str(tenant.id),
+                              current=body.scope == "current" and body.version_id is None)
     return AskAnswer(**out)

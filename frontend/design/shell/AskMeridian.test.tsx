@@ -14,7 +14,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-import { ASK_SUGGESTIONS, AskMeridian, pageRun } from "./AskMeridian";
+import { ASK_SUGGESTIONS, AskMeridian, pageModule, pageRun } from "./AskMeridian";
 
 const answer = (over: Partial<AskAnswer> = {}): AskAnswer => ({
   answer: "The weakest objects are Material master at 61.0 and Business partner at 80.5.",
@@ -221,10 +221,23 @@ describe("the run Ask Meridian answers about", () => {
     await waitFor(() => expect(api.askMeridian).toHaveBeenCalledWith({ question: ASK_SUGGESTIONS[0], version_id: "run-9" }));
   });
 
-  it("says it answers about the latest finished run when the page names none", async () => {
-    nav.search = "";
+  it("asks about the current state when the page names no run, with the object on screen", async () => {
+    nav.pathname = "/objects/material_master"; nav.search = "";
+    api.askMeridian.mockResolvedValue(answer());
     renderAsk();
     fireEvent.click(screen.getByRole("button", { name: "Ask Meridian" }));
-    expect(await screen.findByText("Answers from the figures of the latest finished run")).toBeInTheDocument();
+    expect(await screen.findByText("Answers from the figures of the current state and your latest run")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: ASK_SUGGESTIONS[0] }));
+    await waitFor(() =>
+      expect(api.askMeridian).toHaveBeenCalledWith({ question: ASK_SUGGESTIONS[0], version_id: undefined, module: "material_master", scope: "current" }),
+    );
+  });
+
+  it("keeps the conversation log mounted before the first answer, so it is announced", async () => {
+    renderAsk();
+    fireEvent.click(screen.getByRole("button", { name: "Ask Meridian" }));
+    expect(await screen.findByRole("log", { name: "Conversation" })).toBeInTheDocument();
+    expect(pageModule("/insights", "fi_gl")).toBe("fi_gl");
+    expect(pageModule("/objects/bp/records/1", null)).toBe("bp");
   });
 });

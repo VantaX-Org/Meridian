@@ -44,6 +44,12 @@ export function pageRun(pathname: string | null, run: string | null | undefined)
   return (m ? decodeURIComponent(m[1]) : run) || undefined;
 }
 
+/** The object the page shows: the object in the path (`/objects/<id>`), else the object picker's `?module=`. */
+export function pageModule(pathname: string | null, module: string | null | undefined): string | undefined {
+  const m = /^\/objects\/([^/]+)/.exec(pathname ?? "");
+  return (m ? decodeURIComponent(m[1]) : module) || undefined;
+}
+
 /** Only in-app routes are followed: an answer never sends the user off the customer's own host. */
 function internal(href: string): boolean {
   return href.startsWith("/") && !href.startsWith("//");
@@ -135,9 +141,14 @@ export function AskMeridian() {
   const inputRef = useRef<HTMLInputElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const run = pageRun(usePathname(), useSearchParams()?.get("run"));
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const run = pageRun(pathname, search?.get("run"));
+  const objectId = pageModule(pathname, search?.get("module"));
   const version = useQuery({ queryKey: queryKeys.run(run ?? ""), queryFn: () => getVersion(run as string), enabled: !!run, retry: false, meta: { ignoreError: true } });
-  const scope = !run ? "the latest finished run" : version.data ? runScopeLabel(version.data) : "the run on this page";
+  // Without a run the page shows the current state: the score is read across every object at its latest run, the
+  // other answers from the newest run.
+  const scope = !run ? "the current state and your latest run" : version.data ? runScopeLabel(version.data) : "the run on this page";
   // Answers belong to the run they were asked about: a new run on screen starts a new thread.
   const [threadRun, setThreadRun] = useState(run);
   if (threadRun !== run) {
@@ -147,7 +158,7 @@ export function AskMeridian() {
   const { isMenuItemEnabled, manifest } = useLicence();
 
   const ask = useMutation({
-    mutationFn: (question: string) => askMeridian({ question, version_id: run }),
+    mutationFn: (question: string) => askMeridian({ question, version_id: run, module: objectId, scope: run ? undefined : "current" }),
     onSuccess: (answer) => push({ role: "assistant", text: answer.answer, answer }),
     onError: () => push({ role: "assistant", text: "I could not reach Meridian just now. Try again in a moment." }),
   });
@@ -207,7 +218,8 @@ export function AskMeridian() {
               </div>
 
               <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3">
-                {messages.length === 0 ? (
+                {/* The log is always mounted, so a screen reader announces the first answer as it arrives. */}
+                {messages.length === 0 && (
                   <div className="flex flex-col gap-2">
                     <p className="m-text-meta m-ink-3">Try one of these</p>
                     <ul className="flex flex-col items-start gap-2">
@@ -218,8 +230,8 @@ export function AskMeridian() {
                       ))}
                     </ul>
                   </div>
-                ) : (
-                  <ol role="log" aria-live="polite" aria-label="Conversation" className="flex flex-col gap-4">
+                )}
+                <ol role="log" aria-live="polite" aria-label="Conversation" className="flex flex-col gap-4">
                     {messages.map((m) =>
                       m.role === "user" ? (
                         <li key={m.id} data-role="user" className="self-end m-text-body px-3 py-2" style={{ background: "var(--m-accent-soft)", color: "var(--m-ink)", borderRadius: "var(--m-radius-control)", maxWidth: "85%" }}>
@@ -235,8 +247,7 @@ export function AskMeridian() {
                         Reading the figures
                       </li>
                     )}
-                  </ol>
-                )}
+                </ol>
               </div>
 
               <form onSubmit={onSubmit} className="flex shrink-0 items-center gap-2 px-4 py-3" style={{ borderTop: "1px solid var(--m-line)" }}>

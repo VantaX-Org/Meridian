@@ -166,6 +166,8 @@ class Match:
     module: Optional[str] = None
     severity: Optional[str] = None
     question: str = ""
+    #: the page shows the current state, not one run
+    current: bool = False
 
 
 def match(question: str, module: Optional[str] = None) -> Match:
@@ -218,7 +220,7 @@ def match(question: str, module: Optional[str] = None) -> Match:
 # ── sources: the existing services, behind one small interface ───────────────
 
 class Sources(Protocol):
-    async def overview(self, vid: Optional[str], module: Optional[str]) -> Optional[dict]: ...
+    async def overview(self, vid: Optional[str], module: Optional[str], current: bool = False) -> Optional[dict]: ...
     async def rules(self, vid: Optional[str], module: Optional[str], severity: Optional[str],
                     limit: int) -> Optional[dict]: ...
     async def heatmap(self, vid: Optional[str]) -> Optional[dict]: ...
@@ -251,9 +253,15 @@ class DbSources:
                 return None
             raise
 
-    async def overview(self, vid: Optional[str], module: Optional[str]) -> Optional[dict]:
+    async def overview(self, vid: Optional[str], module: Optional[str], current: bool = False) -> Optional[dict]:
         from api.services import insights_aggregate as agg
 
+        if current:
+            from api.routes.insights import _current
+
+            out = await _current(self.db, self.tenant, agg.current_overview, None, module)
+            # a day-one tenant's current state is empty: no run to answer from
+            return out if (out.get("dqs") or {}).get("composite") is not None else None
         return await self._agg(agg.overview, vid, module)
 
     async def rules(self, vid: Optional[str], module: Optional[str], severity: Optional[str],
@@ -425,7 +433,7 @@ def _vid(payload: Optional[dict], fallback: Optional[str]) -> Optional[str]:
 # ── intents ──────────────────────────────────────────────────────────────────
 
 async def _score(src: Sources, vid: Optional[str], m: Match) -> dict:
-    ov = _need(await src.overview(vid, m.module))
+    ov = _need(await src.overview(vid, m.module, current=m.current))
     run = _vid(ov, vid)
     dqs = ov.get("dqs") or {}
     narrative = ov.get("narrative") or []
@@ -443,7 +451,7 @@ async def _score(src: Sources, vid: Optional[str], m: Match) -> dict:
         text += f" A critical failure caps it: {str(dqs['cap_reason']).rstrip('.')}."
         facts.append(fact(f"Capped: {dqs['cap_reason']}", "Score cap", _href("/insights", run)))
     data, chart = None, None
-    if not m.module:
+    if not m.module and not m.current:
         tr = await src.trends(run)
         runs = [r for r in (tr or {}).get("runs") or [] if r.get("composite") is not None]
         if len(runs) > 1:
@@ -904,9 +912,12 @@ _FAILED = "I could not work that out just now. Try again in a moment, or open In
 
 
 async def ask(question: str, version_id: Optional[str], module: Optional[str], src: Sources,
-              tenant_id: str) -> dict:
-    """Answer ``question`` for the run ``version_id`` (default the latest finished run). Never raises."""
+              tenant_id: str, current: bool = False) -> dict:
+    """Answer ``question`` for the run ``version_id`` (default the latest finished run). ``current``: the page shows
+    the current state, so the score is read across every object at its latest run, the number beside the panel.
+    Never raises."""
     m = match(question, module)
+    m.current = current and not version_id
     try:
         if m.intent == "help":
             return help_answer(version_id)

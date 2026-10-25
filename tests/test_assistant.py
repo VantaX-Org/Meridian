@@ -25,8 +25,8 @@ class FakeSources:
         self.empty = empty
         self.calls: list[tuple] = []
 
-    async def overview(self, vid, module):
-        self.calls.append(("overview", vid, module))
+    async def overview(self, vid, module, current=False):
+        self.calls.append(("overview", vid, module, current) if current else ("overview", vid, module))
         if self.empty:
             return None
         return {
@@ -133,8 +133,8 @@ def run(coro):
     return asyncio.run(coro)
 
 
-def ask(q, src=None, module=None, vid=None):
-    return run(a.ask(q, vid, module, src or FakeSources(), str(uuid.uuid4())))
+def ask(q, src=None, module=None, vid=None, current=False):
+    return run(a.ask(q, vid, module, src or FakeSources(), str(uuid.uuid4()), current=current))
 
 
 @pytest.fixture(autouse=True)
@@ -490,3 +490,26 @@ def test_route_rejects_empty_or_oversized_question(client, question):
 
 def test_route_rejects_bad_version_id(client):
     assert _post(client, {"question": "score", "version_id": "not-a-uuid"}).status_code == 422
+
+
+def test_score_reads_the_current_state_when_the_page_shows_it():
+    src = FakeSources()
+    out = ask("How has the score moved?", src=src, current=True)
+    _shape(out)
+    assert ("overview", None, None, True) in src.calls
+    # one run's trend line would contradict the current-state hero, so none is drawn
+    assert out["chart"] is None and not any(c[0] == "trends" for c in src.calls)
+
+
+def test_a_named_run_wins_over_the_current_state():
+    src = FakeSources()
+    ask("How has the score moved?", src=src, vid=RUN, current=True)
+    assert ("overview", RUN, None) in src.calls
+
+
+def test_route_passes_the_current_scope(client, monkeypatch):
+    src = FakeSources()
+    monkeypatch.setattr(a, "DbSources", lambda db, tenant: src)
+    assert _post(client, {"question": "How has the score moved?", "scope": "current"}).status_code == 200
+    assert ("overview", None, None, True) in src.calls
+    assert _post(client, {"question": "score", "scope": "everything"}).status_code == 422

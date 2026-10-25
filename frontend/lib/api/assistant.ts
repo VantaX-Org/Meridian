@@ -5,6 +5,8 @@ export interface AskRequest {
   question: string;
   version_id?: string;
   module?: string;
+  /** "current": score questions read the current state (every object at its latest run); ignored with `version_id`. */
+  scope?: "current";
 }
 
 export type AskIntent =
