@@ -555,11 +555,12 @@ export default function InboxPage() {
   const kindToggle = (
     <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ value: k.value, label: k.label, content: null }))} value={kind} onValueChange={setKind} />
   );
-  const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.overdue;
-  // Open is the server's total. Overdue has no server count for tasks (the SLA is worked out per row), so while only
-  // part of the queue is loaded it says which part it counts.
+  // Open and overdue are the server's totals; an older server sends no task overdue count, so the loaded rows are
+  // counted and the header says which part.
+  const serverOverdue = metricsQ.data?.overdue_count;
+  const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : serverOverdue ?? counts.overdue;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : queueTotal;
-  const overdueScope = !isExceptions && partial ? ` in the newest ${formatInt(all.length)}` : "";
+  const overdueScope = !isExceptions && partial && serverOverdue == null ? ` in the newest ${formatInt(all.length)}` : "";
   // Counts belong to the tasks and exceptions lists; the other tabs load their own and say only what they are for.
   const counted = kind === "task" || kind === "exception";
   const header = (

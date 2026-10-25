@@ -887,6 +887,8 @@ export interface StewardshipMetrics {
   items_by_status: Record<string, number>;
   avg_resolution_hours_by_type: Record<string, number>;
   backlog_total: number;
+  /** Waiting tasks past their due date (or created + SLA hours), across the whole queue. */
+  overdue_count?: number;
   sla_compliance_rate: number;
   ai_acceptance_rate: number | null;
   steward_breakdown: StewardBreakdown[] | null;

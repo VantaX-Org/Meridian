@@ -425,3 +425,14 @@ def test_ai_triage_separate_task_chain():
     path = Path("workers/tasks/populate_stewardship_queue.py")
     content = path.read_text()
     assert "triage_queue_items.delay" in content
+
+
+def test_metrics_count_overdue_over_the_whole_queue():
+    """The inbox header's overdue figure is the server's count over every waiting task, with the inbox's SLA rule
+    (due date, else created + SLA hours), not the rows a page happens to have loaded."""
+    from api.routes.stewardship import StewardshipMetrics
+
+    assert "overdue_count" in StewardshipMetrics.model_fields
+    src = Path("api/routes/stewardship.py").read_text()
+    assert "status IN ('open', 'in_progress', 'escalated')" in src
+    assert "COALESCE(due_at, created_at + make_interval(hours => sla_hours)) < now()" in src

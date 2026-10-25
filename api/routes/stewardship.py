@@ -93,6 +93,8 @@ class MetricsResponse(BaseModel):
     items_by_status: dict[str, int]
     avg_resolution_hours_by_type: dict[str, float]
     backlog_total: int
+    #: open, in-progress and escalated tasks past their due date (or created + SLA hours), as the inbox counts them
+    overdue_count: int = 0
     sla_compliance_rate: float
     ai_acceptance_rate: Optional[float] = None
     steward_breakdown: Optional[list[dict]] = None
@@ -273,6 +275,17 @@ async def get_stewardship_metrics(
     )
     backlog_total = result.scalar() or 0
 
+    # Overdue: the inbox's rule (lib slaOf), over every waiting task rather than the rows a page has loaded
+    result = await db.execute(
+        text("""
+            SELECT COUNT(*) FROM stewardship_queue
+            WHERE tenant_id = :tid AND status IN ('open', 'in_progress', 'escalated')
+              AND COALESCE(due_at, created_at + make_interval(hours => sla_hours)) < now()
+        """),
+        {"tid": tid},
+    )
+    overdue_count = result.scalar() or 0
+
     # Avg resolution time by type
     result = await db.execute(
         text("""
@@ -355,6 +368,7 @@ async def get_stewardship_metrics(
         items_by_status=items_by_status,
         avg_resolution_hours_by_type=avg_resolution,
         backlog_total=backlog_total,
+        overdue_count=overdue_count,
         sla_compliance_rate=sla_compliance,
         ai_acceptance_rate=ai_acceptance_rate,
         steward_breakdown=steward_breakdown,

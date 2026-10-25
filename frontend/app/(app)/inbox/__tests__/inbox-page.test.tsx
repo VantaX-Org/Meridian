@@ -270,6 +270,20 @@ describe("InboxPage workbench", () => {
     expect(screen.getByText("in the newest 1 loaded")).toBeInTheDocument();
   });
 
+  it("takes overdue from the server's count when it sends one", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("a", "material_master", { due_at: "2020-01-01T00:00:00Z" })] : [],
+      total: p?.status === "open" ? 450 : p?.status === "escalated" ? 50 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, overdue_count: 37 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    expect(await screen.findByText(/^500 open, 37 overdue\. /)).toBeInTheDocument();
+    expect(screen.queryByText(/in the newest/)).toBeNull();
+  });
+
   it("shows the selected exception with its severity and SLA", async () => {
     nav.qs = "kind=exception";
     nav.can = true;
