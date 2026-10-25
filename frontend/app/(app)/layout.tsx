@@ -29,7 +29,7 @@ import { reportClientError } from "@/lib/client-errors";
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
-  const { role } = useRole();
+  const { homeRole: role } = useRole();
   // A persona home can resolve to another entry (a steward's home is Fix work): each page is listed once,
   // and the dropped entry's key hint (Home's ⌘1) moves onto the one kept.
   const all = groups.flatMap((g) =>

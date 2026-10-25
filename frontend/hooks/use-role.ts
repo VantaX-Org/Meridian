@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/auth-context";
 import { usePermissionsContext } from "@/lib/permissions";
+import { homeRoleFrom } from "@/lib/persona";
 
 // Roles and permissions come from the backend (/api/v1/auth/me →
 // api/services/rbac.py). The frontend never keeps its own matrix, so UI
@@ -59,6 +60,8 @@ export function useRole() {
 
   return {
     role,
+    /** The role whose persona home the user lands on: a scoped-only grant (users.role stays viewer) decides it. */
+    homeRole: homeRoleFrom(role, fromGrants?.data?.roles.map((r) => r.key) ?? []),
     can,
     /** True while the grants are still loading inside the provider; gates should show a skeleton, not a refusal. */
     loading: fromGrants?.loading ?? false,

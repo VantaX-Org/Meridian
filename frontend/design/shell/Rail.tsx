@@ -93,7 +93,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
   const searchParams = useSearchParams();
   const groups = useVisibleNav();
   const navLoading = useNavLoading();
-  const { role } = useRole();
+  const { homeRole: role } = useRole();
   const moreRef = useRef<HTMLLIElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
