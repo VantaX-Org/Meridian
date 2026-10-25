@@ -67,6 +67,7 @@ async def test_get_exec_returns_report_for_latest_version(tenant_a_version, monk
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["version_id"] == version_id
+    assert body["latest_version_id"] == version_id
     # nothing is no-go, priced, owned or proven on this run: no sentence of zeros, the page shows its fallback
     assert body["narrative"] == ""
     assert isinstance(body["readiness_cells"], list)

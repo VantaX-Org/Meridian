@@ -16,6 +16,8 @@ import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason, trendSentence } from "@/lib/format";
 import { fixHref } from "@/lib/drill";
+import { reportFilename } from "@/lib/report-filename";
+import { runName } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
@@ -83,9 +85,11 @@ function RunOverview() {
     return m && d ? toneOfTier(m.tier[d]) : undefined;
   };
 
+  // Files are named by the run (and the object, for a workbook filtered to one), never its id.
+  const runLabel = current ? runName(current) : undefined;
   const exportOptions: ExportOption[] = run ? [
-    { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(run), `board_${run}.pdf`) },
-    { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), `workbook_${run}.xlsx`) },
+    { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(run), reportFilename("board", runLabel)) },
+    { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), reportFilename("workbook", [runLabel, module && formatModuleName(module)].filter(Boolean).join(", "))) },
   ] : [];
 
   const fixColumns: ColumnDef<RuleRow>[] = ruleColumns(run, true);

@@ -375,7 +375,8 @@ async def get_exec(
 
     ``scope=current`` (the scope of Home): the composite, cap and cap_reason come from the current state, every
     object at the latest complete run of its lineage (``_latest_version_ids``, as /overview?scope=current). The
-    readiness cells, impact rows and proven cost are per run, so they come from the newest of those runs."""
+    readiness cells, impact rows and proven cost are per run, so they come from the newest of those runs, whose id
+    is ``latest_version_id`` (``version_id`` stays null: the summary is not one run's)."""
     await _rls(db, tenant)
     current: Optional[dict] = None
     if scope == "current":
@@ -393,6 +394,7 @@ async def get_exec(
             # tenant. 200 with empty fields so the page renders its empty state.
             return {
                 "version_id": None,
+                "latest_version_id": None,
                 "scope": scope,
                 "composite": None, "cap": None, "cap_reason": None,
                 "narrative": "",
@@ -424,6 +426,9 @@ async def get_exec(
 
     return {
         "version_id": None if current else str(version_id),
+        # The run the readiness, impact and proven cost come from (the newest of the current state's runs under
+        # scope=current): the run a page builds its board pack, workbook and run data exports from.
+        "latest_version_id": str(version_id),
         "scope": scope,
         **_exec_score(dqs),
         "narrative": narrative,

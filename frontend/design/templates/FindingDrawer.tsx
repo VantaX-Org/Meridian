@@ -24,7 +24,6 @@ import { createBatch } from "@/lib/api/remediation";
 import { createException } from "@/lib/api/exceptions";
 import { useRole } from "@/hooks/use-role";
 import { getFindingImpact } from "@/lib/api/analytics";
-import { getCostModel } from "@/lib/api/settings";
 import { getConfigRootCause, type RootCauseType } from "@/lib/api/config-intelligence";
 import { queryKeys } from "@/lib/query-keys";
 import { apiErrorState } from "@/lib/error";
@@ -143,9 +142,6 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
     enabled: findingId !== null,
     retry: false,
   });
-  // Amounts print in the tenant's currency code (the cost model); without it the number stands alone.
-  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: findingId !== null, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
-  const currency = costModel.data?.currency;
 
   return (
     <Drawer open={findingId !== null} onOpenChange={(open) => { if (!open) onClose(); }} title="Finding" subtitle={findingQuery.data ? <Mono>{findingQuery.data.check_id}</Mono> : undefined}>
@@ -216,7 +212,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                   <ul className="flex flex-col gap-1 m-text-body">
                     {impactQuery.data.impacts.map((bucket) => (
                       <li key={bucket.category}>
-                        {labelOf(bucket.category)} puts {formatMoney(bucket.annual_risk_zar, currency)} a year at risk across {bucket.finding_count.toLocaleString()} finding{bucket.finding_count === 1 ? "" : "s"}.
+                        {labelOf(bucket.category)} puts {formatMoney(bucket.annual_risk_zar, bucket.currency)} a year at risk across {bucket.finding_count.toLocaleString()} finding{bucket.finding_count === 1 ? "" : "s"}.
                       </li>
                     ))}
                   </ul>

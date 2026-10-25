@@ -58,6 +58,16 @@ describe("charts onPointClick contract", () => {
   });
 });
 
+describe("Waterfall value format", () => {
+  it("reads every value through formatValue in its text alternative, and raw without one", () => {
+    const fmt = (n: number) => `ZAR ${n.toLocaleString("en-US")}`;
+    const { getByRole, rerender } = render(<Waterfall data={[{ x: "Invoice posting", y: 5672930 }]} label="At risk" formatValue={fmt} />);
+    expect(getByRole("img").getAttribute("aria-label")).toBe("At risk: Invoice posting ZAR 5,672,930");
+    rerender(<Waterfall data={[{ x: "Invoice posting", y: 5672930 }]} label="At risk" />);
+    expect(getByRole("img").getAttribute("aria-label")).toBe("At risk: Invoice posting 5672930");
+  });
+});
+
 describe("Waterfall", () => {
   it("stacks a transparent base series under the value series so bars float at their running total", () => {
     // ResponsiveContainer only measures once a real ResizeObserver exists (absent in jsdom)

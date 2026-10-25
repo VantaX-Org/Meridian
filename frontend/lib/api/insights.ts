@@ -199,6 +199,11 @@ export type ExecWaterfallPoint = ChartPoint & { l1?: string | null };
 export interface ExecResponse {
   /** Null for a day-one tenant, and for `scope=current` (the current state of every lineage, not one run). */
   version_id: string | null;
+  /**
+   * The run the readiness, impact and proven cost come from, and the one to export: `version_id`, or under
+   * `scope=current` the newest run of the current state. Null only for a day-one tenant.
+   */
+  latest_version_id?: string | null;
   /** "current" when the summary describes the current state across objects (api/routes/insights.py:get_exec). */
   scope?: "run" | "current";
   /** The DQS the summary describes: the run's composite, or the current-state composite. Null when nothing is scored. */

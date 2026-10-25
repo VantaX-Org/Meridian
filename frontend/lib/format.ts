@@ -329,6 +329,11 @@ export function labelOf(value: string | null | undefined): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** A config impact feature's display name: a machine id reads as words; a transaction code (MIGO) keeps its case. */
+export function featureLabel(feature: string): string {
+  return feature.includes("_") || feature === feature.toLowerCase() ? labelOf(feature) : feature;
+}
+
 const ERROR_LABELS: Record<string, string> = {
   pyrfc_not_installed: "SAP RFC library is not installed on the worker. Install pyrfc or use file import.",
 };
