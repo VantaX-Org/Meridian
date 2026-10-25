@@ -53,6 +53,43 @@ def _days_since_first(stamps: list) -> list[float]:
     return [(v - first) / 86400 for v in parsed]
 
 
+# Horizon (days ahead) → the history span in days it needs before it is projected at all.
+# About three times the fitted span at most: a line fitted on 3 days says little about day 90.
+FORECAST_MIN_SPAN_DAYS: dict[int, float] = {7: 0.0, 30: 10.0, 90: 30.0}
+
+
+def _prediction_interval(
+    days: list[float], scores: list[float], intercept: float, slope: float, x0: float, level: float = 0.95
+) -> tuple[float, float, float]:
+    """Point forecast at ``x0`` and its two-sided prediction interval for a simple linear fit.
+
+    ``ŷ ± t(level, n−2) · s · sqrt(1 + 1/n + (x0 − x̄)² / Sxx)``, with ``s`` the residual
+    standard error. All three values are clamped to the 0–100 score scale and rounded to
+    one decimal. Needs at least three points on at least two distinct days."""
+    from scipy.stats import t as student_t
+
+    x = np.asarray(days, dtype=float)
+    y = np.asarray(scores, dtype=float)
+    n = len(x)
+    residuals = y - (intercept + slope * x)
+    s = float(np.sqrt(np.sum(residuals**2) / (n - 2)))
+    sxx = float(np.sum((x - x.mean()) ** 2))
+    half = float(student_t.ppf(0.5 + level / 2, n - 2)) * s * float(np.sqrt(1 + 1 / n + (x0 - x.mean()) ** 2 / sxx))
+    point = intercept + slope * x0
+
+    def clamp(v: float) -> float:
+        return round(float(np.clip(v, 0, 100)), 1)
+
+    return clamp(point), clamp(point - half), clamp(point + half)
+
+
+def _interval_confidence(low: float | None, high: float | None) -> int:
+    """0–100: 100 minus the width in score points of a prediction interval (0 when unknown)."""
+    if low is None or high is None:
+        return 0
+    return int(round(max(0.0, min(100.0, 100.0 - (high - low)))))
+
+
 # ── Predictive Analytics ─────────────────────────────────────────────────────
 
 
@@ -60,7 +97,23 @@ class PredictiveAnalytics:
     """DQS forecasting and early-warning signals."""
 
     def forecast_dqs(self, dqs_history: list[dict]) -> list[dict]:
-        """Group by module_id, run linear regression, project future scores."""
+        """Per module: a least-squares line through the daily scores, projected 7, 30 and 90 days ahead.
+
+        Each horizon carries a 95% prediction interval from the fit residuals
+        (``forecast_{h}_low`` / ``forecast_{h}_high``, see ``_prediction_interval``).
+        A horizon further out than the history supports is ``None`` (with its bounds):
+        the 30-day point needs ``span_days >= 10`` and the 90-day point ``span_days >= 30``
+        (``FORECAST_MIN_SPAN_DAYS``), so a line is never extended more than about three
+        times the span it was fitted on; the 7-day point needs only the three days every
+        forecast needs.
+
+        ``confidence`` (0–100) is ``100`` minus the width in score points of the 7-day
+        interval (``_interval_confidence``): 100 when the scores sit on the line, 0 when
+        the range spans the whole scale. It is not a probability.
+
+        ``history`` lists the fitted points as ``{"day", "score"}`` with ``day`` counted
+        back from the latest point (0 = now, negative = earlier), so a chart can draw the
+        history and the projection on one days axis."""
         modules: dict[str, list[dict]] = {}
         for entry in dqs_history:
             modules.setdefault(entry["module_id"], []).append(entry)
@@ -89,9 +142,7 @@ class PredictiveAnalytics:
 
             current_score = scores[-1]
             last_day = days[-1]
-            forecast_7d = float(np.clip(model.predict([[last_day + 7]])[0], 0, 100))
-            forecast_30d = float(np.clip(model.predict([[last_day + 30]])[0], 0, 100))
-            forecast_90d = float(np.clip(model.predict([[last_day + 90]])[0], 0, 100))
+            span_days = round(days[-1] - days[0], 1)
 
             if slope > 0.1:
                 trend = "improving"
@@ -102,7 +153,14 @@ class PredictiveAnalytics:
             else:
                 trend = "stable"
 
-            confidence = min(95, 50 + len(history) * 2)
+            horizons: dict[str, float | None] = {}
+            for h, min_span in FORECAST_MIN_SPAN_DAYS.items():
+                key = f"forecast_{h}d"
+                if span_days < min_span:
+                    horizons[key] = horizons[f"{key}_low"] = horizons[f"{key}_high"] = None
+                    continue
+                point, low, high = _prediction_interval(days, scores, float(model.intercept_), slope, last_day + h)
+                horizons[key], horizons[f"{key}_low"], horizons[f"{key}_high"] = point, low, high
 
             # Identify contributing factors from dimension trends
             contributing_factors = self._identify_factors(history)
@@ -111,13 +169,14 @@ class PredictiveAnalytics:
                 {
                     "module_id": module_id,
                     "current_score": current_score,
-                    "forecast_7d": round(forecast_7d, 1),
-                    "forecast_30d": round(forecast_30d, 1),
-                    "forecast_90d": round(forecast_90d, 1),
+                    **horizons,
                     "trend": trend,
-                    "confidence": confidence,
+                    "confidence": _interval_confidence(horizons["forecast_7d_low"], horizons["forecast_7d_high"]),
                     "points": len(history),
-                    "span_days": round(days[-1] - days[0], 1),
+                    "span_days": span_days,
+                    "history": [
+                        {"day": round(d - last_day, 2), "score": round(s, 1)} for d, s in zip(days, scores)
+                    ],
                     "contributing_factors": contributing_factors,
                 }
             )
@@ -177,11 +236,11 @@ class PredictiveAnalytics:
             f7 = fc["forecast_7d"]
             f30 = fc["forecast_30d"]
 
-            if current < threshold or f7 < threshold:
+            if current < threshold or (f7 is not None and f7 < threshold):
                 signal = "red"
                 message = f"{module_id} DQS is below threshold ({threshold})"
                 action = "Immediate remediation required — review critical findings"
-            elif f30 < threshold:
+            elif f30 is not None and f30 < threshold:
                 signal = "amber"
                 message = f"{module_id} DQS projected to drop below {threshold} within 30 days"
                 action = "Schedule data quality review within the next sprint"

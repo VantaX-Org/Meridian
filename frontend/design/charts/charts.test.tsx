@@ -6,7 +6,7 @@ import { Pareto } from "./Pareto";
 import { Bar, categoryAxisWidth } from "./Bar";
 import { Graph, GraphLegend } from "./Graph";
 import { ChartLegend, isolatedOpacity } from "./Legend";
-import { Line, lastTickMargin, pointAtRow } from "./Line";
+import { Line, isolationKey, lastTickMargin, lineRows, pointAtRow } from "./Line";
 import { Radar, RADAR_MIN_WIDTH } from "./Radar";
 import { Sparkline } from "./Sparkline";
 import { Waterfall } from "./Waterfall";
@@ -264,6 +264,51 @@ describe("run-keyed line charts and axis sizing", () => {
   it("Line in multi-series mode prefixes each labelled point with its series name", () => {
     render(<Line data={[]} series={[{ name: "Completeness", data: [{ x: "r1", label: "2 Oct 2026", y: 90 }] }]} label="Dimensions" />);
     expect(screen.getByRole("img", { name: "Dimensions: Completeness 2 Oct 2026 90" })).toBeInTheDocument();
+  });
+
+  it("lineRows keys each series and its band by x, and sorts a numeric axis", () => {
+    const rows = lineRows(
+      [
+        { name: "A", data: [{ x: 7, y: 70 }, { x: -3, y: 76 }, { x: 0, y: 72 }], band: [{ x: 0, low: 72, high: 72 }, { x: 7, low: 66, high: 75 }] },
+        { name: "B", data: [{ x: -1, y: 90 }] },
+      ],
+      [{ x: 30 }],
+      true,
+    );
+    expect(rows.map((r) => r.x)).toEqual([-3, -1, 0, 7, 30]);
+    expect(rows.find((r) => r.x === 7)).toEqual({ x: 7, s0: 70, b0: [66, 75] });
+    expect(rows.find((r) => r.x === -1)).toEqual({ x: -1, s1: 90 });
+    // a category axis keeps the input order, as before
+    expect(lineRows([{ name: "A", data: [{ x: "r2", y: 1 }, { x: "r1", y: 2 }] }]).map((r) => r.x)).toEqual(["r2", "r1"]);
+  });
+
+  it("isolationKey follows the caller's highlight until the viewer picks from the legend", () => {
+    const lines = [{ name: "A", data: [] }, { name: "B", data: [] }];
+    expect(isolationKey(lines, undefined, "B")).toBe("1");
+    expect(isolationKey(lines, undefined, undefined)).toBeNull();
+    expect(isolationKey(lines, undefined, "missing")).toBeNull();
+    expect(isolationKey(lines, "0", "B")).toBe("0");
+    expect(isolationKey(lines, null, "B")).toBeNull();
+  });
+
+  it("Line on a numeric axis with a band and a highlight renders without changing its text alternative", () => {
+    render(
+      <Line
+        data={[]}
+        numericX
+        highlight="B"
+        xDomain={[{ x: 0, label: "Today" }, { x: 7, label: "In 7 days" }]}
+        series={[
+          { name: "A", data: [{ x: 0, y: 80, label: "Today" }, { x: 7, y: 81, label: "In 7 days" }] },
+          { name: "B", data: [{ x: 0, y: 70, label: "Today" }, { x: 7, y: 68, label: "In 7 days" }], band: [{ x: 0, low: 70, high: 70 }, { x: 7, low: 62, high: 74 }] },
+        ]}
+        label="Forecast"
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Forecast: A Today 80, A In 7 days 81, B Today 70, B In 7 days 68" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "B" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "B" }));
+    expect(screen.getByRole("button", { name: "B" })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("Line accepts a shared x domain so sibling charts line up", () => {

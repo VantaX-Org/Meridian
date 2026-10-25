@@ -5,14 +5,24 @@ import type { Finding } from "@/types/api";
 export interface DqsForecast {
   module_id: string;
   current_score: number;
-  forecast_7d: number;
-  forecast_30d: number;
-  forecast_90d: number;
+  /** Each horizon is null when the history is too short to project that far: 30 days needs a 10-day span, 90 days a 30-day span. */
+  forecast_7d: number | null;
+  forecast_30d: number | null;
+  forecast_90d: number | null;
+  /** The 95% prediction interval of each horizon, from the fit residuals; null with its point. Optional on older APIs. */
+  forecast_7d_low?: number | null;
+  forecast_7d_high?: number | null;
+  forecast_30d_low?: number | null;
+  forecast_30d_high?: number | null;
+  forecast_90d_low?: number | null;
+  forecast_90d_high?: number | null;
   trend: "improving" | "stable" | "declining" | "critical";
-  /** 50–95: a heuristic that grows with the number of runs, not a statistical interval. */
+  /** 0–100: 100 minus the width in points of the 7-day interval. Not a probability; show the range instead. */
   confidence: number;
   points: number;
   span_days: number;
+  /** The fitted daily scores, `day` counted back from the latest (0 = now). Optional on older APIs. */
+  history?: { day: number; score: number }[];
   contributing_factors: string[];
 }
 
