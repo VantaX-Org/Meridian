@@ -14,7 +14,8 @@ Shape of a job::
      stage, stages: [{id, label, status}],          # status queued|running|done|failed|skipped
      percent, rows_done, rows_total, message,
      tables: [{table, status, rows, expected, ...}],  # extraction: one row per SAP table
-     error, result, started_at, updated_at, finished_at}
+     error, result, started_at, updated_at, finished_at,
+     retry: {via, body}}                              # extraction: its start request, for POST /jobs/{id}/retry
 
 ``kind`` is one of extraction, config_sync, analysis, upload, simulation. ``status`` is
 queued, running, completed, failed.

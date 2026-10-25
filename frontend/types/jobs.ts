@@ -45,6 +45,8 @@ export interface Job {
   touches?: string[];
   /** process_discovery: the queued process_discovery_runs ids this job drives. */
   run_ids?: string[];
+  /** extraction: the start request its route recorded; present means POST /jobs/{id}/retry can run it again. */
+  retry?: { via: string; body: Record<string, unknown> };
 }
 
 export interface JobListResponse {

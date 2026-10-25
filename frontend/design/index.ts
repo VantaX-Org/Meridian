@@ -80,6 +80,7 @@ export * from "./shell/Rail";
 export * from "./shell/TopBar";
 export * from "./shell/Breadcrumb";
 export * from "./shell/JobTray";
+export * from "./shell/RetryJob";
 export * from "./shell/NotificationBell";
 export * from "./shell/CommandPalette";
 export * from "./shell/useDrill";

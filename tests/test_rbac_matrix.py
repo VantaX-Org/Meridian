@@ -15,6 +15,9 @@ _UNGUARDED_OK = {
     ("notifications.py", "/notifications/read-all"),
     ("preferences.py", "/me/preferences"),
     ("me_notifications.py", "/me/notifications/test"),
+    # router-wide "view", then in the handler require_scope with the permission of the job kind's start endpoint
+    # (the kind is only known once the job is read); pinned by tests/test_jobs_retry.py
+    ("jobs.py", "/{job_id}/retry"),
 }
 
 

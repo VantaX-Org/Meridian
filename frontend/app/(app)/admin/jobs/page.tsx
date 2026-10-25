@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, PageHeader, Status, asyncStateOf } from "@/design";
+import { Button, DataTable, ExplorerPage, PageHeader, RetryJobButton, Status, asyncStateOf, retryAction } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { getJobs } from "@/lib/api/jobs";
 import { formatDate, labelOf } from "@/lib/format";
@@ -28,8 +28,9 @@ function jobHref(j: Job): string {
   if (j.version_id) return `/runs/${j.version_id}`;
   return JOB_HREF[j.kind] ?? "/runs";
 }
-/** There is no job retry endpoint: a failed extraction is started again from its system's Extract drawer. */
-const retryHref = (j: Job): string | null => (j.status === "failed" && j.kind === "extraction" && j.system_id ? `/systems/${j.system_id}?extract=1` : null);
+/** A failed extraction the retry endpoint cannot repeat (it carries no start request) is started again from its system's Extract drawer. */
+const extractHref = (j: Job): string | null =>
+  j.status === "failed" && j.kind === "extraction" && j.system_id && !retryAction(j) ? `/systems/${j.system_id}?extract=1` : null;
 
 const columns: ColumnDef<Job>[] = [
   { accessorKey: "label", header: "Job" },
@@ -40,11 +41,11 @@ const columns: ColumnDef<Job>[] = [
   { id: "end", header: "Finished", cell: ({ row }) => (row.original.finished_at ? when(row.original.finished_at) : "—") },
   { id: "msg", header: "Detail", cell: ({ row }) => row.original.error ?? row.original.message ?? "—" },
   actionColumn((j) => {
-    const again = retryHref(j);
+    const again = extractHref(j);
     return (
-      <span className="inline-flex gap-3">
+      <span className="inline-flex items-center gap-3">
         <RowLink href={jobHref(j)} label={`Open ${j.label}`}>Open</RowLink>
-        {again ? <RowLink href={again} label={`Extract ${j.label} again`}>Extract again</RowLink> : null}
+        {again ? <RowLink href={again} label={`Extract ${j.label} again`}>Extract again</RowLink> : <RetryJobButton job={j} />}
       </span>
     );
   }),

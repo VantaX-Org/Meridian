@@ -1,9 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, act } from "@testing-library/react";
+import { fireEvent, render, screen, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { JobTray, jobHref } from "./JobTray";
 import { touchedPredicate } from "../../hooks/use-jobs";
-import { getJobs } from "@/lib/api/jobs";
+import { getJobs, retryJob } from "@/lib/api/jobs";
+import { retryAction, retrySentence } from "./RetryJob";
+import { toast } from "./Toaster";
 import type { Job } from "@/types/jobs";
 
 let capturedOnJob: ((job: Job) => void) | null = null;
@@ -28,8 +30,15 @@ const completedJob: Job = {
   touches: ["run"],
 };
 
+let perms = new Set<string>();
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.has(a) }) }));
+vi.mock("@/lib/api/connectivity", () => ({
+  getSystems: vi.fn().mockResolvedValue([{ id: "s-1", name: "ECC PRD" }]),
+}));
+
 vi.mock("@/lib/api/jobs", () => ({
   getJobs: vi.fn().mockResolvedValue([]),
+  retryJob: vi.fn().mockResolvedValue({ job_id: "dl-2", status: "queued" }),
   streamJobs: vi.fn((onJob: (job: Job) => void) => {
     capturedOnJob = onJob;
     return () => {};
@@ -49,6 +58,7 @@ describe("JobTray", () => {
   beforeEach(() => {
     client = new QueryClient();
     capturedOnJob = null;
+    perms = new Set();
   });
 
   it("invalidates only the query keys named in a finished job's touches", () => {
@@ -88,6 +98,44 @@ describe("JobTray", () => {
     expect(status).toHaveAttribute("data-status", "lifecycle");
     expect(screen.getByTestId("job-error")).toHaveTextContent("RFC_COMMUNICATION_FAILURE on BUT000");
     expect(screen.getByRole("link", { name: "Open Analysis" })).toHaveAttribute("href", "/runs/v-9");
+  });
+
+  const failedDownload: Job = {
+    ...completedJob, id: "dl-1", kind: "extraction", status: "failed", label: "material_master", system_id: "s-1",
+    modules: ["material_master"], retry: { via: "downloads", body: { objects: ["material_master"] } },
+  };
+
+  it("retries a failed download after confirming what runs again, and says it was queued", async () => {
+    perms = new Set(["trigger_sync"]);
+    vi.mocked(getJobs).mockResolvedValueOnce([failedDownload]);
+    const success = vi.spyOn(toast, "success");
+    renderWithClient(client);
+    fireEvent.click(screen.getByLabelText("Jobs"));
+    fireEvent.click(await screen.findByRole("button", { name: "Retry material_master" }));
+    expect(await screen.findByText("Extract material master from ECC PRD again")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run again" }));
+    await waitFor(() => expect(retryJob).toHaveBeenCalledWith("dl-1"));
+    await waitFor(() => expect(success).toHaveBeenCalledWith("Job queued", { description: "Extract material master from ECC PRD again" }));
+  });
+
+  it("offers no Retry without the start permission", async () => {
+    perms = new Set(["analyse"]);
+    vi.mocked(getJobs).mockResolvedValueOnce([failedDownload]);
+    renderWithClient(client);
+    fireEvent.click(screen.getByLabelText("Jobs"));
+    await screen.findByText("Failed");
+    expect(screen.queryByRole("button", { name: /^Retry/ })).toBeNull();
+  });
+
+  it("retries only failed jobs of kinds whose start can run again", () => {
+    expect(retryAction(failedDownload)).toBe("trigger_sync");
+    expect(retryAction({ ...failedDownload, retry: undefined })).toBeNull();
+    expect(retryAction({ ...failedDownload, status: "completed" })).toBeNull();
+    expect(retryAction({ ...failedDownload, kind: "upload" })).toBeNull();
+    expect(retryAction({ ...failedDownload, kind: "analysis", version_id: "v-1" })).toBe("analyse");
+    expect(retryAction({ ...failedDownload, kind: "process_discovery" })).toBe("run_process_discovery");
+    expect(retrySentence({ ...failedDownload, modules: ["fi_gl", "business_partner"] }, undefined))
+      .toBe("Extract FI general ledger and business partner from its system again");
   });
 
   it("links a discovery job to its discovery run and a system job to its system", () => {

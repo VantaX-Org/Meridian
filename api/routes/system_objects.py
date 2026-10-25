@@ -128,7 +128,8 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
     enforce_licensed_modules(request, body.objects)
     version_id = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", body.label or ", ".join(body.objects),
-                   status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id)
+                   status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id,
+                   retry={"via": "downloads", "body": body.model_dump(mode="json")})
     run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
                          scope, body.analyse, body.label, version_id)
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "objects": body.objects,
