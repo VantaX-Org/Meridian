@@ -19,11 +19,12 @@ import { Notice } from "../primitives/Notice";
 import { IconArrowUp, IconClose } from "../icons";
 import { MeridianMark } from "../icons/Mark";
 
-/** Shown on an empty panel: six of the questions the API lists when it has no answer (api/services/assistant.py EXAMPLES). */
+/** Shown on an empty panel: six questions the API answers from your figures (api/services/assistant.py intents).
+ * The third names the rule on screen when there is one (`askSuggestions`). */
 export const ASK_SUGGESTIONS = [
   "How has the score moved?",
   "Which objects are weakest?",
-  "How many records fail MM045?",
+  "What are the top failing rules?",
   "What is the value at risk?",
   "When will the open records be fixed?",
   "What will the score be in 30 days?",
@@ -48,6 +49,14 @@ export function pageRun(pathname: string | null, run: string | null | undefined)
 export function pageModule(pathname: string | null, module: string | null | undefined): string | undefined {
   const m = /^\/objects\/([^/]+)/.exec(pathname ?? "");
   return (m ? decodeURIComponent(m[1]) : module) || undefined;
+}
+
+/** The suggestions for this page: a rule on screen (`/objects/<o>/rules/<check>` or `?check=`) is asked about by its id. */
+export function askSuggestions(pathname: string | null, check: string | null | undefined): readonly string[] {
+  const m = /^\/objects\/[^/]+\/rules\/([^/]+)/.exec(pathname ?? "");
+  const rule = m ? decodeURIComponent(m[1]) : check;
+  if (!rule) return ASK_SUGGESTIONS;
+  return ASK_SUGGESTIONS.map((q, i) => (i === 2 ? `How many records fail ${rule}?` : q));
 }
 
 /** Only in-app routes are followed: an answer never sends the user off the customer's own host. */
@@ -223,7 +232,7 @@ export function AskMeridian() {
                   <div className="flex flex-col gap-2">
                     <p className="m-text-meta m-ink-3">Try one of these</p>
                     <ul className="flex flex-col items-start gap-2">
-                      {ASK_SUGGESTIONS.map((q) => (
+                      {askSuggestions(pathname, search?.get("check")).map((q) => (
                         <li key={q}>
                           <Button variant="secondary" size="sm" onClick={() => send(q)}>{q}</Button>
                         </li>

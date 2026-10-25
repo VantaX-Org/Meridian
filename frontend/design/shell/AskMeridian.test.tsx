@@ -14,7 +14,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-import { ASK_SUGGESTIONS, AskMeridian, pageModule, pageRun } from "./AskMeridian";
+import { ASK_SUGGESTIONS, AskMeridian, askSuggestions, pageModule, pageRun } from "./AskMeridian";
 
 const answer = (over: Partial<AskAnswer> = {}): AskAnswer => ({
   answer: "The weakest objects are Material master at 61.0 and Business partner at 80.5.",
@@ -63,7 +63,7 @@ describe("AskMeridian", () => {
     expect(await screen.findByRole("dialog", { name: "Ask Meridian" })).toBeInTheDocument();
     for (const q of ASK_SUGGESTIONS) expect(screen.getByRole("button", { name: q })).toBeInTheDocument();
     expect(ASK_SUGGESTIONS).toHaveLength(6);
-    for (const q of ["How many records fail MM045?", "When will the open records be fixed?", "What is the value at risk?", "What will the score be in 30 days?"]) {
+    for (const q of ["What are the top failing rules?", "When will the open records be fixed?", "What is the value at risk?", "What will the score be in 30 days?"]) {
       expect(ASK_SUGGESTIONS).toContain(q);
     }
     await waitFor(() => expect(screen.getByLabelText("Your question")).toHaveFocus());
@@ -239,5 +239,13 @@ describe("the run Ask Meridian answers about", () => {
     expect(await screen.findByRole("log", { name: "Conversation" })).toBeInTheDocument();
     expect(pageModule("/insights", "fi_gl")).toBe("fi_gl");
     expect(pageModule("/objects/bp/records/1", null)).toBe("bp");
+  });
+});
+
+describe("suggestions for the page", () => {
+  it("asks about the rule on screen, else the top failing rules", () => {
+    expect(askSuggestions("/objects/material_master/rules/MM045", null)[2]).toBe("How many records fail MM045?");
+    expect(askSuggestions("/fix", "BP010")[2]).toBe("How many records fail BP010?");
+    expect(askSuggestions("/home/lead", null)[2]).toBe("What are the top failing rules?");
   });
 });
