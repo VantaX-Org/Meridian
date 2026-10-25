@@ -76,7 +76,7 @@ export default function AdminUsersPage() {
       {tabRaw === "audit" ? <EmptyState variant="inline" title="The audit log has its own page" action={<Button render={<Link href="/admin/audit">Open the audit log</Link>} />} /> : null}
       {tabRaw === "roles" ? <EmptyState variant="inline" title="Roles are managed under Roles and access" action={<Button render={<Link href="/admin/roles">Open roles and access</Link>} />} /> : null}
       <p className="m-text-body m-ink-3">
-        What each role may do, and roles granted for one system or object, are set under <Link href="/admin/roles" className="m-ink-accent hover:underline">Roles and access</Link>.
+        What each role may do, and roles granted for one system or object, are set under <Link href="/admin/roles" className="m-ink-accent underline underline-offset-2">Roles and access</Link>.
       </p>
       <UsersView invite={invite} setInvite={setInvite} />
     </div>

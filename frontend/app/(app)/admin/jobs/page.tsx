@@ -108,7 +108,7 @@ export default function JobsPage() {
       header={
         <PageHeader
           title="Jobs"
-          meta={<>Every extraction, analysis, upload and simulation that ran, newest first. Times are in the tenant time zone, <Link href={TENANT_TIMEZONE_HREF} className="m-ink-accent hover:underline">{tz.replace(/_/g, " ")}</Link>. Expand a failed job to read why it stopped and what to do next</>}
+          meta={<>Every extraction, analysis, upload and simulation that ran, newest first. Times are in the tenant time zone, <Link href={TENANT_TIMEZONE_HREF} className="m-ink-accent underline underline-offset-2">{tz.replace(/_/g, " ")}</Link>. Expand a failed job to read why it stopped and what to do next</>}
         />
       }
       filterBar={jobs.length ? (

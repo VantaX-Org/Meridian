@@ -121,7 +121,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
         <p className="m-text-body m-ink-2">
           Each schedule downloads the object again and re-runs its checks, so trends and alerts see every run.
           Schedules run and times are shown in the tenant time zone,{" "}
-          <Link href={TENANT_TIMEZONE_HREF} className="m-ink-accent underline-offset-2 hover:underline">{tz.replace(/_/g, " ")}</Link>; due runs start within 5 minutes.
+          <Link href={TENANT_TIMEZONE_HREF} className="m-ink-accent underline underline-offset-2">{tz.replace(/_/g, " ")}</Link>; due runs start within 5 minutes.
           &ldquo;Changes only&rdquo; reads just the records SAP changed since the last download, with a full download at least once a week.
         </p>
         {profilesQ.isLoading ? <Skeleton height={120} /> : profilesQ.isError ? (
