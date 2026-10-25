@@ -132,7 +132,8 @@ _TOTAL_CACHE_MAX = 64
 
 
 def _total_key(where: str, params: dict) -> tuple:
-    return (where, tuple(sorted((k, str(v)) for k, v in params.items() if k != "tid")))
+    # Every bound value is part of the key, the tenant included: a total cached for one tenant is never served to another.
+    return (where, tuple(sorted((k, str(v)) for k, v in params.items())))
 
 
 def _cached_queue_total(where: str, params: dict) -> Optional[int]:
