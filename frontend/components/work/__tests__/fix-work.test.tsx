@@ -121,6 +121,15 @@ describe("FixWork", () => {
     expect(await screen.findByText(/Your role can view this record/)).toBeInTheDocument();
   });
 
+  it("takes the drill filters from the URL: object, person and key part", async () => {
+    search = new URLSearchParams("module=material_master&assignee=u-7&part=WERKS%3D1000");
+    renderWithQuery(<FixWork />);
+    await screen.findAllByTestId("work-record");
+    expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ module: "material_master", assigned: "u-7", part: "WERKS=1000" }));
+    expect(screen.getByText("to one person")).toBeInTheDocument();
+    expect(screen.getByText("WERKS=1000")).toBeInTheDocument();
+  });
+
   it("says when filters match nothing and clears them", async () => {
     search = new URLSearchParams("sev=low");
     vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 0, total_capped: false, next: null, items: [] });

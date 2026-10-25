@@ -1,7 +1,7 @@
 // One run for every screen: a ?run= is kept, carried onto the next screen, and cleared by going back to latest.
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { RUN_KEY, RunCarrier, readSelectedRun } from "../global-run";
+import { OBJECT_KEY, RUN_KEY, RunCarrier, readSelectedObject, readSelectedRun } from "../global-run";
 
 const replace = vi.fn();
 let pathname = "/objects";
@@ -46,5 +46,28 @@ describe("RunCarrier", () => {
     render(<RunCarrier />);
     expect(readSelectedRun()).toBe("r1");
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("carries the chosen object along with the run", () => {
+    window.localStorage.setItem(RUN_KEY, "r1");
+    window.localStorage.setItem(OBJECT_KEY, "material_master");
+    at("/insights/progress");
+    render(<RunCarrier />);
+    expect(replace).toHaveBeenCalledWith("/insights/progress?run=r1&module=material_master", { scroll: false });
+  });
+
+  it("makes an object page's object the choice, without adding it to the URL", () => {
+    at("/objects/accounts_payable", "run=r1");
+    render(<RunCarrier />);
+    expect(readSelectedObject()).toBe("accounts_payable");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("clears the object when Every object is chosen on the same screen", () => {
+    at("/fix", "module=material_master");
+    const { rerender } = render(<RunCarrier />);
+    at("/fix");
+    rerender(<RunCarrier />);
+    expect(readSelectedObject()).toBeNull();
   });
 });

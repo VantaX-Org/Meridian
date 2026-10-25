@@ -42,13 +42,14 @@ function useFilters() {
   const get = (k: string) => search?.get(k) ?? "";
   const filter: RecordFilter = {
     version_id: get("run") || undefined,
-    module: get("object") || undefined,
+    module: get("module") || get("object") || undefined,
     check_id: get("check") || undefined,
     severity: get("sev") || undefined,
     status: get("st") || "open",
-    assigned: get("mine") ? "me" : undefined,
+    assigned: get("mine") ? "me" : get("assignee") || undefined,
     proposed: get("sugg") ? true : undefined,
     due: get("due") === "overdue" ? "overdue" : undefined,
+    part: get("part") || undefined,
     q: get("q") || undefined,
   };
   const set = useCallback((patch: Record<string, string | null>) => {
@@ -272,10 +273,11 @@ export function FixWork() {
   }
   const t = s.totals;
   const chips: { label: string; value: string; key: string }[] = [
-    filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "object" } : null,
+    filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "module" } : null,
     filter.check_id ? { label: "Issue", value: activeGroup?.message ?? filter.check_id, key: "check" } : null,
     filter.severity ? { label: "Severity", value: filter.severity, key: "sev" } : null,
-    filter.assigned ? { label: "Assigned", value: "to me", key: "mine" } : null,
+    filter.assigned ? { label: "Assigned", value: filter.assigned === "me" ? "to me" : "to one person", key: filter.assigned === "me" ? "mine" : "assignee" } : null,
+    filter.part ? { label: "Where", value: filter.part, key: "part" } : null,
     filter.proposed ? { label: "Has", value: "a suggested value", key: "sugg" } : null,
     filter.due ? { label: "Due", value: "overdue", key: "due" } : null,
     filter.q ? { label: "Search", value: filter.q, key: "q" } : null,
@@ -291,7 +293,7 @@ export function FixWork() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Select label="Object" value={filter.module ?? "all"} onValueChange={(v) => set({ object: v === "all" ? null : v, check: null, record: null })}
+        <Select label="Object" value={filter.module ?? "all"} onValueChange={(v) => set({ module: v === "all" ? null : v, object: null, check: null, record: null })}
           options={[{ value: "all", label: "Every object" }, ...s.objects.map((o) => ({ value: o.module, label: `${formatModuleName(o.module)} (${o.open.toLocaleString()})` }))]} />
         <Select label="Severity" value={filter.severity ?? "all"} onValueChange={(v) => set({ sev: v === "all" ? null : v, record: null })}
           options={[{ value: "all", label: "Every severity" }, ...SEVERITIES.map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }))]} />
@@ -315,8 +317,8 @@ export function FixWork() {
       </div>
       {chips.length ? (
         <div className="flex flex-wrap items-center gap-2">
-          {chips.map((c) => <FilterChip key={c.key} label={c.label} value={c.value} onRemove={() => { set({ [c.key]: null, record: null }); if (c.key === "q") setQ(""); }} />)}
-          <Button variant="ghost" size="sm" onClick={() => { setQ(""); set({ object: null, check: null, sev: null, mine: null, sugg: null, due: null, q: null, st: null, record: null }); }}>Clear filters</Button>
+          {chips.map((c) => <FilterChip key={c.key} label={c.label} value={c.value} onRemove={() => { set({ [c.key]: null, ...(c.key === "module" ? { object: null } : {}), record: null }); if (c.key === "q") setQ(""); }} />)}
+          <Button variant="ghost" size="sm" onClick={() => { setQ(""); set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, part: null, sugg: null, due: null, q: null, st: null, record: null }); }}>Clear filters</Button>
         </div>
       ) : null}
 
@@ -344,7 +346,7 @@ export function FixWork() {
             : items.length === 0 ? (
               <EmptyState variant="inline" title={chips.length || filter.status !== "open" ? "No records match these filters" : "Nothing left to fix"}
                 detail={chips.length ? "Clear a filter to see more." : "Every failing record in this run has a decision."}
-                action={chips.length ? <Button variant="secondary" onClick={() => set({ object: null, check: null, sev: null, mine: null, sugg: null, due: null, q: null })}>Clear filters</Button> : undefined} />
+                action={chips.length ? <Button variant="secondary" onClick={() => set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, part: null, sugg: null, due: null, q: null })}>Clear filters</Button> : undefined} />
             ) : (
               <>
                 <ul className="max-h-[70vh] overflow-auto" aria-label="Records to fix">

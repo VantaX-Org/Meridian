@@ -13,6 +13,7 @@ Every decision is the existing machinery: a value goes into the user's draft fix
 """
 import base64
 import json
+import re
 import uuid
 from typing import Literal, Optional
 
@@ -137,7 +138,7 @@ async def groups(
 
 
 def _records_where(tenant: Tenant, vid: str, request: Request, module, check_id, severity, status, assigned,
-                   proposed, q, due=None) -> tuple[list[str], dict]:
+                   proposed, q, due=None, part=None) -> tuple[list[str], dict]:
     where, p = ["w.tenant_id = :t", "w.version_id = CAST(:v AS uuid)"], {"t": str(tenant.id), "v": vid}
     if module:
         where.append("w.module = :m")
@@ -164,6 +165,12 @@ def _records_where(tenant: Tenant, vid: str, request: Request, module, check_id,
         p["a"] = assigned
     if proposed:
         where.append("w.proposed > 0")
+    if part:  # one part of the key, e.g. BUKRS=1000: the records of one company code, plant, sales org
+        field, _, value = part.partition("=")
+        if not field or not value or not field.replace("_", "").isalnum():
+            raise HTTPException(status_code=422, detail="part must look like FIELD=VALUE, e.g. BUKRS=1000")
+        where.append("w.record_key ~ :part")
+        p["part"] = rf"(^|\|){field.upper()}=0*{re.escape(value.lstrip('0') or '0')}($|\|)"
     if due == "overdue":
         where.append("w.due_at < now()")
     elif due == "today":
@@ -191,6 +198,7 @@ async def records(
     assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
     proposed: Optional[bool] = None,
     due: Optional[str] = Query(None, pattern="^(overdue|today)$", description="SLA: past due, or due within a day"),
+    part: Optional[str] = Query(None, max_length=200, description="a key part, FIELD=VALUE (BUKRS=1000)"),
     q: Optional[str] = Query(None, max_length=200),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
@@ -201,7 +209,7 @@ async def records(
     """Failing records of the run, worst first, a page at a time (keyset: no deep OFFSET at millions)."""
     await _rls(db, tenant)
     vid, _ = await _run(db, tenant, version_id)
-    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due)
+    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due, part)
     page_where = list(where)
     if after:
         rank, mod, key = _uncursor(after)
@@ -704,6 +712,7 @@ async def export_sheet(
     assigned: Optional[str] = None,
     proposed: Optional[bool] = None,
     due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    part: Optional[str] = Query(None, max_length=200),
     q: Optional[str] = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -715,7 +724,7 @@ async def export_sheet(
 
     await _rls(db, tenant)
     vid, _ = await _run(db, tenant, version_id)
-    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due)
+    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due, part)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
         WITH auto AS (

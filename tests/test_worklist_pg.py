@@ -257,3 +257,15 @@ async def test_fix_sheet_round_trip_mass_edit_and_approval(run, client_for, monk
         listed = (await client.get("/api/v1/work/records", params={"version_id": vid, "status": "approved"},
                                    headers=HEADERS)).json()
         assert {i["record_key"] for i in listed["items"]} == {"MATNR=1", "MATNR=2"}
+
+
+@pytest.mark.anyio
+async def test_records_filter_by_a_key_part(run, client_for):
+    owner, tid, vid, _ = run
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        get = lambda **params: client.get("/api/v1/work/records", params={"version_id": vid, **params}, headers=HEADERS)
+        assert [i["record_key"] for i in (await get(part="MATNR=0002")).json()["items"]] == ["MATNR=2"]
+        assert (await get(part="WERKS=1000")).json()["total"] == 0
+        assert (await get(part="nonsense")).status_code == 422

@@ -19,7 +19,7 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { PermissionsProvider } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
-import { GlobalRunPicker, RunCarrier } from "@/components/global-run";
+import { GlobalObjectPicker, GlobalRunPicker, RunCarrier } from "@/components/global-run";
 import { GlobalSearch } from "@/components/global-search";
 import { HelpSlot } from "@/components/help/help-slot";
 import { reportClientError } from "@/lib/client-errors";
@@ -136,7 +136,7 @@ function Chrome({ children }: { children: ReactNode }) {
           />
         </Suspense>
         <Suspense fallback={null}><RunCarrier /></Suspense>
-        <TopBar trailing={<><Suspense fallback={null}><GlobalSearch /></Suspense><Suspense fallback={null}><GlobalRunPicker /></Suspense><ScopedPill /></>} />
+        <TopBar trailing={<><Suspense fallback={null}><GlobalSearch /></Suspense><Suspense fallback={null}><GlobalObjectPicker /></Suspense><Suspense fallback={null}><GlobalRunPicker /></Suspense><ScopedPill /></>} />
         {/* Bottom room for the Ask Meridian launcher (fixed bottom-right), so the last row of a page never sits under it. */}
         <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)] [padding-bottom:calc(var(--m-space-10)+var(--m-space-8))]">
           <RootPageFrame>{children}</RootPageFrame>
