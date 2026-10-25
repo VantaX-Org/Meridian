@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as exceptions from "@/lib/api/exceptions";
 import * as stewardship from "@/lib/api/stewardship";
 import * as triage from "@/lib/api/triage";
+import * as users from "@/lib/api/users";
 import InboxPage from "../page";
 
 const nav = vi.hoisted(() => ({ replace: vi.fn(), qs: "view=mine&type=exception&keep=1", can: false }));
@@ -187,6 +188,22 @@ describe("InboxPage workbench", () => {
     const detail = await screen.findByRole("region", { name: "Selected item" });
     expect(within(detail).getByText("Unknown user")).toBeInTheDocument();
     expect(screen.queryByText(/0f3c9d2e/)).toBeNull();
+  });
+
+  it("?assignee= keeps the tasks held by that owner, matched by name or email", async () => {
+    nav.qs = "keep=1&assignee=ann%40acme.test";
+    nav.can = true;
+    vi.spyOn(users, "getUsers").mockResolvedValue({ users: [{ id: "u-ann", name: "Ann", email: "ann@acme.test" }] } as never);
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("a", "material_master", { assigned_to: "u-ann" }), task("b", "business_partner", { assigned_to: "u-bob" })] : [],
+      total: p?.status === "open" ? 2 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    await waitFor(() => expect(screen.getByRole("list", { name: "Tasks" }).querySelectorAll("li")).toHaveLength(1));
+    expect(screen.getByRole("region", { name: "Selected item" })).toHaveTextContent("rec-a");
+    expect(screen.getByText("Tasks held by ann@acme.test only")).toBeInTheDocument();
   });
 
   it("offers Load more when the queue holds more than the newest page", async () => {

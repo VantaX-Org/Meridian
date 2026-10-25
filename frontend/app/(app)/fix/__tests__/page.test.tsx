@@ -81,6 +81,19 @@ describe("FixPage", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/fix/proposals/R1?kind=MARA.MEINS"));
   });
 
+  it("?module= keeps one object's groups behind a removable chip", async () => {
+    searchParams.set("module", "business_partner");
+    vi.mocked(getCleaningGroups).mockResolvedValue({
+      groups: [group({}), group({ kind: "LFA1.NAME1", object_type: "business_partner" })],
+      records: 3, confident: 1, runs: 1,
+    });
+    renderWithQuery(<FixPage />);
+    expect(await screen.findByRole("button", { name: "Remove filter Object" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Review Fix LFA1.NAME1/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Review Fix MARA.MEINS/ })).toBeNull();
+    searchParams.delete("module");
+  });
+
   it("shows an empty state when there are no proposals", async () => {
     vi.mocked(getCleaningGroups).mockResolvedValue({ groups: [], records: 0, confident: 0, runs: 0 });
     renderWithQuery(<FixPage />);

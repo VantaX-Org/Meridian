@@ -165,6 +165,7 @@ export default function InboxPage() {
     const params = new URLSearchParams(urlParams.toString());
     params.delete("view");
     params.delete("type");
+    params.delete("assignee");
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     if (alsoSearch) setSearch("");
@@ -223,6 +224,16 @@ export default function InboxPage() {
   const queueTotal = queues.reduce((n, q) => n + (q.data?.total ?? 0), 0);
 
   const names = useMemo(() => new Map((usersQ.data?.users ?? []).map((u) => [u.id, u.name])), [usersQ.data]);
+  // `?assignee=` comes from the owners view, which names an owner by display name or email, not by id.
+  const assignee = urlParams.get("assignee")?.trim() ?? "";
+  const assigneeIds = useMemo(() => {
+    if (!assignee) return null;
+    const a = assignee.toLowerCase();
+    const ids = new Set((usersQ.data?.users ?? []).filter((u) => u.name.toLowerCase() === a || u.email.toLowerCase() === a).map((u) => u.id));
+    ids.add(assignee);
+    if (user && (user.email?.toLowerCase() === a || user.name?.toLowerCase() === a)) ids.add(user.id);
+    return ids;
+  }, [assignee, usersQ.data, user]);
   const who = useCallback(
     (id: string | null) => (!id ? "Unassigned" : id === user?.id ? "You" : names.get(id) ?? "Unknown user"),
     [names, user?.id],
@@ -234,6 +245,7 @@ export default function InboxPage() {
     const q = search.trim().toLowerCase();
     const rows = all.filter((t) => {
       if (type !== "all" && t.item_type !== type) return false;
+      if (assigneeIds && !(t.assigned_to && assigneeIds.has(t.assigned_to))) return false;
       if (view === "mine" && t.assigned_to !== user?.id) return false;
       if (view === "unassigned" && t.assigned_to) return false;
       if (view === "breached" && slaOf(t, now).state !== "breached") return false;
@@ -243,7 +255,7 @@ export default function InboxPage() {
     });
     const due = (t: StewardshipQueueItem) => slaOf(t, now).remaining ?? NO_DUE;
     return rows.sort((x, y) => due(x) - due(y) || x.priority - y.priority);
-  }, [all, type, view, search, now, user?.id, who]);
+  }, [all, type, view, search, now, user?.id, who, assigneeIds]);
 
   const excItems = useMemo(() => {
     const excAll = excQ.data?.exceptions ?? [];
@@ -542,9 +554,9 @@ export default function InboxPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </Field>
-          {!isExceptions && (view !== "all" || type !== "all") && (
+          {!isExceptions && (view !== "all" || type !== "all" || !!assignee) && (
             <Notice action={<Button variant="ghost" onClick={() => showAll(false)}>Show all</Button>}>
-              {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null].filter(Boolean).join(", ")} only
+              {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null, assignee ? `Tasks held by ${assignee}` : null].filter(Boolean).join(", ")} only
             </Notice>
           )}
           {rollbackNote && <Notice tone="danger">{rollbackNote}</Notice>}

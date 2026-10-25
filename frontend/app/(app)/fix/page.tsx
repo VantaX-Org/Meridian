@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, ExportMenu, Notice, PageHeader, Stat, Tabs, emptyExportOptions, type CellMeta } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, FilterChip, PageHeader, Stat, Tabs, emptyExportOptions, type CellMeta } from "@/design";
+import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
+import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadCleaningExport, getCleaningGroups, type CleaningGroup } from "@/lib/api/cleaning";
 import { KindLabel, groupHref, kindText } from "@/components/fix/kind";
@@ -70,7 +72,7 @@ function CleaningQueueTab() {
         detail: dayOne.step?.detail ?? "When a run finds values a rule can correct, the proposals land here.",
         action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
       }}
-      filterBar={module ? <Notice action={<Button variant="ghost" onClick={() => setModule("")}>Show every object</Button>}>{formatModuleName(module)} only</Notice> : undefined}
+      filterBar={module ? <FilterChip label="Object" value={formatModuleName(module)} onRemove={() => setModule("")} /> : undefined}
       errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
       toolbarEnd={<ExportMenu options={rows.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       summary={data && rows.length > 0 ? (
@@ -100,7 +102,8 @@ export default function FixPage() {
     <PageHeader
       title="Fix"
       meta="Review proposals, approve batches and hand them to SAP"
-      actions={<Button variant="secondary" render={<Link href="/fix/what-if">What-if</Link>} />}
+      tabs={<InsightTabs />}
+      actions={<><Button variant="secondary" render={<Link href="/fix/what-if">What-if</Link>} /><InsightActions /></>}
     />
     <Tabs
       value={tab}
