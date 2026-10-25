@@ -90,6 +90,8 @@ describe("admin roles page", () => {
     await waitFor(() => expect(eff).toHaveBeenCalledWith("u1", {}));
     expect(await screen.findByLabelText("findings read allowed")).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: /Remove viewer/ }));
+    expect(rem).not.toHaveBeenCalled(); // removal is confirmed first, naming what the user loses
+    fireEvent.click(await screen.findByRole("button", { name: "Remove grant" }));
     await waitFor(() => expect(rem).toHaveBeenCalledWith("u1", "g1"));
     expect(add).not.toHaveBeenCalled();
   });
@@ -102,6 +104,9 @@ describe("admin roles page", () => {
     }));
     renderWithQuery(<AdminRolesPage />);
     expect(await screen.findByText("role.create")).toBeInTheDocument();
+    // before and after read as a sentence per field, never raw JSON
+    expect(screen.getByText("N: 1")).toBeInTheDocument();
+    expect(screen.queryByText(/"after"/)).toBeNull();
   });
 
   it("empty states are plain sentences", async () => {

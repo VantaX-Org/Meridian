@@ -4,8 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Button, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async } from "@/design";
+import { Button, ConfirmDialog, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async, toast } from "@/design";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
@@ -67,6 +66,8 @@ export default function AdminMappingsPage() {
   const shown = mappings.filter((m) => (!object || m.module === object)
     && (!term || [m.standard_field, m.standard_label, m.customer_field, m.customer_label].some((v) => v?.toLowerCase().includes(term))));
   const mapped = shown.filter((m) => m.is_mapped).length;
+  // A customised field is one the tenant gave its own column, label or note; the reset applies to the chosen object or all.
+  const customised = mappings.filter((m) => (!object || m.module === object) && (m.customer_field || m.customer_label || m.notes)).length;
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.fieldMappings() });
   const set = useCallback((m: FieldMapping, patch: Partial<Draft>) => setDrafts((p) => ({ ...p, [m.id]: { ...draftOf(p, m), ...patch } })), []);
@@ -97,16 +98,20 @@ export default function AdminMappingsPage() {
           options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]}
         />
         {object || search ? <Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear</Button> : null}
-        {write ? (confirmReset ? (
-          <>
-            <span className="m-text-meta m-ink-3">Reset {object ? formatModuleName(object) : "every object"} to the shipped mappings?</span>
-            <Button variant="secondary" disabled={reset.isPending} onClick={() => reset.mutate()}>Reset</Button>
-            <Button variant="ghost" onClick={() => setConfirmReset(false)}>Keep mappings</Button>
-          </>
-        ) : (
-          <Button variant="secondary" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button>
-        )) : null}
+        {write ? <Button variant="secondary" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button> : null}
       </div>
+
+      <ConfirmDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        title={`Reset ${object ? formatModuleName(object) : "every object"} to the shipped mappings`}
+        tone="danger"
+        body={`${customised.toLocaleString()} customised ${customised === 1 ? "field goes" : "fields go"} back to the shipped mapping. Imported files are matched on the shipped columns from then on.`}
+        confirmLabel="Reset mappings"
+        cancelLabel="Keep mappings"
+        pending={reset.isPending}
+        onConfirm={() => reset.mutate()}
+      />
 
       <Async query={all} skeleton={320} notFoundIsEmpty>{!shown.length ? (
           object || search ? (

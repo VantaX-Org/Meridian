@@ -1,18 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-
-/**
- * Login redirect — `/login` → `/sign-in`
- * The sign-in page is at `/sign-in`.
- */
-export default function LoginRedirect() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.push("/sign-in");
-  }, [router]);
-
-  return null;
+/** `/login` → `/sign-in`, on the server, so no blank client page renders first. */
+export default function LoginRedirect(): never {
+  redirect("/sign-in");
 }

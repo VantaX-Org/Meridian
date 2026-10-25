@@ -5,8 +5,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { toast } from "sonner";
-import { Button, Card, Field, Notice, PageFrame, PageHeader, Select, Switch } from "@/design";
+import { Button, Card, ConfirmDialog, Field, Notice, PageFrame, PageHeader, Select, Switch, toast } from "@/design";
 import { resetSavedViews } from "@/design/table/views";
 import { useAuroraPrefs, type DensityTier, type Theme } from "@/hooks/use-theme";
 import { usePreferences } from "@/hooks/use-preferences";
@@ -37,6 +36,9 @@ export default function PreferencesPage() {
   const { prefs, update } = usePreferences();
   const health = useQuery({ queryKey: queryKeys.health(), queryFn: getHealth, staleTime: 60_000, retry: false });
   const [testing, setTesting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const views = Object.values(prefs.saved_views ?? {}).reduce((n, list) => n + list.length, 0);
+  const tables = Object.values(prefs.saved_views ?? {}).filter((list) => list.length > 0).length;
 
   const locales = useMemo(() => {
     const own = prefs.locale && !localeOptions().includes(prefs.locale) ? [prefs.locale] : [];
@@ -108,8 +110,18 @@ export default function PreferencesPage() {
       <Card title="Guidance and saved views">
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={replayTours}>Replay tours</Button>
-          <Button variant="secondary" onClick={() => { resetSavedViews(); toast.success("Saved views removed"); }}>Reset saved views</Button>
+          <Button variant="secondary" disabled={views === 0} onClick={() => setResetting(true)}>Reset saved views</Button>
         </div>
+        <ConfirmDialog
+          open={resetting}
+          onOpenChange={setResetting}
+          title="Reset saved views"
+          tone="danger"
+          body={`${views.toLocaleString()} saved ${views === 1 ? "view" : "views"} across ${tables.toLocaleString()} ${tables === 1 ? "table" : "tables"} are removed from your account on every browser. Tables go back to their default columns and filters.`}
+          confirmLabel="Remove saved views"
+          cancelLabel="Keep views"
+          onConfirm={() => { resetSavedViews(); setResetting(false); toast.success("Saved views removed"); }}
+        />
       </Card>
     </PageFrame>
   );

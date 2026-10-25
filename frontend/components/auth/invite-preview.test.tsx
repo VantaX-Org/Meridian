@@ -20,7 +20,7 @@ describe("InvitePreview", () => {
     vi.spyOn(authApi, "getInvitePreview").mockResolvedValue({ email: "a@example.com", grants: [{ role_key: "steward", role_label: "Steward", system_name: "Sys A", module: "material" }] });
     renderWithQuery(<InvitePreview />);
     expect(await screen.findByText("Invited as a@example.com")).toBeTruthy();
-    expect(screen.getByText("Steward, Sys A, material")).toBeTruthy();
+    expect(screen.getByText("Steward, Sys A, Material")).toBeTruthy();
   });
   it("says to wait, not expired, on a 429", async () => {
     vi.spyOn(authApi, "getInvitePreview").mockRejectedValue(new AxiosError("limited", "ERR_BAD_REQUEST", undefined, undefined, { status: 429, data: {}, statusText: "", headers: {}, config: { headers: new AxiosHeaders() } }));
@@ -32,5 +32,16 @@ describe("InvitePreview", () => {
     vi.spyOn(authApi, "getInvitePreview").mockRejectedValue(new Error("404"));
     renderWithQuery(<InvitePreview />);
     expect(await screen.findByText("This invitation link is invalid or has expired.")).toBeTruthy();
+  });
+  it("hides the password form behind a dead invite and shows it under a live one", async () => {
+    vi.spyOn(authApi, "getInvitePreview").mockRejectedValue(new Error("404"));
+    const dead = renderWithQuery(<InvitePreview><form aria-label="Password form" /></InvitePreview>);
+    await screen.findByText("This invitation link is invalid or has expired.");
+    expect(screen.queryByRole("form", { name: "Password form" })).toBeNull();
+    dead.unmount();
+    vi.spyOn(authApi, "getInvitePreview").mockResolvedValue({ email: "a@example.com", grants: [{ role_key: "steward", role_label: "Steward", module: "material_master" }] });
+    renderWithQuery(<InvitePreview><form aria-label="Password form" /></InvitePreview>);
+    expect(await screen.findByRole("form", { name: "Password form" })).toBeTruthy();
+    expect(screen.getByText("Steward, all systems, Material master")).toBeTruthy();
   });
 });

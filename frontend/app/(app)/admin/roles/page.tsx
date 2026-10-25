@@ -3,11 +3,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
 import Link from "next/link";
-import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, IconMore } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, IconMore, toast } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
-import { GrantsPicker, scopeLabel } from "@/components/admin/grants-picker";
+import { GrantsPicker, scopeLabel, type GrantRowView } from "@/components/admin/grants-picker";
 import { InviteForm } from "@/components/admin/invite-form";
 import { matrixDiff, matrixToPairs, RoleMatrix } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
@@ -21,7 +20,7 @@ import {
 } from "@/lib/api/roles";
 import { getUsers } from "@/lib/api/users";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
-import { relativeTime } from "@/lib/format";
+import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { User } from "@/types/api";
 
@@ -37,7 +36,7 @@ export default function AdminRolesPage() {
   if (!can("manage_users")) {
     return (
       <div>
-        <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or grants." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
+        <EmptyState title="Managing users needs an administrator" detail="Ask an administrator to change roles or grants." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
   }
@@ -105,15 +104,17 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
       </Drawer>
       <CloneDialog roles={roles} from={cloning} onClose={() => setCloning(null)} onDone={() => { setCloning(null); refresh(); }} />
       <EditDialog role={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); refresh(); }} />
-      <Dialog open={!!deleting} onOpenChange={(o) => { if (!o) setDeleting(null); }} title={`Delete ${deleting?.name ?? "role"}?`}>
-        <div className="flex flex-col gap-3">
-          <p className="m-text-body m-ink-3">Users holding it lose its grants.</p>
-          <div className="flex gap-2">
-            <Button disabled={del.isPending} onClick={() => deleting && del.mutate(deleting)}>Delete role</Button>
-            <Button variant="secondary" onClick={() => setDeleting(null)}>Keep role</Button>
-          </div>
-        </div>
-      </Dialog>
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(o) => { if (!o) setDeleting(null); }}
+        title={`Delete ${deleting?.name ?? "role"}`}
+        tone="danger"
+        body={`${(deleting?.users ?? 0).toLocaleString()} ${deleting?.users === 1 ? "user loses" : "users lose"} these grants. Their other roles stay.`}
+        confirmLabel="Delete role"
+        cancelLabel="Keep role"
+        pending={del.isPending}
+        onConfirm={() => deleting && del.mutate(deleting)}
+      />
     </>
   );
 }
@@ -212,7 +213,7 @@ function UsersTab({ roles, onInvite }: { roles: Role[]; onInvite: () => void }) 
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     { id: "email", header: "Email", cell: ({ row }) => row.original.email },
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
-    { id: "role", header: "Legacy role", cell: ({ row }) => <Mono>{row.original.role}</Mono> },
+    { id: "role", header: "Legacy role", cell: ({ row }) => labelOf(row.original.role) },
     { id: "status", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
   ], []);
   if (usersQ.isError) return <ErrorState {...apiErrorState(usersQ.error)} onRetry={() => usersQ.refetch()} />;
@@ -232,12 +233,13 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
   const qc = useQueryClient();
   const [result, setResult] = useState<ConvertResult | null>(null);
   const [converted, setConverted] = useState(false);
+  const [removing, setRemoving] = useState<GrantRowView | null>(null);
   const grantsQ = useQuery({ queryKey: ["grants", user.id], queryFn: () => listGrants(user.id) });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const systems = systemsQ.data ?? [];
   const done = () => { qc.invalidateQueries({ queryKey: ["grants", user.id] }); qc.invalidateQueries({ queryKey: ["user-effective", user.id] }); };
   const add = useMutation({ mutationFn: (g: Parameters<typeof addGrant>[1]) => addGrant(user.id, g), onSuccess: done, onError: (e) => toast.error(`Grant not added. ${apiErrorMessage(e)}`) });
-  const rem = useMutation({ mutationFn: (id: string) => deleteGrant(user.id, id), onSuccess: done, onError: (e) => toast.error(`Grant not removed. ${apiErrorMessage(e)}`) });
+  const rem = useMutation({ mutationFn: (id: string) => deleteGrant(user.id, id), onSuccess: () => { setRemoving(null); done(); }, onError: (e) => toast.error(`Grant not removed. ${apiErrorMessage(e)}`) });
   const conv = useMutation({
     mutationFn: (confirm: boolean) => convertObjectApprovals(user.id, confirm),
     onSuccess: (r) => { setResult(r); if (r.confirmed) { setConverted(true); done(); qc.invalidateQueries({ queryKey: queryKeys.users() }); } },
@@ -250,9 +252,20 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
       <Card title="Grants">
         <GrantsPicker
           grants={grantsQ.data ?? []} roles={roles} systems={systems} busy={add.isPending || rem.isPending}
-          onAdd={(g) => add.mutate(g)} onRemove={(g) => rem.mutate(g.id)}
+          onAdd={(g) => add.mutate(g)} onRemove={setRemoving}
         />
       </Card>
+      <ConfirmDialog
+        open={!!removing}
+        onOpenChange={(o) => { if (!o) setRemoving(null); }}
+        title={`Remove the ${removing ? roles.find((r) => r.key === removing.role_key)?.name ?? removing.role_key : ""} grant`}
+        tone="danger"
+        body={`${user.name} loses ${removing ? roles.find((r) => r.key === removing.role_key)?.name ?? removing.role_key : "this role"} at ${removing ? (scopeLabel(removing.system_id, removing.module, systems) === "all" ? "all systems" : scopeLabel(removing.system_id, removing.module, systems)) : ""} at once. Other grants stay.`}
+        confirmLabel="Remove grant"
+        cancelLabel="Keep grant"
+        pending={rem.isPending}
+        onConfirm={() => removing && rem.mutate(removing.id)}
+      />
       {legacy ? (
         <Card title="Legacy object approvals">
           <Button variant="secondary" disabled={conv.isPending} onClick={() => conv.mutate(false)}>Convert to grants</Button>
@@ -359,11 +372,24 @@ const historyCols: ColumnDef<AuditEntry, unknown>[] = [
   { id: "act", header: "Action", cell: ({ row }) => <span><Mono>{row.original.action}</Mono> {row.original.entity_id ?? ""}</span> },
   {
     id: "chg", header: "Change",
-    cell: ({ row }) => (
-      <details>
-        <summary>Before and after</summary>
-        <pre>{JSON.stringify({ before: row.original.before_json, after: row.original.after_json }, null, 2)}</pre>
-      </details>
-    ),
+    cell: ({ row }) => {
+      const lines = changeSentences(row.original.before_json, row.original.after_json);
+      return lines.length ? <ul className="m-text-meta">{lines.map((l) => <li key={l}>{l}</li>)}</ul> : <span className="m-ink-3">No field changed</span>;
+    },
   },
 ];
+
+const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+const word = (v: unknown): string => (v === null || v === undefined || v === "" ? "nothing" : Array.isArray(v) ? v.map(word).join(", ") : typeof v === "object" ? JSON.stringify(v) : typeof v === "string" ? (v.includes("_") && !v.includes(" ") ? formatModuleName(v) : v) : String(v));
+
+/** "Name: Ops to Ops 2", one sentence per field that differs between before and after. */
+function changeSentences(before: unknown, after: unknown): string[] {
+  const a = asRecord(before), b = asRecord(after);
+  const keys = Array.from(new Set([...Object.keys(a), ...Object.keys(b)])).filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+  return keys.map((k) => {
+    const label = labelOf(k);
+    if (!(k in a)) return `${label}: ${word(b[k])}`;
+    if (!(k in b)) return `${label}: ${word(a[k])} removed`;
+    return `${label}: ${word(a[k])} to ${word(b[k])}`;
+  });
+}

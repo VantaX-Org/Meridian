@@ -39,6 +39,12 @@ export default function AdminLicencePage() {
         </Notice>
       ) : null}
 
+      {days !== undefined && days !== null && days < 30 ? (
+        <Notice tone={days < 7 ? "danger" : "warning"} title={days <= 0 ? "Expired" : `Expires in ${days.toLocaleString()} ${days === 1 ? "day" : "days"}`}>
+          Renew it in Meridian HQ before then. The deployment validates with Meridian HQ on a schedule, so a renewal shows here after the next check
+        </Notice>
+      ) : null}
+
       {q.isLoading ? <Skeleton height={120} /> : null}
       {q.isError ? (
         <ErrorState message={apiErrorMessage(q.error) || "The licence could not be read"} onRetry={() => q.refetch()} />
@@ -59,9 +65,9 @@ export default function AdminLicencePage() {
             </dl>
           </SettingsSection>
 
-          <SettingsSection title="Modules" meta={all ? "every SAP module" : `${modules.length} enabled`}>
+          <SettingsSection title="Modules" meta={all ? "Every SAP module" : `${modules.length} enabled`}>
             <div className="flex gap-2 flex-wrap">
-              {all ? <Pill tone="go">all modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
+              {all ? <Pill tone="go">All modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
               {!all && !modules.length ? (
                 <p className="m-text-body m-ink-3">
                   {l.valid === null ? "Modules follow the licence once Meridian HQ has validated it." : "No modules enabled on this licence"}
@@ -74,7 +80,7 @@ export default function AdminLicencePage() {
             <SettingsSection title="Features">
               <div className="flex gap-2 flex-wrap">
                 {features.map(([k, v]) => (
-                  <Pill key={k} tone={v ? "go" : "neutral"}>{k.replace(/_/g, " ")}{v ? "" : ", off"}</Pill>
+                  <Pill key={k} tone={v ? "go" : "neutral"}>{labelOf(k)}{v ? "" : ", off"}</Pill>
                 ))}
               </div>
             </SettingsSection>
@@ -94,7 +100,7 @@ function PlatformVersion() {
   if (!isAdmin) return null;
   const s = q.data;
   return (
-    <SettingsSection title="Platform version" meta={s ? <Pill tone={s.update_available ? "at-risk" : "go"}>{s.update_available ? `${s.latest_version} available` : "up to date"}</Pill> : undefined}>
+    <SettingsSection title="Platform version" meta={s ? <Pill tone={s.update_available ? "at-risk" : "go"}>{s.update_available ? `${s.latest_version} available` : "Up to date"}</Pill> : undefined}>
       {q.isLoading ? (
         <Skeleton height={48} />
       ) : q.isError || !s ? (

@@ -10,15 +10,36 @@ import {
   exportAuditEntries, getAuditEntries, getLlmAudit, type AuditEntry, type AuditListParams, type LlmAuditEntry,
 } from "@/lib/api/audit";
 import { apiErrorMessage } from "@/lib/error";
-import { relativeTime } from "@/lib/format";
+import { labelOf, relativeTime } from "@/lib/format";
 import { usePermissions } from "@/lib/permissions";
 import { useUrlState } from "@/hooks/use-url-state";
 
+const VERB: Record<string, string> = { POST: "created", PUT: "changed", PATCH: "changed", DELETE: "removed", GET: "read" };
+const rec = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+const nameOf = (v: unknown): string | undefined => {
+  const r = rec(v);
+  const n = r.name ?? r.email ?? r.label ?? r.title;
+  return typeof n === "string" ? n : undefined;
+};
+
+/** One sentence per action: "ana changed the role of Bob from steward to admin", built from method, path and entity. */
+function auditSentence(e: AuditEntry): string {
+  const who = e.actor_email ? e.actor_email.split("@")[0] : "The system";
+  const before = rec(e.before_json), after = rec(e.after_json);
+  const thing = (e.entity_type ? labelOf(e.entity_type).toLowerCase() : e.path.split("/").filter((p) => p && !/^(api|v1)$/.test(p) && !/^[0-9a-f-]{8,}$/i.test(p)).slice(-1)[0]?.replace(/[-_]/g, " ")) || "record";
+  const subject = nameOf(e.after_json) ?? nameOf(e.before_json);
+  const failed = e.status_code >= 400 ? ` (refused, ${e.status_code})` : "";
+  if ("role" in before && "role" in after && before.role !== after.role) {
+    return `${who} changed the role of ${subject ?? `a ${thing}`} from ${labelOf(String(before.role)).toLowerCase()} to ${labelOf(String(after.role)).toLowerCase()}${failed}`;
+  }
+  const verb = VERB[e.method.toUpperCase()] ?? labelOf(e.action).toLowerCase();
+  return `${who} ${verb} ${subject ? `the ${thing} ${subject}` : `a ${thing}`}${failed}`;
+}
+
 const auditColumns: ColumnDef<AuditEntry>[] = [
   { id: "when", header: "When", cell: ({ row }) => <time dateTime={row.original.created_at}>{relativeTime(row.original.created_at)}</time> },
-  { id: "who", header: "Who", cell: ({ row }) => row.original.actor_email ?? "system" },
-  { id: "what", header: "Action", cell: ({ row }) => <Mono inline>{[row.original.action, row.original.entity_type].filter(Boolean).join(", ")}</Mono> },
-  { id: "ctx", header: "Request", cell: ({ row }) => `${row.original.method} ${row.original.path} returned ${row.original.status_code}` },
+  { id: "what", header: "What happened", cell: ({ row }) => auditSentence(row.original) },
+  { id: "ctx", header: "Request", cell: ({ row }) => <Mono inline>{`${row.original.method} ${row.original.path}`}</Mono> },
 ];
 
 const llmColumns: ColumnDef<LlmAuditEntry>[] = [

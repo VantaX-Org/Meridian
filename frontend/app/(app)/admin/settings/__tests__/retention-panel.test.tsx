@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as retentionApi from "@/lib/api/retention";
+import * as connectivityApi from "@/lib/api/connectivity";
 import type { PurgeLogEntry, RetentionResponse } from "@/lib/api/retention";
 import { RetentionPanel, formatBytes, rangeError } from "../retention-panel";
 
@@ -16,6 +17,26 @@ const LOG: PurgeLogEntry = {
 };
 
 describe("RetentionPanel", () => {
+  it("confirms a shorter policy while purges are enforced, naming the runs and systems that go", async () => {
+    vi.spyOn(retentionApi, "getRetention").mockResolvedValue({
+      ...RESPONSE, enforcement: { flag_enabled: true, dry_run_until: "2026-10-01T00:00:00Z", enforced: true },
+    });
+    vi.spyOn(retentionApi, "getPurgeLog").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ id: "sys-1", name: "ECC Prod" }] as never);
+    vi.spyOn(retentionApi, "getRetentionPreview").mockResolvedValue([
+      { version_id: "v-1", label: null, run_at: "2026-03-01T00:00:00Z", system_id: "sys-1", blocked_reason: null, rows_by_table: {}, bytes_freed: 0 },
+    ]);
+    const update = vi.spyOn(retentionApi, "updateRetention").mockResolvedValue(RESPONSE);
+    renderWithQuery(<RetentionPanel />);
+    await waitFor(() => expect(screen.getByLabelText("Keep runs for (days)")).toHaveValue(180));
+    fireEvent.change(screen.getByLabelText("Keep runs for (days)"), { target: { value: "30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    expect(update).not.toHaveBeenCalled();
+    expect(await screen.findByText(/1 run from ECC Prod will be purged nightly/)).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save policy" }));
+    await waitFor(() => expect(update).toHaveBeenCalled());
+  });
+
   it("shows the policy, the dry-run line and the purge log", async () => {
     vi.spyOn(retentionApi, "getRetention").mockResolvedValue(RESPONSE);
     vi.spyOn(retentionApi, "getPurgeLog").mockResolvedValue([LOG]);

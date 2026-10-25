@@ -4,14 +4,13 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
 import Link from "next/link";
-import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore } from "@/design";
+import { Button, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore, toast } from "@/design";
 import { LedgerHead } from "@/components/mdm/ledger";
+import { permissionLabel } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
-import { exportAuditEntries, getAuditEntries, type AuditEntry } from "@/lib/api/audit";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
 import { InviteForm } from "@/components/admin/invite-form";
@@ -47,7 +46,7 @@ const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }))
 
 export default function AdminUsersPage() {
   const [tabRaw, setTab] = useUrlState("tab", "users");
-  const tab = (["users", "roles", "audit"] as string[]).includes(tabRaw) ? tabRaw : "users";
+  const tab = (["users", "roles"] as string[]).includes(tabRaw) ? tabRaw : "users";
   const { can, loading } = useRole();
   const canManage = can("manage_users");
   const [invite, setInvite] = useState(false);
@@ -57,7 +56,7 @@ export default function AdminUsersPage() {
   if (!canManage) {
     return (
       <div>
-        <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or review the audit log." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
+        <EmptyState title="Managing users needs an administrator" detail="Ask an administrator to change roles or invite people." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
   }
@@ -67,15 +66,20 @@ export default function AdminUsersPage() {
       <PageHeader
         title="Users"
         meta="Who can sign in, with which role, and what they did"
-        actions={tab === "users" ? <Button onClick={() => setInvite(true)}>Invite user</Button> : undefined}
+        actions={
+          <>
+            <Button variant="secondary" render={<Link href="/admin/audit">Audit log</Link>} />
+            {tab === "users" ? <Button onClick={() => setInvite(true)}>Invite user</Button> : null}
+          </>
+        }
       />
+      {tabRaw === "audit" ? <EmptyState variant="inline" title="The audit log has its own page" action={<Button render={<Link href="/admin/audit">Open the audit log</Link>} />} /> : null}
       <Tabs
         value={tab}
         onValueChange={setTab}
         items={[
           { value: "users", label: "Users", content: <UsersView invite={invite} setInvite={setInvite} /> },
           { value: "roles", label: "Roles", content: <RolesView /> },
-          { value: "audit", label: "Audit log", content: <AuditView /> },
         ]}
       />
     </div>
@@ -178,7 +182,7 @@ function RolesView() {
   const matrixCols = useMemo<ColumnDef<UserRole, unknown>[]>(() => [
     { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original].label}<div className="m-text-label m-ink-3">{ROLE_META[row.original].desc}</div></span> },
     ...actions.map((a): ColumnDef<UserRole, unknown> => ({
-      id: a, header: a,
+      id: a, header: permissionLabel(a),
       cell: ({ row }) => (matrix?.[row.original]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="sr-only">Not allowed</span>),
     })),
   ], [actions, matrix]);
@@ -207,51 +211,45 @@ function RolesView() {
   );
 }
 
-function AuditView() {
-  const auditQ = useQuery({ queryKey: queryKeys.auditEntries(50), queryFn: () => getAuditEntries({ limit: 50 }) });
-  const entries: AuditEntry[] = auditQ.data?.entries ?? [];
-  const auditCols = useMemo<ColumnDef<AuditEntry, unknown>[]>(() => [
-    { id: "when", header: "When", cell: ({ row }) => <time dateTime={row.original.created_at}>{relativeTime(row.original.created_at)}</time> },
-    { id: "who", header: "Actor", cell: ({ row }) => (row.original.actor_email ? row.original.actor_email.split("@")[0] : "system") },
-    { id: "what", header: "Action", cell: ({ row }) => `${row.original.action}, ${row.original.entity_type}` },
-    { id: "ctx", header: "Context", cell: ({ row }) => `${row.original.method} ${row.original.path} returned ${row.original.status_code}${row.original.entity_id ? `, ${row.original.entity_id.slice(0, 8)}` : ""}` },
-  ], []);
-
-  return (
-    <div className="flex flex-col gap-4 pt-4">
-      <div className="flex justify-end">
-        <ExportMenu
-          options={[
-            { format: "xlsx", run: () => exportAuditEntries("xlsx") },
-            { format: "csv", run: () => exportAuditEntries("csv") },
-          ]}
-        />
-      </div>
-      <Async query={auditQ} skeleton={240}>{entries.length ? (
-        <DataTable columns={auditCols} data={entries} getRowId={(e) => e.id} />
-      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}</Async>
-    </div>
-  );
+/** The actions a role gains and loses when it changes, in words, for the confirmation. */
+function roleChangeSentence(matrix: Record<string, string[]> | undefined, from: UserRole, to: UserRole): string {
+  const a = new Set(matrix?.[from] ?? []);
+  const b = new Set(matrix?.[to] ?? []);
+  const gained = [...b].filter((x) => !a.has(x)).map(permissionLabel);
+  const lost = [...a].filter((x) => !b.has(x)).map(permissionLabel);
+  const words = (xs: string[]) => xs.slice(0, 6).join(", ") + (xs.length > 6 ? ` and ${xs.length - 6} more` : "");
+  if (!matrix) return "The role's permissions change at once.";
+  return `${gained.length ? `Gains: ${words(gained)}.` : "Gains nothing new."} ${lost.length ? `Loses: ${words(lost)}.` : "Loses nothing."}`;
 }
 
 function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: () => void; onRemove: () => void; removing: boolean }) {
   const [role, setRole] = useState<UserRole>(user.role);
   const [isActive, setActive] = useState(user.is_active);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [reason, setReason] = useState("");
+  const [confirmSave, setConfirmSave] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const matrixQ = useQuery({ queryKey: queryKeys.authRoles(), queryFn: getRoleMatrix });
   const m = useMutation({
     mutationFn: () => updateUser(user.id, { role, is_active: isActive }),
-    onSuccess: () => { toast.success(`${user.name} saved`); onDone(); },
+    onSuccess: () => { toast.success(`${user.name} saved`); setConfirmSave(false); onDone(); },
     onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`),
   });
+  const roleChanged = role !== user.role;
+  const suspending = user.is_active && !isActive;
+  const reactivating = !user.is_active && isActive;
+  const consequential = roleChanged || suspending;
+  const body = [
+    suspending ? `${user.name} can no longer sign in; their history stays attributed to them.` : reactivating ? `${user.name} can sign in again.` : "",
+    roleChanged ? `Role ${ROLE_META[user.role].label} to ${ROLE_META[role].label}. ${roleChangeSentence(matrixQ.data, user.role, role)}` : "",
+  ].filter(Boolean).join(" ");
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (consequential) setConfirmSave(true); else m.mutate(); }}>
       <p className="m-text-body m-ink-3">{user.email}</p>
       <Field label="Role">
         <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
       </Field>
       <p className="m-text-meta m-ink-3">{ROLE_META[role].desc}</p>
+      <p className="m-text-meta m-ink-3">Scoped grants (a role at one system or module) are managed under <Link href={`/admin/roles?tab=users`} className="underline">Roles and access</Link>.</p>
       <label className="flex items-center gap-2 m-text-body">
         <input type="checkbox" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
         <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>
@@ -260,28 +258,31 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
         <Button type="submit" disabled={m.isPending}>Save</Button>
         <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
       </div>
-      <Button type="button" variant="secondary" disabled={removing} onClick={() => setConfirmOpen(true)}>Remove user</Button>
+      <Button type="button" variant="danger" disabled={removing} onClick={() => setConfirmRemove(true)}>Remove user</Button>
 
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen} title={`Remove ${user.name}?`}>
-        <div className="flex flex-col gap-3">
-          <p className="m-text-body m-ink-3">
-            Why remove {user.name}? Their stewardship history stays attributed to them
-          </p>
-          {/* ponytail: this reason is a client-side confirmation gate only, same as the
-              legacy ReasonButton it replaces — deleteUser() takes no reason parameter. */}
-          <textarea className="m-input [height:auto] [padding:6px_10px]" aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              disabled={!reason.trim() || removing}
-              onClick={() => { setConfirmOpen(false); setReason(""); onRemove(); }}
-            >
-              Remove user
-            </Button>
-            <Button variant="secondary" onClick={() => setConfirmOpen(false)}>Keep as is</Button>
-          </div>
-        </div>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmSave}
+        onOpenChange={setConfirmSave}
+        title={suspending ? `Suspend ${user.name}` : `Change the role of ${user.name}`}
+        body={body}
+        confirmLabel={suspending ? "Suspend and save" : "Change role"}
+        cancelLabel="Keep as is"
+        tone={suspending ? "danger" : "default"}
+        pending={m.isPending}
+        onConfirm={() => m.mutate()}
+      />
+      <ConfirmDialog
+        open={confirmRemove}
+        onOpenChange={setConfirmRemove}
+        title={`Remove ${user.name}`}
+        body={`${user.name} (${user.email}) loses access at once. Their stewardship history stays attributed to them. A user referenced by audit or stewardship records cannot be removed; suspend them instead.`}
+        confirmLabel="Remove user"
+        cancelLabel="Keep user"
+        tone="danger"
+        typeToConfirm={user.email}
+        pending={removing}
+        onConfirm={() => { setConfirmRemove(false); onRemove(); }}
+      />
     </form>
   );
 }

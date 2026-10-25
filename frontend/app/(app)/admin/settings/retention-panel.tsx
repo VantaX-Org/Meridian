@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Pill, Skeleton, Switch, Async } from "@/design";
+import { Button, ConfirmDialog, DataTable, EmptyState, ErrorState, Field, Input, Notice, Pill, Skeleton, Switch, Async, toast } from "@/design";
+import { getSystems } from "@/lib/api/connectivity";
 import {
   getPurgeLog, getRetention, getRetentionPreview, updateRetention,
   type PurgeLogEntry, type RetentionPolicy, type RetentionPreviewItem, type RowsByTable,
@@ -66,6 +66,9 @@ export function RetentionPanel() {
   const preview = useQuery({ queryKey: queryKeys.retentionPreview(), queryFn: getRetentionPreview, enabled: false });
   const log = useQuery({ queryKey: queryKeys.purgeLog(), queryFn: () => getPurgeLog(50) });
 
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, retry: false, meta: { ignoreError: true } });
+  const systemName = (id: string) => (id === "upload" ? "Upload" : systemsQ.data?.find((s) => s.id === id)?.name ?? "A removed system");
+  const [confirming, setConfirming] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loadedFrom, setLoadedFrom] = useState<RetentionPolicy | null>(null);
 
@@ -100,6 +103,7 @@ export function RetentionPanel() {
     mutationFn: () => updateRetention(draft),
     onSuccess: (r) => {
       qc.setQueryData(queryKeys.retention(), r);
+      setConfirming(false);
       toast("Retention policy saved");
       void qc.invalidateQueries({ queryKey: queryKeys.retentionPreview() });
     },
@@ -107,9 +111,9 @@ export function RetentionPanel() {
   });
 
   const previewColumns: ColumnDef<RetentionPreviewItem, unknown>[] = [
-    { id: "run", header: "Run", cell: ({ row }) => row.original.label ?? <Mono inline>{row.original.version_id.slice(0, 8)}</Mono> },
+    { id: "run", header: "Run", cell: ({ row }) => row.original.label ?? `Run of ${formatDate(row.original.run_at, "datetime")}` },
     { id: "run_at", header: "Started", cell: ({ row }) => formatDate(row.original.run_at, "datetime") },
-    { id: "system", header: "System", cell: ({ row }) => (row.original.system_id === "upload" ? "Upload" : <Mono inline>{row.original.system_id.slice(0, 8)}</Mono>) },
+    { id: "system", header: "System", cell: ({ row }) => systemName(row.original.system_id) },
     { id: "rows", header: "Rows", cell: ({ row }) => rowsSummary(row.original.rows_by_table) },
     { id: "bytes", header: "Storage", meta: { numeric: true }, cell: ({ row }) => formatBytes(row.original.bytes_freed) },
     {
@@ -123,7 +127,7 @@ export function RetentionPanel() {
   const logColumns: ColumnDef<PurgeLogEntry, unknown>[] = [
     { id: "when", header: "When", cell: ({ row }) => formatDate(row.original.created_at, "datetime") },
     { id: "kind", header: "Kind", cell: ({ row }) => KIND_LABEL[row.original.kind] },
-    { id: "target", header: "Target", cell: ({ row }) => (row.original.target_id ? <Mono inline>{row.original.target_id.slice(0, 8)}</Mono> : "—") },
+    { id: "target", header: "Target", cell: ({ row }) => (row.original.kind === "version" ? "One archived run" : row.original.kind === "tenant" ? "Whole tenant" : KIND_LABEL[row.original.kind]) },
     {
       id: "mode", header: "Mode",
       cell: ({ row }) => (row.original.blocked_reason
@@ -136,6 +140,18 @@ export function RetentionPanel() {
   ];
 
   const enforcement = q.data?.enforcement;
+  // Shortening a limit while purges are enforced deletes for real tonight: that save is confirmed, naming what goes.
+  const shorter = (next: number | null, prev: number | null | undefined) => next !== null && (prev === null || prev === undefined || next < prev);
+  const shortens = !!policy && (shorter(draft.versions_days, policy.versions_days) || shorter(draft.reports_days, policy.reports_days)
+    || shorter(draft.audit_days, policy.audit_days) || draft.keep_latest_per_system < policy.keep_latest_per_system || (policy.keep_baseline && !draft.keep_baseline));
+  const needsConfirm = !!enforcement?.enforced && shortens;
+  const purgeable = (preview.data ?? []).filter((p) => !p.blocked_reason);
+  const purgeSystems = Array.from(new Set(purgeable.map((p) => systemName(p.system_id))));
+  const onSave = () => {
+    if (!needsConfirm) { save.mutate(); return; }
+    void preview.refetch();
+    setConfirming(true);
+  };
   const statusLine = (() => {
     if (!enforcement) return null;
     if (enforcement.enforced) return "Purges are enforced. The nightly task deletes what the policy selects.";
@@ -171,7 +187,7 @@ export function RetentionPanel() {
                 <Input type="number" min={0} max={MAX_KEEP_LATEST} inputMode="numeric" value={keepLatest} onChange={(e) => set({ keepLatest: e.target.value })} />
               </Field>
               <Switch checked={keepBaseline} onCheckedChange={(v) => set({ keepBaseline: v })} label="Keep the baseline run" />
-              <Button disabled={!dirty || invalid} pending={save.isPending} onClick={() => save.mutate()}>Save policy</Button>
+              <Button disabled={!dirty || invalid} pending={save.isPending} onClick={onSave}>Save policy</Button>
             </div>
             <p className="m-text-meta m-ink-3">
               Only archived runs are purged, never the baseline nor the newest runs of each system. Golden records, rules, glossary terms and contracts are never touched.
@@ -192,6 +208,22 @@ export function RetentionPanel() {
         ) : (
           <DataTable columns={previewColumns} data={preview.data} getRowId={(r) => r.version_id} tableId="retention-preview" hideToolbar />
         )}
+
+        <ConfirmDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          title="Shorten retention while purges are enforced"
+          tone="danger"
+          body={preview.isFetching
+            ? "Counting the runs this policy selects…"
+            : purgeable.length
+              ? `${purgeable.length.toLocaleString()} ${purgeable.length === 1 ? "run" : "runs"} from ${purgeSystems.join(", ")} will be purged nightly, for good. Golden records, rules and contracts are never touched.`
+              : "No archived run is past this policy today; runs that pass it later are purged nightly, for good."}
+          confirmLabel="Save policy"
+          cancelLabel="Keep the current policy"
+          pending={save.isPending}
+          onConfirm={() => save.mutate()}
+        />
 
         <h3 className="font-semibold m-text-h">Purge log</h3>
         <Async query={log} skeleton={64} notFoundIsEmpty>{!log.data?.length ? (

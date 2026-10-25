@@ -6,8 +6,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
-import { Button, DataTable, Dialog, ExplorerPage, Field, Menu, PageHeader, Pill, Select, Input, asyncStateOf } from "@/design";
+import { Button, ConfirmDialog, DataTable, Dialog, ExplorerPage, Field, Menu, PageHeader, Pill, Select, Input, Switch, asyncStateOf, toast } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel, updateAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest, type AlertReportPack,
@@ -19,11 +18,13 @@ import { email, length, oneOf, pattern, required, url, useFormErrors, type Schem
 
 const KINDS: { value: AlertChannelKind; label: string }[] = [
   { value: "email", label: "Email" }, { value: "slack", label: "Slack" },
-  { value: "teams", label: "Teams" }, { value: "webhook", label: "Webhook" },
+  { value: "teams", label: "Microsoft Teams" }, { value: "webhook", label: "Webhook (signed)" },
 ];
 const DIGESTS: { value: AlertDigest; label: string }[] = [
-  { value: "daily", label: "Daily" }, { value: "weekly", label: "Weekly" }, { value: "off", label: "Off" },
+  { value: "daily", label: "Daily digest" }, { value: "weekly", label: "Weekly digest" }, { value: "off", label: "No digest" },
 ];
+const kindLabel = (k: AlertChannelKind) => KINDS.find((x) => x.value === k)?.label ?? k;
+const digestLabel = (d: AlertDigest) => DIGESTS.find((x) => x.value === d)?.label ?? d;
 
 const REPORT_PACKS: { value: AlertReportPack; label: string }[] = [
   { value: "off", label: "Board pack: off" }, { value: "weekly", label: "Board pack: weekly" },
@@ -37,6 +38,7 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
   const [secret, setSecret] = useState("");
   const [digest, setDigest] = useState<AlertDigest>("daily");
   const [reportPack, setReportPack] = useState<AlertReportPack>("off");
+  const [immediate, setImmediate] = useState(true);
   const values = { kind, target, secret, digest, reportPack };
   const schema = useMemo<Schema<typeof values>>(() => ({
     kind: oneOf(KINDS.map((k) => k.value)),
@@ -50,7 +52,7 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
   const form = useFormErrors(schema, values);
   const m = useMutation({
     mutationFn: () => createAlertChannel({
-      kind, target, digest, immediate_critical: true,
+      kind, target: target.trim(), digest, immediate_critical: immediate,
       ...(kind === "email" && reportPack !== "off" ? { report_pack: reportPack } : {}),
       ...(kind === "webhook" && secret ? { secret } : {}),
     }),
@@ -65,8 +67,10 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
         {kind === "webhook" && <Field label="Signing secret (16 to 256 characters)" error={form.error("secret")}><Input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} onBlur={() => form.blur("secret")} /></Field>}
         <Field label="Digest"><Select value={digest} onValueChange={(v) => setDigest(v as AlertDigest)} options={DIGESTS} /></Field>
         {kind === "email" && <Field label="Board pack"><Select value={reportPack} onValueChange={(v) => setReportPack(v as AlertReportPack)} options={REPORT_PACKS} /></Field>}
+        <Switch checked={immediate} onCheckedChange={setImmediate} label="Send new critical findings immediately" />
+        {digest === "off" && !immediate ? <p className="m-field-error">Choose a digest or immediate delivery, or the channel never fires</p> : null}
         <div className="flex gap-2">
-          <Button type="submit" pending={m.isPending} disabled={!form.valid}>Add channel</Button>
+          <Button type="submit" pending={m.isPending} disabled={!form.valid || (digest === "off" && !immediate)}>Add channel</Button>
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Keep channels as they are</Button>
         </div>
       </form>
@@ -97,9 +101,9 @@ export default function NotificationsAdminPage() {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const columns: ColumnDef<AlertChannel>[] = [
-    { accessorKey: "kind", header: "Type" },
+    { id: "kind", header: "Type", cell: ({ row }) => kindLabel(row.original.kind) },
     { accessorKey: "target", header: "Target" },
-    { accessorKey: "digest", header: "Digest" },
+    { id: "digest", header: "Digest", cell: ({ row }) => digestLabel(row.original.digest) },
     {
       id: "pack", header: "Board pack",
       cell: ({ row }) => {
@@ -121,7 +125,7 @@ export default function NotificationsAdminPage() {
     { id: "on", header: "Status", cell: ({ row }) => <Pill tone={row.original.enabled ? "go" : "at-risk"}>{row.original.enabled ? "On" : "Off"}</Pill> },
     ...(canEdit ? [actionColumn<AlertChannel>((c) => (
       <Menu
-        trigger={<button type="button" aria-label={`Actions for ${c.kind} channel`} className="m-text-body font-medium m-ink-accent-ink hover:underline">Manage</button>}
+        trigger={<button type="button" aria-label={`Actions for ${kindLabel(c.kind)} channel ${c.target}`} className="m-text-body font-medium m-ink-accent-ink hover:underline">Manage</button>}
         items={[
           { label: "Send test", onSelect: () => test.mutate(c.id) },
           { label: "Remove", onSelect: () => setRemoving(c) },
@@ -141,13 +145,17 @@ export default function NotificationsAdminPage() {
         table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
       />
       <AddChannel open={adding} onOpenChange={setAdding} />
-      <Dialog open={!!removing} onOpenChange={(o) => { if (!o) setRemoving(null); }} title={`Remove ${removing?.kind ?? ""} channel?`} destructive>
-        <p className="m-text-body">{removing?.target} stops receiving alerts and digests.</p>
-        <div className="mt-4 flex gap-2">
-          <Button pending={del.isPending} onClick={() => removing && del.mutate(removing.id, { onSettled: () => setRemoving(null) })}>Remove channel</Button>
-          <Button variant="secondary" onClick={() => setRemoving(null)}>Keep channel</Button>
-        </div>
-      </Dialog>
+      <ConfirmDialog
+        open={!!removing}
+        onOpenChange={(o) => { if (!o) setRemoving(null); }}
+        title={`Remove the ${removing ? kindLabel(removing.kind) : ""} channel`}
+        tone="danger"
+        body={`${removing?.target ?? "This channel"} stops receiving alerts and digests at once.`}
+        confirmLabel="Remove channel"
+        cancelLabel="Keep channel"
+        pending={del.isPending}
+        onConfirm={() => removing && del.mutate(removing.id, { onSettled: () => setRemoving(null) })}
+      />
     </>
   );
 }
