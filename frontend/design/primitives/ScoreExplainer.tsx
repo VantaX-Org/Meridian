@@ -73,7 +73,7 @@ export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules,
                 <ul>
                   {top.map((r) => (
                     <li key={r.ruleId}>
-                      <Link href={buildDrillHref({ object: r.object, ruleId: r.ruleId, run })} style={{ color: "var(--m-accent)" }}>
+                      <Link href={buildDrillHref({ object: r.object, ruleId: r.ruleId, run })} className="m-ink-accent underline underline-offset-2">
                         <Mono>{r.ruleId}</Mono>
                       </Link>{" "}
                       <span className="tabular-nums" style={{ color: "var(--m-ink-2)" }}>{r.recordsFailed.toLocaleString()} records</span>
@@ -82,7 +82,7 @@ export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules,
                 </ul>
               </>
             )}
-            <Link href={historyHref} className="mt-3 inline-block" style={{ color: "var(--m-accent)" }}>Score history</Link>
+            <Link href={historyHref} className="mt-3 inline-block m-ink-accent underline underline-offset-2">Score history</Link>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

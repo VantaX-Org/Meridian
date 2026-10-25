@@ -44,6 +44,18 @@ describe("admin users page", () => {
     await waitFor(() => expect(screen.getByText("Ana Steward")).toBeInTheDocument());
   });
 
+  it("opens a row's actions from a sized icon button that edits the user", async () => {
+    vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });
+    vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });
+    renderWithQuery(<AdminUsersPage />);
+    const trigger = await screen.findByRole("button", { name: "Actions for Ana Steward" });
+    expect(trigger).toHaveClass("m-iconbtn", "m-iconbtn-sm");
+    expect(trigger).toHaveAttribute("type", "button");
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    expect(await screen.findByRole("dialog", { name: "Ana Steward" })).toBeInTheDocument();
+  });
+
   it("has no role matrix of its own and deep-links a user's grants to Roles and access", async () => {
     vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });
     vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });

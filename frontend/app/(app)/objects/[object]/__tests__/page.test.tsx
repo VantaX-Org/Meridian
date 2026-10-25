@@ -174,7 +174,7 @@ describe("ObjectDetailPage", () => {
     const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "n", status: "draft", item_count: 1 });
     renderWithQuery(<ObjectDetailPage />);
     await screen.findByText("MATNR=7");
-    fireEvent.click(screen.getByLabelText("Select row MATNR=7"));
+    fireEvent.click(screen.getByLabelText("Select MATNR=7"));
     fireEvent.click(await screen.findByRole("button", { name: "Add to fix batch" }));
     await waitFor(() => expect(create).toHaveBeenCalledWith("mm_bad_uom material_master", expect.objectContaining({ record_keys: ["MATNR=7"] })));
   });

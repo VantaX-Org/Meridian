@@ -7,6 +7,7 @@ import { ComposedChart, Area, Line as RLine, XAxis, YAxis, CartesianGrid, Toolti
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { ChartTooltip } from "./Tooltip";
 import { ChartLegend, isolatedOpacity } from "./Legend";
+import { ChartPointActions } from "./PointActions";
 import { mMotion, reducedMotion } from "../tokens";
 
 /** An extra named series for a multi-series Line. Colours come from the ten-hue palette in order. */
@@ -175,7 +176,10 @@ export function Line({
     .filter(Number.isFinite);
   const domain = counts ? countDomain(values) : yDomain(values, dqsThreshold);
   const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
+  // The keyboard path: one button per point, named by series in a multi-series chart.
+  const pointSeries = new Map<ChartPoint, string>(multi ? multi.flatMap((sr) => sr.data.map((p) => [p, sr.name] as const)) : []);
   return (
+    <div>
     <div role="img" aria-label={chartSummary(summaryData, label)}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows} accessibilityLayer={false} margin={{ top: 5, right: rightMargin, bottom: 5, left: 5 }}>
@@ -277,6 +281,14 @@ export function Line({
         })}
       </ComposedChart>
     </ResponsiveContainer>
+    </div>
+    <ChartPointActions
+      points={multi ? multi.flatMap((sr) => sr.data) : data}
+      onPointClick={onPointClick}
+      label={label}
+      nameOf={multi ? (p) => `${pointSeries.get(p) ?? ""} ${labelOf(p.x)}`.trim() : (p) => labelOf(p.x)}
+    />
+    {/* The legend's isolate buttons sit outside the image, which would otherwise hide them from assistive tech. */}
     {multi && multi.length > 1 && (
       <ChartLegend
         items={multi.map((sr, i) => ({ key: String(i), name: sr.name, color: chartTheme.series[i % chartTheme.series.length] }))}

@@ -1,7 +1,8 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
+import * as configLoadApi from "@/lib/api/config-load";
 import * as miningApi from "@/lib/api/process-mining";
 import * as versionsApi from "@/lib/api/versions";
 import ProcessInsightsPage from "../page";
@@ -58,6 +59,30 @@ describe("ProcessInsightsPage", () => {
     await waitFor(() => expect(screen.getByText("Process steps")).toBeInTheDocument());
     expect(screen.getByText("Readiness")).toBeInTheDocument();
     expect(screen.getByText("Map")).toBeInTheDocument();
+  });
+
+  it("heads each block under Rules by step one level below the card", async () => {
+    const tally = { applicable: 4, not_applicable: 0, passes: 3, by_default: 4, score: 75, not_applicable_reasons: [], not_applicable_rules: [], top_failing: [] };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([
+      { l1_id: "l1", l1_name: "Procure to pay", l1_description: "", system: "ecc", l2_groups: [] },
+    ] as never);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({
+      results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] },
+    });
+    vi.spyOn(miningApi, "getMiningGraph").mockResolvedValue({
+      version_id: "v1", module: "material_master", activities: [], transitions: [], variants: [], cases: [], cases_supported: false,
+    });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(configLoadApi, "getConfigAwareScore").mockResolvedValue({
+      version_id: "v1", system_type: null, config_load: null, existing_dqs: null, config_aware: tally, unmapped: null, modules: [], rules: [],
+      processes: [{ ...tally, l1: "l1", name: "Procure to pay", l2: [{ ...tally, l2: "l2", name: "Source", configured_in: [] }] }],
+    });
+    renderWithQuery(<ProcessInsightsPage />);
+    const block = (await screen.findAllByText(/rules that apply/, undefined, { timeout: 5000 }))[0].closest("#applicability") as HTMLElement;
+    expect(within(block).getByRole("heading", { level: 3, name: "Procure to pay" })).toBeInTheDocument();
+    expect(within(block).getByRole("heading", { level: 3, name: "Source" })).toBeInTheDocument();
+    expect(within(block).queryByRole("heading", { level: 4 })).toBeNull();
   });
 
   it("shows an error state for readiness and retries on click", async () => {

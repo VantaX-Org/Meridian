@@ -211,7 +211,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
               <Switch
                 checked={r.enabled}
                 label={r.enabled ? "On" : "Off"}
-                aria-label={`Enabled: ${nameOf(r)}`} className="[min-width:24px] [min-height:24px]"
+                aria-label={`${r.enabled ? "On" : "Off"}: ${nameOf(r)}`} className="[min-width:24px] [min-height:24px]"
                 onCheckedChange={(enabled) => toggleRule({ id: r.id, enabled })}
               />
             </span>

@@ -97,6 +97,21 @@ describe("FixWork", () => {
     await waitFor(() => expect(work.decide).toHaveBeenCalledWith([{ module: "material_master", record_key: "MATNR=1", action: "accept" }], undefined));
   });
 
+  it("opens the record from Enter on a row or the page, never from Enter on another button", async () => {
+    push.mockClear();
+    renderWithQuery(<FixWork />);
+    const rows = await screen.findAllByTestId("work-record");
+    const other = screen.getAllByRole("button").find((b) => !b.closest("[data-testid=work-record]"));
+    expect(other).toBeDefined();
+    expect(fireEvent.keyDown(other!, { key: "Enter" })).toBe(true);
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.keyDown(within(rows[0]).getAllByRole("button")[0], { key: "Enter" });
+    expect(push).toHaveBeenCalledWith("/objects/material_master/records/MATNR%3D1");
+    push.mockClear();
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
   it("says when the run's work list is not built, and lets an analyst build it", async () => {
     vi.mocked(work.getWorkSummary).mockResolvedValue(summary({ built: false }));
     vi.mocked(work.buildWorklist).mockResolvedValue({ version_id: "R1", queued: true });

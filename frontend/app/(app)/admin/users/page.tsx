@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Field, Menu, Notice, PageHeader, Pill, Select, Skeleton, Stat, Async, IconMore, Tooltip, toast } from "@/design";
+import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Field, Menu, Notice, PageHeader, Pill, Select, Skeleton, Stat, Async, IconButton, IconMore, Tooltip, toast } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { permissionLabel } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
@@ -120,7 +120,7 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Menu
-            trigger={<button aria-label={`Actions for ${row.original.name}`}><IconMore size={16} /></button>}
+            trigger={<IconButton type="button" size="sm" aria-label={`Actions for ${row.original.name}`}><IconMore size={16} /></IconButton>}
             items={[{ label: "Edit", onSelect: () => setEditing(row.original) }]}
           />
         </span>

@@ -236,8 +236,8 @@ describe("CompareRunsPage", () => {
     const { toast } = await import("sonner");
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText("Select row MM041"));
-    fireEvent.click(screen.getByLabelText("Select row MM050"));
+    fireEvent.click(screen.getByLabelText("Select MM041"));
+    fireEvent.click(screen.getByLabelText("Select MM050"));
     fireEvent.click(await screen.findByRole("button", { name: "Create fix batches" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches; 1 failed"));
