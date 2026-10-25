@@ -30,7 +30,10 @@ const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
     : openCount(row.original).toLocaleString() },
   { accessorKey: "delta", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
   { accessorKey: "fixed_since_baseline", header: "Fixed since the first run", meta: { numeric: true } },
-  { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline underline-offset-2">Open inbox</Link> },
+  // The owner's own inbox tasks (the inbox reads ?assignee= as a user id, a name or an email); no link without a user.
+  { id: "action", header: "", enableSorting: false, cell: ({ row }) => row.original.user_id
+    ? <Link href={`/inbox?assignee=${encodeURIComponent(row.original.user_id)}`} aria-label={`Open the inbox of ${row.original.owner}`} className="m-ink-accent underline underline-offset-2">Open inbox</Link>
+    : null },
 ];
 
 /** Writes the digest notification now. `owner` undefined sends to everyone. */
@@ -111,9 +114,9 @@ export default function OwnersPage() {
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : owners.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No issues are assigned yet",
-        detail: "Owners are scored on the issues assigned to them, so they appear once issues in the fix queue have an owner.",
+        detail: "Owners are scored on the records assigned to them, so they appear once records in Fix work have an owner.",
         ghost: "list",
-        action: <Button render={<Link href="/fix">Open fix queue</Link>} />,
+        action: <Button render={<Link href="/fix">Open Fix work</Link>} />,
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >

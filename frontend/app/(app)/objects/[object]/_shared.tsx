@@ -22,7 +22,10 @@ export const objectQuery = (object: string, run: string) => ({
   staleTime: STALE_MS,
 });
 
-/** Blocking = critical or high severity (the same rule the migration export uses). */
+/**
+ * Critical or high severity (the same rule the migration export uses): the `?blocking=true` filter, shown as
+ * "Critical and high". Not the glossary's blocking findings (critical, or blocking an S/4 load).
+ */
 export const isBlocking = (r: ObjectRule) => r.severity === "critical" || r.severity === "high";
 
 /** `grain` narrows the records to one key grain; it rides along on the request so the server can filter when it supports it. */
@@ -67,7 +70,7 @@ export function useRecordColumns(object: string, run: string, records: readonly 
     () => [
       { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
       { accessorKey: "grain", header: "Grain", cell: ({ row }) => row.original.grain ?? "—" },
-      { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+      { accessorKey: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
       ...fieldValueKeys.map((key): ColumnDef<FindingRecord> => ({
         id: `field_values.${key}`,
         header: key,

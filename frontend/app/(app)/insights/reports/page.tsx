@@ -15,7 +15,7 @@ import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/for
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
-import { lineageOf } from "@/lib/runs";
+import { lineageOf, previousInLineage } from "@/lib/runs";
 import { reportFilename } from "@/lib/report-filename";
 import { runName } from "@/lib/run-scope";
 import { CardSkeleton, InsightFrame, formatMoney, useRunLabel } from "../_components/InsightFrame";
@@ -41,7 +41,9 @@ const requiresSentence = (requires: readonly string[]) =>
 export default function ReportsPage() {
   const { can, has } = usePermissions();
   const { run: scopedRun, runs, versions } = useInsightScope();
-  const [compare, setCompare] = useState(NONE);
+  // null until the reader picks: the default is the run before this one in its lineage (previousInLineage), so a board
+  // pack states what changed instead of reading as a first run.
+  const [compareChoice, setCompare] = useState<string | null>(null);
   const [module, setModule] = useState(NONE);
   const [recordKey, setRecordKey] = useState("");
   const [selected, setSelected] = useState("board");
@@ -53,6 +55,8 @@ export default function ReportsPage() {
   const comparableRuns = runs.filter((v) => v.id !== versionId && (!currentRun || lineageOf(v) === lineageOf(currentRun)));
   // Runs that share a label are told apart by date and time.
   const compareLabels = runOptionLabels(comparableRuns);
+  const previous = currentRun ? previousInLineage(currentRun, runs) : null;
+  const compare = compareChoice ?? previous?.id ?? NONE;
   const cmp = compare === NONE ? undefined : compare;
   const mod = module === NONE ? undefined : module;
 

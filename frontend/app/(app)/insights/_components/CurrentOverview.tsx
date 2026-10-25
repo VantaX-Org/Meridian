@@ -178,6 +178,9 @@ export function CurrentOverview() {
   const verdict = tier ? VERDICT[tier] : loading ? "Scoring" : "Not scored yet";
   const tone = tier ? TONE[tier] : undefined;
   const hint = cap ? `Capped at ${cap.cap}` : capped ? `${capped} of ${plural(measured, "object")} capped` : undefined;
+  // The impact page reads one run: with one run behind the state its value at risk opens that run, labelled with it.
+  const impactHref = runs.length === 1 ? withScope("/insights/impact", { run: runs[0].id }) : undefined;
+  const impactScopeHint = runs.length === 1 ? runScopeLabel(runs[0]) : runs.length > 1 ? `Across ${plural(runs.length, "run")}` : undefined;
   const criticalHighLine = `${plural(criticalHigh, "critical and high finding")}${withCriticalHigh ? ` in ${plural(withCriticalHigh, "object")}` : ""}`;
 
   return (
@@ -297,14 +300,30 @@ export function CurrentOverview() {
           <div className="@5xl:col-span-6">
             <Section title="Value at risk" height={120} query={ovQ} meta="The end-to-end process with the most at risk; processes are never added together">
               {ov?.value_at_risk.worst_l1 ? (
-                <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
-                  <Stat
-                    label={`Most at risk, ${l1Label(ov.value_at_risk.worst_l1)}`}
-                    value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
-                    href={withScope("/insights/impact", { run: newest?.id })}
-                  />
-                  <Stat label="SAP features blocked" value={ov.value_at_risk.features_blocked} href={withScope("/insights/impact", { run: newest?.id })} />
-                </div>
+                <>
+                  {/* The impact page reads one run. One run behind the state: the tiles open it and say so. Several
+                      runs: the figures span them, so the tiles open nothing and each run's impact is listed below. */}
+                  <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
+                    <Stat
+                      label={`Most at risk: ${l1Label(ov.value_at_risk.worst_l1)}`}
+                      value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
+                      hint={impactScopeHint}
+                      href={impactHref}
+                    />
+                    <Stat label="SAP features blocked" value={ov.value_at_risk.features_blocked} hint={impactScopeHint} href={impactHref} />
+                  </div>
+                  {runs.length > 1 && (
+                    <p className="mt-2 m-text-meta m-ink-3" data-testid="value-at-risk-runs">
+                      {"Value at risk per run: "}
+                      {runs.map((r, i) => (
+                        <span key={r.id}>
+                          {i > 0 ? ", " : null}
+                          <Link href={withScope("/insights/impact", { run: r.id })} aria-label={`Value at risk of ${runScopeLabel(r)}`} className="m-ink-accent underline underline-offset-2">{runScopeLabel(r)}</Link>
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                </>
               ) : (
                 <p className="m-text-body m-ink-3">No priced SAP feature is blocked. <Link href="/insights/impact" className="m-ink-accent underline underline-offset-2">Open value at risk</Link></p>
               )}

@@ -122,13 +122,15 @@ describe("ReportsPage scope and rendering", () => {
     mount();
     // The header names the run as every insight page does, then what the report covers.
     expect(await screen.findByTestId("insight-scope")).toHaveTextContent(/As of/);
-    expect(await screen.findByText("no comparison, every object in the run")).toBeInTheDocument();
+    // Compare with defaults to the run before this one in its lineage, so the board pack states what changed.
+    expect(await screen.findByText("compared with Run 1, every object in the run")).toBeInTheDocument();
+    expect(reportsApi.getReportCatalogue).toHaveBeenLastCalledWith({ version_id: "v2", module: undefined, compare: "v1" });
     expect(screen.getByTestId("page-purpose")).toHaveTextContent(/Ready-made reports for the selected run/);
     await userEvent.click(screen.getByRole("combobox", { name: "Compare with" }));
     expect(await screen.findByRole("option", { name: "Run 1" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "controlling_1k" })).toBeNull();
     expect(screen.queryByRole("option", { name: "Run 2" })).toBeNull();
-    expect(screen.getByText("1 earlier run of the same system or upload can be compared.")).toBeInTheDocument();
+    expect(screen.getByText("Comparing with Run 1.")).toBeInTheDocument();
   });
 
   it("shows a pending Rendering state on Download while the PDF builds", async () => {

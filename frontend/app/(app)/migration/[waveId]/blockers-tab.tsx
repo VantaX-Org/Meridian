@@ -35,7 +35,7 @@ export function BlockersTab({ waveId, runId, blockers, runAction }: { waveId: st
   });
 
   const columns: ColumnDef<WaveBlocker>[] = [
-    { accessorKey: "label", header: "Object" },
+    { id: "object", header: "Object", accessorFn: (b) => formatModuleName(b.module) },
     { id: "gap", header: "Gap", cell: ({ row }) => formatModuleName(row.original.gap_type) },
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field ?? "—"}</Mono> },
     { id: "sev", header: "Severity", cell: ({ row }) => (
@@ -61,7 +61,7 @@ export function BlockersTab({ waveId, runId, blockers, runAction }: { waveId: st
       {open ? (
         <div className="flex flex-col gap-2">
           <p className="m-text-body font-semibold m-ink">
-            {open.label}: {formatModuleName(open.gap_type)} {open.field ?? ""}
+            {formatModuleName(open.module)}: {formatModuleName(open.gap_type)} {open.field ?? ""}
           </p>
           {gaps.isLoading ? <Skeleton height={160} /> : gaps.isError ? (
             <ErrorState {...apiErrorState(gaps.error)} onRetry={() => void gaps.refetch()} />

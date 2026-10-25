@@ -10,7 +10,9 @@ import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
   Button,
+  buildDrillHref,
   DataTable,
+  DrillLink,
   Delta,
   EmptyState,
   ErrorState,
@@ -78,13 +80,14 @@ function comparisonFilename(a: Version, b: Version, on: Date = new Date()): stri
   return `Meridian run comparison – ${clean(runName(a))} vs ${clean(runName(b))} – ${day}.pdf`;
 }
 
-const columns: ColumnDef<ChangeRow>[] = [
+/** The ledger's columns; the rule opens its failing records in this run (`versionId`, the newer of the two). */
+const columnsFor = (versionId: string): ColumnDef<ChangeRow>[] => [
   {
     accessorKey: "check_id",
     header: "Rule",
     cell: ({ row }) => (
       <span className="inline-flex min-w-0 items-baseline gap-2">
-        <Mono>{row.original.check_id}</Mono>
+        <DrillLink href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: versionId })}><Mono>{row.original.check_id}</Mono></DrillLink>
         {row.original.message ? <span className="truncate m-ink-2">{row.original.message}</span> : null}
       </span>
     ),
@@ -217,6 +220,7 @@ export default function CompareRunsPage() {
   const diff = diffQ.data ?? null;
   const sentences = useMemo(() => (cmp ? compareNarrative(cmp, diff) : []), [cmp, diff]);
   const rows = useMemo(() => (cmp ? changeRows(cmp, changeFilter) : []), [cmp, changeFilter]);
+  const columns = useMemo(() => columnsFor(versionId), [versionId]);
 
   const moduleOptions: SelectOption[] = Object.keys(allModulesQ.data?.delta ?? cmp?.delta ?? {}).map((m) => ({
     value: m,

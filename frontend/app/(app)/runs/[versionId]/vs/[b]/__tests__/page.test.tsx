@@ -62,6 +62,8 @@ describe("CompareRunsPage", () => {
     expect(screen.getByText(/^DQS Oct 1, /)).toBeInTheDocument();
     const rules = screen.getAllByRole("row").map((r) => r.textContent ?? "");
     expect(rules.findIndex((t) => t.includes("MM041"))).toBeLessThan(rules.findIndex((t) => t.includes("MM002"))); // largest regression first
+    // Each rule id opens its failing records on its object, in this run.
+    expect(screen.getByText("MM041").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v2&tab=records&check_id=MM041");
   });
 
   it("narrows the ledger to the newly failing or the fixed rules from ?change=, under the Progress view tabs", async () => {
@@ -149,7 +151,7 @@ describe("CompareRunsPage", () => {
     const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "Regressions MM041", status: "draft", item_count: 1240 });
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("MM041"));
+    fireEvent.click(screen.getByText("MM041").closest("tr") as HTMLElement);
     fireEvent.click(await screen.findByRole("button", { name: "Create fix batch" }));
     await waitFor(() => expect(create).toHaveBeenCalledWith("Regressions MM041", { version_id: "v2", check_id: "MM041", module: "material_master" }));
   });
@@ -158,7 +160,7 @@ describe("CompareRunsPage", () => {
     const keys = vi.spyOn(versionsApi, "compareRecordKeys").mockResolvedValue({ record_keys: ["000000000001"] });
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("MM041"));
+    fireEvent.click(screen.getByText("MM041").closest("tr") as HTMLElement);
     expect(await screen.findByText("000000000001")).toBeInTheDocument();
     expect(keys).toHaveBeenCalledWith("MM041", { v1: "v1", v2: "v2", change: "new", limit: 50, offset: 0 });
   });
@@ -249,7 +251,7 @@ describe("CompareRunsPage", () => {
     const user = userEvent.setup();
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("MM041"));
+    fireEvent.click(screen.getByText("MM041").closest("tr") as HTMLElement);
     await waitFor(() => expect(screen.getByText("No new records")).toBeInTheDocument());
     await user.type(screen.getByLabelText("Filter record keys"), "zzz");
     await waitFor(() => expect(screen.getByText("No records match")).toBeInTheDocument());

@@ -54,7 +54,8 @@ describe("process home", () => {
     ]);
     renderWithQuery(<ProcessHomePage />);
     expect(await screen.findByText("No-go")).toBeInTheDocument();
-    expect(screen.getByText("AP001")).toBeInTheDocument();
+    // The blocking rule opens its failing records on the object that scored the process, in that run.
+    expect(screen.getByText("AP001").closest("a")).toHaveAttribute("href", "/objects/accounts_payable?run=v1&tab=records&check_id=AP001");
     expect(screen.getByText("1,234")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Can it run" }).getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable&run=v1");
     expect(screen.getByText(/^1 of 1 scored processes no-go, from ap_1k, .* on KSA PRD$/)).toBeInTheDocument();

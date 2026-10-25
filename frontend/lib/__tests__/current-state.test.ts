@@ -117,6 +117,8 @@ describe("criticalHighTotal", () => {
   it("opens the findings behind the count: one run's findings tab, else the current-state findings", () => {
     expect(criticalHighHref([{ id: "r1" }])).toBe("/runs/r1?tab=findings&severity=critical,high");
     expect(criticalHighHref([{ id: "r1" }, { id: "r2" }])).toBe("/insights?severity=critical,high");
+    // a count over one object of one run opens that object's findings only
+    expect(criticalHighHref([{ id: "r1" }], "fi_gl")).toBe("/runs/r1?tab=findings&module=fi_gl&severity=critical,high");
   });
 });
 

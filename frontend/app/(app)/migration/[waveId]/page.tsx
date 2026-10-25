@@ -13,7 +13,7 @@ import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, runWave, signoffWave,
 } from "@/lib/api/migration";
 import { downloadRealignment } from "@/lib/api/config-pairing";
-import { browserTimezone, formatDate, trendSentence } from "@/lib/format";
+import { browserTimezone, formatDate, formatModuleName, trendSentence } from "@/lib/format";
 import { getTriageSettings } from "@/lib/api/triage";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
@@ -25,17 +25,21 @@ import { S4Tab } from "./s4-tab";
 
 const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
 
-const objectColumns = (run: string | null): ColumnDef<WaveObject>[] => {
+const objectColumns = (run: string | null, waveId: string): ColumnDef<WaveObject>[] => {
   const drill = (module: string, tab: string, n: string) =>
     run ? <DrillLink href={`/objects/${module}?run=${run}&tab=${tab}`}>{n}</DrillLink> : n;
   return [
-  { accessorKey: "label", header: "Object" },
+  // The object's name from formatModuleName, never the API's label ("Sd Sales Orders").
+  { id: "object", header: "Object", accessorFn: (o) => formatModuleName(o.module) },
   { id: "verdict", header: "Verdict", cell: ({ row }) => (
       <Status kind="verdict" value={row.original.verdict} />) },
   { id: "score", header: "Readiness", cell: ({ row }) => drill(row.original.module, "overview", pct(row.original.score)) },
   { id: "records", header: "Records", cell: ({ row }) => drill(row.original.module, "records", row.original.records.toLocaleString()) },
   { id: "blocked", header: "Records blocked", cell: ({ row }) => drill(row.original.module, "records", row.original.records_blocked.toLocaleString()) },
-  { id: "gaps", header: "Blocking gaps", cell: ({ row }) => drill(row.original.module, "rules", row.original.blocker_count.toLocaleString()) },
+  // Migration gaps (every gap type but the informational ones), opened on this wave's gap view, not the object's rules.
+  { id: "gaps", header: "Migration gaps", cell: ({ row }) => (row.original.blocker_count > 0
+      ? <DrillLink href={`/migration/${waveId}?tab=blockers`}>{row.original.blocker_count.toLocaleString()}</DrillLink>
+      : "0") },
   { id: "dqs", header: "Score", cell: ({ row }) => (row.original.dqs == null ? "—" : drill(row.original.module, "overview", row.original.dqs.toFixed(1))) },
   { id: "open", header: "", size: 80, cell: ({ row }) => (
       <Link href={run ? `/objects/${row.original.module}?run=${run}` : `/objects/${row.original.module}`} className="m-ink-accent-ink underline" onClick={(e) => e.stopPropagation()}>Open</Link>
@@ -163,7 +167,7 @@ export default function WaveCockpitPage() {
         items={[
           { value: "overview", label: "Overview", content: c.objects.length ? (
               <div className="flex flex-col [gap:var(--m-section-gap)]">
-                <DataTable columns={objectColumns(run)} data={ranked} getRowId={(o) => o.module} />
+                <DataTable columns={objectColumns(run, waveId)} data={ranked} getRowId={(o) => o.module} />
                 <Bar label="Objects by readiness verdict" height={96} data={funnel} />
               </div>
             ) : <EmptyState title="No objects in this wave" detail="Add the SAP objects this wave moves, then run it to score their readiness." action={wavesAction} /> },

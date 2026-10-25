@@ -46,6 +46,7 @@ function mockAll() {
   vi.spyOn(insightsApi, "getHeatmap").mockResolvedValue({ version_id: "v1", dimensions: [], rows: [] });
   vi.spyOn(insightsApi, "getCleansing").mockResolvedValue({ version_id: "v1", currency: "USD", steps: [], by_module: [], by_rule: [] } as never);
   vi.spyOn(migrationApi, "getS4Readiness").mockResolvedValue({ version_id: "v1", status: "ok", ready: true, rules: 0, evaluated: 0, failing: 0, failing_records: 0, blocking_failing: 0, warning_failing: 0, areas: [] });
+  vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ severity: { critical: 2, high: 5, medium: 9, low: 1 } } as never);
 }
 
 afterEach(() => {
@@ -73,7 +74,21 @@ describe("InsightsOverviewPage", () => {
   it("shows the worst L1 and never a cross-L1 total", async () => {
     mockAll();
     mount();
-    expect(await screen.findByText(/Procure to pay, 3 features blocked/i)).toBeInTheDocument();
+    expect(await screen.findByText("Most at risk: Procure to pay")).toBeInTheDocument();
+    expect(screen.getByText("3 features blocked")).toBeInTheDocument();
+  });
+
+  it("heads with the run's critical and high findings, as the current state does, and keeps blocking findings in their own tile", async () => {
+    mockAll();
+    mount();
+    // 2 critical + 5 high failing rules of the run, opening exactly those findings on the run's findings tab.
+    const tile = (await screen.findByText("Critical and high findings")).closest("a");
+    expect(tile).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
+    expect(await within(tile as HTMLElement).findByText("7")).toBeInTheDocument();
+    expect(within(screen.getByTestId("hero-verdict")).getByText("7 critical and high findings")).toBeInTheDocument();
+    expect(findingsApi.getFindingsAggregate).toHaveBeenCalledWith({ version_id: "v1", module: undefined });
+    // The S/4 and critical set keeps its own name and opens the readiness view.
+    expect(screen.getByText("Blocking findings").closest("a")).toHaveAttribute("href", "/insights/readiness?run=v1");
   });
 
   it("links Open records to the object's records tab pre-filtered by the rule, and omits a zero wave count", async () => {
@@ -182,7 +197,7 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     // auto-fixable records in the hero, value at risk of the worst L1 only
     expect(screen.getByText("Auto-fixable records")).toBeInTheDocument();
     expect(screen.getByText("50% of failing records")).toBeInTheDocument();
-    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Most at risk, Order to cash")).toBeInTheDocument();
+    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Most at risk: Order to cash")).toBeInTheDocument();
     // only the scope=current wrappers are read, never the one-run ones
     expect(insightsApi.getCurrentOverview).toHaveBeenCalledWith();
     expect(migrationApi.getS4Readiness).not.toHaveBeenCalled();
@@ -190,6 +205,28 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     // the per-run card is reduced to links
     expect(screen.queryByText("Analysed per run")).toBeNull();
     expect(within(screen.getByTestId("per-run-list")).getAllByRole("link").length).toBe(3);
+  });
+
+  it("never opens one run's impact from a value at risk that spans several runs", async () => {
+    query = "";
+    mockCurrent();
+    mount();
+    const tiles = await screen.findByTestId("current-value-at-risk");
+    expect(within(tiles).getByText("Most at risk: Order to cash").closest("a")).toBeNull();
+    expect(within(tiles).getAllByText("Across 3 runs").length).toBe(2);
+    // each run's own value at risk is one link away
+    const perRun = within(screen.getByTestId("value-at-risk-runs")).getAllByRole("link");
+    expect(perRun.map((a) => a.getAttribute("href"))).toEqual(expect.arrayContaining(["/insights/impact?run=co2", "/insights/impact?run=mm1", "/insights/impact?run=ap1"]));
+  });
+
+  it("opens the one run behind the state from value at risk, and names it", async () => {
+    query = "";
+    mockCurrent();
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [currentVersions[3]] } as never);
+    mount();
+    const tiles = await screen.findByTestId("current-value-at-risk");
+    expect(within(tiles).getByText("Most at risk: Order to cash").closest("a")).toHaveAttribute("href", "/insights/impact?run=ap1");
+    expect(screen.queryByTestId("value-at-risk-runs")).toBeNull();
   });
 
   it("shows an honest error in each current-state card when its endpoint fails, and keeps the page", async () => {

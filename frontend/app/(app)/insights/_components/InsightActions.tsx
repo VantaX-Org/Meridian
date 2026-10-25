@@ -1,6 +1,6 @@
 "use client";
 
-// The same ways out of every insight page: run an analysis, review fixes (the fix queue), present,
+// The same ways out of every insight page: run an analysis, review fixes (Fix work), present,
 // and export the failing-records list for manual cleaning. Reports is a tab of the Summary view.
 // None of them is primary: the page's one primary action is its "Do next" button in the InsightHeader.
 import Link from "next/link";

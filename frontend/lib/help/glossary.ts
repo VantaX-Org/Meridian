@@ -142,7 +142,7 @@ export const GLOSSARY = {
   dryRun: {
     term: "Dry run",
     short: "A trial load that shows what the target system would reject, without changing anything",
-    long: "A dry run applies the target system's own checks to the source records and reports which would be blocked and why. Nothing is written to SAP. Use it before each wave to turn surprises at load time into a fix list days earlier.",
+    long: "A dry run applies the target system's own checks to the source records and reports which would be blocked and why. Nothing is written to SAP. Use it before each wave to turn surprises at load time into Fix work days earlier.",
     href: "/docs?page=data-in",
   },
   zObject: {
@@ -210,6 +210,12 @@ export const GLOSSARY = {
     short: "A failing rule that is critical, or that the S/4HANA readiness pack counts as blocking",
     long: "A blocking finding stops a migration wave: the rule is critical (it caps the score), or the S/4HANA readiness pack marks it as blocking the load. Pages that count every critical and high finding say \"Critical and high findings\" instead. Counts of blocking findings open the readiness view behind them.",
     href: "/insights/readiness",
+  },
+  migration_gap: {
+    term: "Migration gap",
+    short: "A field or value that stops a record loading into the target system",
+    long: "A migration gap is found by a wave's run: a missing target field, or a value that would be cut short, lose precision or be refused. Readiness counts an object's gaps per wave, informational ones left out, and the count opens the wave's gap list. It is not a count of rules: those say \"Critical and high findings\" or \"Blocking findings\".",
+    href: "/migration",
   },
 } as const satisfies Record<string, GlossaryEntry>;
 

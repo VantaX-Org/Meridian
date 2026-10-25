@@ -21,7 +21,7 @@ const STATUS_TONE ={ load_ready: "go", load_fail: "no-go" } as const;
 const STATUS_LABEL = { load_ready: "Load ready", load_fail: "Load fail" } as const;
 
 const columnsFor = (srcVersion: string | null | undefined): ColumnDef<DryRunRecord>[] => [
-  { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+  { accessorKey: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
   { accessorKey: "source_table", header: "Source table", cell: ({ row }) => <Mono>{row.original.source_table}</Mono> },
   { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
   {

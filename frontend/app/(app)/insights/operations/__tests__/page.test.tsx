@@ -60,6 +60,11 @@ describe("OperationsPage", () => {
     expect(screen.getByText("1 steward now, 0 needed")).toBeInTheDocument();
     expect(screen.queryByText("Stewards needed")).toBeNull();
     expect(screen.getByText("1 stage is holding work")).toBeInTheDocument();
+    // The queue counts are the cleaning queue: they open Fix work's Cleaning proposals tab, not the inbox.
+    for (const label of ["Processed", "Throughput", "Time to resolve", "In progress", "Average queue age"]) {
+      expect(screen.getByText(label).closest("a")).toHaveAttribute("href", "/fix?tab=cleaning");
+    }
+    expect(document.querySelector('a[href="/inbox"]')).toBeNull();
   });
 
   it("shows the parts that loaded while the slow operational query is still on its way, never the whole-page timeout", async () => {

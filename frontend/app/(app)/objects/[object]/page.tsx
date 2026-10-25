@@ -181,7 +181,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Severity" value={severity} options={SEVERITIES} onChange={(v) => setParam("severity", v)} />
         {dimensions.length > 1 ? <FilterChips label="Dimension" value={dimension} options={dimensions} onChange={(v) => setParam("dimension", v)} /> : null}
-        <FilterChips label="Show" value={blocking ? "true" : null} options={[{ value: "true", label: "Blocking only" }]} onChange={(v) => setParam("blocking", v)} />
+        <FilterChips label="Show" value={blocking ? "true" : null} options={[{ value: "true", label: "Critical and high" }]} onChange={(v) => setParam("blocking", v)} />
       </div>
       {rulesRanked.length === 0 ? (
         <EmptyState

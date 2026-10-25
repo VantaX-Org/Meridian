@@ -149,7 +149,8 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("mm_bad")).toBeInTheDocument());
     expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&issue=mm_bad");
-    expect(screen.getByText("Critical and high findings")).toBeInTheDocument();
+    // per run, the tile opens exactly the run's critical and high findings
+    expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(screen.getByRole("button", { name: "Accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();

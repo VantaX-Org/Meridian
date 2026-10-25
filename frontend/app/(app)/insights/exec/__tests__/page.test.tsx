@@ -6,6 +6,7 @@ import * as insightsApi from "@/lib/api/insights";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as downloadApi from "@/lib/api/download";
 import * as findingsApi from "@/lib/api/findings";
+import * as migrationApi from "@/lib/api/migration";
 import ExecPage from "../page";
 
 const h = vi.hoisted(() => ({ qs: "run=v1", path: "/insights", versions: [] as unknown[] }));
@@ -249,5 +250,38 @@ describe("ExecPage", () => {
     expect(caption.textContent).toMatch(/ZAR\s5,674,130 at risk across 2 priced features; Invoice posting carries the most, ZAR\s5,672,930$/);
     const chart = screen.getByRole("img", { name: /Value at risk by feature/ });
     expect(chart.getAttribute("aria-label")).toMatch(/Invoice posting ZAR\s5,672,930, MIGO ZAR\s1,200/);
+  });
+
+  it("compares the board pack with the run before, draws one score, and counts migration gaps into the wave", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
+      version_id: "v1",
+      narrative: "One wave is blocked.",
+      composite: 72,
+      readiness_cells: [{ module: "material_master", wave: "Wave 1", verdict: "no_go", blocker_count: 2, dqs: 70, score: 40, records_blocked: 5 }],
+      waterfall: [],
+      impact_rows: [],
+      owner_rows: [],
+    } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([{ id: "w1", name: "Wave 1" }] as never);
+    const aggregate = vi.spyOn(findingsApi, "getFindingsAggregate");
+    const download = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
+    h.versions = [
+      { id: "v1", label: "ECC PRD", status: "complete", run_at: "2026-10-20T08:00:00Z", metadata: { modules: ["material_master"] }, dqs_summary: {} },
+      { id: "v0", label: "ECC PRD", status: "complete", run_at: "2026-10-10T08:00:00Z", metadata: { modules: ["material_master"] }, dqs_summary: {} },
+    ];
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText("One wave is blocked.")).toBeInTheDocument();
+    // One score: the hero with a way to how it is scored, no second ring from the findings aggregate.
+    expect(screen.getByTestId("how-scored")).toHaveAttribute("href", "/rules/scoring");
+    expect(aggregate).not.toHaveBeenCalled();
+    // blocker_count is migration gaps, opened on the wave's gap view.
+    expect(screen.getByRole("columnheader", { name: /Migration gaps/ })).toBeInTheDocument();
+    expect(screen.queryByText("Blocking rules")).toBeNull();
+    expect(await screen.findByRole("link", { name: "Open the 2 migration gaps of Material master in Wave 1" })).toHaveAttribute("href", "/migration/w1?tab=blockers");
+    // The board pack's deltas are against the run before in the lineage.
+    fireEvent.click(await screen.findByRole("button", { name: /export/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /board pack/i }));
+    await waitFor(() => expect(download).toHaveBeenCalledWith("/api/v1/reports/board/v1.pdf?compare=v0", expect.any(String)));
   });
 });

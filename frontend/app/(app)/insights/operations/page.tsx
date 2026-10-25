@@ -35,6 +35,8 @@ export const stageLabel = (stage: string) => STAGE_LABEL[stage] ?? labelOf(stage
 /** "330 h": queue ages are whole hours. */
 const hours = (h: number) => `${Math.round(h).toLocaleString()} h`;
 const pct = (p: number) => `${Math.round(p)}%`;
+/** The cleaning queue these figures count: Fix work's Cleaning proposals tab, not the steward inbox. */
+const CLEANING = "/fix?tab=cleaning";
 
 const bottleneckColumns: ColumnDef<Bottleneck>[] = [
   { id: "stage", header: "Stage", accessorFn: (b) => stageLabel(b.stage) },
@@ -113,7 +115,7 @@ export default function OperationsPage() {
         situation: { sentence: `${plural(k?.items_in_flight ?? 0, "item")} in progress, ${k ? pct(k.sla_compliance_pct) : "—"} handled within the agreed time` },
         changed: { sentence: bottlenecks.length ? `${plural(bottlenecks.length, "stage is", "stages are")} holding work` : "No stage is holding work" },
         why: { sentence: cap?.recommendation || "—" },
-        next: { sentence: worst ? `Unblock ${stageLabel(worst.stage)} first` : "Nothing is blocked", action: { label: "Open inbox", href: "/inbox" } },
+        next: { sentence: worst ? `Unblock ${stageLabel(worst.stage)} first` : "Nothing is blocked", action: { label: "Open cleaning proposals", href: CLEANING } },
       }}
       skeleton={
         <>
@@ -123,27 +125,27 @@ export default function OperationsPage() {
         </>
       }
       state={loading ? "loading" : failed ? "error" : empty ? "empty" : undefined}
-      emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href="/inbox">Open inbox</Link>} /> }}
+      emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href={CLEANING}>Open cleaning proposals</Link>} /> }}
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
     >
       <Section title="Throughput and capacity" height={160} query={ops}>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="Processed" href="/inbox" value={k?.total_processed ?? "—"} hint={k?.total_detected != null ? `of ${k.total_detected.toLocaleString()} detected` : undefined} />
-          <Stat label="Throughput" href="/inbox" value={k?.throughput ?? "—"} hint="Items per day" />
+          <Stat label="Processed" href={CLEANING} value={k?.total_processed ?? "—"} hint={k?.total_detected != null ? `of ${k.total_detected.toLocaleString()} detected` : undefined} />
+          <Stat label="Throughput" href={CLEANING} value={k?.throughput ?? "—"} hint="Items per day" />
           <Stat label="Automation rate" value={k ? pct(k.automation_rate) : "—"} />
           <Stat label="Rejection rate" value={k ? pct(k.rejection_rate) : "—"} tone={k && k.rejection_rate > 0 ? "at-risk" : undefined} />
           <Stat label="Rollback rate" value={k ? pct(k.rollback_rate) : "—"} tone={k && k.rollback_rate > 0 ? "no-go" : undefined} />
-          <Stat label="Time to resolve" href="/inbox" value={k ? hours(k.mttr_hours) : "—"} />
+          <Stat label="Time to resolve" href={CLEANING} value={k ? hours(k.mttr_hours) : "—"} />
           <Stat label="Within agreed time (SLA)" value={k ? pct(k.sla_compliance_pct) : "—"} />
-          <Stat label="In progress" href="/inbox" value={k?.items_in_flight ?? "—"} />
-          <Stat label="Average queue age" href="/inbox" value={k ? hours(k.avg_queue_age_hours) : "—"} />
+          <Stat label="In progress" href={CLEANING} value={k?.items_in_flight ?? "—"} />
+          <Stat label="Average queue age" href={CLEANING} value={k ? hours(k.avg_queue_age_hours) : "—"} />
           <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
           <Stat label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} href={topRule ? fixHref({ check: topRule }) : undefined} />
         </div>
       </Section>
       <Section title="Queue age by stage" height={160} query={ops}>
         {bottlenecks.length === 0 ? (
-          <EmptyState title="No stage is holding work" detail="Queue age shows here once items wait in a stage." action={<Button render={<Link href="/inbox">Open inbox</Link>} />} />
+          <EmptyState title="No stage is holding work" detail="Queue age shows here once items wait in a stage." action={<Button render={<Link href={CLEANING}>Open cleaning proposals</Link>} />} />
         ) : (
           <>
             <Bar data={bottlenecks.map((b) => ({ x: b.stage, label: stageLabel(b.stage), y: Math.round(b.avg_age_hours) }))} label="Average age by stage in hours" height={Math.max(120, bottlenecks.length * 40)} />
@@ -159,7 +161,7 @@ export default function OperationsPage() {
       )}
       <Section title="Sprint plans" height={120} query={sprints} meta="Suggested batches of fixes and what each would do to the score">
         {plans.length === 0 ? (
-          <EmptyState variant="inline" title="No sprint plan yet" detail="Plans are suggested once the fix queue holds open items." action={<Link href="/fix" className="underline-offset-2 hover:underline">Open fix queue</Link>} />
+          <EmptyState variant="inline" title="No sprint plan yet" detail="Plans are suggested once Fix work holds open records." action={<Link href="/fix" className="underline-offset-2 hover:underline">Open Fix work</Link>} />
         ) : (
           <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar dense height="auto" />
         )}

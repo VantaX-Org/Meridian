@@ -186,7 +186,9 @@ export default function ProgressPage() {
   const state: "loading" | "empty" | "error" | undefined = resolving || burn.isLoading || dayOne.status === "loading"
     ? "loading"
     : burn.isError ? "error" : neverRan ? "empty" : undefined;
-  const openLabel = b?.open_records != null ? "Open records" : "Open issues";
+  // One noun: a failing record is one record failing one rule (the burn-down's unit); records to fix are the distinct
+  // records in the work list.
+  const openLabel = b?.open_records != null ? "Records to fix" : "Failing records";
   const openValue = b ? (b.open_records ?? b.open_now) : "—";
 
   return (
@@ -212,17 +214,18 @@ export default function ProgressPage() {
       insight={{
         hero: true,
         stats: [
-          { label: openLabel, value: openValue, hint: b && b.open_records != null ? `${n(b.open_now)} open issues` : undefined, to: fixHref },
-          { label: "Fixed this week", value: b?.fixed_7d ?? "—", tone: b?.fixed_7d ? "go" : undefined, hint: "Last 7 days", to: fix({ st: "fixed" }) },
+          { label: openLabel, value: openValue, hint: b && b.open_records != null ? `${n(b.open_now)} failing records` : undefined, to: fixHref },
+          // Fix work has no date filter, so the count says the last 7 days and the drill says it opens every fixed record.
+          { label: "Fixed this week", value: b?.fixed_7d ?? "—", tone: b?.fixed_7d ? "go" : undefined, hint: "Last 7 days; opens all fixed records", to: fix({ st: "fixed" }) },
           { label: "Median time to fix", value: overall ? daysText(overall.median_days) : "—", hint: overall?.fixed ? `Over ${plural(overall.fixed, "fix", "fixes")}` : undefined, to: overall?.fixed ? "#time-to-fix" : undefined },
           { label: "Projected finish", value: b?.projected_finish ? formatDate(b.projected_finish) : b && b.open_now === 0 ? "Done" : "No date yet", tone: b?.projected_finish ? "go" : b && b.open_now > 0 ? "at-risk" : undefined, hint: b ? `At the last ${b.pace_window_days} days' pace` : undefined, to: b ? "#burndown" : undefined },
         ],
-        situation: { sentence: b ? (b.open_now ? `${plural(b.open_now, "issue")} open across ${b.open_records != null ? plural(b.open_records, "record") : "the tracked records"}` : "Nothing is open") : "—", tone: b && b.open_now === 0 ? "go" : undefined },
-        changed: { sentence: b ? `${plural(b.fixed_7d, "issue")} fixed in the last 7 days; ${b.pace_per_day >= 0 ? `${b.pace_per_day.toLocaleString()} a day net closed` : `${Math.abs(b.pace_per_day).toLocaleString()} a day net added`} over ${b.pace_window_days} days` : "—" },
+        situation: { sentence: b ? (b.open_now ? `${plural(b.open_now, "failing record")} open${b.open_records != null ? `, ${plural(b.open_records, "record")} to fix` : ""}` : "Nothing is open") : "—", tone: b && b.open_now === 0 ? "go" : undefined },
+        changed: { sentence: b ? `${plural(b.fixed_7d, "failing record")} fixed in the last 7 days; ${b.pace_per_day >= 0 ? `${b.pace_per_day.toLocaleString()} a day net closed` : `${Math.abs(b.pace_per_day).toLocaleString()} a day net added`} over ${b.pace_window_days} days` : "—" },
         why: { sentence: slowest ? `${formatModuleName(slowest.module)} takes longest to fix: typically ${daysText(slowest.median_days)}` : "No fixes recorded yet, so no fix times", href: slowest ? fix({ module: slowest.module }) : undefined },
         next: b && b.projected_finish
-          ? { sentence: finishSentence(b), tone: "go", action: { label: "Open fix list", href: fixHref } }
-          : { sentence: b ? finishSentence(b) : "—", tone: b && b.open_now > 0 ? "at-risk" : undefined, action: { label: "Open fix list", href: fixHref } },
+          ? { sentence: finishSentence(b), tone: "go", action: { label: "Open Fix work", href: fixHref } }
+          : { sentence: b ? finishSentence(b) : "—", tone: b && b.open_now > 0 ? "at-risk" : undefined, action: { label: "Open Fix work", href: fixHref } },
       }}
       state={state}
       skeleton={<><CardSkeleton height={280} /><CardSkeleton height={240} /><CardSkeleton height={240} /></>}
@@ -237,21 +240,21 @@ export default function ProgressPage() {
       <div id="burndown" className="scroll-mt-24">
       <Card
         title="Burn-down"
-        meta={b && chart ? `Open issues per day over the last 90 days, at most ${n(chart.peak)}. ${finishSentence(b)}` : undefined}
-        actions={<Link href={fixHref} className={linkClass}>Open fix list</Link>}
+        meta={b && chart ? `Failing records open per day over the last 90 days, at most ${n(chart.peak)}. ${finishSentence(b)}` : undefined}
+        actions={<Link href={fixHref} className={linkClass}>Open Fix work</Link>}
       >
         {b && chart && b.days.some((d) => d.open > 0) ? (
           <div className="flex flex-col gap-4">
-            <Line series={chart.series} data={[]} xDomain={chart.xDomain} height={260} counts label="Open issues per day" />
+            <Line series={chart.series} data={[]} xDomain={chart.xDomain} height={260} counts label="Failing records open per day" />
             {b.runs.length > 1 && (
               <div>
-                <p className="m-text-meta m-ink-3">Failing record checks in each run of this system</p>
-                <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: runName(r), runId: r.version_id }))} height={Math.max(120, b.runs.length * 28)} label="Failing record checks per run" onPointClick={(p) => { if (p.runId) router.push(fixLink({ run: p.runId, module })); }} />
+                <p className="m-text-meta m-ink-3">Failing records in each run of this system</p>
+                <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: runName(r), runId: r.version_id }))} height={Math.max(120, b.runs.length * 28)} label="Failing records per run" onPointClick={(p) => { if (p.runId) router.push(fixLink({ run: p.runId, module })); }} />
               </div>
             )}
           </div>
         ) : (
-          <EmptyState variant="inline" title="No open issues in the last 90 days" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
+          <EmptyState variant="inline" title="No failing records open in the last 90 days" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
         )}
       </Card>
       </div>
@@ -288,12 +291,12 @@ export default function ProgressPage() {
             <DataTable columns={ttfColumns} data={ttf.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar dense height="auto" />
           </div>
         ) : (
-          <EmptyState variant="inline" title="Nothing fixed yet" detail="Fix times appear once a run shows a record passing" action={<Link href={fixHref} className={linkClass}>Open fix list</Link>} />
+          <EmptyState variant="inline" title="Nothing fixed yet" detail="Fix times appear once a run shows a record passing" action={<Link href={fixHref} className={linkClass}>Open Fix work</Link>} />
         )}
       </Section>
       </div>
 
-      <Section title="Problems that come back" height={200} query={rec} meta={rec.data?.totals.reopened ? `${plural(rec.data.totals.reopened, "issue")} failed again after a fix: ${pct(rec.data.totals.rate_pct)} of ${n(rec.data.totals.issues)} tracked` : undefined}>
+      <Section title="Problems that come back" height={200} query={rec} meta={rec.data?.totals.reopened ? `${plural(rec.data.totals.reopened, "failing record")} failed again after a fix: ${pct(rec.data.totals.rate_pct)} of ${n(rec.data.totals.issues)} tracked` : undefined}>
         {rec.data && rec.data.by_check.length ? (
           <div className="flex flex-col gap-4">
             <DataTable columns={recurColumns} data={rec.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar dense height="auto" />
@@ -334,7 +337,7 @@ export default function ProgressPage() {
             <DataTable columns={sourceColumns} data={prop.data.sources.filter((s) => s.proposed || s.fixed || s.still_failing)} getRowId={(r) => r.source} hideToolbar dense height="auto" />
           </div>
         ) : (
-          <EmptyState variant="inline" title="No values proposed yet" action={<Link href={fixHref} className={linkClass}>Open fix list</Link>} />
+          <EmptyState variant="inline" title="No values proposed yet" action={<Link href={fixHref} className={linkClass}>Open Fix work</Link>} />
         )}
       </Section>
 

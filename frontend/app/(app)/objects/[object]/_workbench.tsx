@@ -184,7 +184,8 @@ export function Workbench({ object, run }: { object: string; run: string }) {
     <div className="flex flex-col gap-4">
       <div className="m-stat-grid">
         <Stat label="Failing rules" value={data.failing_checks.toLocaleString()} href={rulesHref} />
-        <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
+        {/* `?blocking=true` keeps the critical and high rules (isBlocking), not the blocking findings of the readiness view. */}
+        <Stat label="Critical and high" value={blockingRules} hint="failing rules" tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         <Stat label="Records affected" value={data.affected_records.toLocaleString()} href={failing[0] ? tabHref(`records&check_id=${encodeURIComponent(failing[0].check_id)}`) : undefined} />
         <Stat
           label="Auto-fixable"
