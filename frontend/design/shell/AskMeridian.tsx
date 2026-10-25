@@ -2,10 +2,13 @@
 
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Popover } from "@base-ui/react/popover";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { askMeridian, type AskAnswer, type AskFact } from "../../lib/api/assistant";
+import { getVersion } from "../../lib/api/versions";
+import { queryKeys } from "../../lib/query-keys";
+import { runScopeLabel } from "../../lib/run-scope";
 import { useLicence } from "../../hooks/use-licence";
 import { Bar } from "../charts/Bar";
 import { Line } from "../charts/Line";
@@ -34,6 +37,12 @@ const MAX_QUESTION = 500;
 type Message =
   | { id: number; role: "user"; text: string }
   | { id: number; role: "assistant"; text: string; answer?: AskAnswer };
+
+/** The run the page shows: the run in the path (`/runs/<id>`, and the newer run of `/runs/<id>/vs/<b>`), else `?run=`. */
+export function pageRun(pathname: string | null, run: string | null | undefined): string | undefined {
+  const m = /^\/runs\/([^/]+)/.exec(pathname ?? "");
+  return (m ? decodeURIComponent(m[1]) : run) || undefined;
+}
 
 /** Only in-app routes are followed: an answer never sends the user off the customer's own host. */
 function internal(href: string): boolean {
@@ -126,7 +135,15 @@ export function AskMeridian() {
   const inputRef = useRef<HTMLInputElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const run = useSearchParams()?.get("run") || undefined;
+  const run = pageRun(usePathname(), useSearchParams()?.get("run"));
+  const version = useQuery({ queryKey: queryKeys.run(run ?? ""), queryFn: () => getVersion(run as string), enabled: !!run, retry: false, meta: { ignoreError: true } });
+  const scope = !run ? "the latest finished run" : version.data ? runScopeLabel(version.data) : "the run on this page";
+  // Answers belong to the run they were asked about: a new run on screen starts a new thread.
+  const [threadRun, setThreadRun] = useState(run);
+  if (threadRun !== run) {
+    setThreadRun(run);
+    setMessages([]);
+  }
   const { isMenuItemEnabled, manifest } = useLicence();
 
   const ask = useMutation({
@@ -181,7 +198,7 @@ export function AskMeridian() {
                 <div className="min-w-0">
                   <Popover.Title className="m-text-h font-semibold m-ink">Ask Meridian</Popover.Title>
                   <Popover.Description className="m-text-meta m-ink-3">
-                    Answers come from your run&apos;s figures
+                    Answers from the figures of {scope}
                   </Popover.Description>
                 </div>
                 <Popover.Close render={<IconButton aria-label="Close" size="sm" />}>

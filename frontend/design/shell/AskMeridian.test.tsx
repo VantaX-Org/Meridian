@@ -4,15 +4,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { AskAnswer } from "../../lib/api/assistant";
 
 const api = vi.hoisted(() => ({ askMeridian: vi.fn() }));
+const nav = vi.hoisted(() => ({ pathname: "/home", search: "run=run-1" }));
 vi.mock("../../lib/api/assistant", () => api);
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("run=run-1") }));
+vi.mock("../../lib/api/versions", () => ({ getVersion: vi.fn(async (id: string) => ({ id, label: `Run ${id}`, run_at: "2026-10-25T08:00:00Z" })) }));
+vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname, useSearchParams: () => new URLSearchParams(nav.search) }));
 vi.mock("next/link", () => ({
   default: ({ href, children, onClick, className }: { href: string; children: React.ReactNode; onClick?: () => void; className?: string }) => (
     <a href={href} onClick={(e) => { e.preventDefault(); onClick?.(); }} className={className}>{children}</a>
   ),
 }));
 
-import { ASK_SUGGESTIONS, AskMeridian } from "./AskMeridian";
+import { ASK_SUGGESTIONS, AskMeridian, pageRun } from "./AskMeridian";
 
 const answer = (over: Partial<AskAnswer> = {}): AskAnswer => ({
   answer: "The weakest objects are Material master at 61.0 and Business partner at 80.5.",
@@ -196,5 +198,33 @@ describe("AskMeridian", () => {
   it("is hidden in print", () => {
     renderAsk();
     expect(launcher().closest(".m-print-hide")).not.toBeNull();
+  });
+});
+
+describe("the run Ask Meridian answers about", () => {
+  beforeEach(() => { nav.pathname = "/home"; nav.search = "run=run-1"; });
+
+  it("reads the run from the path before the query", () => {
+    expect(pageRun("/runs/v2", "v1")).toBe("v2");
+    expect(pageRun("/runs/v2/vs/v1", null)).toBe("v2");
+    expect(pageRun("/insights", "v1")).toBe("v1");
+    expect(pageRun("/insights", null)).toBeUndefined();
+  });
+
+  it("sends the run in the path and names it in the header", async () => {
+    nav.pathname = "/runs/run-9"; nav.search = "";
+    api.askMeridian.mockResolvedValue(answer({ version_id: "run-9" }));
+    renderAsk();
+    fireEvent.click(screen.getByRole("button", { name: "Ask Meridian" }));
+    expect(await screen.findByText(/Answers from the figures of Run run-9/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: ASK_SUGGESTIONS[0] }));
+    await waitFor(() => expect(api.askMeridian).toHaveBeenCalledWith({ question: ASK_SUGGESTIONS[0], version_id: "run-9" }));
+  });
+
+  it("says it answers about the latest finished run when the page names none", async () => {
+    nav.search = "";
+    renderAsk();
+    fireEvent.click(screen.getByRole("button", { name: "Ask Meridian" }));
+    expect(await screen.findByText("Answers from the figures of the latest finished run")).toBeInTheDocument();
   });
 });
