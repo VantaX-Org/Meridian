@@ -14,6 +14,7 @@ import { formatModuleName, plural } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 
 const HEAT: Record<ReadinessCell["verdict"], "go" | "at-risk" | "no-go"> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
@@ -125,21 +126,22 @@ export default function ReadinessPage() {
   return (
     <InsightFrame
       title="Waves"
+      purpose={PAGE_PURPOSE["/insights/readiness"]}
       scope
       run={run}
       insight={{
         situation: {
           sentence: cells.length
-            ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go`
+            ? `${noGo} of ${plural(cells.length, "object and wave pair", "object and wave pairs")} ${noGo === 1 ? "is" : "are"} not ready to load`
             : s4.data ? `${plural(blockingGaps, "rule")} would block an S/4 load, and no wave is set up yet` : "No waves set up yet",
           tone: noGo || blockingGaps ? "no-go" : "go",
         },
         changed: { sentence: s4.data ? `${blockingGaps.toLocaleString()} blocking and ${warningGaps.toLocaleString()} warning rules fail` : "Blocking rules are being counted", href: withScope("/insights/rules", { run, s4: "yes" }) },
-        why: { sentence: cells.length ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `, against a threshold of ${data.threshold}%` : ""}` : "Until there is a wave, no object gets a go or no-go" },
+        why: { sentence: cells.length ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `; an object needs ${data.threshold}% of its records passing to load` : ""}` : "Until there is a wave, no object gets a go or no-go" },
         next: worst
           ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: withScope(`/objects/${worst.module}`, { run, tab: "rules", blocking: "true" }) } }
           : cells.length
-            ? { sentence: "Nothing blocks loading", action: { label: "Open objects", href: "/objects" } }
+            ? { sentence: "Nothing blocks loading", action: { label: "Open objects", href: withScope("/objects", { run }) } }
             : { sentence: "Create the first wave in the migration cockpit", action: { label: "Create wave", href: "/migration" } },
       }}
       state={state}
@@ -178,10 +180,10 @@ export default function ReadinessPage() {
             <DataTable columns={areaColumns(run)} data={failingAreas} getRowId={(a) => a.area} hideToolbar dense height="auto" />
           </div>
         ) : (
-          <EmptyState variant="inline" title="No blockers in this run" detail={cells.length ? "Every wave and object cell can load." : "No failing rule would stop an S/4 load."} action={<Link href="/objects" className="underline-offset-2 hover:underline">Open objects</Link>} />
+          <EmptyState variant="inline" title="No blockers in this run" detail={cells.length ? "Every object can load in its wave." : "No failing rule would stop an S/4 load."} action={<Link href={withScope("/objects", { run })} className="underline-offset-2 hover:underline">Open objects</Link>} />
         )}
       </Card>
-      <Card title="Which waves are blocked">
+      <Card title="Which waves are blocked" meta="Go, at risk or no-go for every object in every wave">
         {cells.length === 0 ? waveEmpty : (
           <>
             <Heatmap
@@ -193,7 +195,7 @@ export default function ReadinessPage() {
                 if (mod) router.push(`/objects/${mod}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true", wave: cell.col })}`);
               }}
             />
-            <p className="mt-2 m-text-body m-ink-2">Each cell is a wave and object pair. Select one to open its records.</p>
+            <p className="mt-2 m-text-body m-ink-2">Each cell is one object in one wave. Select a cell to open the rules that block it.</p>
           </>
         )}
       </Card>

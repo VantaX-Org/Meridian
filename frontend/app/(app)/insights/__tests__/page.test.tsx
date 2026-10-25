@@ -174,14 +174,14 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     expect(screen.getByText("2 of 2, each object at its latest run")).toBeInTheDocument();
     // S/4 totals and the readiness link carry no run
     expect(await screen.findByText("2 blocking, 1 warning")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open readiness" })).toHaveAttribute("href", "/insights/readiness");
+    expect(screen.getByRole("link", { name: "Open waves" })).toHaveAttribute("href", "/insights/readiness");
     // the cleansing funnel and its batch link carry no run
     expect(screen.getByRole("group", { name: /Cleansing funnel/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Create remediation batch" })).toHaveAttribute("href", "/fix?source=rule&confidence=high");
     // auto-fixable records in the hero, value at risk of the worst L1 only
     expect(screen.getByText("Auto-fixable records")).toBeInTheDocument();
     expect(screen.getByText("50% of failing records")).toBeInTheDocument();
-    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Worst L1, Order to cash")).toBeInTheDocument();
+    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Most at risk, Order to cash")).toBeInTheDocument();
     // only the scope=current wrappers are read, never the one-run ones
     expect(insightsApi.getCurrentOverview).toHaveBeenCalledWith();
     expect(migrationApi.getS4Readiness).not.toHaveBeenCalled();

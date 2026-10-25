@@ -148,7 +148,7 @@ describe("menu structure", () => {
   it("keeps the /fix page title short while the menu says Fix work", () => {
     expect(getPageTitle("/fix")).toBe("Fix");
     expect(getPageTitle("/fix/B1")).toBe("Fix");
-    expect(getPageTitle("/insights/progress")).toBe("Since baseline");
+    expect(getPageTitle("/insights/progress")).toBe("Progress");
   });
 
   it.each(LEGACY_ROLES)("%s: splitNav lists every visible page once, with no resolved href twice", (role) => {

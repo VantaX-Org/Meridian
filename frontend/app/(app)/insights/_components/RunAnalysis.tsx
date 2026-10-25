@@ -2,6 +2,7 @@
 
 // "Run analysis" from any insight page: pick a system, pick its objects, extract and analyse.
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Drawer, Select } from "@/design";
@@ -10,7 +11,9 @@ import { getSystems } from "@/lib/api/connectivity";
 import { queryKeys } from "@/lib/query-keys";
 import { ScopePicker } from "@/app/(app)/systems/[systemId]/scope-picker";
 
-export function RunAnalysis() {
+/** `variant`: primary where starting a run is the page's main step (the homes); secondary in the insight action bar,
+ * where the page's own "Do next" action leads. */
+export function RunAnalysis({ variant = "primary" }: { variant?: "primary" | "secondary" } = {}) {
   const { can } = useRole();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -21,10 +24,12 @@ export function RunAnalysis() {
   const chosen = systemId || list[0]?.id || "";
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Run analysis</Button>
+      <Button variant={variant} onClick={() => setOpen(true)}>Run analysis</Button>
       <Drawer open={open} onOpenChange={setOpen} title="Run analysis" subtitle="Extract the objects you choose into a new run, then analyse them">
         <div className="flex flex-col gap-4">
           <Select label="System" value={chosen} onValueChange={setSystemId} placeholder="Choose a system" options={list.map((s) => ({ value: s.id, label: s.name }))} />
+          {systems.isError ? <p role="alert" className="m-text-body">The systems did not load. <button type="button" className="m-ink-accent underline-offset-2 hover:underline" onClick={() => void systems.refetch()}>Retry</button></p> : null}
+          {systems.isSuccess && list.length === 0 ? <p className="m-text-body m-ink-2">No SAP system is connected yet. <Link href="/systems" className="m-ink-accent underline-offset-2 hover:underline">Connect a system</Link></p> : null}
           {chosen ? <ScopePicker id={chosen} onDownloaded={() => { setOpen(false); router.push("/runs"); }} /> : null}
         </div>
       </Drawer>

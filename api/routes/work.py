@@ -518,7 +518,9 @@ async def decide(
                 await db.execute(text("UPDATE record_issues SET status = 'open', resolution = NULL, resolved_at = NULL, "
                                       "steward_verdict = NULL, updated_at = now() WHERE id = ANY(CAST(:ids AS uuid[]))"),
                                  {"ids": back})
-                await _event(db, tenant, request, back, "status", None, "open", d.note or "Decision undone")
+                for prev in ("in_progress", "accepted"):  # the from-value tells analytics a sign-off was withdrawn
+                    ids = [r["issue_id"] for r in rows if r["issue_id"] in back and r["issue_status"] == prev]
+                    await _event(db, tenant, request, ids, "status", prev, "open", d.note or "Decision undone")
             touched += [(c, d.record_key) for c in gone] + [(r["check_id"], d.record_key) for r in rows]
             done += len(gone) + len(back)
         elif d.action in ("not_an_issue", "accept_risk"):

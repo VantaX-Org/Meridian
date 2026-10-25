@@ -14,8 +14,16 @@ const n = (v: number) => v.toLocaleString();
 export function ruleColumns(run: string | undefined, compact = false): ColumnDef<RuleRow>[] {
   const objectHref = (r: RuleRow) => `/objects/${r.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", check: r.check_id })}`;
   const cols: ColumnDef<RuleRow>[] = [
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { accessorKey: "name", header: "Name", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.name}>{row.original.name}</span> },
+    // Plain words first, the check id under them as the secondary key.
+    {
+      id: "rule", header: "Rule", accessorFn: (r) => r.name || r.check_id,
+      cell: ({ row }) => (
+        <span className="flex flex-col [min-width:14rem]">
+          <span className="line-clamp-2" title={row.original.name || row.original.check_id}>{row.original.name || row.original.check_id}</span>
+          {row.original.name ? <span className="m-text-meta m-ink-3"><Mono>{row.original.check_id}</Mono></span> : null}
+        </span>
+      ),
+    },
     {
       id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module),
       cell: ({ row }) => <Link href={objectHref(row.original)} onClick={(e) => e.stopPropagation()} className="underline-offset-2 hover:underline">{formatModuleName(row.original.module)}</Link>,
@@ -26,7 +34,7 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
   cols.push({ accessorKey: "affected", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => n(row.original.affected) });
   if (!compact) {
     cols.push(
-      { accessorKey: "total", header: "Total", meta: { numeric: true }, cell: ({ row }) => n(row.original.total) },
+      { accessorKey: "total", header: "Records checked", meta: { numeric: true }, cell: ({ row }) => n(row.original.total) },
       {
         id: "pass_rate", header: "Pass rate", meta: { numeric: true }, accessorFn: (r) => r.pass_rate ?? -1,
         cell: ({ row }) => (row.original.pass_rate === null ? "—" : `${Math.round(row.original.pass_rate * 1000) / 10}%`),
@@ -34,13 +42,13 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
     );
   }
   cols.push(
-    { accessorKey: "impact", header: "Impact", meta: { numeric: true }, cell: ({ row }) => n(row.original.impact) },
-    { accessorKey: "auto_fix_pct", header: "Auto-fix", meta: { numeric: true }, cell: ({ row }) => `${Math.round(row.original.auto_fix_pct)}%` },
-    { accessorKey: "s4", header: "S/4", cell: ({ row }) => <Pill tone={S4_TONE[row.original.s4] ?? "neutral"}>{labelOf(row.original.s4)}</Pill> },
+    { accessorKey: "impact", header: "Impact on score", meta: { numeric: true }, cell: ({ row }) => n(row.original.impact) },
+    { accessorKey: "auto_fix_pct", header: "Auto-fixable", meta: { numeric: true }, cell: ({ row }) => `${Math.round(row.original.auto_fix_pct)}%` },
+    { accessorKey: "s4", header: "S/4 load", cell: ({ row }) => <Pill tone={S4_TONE[row.original.s4] ?? "neutral"}>{labelOf(row.original.s4)}</Pill> },
   );
   if (!compact) {
     cols.push({
-      id: "delta", header: "Change", meta: { numeric: true }, accessorFn: (r) => r.delta_affected ?? 0,
+      id: "delta", header: "Change since last run", meta: { numeric: true }, accessorFn: (r) => r.delta_affected ?? 0,
       cell: ({ row }) => (row.original.delta_affected === null ? "—" : `${row.original.delta_affected > 0 ? "+" : ""}${n(row.original.delta_affected)}`),
     });
   }

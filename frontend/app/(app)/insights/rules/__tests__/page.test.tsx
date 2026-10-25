@@ -71,10 +71,28 @@ describe("RulesPage", () => {
     query = "run=v1";
   });
 
-  it("shows the empty state", async () => {
+  it("says why nothing is listed: no rule fails in the run", async () => {
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] });
     mount();
-    expect(await screen.findByText("No failing rules")).toBeInTheDocument();
+    expect(await screen.findByText("No rule fails in this run")).toBeInTheDocument();
+    for (const a of screen.getAllByRole("link", { name: "Open runs" })) expect(a).toHaveAttribute("href", "/runs");
+  });
+
+  it("says the filters hide every rule, and clears them", async () => {
+    query = "run=v1&severity=critical";
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] });
+    mount();
+    expect(await screen.findByText("No failing rules match")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Clear filters" })[0]).toHaveAttribute("href", "/insights/rules?run=v1");
+    query = "run=v1";
+  });
+
+  it("puts the rule's plain name first and its check id second, under a one-line purpose", async () => {
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [row("A1", 80)] });
+    mount();
+    expect(await screen.findByTestId("page-purpose")).toHaveTextContent("Which checks cost the most, and where to start.");
+    expect(screen.queryByRole("columnheader", { name: "Name" })).toBeNull();
+    expect((await screen.findAllByText("A1")).length).toBeGreaterThan(0);
   });
 
   it("shows an error with retry", async () => {

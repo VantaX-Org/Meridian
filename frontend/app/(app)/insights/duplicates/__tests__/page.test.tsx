@@ -53,7 +53,7 @@ async function pickObjectAndRecord() {
   await waitFor(() => expect(option).toHaveAttribute("data-highlighted"));
   fireEvent.click(option);
   await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("Material master"));
-  fireEvent.change(screen.getByLabelText("Record ID"), { target: { value: "000101" } });
+  fireEvent.change(screen.getByLabelText("Record key"), { target: { value: "000101" } });
 }
 
 describe("DuplicatesPage mined tabs", () => {
@@ -103,7 +103,7 @@ describe("DuplicatesPage mined tabs", () => {
     const houseRules = vi.spyOn(learnedRulesApi, "mineLearnedRules").mockResolvedValue({ queued: true });
     const mine = vi.spyOn(miningApi, "runMining").mockResolvedValue({ task_id: "t1", version_id: "v1", include: ["relationship"] });
     renderWithQuery(<DuplicatesPage />);
-    expect(await screen.findByText("No relationships mined")).toBeInTheDocument();
+    expect(await screen.findByText("No field relationships found yet")).toBeInTheDocument();
     // With a run in scope the empty state starts the miner that fills this feed, not the learned-rules miner.
     fireEvent.click(screen.getByRole("button", { name: "Mine now" }));
     await waitFor(() => expect(mine).toHaveBeenCalledWith("v1", ["relationship"]));
@@ -119,7 +119,7 @@ describe("DuplicatesPage", () => {
       objects: [{ module: "material_master", label: "Material master", composite_score: 72, readiness: "fail", failing_checks: 3, affected_records: 2 }],
     });
     renderWithQuery(<DuplicatesPage />);
-    expect(await screen.findByText(/pick an object and a record/i)).toBeInTheDocument();
+    expect(await screen.findByText(/choose an object and a record/i)).toBeInTheDocument();
   });
 
   it("renders the cluster graph and lets the user pick a master record", async () => {
@@ -146,7 +146,7 @@ describe("DuplicatesPage", () => {
     const masterRadio = await screen.findByRole("radio", { name: "000101" });
     fireEvent.click(masterRadio);
 
-    expect(await screen.findByText(/3 documents would move/i)).toBeInTheDocument();
+    expect(await screen.findByText(/3 linked documents would move/i)).toBeInTheDocument();
   });
 
   it("creates a merge proposal for the edges touching the chosen master", async () => {
@@ -186,6 +186,29 @@ describe("DuplicatesPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Review in the inbox" }));
     expect(push).toHaveBeenCalledWith("/inbox?tab=queue");
     expect(push).not.toHaveBeenCalledWith(expect.stringContaining("/workbench"));
+  });
+
+  it("says so when the merge proposal fails, instead of failing silently", async () => {
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v1",
+      objects: [{ module: "material_master", label: "Material master", composite_score: 72, readiness: "fail", failing_checks: 3, affected_records: 2 }],
+    });
+    vi.spyOn(insightsApi, "getDuplicateCluster").mockResolvedValue({
+      nodes: [
+        { id: "000101", size: 1, label: "000101" },
+        { id: "000102", size: 3, label: "000102" },
+      ],
+      edges: [{ source: "000101", target: "000102", label: "ms-1", weight: 0.97 }],
+      thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+    });
+    vi.spyOn(insightsApi, "createMergeProposals").mockRejectedValue(new Error("merge service unavailable"));
+    vi.spyOn(mergeExplainApi, "getMergeExplanation").mockResolvedValue(explainWithMembers(["000101", "000102"]));
+    renderWithQuery(<><DuplicatesPage /><Toaster /></>);
+    await pickObjectAndRecord();
+    fireEvent.click(await screen.findByRole("radio", { name: "000101" }));
+    fireEvent.click(await screen.findByRole("button", { name: /create merge proposal/i }));
+    expect(await screen.findByText(/could not reach the server/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /create merge proposal/i })).not.toBeDisabled();
   });
 
   it("disables the create-merge-proposal button when no pair has a usable id", async () => {

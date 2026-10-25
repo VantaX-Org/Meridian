@@ -10,7 +10,8 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
-import { withScope } from "../_components/useInsightScope";
+import { useInsightScope, withScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
   red: "no-go",
@@ -18,10 +19,12 @@ const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
   green: "go",
 };
 
+const TREND_WORDS: Record<string, string> = { improving: "heading up", stable: "holding steady", declining: "heading down", critical: "falling fast" };
+
 const SIGNAL_LABEL: Record<EarlyWarning["signal"], string> = { red: "Red", amber: "Amber", green: "Green" };
 
 const warningColumns: ColumnDef<EarlyWarning>[] = [
-  { accessorKey: "module_id", header: "Module", cell: ({ row }) => formatModuleName(row.original.module_id) },
+  { accessorKey: "module_id", header: "Object", cell: ({ row }) => formatModuleName(row.original.module_id) },
   {
     accessorKey: "signal",
     header: "Signal",
@@ -48,6 +51,7 @@ export function forecastEmptyDetail(d: Pick<PredictiveResponse, "reason" | "runs
  * the header names what it saw ("Every object, 6 runs on 1 day") rather than a run.
  */
 export default function ForecastPage() {
+  const { run } = useInsightScope();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.analyticsPredictive(),
     queryFn: () => getPredictiveAnalytics(),
@@ -98,15 +102,17 @@ export default function ForecastPage() {
   return (
     <InsightFrame
       title="Forecast"
-      meta={seen ? `Every object, ${seen}` : undefined}
+      purpose={PAGE_PURPOSE["/insights/forecast"]}
+      meta={seen ? `Every object, from ${seen}` : undefined}
+      run={run}
       insight={{
         situation: {
           sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d}% DQS in 30 days` : "Not enough runs to forecast",
           tone: declining.length ? "at-risk" : "go",
         },
-        changed: { sentence: `${plural(declining.length, "module is", "modules are")} declining` },
+        changed: { sentence: `${plural(declining.length, "object is", "objects are")} heading down` },
         why: { sentence: warnings.length ? `${plural(warnings.length, "early warning is", "early warnings are")} open` : "No early warning is open" },
-        next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: worst ? "Open failing rules" : "Open runs", href: worst ? withScope("/insights/rules", { module: worst.module_id }) : "/runs" } },
+        next: { sentence: worst ? `Review the failing rules of ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: worst ? "Open failing rules" : "Open runs", href: worst ? withScope("/insights/rules", { module: worst.module_id }) : "/runs" } },
       }}
       state={state}
       skeleton={
@@ -123,7 +129,7 @@ export default function ForecastPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <Card title="Predicted DQS">
+      <Card title="Predicted score" meta="Today's score and the expected score in 7, 30 and 90 days if nothing changes">
         <div className="flex flex-col gap-3">
           {forecasts.length > 0 && (
             <Select
@@ -133,20 +139,20 @@ export default function ForecastPage() {
               options={forecasts.map((f) => ({ value: f.module_id, label: formatModuleName(f.module_id) }))}
             />
           )}
-          {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
+          {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this object" detail="It needs runs on three different days." action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
           {hidden > 0 && (
-            <p className="m-text-meta m-ink-3">{`+${hidden} more modules, shown one at a time when selected above`}</p>
+            <p className="m-text-meta m-ink-3">{`${plural(hidden, "more object")}, shown one at a time when selected above`}</p>
           )}
           {selected && (
             <p className="m-text-body m-ink-2">
-              {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
+              {`${formatModuleName(selected.module_id)}: ${TREND_WORDS[selected.trend] ?? selected.trend}, ${selected.confidence}% confidence, from ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
             </p>
           )}
         </div>
       </Card>
-      <Card title="Early warnings">
+      <Card title="Early warnings" meta="Objects the forecast flags, with what to do about each">
         {warnings.length === 0 ? (
-          <EmptyState title="No early warnings" detail="Every module is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
+          <EmptyState title="No early warnings" detail="Every object is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
         ) : (
         <DataTable columns={warningColumns} data={warnings} getRowId={(w) => `${w.module_id}-${w.signal}-${w.message}`} hideToolbar dense height="auto" />
         )}

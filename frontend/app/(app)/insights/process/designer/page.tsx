@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
+import { runScopeLabel } from "@/lib/run-scope";
 import {
   adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
   pptxExportUrl, signavioExportUrl, type SaveFailure,
@@ -26,6 +27,9 @@ import { ProcessTree, type TreeActions } from "./_components/tree";
 import { OldVersionBanner, VersionsMenu } from "./_components/versions";
 
 const NEW_NAME = ["New process", "New process area", "New process group", "New sub-process"];
+
+/** The one line under the title. */
+const DESIGNER_PURPOSE = "Draw how your business processes should run, and see which steps the data of the selected run breaks.";
 
 export default function ProcessDesigner() {
   const sp = useSearchParams();
@@ -58,7 +62,7 @@ export default function ProcessDesigner() {
   if (!doc) {
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="Process designer" meta="Design the process model and see where the data behind it breaks." />
+        <PageHeader title="Process designer" meta={DESIGNER_PURPOSE} />
         {failed ? (
           <ErrorState {...apiErrorState(failed)}
             onRetry={() => void (reference ? ref.refetch() : saved.refetch())} />
@@ -70,7 +74,7 @@ export default function ProcessDesigner() {
     <Editor key={`${model}:${v ?? ""}:${versionNo}`}
       model={model} initial={doc} versionNo={versionNo} currentVersion={currentVersion} viewingOld={!reference && versionNo !== currentVersion}
       models={models.data ?? []} overlay={overlayOn ? overlay.data ?? null : null} overlayOn={overlayOn}
-      variants={variants.data ?? []} latestId={latest?.id} findingHref={findingHref} />
+      variants={variants.data ?? []} latestId={latest?.id} latestLabel={latest ? runScopeLabel(latest) : undefined} findingHref={findingHref} />
   );
 }
 
@@ -85,6 +89,8 @@ interface EditorProps {
   overlayOn: boolean;
   variants: ProcessVariant[];
   latestId: string | undefined;
+  /** "As of" label of the run the overlay reads. */
+  latestLabel: string | undefined;
   findingHref: (module: string, checkId: string) => string | undefined;
 }
 
@@ -125,6 +131,7 @@ function Editor(p: EditorProps) {
   const create = useMutation({
     mutationFn: (a: { name: string; from: string }) => createModel(a.name, a.from),
     onSuccess: (r) => { void qc.invalidateQueries({ queryKey: queryKeys.processModels() }); setNaming(null); setPrompt(false); go({ model: r.model.id, v: null, attr: null }); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const save = useMutation({
     mutationFn: () => saveModel(model, { document: doc, note, base_version: versionNo }),
@@ -148,6 +155,7 @@ function Editor(p: EditorProps) {
   const adopt = useMutation({
     mutationFn: (a: { variantId: string; l4Id: string }) => adoptVariant(model, { variant_id: a.variantId, l4_id: a.l4Id }),
     onSuccess: refresh,
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   const saveRef = useRef(() => {});
@@ -179,7 +187,7 @@ function Editor(p: EditorProps) {
   const acts = D.allL4(doc).flatMap((x) => x.activities);
   const count = (c: string) => acts.filter((a) => actColour(a.id) === c).length;
   const unmapped = p.variants.filter(D.isUnmapped);
-  const noOverlay = ov ? undefined : "Open a saved model with an analysis to see this.";
+  const noOverlay = ov ? undefined : reference ? "Create your own model to see the data on it." : !overlayOn ? "Turn on Selected run above to see this." : "Needs a finished run.";
 
   const actions: TreeActions = {
     rename: (id, name) => edit((d) => D.renameItem(d, id, name)),
@@ -194,8 +202,11 @@ function Editor(p: EditorProps) {
     move: (id, dir) => edit((d) => D.moveItem(d, id, dir)),
   };
 
-  const exportZip = () => downloadAuthenticated(
-    signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip");
+  const exportZip = useMutation({
+    mutationFn: () => downloadAuthenticated(
+      signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
   const exportPptx = useMutation({
     mutationFn: () => downloadAuthenticated(pptxExportUrl(model, viewingOld ? versionNo : undefined), "process-model.pptx"),
     onSuccess: () => toast.success("PowerPoint exported"),
@@ -205,7 +216,13 @@ function Editor(p: EditorProps) {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Process designer"
-        meta={reference ? "Read-only reference model, create a model to edit" : `Version ${versionNo} of ${currentVersion}, saved as a new version on change`}
+        meta={<>
+          <span className="block m-text-body m-ink-2">{DESIGNER_PURPOSE}</span>
+          <span className="mt-1 block">
+            {reference ? "The SAP reference model is read-only; create your own model to edit it" : `Version ${versionNo} of ${currentVersion}; every save keeps a new version`}
+            {p.latestLabel ? `. Data as of ${p.latestLabel}` : ". No finished run yet, so no data is shown on the model"}
+          </span>
+        </>}
         actions={<>
           <Select
             label="Process model"
@@ -213,8 +230,8 @@ function Editor(p: EditorProps) {
             options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
             onValueChange={(m) => !dirty && go({ model: m, v: null, attr: null, node: null })} />
           {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
-          {canDesign ? <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button> : null}
-          {canExport ? <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button> : null}
+          {canDesign ? <Button variant={reference ? "primary" : "secondary"} onClick={() => setNaming(naming === null ? "" : null)}>{reference ? "Create a model to edit" : "New model"}</Button> : null}
+          {canExport ? <Button variant="secondary" disabled={dirty} pending={exportZip.isPending} onClick={() => exportZip.mutate()}>Export to Signavio</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} pending={exportPptx.isPending} onClick={() => exportPptx.mutate()}>Export to PowerPoint</Button> : null}
         </>} />
 
@@ -254,10 +271,10 @@ function Editor(p: EditorProps) {
         </form>
       ) : null}
 
-      <div className="flex items-center gap-2">
-        <span className="m-text-body">Overlay</span>
-        <Button variant={overlayOn ? "primary" : "secondary"} onClick={() => go({ overlay: null })}>Latest analysis</Button>
-        <Button variant={!overlayOn ? "primary" : "secondary"} onClick={() => go({ overlay: "none" })}>None</Button>
+      <div className="flex items-center gap-2" role="group" aria-label="Show data on the model">
+        <span className="m-text-body">Show data on the model</span>
+        <Button variant={overlayOn ? "secondary" : "ghost"} aria-pressed={overlayOn} onClick={() => go({ overlay: null })}>Selected run</Button>
+        <Button variant={!overlayOn ? "secondary" : "ghost"} aria-pressed={!overlayOn} onClick={() => go({ overlay: "none" })}>None</Button>
       </div>
 
       <div className="flex gap-6 flex-wrap">

@@ -76,8 +76,8 @@ describe("ImpactPage", () => {
     });
     renderWithQuery(<ImpactPage />);
 
-    await waitFor(() => expect(screen.getByText("Largest L1 proven cost")).toBeInTheDocument());
-    expect(screen.getByText("Largest L1 at risk")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Largest proven cost, one process")).toBeInTheDocument());
+    expect(screen.getByText("Most at risk, one process")).toBeInTheDocument();
     expect(screen.getAllByText("Procure to pay, across 2 processes").length).toBeGreaterThan(0);
     expect(screen.getByText("Late purchase orders")).toBeInTheDocument();
     expect(screen.getByText("MM140")).toBeInTheDocument();
@@ -172,3 +172,20 @@ describe("ImpactPage", () => {
     expect(getImpact).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("ImpactPage links", () => {
+  it("never links an SAP feature as if it were an object, and opens the rule behind its records", async () => {
+    mockEmptyProvenCost();
+    vi.spyOn(insightsApi, "getImpact").mockResolvedValue({
+      version_id: "v1",
+      rows: [{ feature: "SF Onboarding 2.0", l1: "procure_to_pay", status: "Blocked", record_count: 42, value_per_record: 150, value_at_risk: 6300, causing_rules: ["MM-003"] }],
+    });
+    renderWithQuery(<ImpactPage />);
+    const name = await screen.findByText("SF Onboarding 2.0", { selector: "span" });
+    expect(name.closest("a")).toBeNull();
+    expect(document.querySelector('a[href^="/objects/SF"]')).toBeNull();
+    expect(screen.getByText("42").closest("a")?.getAttribute("href")).toBe("/rules/MM-003");
+    expect(screen.getByTestId("page-purpose")).toHaveTextContent(/What the failing records are worth/);
+  });
+});
+

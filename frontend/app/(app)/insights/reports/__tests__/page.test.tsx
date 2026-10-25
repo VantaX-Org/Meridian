@@ -19,7 +19,7 @@ vi.mock("@/lib/permissions", async (orig) => ({
   usePermissionsContext: () => null,
 }));
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/insights",
+  usePathname: () => "/insights/reports",
   useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }), useSearchParams: () => new URLSearchParams("") }));
 
 const entry = (id: string, name: string, url: string | null) => ({
@@ -113,12 +113,15 @@ describe("ReportsPage scope and rendering", () => {
   it("offers only runs of the same lineage under Compare with and writes the scope line from the run label", async () => {
     perm.allowed = true;
     mount();
-    expect(await screen.findByText(/Scope: Run 2, no comparison run, every object in the run/)).toBeInTheDocument();
+    // The header names the run as every insight page does, then what the report covers.
+    expect(await screen.findByTestId("insight-scope")).toHaveTextContent(/As of/);
+    expect(await screen.findByText("no comparison, every object in the run")).toBeInTheDocument();
+    expect(screen.getByTestId("page-purpose")).toHaveTextContent(/Ready-made reports for the selected run/);
     await userEvent.click(screen.getByRole("combobox", { name: "Compare with" }));
     expect(await screen.findByRole("option", { name: "Run 1" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "controlling_1k" })).toBeNull();
     expect(screen.queryByRole("option", { name: "Run 2" })).toBeNull();
-    expect(screen.getByText("1 earlier run of the same lineage can be compared.")).toBeInTheDocument();
+    expect(screen.getByText("1 earlier run of the same system or upload can be compared.")).toBeInTheDocument();
   });
 
   it("shows a pending Rendering state on Download while the PDF builds", async () => {

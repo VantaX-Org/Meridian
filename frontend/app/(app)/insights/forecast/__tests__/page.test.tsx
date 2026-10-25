@@ -51,7 +51,7 @@ describe("ForecastPage", () => {
     renderWithQuery(<ForecastPage />);
     expect(await screen.findByText("A forecast needs runs on three different days; these 6 runs cover 1 day.")).toBeInTheDocument();
     // The forecast reads every object's history, not one run: the header says what the API saw and names no run.
-    expect(await screen.findByText("Every object, 6 runs on 1 day")).toBeInTheDocument();
+    expect(await screen.findByText("Every object, from 6 runs on 1 day")).toBeInTheDocument();
     expect(screen.queryByTestId("run-scope")).toBeNull();
     expect(screen.getByRole("link", { name: "Review fixes" })).toBeInTheDocument();
   });

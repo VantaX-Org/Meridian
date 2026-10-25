@@ -9,7 +9,7 @@ import { useRole } from "@/hooks/use-role";
 import { getCatalogue } from "@/lib/api/process-discovery";
 import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { BodySkeleton, ProcessFrame } from "./_components/process-header";
+import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "./_components/process-header";
 import { CatalogueTable, NoSystem, SystemSelect, processInsight, useProcessSystem } from "./_components/shared";
 
 const noRun = (i: InsightHeaderProps): InsightHeaderProps =>
@@ -32,7 +32,7 @@ export default function ProcessCataloguePage() {
   const rows = catalogue.data;
   return (
     <ProcessFrame>
-      <PageHeader title="Processes" meta={system?.name}
+      <PageHeader title="Processes" meta={processMeta(PROCESS_PURPOSE.catalogue)}
         actions={system && (
           <>
             <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />

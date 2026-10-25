@@ -19,6 +19,7 @@ import { useFindingOpener } from "../_components/FindingOpener";
 import { ruleColumns } from "../_components/RuleColumns";
 import { InsightFrame, formatMoney } from "../_components/InsightFrame";
 import { SavedViews } from "../_components/SavedViews";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
 const ANY = "any";
@@ -98,8 +99,8 @@ export default function RulesPage() {
     { accessorKey: "key", header: AXES.find((a) => a.value === axis)?.label ?? "Group", cell: ({ row }) => (axis === "field" ? <Mono>{row.original.key}</Mono> : groupLabel(row.original.key)) },
     { accessorKey: "rules", header: "Rules", meta: { numeric: true } },
     { accessorKey: "affected", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
-    { accessorKey: "impact", header: "Impact", meta: { numeric: true }, cell: ({ row }) => row.original.impact.toLocaleString() },
-    { accessorKey: "autoFix", header: "Auto-fix", meta: { numeric: true }, cell: ({ row }) => `${Math.round(row.original.autoFix)}%` },
+    { accessorKey: "impact", header: "Impact on score", meta: { numeric: true }, cell: ({ row }) => row.original.impact.toLocaleString() },
+    { accessorKey: "autoFix", header: "Auto-fixable", meta: { numeric: true }, cell: ({ row }) => `${Math.round(row.original.autoFix)}%` },
     { accessorKey: "worst", header: "Worst severity", cell: ({ row }) => (row.original.worst ? <Status kind="severity" value={row.original.worst} variant="solid" /> : "—") },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [axis]);
@@ -128,23 +129,27 @@ export default function RulesPage() {
   const axisInTitle = axis === "s4" ? axisLabel : axisLabel.toLowerCase();
   const state = resolving || q.isLoading || versions.isLoading ? "loading" : isListFailure(q) ? "error" : undefined;
   const top = rows[0];
+  const hasFilters = Object.entries(filters).some(([k, v]) => k !== "axis" && !!v);
   const totalAffected = rows.reduce((n, r) => n + r.affected, 0);
   const blocking = rows.filter((r) => r.s4 === "blocking").length;
 
   return (
     <InsightFrame
       title="Failing rules"
+      purpose={PAGE_PURPOSE["/insights/rules"]}
       scope
-      meta={`${module ? formatModuleName(module) : "Every object in this run"}${field ? `, field ${field}` : ""}`}
+      meta={<>{module ? formatModuleName(module) : "Every object in this run"}{field ? <>, field <Mono>{field}</Mono></> : null}</>}
       run={run}
       module={module}
       insight={{
         situation: { sentence: rows.length ? `${plural(rows.length, "rule fails", "rules fail")} on ${plural(totalAffected, "record")} in this scope` : "No rule fails in this scope", tone: blocking ? "no-go" : rows.length ? "at-risk" : "go" },
-        changed: { sentence: `${plural(n80, "rule accounts", "rules account")} for 80% of the impact` },
+        changed: { sentence: rows.length ? `${plural(n80, "rule accounts", "rules account")} for 80% of the impact on the score` : "Nothing to rank" },
         why: { sentence: blocking ? `${plural(blocking, "rule")} would block an S/4 load` : "No failing rule blocks an S/4 load", href: withScope("/insights/readiness", { run }) },
         next: top
-          ? { sentence: `Start with ${top.check_id}, the highest impact`, action: { label: "Open the rule", onClick: () => void finding.open(top) } }
-          : { sentence: "Widen the filters or pick another run", action: { label: "Open runs", href: "/runs" } },
+          ? { sentence: `Start with ${top.name || top.check_id}, the highest impact`, action: { label: "Open the rule", onClick: () => void finding.open(top) } }
+          : hasFilters
+            ? { sentence: "Clear the filters to see every failing rule", action: { label: "Clear filters", href: withScope("/insights/rules", { run }) } }
+            : { sentence: "Nothing fails here; pick another run", action: { label: "Open runs", href: "/runs" } },
       }}
       state={state}
       skeleton={<><Skeleton height={220} /><Skeleton height={320} /></>}
@@ -156,7 +161,7 @@ export default function RulesPage() {
           <Select label="Severity" value={severity} onValueChange={setSeverity} options={opts(SEVERITIES, "Any severity")} />
           <Select label="Dimension" value={dimension} onValueChange={setDimension} options={opts(DIMENSIONS, "Any dimension")} />
           <Select label="Auto-fixable" value={auto} onValueChange={setAuto} options={yesNo("Any fix type")} />
-          <Select label="S/4 blocking" value={s4} onValueChange={setS4} options={yesNo("Any S/4 status")} />
+          <Select label="Blocks an S/4 load" value={s4} onValueChange={setS4} options={yesNo("Any S/4 status")} />
           {field && <Button variant="secondary" onClick={() => go({ field: undefined })}>Clear field filter</Button>}
           {module && <Button variant="secondary" onClick={() => go({ module: undefined })}>Every object in this run</Button>}
           <SavedViews route="/insights/rules" current={filters} onApply={(f) => router.replace(withScope(path, { run, ...f }))} />
@@ -164,7 +169,11 @@ export default function RulesPage() {
       </div>
       {!run || rows.length === 0 ? (
         q.isError ? <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />
-          : <EmptyState title="No failing rules" detail="Nothing matches these filters in this run." ghost="table" action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run })}>Clear filters</Link>} />} />
+          : !run
+            ? <EmptyState title="No finished run yet" detail="Failing rules are listed once a run has been analysed." ghost="table" action={<Button render={<Link href="/runs">Open runs</Link>} />} />
+            : hasFilters
+              ? <EmptyState title="No failing rules match" detail="Nothing matches these filters in this run." ghost="table" action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run })}>Clear filters</Link>} />} />
+              : <EmptyState title="No rule fails in this run" detail="Every rule that ran passed. Open another run to compare." ghost="table" action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />
       ) : (
         <>
           {/* The ledger first: the rules (or groups) ranked by impact, the last column the row's one action. */}

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as findings from "@/lib/api/findings";
@@ -18,5 +18,13 @@ describe("DqsScore", () => {
     vi.spyOn(findings, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
     renderWithQuery(<DqsScore agg={agg} versionId="v1" />);
     expect(await screen.findByRole("button", { name: /explain score 82/i })).toBeInTheDocument();
+  });
+
+  it("links Score history to the run's trend, not the executive summary", async () => {
+    vi.spyOn(settings, "getSettings").mockResolvedValue({ dqs_weights: { completeness: 0.5, validity: 0.5 } } as Awaited<ReturnType<typeof settings.getSettings>>);
+    vi.spyOn(findings, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
+    renderWithQuery(<DqsScore agg={agg} versionId="v1" />);
+    fireEvent.click(await screen.findByRole("button", { name: /explain score 82/i }));
+    expect(await screen.findByRole("link", { name: "Score history" })).toHaveAttribute("href", "/insights/trends?run=v1");
   });
 });

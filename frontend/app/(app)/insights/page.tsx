@@ -18,6 +18,7 @@ import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason, trend
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
+import { PAGE_PURPOSE } from "./_components/InsightViews";
 import { scopeTrendRuns, trendPoints } from "./_components/trendLineage";
 import { Section } from "./_components/Section";
 import { InsightActions } from "./_components/InsightActions";
@@ -101,6 +102,7 @@ function RunOverview() {
   return (
     <InsightFrame
       title="Insights"
+      purpose={PAGE_PURPOSE["/insights"]}
       scope
       meta={module ? <Pill tone="info">{formatModuleName(module)}</Pill> : undefined}
       actions={<InsightActions run={run} module={module} options={exportOptions} />}
@@ -140,7 +142,7 @@ function RunOverview() {
           { label: "Blocking gaps", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
           { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ source: "rule", confidence: "high" }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
-            label: "Value at risk, worst L1",
+            label: "Value at risk, top process",
             value: o?.value_at_risk.worst_l1 ? formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency) : "—",
             to: withScope("/insights/impact", { run }),
             hint: o?.value_at_risk.worst_l1 ? `${l1Label(o.value_at_risk.worst_l1)}, ${o.value_at_risk.features_blocked} features blocked` : undefined,
@@ -179,14 +181,14 @@ function RunOverview() {
         <div className="grid gap-4 @5xl:grid-cols-12">
           <div className="@5xl:col-span-8">
             <Section title="Trend" height={180} query={trends} meta={trendNote}>
-              {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs at least two scored runs of this object.</p> : (
+              {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs a second scored run of the same system or upload. <Link href="/runs" className="m-ink-accent underline-offset-2 hover:underline">Open runs</Link></p> : (
                 <Line data={trendLine} label="Composite score per run" annotations={annotations} height={180} />
               )}
             </Section>
           </div>
           <div className="@5xl:col-span-4">
-            <Section title="Dimensions" height={180} query={trends}>
-              {dims.length === 0 ? <p className="m-text-body m-ink-3">No dimension scores in this run.</p>
+            <Section title="Dimensions" height={180} query={trends} meta="The six measures behind the score">
+              {dims.length === 0 ? <p className="m-text-body m-ink-3">This run has no dimension scores. <Link href={withScope("/insights/rules", { run, module })} className="m-ink-accent underline-offset-2 hover:underline">Open failing rules</Link></p>
                 : dims.length < 3 ? <Bar data={dims} label="Dimension scores, this run" height={140} />
                 : <Radar data={dims} label="Dimension scores, this run" height={200} />}
             </Section>
@@ -209,8 +211,8 @@ function RunOverview() {
           </div>
 
           <div className="@5xl:col-span-12">
-            <Section title="Object heatmap" height={240} query={heat}>
-              {heatRows.length === 0 ? <p className="m-text-body m-ink-3">No object scores in this run.</p> : (
+            <Section title="Object heatmap" height={240} query={heat} meta="Each object's score per dimension; select a cell to open it">
+              {heatRows.length === 0 ? <p className="m-text-body m-ink-3">This run has no object scores yet. <Link href="/runs" className="m-ink-accent underline-offset-2 hover:underline">Open runs</Link></p> : (
                 <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
                   <Heatmap
                     rows={heatRows.map((r) => formatModuleName(r.module))}

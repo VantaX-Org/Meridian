@@ -4,6 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict, Score } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -19,6 +20,7 @@ import { Section } from "../_components/Section";
 import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 
 
@@ -46,9 +48,9 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
   },
 ];
 
-const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
+const ownerColumns = (run?: string): ColumnDef<OwnerCardResponse>[] => [
   { accessorKey: "owner", header: "Owner" },
-  { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href="/insights/owners">{row.original.score}</DrillLink> },
+  { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href={withScope("/insights/owners", { run })}>{row.original.score}</DrillLink> },
   { accessorKey: "delta", header: "Change", cell: ({ row }) => <Delta value={row.original.delta} /> },
 ];
 
@@ -98,10 +100,13 @@ export default function ExecPage() {
   for (const pt of data?.waterfall ?? []) byL1.set(pt.l1 || "unassigned", [...(byL1.get(pt.l1 || "unassigned") ?? []), pt]);
   const l1Tabs = [...byL1].sort(([a], [b]) => a.localeCompare(b));
   const topRisk = data ? largestValueAtRisk(valueAtRiskByL1(data.impact_rows)) : null;
+  const boardPack = vid ? () => void downloadAuthenticated(getBoardReportUrl(vid), `board_${vid}.pdf`).catch((e: unknown) => toast.error(apiErrorMessage(e))) : undefined;
+  const pairs = (n: number) => plural(n, "object and wave pair", "object and wave pairs");
 
   return (
     <InsightFrame
       title="Executive summary"
+      purpose={PAGE_PURPOSE["/insights/exec"]}
       scope
       actions={<InsightActions run={vid} options={exportOptions} />}
       insight={{
@@ -126,17 +131,19 @@ export default function ExecPage() {
           </div>
         ) : undefined,
         stats: data ? [
-          { label: "No-go cells", value: noGo, tone: noGo ? "no-go" : "go", to: "/insights/readiness" },
-          { label: "Largest L1 at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", to: "/insights/impact" },
-          { label: "Owners improved", value: up, to: "/insights/owners" },
-          { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: "/insights/owners" },
+          { label: "Not ready to load", value: noGo, hint: cells.length ? `of ${pairs(cells.length)}` : "No wave set up", tone: noGo ? "no-go" : "go", to: withScope("/insights/readiness", { run: vid }) },
+          { label: "Most at risk, one process", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", hint: topRisk ? l1Label(topRisk.l1) : undefined, to: withScope("/insights/impact", { run: vid }) },
+          { label: "Owners improved", value: up, to: withScope("/insights/owners", { run: vid }) },
+          { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: withScope("/insights/owners", { run: vid }) },
         ] : undefined,
-        situation: { sentence: data?.narrative || (cells.length ? `${noGo} of ${plural(cells.length, "readiness cell")} ${noGo === 1 ? "is" : "are"} no-go` : "No waves set up yet"), tone: noGo ? "no-go" : "go" },
+        situation: { sentence: data?.narrative || (cells.length ? `${noGo} of ${pairs(cells.length)} ${noGo === 1 ? "is" : "are"} not ready to load` : "No migration wave is set up yet"), tone: noGo ? "no-go" : "go" },
         changed: { sentence: owners.length === 0 ? "Nobody owns an issue yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
-        why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "Nothing is priced at risk yet", href: "/insights/impact" },
+        why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "Nothing is priced at risk yet", href: withScope("/insights/impact", { run: vid }) },
         next: noGo
-          ? { sentence: "Clear the no-go cells first", action: { label: "Open readiness", href: withScope("/insights/readiness", { run }) } }
-          : { sentence: "Share the board pack", action: { label: "Open reports", href: withScope("/insights/reports", { run }) } },
+          ? { sentence: "Clear what blocks the objects that are not ready", action: { label: "Open waves", href: withScope("/insights/readiness", { run }) } }
+          : boardPack
+            ? { sentence: "Share the board pack with leadership", action: { label: "Download board pack", onClick: boardPack } }
+            : { sentence: "Pick a report to share", action: { label: "Open reports", href: withScope("/insights/reports", { run }) } },
       }}
       state={state}
       skeleton={
@@ -160,7 +167,7 @@ export default function ExecPage() {
           </Section>
         </div>
         <div className="@5xl:col-span-12">
-          <Card title="Readiness by wave" meta={cells.length ? `${noGo} no-go, ${cells.length - noGo} ready` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open readiness</Link>}>
+          <Card title="Readiness by wave" meta={cells.length ? `${noGo} not ready, ${cells.length - noGo} ready or at risk` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open waves</Link>}>
             {cells.length === 0 && (
               <EmptyState variant="inline" title="No readiness waves yet" detail="Create a wave in the migration cockpit to score objects per wave." action={<Link href="/migration" className="underline-offset-2 hover:underline">Open migration cockpit</Link>} />
             )}
@@ -183,7 +190,7 @@ export default function ExecPage() {
         </div>
         {l1Tabs.length > 0 && (
           <div className="@5xl:col-span-7">
-            <Card title="Score movement">
+            <Card title="Score movement" meta="What raised and lowered the score, per end-to-end process">
               <Tabs
                 items={l1Tabs.map(([l1, points]) => ({
                   value: l1,
@@ -202,9 +209,9 @@ export default function ExecPage() {
         <div className={l1Tabs.length > 0 ? "@5xl:col-span-5" : "@5xl:col-span-12"}>
           <Card title="Owners" actions={<Link href={withScope("/insights/owners", { run })} className="m-text-body underline-offset-2 hover:underline">Open owners</Link>}>
             {owners.length === 0 ? (
-              <EmptyState variant="inline" title="No owner is scored yet" detail="Owners appear once findings are assigned." action={<Link href="/inbox" className="underline-offset-2 hover:underline">Open inbox</Link>} />
+              <EmptyState variant="inline" title="No owner is scored yet" detail="Owners appear once findings in the fix queue are assigned to someone." action={<Link href={withScope("/fix", { run })} className="underline-offset-2 hover:underline">Open fix queue</Link>} />
             ) : (
-              <DataTable columns={ownerColumns} data={owners} getRowId={(row) => row.owner} hideToolbar dense height="auto" />
+              <DataTable columns={ownerColumns(vid)} data={owners} getRowId={(row) => row.owner} hideToolbar dense height="auto" />
             )}
           </Card>
         </div>

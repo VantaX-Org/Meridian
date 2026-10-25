@@ -16,6 +16,7 @@ import { labelOf, plural } from "@/lib/format";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
 import { useInsightScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 /** Queue stage ids as the steward sees them. */
 export const STAGE_LABEL: Record<string, string> = {
@@ -43,10 +44,10 @@ const bottleneckColumns: ColumnDef<Bottleneck>[] = [
 
 const sprintColumns: ColumnDef<SprintPlan>[] = [
   { accessorKey: "name", header: "Sprint" },
-  { accessorKey: "total_effort_hours", header: "Effort (h)" },
-  { accessorKey: "records_fixed", header: "Records fixed" },
-  { accessorKey: "critical_cleared", header: "Criticals cleared" },
-  { id: "dqs", header: "DQS", cell: ({ row }) => `${row.original.dqs_now ?? "—"} to ${row.original.dqs_projected ?? "—"}` },
+  { accessorKey: "total_effort_hours", header: "Effort (h)", meta: { numeric: true } },
+  { accessorKey: "records_fixed", header: "Records fixed", meta: { numeric: true } },
+  { accessorKey: "critical_cleared", header: "Critical findings cleared", meta: { numeric: true } },
+  { id: "dqs", header: "Score, now to after", cell: ({ row }) => `${row.original.dqs_now ?? "—"} to ${row.original.dqs_projected ?? "—"}` },
   { id: "cost", header: "Estimated cost", cell: ({ row }) => row.original.estimated_cost == null ? "—" : `${row.original.estimated_cost.toLocaleString()} ${row.original.currency}` },
 ];
 
@@ -56,7 +57,7 @@ function TeamCard() {
   const perf = useQuery({ queryKey: ["analytics", "team", userId], queryFn: () => getTeamPerformance(userId), enabled: userId !== "" });
   const s = perf.data?.summary;
   return (
-    <Card title="Team member">
+    <Card title="Team member" meta="One person's throughput and approval rate">
       <div className="flex flex-col gap-3">
         <Select
           label="Team member"
@@ -104,10 +105,11 @@ export default function OperationsPage() {
   return (
     <InsightFrame
       title="Operations"
+      purpose={PAGE_PURPOSE["/insights/operations"]}
       run={run}
       insight={{
         loading: ops.isLoading,
-        situation: { sentence: `${plural(k?.items_in_flight ?? 0, "item")} in flight, ${k ? pct(k.sla_compliance_pct) : "—"} within SLA` },
+        situation: { sentence: `${plural(k?.items_in_flight ?? 0, "item")} in progress, ${k ? pct(k.sla_compliance_pct) : "—"} handled within the agreed time` },
         changed: { sentence: bottlenecks.length ? `${plural(bottlenecks.length, "stage is", "stages are")} holding work` : "No stage is holding work" },
         why: { sentence: cap?.recommendation || "—" },
         next: { sentence: worst ? `Unblock ${stageLabel(worst.stage)} first` : "Nothing is blocked", action: { label: "Open inbox", href: "/inbox" } },
@@ -131,8 +133,8 @@ export default function OperationsPage() {
           <Stat label="Rejection rate" value={k ? pct(k.rejection_rate) : "—"} tone={k && k.rejection_rate > 0 ? "at-risk" : undefined} />
           <Stat label="Rollback rate" value={k ? pct(k.rollback_rate) : "—"} tone={k && k.rollback_rate > 0 ? "no-go" : undefined} />
           <Stat label="Time to resolve" href="/inbox" value={k ? hours(k.mttr_hours) : "—"} />
-          <Stat label="SLA compliance" value={k ? pct(k.sla_compliance_pct) : "—"} />
-          <Stat label="In flight" href="/inbox" value={k?.items_in_flight ?? "—"} />
+          <Stat label="Within agreed time (SLA)" value={k ? pct(k.sla_compliance_pct) : "—"} />
+          <Stat label="In progress" href="/inbox" value={k?.items_in_flight ?? "—"} />
           <Stat label="Average queue age" href="/inbox" value={k ? hours(k.avg_queue_age_hours) : "—"} />
           <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
           <Stat label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} />
@@ -149,11 +151,17 @@ export default function OperationsPage() {
         )}
       </Section>
       <TeamCard />
-      <Section title="Bottlenecks" height={120} query={ops}>
-        <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar dense height="auto" />
-      </Section>
-      <Section title="Sprint plans" height={120} query={sprints}>
-        <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar dense height="auto" />
+      {bottlenecks.length > 0 && (
+        <Section title="Bottlenecks" height={120} query={ops} meta="Each waiting stage and what would clear it">
+          <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar dense height="auto" />
+        </Section>
+      )}
+      <Section title="Sprint plans" height={120} query={sprints} meta="Suggested batches of fixes and what each would do to the score">
+        {plans.length === 0 ? (
+          <EmptyState variant="inline" title="No sprint plan yet" detail="Plans are suggested once the fix queue holds open items." action={<Link href="/fix" className="underline-offset-2 hover:underline">Open fix queue</Link>} />
+        ) : (
+          <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar dense height="auto" />
+        )}
       </Section>
     </InsightFrame>
   );

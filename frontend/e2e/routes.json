@@ -396,6 +396,6 @@
   {
     "name": "insights-progress",
     "path": "/insights/progress",
-    "heading": "Since baseline"
+    "heading": "Progress"
   }
 ]

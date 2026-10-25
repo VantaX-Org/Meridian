@@ -25,6 +25,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { atRiskSentence, findingsHref, pct } from "./links";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 // ponytail: the layered chart past this many nodes gets taller than a screen. Narrow the trace depth to see the rest.
 const MAX_NODES = 150;
@@ -37,13 +38,16 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
     queryFn: () => getLineageGuards({ node, version_id: versionId }),
   });
   if (q.isLoading) return <Skeleton height={120} />;
-  if (q.error || !q.data) return <EmptyState title="Guards could not be read." />;
+  if (q.error || !q.data) {
+    return <EmptyState title="The rules for this item did not load" detail={q.error ? apiErrorMessage(q.error) : "No answer came back."} action={<Button variant="secondary" onClick={() => void q.refetch()}>Retry</Button>} />;
+  }
   const d = q.data;
   return (
     <div className="flex flex-col gap-2">
+      <h3 className="font-medium">Rules that check it</h3>
       <p className="m-text-body m-ink-2">
-        {d.steps.length.toLocaleString()} {d.steps.length === 1 ? "step feeds" : "steps feed"} this node.{" "}
-        {d.coverage_gaps.length ? `${d.coverage_gaps.length.toLocaleString()} have no guarding rule.` : "Every step has a guarding rule."}
+        {d.steps.length.toLocaleString()} process {d.steps.length === 1 ? "step feeds" : "steps feed"} this item.{" "}
+        {d.coverage_gaps.length ? `${d.coverage_gaps.length.toLocaleString()} of them ${d.coverage_gaps.length === 1 ? "has" : "have"} no rule checking the data.` : "Every step has a rule checking its data."}
       </p>
       <ul className="flex flex-col gap-2">
         {d.steps.map((s) => (
@@ -55,7 +59,7 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
             <div className="m-text-body m-ink-2">
               {s.tcode ? <><Mono>{s.tcode}</Mono>, </> : null}
               {s.min_pass_rate != null ? `lowest pass rate ${pct(s.min_pass_rate)}` : "no pass rate"}
-              {s.unguarded_fields.length ? `. Unguarded: ${s.unguarded_fields.join(", ")}` : ""}
+              {s.unguarded_fields.length ? <>. No rule checks <Mono>{s.unguarded_fields.join(", ")}</Mono></> : ""}
             </div>
           </li>
         ))}
@@ -70,13 +74,18 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
     queryFn: () => getBlastRadius(versionId, checkId),
   });
   if (q.isLoading) return <Skeleton height={120} />;
-  if (q.error || !q.data) return <EmptyState title="Blast radius could not be read." />;
+  if (q.error || !q.data) {
+    return <EmptyState title="What this rule reaches did not load" detail={q.error ? apiErrorMessage(q.error) : "No answer came back."} action={<Button variant="secondary" onClick={() => void q.refetch()}>Retry</Button>} />;
+  }
   const d = q.data;
-  if (!d.failing_records) return <EmptyState title={`No failing records are stored for ${checkId} in this version.`} />;
+  if (!d.failing_records) {
+    return <EmptyState title="No failing records stored for this rule" detail="This run kept no failing records for the rule, so there is nothing to follow." action={<Link href={`/rules/${encodeURIComponent(checkId)}`} className="underline-offset-2 hover:underline">Open the rule</Link>} />;
+  }
   return (
     <div className="flex flex-col gap-2">
+      <h3 className="font-medium">What this rule reaches</h3>
       <p className="m-text-body m-ink-2">
-        {d.failing_records.toLocaleString()} failing {d.grain ?? ""} {d.failing_records === 1 ? "record" : "records"}{d.keys_truncated ? " (capped)" : ""} on{" "}
+        {d.failing_records.toLocaleString()} failing {d.failing_records === 1 ? "record" : "records"}{d.keys_truncated ? " (first ones only)" : ""} on{" "}
         {d.object ?? "an unmapped object"} touch {d.processes_touched.length.toLocaleString()} {d.processes_touched.length === 1 ? "process" : "processes"}.
       </p>
       {d.targets.length ? (
@@ -90,12 +99,12 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
               <div className="m-text-body m-ink-2">
                 <Mono>{t.table}</Mono>
                 {t.status === "ok" ? `, ${t.objects_touched.toLocaleString()} master records, joined on ${t.joined_on.join(", ")}`
-                  : t.status === "not_extracted" ? ", not extracted" : ", record key lacks the join field"}
+                  : t.status === "not_extracted" ? ", not extracted yet" : ", cannot be matched to these records"}
               </div>
             </li>
           ))}
         </ul>
-      ) : <EmptyState title="No transactional documents are modelled for this object." />}
+      ) : <EmptyState title="No documents are linked to this object" detail="The lineage map has no business documents, such as orders or invoices, for it yet." />}
     </div>
   );
 }
@@ -158,9 +167,9 @@ export default function LineagePage() {
   const columns = useMemo<ColumnDef<ImpactRow>[]>(() => [
     { id: "name", header: "Name", accessorFn: (r) => r.label, size: 280, cell: ({ row }) => <span className="whitespace-nowrap">{row.original.label}</span> },
     { id: "type", header: "Type", accessorFn: (r) => TYPE_LABEL[r.type], size: 120 },
-    { id: "hops", header: "Hops", accessorFn: (r) => r.min_hops, size: 72, meta: { numeric: true } },
+    { id: "hops", header: "Steps away", accessorFn: (r) => r.min_hops, size: 96, meta: { numeric: true } },
     {
-      id: "findings", header: "Findings", accessorFn: (r) => r.findings, size: 96, meta: { numeric: true },
+      id: "findings", header: "Failing rules", accessorFn: (r) => r.findings, size: 96, meta: { numeric: true },
       cell: ({ row }) => {
         const ids = row.original.check_ids;
         const href = findingsHref(ids, latest?.id, (id) => moduleByCheck.get(id));
@@ -189,11 +198,12 @@ export default function LineagePage() {
 
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (draft.trim()) { setFocus(draft.trim()); setSelId(null); } };
 
-  if (modelQ.isLoading) return <InsightFrame title="Lineage" state="loading" />;
+  const purpose = PAGE_PURPOSE["/insights/lineage"];
+  if (modelQ.isLoading) return <InsightFrame title="Lineage" purpose={purpose} state="loading" />;
   if (modelQ.error) {
-    return <InsightFrame title="Lineage" state="error" errorProps={{ message: apiErrorMessage(modelQ.error), onRetry: () => void modelQ.refetch() }} />;
+    return <InsightFrame title="Lineage" purpose={purpose} state="error" errorProps={{ message: apiErrorMessage(modelQ.error), onRetry: () => void modelQ.refetch() }} />;
   }
-  if (!modelQ.data) return <InsightFrame title="Lineage" state="empty" emptyProps={{ title: "The lineage model could not be read", action: <Button onClick={() => void modelQ.refetch()}>Retry</Button> }} />;
+  if (!modelQ.data) return <InsightFrame title="Lineage" purpose={purpose} state="empty" emptyProps={{ title: "The lineage map could not be read", detail: "The server sent no lineage map.", action: <Button onClick={() => void modelQ.refetch()}>Retry</Button> }} />;
   const model = modelQ.data;
   const sel: LineageNode | null = selId ? graphQ.data?.nodes.find((n) => n.id === selId) ?? null : null;
   const neighbours = sel ? (graphQ.data?.edges ?? []).filter((e) => e.source === sel.id || e.target === sel.id) : [];
@@ -205,28 +215,33 @@ export default function LineagePage() {
     <>
       <InsightFrame
         title="Lineage"
-        meta={`Model ${model.model_version}, ${model.edge_count.toLocaleString()} links${latest ? `, as of ${runScopeLabel(latest)}` : ""}`}
+        purpose={purpose}
+        meta={`${latest ? `As of ${runScopeLabel(latest)}` : "No finished run yet"}, ${model.edge_count.toLocaleString()} links mapped`}
         run={latest?.id}
         insight={{
           situation: { sentence: impact ? atRiskSentence(kpis, features) : "Impact needs a completed analysis", tone: kpis ? "at-risk" : "neutral" },
-          changed: { sentence: focus ? `Tracing ${label(focus)}: ${nodes.length.toLocaleString()} nodes within ${depth} hops` : "Nothing traced yet" },
+          changed: { sentence: focus ? `Tracing ${label(focus)}: ${nodes.length.toLocaleString()} items within ${depth} steps` : "Nothing traced yet" },
           why: { sentence: impact ? `${rows.length.toLocaleString()} KPIs, processes and features are reached by failing rules` : "—" },
-          next: { sentence: rows[0] ? `Trace ${rows[0].label}` : "Run an analysis", action: rows[0] ? { label: "Trace it", onClick: () => trace(rows[0].id) } : undefined },
+          next: rows[0]
+            ? { sentence: `Trace ${rows[0].label}, the item most at risk`, action: { label: "Trace it", onClick: () => trace(rows[0].id) } }
+            : latest
+              ? { sentence: "No failing rule reaches a KPI; check the rules", action: { label: "Open failing rules", href: `/insights/rules?run=${encodeURIComponent(latest.id)}` } }
+              : { sentence: "Run an analysis first", action: { label: "Open runs", href: "/runs" } },
         }}
         state={dayOne.status === "loading" ? "loading" : undefined}
         skeleton={<><CardSkeleton height={520} /><CardSkeleton height={200} /></>}
       >
-        <Card title="Field to KPI trace">
+        <Card title="Field to KPI trace" meta="Enter a field (TABLE.FIELD), a rule id or a KPI, or pick a row from the table below">
           <div className="flex flex-col gap-3">
             <form onSubmit={onSubmit} className="flex items-center gap-2">
-              <Input aria-label="Node to trace" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Field, rule or KPI id" />
+              <Input aria-label="Item to trace" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Field, rule or KPI id" />
               <Select label="Direction" value={direction} onValueChange={(v) => setDirection(v as LineageDirection)}
                 options={[{ value: "both", label: "Up and downstream" }, { value: "down", label: "Downstream" }, { value: "up", label: "Upstream" }]} />
-              <Select label="Depth" value={String(depth)} onValueChange={(v) => setDepth(Number(v))}
-                options={[2, 3, 4, 6, 8, 12].map((n) => ({ value: String(n), label: `Depth ${n}` }))} />
+              <Select label="How far" value={String(depth)} onValueChange={(v) => setDepth(Number(v))}
+                options={[2, 3, 4, 6, 8, 12].map((n) => ({ value: String(n), label: `${n} steps` }))} />
               <Button type="submit">Trace</Button>
             </form>
-            {!focus ? <EmptyState title="Enter a field, rule or KPI to trace" detail="The trace shows what feeds it and what it feeds." ghost="grid" />
+            {!focus ? <EmptyState title="Enter a field, rule or KPI to trace" detail="Type it in the box above and select Trace. The trace shows what feeds it and what it feeds." ghost="grid" />
               : graphQ.isLoading ? <Skeleton height={240} />
               : graphQ.error ? (
                 <ErrorState {...apiErrorState(graphQ.error)} onRetry={() => void graphQ.refetch()} />
@@ -235,18 +250,18 @@ export default function LineagePage() {
                 <>
                   <LineageChart nodes={nodes} edges={edges} focusId={focus} selectedId={selId} onNodeClick={(id) => setSelId(id)} />
                   <p className="m-text-body m-ink-2">
-                    {nodes.length.toLocaleString()} nodes and {edges.length.toLocaleString()} links {direction === "both" ? "up and downstream of" : direction === "up" ? "upstream of" : "downstream of"} {label(focus)}.
-                    {capped ? ` Nearest ${MAX_NODES} of ${graphQ.data?.nodes.length.toLocaleString()} nodes shown; narrow the depth to see the rest.` : ""}
+                    {nodes.length.toLocaleString()} items and {edges.length.toLocaleString()} links {direction === "both" ? "up and downstream of" : direction === "up" ? "upstream of" : "downstream of"} {label(focus)}.
+                    {capped ? ` Nearest ${MAX_NODES} of ${graphQ.data?.nodes.length.toLocaleString()} items shown; choose fewer steps to see the rest.` : ""}
                     {" "}Red squares are reached by a failing rule. Red and orange links block or degrade their target.
                   </p>
                 </>
-              ) : <EmptyState title="Nothing is linked to this node" detail="Try a node from the table below, or a wider depth." action={rows[0] ? <Button onClick={() => trace(rows[0].id)}>{`Trace ${rows[0].label}`}</Button> : <Button render={<Link href="/rules">Open rules</Link>} />} />}
+              ) : <EmptyState title="Nothing is linked to this item" detail="Check the spelling, try an item from the table below, or choose more steps." action={rows[0] ? <Button onClick={() => trace(rows[0].id)}>{`Trace ${rows[0].label}`}</Button> : <Button render={<Link href="/rules">Open rules</Link>} />} />}
           </div>
         </Card>
-        <Card title="KPIs, processes and features at risk">
+        <Card title="KPIs, processes and features at risk" meta="Reached by a failing rule in this run; select a row to trace it">
           <Async query={impactQ} skeleton={160} notFoundIsEmpty>{rows.length === 0 ? (
               latest
-                ? <EmptyState title="No failing rule reaches a KPI, process or feature" action={<Button render={<Link href="/rules">Open rules</Link>} />} />
+                ? <EmptyState title="No failing rule reaches a KPI, process or feature" detail="The failing rules in this run touch nothing the lineage map links to." action={<Button render={<Link href={`/insights/rules?run=${encodeURIComponent(latest.id)}`}>Open failing rules</Link>} />} />
                 : <EmptyState title="No lineage yet" detail={dayOne.step?.detail ?? "Impact needs a completed analysis."} action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
             )
             : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />}</Async>
@@ -267,8 +282,8 @@ export default function LineagePage() {
             {sel.type === "check"
               ? (latest ? <BlastPanel checkId={sel.id.slice("check:".length)} versionId={latest.id} /> : (
                 <EmptyState
-                  title="No blast radius yet"
-                  detail="Blast radius needs a completed analysis."
+                  title="Nothing to follow yet"
+                  detail="Following a rule to what it reaches needs a completed analysis."
                   action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />}
                 />
               ))
