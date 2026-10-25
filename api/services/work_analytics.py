@@ -362,8 +362,8 @@ def _roots_sql(source: str) -> str:
 async def root_causes(db: AsyncSession, tenant_id: Any, version_id: str | None, module: str | None) -> dict:
     if not version_id:
         return {"version_id": None, "source": None, "total_records": 0, "dimensions": []}
-    built = (await db.execute(text("SELECT 1 FROM work_groups WHERE version_id = CAST(:v AS uuid) LIMIT 1"),
-                              {"v": version_id})).first() is not None
+    built = bool((await db.execute(text("SELECT metadata ? 'worklist_built_at' FROM analysis_versions "
+                                        "WHERE id = CAST(:v AS uuid)"), {"v": version_id})).scalar())
     source = "work_records" if built else "finding_records"
     p = _p(tenant_id, module, v=version_id, top=TOP, open_work=list(OPEN_WORK))
     if built:

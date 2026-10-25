@@ -29,10 +29,10 @@ class _Db:
     async def execute(self, stmt, params=None):
         sql = str(stmt)
         self.calls.append((sql, params or {}))
+        if "worklist_built_at" in sql:  # the run's work list finished building
+            return _Res(self.to_fix is not None)
         if "FROM analysis_versions" in sql:
             return _Res(self.latest)
-        if "FROM work_groups" in sql:
-            return _Res(1 if self.to_fix is not None else None)
         if "FROM work_records" in sql:
             return _Res(self.to_fix)
         if "cleaning_queue" in sql:

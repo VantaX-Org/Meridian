@@ -269,3 +269,82 @@ async def test_records_filter_by_a_key_part(run, client_for):
         assert [i["record_key"] for i in (await get(part="MATNR=0002")).json()["items"]] == ["MATNR=2"]
         assert (await get(part="WERKS=1000")).json()["total"] == 0
         assert (await get(part="nonsense")).status_code == 422
+
+
+@pytest.mark.anyio
+async def test_accept_all_keeps_entered_values_and_cleaning_suggestions_can_be_accepted(run, client_for):
+    owner, tid, vid, _ = run
+    with owner.begin() as c:
+        c.execute(text("""INSERT INTO cleaning_queue (tenant_id, object_type, status, confidence, record_key,
+                                                      record_data_after, version_id, check_id, field)
+                          VALUES (:t, 'material_master', 'detected', 90, 'MATNR=2',
+                                  CAST('{"MARA.MEINS": "PC"}' AS jsonb), :v, 'MM001', 'MARA.MEINS')"""),
+                  {"t": tid, "v": vid})
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        decide = lambda *items: client.post("/api/v1/work/decide", json={"version_id": vid, "items": list(items)},
+                                            headers=HEADERS)
+        # the panel offers the cleaning engine's value, and accepting it works
+        panel = (await client.get("/api/v1/work/records/material_master/MATNR=2", params={"version_id": vid},
+                                  headers=HEADERS)).json()
+        mm001 = next(i for i in panel["issues"] if i["check_id"] == "MM001")
+        assert mm001["suggestion"]["source"] == "cleaning" and mm001["suggestion"]["value"] == "PC"
+        r = await decide({"module": "material_master", "record_key": "MATNR=2", "check_id": "MM001", "action": "accept"})
+        assert r.status_code == 200, r.text
+        batch = r.json()["draft_batch_id"]
+        # a value the steward entered survives accept-all for the issue
+        await decide({"module": "material_master", "record_key": "MATNR=1", "check_id": "MM001", "action": "edit", "value": "KG"})
+        await client.post("/api/v1/work/groups/MM001/accept-all", params={"version_id": vid}, headers=HEADERS)
+    with owner.begin() as c:
+        items = dict(c.execute(text("SELECT record_key, proposed_value || ':' || proposal_source FROM remediation_items "
+                                    "WHERE batch_id = :b AND check_id = 'MM001'"), {"b": batch}).fetchall())
+    assert items == {"MATNR=1": "KG:steward", "MATNR=2": "PC:cleaning"}
+
+
+@pytest.mark.anyio
+async def test_a_run_counts_as_built_only_once_its_build_finished(run, client_for):
+    owner, tid, vid, _ = run
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        summary = lambda: client.get("/api/v1/work/summary", params={"version_id": vid}, headers=HEADERS)
+        assert (await summary()).json()["built"] is True
+        with owner.begin() as c:  # a build that stopped half way leaves rows but no completion marker
+            c.execute(text("UPDATE analysis_versions SET metadata = metadata - 'worklist_built_at' WHERE id = :v"),
+                      {"v": vid})
+        assert (await summary()).json()["built"] is False
+
+
+@pytest.mark.anyio
+async def test_fix_sheet_sign_offs_need_the_approve_permission(run, client_for, monkeypatch):
+    """Import is gated on apply; each sign-off row still needs approve (decide checks every action)."""
+    import io
+
+    from openpyxl import load_workbook
+
+    owner, tid, vid, _ = run
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    real = __import__("api.routes.work", fromlist=["_allowed"])._allowed
+
+    async def no_approve(db, tenant, request, role, action):
+        return False if action == "approve" else await real(db, tenant, request, role, action)
+
+    async with client:
+        sheet = await client.get("/api/v1/work/export", params={"version_id": vid}, headers=HEADERS)
+        wb = load_workbook(io.BytesIO(sheet.content))
+        ws = wb["Fix sheet"]
+        header = [c.value for c in ws[1]]
+        row = next(r for r in ws.iter_rows(min_row=2) if r[header.index("Record")].value == "MATNR=1")
+        row[header.index("Decision")].value = "Not an issue"
+        row[header.index("Reason")].value = "Service material"
+        buf = io.BytesIO()
+        wb.save(buf)
+        monkeypatch.setattr("api.routes.work._allowed", no_approve)
+        r = await client.post("/api/v1/work/import", params={"version_id": vid}, headers=HEADERS,
+                              files={"file": ("fix.xlsx", buf.getvalue(), "application/octet-stream")})
+    assert r.status_code == 403 and "approve" in r.json()["detail"]
+    with owner.begin() as c:
+        assert c.execute(text("SELECT count(*) FROM record_issues WHERE tenant_id = :t AND status = 'accepted'"),
+                         {"t": tid}).scalar() == 0

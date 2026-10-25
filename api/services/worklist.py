@@ -147,8 +147,26 @@ def build(session, tenant_id: str, version_id: str, frames=None) -> dict:
     meta = session.execute(text("SELECT metadata FROM analysis_versions WHERE id = CAST(:v AS uuid)"),
                            {"v": str(version_id)}).scalar() or {}
     p = _p(tenant_id, version_id, scope_of(meta))
+    # The run counts as built (metadata.worklist_built_at, read by GET /work/summary) only once every object's
+    # records, the names and the groups are in: a build that fails half way shows as not built, never as a
+    # list with objects missing.
+    session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) - 'worklist_built_at' "
+                         "WHERE id = CAST(:vid AS uuid)"), p)
     session.execute(text("DELETE FROM work_groups WHERE version_id = CAST(:vid AS uuid)"), p)
     session.execute(text("DELETE FROM work_records WHERE version_id = CAST(:vid AS uuid)"), p)
+    session.commit()
+
+    modules = session.execute(text(
+        "SELECT DISTINCT module FROM finding_records WHERE version_id = CAST(:vid AS uuid)"), p).scalars().all()
+    records = 0
+    for module in modules:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        _proposed_temp(session, p)  # ON COMMIT DROP: rebuilt in each object's transaction
+        records += session.execute(text(_records_sql("AND fr.module = :module")), {**p, "module": module}).rowcount
+        session.commit()
+    named = name_records(session, p, frames) if frames is not None else 0
+
+    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
     session.execute(text(f"""
         INSERT INTO work_groups (tenant_id, version_id, check_id, module, severity, sev_rank, dimension, message,
                                  field, records, population, truncated)
@@ -165,18 +183,9 @@ def build(session, tenant_id: str, version_id: str, frames=None) -> dict:
           FROM (SELECT check_id, count(*) AS n FROM tmp_proposed GROUP BY check_id) s
          WHERE g.version_id = CAST(:vid AS uuid) AND g.check_id = s.check_id"""), p)
     _group_statuses(session, p)
-    session.commit()
-
-    modules = session.execute(text(
-        "SELECT DISTINCT module FROM finding_records WHERE version_id = CAST(:vid AS uuid)"), p).scalars().all()
-    records = 0
-    for module in modules:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-        _proposed_temp(session, p)  # ON COMMIT DROP: rebuilt in each object's transaction
-        records += session.execute(text(_records_sql("AND fr.module = :module")), {**p, "module": module}).rowcount
-        session.commit()
-    named = name_records(session, p, frames) if frames is not None else 0
     pruned = prune(session, p)
+    session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                         "|| jsonb_build_object('worklist_built_at', now()::text) WHERE id = CAST(:vid AS uuid)"), p)
     session.commit()
     return {"groups": session.execute(text("SELECT count(*) FROM work_groups WHERE version_id = CAST(:vid AS uuid)"),
                                       p).scalar(), "records": records, "named": named, "pruned_runs": pruned}

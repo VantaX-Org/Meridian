@@ -26,8 +26,9 @@ async def shell_counts(
                  "AND status = 'to_fix'"),
             {"tid": str(tenant.id), "vid": vid},
         )
-        if not (await db.execute(text("SELECT 1 FROM work_groups WHERE tenant_id = :tid AND version_id = "
-                                      "CAST(:vid AS uuid) LIMIT 1"), {"tid": str(tenant.id), "vid": vid})).scalar():
+        if not (await db.execute(text("SELECT metadata ? 'worklist_built_at' FROM analysis_versions "
+                                      "WHERE tenant_id = :tid AND id = CAST(:vid AS uuid)"),
+                                 {"tid": str(tenant.id), "vid": vid})).scalar():
             fix_result = None
     if fix_result is None:
         fix_result = await db.execute(

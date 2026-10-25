@@ -73,6 +73,8 @@ def seeded(owner):
         # v2 has its work list built; v1 does not (root causes then read finding_records)
         c.execute(text("INSERT INTO work_groups (tenant_id, version_id, check_id, module, severity, sev_rank, records) "
                        "VALUES (:t, :v, 'MM001', 'material_master', 'critical', 0, 2)"), {"t": tid, "v": v2})
+        c.execute(text("UPDATE analysis_versions SET metadata = metadata || '{\"worklist_built_at\": \"now\"}'::jsonb "
+                       "WHERE id = :v"), {"v": v2})
         for mod, key, issues, rank, status in (("material_master", "MATNR=1|WERKS=1000", 2, 0, "to_fix"),
                                                ("material_master", "MATNR=4|WERKS=2000", 1, 0, "proposed"),
                                                ("fi_gl", "BUKRS=1000|SAKNR=1", 1, 3, "fixed")):

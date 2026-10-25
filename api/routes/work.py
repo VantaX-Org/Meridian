@@ -25,7 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services import worklist
-from api.services.rbac import current_user_id, current_user_label, has_permission, require_permission
+from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
+                               dev_role_override, grants_for, has_permission, require_permission)
 from api.services.record_issues import scope_of
 from api.services.run_context import latest_run
 
@@ -52,8 +53,9 @@ async def _run(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID]
 
 
 async def _built(db: AsyncSession, vid: str) -> bool:
-    return bool((await db.execute(text("SELECT 1 FROM work_groups WHERE version_id = CAST(:v AS uuid) LIMIT 1"),
-                                  {"v": vid})).first())
+    """True once the run's work list build finished (api/services/worklist.py build sets the marker last)."""
+    return bool((await db.execute(text("SELECT metadata ? 'worklist_built_at' FROM analysis_versions "
+                                       "WHERE id = CAST(:v AS uuid)"), {"v": vid})).scalar())
 
 
 def _cursor(row) -> str:
@@ -261,6 +263,28 @@ async def search(
                                          for r in rows]}
 
 
+async def _cleaning_rows(db: AsyncSession, p: dict) -> list:
+    """The record's open cleaning-engine proposals (p: t, m, k)."""
+    return (await db.execute(text("""
+        SELECT record_data_after, confidence, check_id, field FROM cleaning_queue
+         WHERE tenant_id = :t AND object_type = :m AND record_key = :k AND status IN ('detected', 'pending', 'approved')
+           AND record_data_after IS NOT NULL AND record_data_after <> '{}'::jsonb
+         ORDER BY detected_at DESC LIMIT 5"""), p)).mappings().all()
+
+
+def _cleaning_value(cleaning: list, field: Optional[str], check_id: str) -> Optional[tuple[str, str]]:
+    """(value, confidence) a cleaning proposal gives ``field`` for this check, the record panel's and decide's one
+    rule: the full TABLE.FIELD or the bare field, from a proposal for this check or for none."""
+    bare = field.split(".")[-1] if field else None
+    for c in cleaning:
+        after = c["record_data_after"] or {}
+        hit = after.get(field) if field in after else after.get(bare) if bare else None
+        if hit is not None and c["check_id"] in (None, check_id):
+            conf = float(c["confidence"] or 0)
+            return str(hit), "high" if conf >= 85 or 0.85 <= conf <= 1 else "medium"
+    return None
+
+
 def _value_fix(vfm: Optional[dict], current: Optional[str]) -> Optional[dict]:
     if not vfm or current is None:
         return None
@@ -318,11 +342,7 @@ async def record(
                   fr.check_id"""), p)).mappings().all()
     if not rows:
         raise HTTPException(status_code=404, detail="This record does not fail any check in this run.")
-    cleaning = (await db.execute(text("""
-        SELECT record_data_after, confidence, check_id, field FROM cleaning_queue
-         WHERE tenant_id = :t AND object_type = :m AND record_key = :k AND status IN ('detected', 'pending', 'approved')
-           AND record_data_after IS NOT NULL AND record_data_after <> '{}'::jsonb
-         ORDER BY detected_at DESC LIMIT 5"""), p)).mappings().all()
+    cleaning = await _cleaning_rows(db, p)
 
     rule_rows = await _tenant_rules(db, tenant, module, sorted({r["check_id"] for r in rows}))
     values: dict = {}
@@ -342,17 +362,9 @@ async def record(
         elif vf and vf.get("suggested_value") is not None:
             suggestion = {"value": vf["suggested_value"], "source": "value_map", "confidence": None,
                           "why": vf.get("fix_instruction")}
-        else:
-            bare = field.split(".")[-1] if field else None
-            for c in cleaning:
-                after = c["record_data_after"] or {}
-                hit = after.get(field) if field in after else after.get(bare) if bare else None
-                if hit is not None and (c["check_id"] in (None, r["check_id"])):
-                    conf = float(c["confidence"] or 0)
-                    suggestion = {"value": str(hit), "source": "cleaning",
-                                  "confidence": "high" if conf >= 85 or 0.85 <= conf <= 1 else "medium",
-                                  "why": "Proposed by the cleaning engine"}
-                    break
+        elif (hit := _cleaning_value(cleaning, field, r["check_id"])) is not None:
+            suggestion = {"value": hit[0], "source": "cleaning", "confidence": hit[1],
+                          "why": "Proposed by the cleaning engine"}
         status = ("fixed" if r["issue_status"] == "resolved" else "not_an_issue" if r["issue_status"] == "accepted"
                   else "to_fix" if r["recon_status"] == "still_failing"
                   else "sent" if r["batch_status"] == "exported" else "approved" if r["batch_status"] == "approved"
@@ -400,8 +412,8 @@ async def record(
         "other_runs": await _previous_run(db, tenant, vid, scope, module, record_key, [i["check_id"] for i in issues]),
         **(await _mdm_links(db, tenant, module, record_key)),
         "currency": await _currency(db, tenant) if any(i["rule"]["cost_at_risk"] is not None for i in issues) else None,
-        "can": {"fix": has_permission(role, "apply"), "sign_off": has_permission(role, "approve"),
-                "assign": has_permission(role, "assign"), "comment": has_permission(role, "analyse")},
+        "can": {k: await _allowed(db, tenant, request, role, a)
+                for k, a in (("fix", "apply"), ("sign_off", "approve"), ("assign", "assign"), ("comment", "analyse"))},
     }
 
 
@@ -554,6 +566,18 @@ _NEEDS = {"accept": "apply", "edit": "apply", "undo": "apply", "not_an_issue": "
           "assign": "assign", "comment": "analyse"}
 
 
+async def _allowed(db: AsyncSession, tenant: Tenant, request: Request, role: str, action: str) -> bool:
+    """The caller may do ``action`` tenant-wide, resolved as require_permission resolves it: the role (built-in or
+    custom), then the user's unscoped grants."""
+    if has_permission(role, action) or action in await actions_for(role, tenant.id, db):
+        return True
+    uid = getattr(request.state, "local_user_id", None)
+    if not uid or dev_role_override(request) is not None:
+        return False
+    grants = [g for g in await grants_for(db, uid, tenant.id) if g[1] == Scope()]
+    return await _grants_allow(grants, action, Scope(), tenant.id, db)
+
+
 async def _my_draft(db: AsyncSession, tenant: Tenant, request: Request) -> str:
     """The user's open work-list draft batch, created on first use."""
     uid = current_user_id(request)
@@ -592,7 +616,7 @@ async def decide(
 ):
     """Apply decisions to failing records. Values go to the user's draft fix batch (a second person approves it);
     "not an issue" and "accept the risk" sign the issues off; undo takes a value back out of the draft."""
-    missing = sorted({_NEEDS[d.action] for d in body.items if not has_permission(role, _NEEDS[d.action])})
+    missing = sorted({a for a in {_NEEDS[d.action] for d in body.items} if not await _allowed(db, tenant, request, role, a)})
     if missing:
         raise HTTPException(status_code=403, detail=f"Your role cannot {', '.join(missing)}.")
     for d in body.items:
@@ -636,6 +660,8 @@ async def decide(
                         value, source, conf = rf["proposed_value"], "rule", rf.get("confidence")
                     elif vf.get("suggested_value") is not None:
                         value, source, conf = vf["suggested_value"], "rule", None
+                    elif (hit := _cleaning_value(await _cleaning_rows(db, p), r["field"], r["check_id"])) is not None:
+                        value, source, conf = hit[0], "cleaning", hit[1]
                     else:
                         if d.check_id:
                             raise HTTPException(status_code=409, detail="No proposed value to accept: enter one.")
@@ -750,6 +776,8 @@ async def accept_all(
                 ON CONFLICT (batch_id, check_id, record_key) DO UPDATE
                    SET proposed_value = EXCLUDED.proposed_value, proposal_source = 'rule',
                        confidence = EXCLUDED.confidence, updated_at = now()
+                 -- a value the steward entered stays: accept-all only fills undecided records
+                 WHERE remediation_items.proposal_source IS DISTINCT FROM 'steward'
                 RETURNING record_key, issue_id)
         SELECT record_key, issue_id::text FROM ins"""), p)
     rows = res.fetchall()
