@@ -1,13 +1,18 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import * as cleaning from "@/lib/api/cleaning";
+import * as contracts from "@/lib/api/contracts";
 import * as exceptions from "@/lib/api/exceptions";
+import * as glossary from "@/lib/api/glossary";
+import * as masterRecords from "@/lib/api/master-records";
+import * as matchReview from "@/lib/api/match-review";
 import * as stewardship from "@/lib/api/stewardship";
 import * as triage from "@/lib/api/triage";
 import * as users from "@/lib/api/users";
 import InboxPage from "../page";
 
-const nav = vi.hoisted(() => ({ replace: vi.fn(), qs: "view=mine&type=exception&keep=1", can: false }));
+const nav = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), qs: "view=mine&type=exception&keep=1", can: false }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => nav.can }) }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
 vi.mock("@/hooks/use-day-one", () => ({
@@ -15,7 +20,7 @@ vi.mock("@/hooks/use-day-one", () => ({
   DayOneAction: () => null,
 }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: nav.replace }),
+  useRouter: () => ({ push: nav.push, replace: nav.replace }),
   usePathname: () => "/inbox",
   useSearchParams: () => new URLSearchParams(nav.qs),
 }));
@@ -81,6 +86,9 @@ describe("InboxPage show all", () => {
   });
 });
 
+/** The selected task's one link out; an exception task opens its exception, named by the task's source id. */
+const openedSource = (region: HTMLElement) => within(region).getByRole("link", { name: "Open the exception" }).getAttribute("href");
+
 const task = (id: string, domain: string, over: Record<string, unknown> = {}) => ({
   id, tenant_id: "t", item_type: "exception", source_id: `rec-${id}`, domain, priority: 1,
   due_at: null, assigned_to: null, status: "open", sla_hours: null,
@@ -106,17 +114,20 @@ describe("InboxPage workbench", () => {
     expect(list.querySelectorAll("li")).toHaveLength(2);
     const detail = screen.getByRole("region", { name: "Selected item" });
     // The first task is open until another is picked.
-    expect(detail).toHaveTextContent("rec-a");
+    expect(openedSource(detail)).toBe("/inbox?kind=exception&focus=rec-a");
     expect(within(detail).getByRole("button", { name: "Approve" })).toBeInTheDocument();
-    expect(within(detail).getByRole("link", { name: "Open record" })).toHaveAttribute("href", "/objects/material_master/records/rec-a");
+    // The source id is not an SAP record key: it is neither labelled a record nor opened as one.
+    expect(within(detail).queryByText("Record")).toBeNull();
+    expect(within(detail).queryByRole("link", { name: "Open record" })).toBeNull();
+    expect(list).not.toHaveTextContent("rec-a");
     fireEvent.click(within(list).getByRole("button", { name: /Exception in Business partner/ }));
-    expect(screen.getByRole("region", { name: "Selected item" })).toHaveTextContent("rec-b");
+    expect(openedSource(screen.getByRole("region", { name: "Selected item" }))).toBe("/inbox?kind=exception&focus=rec-b");
   });
 
   it("offers the bulk actions once a row is ticked", async () => {
     mountTasks();
     expect(screen.queryByTestId("inbox-bulk")).toBeNull();
-    fireEvent.click(await screen.findByLabelText("Select Exception rec-a"));
+    fireEvent.click(await screen.findByLabelText(/Select Exception in Material master/));
     const bar = await screen.findByTestId("inbox-bulk");
     expect(bar).toHaveTextContent("1 selected");
     expect(within(bar).getByRole("button", { name: "Reject with reason" })).toBeInTheDocument();
@@ -126,8 +137,8 @@ describe("InboxPage workbench", () => {
   it("confirms a bulk approve with its count before calling the API", async () => {
     const bulk = vi.spyOn(stewardship, "bulkApprove").mockResolvedValue({ approved: 2, history_rows_created: 2 });
     mountTasks();
-    fireEvent.click(await screen.findByLabelText("Select Exception rec-a"));
-    fireEvent.click(screen.getByLabelText("Select Exception rec-b"));
+    fireEvent.click(await screen.findByLabelText(/Select Exception in Material master/));
+    fireEvent.click(screen.getByLabelText(/Select Exception in Business partner/));
     fireEvent.click(await screen.findByRole("button", { name: "Approve 2 at 85%+ confidence" }));
     expect(bulk).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole("button", { name: "Approve 2" }));
@@ -172,7 +183,7 @@ describe("InboxPage workbench", () => {
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
     renderWithQuery(<InboxPage />);
     await screen.findByRole("list", { name: "Tasks" });
-    await waitFor(() => expect(screen.getByRole("region", { name: "Selected item" })).toHaveTextContent("rec-b"));
+    await waitFor(() => expect(openedSource(screen.getByRole("region", { name: "Selected item" }))).toBe("/inbox?kind=exception&focus=rec-b"));
   });
 
   it("names an assignee it cannot resolve as Unknown user, never an id", async () => {
@@ -202,7 +213,7 @@ describe("InboxPage workbench", () => {
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
     renderWithQuery(<InboxPage />);
     await waitFor(() => expect(screen.getByRole("list", { name: "Tasks" }).querySelectorAll("li")).toHaveLength(1));
-    expect(screen.getByRole("region", { name: "Selected item" })).toHaveTextContent("rec-a");
+    expect(openedSource(screen.getByRole("region", { name: "Selected item" }))).toBe("/inbox?kind=exception&focus=rec-a");
     expect(screen.getByRole("button", { name: "Remove filter Owner" })).toBeInTheDocument();
   });
 
@@ -314,5 +325,83 @@ describe("InboxPage urgency and stacked filters", () => {
     const detail = await screen.findByRole("region", { name: "Selected item" });
     fireEvent.click(within(detail).getByRole("button", { name: "Release" }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("late", null));
+  });
+});
+
+describe("InboxPage task sources", () => {
+  const mountOne = (over: Record<string, unknown>) => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("t1", "material_master", { ai_recommendation: null, ...over })] : [],
+      total: p?.status === "open" ? 1 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    return screen.findByRole("region", { name: "Selected item" });
+  };
+
+  it("opens a merge decision on its pair and shows the two records", async () => {
+    vi.spyOn(matchReview, "getReviewPair").mockResolvedValue({ id: "ms1", a: "BP=1001", b: "BP=1002", total: 0.91 } as never);
+    const detail = await mountOne({ item_type: "merge_decision", source_id: "ms1" });
+    expect(await within(detail).findByText("BP=1001")).toBeInTheDocument();
+    expect(within(detail).getByText("91%")).toBeInTheDocument();
+    expect(within(detail).getByRole("link", { name: "Review the pair" })).toHaveAttribute("href", "/mdm/golden/merge?pair=ms1");
+  });
+
+  it("opens a write-back approval on the proposal's record, by its SAP key, from the button and from Enter", async () => {
+    vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({ id: "cq1", object_type: "material_master", record_key: "100001", rule_id: null, record_data_before: null, record_data_after: null } as never);
+    nav.push.mockClear();
+    const detail = await mountOne({ item_type: "writeback_approval", source_id: "cq1" });
+    expect(await within(detail).findByRole("link", { name: "Open record" })).toHaveAttribute("href", "/objects/material_master/records/100001");
+    expect(within(detail).getByText("100001")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Enter" });
+    await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/objects/material_master/records/100001"));
+  });
+
+  it("shows the glossary term under review and opens it", async () => {
+    vi.spyOn(glossary, "getGlossaryTerm").mockResolvedValue({ id: "g1", business_name: "Base unit of measure", sap_table: "MARA", sap_field: "MEINS", last_reviewed_at: null, review_cycle_days: 90 } as never);
+    const detail = await mountOne({ item_type: "glossary_review", source_id: "g1" });
+    expect(await within(detail).findByText("Base unit of measure")).toBeInTheDocument();
+    expect(within(detail).getByText("MARA.MEINS")).toBeInTheDocument();
+    expect(within(detail).getByRole("link", { name: "Open the glossary term" })).toHaveAttribute("href", "/mdm/glossary/g1");
+  });
+
+  it("names the breached contract and opens the breached contracts", async () => {
+    vi.spyOn(contracts, "getContracts").mockResolvedValue({ contracts: [{ id: "c1", name: "Vendor feed", producer: "accounts_payable", consumer: "Treasury", last_checked: null }], total: 1 } as never);
+    const detail = await mountOne({ item_type: "contract_breach", source_id: "c1" });
+    expect(await within(detail).findByText("Vendor feed")).toBeInTheDocument();
+    expect(within(detail).getByRole("link", { name: "Open breached contracts" })).toHaveAttribute("href", "/rules/contracts?status=breached");
+  });
+
+  it("shows the golden record's SAP key and opens the golden record", async () => {
+    vi.spyOn(masterRecords, "getMasterRecord").mockResolvedValue({ id: "m1", sap_object_key: "BP=1001", overall_confidence: 0.8, status: "candidate" } as never);
+    const detail = await mountOne({ item_type: "golden_record_review", source_id: "m1" });
+    expect(await within(detail).findByText("BP=1001")).toBeInTheDocument();
+    expect(within(detail).getByRole("link", { name: "Open the golden record" })).toHaveAttribute("href", "/mdm/golden/m1");
+  });
+
+  it("offers no Issues export on the Tasks tab", async () => {
+    await mountOne({});
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+  });
+});
+
+describe("InboxPage exceptions paging", () => {
+  it("says how many exceptions are loaded and loads the next page", async () => {
+    nav.qs = "kind=exception";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
+    vi.spyOn(exceptions, "getExceptionMetrics").mockResolvedValue({ open_count: 250, overdue_count: 0 } as never);
+    const get = vi.spyOn(exceptions, "getExceptions").mockImplementation(async (p) => ({
+      exceptions: [{ id: `e${p.page}`, title: `Exception ${p.page}`, category: "c", type: "t", severity: "low", status: "open", assigned_to: null, sla_deadline: null, escalation_tier: 0, description: null, created_at: "2026-01-01T00:00:00Z", source_system: null, estimated_impact_zar: null }],
+      total: 250,
+    } as never));
+    renderWithQuery(<InboxPage />);
+    expect(await screen.findByText("1 of 250 exceptions loaded")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith({ per_page: 100, page: 2 }));
+    expect(await screen.findByText("2 of 250 exceptions loaded")).toBeInTheDocument();
   });
 });

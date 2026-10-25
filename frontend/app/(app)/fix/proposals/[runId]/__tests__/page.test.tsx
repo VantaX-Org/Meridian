@@ -24,7 +24,7 @@ vi.mock("@/lib/api/remediation", async () => {
 });
 
 const item = (over: Partial<CleaningQueueItem>): CleaningQueueItem => ({
-  id: "i1", object_type: "material_master", status: "recommended", confidence: 0.92,
+  id: "i1", object_type: "material_master", status: "detected", confidence: 0.92,
   record_key: "100001", priority: 1, detected_at: "", applied_at: null,
   rollback_deadline: null, rule_id: null, batch_id: null, version_id: "R1",
   merge_preview: null, record_data_before: null, record_data_after: null,
@@ -56,6 +56,28 @@ describe("ProposalsPage", () => {
     expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ version_id: "R1", kind: "MARA.MEINS" }));
     expect(await screen.findByRole("heading", { name: "Fix MARA.MEINS" })).toBeInTheDocument();
     expect(await screen.findByText(/found by material_master_25k/)).toBeInTheDocument();
+  });
+
+  it("lists only the waiting proposals, says Waiting, and offers no decision on one already decided", async () => {
+    queue([item({}), item({ id: "i2", record_key: "100002", status: "approved" })]);
+    renderWithQuery(<ProposalsPage />);
+    await screen.findByText("100001");
+    expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ version_id: "R1", kind: "MARA.MEINS", status: "detected" }));
+    expect(screen.getByText("Waiting")).toBeInTheDocument();
+    expect(screen.getByText("100002").closest("[role=row], tr")).toHaveTextContent("Approved");
+    expect(screen.queryByText("Queued")).toBeNull();
+    // One row is waiting, so one Approve and one Reject.
+    expect(screen.getAllByRole("button", { name: /^approve$/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^reject$/i })).toHaveLength(1);
+  });
+
+  it("sends Back to the cleaning queue to the proposals tab, keeping the object and run", async () => {
+    searchParams = new URLSearchParams("kind=MARA.MEINS&module=material_master&run=R1");
+    queue([]);
+    renderWithQuery(<ProposalsPage />);
+    expect(await screen.findByText("No proposals waiting")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to the cleaning queue" })).toHaveAttribute("href", "/fix?tab=cleaning&module=material_master&run=R1");
+    searchParams = new URLSearchParams("kind=MARA.MEINS");
   });
 
   it("approves one proposal", async () => {

@@ -57,21 +57,21 @@ const chip = (label: string) => screen.queryByRole("button", { name: `Remove fil
 describe("inbox filters against loaded tasks", () => {
   it("type=match_review filters to that type, with a chip", async () => {
     await show(inbox, "type=match_review");
-    await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
-    expect(screen.queryByText(/record rec-B/)).toBeNull();
+    await waitFor(() => expect(screen.getByLabelText(/^Select Match review in/)).toBeInTheDocument());
+    expect(screen.queryByLabelText(/^Select Merge proposal in/)).toBeNull();
     expect(showing()).toBeNull();
     expect(chip("Type")).toBe("TypeMatch review");
   });
   it.each(GARBAGE)("type=%s applies no filter and shows no chip", async (g) => {
     await show(inbox, `type=${g}`);
-    await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
-    expect(screen.getByText(/record rec-B/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText(/^Select Match review in/)).toBeInTheDocument());
+    expect(screen.getByLabelText(/^Select Merge proposal in/)).toBeInTheDocument();
     expect(chip("Type")).toBeNull();
   });
   it("view=mine filters to my tasks with proper wording", async () => {
     await show(inbox, "view=mine");
-    await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
-    expect(screen.queryByText(/record rec-B/)).toBeNull();
+    await waitFor(() => expect(screen.getByLabelText(/^Select Match review in/)).toBeInTheDocument());
+    expect(screen.queryByLabelText(/^Select Merge proposal in/)).toBeNull();
     expect(chip("Who")).toBe("WhoMine");
   });
   it("legacy view=breached reads as the Overdue urgency filter, not a lowercased key", async () => {

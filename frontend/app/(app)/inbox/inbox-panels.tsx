@@ -17,6 +17,7 @@ import {
 import { approveWriteback, getPendingApprovals, type PendingApproval } from "@/lib/api/writeback";
 import { getFindingReportContext } from "@/lib/api/findings";
 import { getVersion } from "@/lib/api/versions";
+import { getRules } from "@/lib/api/rules";
 import { getUsers } from "@/lib/api/users";
 import { writeBackModeSentence } from "@/lib/api/remediation";
 import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
@@ -29,6 +30,8 @@ const STATUSES: IssueStatus[] = ["open", "in_progress", "waiting_sap", "waiting_
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
+/** How many issues the list loads at a time; "Load more" widens it. */
+const ISSUE_PAGE = 200;
 
 /** 45m, 5h, 3d */
 function span(ms: number): string {
@@ -94,6 +97,16 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
   );
 }
 
+/** The issue's rule by name when the rule library has it, with the check id in mono beside it. */
+function IssueTitle({ issue, name }: { issue: RecordIssue; name?: string }) {
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-2">
+      <span>{name ?? "Rule"} in {formatModuleName(issue.module)}</span>
+      <Mono>{issue.check_id}</Mono>
+    </span>
+  );
+}
+
 const issueTone = (sev: string): WorkbenchTone => (sev === "critical" || sev === "high" || sev === "medium" ? sev : "low");
 
 export function IssuesPanel() {
@@ -109,11 +122,14 @@ export function IssuesPanel() {
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+  const [limit, setLimit] = useState(ISSUE_PAGE);
   const filter = {
     status: status || undefined, severity: severity || undefined, search: search.trim() || undefined,
     assigned_to: who === "mine" ? "me" : who === "unassigned" ? "unassigned" : undefined,
   };
-  const q = useQuery({ queryKey: ["issues", "list", filter], queryFn: () => getIssues({ ...filter, limit: 200 }), retry: false });
+  const q = useQuery({ queryKey: ["issues", "list", filter, limit], queryFn: () => getIssues({ ...filter, limit }), retry: false, placeholderData: (prev) => prev });
+  // Rule names for the detail title; the check id stays beside the name.
+  const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), staleTime: 300_000, meta: { ignoreError: true } });
   const people = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: canAssign, staleTime: 300_000 });
   const bulk = useMutation({
     mutationFn: (v: { ids: string[]; status?: IssueStatus; resolution?: string; assigned_to?: string }) => updateIssues(v),
@@ -122,6 +138,8 @@ export function IssuesPanel() {
   });
   const now = q.dataUpdatedAt;
   const loaded = useMemo(() => q.data?.items ?? [], [q.data]);
+  const total = q.data?.total ?? 0;
+  const partial = total > loaded.length;
   // The urgency filter runs on the loaded page: the list endpoint filters by owner, status and severity, not by due date.
   const items = useMemo(() => (when === "any" ? loaded : loaded.filter((i) => urgencyOf(i, now).state === when)), [loaded, when, now]);
   const urgentCounts = useMemo(() => ({
@@ -184,6 +202,11 @@ export function IssuesPanel() {
         {filtering ? <Button variant="ghost" size="sm" onClick={clear}>Clear filters</Button> : null}
         <ExportMenu options={[{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", filter) }]} />
       </div>
+      {!q.isLoading && partial ? (
+        <Notice action={<Button variant="secondary" disabled={q.isFetching} onClick={() => setLimit((n) => n + ISSUE_PAGE)}>Load more</Button>}>
+          {loaded.length.toLocaleString()} of {total.toLocaleString()} issues loaded, and the Overdue and Due in 24 hours counts cover only these
+        </Notice>
+      ) : null}
       <Panel q={q}>
         {items.length === 0 ? (
           filtering ? (
@@ -203,13 +226,21 @@ export function IssuesPanel() {
             bulk={actions}
             detail={selected ? (
               <Card
-                title={`${selected.check_id} in ${formatModuleName(selected.module)}`}
+                title={<IssueTitle issue={selected} name={rules.data?.rules.find((r) => r.id === selected.check_id)?.name} />}
                 meta={<span className="inline-flex items-center gap-2"><Status kind="severity" value={selected.severity} /><Pill tone={urgencyOf(selected, now).tone}>{urgencyOf(selected, now).text}</Pill></span>}
-                actions={canAssign && user ? (
-                  selected.assigned_to === user.id
-                    ? <Button variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: "" })}>Release</Button>
-                    : <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: user.id })}>Claim</Button>
-                ) : undefined}
+                actions={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="secondary" render={<Link href={`/objects/${encodeURIComponent(selected.module)}/records/${encodeURIComponent(selected.record_key)}`} />}>Open record</Button>
+                    {canAssign && selected.status !== "resolved" ? (
+                      <Button variant="primary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
+                    ) : null}
+                    {canAssign && user ? (
+                      selected.assigned_to === user.id
+                        ? <Button variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: "" })}>Release</Button>
+                        : <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: user.id })}>Claim</Button>
+                    ) : null}
+                  </div>
+                }
               >
                 <IssueThread key={selected.id} issue={selected} />
               </Card>

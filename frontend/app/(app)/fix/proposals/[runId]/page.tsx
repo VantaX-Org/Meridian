@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, ConfirmDialog, DataTable, Drawer, EmptyState, EntityTabs, ErrorState, ExplorerPage, Field, PageHeader, Pager, Skeleton, Mono, Notice, Stat, Status, Textarea, toast, type CellMeta, type ExportOption } from "@/design";
+import { Button, ConfirmDialog, DataTable, Drawer, EmptyState, EntityTabs, ErrorState, ExplorerPage, Field, PageHeader, Pager, Pill, Skeleton, Mono, Notice, Stat, Textarea, toast, type CellMeta, type ExportOption, type PillTone } from "@/design";
 import { ProposalCell, proposalOf } from "@/components/fix/proposal";
 import { ALL_RUNS, kindText } from "@/components/fix/kind";
 import {
@@ -52,8 +52,28 @@ export function FixSteps({ current }: { current: (typeof STEPS)[number] }) {
   );
 }
 
+/** The status a proposal waits in until a steward decides it (api/services/cleaning_engine.py writes it). */
+const WAITING = "detected";
+/** Waiting proposals carry the engine's "detected" (older rows "recommended"); only those take a decision. */
+const isWaiting = (status: string) => status === WAITING || status === "recommended";
+const DECISION: Record<string, { label: string; tone: PillTone }> = {
+  approved: { label: "Approved", tone: "go" },
+  rejected: { label: "Rejected", tone: "no-go" },
+};
+function decisionOf(status: string): { label: string; tone: PillTone } {
+  if (isWaiting(status)) return { label: "Waiting", tone: "neutral" };
+  return Object.hasOwn(DECISION, status) ? DECISION[status] : { label: labelOf(status), tone: "neutral" };
+}
+
+/** The cleaning proposals tab of the fix page, keeping the object and run the visit was scoped to. */
+function cleaningQueueHref(params: URLSearchParams | null): string {
+  const qs = new URLSearchParams({ tab: "cleaning" });
+  for (const k of ["module", "run"]) { const v = params?.get(k); if (v) qs.set(k, v); }
+  return `/fix?${qs.toString()}`;
+}
+
 /** Every approve, reject, apply and rollback on the proposals this run found, from the cleaning audit log. */
-function BatchAudit({ runId }: { runId: string | undefined }) {
+function BatchAudit({ runId, backHref }: { runId: string | undefined; backHref: string }) {
   const q = useQuery({
     queryKey: ["cleaning-audit", "run", runId ?? ALL_RUNS],
     queryFn: () => getCleaningAudit({ version_id: runId, per_page: 100 }),
@@ -62,7 +82,7 @@ function BatchAudit({ runId }: { runId: string | undefined }) {
   if (q.isLoading) return <Skeleton height={120} />;
   if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   const rows = q.data?.items ?? [];
-  if (rows.length === 0) return <EmptyState title="No changes recorded" detail="Approvals and rejections of these proposals are logged here." ghost="list" action={<Button variant="secondary" render={<Link href="/fix">Back to the cleaning queue</Link>} />} />;
+  if (rows.length === 0) return <EmptyState title="No changes recorded" detail="Approvals and rejections of these proposals are logged here." ghost="list" action={<Button variant="secondary" render={<Link href={backHref}>Back to the cleaning queue</Link>} />} />;
   return <DataTable columns={AUDIT_COLUMNS} data={rows} getRowId={(r) => r.id} tableId="batch-audit" exportName="batch-audit" height={360} />;
 }
 
@@ -80,7 +100,9 @@ export default function ProposalsPage() {
   const { runId: segment } = useParams<{ runId: string }>();
   // "all": every run, for proposals that carry none (the match engine's review pairs).
   const runId = segment === ALL_RUNS ? undefined : segment;
-  const kind = useSearchParams().get("kind") ?? undefined;
+  const searchParams = useSearchParams();
+  const kind = searchParams.get("kind") ?? undefined;
+  const backHref = cleaningQueueHref(searchParams);
   const router = useRouter();
   const qc = useQueryClient();
   const canApprove = useRole().can("approve");
@@ -88,7 +110,8 @@ export default function ProposalsPage() {
   const key = [...queryKeys.batch(segment), kind ?? "", page];
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: key,
-    queryFn: () => getCleaningQueue({ version_id: runId, kind, per_page: PAGE_SIZE, page }),
+    // Only the proposals still waiting: a decided one leaves this list (the approved ones are counted below).
+    queryFn: () => getCleaningQueue({ version_id: runId, kind, status: WAITING, per_page: PAGE_SIZE, page }),
   });
   const version = useQuery({ queryKey: ["version", runId], queryFn: () => getVersion(runId as string), enabled: !!runId, retry: false });
   const groups = useQuery({ queryKey: ["cleaning", "groups"], queryFn: getCleaningGroups });
@@ -172,12 +195,13 @@ export default function ProposalsPage() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} />,
+      cell: ({ row }) => { const d = decisionOf(row.original.status); return <Pill tone={d.tone}>{d.label}</Pill>; },
     },
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => (
+      // A proposal decided a moment ago (before the list refreshes) takes no second decision.
+      cell: ({ row }) => !isWaiting(row.original.status) ? null : (
         <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
           <GatedPrimary kind="approve" allowed={canApprove} variant="secondary" onClick={() => approve.mutate([row.original.id])}>Approve</GatedPrimary>
           {canApprove ? (
@@ -243,18 +267,18 @@ export default function ProposalsPage() {
         </>
       ) : undefined}
     />
-    <EntityTabs entityType="cleaning" entityId={segment} audit={<BatchAudit runId={runId} />} exportOptions={exportOptions} overview={
+    <EntityTabs entityType="cleaning" entityId={segment} audit={<BatchAudit runId={runId} backHref={backHref} />} exportOptions={exportOptions} overview={
     <ExplorerPage
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{
-        title: "No proposals here",
-        detail: "They may all have been approved, rejected or drafted into a fix batch.",
-        action: <Button render={<Link href="/fix">Back to the cleaning queue</Link>} />,
+        title: "No proposals waiting",
+        detail: "Every proposal here has been approved, rejected or drafted into a fix batch.",
+        action: <Button render={<Link href={backHref}>Back to the cleaning queue</Link>} />,
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
       summary={items.length > 0 ? (
         <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,360px))]">
-          <Stat label="Waiting for review" value={waiting.toLocaleString()} hint={`${total.toLocaleString()} proposal${total === 1 ? "" : "s"} in all`} />
+          <Stat label="Waiting for review" value={waiting.toLocaleString()} />
           <Stat label={`At ${HIGH_CONFIDENCE_LABEL}`} value={confidentCount.toLocaleString()} tone={confidentCount > 0 ? "go" : undefined} hint="accept them in one step" />
           <Stat label="Approved" value={approvedCount.toLocaleString()} hint="ready to draft into a fix batch" />
         </div>
