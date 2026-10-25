@@ -24,7 +24,7 @@ export default function AdminLicencePage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Licence"
-        meta="Granted by Meridian HQ; plan changes and invoices are managed there"
+        meta="What this deployment is licensed for: objects, seats and features. Plan changes and invoices are handled in Meridian HQ"
         status={l?.valid === false ? <Pill tone="no-go">Not valid</Pill> : l?.valid ? <Pill tone="go">Valid</Pill> : undefined}
       />
 
@@ -41,7 +41,7 @@ export default function AdminLicencePage() {
 
       {q.isLoading ? <Skeleton height={120} /> : null}
       {q.isError ? (
-        <ErrorState message={apiErrorMessage(q.error) || "The licence could not be read"} onRetry={() => q.refetch()} />
+        <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
       ) : null}
 
       {l ? (
@@ -59,9 +59,9 @@ export default function AdminLicencePage() {
             </dl>
           </SettingsSection>
 
-          <SettingsSection title="Modules" meta={all ? "every SAP module" : `${modules.length} enabled`}>
+          <SettingsSection title="Modules" meta={all ? "Every SAP module" : `${modules.length} enabled`}>
             <div className="flex gap-2 flex-wrap">
-              {all ? <Pill tone="go">all modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
+              {all ? <Pill tone="go">All modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
               {!all && !modules.length ? (
                 <p className="m-text-body m-ink-3">
                   {l.valid === null ? "Modules follow the licence once Meridian HQ has validated it." : "No modules enabled on this licence"}
@@ -94,7 +94,7 @@ function PlatformVersion() {
   if (!isAdmin) return null;
   const s = q.data;
   return (
-    <SettingsSection title="Platform version" meta={s ? <Pill tone={s.update_available ? "at-risk" : "go"}>{s.update_available ? `${s.latest_version} available` : "up to date"}</Pill> : undefined}>
+    <SettingsSection title="Platform version" meta={s ? <Pill tone={s.update_available ? "at-risk" : "go"}>{s.update_available ? `${s.latest_version} available` : "Up to date"}</Pill> : undefined}>
       {q.isLoading ? (
         <Skeleton height={48} />
       ) : q.isError || !s ? (
@@ -109,7 +109,7 @@ function PlatformVersion() {
           ) : null}
           {s.update_available && !s.updater_configured ? (
             <Notice tone="warning">
-              Version {s.latest_version} is available, but the auto-update sidecar is not configured on this deployment. Update with update.sh or contact support
+              Version {s.latest_version} is available, but automatic updates are not set up on this deployment. Ask your administrator to run the update script, or contact support
             </Notice>
           ) : null}
         </div>

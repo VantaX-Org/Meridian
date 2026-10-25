@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, Field, Input, Notice, Pill, Select, Async } from "@/design";
+import { Button, Checkbox, ConfirmDialog, DataTable, EmptyState, Field, Input, Notice, Pill, Select, Async } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest,
@@ -69,14 +69,7 @@ export function AlertChannelsPanel() {
         return (
           <span className="flex gap-2 justify-end">
             <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate(c.id)}>Send test</Button>
-            {confirmId === c.id ? (
-              <>
-                <Button variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(c.id)}>Confirm remove</Button>
-                <Button variant="ghost" onClick={() => setConfirmId(null)}>Keep channel</Button>
-              </>
-            ) : (
-              <Button variant="ghost" disabled={remove.isPending} onClick={() => setConfirmId(c.id)}>Remove</Button>
-            )}
+            <Button variant="ghost" disabled={remove.isPending} onClick={() => setConfirmId(c.id)}>Remove</Button>
           </span>
         );
       },
@@ -112,12 +105,23 @@ export function AlertChannelsPanel() {
             <Select options={DIGEST_OPTIONS} value={digest} onValueChange={(v) => { if (isDigest(v)) setDigest(v); }} />
           </Field>
           <label className="flex items-center gap-2 m-text-body">
-            <input type="checkbox" checked={immediate} onChange={(e) => setImmediate(e.target.checked)} />
+            <Checkbox aria-label="Send new critical findings immediately" checked={immediate} onChange={(e) => setImmediate(e.target.checked)} />
             Send new critical findings immediately
           </label>
           <Button disabled={!canAdd} onClick={() => create.mutate()}>Add channel</Button>
         </div>
         {neverFires ? <Notice tone="warning">Choose a digest or immediate delivery</Notice> : null}
+        <ConfirmDialog
+          open={confirmId !== null}
+          onOpenChange={(o) => { if (!o) setConfirmId(null); }}
+          tone="danger"
+          title="Remove this alert channel?"
+          body={`Alerts stop going to ${q.data?.find((c) => c.id === confirmId)?.target ?? "this channel"}. You can add it again later.`}
+          confirmLabel="Remove channel"
+          cancelLabel="Keep channel"
+          pending={remove.isPending}
+          onConfirm={() => { if (confirmId) remove.mutate(confirmId); }}
+        />
     </SettingsSection>
   );
 }

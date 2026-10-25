@@ -16,7 +16,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 
 const auditColumns: ColumnDef<AuditEntry>[] = [
   { id: "when", header: "When", cell: ({ row }) => <time dateTime={row.original.created_at}>{relativeTime(row.original.created_at)}</time> },
-  { id: "who", header: "Who", cell: ({ row }) => row.original.actor_email ?? "system" },
+  { id: "who", header: "Who", cell: ({ row }) => row.original.actor_email ?? "System" },
   { id: "what", header: "Action", cell: ({ row }) => <Mono inline>{[row.original.action, row.original.entity_type].filter(Boolean).join(", ")}</Mono> },
   { id: "ctx", header: "Request", cell: ({ row }) => `${row.original.method} ${row.original.path} returned ${row.original.status_code}` },
 ];
@@ -50,7 +50,7 @@ function AuditTable({ params, empty }: { params: AuditListParams; empty: string 
         )
       }
       state={asyncStateOf(q, () => entries.length === 0, true)}
-      emptyProps={{ title: empty, action: <Button variant="secondary" onClick={() => void q.refetch()}>Refresh</Button> }}
+      emptyProps={{ title: empty, detail: "Changes people make are recorded here as they happen.", action: <Button variant="secondary" onClick={() => void q.refetch()}>Refresh</Button> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
       table={<DataTable columns={auditColumns} data={entries} getRowId={(r) => r.id} />}
     />
@@ -86,7 +86,7 @@ export default function AdminAuditPage() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Audit log" meta="Who did what, AI calls and role changes" />
+      <PageHeader title="Audit log" meta="A permanent record of who changed what, every call to the language model, and every change to a user. Export it for an auditor" />
       <Tabs
         value={["log", "ai", "roles"].includes(tab) ? tab : "log"}
         onValueChange={setTab}

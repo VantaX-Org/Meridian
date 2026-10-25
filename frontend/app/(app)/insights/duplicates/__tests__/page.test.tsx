@@ -184,7 +184,7 @@ describe("DuplicatesPage", () => {
     expect(await screen.findByText(/created 1 merge proposal/i)).toBeInTheDocument();
     // The toast's action opens the stewardship queue in the inbox, not the retired workbench.
     fireEvent.click(await screen.findByRole("button", { name: "Review in the inbox" }));
-    expect(push).toHaveBeenCalledWith("/inbox?tab=queue");
+    expect(push).toHaveBeenCalledWith("/inbox");
     expect(push).not.toHaveBeenCalledWith(expect.stringContaining("/workbench"));
   });
 

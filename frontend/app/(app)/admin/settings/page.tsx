@@ -49,7 +49,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Settings" meta="The way into each setting, and whether this deployment is healthy" actions={<Button variant="secondary" render={<Link href="/admin/licence">Open licence</Link>} />} />
+      <PageHeader title="Settings" meta="This deployment at a glance: licence, alert channels, how long data is kept, and health checks that say what needs fixing" actions={<Button variant="secondary" render={<Link href="/admin/licence">Open licence</Link>} />} />
 
       {l?.valid === false ? (
         <Notice tone="danger">
@@ -70,6 +70,9 @@ export default function AdminSettingsPage() {
         {can("manage_settings") ? <AlertChannelsPanel /> : null}
         {can("manage_settings") ? <RetentionPanel /> : null}
 
+        {can("manage_system") && doctor.isLoading ? (
+          <SettingsSection title="Health checks"><Skeleton height={96} /></SettingsSection>
+        ) : null}
         {can("manage_system") && doctor.isError ? (
           <SettingsSection title="Health checks">
             <ErrorState {...apiErrorState(doctor.error)} onRetry={() => doctor.refetch()} />

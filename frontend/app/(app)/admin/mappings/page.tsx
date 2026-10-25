@@ -5,7 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async } from "@/design";
+import { Button, ConfirmDialog, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async } from "@/design";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
@@ -81,7 +81,7 @@ export default function AdminMappingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Field mapping" meta="Imported files are matched on these customer columns" />
+      <PageHeader title="Field mapping" meta="Which column in your files holds each standard SAP field. Type your column header next to a field and save the row" />
       <Notice tone="info">A standard field with no customer column is skipped by every check that needs it.</Notice>
 
       <div className="flex gap-4">
@@ -97,22 +97,25 @@ export default function AdminMappingsPage() {
           options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]}
         />
         {object || search ? <Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear</Button> : null}
-        {write ? (confirmReset ? (
-          <>
-            <span className="m-text-meta m-ink-3">Reset {object ? formatModuleName(object) : "every object"} to the shipped mappings?</span>
-            <Button variant="secondary" disabled={reset.isPending} onClick={() => reset.mutate()}>Reset</Button>
-            <Button variant="ghost" onClick={() => setConfirmReset(false)}>Keep mappings</Button>
-          </>
-        ) : (
-          <Button variant="secondary" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button>
-        )) : null}
+        {write ? <Button variant="ghost" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button> : null}
+        <ConfirmDialog
+          open={confirmReset}
+          onOpenChange={setConfirmReset}
+          tone="danger"
+          title={`Reset ${object ? formatModuleName(object) : "every object"} to the shipped mappings?`}
+          body="Customer columns, labels and notes typed here are replaced by the defaults Meridian ships with."
+          confirmLabel="Reset mappings"
+          cancelLabel="Keep mappings"
+          pending={reset.isPending}
+          onConfirm={() => reset.mutate()}
+        />
       </div>
 
       <Async query={all} skeleton={320} notFoundIsEmpty>{!shown.length ? (
           object || search ? (
             <EmptyState title="No standard field matches" detail="Clear the filter to see every field." action={<Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear filter</Button>} />
           ) : (
-            <EmptyState title="No field mappings" detail="Import a file to map its columns." action={<Button render={<Link href="/import">Import file</Link>} />} />
+            <EmptyState title="No field mappings" detail="Mappings are created the first time a file is imported. Import one to start." action={<Button render={<Link href="/import">Import file</Link>} />} />
           )
         ) : (
           <section aria-label="Field mappings">

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
 import Link from "next/link";
-import { DrillLink, Button, DataTable, ExplorerPage, PageHeader, Pill, Sparkline, Stat, Status, asyncStateOf, statusLabel } from "@/design";
+import { DrillLink, Button, DataTable, ExplorerPage, FilterChip, PageHeader, Pill, Sparkline, Stat, Status, asyncStateOf, statusLabel } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
@@ -84,7 +84,7 @@ export default function MigrationPage() {
                       onClick={(e) => {
                         e.stopPropagation();
                         if (row.original.source_system_id) dryRun.mutate(row.original);
-                        else toast.error("Set a source system for this wave first");
+                        else toast.error("Set a source system for this wave first. Open the wave to edit it");
                       }}>
                 Dry run (S/4 load)
               </Button>
@@ -111,7 +111,7 @@ export default function MigrationPage() {
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Migration" meta={waves.isPending ? "\u00a0" : `${data.length} ${data.length === 1 ? "wave" : "waves"}`} actions={createButton} />}
+        header={<PageHeader title="Migration" meta={`${waves.isPending ? "" : `${data.length} ${data.length === 1 ? "wave" : "waves"}. `}Whether each group of objects is ready to load into S/4HANA, worst first. Run a wave to refresh its readiness`} actions={createButton} />}
         summary={data.length > 0 ? (
           <div className="m-stat-grid">
             <Stat label="Waves" help="wave" value={data.length} />
@@ -123,15 +123,20 @@ export default function MigrationPage() {
         filterBar={
           verdict ? (
             <div className="flex items-center gap-2 m-text-body">
-              <Pill tone="neutral">{statusLabel("verdict", verdict)}</Pill>
-              <Button variant="ghost" onClick={() => setVerdict("")}>Clear filter</Button>
+              <FilterChip label="Verdict" value={statusLabel("verdict", verdict)} onRemove={() => setVerdict("")} />
             </div>
           ) : undefined
         }
         table={<DataTable columns={columns} data={shownWaves} getRowId={(w) => w.id}
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}
         state={asyncStateOf(waves, () => data.length === 0, true)}
-        emptyProps={{ title: "No migration waves yet. Create one to track readiness.", action: createButton }}
+        emptyProps={{
+          title: "No migration waves yet",
+          detail: createButton
+            ? "A wave groups the objects you move to S/4HANA together, so you can see whether they are ready to load."
+            : "A wave groups the objects you move to S/4HANA together. Ask an analyst to create the first one.",
+          action: createButton,
+        }}
         errorProps={{ message: apiErrorMessage(waves.error), onRetry: () => void waves.refetch() }}
       />
       <CreateWaveDialog open={creating} onOpenChange={setCreating} />

@@ -25,7 +25,7 @@ export interface WorkbenchItem {
  * (the URL or the j/k focus), so the same state drives the keyboard and the pointer.
  */
 export function Workbench({
-  items, selectedId, onSelect, checked, onCheck, bulk, listLabel, detail, empty,
+  items, selectedId, onSelect, checked, onCheck, onCheckAll, bulk, listLabel, detail, empty,
 }: {
   items: WorkbenchItem[];
   selectedId: string | null;
@@ -33,6 +33,8 @@ export function Workbench({
   /** Ids ticked for a bulk action. */
   checked: ReadonlySet<string>;
   onCheck: (id: string, on: boolean) => void;
+  /** Ticks or clears every listed row at once; shows a "Select all" box above the list when given. */
+  onCheckAll?: (on: boolean) => void;
   /** The bulk bar, shown once at least one row is ticked. */
   bulk?: (ids: string[]) => ReactNode;
   listLabel: string;
@@ -44,6 +46,16 @@ export function Workbench({
   return (
     <div className="grid items-start gap-4 [grid-template-columns:minmax(0,1fr)] @5xl:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="inbox-workbench">
       <section aria-label={listLabel} className="m-card m-card-sm flex min-w-0 flex-col gap-2">
+        {onCheckAll && items.length > 1 ? (
+          <label className="flex items-center gap-2 pl-3 m-text-meta m-ink-3">
+            <Checkbox
+              aria-label={`Select all ${items.length.toLocaleString()}`}
+              checked={ticked.length === items.length}
+              onChange={(e) => onCheckAll(e.target.checked)}
+            />
+            Select all {items.length.toLocaleString()}
+          </label>
+        ) : null}
         {ticked.length > 0 && bulk ? (
           <div className="flex flex-wrap items-center gap-2 [border-bottom:1px_solid_var(--m-line)] pb-2" data-testid="inbox-bulk">
             <span className="m-text-meta m-ink-3">{ticked.length.toLocaleString()} selected</span>

@@ -43,12 +43,12 @@ describe("AlertChannelsPanel", () => {
     await waitFor(() => expect(screen.getByText("hooks.example")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(del).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Keep channel" }));
-    expect(screen.queryByRole("button", { name: "Confirm remove" })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Keep channel" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove channel" })).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(del).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Remove channel" }));
     await waitFor(() => expect(del.mock.calls[0]?.[0]).toBe("c1"));
     expect(del).toHaveBeenCalledTimes(1);
   });

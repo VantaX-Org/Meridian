@@ -2,13 +2,21 @@
 
 The words Meridian uses with a specific meaning, in alphabetical order. Each entry links to the chapter that explains it in full.
 
+### Accept risk
+
+A sign-off for a record that is wrong but acceptable for now, such as a value the business will correct later. Like **Not an issue**, it needs a reason, which is kept in the record's history, and the approve permission. The record then reads **Not an issue**. See [Fix work](/docs?page=fix).
+
 ### Applicability
 
 Whether a rule applies to a system. Once the system's configuration is loaded, each rule is checked against it. **Applies** means the configuration uses the field. **Does not apply** means it does not, so the rule is skipped. **Applies by default** means no configuration is loaded yet. **Not available** means the system cannot supply what the rule needs. See [Rules](/docs?page=rules).
 
+### Approved
+
+The status of a record whose value sits in a fix batch a second person has approved. It waits to be exported for the SAP load. See [Approvals and export](/docs?page=approvals).
+
 ### Baseline
 
-The run you pin as the reference for later runs from the same source, such as the run before a cleansing project. Each lineage has at most one. Comparisons use the baseline when there is one, and the previous run otherwise. See [Runs](/docs?page=runs).
+The run you pin as the reference for later runs from the same source, such as the run before a cleansing project. Each lineage has at most one. Comparisons use the baseline when there is one, and the previous run otherwise. See [Analysis](/docs?page=analysis).
 
 ### Basis
 
@@ -24,11 +32,11 @@ A ceiling on an object's score when critical rules fail. One critical rule over 
 
 ### Confidence
 
-How sure Meridian is that a proposed fix is right: **High**, **Medium** or **Low**. A high-confidence proposal from a rule has been checked by running the rule again on the new value. An approver can accept all high-confidence proposals in a batch at once. See [Fix](/docs?page=fix).
+How sure Meridian is that a proposed fix is right: **High**, **Medium** or **Low**. A high-confidence proposal from a rule has been checked by running the rule again on the new value. An approver can accept all high-confidence proposals in a batch at once. See [Approvals and export](/docs?page=approvals).
 
 ### Conformance
 
-How closely the cases found by process discovery follow the intended process model. Each case is replayed against the model to find skipped steps, extra steps and steps in the wrong order. It is summarised as fitness and listed per step. See [Processes](/docs?page=process).
+How closely the cases found by process discovery follow the intended process model. Each case is replayed against the model to find skipped steps, extra steps and steps in the wrong order. It is summarised as fitness and listed per step. See [Analysis](/docs?page=analysis).
 
 ### Contract
 
@@ -46,17 +54,21 @@ A score from 0 to 100 for how fit the data is. It is built from record-level pas
 
 One of the six ways data quality is measured, from DAMA DMBOK. Completeness asks whether values are present, accuracy whether they are right, consistency whether related values and systems agree, timeliness whether data is current, uniqueness whether records repeat, and validity whether values follow the format. Every rule belongs to one dimension. See [Key concepts](/docs?page=concepts).
 
+### Draft batch
+
+Your own fix batch that collects every value you accept or enter in Fix work, named "Fixes by" and your name. It is created on your first decision and stays a draft until a second person approves it. See [Approvals and export](/docs?page=approvals).
+
 ### Drift
 
-A change in configuration or in how data behaves since it was last read, such as a field that turned from optional to required. Each drift entry names what changed and when, so a change in the score can be traced to a change in SAP rather than to the data. See [Systems](/docs?page=systems).
+A change in configuration or in how data behaves since it was last read, such as a field that turned from optional to required. Each drift entry names what changed and when, so a change in the score can be traced to a change in SAP rather than to the data. See [Data in](/docs?page=data-in).
 
 ### Dry run
 
-A trial load that shows what the target system would reject, without changing anything. The target's own checks are applied to the source records and the blocked records are listed with the reason. See [Migration](/docs?page=migration).
+A trial load that shows what the target system would reject, without changing anything. The target's own checks are applied to the source records and the blocked records are listed with the reason. See [Data in](/docs?page=data-in).
 
 ### Field status
 
-Whether a field is required, optional, display only or suppressed in your SAP configuration. Meridian reads it from the configuration to decide whether an empty value is a defect. A required field that is empty fails; a suppressed one is not expected to hold data. See [Systems](/docs?page=systems).
+Whether a field is required, optional, display only or suppressed in your SAP configuration. Meridian reads it from the configuration to decide whether an empty value is a defect. A required field that is empty fails; a suppressed one is not expected to hold data. See [Data in](/docs?page=data-in).
 
 ### Finding
 
@@ -64,19 +76,31 @@ The result of one rule in one run: how many records the rule checked, how many f
 
 ### Fitness
 
-A measure from 0 to 1 of how many discovered process cases can be replayed on the reference model without deviation. It is 1 when every case fits exactly and falls as cases skip, repeat or reorder steps. See [Processes](/docs?page=process).
+A measure from 0 to 1 of how many discovered process cases can be replayed on the reference model without deviation. It is 1 when every case fits exactly and falls as cases skip, repeat or reorder steps. See [Analysis](/docs?page=analysis).
 
 ### Fix batch
 
-A group of accepted fix proposals that are approved and exported together. A second person must approve it: the person who created the batch cannot approve or export it. The export is a file, such as a Migration Cockpit workbook or a mass change file, that you load into SAP through your own process. On the next extraction each record is marked **Fixed** or **Still failing**. See [Fix](/docs?page=fix).
+A set of record-level corrections approved and exported together. A second person must approve it: the person who drafted the batch cannot approve or export it. The export is a file, such as a Migration Cockpit workbook or a mass change file, that you load into SAP through your own process. On the next run each record is marked **Fixed** or **Still failing**. See [Approvals and export](/docs?page=approvals).
 
-### Fix proposal
+### Fix proposed
 
-A corrected value Meridian suggests for a failing record. It comes from the rule's own automatic fix, from a value a steward enters, or is left blank when the record needs a manual correction. Each rule proposal carries a confidence. See [Fix](/docs?page=fix).
+The status of a record whose value waits in a draft fix batch for a second person to approve. **Undo** takes the value back out. See [Fix work](/docs?page=fix).
+
+### Fix sheet
+
+An Excel workbook of the filtered work list, one row per record and failing check, with blank **New value**, **Decision** and **Reason** columns. Fill it in offline and import it back; each row becomes a decision in your draft batch. See [Fix work](/docs?page=fix).
+
+### Fixed
+
+The status of a record a later run showed passing. Only a run can mark a record fixed, so the count always reflects what SAP now holds. See [Key concepts](/docs?page=concepts).
+
+### Four eyes
+
+The rule that two people handle every fix: one decides the value, another approves the batch. The person who drafted a batch cannot approve or export it. See [Approvals and export](/docs?page=approvals).
 
 ### Ghost configuration
 
-Configuration that exists in SAP but is never used in a transaction, such as a payment term or a plant that no document refers to. It adds noise to checks and choices to users. The list helps you decide what to retire before a migration. See [Systems](/docs?page=systems).
+Configuration that exists in SAP but is never used in a transaction, such as a payment term or a plant that no document refers to. It adds noise to checks and choices to users. The list helps you decide what to retire before a migration. See [Data in](/docs?page=data-in).
 
 ### Golden record
 
@@ -92,11 +116,15 @@ A role given to a user in addition to their main role, for all systems, for one 
 
 ### Happy path
 
-The most common route through a process, ideally the one the design intended. Its share of all cases shows how standard the process really is. See [Processes](/docs?page=process).
+The most common route through a process, ideally the one the design intended. Its share of all cases shows how standard the process really is. See [Analysis](/docs?page=analysis).
 
 ### Impact
 
 A number that ranks the work: the failing records of a rule multiplied by a severity weight of 8 for critical, 4 for high, 2 for medium and 1 for low. It is a ranking, not a sum of money. See [Key concepts](/docs?page=concepts).
+
+### Issue
+
+One rule that one record fails. A record can have several issues. In Fix work the **Issues** list groups them by rule, so you can work one problem across many records. See [Key concepts](/docs?page=concepts).
 
 ### Lineage
 
@@ -105,6 +133,10 @@ The chain of runs that come from the same source and may be compared. Runs extra
 ### Match rule
 
 A rule that scores how likely two records describe the same real-world entity. It compares chosen fields, exactly or fuzzily, and gives each pair a confidence between 0 and 1. Pairs above the automatic merge threshold are merged, pairs in the review band go to a steward, and pairs below it are left alone. See [Master data](/docs?page=mdm).
+
+### Not an issue
+
+The status of a record someone signed off as an exception, with a reason: the value is right for the business even though the rule flags it. It needs the approve permission and can be withdrawn. See [Fix work](/docs?page=fix).
 
 ### Object
 
@@ -120,7 +152,7 @@ Records a rule deliberately skips, such as a vendor already flagged for deletion
 
 ### Proven cost
 
-Money measured on documents actually posted in SAP with a defective value, such as a payment sent twice. It is shown per top-level process in the tenant currency and is never added up across processes. See [Insights](/docs?page=insights).
+Money measured on documents actually posted in SAP with a defective value, such as a payment sent twice. It is shown per top-level process in the tenant currency and is never added up across processes. See [Analysis](/docs?page=analysis).
 
 ### Readiness verdict
 
@@ -148,7 +180,7 @@ One fixed, deterministic check on the data, with an ID such as `MM001`, a dimens
 
 ### Run
 
-One measurement of your data at a point in time, created by an extraction from a system or by an imported file. Every score, finding and record list belongs to a run. See [Runs](/docs?page=runs).
+One measurement of your data at a point in time, created by an extraction from a system or by an imported file. Every score, finding and record list belongs to a run. See [Analysis](/docs?page=analysis).
 
 ### Scope
 
@@ -158,44 +190,65 @@ The systems, objects and records a figure or a grant covers. A figure shown for 
 
 The range a score falls in, set by three thresholds. By default 90 or more meets the target, 75 to below 90 is a warning, below 75 fails, and below 60 is the critical band. See [Key concepts](/docs?page=concepts).
 
+### Sent to SAP
+
+The status of a record whose batch was exported for the SAP load. The next run confirms the fix: the record becomes **Fixed**, or goes back to **To fix** if it still fails. See [Approvals and export](/docs?page=approvals).
+
 ### Severity
 
 How much a rule's failure matters: critical, high, medium or low. Severity changes how a failure counts in the score, in the cap, in blocking and in impact. See [Key concepts](/docs?page=concepts).
 
 ### Steward
 
-The person who looks after the data in an area and fixes its failing records. Stewards work from the Inbox and the Fix pages. Data steward is also a role in Meridian. See [Inbox](/docs?page=inbox).
+The person who looks after the data in an area and fixes its failing records. Stewards work from Fix work and the Inbox. Data steward is also a role in Meridian, and stewards land on Fix work after sign-in. See [Roles and access](/docs?page=roles).
+
+### Still failing
+
+A record that was sent to SAP but that the next run still finds failing. It returns to **To fix** with a warning, and its batch item reads **Still failing**. See [Troubleshooting](/docs?page=troubleshooting).
+
+### Suggestion
+
+The value Meridian proposes for a failing field: the rule's own fix, checked by running the rule again on the new value, the rule's fixed mapping for a known bad value, or a cleaning engine proposal with its confidence. Accept it with one click or the `a` key. See [Key concepts](/docs?page=concepts).
 
 ### Survivorship
 
 The rules that choose, field by field, which source value a golden record keeps when sources disagree: for example the most recent, the most complete, the trusted system or the most frequent. Rules suggested by the AI take effect only once a person activates them. See [Master data](/docs?page=mdm).
 
+### To fix
+
+The status of a failing record nobody has decided a value for yet. It is open work, together with **Fix proposed**, **Approved** and **Sent to SAP**. See [Key concepts](/docs?page=concepts).
+
 ### Unmaintained field
 
-A field that exists in SAP but is almost never filled in. It usually means the field is no longer part of the business process. Meridian lists these so you can retire the field or the rule that checks it. See [Systems](/docs?page=systems).
+A field that exists in SAP but is almost never filled in. It usually means the field is no longer part of the business process. Meridian lists these so you can retire the field or the rule that checks it. See [Data in](/docs?page=data-in).
 
 ### Value at risk
 
-A money figure for SAP features blocked by bad data: the number of affected records multiplied by the value per record your organisation sets for that feature. It is shown per top-level business process in the tenant currency, never added up across processes. A feature nobody has priced shows no value. See [Insights](/docs?page=insights).
+A money figure for SAP features blocked by bad data: the number of affected records multiplied by the value per record your organisation sets for that feature. It is shown per top-level business process in the tenant currency, never added up across processes. A feature nobody has priced shows no value. See [Analysis](/docs?page=analysis).
 
 ### Variant
 
-A distinct path that cases take through a process. Cases with the same sequence of steps form one variant. Many rare variants point to rework, workarounds or steps done out of order. See [Processes](/docs?page=process).
+A distinct path that cases take through a process. Cases with the same sequence of steps form one variant. Many rare variants point to rework, workarounds or steps done out of order. See [Analysis](/docs?page=analysis).
 
 ### Wave
 
-A batch of objects and systems migrated together in one cutover, with one verdict: Go when it meets its minimum readiness, At risk when close, and No-go when blocking records remain. See [Migration](/docs?page=migration).
+A batch of objects and systems migrated together in one cutover, with one verdict: Go when it meets its minimum readiness, At risk when close, and No-go when blocking records remain. See [Data in](/docs?page=data-in).
+
+### Work list
+
+The failing records of one run, ranked worst first with their statuses, built as part of every analysis. Fix work and each object's **Records to fix** tab read it. See [Fix work](/docs?page=fix).
 
 ### Write-back
 
-Sending an approved change straight into SAP instead of exporting a file, offered as **Write back** on a golden record. Someone other than the requester must approve each request, under **Approvals** in the Inbox. A deployment can switch live write-back off; you then export fixes as a file and load them in SAP. See [Master data](/docs?page=mdm).
+Sending an approved change straight into SAP instead of exporting a file, offered as **Write back** on a golden record. Someone other than the requester must approve each request, under **Approvals** in the Inbox. A deployment can switch live write-back off; you then export fixes as a file and load them in SAP. See [Approvals and export](/docs?page=approvals).
 
 ### Z-object
 
-A customer-defined table, field or program in SAP, named with a Z or Y prefix. Meridian finds them, lists who owns them and whether they are documented, and flags unusual values in them. See [Systems](/docs?page=systems).
+A customer-defined table, field or program in SAP, named with a Z or Y prefix. Meridian finds them, lists who owns them and whether they are documented, and flags unusual values in them. See [Data in](/docs?page=data-in).
 
 ## Related
 
 - [Key concepts](/docs?page=concepts)
+- [Fix work](/docs?page=fix)
 - [Roles and access](/docs?page=roles)
 - [Keyboard shortcuts and search](/docs?page=shortcuts)

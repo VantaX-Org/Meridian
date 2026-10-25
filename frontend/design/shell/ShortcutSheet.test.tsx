@@ -11,10 +11,10 @@ function Hotkey({ onTrigger }: { onTrigger: () => void }) {
 }
 
 describe("ShortcutSheet", () => {
-  it("lists the four groups from the registry", () => {
+  it("lists the five groups from the registry", () => {
     render(<ShortcutSheet open onOpenChange={() => {}} />);
     const sheet = screen.getByTestId("shortcut-sheet");
-    for (const group of ["Navigation", "Tables", "Inbox", "Global"]) {
+    for (const group of ["Navigation", "Fix work", "Tables", "Inbox", "Global"]) {
       expect(within(sheet).getByRole("heading", { name: group })).toBeInTheDocument();
     }
     for (const s of shortcutRegistry()) expect(within(sheet).getAllByText(s.description).length).toBeGreaterThan(0);
@@ -23,7 +23,7 @@ describe("ShortcutSheet", () => {
   it("shows the inbox keys from the registry", () => {
     render(<ShortcutSheet open onOpenChange={() => {}} />);
     for (const s of INBOX_SHORTCUTS) expect(screen.getAllByText(s.keys).length).toBeGreaterThan(0);
-    expect(screen.getByText("j / k")).toBeInTheDocument();
+    expect(screen.getAllByText("j / k")).toHaveLength(2); // Inbox and Fix work
   });
 
   it("puts the page's own group first", () => {
@@ -39,7 +39,7 @@ describe("ShortcutSheet", () => {
 
   it("takes navigation shortcuts from the nav definition", () => {
     expect(navShortcuts()).toContainEqual({ group: "Navigation", keys: "⌘1", description: "Go to Home" });
-    expect(shortcutSections().map((s) => s.group)).toEqual(["Navigation", "Tables", "Inbox", "Global"]);
+    expect(shortcutSections().map((s) => s.group)).toEqual(["Navigation", "Fix work", "Tables", "Inbox", "Global"]);
   });
 
   it("lists no key for collapsing the navigation (there is no sidebar to collapse)", () => {

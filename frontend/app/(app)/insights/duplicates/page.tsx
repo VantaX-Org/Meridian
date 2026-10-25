@@ -112,7 +112,7 @@ export default function DuplicatesPage() {
     try {
       const result = await createMergeProposals(pairs);
       toast(`Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`, {
-        action: { label: "Review in the inbox", onClick: () => router.push("/inbox?tab=queue") },
+        action: { label: "Review in the inbox", onClick: () => router.push("/inbox") },
       });
     } catch (e) {
       // A failed proposal says so; it never fails silently as an unhandled rejection.

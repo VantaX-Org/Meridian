@@ -7,9 +7,9 @@
  */
 import { NAV_GROUPS, flattenNav } from "@/lib/nav";
 
-export type ShortcutGroup = "Navigation" | "Tables" | "Inbox" | "Global";
+export type ShortcutGroup = "Navigation" | "Fix work" | "Tables" | "Inbox" | "Global";
 
-export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ["Navigation", "Tables", "Inbox", "Global"];
+export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ["Navigation", "Fix work", "Tables", "Inbox", "Global"];
 
 export interface Shortcut {
   group: ShortcutGroup;
@@ -31,10 +31,20 @@ export const TABLE_SHORTCUTS: readonly Shortcut[] = [
 export const INBOX_SHORTCUTS: readonly Shortcut[] = [
   { group: "Inbox", keys: "j / k", description: "Next or previous task" },
   { group: "Inbox", keys: "Enter", description: "Open the record" },
-  { group: "Inbox", keys: "a", description: "Assign to me" },
+  { group: "Inbox", keys: "a", description: "Claim" },
   { group: "Inbox", keys: "r", description: "Resolve (approve)" },
   { group: "Inbox", keys: "x", description: "Reject with a reason" },
   { group: "Inbox", keys: "Escape", description: "Close the panel" },
+];
+
+/** components/work/fix-work.tsx and the object page's Records to fix (app/(app)/objects/[object]/_fix.tsx). */
+export const FIX_SHORTCUTS: readonly Shortcut[] = [
+  { group: "Fix work", keys: "j / k", description: "Next or previous record" },
+  { group: "Fix work", keys: "a", description: "Accept the record's suggested values" },
+  { group: "Fix work", keys: "t", description: "Take the record" },
+  { group: "Fix work", keys: "u", description: "Undo the record's decisions" },
+  { group: "Fix work", keys: "Enter", description: "Open the full record" },
+  { group: "Fix work", keys: "1 to 5", description: "Switch tabs on an object page" },
 ];
 
 /** design/shell/CommandPalette.tsx and the sheet itself. */
@@ -52,7 +62,7 @@ export function navShortcuts(): Shortcut[] {
 }
 
 export function shortcutRegistry(): Shortcut[] {
-  return [...navShortcuts(), ...TABLE_SHORTCUTS, ...INBOX_SHORTCUTS, ...GLOBAL_SHORTCUTS];
+  return [...navShortcuts(), ...FIX_SHORTCUTS, ...TABLE_SHORTCUTS, ...INBOX_SHORTCUTS, ...GLOBAL_SHORTCUTS];
 }
 
 export interface ShortcutSection {
