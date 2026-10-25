@@ -161,7 +161,7 @@ export default function ReportsPage() {
                     <button
                       key={e.id} type="button" role="option" data-id={e.id} aria-selected={e.id === current?.id}
                       tabIndex={e.id === current?.id ? 0 : -1} onClick={() => setSelected(e.id)}
-                      className="m-lift flex flex-col gap-1 rounded p-3 text-left m-ink [background:var(--m-surface)]! aria-selected:[background:var(--m-surface-2)]!"
+                      className="m-lift flex flex-col gap-1 rounded-[var(--m-radius-control)] p-3 text-left m-ink [background:var(--m-sheet-raised)]! aria-selected:[background:var(--m-accent-soft)]! aria-selected:[color:var(--m-accent-ink)]"
                     >
                       <span className="flex items-center gap-2 font-medium">{nameOf(e)}<Pill tone="neutral">{e.format}</Pill></span>
                       <span className="m-text-meta m-ink-3">{e.about}</span>

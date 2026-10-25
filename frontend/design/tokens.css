@@ -14,6 +14,7 @@
   --m-sheet-sunken: #E4E8EE;    /* code/sample wells, bar tracks, ghost shapes */
   --m-rail: #FFFFFF;            /* sidebar background: a light sheet */
   --m-rail-hover: var(--m-sheet-raised);
+  --m-rail-fg: var(--m-ink-2);
   --m-rail-edge: var(--m-line); /* rail right rule */
   --m-line: #E6EAF0;            /* hairline borders (1px) */
   --m-line-strong: #CBD2DC;     /* input borders, table head rule */
@@ -212,6 +213,7 @@
   --m-rail: #141A27;
   --m-rail-edge: var(--m-line);
   --m-rail-hover: var(--m-sheet-raised);
+  --m-rail-fg: var(--m-ink-2);
   --m-line: #2A3344;
   --m-line-strong: #3B475C;
   --m-scrim: rgb(0 0 0 / 0.6);
@@ -297,6 +299,7 @@
     --m-rail: #141A27;
     --m-rail-edge: var(--m-line);
     --m-rail-hover: var(--m-sheet-raised);
+    --m-rail-fg: var(--m-ink-2);
     --m-line: #2A3344;
     --m-line-strong: #3B475C;
     --m-scrim: rgb(0 0 0 / 0.6);
