@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, DrillLink, ErrorState, Mono, PageHeader, Select, Skeleton, StatSkeleton, Stat, Status, type StatTone, PageFrame } from "@/design";
+import { Button, buildDrillHref, Card, DataTable, DrillLink, ErrorState, Mono, PageHeader, Select, Skeleton, StatSkeleton, Stat, Status, type StatTone, PageFrame } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
@@ -31,7 +31,12 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
   { id: "rule", header: "Blocking rule", enableSorting: false, cell: ({ row: { original: r } }) => {
       const w = r.readiness?.worst;
       if (!r.readiness) return "—";
-      return w ? <span className="flex items-baseline gap-2"><Mono>{w.check_id ?? w.field}</Mono><span className="line-clamp-1">{w.description}</span></span> : "None";
+      if (!w) return "None";
+      // The rule opens its failing records on the object that scored this process, in the run that scored it.
+      const id = w.check_id
+        ? <DrillLink href={buildDrillHref({ object: r.readiness.module, ruleId: w.check_id, run: versionId })}><Mono>{w.check_id}</Mono></DrillLink>
+        : <Mono>{w.field}</Mono>;
+      return <span className="flex items-baseline gap-2">{id}<span className="line-clamp-1">{w.description}</span></span>;
     } },
   { id: "failing", header: "Failing records", meta: { numeric: true }, accessorFn: (r) => r.readiness?.failing ?? -1,
     cell: ({ row: { original: r } }) => (r.readiness ? r.readiness.failing.toLocaleString() : "—") },

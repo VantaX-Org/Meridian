@@ -104,11 +104,11 @@ export const CLEANSING_STAGE_FILTER: Record<CleansingStep["key"], FixFilter> = {
   applied: { st: "sent" },
 };
 
-/** Failing records to applied fixes; each stage opens the fix queue at that status. */
+/** Failing records to applied fixes; each stage opens Fix work at that status. */
 export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: string }) {
   const router = useRouter();
   if (steps.length === 0 || steps.every((s) => !s.records)) {
-    return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({ run })} className="m-ink-accent underline underline-offset-2">Open the fix queue</Link></p>;
+    return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({ run })} className="m-ink-accent underline underline-offset-2">Open Fix work</Link></p>;
   }
   return (
     <>

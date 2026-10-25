@@ -36,6 +36,7 @@ import {
 } from "@/lib/current-state";
 import { formatDate, formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
+import { fixHref } from "@/lib/drill";
 import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
 import { reportFilename } from "@/lib/report-filename";
 import { StateScope } from "@/components/run-scope";
@@ -316,7 +317,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     {
       id: "action", header: "", enableSorting: false,
       cell: ({ row: { original: o } }) => o.fixable
-        ? <Link href={`/fix?module=${o.module}`} className="m-ink-accent" aria-label={`Fix ${o.label}`}>Fix</Link>
+        // The blocking rule's records in the run that found them, the rule this row names.
+        ? <Link href={fixHref({ run: o.run_id, module: o.module, check: o.blocking })} className="m-ink-accent" aria-label={`Fix ${o.label}`}>Fix</Link>
         : <Link href={objectHref(o)} className="m-ink-accent" aria-label={`Open ${o.label}`}>Open</Link>,
     },
   ];
@@ -404,12 +406,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const inboxCard = role === "steward" ? (
     <Card title="Inbox" meta={countsReady ? `${plural(counts.inbox, "open item")}` : undefined} padding="sm">
       {queueQ.isLoading ? <Skeleton height={120} /> : queueItems.length === 0 ? (
-        <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix" className="underline-offset-2 hover:underline">Open cleaning proposals</Link>} />
+        <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?tab=cleaning" className="underline-offset-2 hover:underline">Open cleaning proposals</Link>} />
       ) : (
         <ul className="flex flex-col" data-testid="home-inbox-items">
           {queueItems.map((it) => (
             <li key={it.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)] m-text-body">
-              <Link href={`/inbox?type=${encodeURIComponent(it.item_type)}`} className="flex-1 underline-offset-2 hover:underline">{labelOf(it.item_type)}, {formatModuleName(it.domain)}</Link>
+              <Link href={`/inbox?focus=${encodeURIComponent(it.id)}`} className="flex-1 underline-offset-2 hover:underline">{labelOf(it.item_type)}, {formatModuleName(it.domain)}</Link>
               {it.sla_state === "breached" && <Pill tone="no-go">Overdue</Pill>}
               <span className="m-ink-3">{it.due_at ? `due ${relativeTime(it.due_at)}` : `opened ${relativeTime(it.created_at)}`}</span>
             </li>
@@ -429,7 +431,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       <>
         <WorkRow>
           <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
-          <Stat label="Cleaning proposals" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
+          {/* counts.fix is the records waiting in Fix work, not cleaning proposals. */}
+          <Stat label="Records to fix" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
           <Stat
             label="Worst object"
             value={worst?.composite_score?.toFixed(1) ?? "—"}

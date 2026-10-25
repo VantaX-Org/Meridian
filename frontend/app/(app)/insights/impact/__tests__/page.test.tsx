@@ -77,7 +77,8 @@ describe("ImpactPage", () => {
     renderWithQuery(<ImpactPage />);
 
     await waitFor(() => expect(screen.getByText("Largest proven cost, one process")).toBeInTheDocument());
-    expect(screen.getByText("Most at risk, one process")).toBeInTheDocument();
+    expect(screen.getByText("Most at risk: Procure to pay")).toBeInTheDocument();
+    expect(screen.getByText("Across 2 processes")).toBeInTheDocument();
     expect(screen.getAllByText("Procure to pay, across 2 processes").length).toBeGreaterThan(0);
     expect(screen.getByText("Late purchase orders")).toBeInTheDocument();
     expect(screen.getByText("MM140")).toBeInTheDocument();

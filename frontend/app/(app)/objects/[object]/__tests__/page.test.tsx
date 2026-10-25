@@ -130,7 +130,7 @@ describe("ObjectDetailPage", () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
     expect(screen.getByText("Material master")).toBeInTheDocument();
-    for (const label of ["Failing rules", "Blocking rules", "Records affected", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
+    for (const label of ["Failing rules", "Critical and high", "Records affected", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
     const rules = await screen.findAllByTestId("workbench-rule-row");
     expect(rules.map((r) => r.textContent)).toEqual([expect.stringContaining("mm_missing_desc"), expect.stringContaining("mm_bad_uom")]);
     expect(rules[0]).toHaveAttribute("aria-current", "true");
@@ -413,19 +413,19 @@ describe("ObjectDetailPage", () => {
   });
 
   describe("?blocking= filter on the rules tab", () => {
-    it("blocking=true keeps only critical and high rules and pressed Blocking only chip", async () => {
+    it("blocking=true keeps only critical and high rules and pressed Critical and high chip", async () => {
       searchParams = new URLSearchParams("run=v1&tab=rules&blocking=true");
       renderWithQuery(<ObjectDetailPage />);
       await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
       expect(screen.queryByText("mm_bad_uom")).toBeNull();
-      expect(screen.getByRole("button", { name: "Blocking only", pressed: true })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Critical and high", pressed: true })).toBeInTheDocument();
     });
     it.each(["constructor", "__proto__", "false", "1", "TRUE"])("blocking=%s applies no filter and shows no pressed chip", async (g) => {
       searchParams = new URLSearchParams(`run=v1&tab=rules&blocking=${g}`);
       renderWithQuery(<ObjectDetailPage />);
       await waitFor(() => expect(screen.getByText("mm_bad_uom")).toBeInTheDocument());
       expect(screen.getByText("mm_missing_desc")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Blocking only", pressed: false })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Critical and high", pressed: false })).toBeInTheDocument();
     });
   });
 });

@@ -28,6 +28,9 @@ const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "ti
 const num = { numeric: true } satisfies CellMeta;
 const count = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
 
+/** One run's failing rules at one severity: the run's findings tab, filtered. */
+const severityFindingsHref = (versionId: string, severity: "critical" | "high") => `/runs/${versionId}?tab=findings&severity=${severity}`;
+
 /** The run-by-run ledger: each run's results and what changed from the run before. Newest first. */
 function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
   return [
@@ -44,9 +47,9 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
     { id: "score", header: "Score", accessorFn: (r) => r.composite ?? -1, meta: num, cell: ({ row }) => (row.original.composite == null ? "—" : row.original.composite.toFixed(1)) },
     // Not sortable: the ledger reads in run order, and a sort button cannot hold the hint's own button.
     { id: "change", header: () => <span className="inline-flex items-center gap-1">Change <HelpHint term="previous_run" /></span>, accessorFn: (r) => r.change ?? 0, meta: num, enableSorting: false, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
-    // Each count opens that run's failing records in Fix work, at that severity.
-    { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id, sev: "critical" })} count={row.original.critical} label={`${drillLabel({ sev: "critical", what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.critical)}</DrillCount> },
-    { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id, sev: "high" })} count={row.original.high} label={`${drillLabel({ sev: "high", what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.high)}</DrillCount> },
+    // Each count is that run's failing rules at that severity, and opens exactly those rules on the run's findings tab.
+    { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => <DrillCount href={severityFindingsHref(row.original.version_id, "critical")} count={row.original.critical} label={`${drillLabel({ count: row.original.critical, sev: "critical", what: "failing rules" })} of run ${runName(row.original)}`}>{count(row.original.critical)}</DrillCount> },
+    { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => <DrillCount href={severityFindingsHref(row.original.version_id, "high")} count={row.original.high} label={`${drillLabel({ count: row.original.high, sev: "high", what: "failing rules" })} of run ${runName(row.original)}`}>{count(row.original.high)}</DrillCount> },
     { id: "fixed", header: "Rules fixed", accessorFn: (r) => r.rules_fixed ?? -1, meta: num, cell: ({ row }) => (row.original.rules_fixed == null ? "—" : row.original.rules_fixed > 0 ? <Delta value={row.original.rules_fixed} /> : "0") },
     { id: "new", header: "Newly failing", accessorFn: (r) => r.rules_new ?? -1, meta: num, cell: ({ row }) => (row.original.rules_new == null ? "—" : row.original.rules_new > 0 ? <Delta value={row.original.rules_new} invert /> : "0") },
     { id: "records", header: "Failing records", accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id })} count={row.original.affected_records} label={`${drillLabel({ count: row.original.affected_records, what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.affected_records)}</DrillCount> },
@@ -122,8 +125,8 @@ export default function TrendsPage() {
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
-          <Card title="Composite score" meta={`${narrative} Select a point to open that run.`}>
-            <Line data={composite} xDomain={domain} label="Composite score per run" annotations={annotations} onPointClick={openRun} height={200} />
+          <Card title="Score" meta={`${narrative} Select a point to open that run.`}>
+            <Line data={composite} xDomain={domain} label="Score per run" annotations={annotations} onPointClick={openRun} height={200} />
           </Card>
         </div>
         <div className="@5xl:col-span-12">

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, buildDrillHref, Card, DataTable, DrillLink, EmptyState, Heatmap, Skeleton, Status, statusLabel } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Skeleton, Status, statusLabel } from "@/design";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
@@ -15,6 +15,7 @@ import { formatModuleName, plural } from "@/lib/format";
 import { previousInLineage } from "@/lib/runs";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { DrillCount } from "../_components/DrillCount";
+import { migrationGapColumns, useWaveIds } from "../_components/migrationGaps";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
@@ -23,8 +24,9 @@ import { PAGE_PURPOSE } from "../_components/InsightViews";
 const HEAT: Record<ReadinessCell["verdict"], "go" | "at-risk" | "no-go"> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
 
 
-// Fix work has no "blocking" filter, so the blocking counts open the object's blocking rules; the object opens its records.
-const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
+// The object opens its records in Fix work; the gap counts open the wave's gap view (migrationGaps.tsx), since a
+// cell's blocker_count counts migration gaps, not rules.
+const blockerColumns = (run: string | undefined, waveIds: ReadonlyMap<string, string>): ColumnDef<ReadinessCell>[] => [
   { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module), cell: ({ row }) => (
     <DrillCount href={fixHref({ run, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount>
   ) },
@@ -36,24 +38,11 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
         </span>
       </DrillLink>
     ) },
-  {
-    accessorKey: "blocker_count",
-    header: "Blocking findings",
-    meta: { numeric: true },
-    cell: ({ row }) => <DrillCount href={buildDrillHref({ object: row.original.module, filters: { blocking: "true" }, run })} count={row.original.blocker_count} label={`Open the ${plural(row.original.blocker_count, "blocking rule")} of ${formatModuleName(row.original.module)}`}>{row.original.blocker_count.toLocaleString()}</DrillCount>,
-  },
-  {
-    accessorKey: "records_blocked",
-    header: "Records blocked",
-    meta: { numeric: true },
-    cell: ({ row }) => (
-      <DrillCount href={buildDrillHref({ object: row.original.module, filters: { blocking: "true" }, run })} count={row.original.records_blocked} label={`Open the blocking rules behind the ${plural(row.original.records_blocked, "blocked record")} of ${formatModuleName(row.original.module)}`}>{row.original.records_blocked.toLocaleString()}</DrillCount>
-    ),
-  },
+  ...migrationGapColumns(waveIds),
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (
-      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true" })}`} aria-label={`Fix the blockers of ${formatModuleName(row.original.module)} in wave ${row.original.wave}`} className="m-ink-accent underline underline-offset-2">Fix</Link>
+      <Link href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true" })}`} aria-label={`Fix the critical and high rules of ${formatModuleName(row.original.module)} in wave ${row.original.wave}`} className="m-ink-accent underline underline-offset-2">Fix</Link>
     ),
   },
 ];
@@ -61,7 +50,7 @@ const blockerColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
 /** Without waves, the blockers table lists the S/4 simplification areas whose rules fail. */
 const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
   { accessorKey: "label", header: "S/4 area" },
-  { accessorKey: "blocking_failing", header: "Blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "blocking" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
+  { accessorKey: "blocking_failing", header: "S/4 blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "blocking" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
   { accessorKey: "warning_failing", header: "Warning rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "warning" })}>{row.original.warning_failing.toLocaleString()}</DrillLink> },
   { accessorKey: "failing_records", header: "Records failing", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
   { id: "action", header: "", enableSorting: false, cell: () => <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="m-ink-accent underline underline-offset-2">Open rules</Link> },
@@ -71,6 +60,7 @@ export default function ReadinessPage() {
   const router = useRouter();
   const { run, runs, versions } = useInsightScope();
   const dayOne = useDayOne();
+  const waveIds = useWaveIds();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("readiness", run),
@@ -93,11 +83,11 @@ export default function ReadinessPage() {
     enabled: !!s4Run,
   });
   const areas = s4.data?.areas ?? [];
-  let blockingGaps = 0;
-  let warningGaps = 0;
+  let s4BlockingRules = 0;
+  let s4WarningRules = 0;
   for (const a of areas) {
-    blockingGaps += a.blocking_failing;
-    warningGaps += a.warning_failing;
+    s4BlockingRules += a.blocking_failing;
+    s4WarningRules += a.warning_failing;
   }
   const failingAreas = areas.filter((a) => a.failing > 0).sort((a, b) => b.blocking_failing - a.blocking_failing || b.failing_records - a.failing_records);
 
@@ -157,8 +147,8 @@ export default function ReadinessPage() {
         situation: {
           sentence: cells.length
             ? `${noGo} of ${plural(cells.length, "object and wave pair", "object and wave pairs")} ${noGo === 1 ? "is" : "are"} not ready to load`
-            : s4.data ? `${plural(blockingGaps, "rule")} would block an S/4 load, and no wave is set up yet` : "No waves set up yet",
-          tone: noGo || blockingGaps ? "no-go" : "go",
+            : s4.data ? `${plural(s4BlockingRules, "rule")} would block an S/4 load, and no wave is set up yet` : "No waves set up yet",
+          tone: noGo || s4BlockingRules ? "no-go" : "go",
         },
         changed: { sentence: changed, href: previous ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: cells.length ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `; an object needs ${data.threshold}% of its records passing to load` : ""}` : "Until there is a wave, no object gets a go or no-go" },
@@ -183,15 +173,15 @@ export default function ReadinessPage() {
         meta={s4.data ? (
           // What the ledger's rules do to an S/4 load, as two drills into the rules; the counts are not a second stat row.
           <span data-testid="s4-strip" className="inline-flex flex-wrap items-center gap-x-4">
-            <Link href={withScope("/insights/rules", { run, s4: "blocking" })} className="underline-offset-2 hover:underline"><span>Blockers</span><span className="ml-1 font-medium m-numeric">{blockingGaps.toLocaleString()}</span></Link>
-            <Link href={withScope("/insights/rules", { run, s4: "warning" })} className="underline-offset-2 hover:underline"><span>Warnings</span><span className="ml-1 font-medium m-numeric">{warningGaps.toLocaleString()}</span></Link>
+            <Link href={withScope("/insights/rules", { run, s4: "blocking" })} className="underline-offset-2 hover:underline"><span>Blockers</span><span className="ml-1 font-medium m-numeric">{s4BlockingRules.toLocaleString()}</span></Link>
+            <Link href={withScope("/insights/rules", { run, s4: "warning" })} className="underline-offset-2 hover:underline"><span>Warnings</span><span className="ml-1 font-medium m-numeric">{s4WarningRules.toLocaleString()}</span></Link>
           </span>
         ) : cells.length ? undefined : failingAreas.length ? "By S/4 simplification area, since no wave is defined" : undefined}
       >
         {blockers.length > 0 ? (
           <div role="region" aria-label="Blockers by wave and object" tabIndex={0} className="overflow-x-auto">
             <DataTable
-              columns={blockerColumns(run)}
+              columns={blockerColumns(run, waveIds)}
               data={blockers}
               getRowId={(c) => `${c.module}-${c.wave}`}
               hideToolbar

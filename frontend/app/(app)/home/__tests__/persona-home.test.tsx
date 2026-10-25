@@ -1,5 +1,5 @@
 // frontend/app/(app)/home/__tests__/persona-home.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
@@ -148,7 +148,7 @@ describe("PersonaHomePage Brief geometry", () => {
     renderWithQuery(<LeadHomePage />);
     const link = await screen.findByRole("link", { name: "MM-001" });
     expect(link.closest("tr")).toHaveTextContent("Material description is missing");
-    expect(screen.getByRole("link", { name: "Fix Material master" })).toHaveAttribute("href", "/fix?module=material_master");
+    expect(screen.getByRole("link", { name: "Fix Material master" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM-001");
     expect(screen.getByRole("link", { name: "Open Controlling" })).toHaveAttribute("href", "/objects/controlling?run=v1");
     expect(screen.queryByRole("link", { name: "Fix Controlling" })).toBeNull();
   });
@@ -287,6 +287,8 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     const items = await screen.findByTestId("home-inbox-items");
     expect(items).toHaveTextContent("Merge decision, Material master");
+    // Each item opens that task in the inbox, not every task of its type.
+    expect(within(items).getByRole("link", { name: /Merge decision/ })).toHaveAttribute("href", "/inbox?focus=q1");
     const hero = screen.getByTestId("home-verdict-row");
     const inbox = screen.getByText("Open inbox").closest("a") as HTMLElement;
     expect(inbox.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -310,7 +312,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     const inbox = (await screen.findByText("Open inbox")).closest("a");
     expect(inbox).toHaveTextContent("—");
     expect(inbox).not.toHaveTextContent(/clear|0/);
-    expect((await screen.findByText("Cleaning proposals")).closest("a")).not.toHaveTextContent(/clear/);
+    expect((await screen.findByText("Records to fix")).closest("a")).not.toHaveTextContent(/clear/);
   });
 });
 

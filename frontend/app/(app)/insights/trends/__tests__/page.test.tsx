@@ -51,7 +51,7 @@ describe("TrendsPage", () => {
     expect(screen.getAllByText("Not measured in these runs")).toHaveLength(4);
     expect(screen.queryByRole("img", { name: /Timeliness score per run/ })).toBeNull();
     // Ticks are the date and time (two runs on one day), never the upload labels.
-    expect(screen.getByRole("img", { name: "Composite score per run: 16 Oct 2026, 05:00 70, 16 Oct 2026, 17:30 70" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Score per run: 16 Oct 2026, 05:00 70, 16 Oct 2026, 17:30 70" })).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /business_partner_100k/ })).toBeNull();
     // The change heatmap is keyed the same way.
     expect(screen.getByLabelText("Completeness 16 Oct 2026, 17:30: 0")).toBeInTheDocument();
@@ -74,9 +74,9 @@ describe("TrendsPage", () => {
     expect(rows[1]).toHaveTextContent("first run");
     // Each run's counts open that run's failing records in Fix work.
     expect(screen.getByRole("link", { name: "Open the 900 failing records of run v2" })).toHaveAttribute("href", "/fix?run=v2");
-    expect(screen.getByRole("link", { name: "Open the critical failing records of run v2" })).toHaveAttribute("href", "/fix?run=v2&sev=critical");
-    expect(screen.getByRole("link", { name: "Open the high failing records of run v1" })).toHaveAttribute("href", "/fix?run=v1&sev=high");
-    expect(screen.queryByRole("link", { name: "Open the critical failing records of run v1" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Open the 1 critical failing rule of run v2" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=critical");
+    expect(screen.getByRole("link", { name: "Open the 2 high failing rules of run v1" })).toHaveAttribute("href", "/runs/v1?tab=findings&severity=high");
+    expect(screen.queryByRole("link", { name: /critical failing (rule|record)s? of run v1/ })).toBeNull();
   });
 
   it("shows the empty state", async () => {

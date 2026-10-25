@@ -38,6 +38,7 @@ describe("ReadinessPage", () => {
   });
 
   it("lists blocked cells worst first in the blockers table", async () => {
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([{ id: "w2", name: "Wave 2" }] as never);
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({
       version_id: "v1",
       threshold: 70,
@@ -51,9 +52,12 @@ describe("ReadinessPage", () => {
     expect(await screen.findByRole("button", { name: "Material master Wave 2: at-risk" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Records blocked" })).toBeInTheDocument();
     expect(screen.getByText("At risk")).toBeInTheDocument();
-    // The object opens its records in Fix work; the blocking counts open its blocking rules (Fix work has no blocking filter).
+    // The object opens its records in Fix work; the count is migration gaps (not rules) and opens the wave's gap view.
     expect(screen.getByRole("link", { name: "Open the open records of material master" })).toHaveAttribute("href", "/fix?run=v1&module=material_master");
-    expect(screen.getByRole("link", { name: "Open the 1 blocking rule of Material master" })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules&blocking=true");
+    expect(screen.getByRole("columnheader", { name: "Migration gaps" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Blocking findings" })).toBeNull();
+    expect(await screen.findByRole("link", { name: "Open the 1 migration gap of Material master in Wave 2" })).toHaveAttribute("href", "/migration/w2?tab=blockers");
+    expect(screen.getByRole("link", { name: "Open the migration gaps behind the 3 blocked records of Material master in Wave 2" })).toHaveAttribute("href", "/migration/w2?tab=blockers");
   });
 
   it("shows a loading skeleton while the request is in flight", () => {
@@ -80,6 +84,8 @@ describe("ReadinessPage", () => {
     // Without waves the blockers table lists the failing S/4 areas instead of an empty line.
     expect(await screen.findByRole("columnheader", { name: "S/4 area" })).toBeInTheDocument();
     expect(screen.getByText("Business partner / CVI")).toBeInTheDocument();
+    // S/4-blocking rules only, so the header says so; not the blocking findings set.
+    expect(screen.getByRole("columnheader", { name: "S/4 blocking rules" })).toBeInTheDocument();
     expect(screen.getByText(/2 rules would block an S\/4 load, and no wave is set up yet/)).toBeInTheDocument();
   });
 
@@ -140,7 +146,7 @@ describe("ReadinessPage", () => {
       cells: [{ module: "material_master", wave: "Wave 2", verdict: "no_go", blocker_count: 1, dqs: 60, score: 50, records_blocked: 3 }],
     });
     renderWithQuery(<ReadinessPage />);
-    const fix = await screen.findByRole("link", { name: "Fix the blockers of Material master in wave Wave 2" });
+    const fix = await screen.findByRole("link", { name: "Fix the critical and high rules of Material master in wave Wave 2" });
     expect(fix).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules&blocking=true");
   });
 });

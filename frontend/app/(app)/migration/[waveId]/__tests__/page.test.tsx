@@ -44,7 +44,14 @@ describe("WaveCockpitPage", () => {
     expect(await screen.findByText("Wave 1")).toBeInTheDocument();
     expect(screen.getAllByText("At risk").length).toBeGreaterThan(0);
     expect(screen.getByText("97.0%")).toBeInTheDocument();
-    expect(screen.getByText("BP supplier")).toBeInTheDocument();
+    // The object reads by formatModuleName, never the API's label.
+    expect(screen.getByText("Accounts payable")).toBeInTheDocument();
+    expect(screen.queryByText("BP supplier")).toBeNull();
+    // The gap count is migration gaps and opens this wave's gap view, not the object's rules.
+    expect(screen.getByRole("columnheader", { name: /Migration gaps/ })).toBeInTheDocument();
+    expect(screen.queryByText("Blocking gaps")).toBeNull();
+    const gaps = screen.getAllByRole("link", { name: "3" }).find((a) => a.getAttribute("href")?.includes("tab=blockers"));
+    expect(gaps).toHaveAttribute("href", "/migration/w1?tab=blockers");
     expect(screen.queryByRole("button", { name: "Sign off" })).not.toBeInTheDocument();
   });
 

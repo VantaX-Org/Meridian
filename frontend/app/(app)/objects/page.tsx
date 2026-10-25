@@ -15,7 +15,7 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { stateScopeLine } from "@/lib/current-state";
+import { criticalHighHref, stateScopeLine } from "@/lib/current-state";
 import { fixHref } from "@/lib/drill";
 import { formatModuleName, plural } from "@/lib/format";
 import { DrillCount } from "@/app/(app)/insights/_components/DrillCount";
@@ -297,6 +297,9 @@ export default function ObjectsPage() {
       ? objects.reduce((n, o) => n + (o.critical_checks ?? 0) + (o.high_checks ?? 0), 0)
       : undefined
     : data?.blocking_findings_total;
+  // The findings behind that count, in both modes: the run's findings tab filtered to critical and high (one run), or
+  // the current-state findings on the Insights overview filtered the same way (several runs).
+  const criticalHighFindingsHref = current ? criticalHighHref(currentQ.runs) : runId ? criticalHighHref([{ id: runId }]) : undefined;
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
   const recordsAffected = objects.reduce((n, o) => n + (o.affected_records ?? 0), 0);
   const atRisk = objects.filter((o) => o.readiness === "warn").length;
@@ -310,7 +313,7 @@ export default function ObjectsPage() {
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
         <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="across all objects" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
-        {blockingFindings != null ? <Stat label="Critical and high findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="failing rules" href={current ? undefined : fixHref({ run, sev: "blocking" })} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" href={fixHref({ run: current ? undefined : run })} />}
+        {blockingFindings != null ? <Stat label="Critical and high findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="failing rules" href={criticalHighFindingsHref} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" href={fixHref({ run: current ? undefined : run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />

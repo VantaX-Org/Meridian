@@ -13,6 +13,9 @@ import {
 } from "@/lib/api/insights";
 import { getS4Readiness } from "@/lib/api/migration";
 import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
+import { getFindingsAggregate } from "@/lib/api/findings";
+import { criticalHighHref } from "@/lib/current-state";
+import { previousInLineage } from "@/lib/runs";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason, trendSentence } from "@/lib/format";
 import { fixHref } from "@/lib/drill";
@@ -60,6 +63,13 @@ function RunOverview() {
   const heat = useQuery({ queryKey: queryKeys.insights("heatmap", run, module), queryFn: () => getHeatmap(scope), enabled: on });
   const cleanse = useQuery({ queryKey: queryKeys.insights("cleansing", run, module), queryFn: () => getCleansing(scope), enabled: on });
   const s4 = useQuery({ queryKey: queryKeys.insights("s4-readiness", run), queryFn: () => getS4Readiness(run ?? ""), enabled: on });
+  // The run's failing critical and high rules: the same count the current state shows, from the run's severity totals.
+  const agg = useQuery({
+    queryKey: module ? [...queryKeys.findingsAggregate(run ?? ""), module] : queryKeys.findingsAggregate(run ?? ""),
+    queryFn: () => getFindingsAggregate({ version_id: run, module }),
+    enabled: on,
+  });
+  const criticalHigh = agg.data ? agg.data.severity.critical + agg.data.severity.high : undefined;
 
   const o = ov.data;
   // The trend follows this run's lineage only (its system, or uploads of the same objects), keyed by run id with
@@ -87,8 +97,10 @@ function RunOverview() {
 
   // Files are named by the run (and the object, for a workbook filtered to one), never its id.
   const runLabel = current ? runName(current) : undefined;
+  // The board pack compares with the run before this one in its lineage; without it every pack says nothing changed.
+  const previous = current ? previousInLineage(current, runs) : null;
   const exportOptions: ExportOption[] = run ? [
-    { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(run), reportFilename("board", runLabel)) },
+    { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(run, previous?.id), reportFilename("board", runLabel)) },
     { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), reportFilename("workbook", [runLabel, module && formatModuleName(module)].filter(Boolean).join(", "))) },
   ] : [];
 
@@ -135,20 +147,23 @@ function RunOverview() {
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : "Not scored yet"}
               </span>
               <span className="m-text-body m-ink-2">
-                {o ? `${plural(o.blockers.count, "blocking finding")}${o.blockers.waves ? ` across ${plural(o.blockers.waves, "wave")}` : ""}` : " "}
+                {criticalHigh != null ? plural(criticalHigh, "critical and high finding") : " "}
               </span>
             </div>
             )}
           </div>
         ),
         stats: [
+          // The same headline as the current state: failing critical and high rules, opening exactly those findings.
+          { label: "Critical and high findings", value: criticalHigh ?? "—", hint: criticalHigh ? "failing rules" : criticalHigh === 0 ? "none" : undefined, tone: criticalHigh == null ? undefined : criticalHigh ? "no-go" : "go", to: run ? criticalHighHref([{ id: run }], module) : undefined, versionId: run },
+          // Blocking findings (critical, or blocking an S/4 load) are their own set, opened on the readiness view.
           { label: "Blocking findings", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
           { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ run, module, sugg: true }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
-            label: "Value at risk, top process",
+            label: o?.value_at_risk.worst_l1 ? `Most at risk: ${l1Label(o.value_at_risk.worst_l1)}` : "Most at risk",
             value: o?.value_at_risk.worst_l1 ? formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency) : "—",
             to: withScope("/insights/impact", { run }),
-            hint: o?.value_at_risk.worst_l1 ? `${l1Label(o.value_at_risk.worst_l1)}, ${o.value_at_risk.features_blocked} features blocked` : undefined,
+            hint: o?.value_at_risk.worst_l1 ? plural(o.value_at_risk.features_blocked, "feature blocked", "features blocked") : undefined,
           },
         ],
         situation: { sentence: o ? `${o.dqs.composite != null ? `DQS ${o.dqs.composite.toFixed(1)}` : "Not scored"}${o.dqs.tier ? `, ${statusLabel("verdict", o.dqs.tier)}` : ""}` : fallback("—"), tone: o?.dqs.tier === "no_go" ? "no-go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "go" ? "go" : undefined, href: withScope("/insights/trends", { run }) },
@@ -185,7 +200,7 @@ function RunOverview() {
           <div className="@5xl:col-span-8">
             <Section title="Trend" height={180} query={trends} meta={trendNote}>
               {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs a second scored run of the same system or upload. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p> : (
-                <Line data={trendLine} label="Composite score per run" annotations={annotations} height={180} />
+                <Line data={trendLine} label="Score per run" annotations={annotations} height={180} />
               )}
             </Section>
           </div>

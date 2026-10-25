@@ -154,9 +154,9 @@ function ProvenCostPanel({ query, run }: { query: UseQueryResult<ProvenCostRespo
           hint={topCost ? `${l1Label(topCost.l1)}, across ${topCost.processes} ${topCost.processes === 1 ? "process" : "processes"}` : undefined}
         />
         <Stat
-          label="Most at risk, one process"
+          label={topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk"}
           value={topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—"}
-          hint={topRisk ? `${l1Label(topRisk.l1)}, across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
+          hint={topRisk ? `Across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
         />
       </div>
       {rows.length === 0 ? (

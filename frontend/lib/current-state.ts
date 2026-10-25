@@ -209,12 +209,12 @@ export const CRITICAL_AND_HIGH = "critical,high";
 
 /**
  * The findings behind `criticalHighTotal`: one run's findings tab filtered to critical and high, or (several runs)
- * the current-state findings on the Insights overview, filtered the same way.
+ * the current-state findings on the Insights overview, filtered the same way. `module` narrows one run's tab to an
+ * object, for a count taken over that object alone.
  */
-export function criticalHighHref(runs: readonly Pick<Version, "id">[]): string {
-  return runs.length === 1
-    ? `/runs/${runs[0].id}?tab=findings&severity=${CRITICAL_AND_HIGH}`
-    : `/insights?severity=${CRITICAL_AND_HIGH}`;
+export function criticalHighHref(runs: readonly Pick<Version, "id">[], module?: string): string {
+  if (runs.length !== 1) return `/insights?severity=${CRITICAL_AND_HIGH}`;
+  return `/runs/${runs[0].id}?tab=findings${module ? `&module=${encodeURIComponent(module)}` : ""}&severity=${CRITICAL_AND_HIGH}`;
 }
 
 /**
