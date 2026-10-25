@@ -9,6 +9,7 @@ import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Notice, Rep
 import { runName } from "@/lib/run-scope";
 import { JobProgress } from "@/design/shell/JobProgress";
 import { RunProgressBanner } from "@/components/run-progress-banner";
+import { JobError } from "@/components/job-error";
 import { getJob } from "@/lib/api/jobs";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getVersion } from "@/lib/api/versions";
@@ -109,7 +110,10 @@ export default function ExtractionPage() {
             </>
           }
         >
-          {failedStep.step_name} failed: {failedStep.error_detail}
+          <span className="flex flex-col gap-1">
+            <span>{failedStep.step_name} failed.</span>
+            <JobError error={failedStep.error_detail} />
+          </span>
         </Notice>
       ) : null}
     </>

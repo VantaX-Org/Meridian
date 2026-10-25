@@ -60,6 +60,14 @@ export default function AdminRolesPage() {
   );
 }
 
+/** What deleting a role takes away, with the holder count when the API reports it. */
+function deleteRoleSentence(role: Role | null): string {
+  const n = role?.users;
+  if (n === 0) return "No one holds this role now. Deleting it cannot be undone.";
+  const who = n == null ? "Everyone who holds it loses" : `${n.toLocaleString()} ${n === 1 ? "user loses" : "users lose"}`;
+  return `${who} the access it grants at once, at every system and object it was granted for. Their other roles stay. Deleting it cannot be undone.`;
+}
+
 function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: boolean; error: unknown; retry: () => void }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState<Role | null>(null);
@@ -109,9 +117,10 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
         onOpenChange={(o) => { if (!o) setDeleting(null); }}
         title={`Delete ${deleting?.name ?? "role"}`}
         tone="danger"
-        body={`${(deleting?.users ?? 0).toLocaleString()} ${deleting?.users === 1 ? "user loses" : "users lose"} these grants. Their other roles stay.`}
+        body={deleteRoleSentence(deleting)}
         confirmLabel="Delete role"
         cancelLabel="Keep role"
+        typeToConfirm={deleting?.name}
         pending={del.isPending}
         onConfirm={() => deleting && del.mutate(deleting)}
       />
@@ -207,13 +216,16 @@ function EditForm({ role, onClose, onDone }: { role: Role; onClose: () => void; 
 }
 
 function UsersTab({ roles, onInvite }: { roles: Role[]; onInvite: () => void }) {
-  const [sel, setSel] = useState<User | null>(null);
+  // ?user=<id> (from Admin › Users) opens that person's grants; the URL holds the selection.
+  const [selId, setSelId] = useUrlState("user", "");
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
   const users = usersQ.data?.users ?? [];
+  const sel = selId ? users.find((u) => u.id === selId) ?? null : null;
+  const setSel = (u: User | null) => setSelId(u?.id ?? "");
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     { id: "email", header: "Email", cell: ({ row }) => row.original.email },
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
-    { id: "role", header: "Legacy role", cell: ({ row }) => labelOf(row.original.role) },
+    { id: "role", header: "Base role", cell: ({ row }) => labelOf(row.original.role) },
     { id: "status", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
   ], []);
   if (usersQ.isError) return <ErrorState {...apiErrorState(usersQ.error)} onRetry={() => usersQ.refetch()} />;

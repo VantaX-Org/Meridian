@@ -12,6 +12,7 @@ import { JOBS_QUERY_KEY } from "../../hooks/use-jobs";
 import type { Job } from "../../types/jobs";
 import { Button } from "../primitives/Button";
 import { ConfirmDialog } from "../primitives/ConfirmDialog";
+import { Tooltip } from "../primitives/Tooltip";
 import { toast } from "./Toaster";
 
 /** The permission each retryable kind's start endpoint requires (api/routes/jobs.py RETRY). */
@@ -26,6 +27,24 @@ export function retryAction(job: Job): string | null {
   if (job.kind === "analysis" && !job.version_id) return null;
   if ((job.kind === "config_load" || job.kind === "process_discovery") && !job.system_id) return null;
   return RETRY_ACTION[job.kind] ?? null;
+}
+
+/** Why a start the user cannot make is disabled, named by the permission it needs. */
+const NEEDS: Record<string, string> = {
+  trigger_sync: "Needs extract permission",
+  analyse: "Needs analyse permission",
+  run_process_discovery: "Needs process discovery permission",
+};
+export const needsPermission = (action: string): string => NEEDS[action] ?? "Needs a permission you do not have";
+
+/** A start the user may not make: still shown, disabled, with the permission it needs as its tooltip (the GatedPrimary pattern). */
+export function DisabledJobAction({ action, label, children }: { action: string; label: string; children: string }) {
+  const reason = needsPermission(action);
+  return (
+    <Tooltip label={reason} render={<Button variant="secondary" size="sm" disabled aria-disabled="true" aria-label={`${label}. ${reason}`} />}>
+      {children}
+    </Tooltip>
+  );
 }
 
 /** "Material master" -> "material master"; "FI general ledger" keeps its acronym. */
@@ -49,9 +68,10 @@ export function retrySentence(job: Job, systemName: string | undefined): string 
   }
 }
 
-/** "Retry" on a failed job, for a user who holds its start permission; confirms what runs again, then queues it. */
+/** "Retry" on a failed job: for a user who holds its start permission it confirms what runs again, then queues it;
+ * for anyone else it stays visible, disabled, naming the permission it needs. */
 export function RetryJobButton({ job }: { job: Job }) {
-  const { can } = useRole();
+  const { can, loading } = useRole();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const { data: systems } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, enabled: open });
@@ -66,7 +86,12 @@ export function RetryJobButton({ job }: { job: Job }) {
     },
     onError: (e) => toast.error("Could not start the job again", { description: apiErrorMessage(e) }),
   });
-  if (!action || !can(action)) return null;
+  if (!action) return null;
+  if (!can(action)) {
+    // Fail closed while grants load: nothing, not a flash of "Needs ...".
+    if (loading) return null;
+    return <DisabledJobAction action={action} label={`Retry ${job.label}`}>Retry</DisabledJobAction>;
+  }
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)} aria-label={`Retry ${job.label}`}>Retry</Button>

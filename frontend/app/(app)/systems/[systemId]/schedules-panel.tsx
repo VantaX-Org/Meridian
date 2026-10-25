@@ -1,14 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, ConfirmDialog, ErrorState, Input, Select, Skeleton, Status, toast } from "@/design";
-import { getTriageSettings } from "@/lib/api/triage";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { createSyncProfile, deleteSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
-import { browserTimezone, formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { TENANT_TIMEZONE_HREF, useTenantTimezone } from "@/lib/tenant-zone";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { clsx } from "clsx";
 
@@ -82,7 +83,7 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
 export function SchedulesPanel({ id, canManage }: { id: string; canManage: boolean }) {
   const qc = useQueryClient();
   // Schedules run on the tenant's clock (Admin › Triage settings), so their times are shown in it.
-  const tz = useQuery({ queryKey: queryKeys.triageSettings(), queryFn: getTriageSettings, staleTime: 300_000, select: (st) => st.timezone }).data ?? browserTimezone();
+  const tz = useTenantTimezone();
   const profilesQ = useQuery({ queryKey: queryKeys.syncProfiles(id), queryFn: () => getSyncProfiles(id) });
   const profiles = profilesQ.data ?? [];
   const { data: catalogue } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id), enabled: canManage });
@@ -119,7 +120,8 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
       <div className="flex flex-col gap-3">
         <p className="m-text-body m-ink-2">
           Each schedule downloads the object again and re-runs its checks, so trends and alerts see every run.
-          Times are shown in {tz}; due runs start within 5 minutes.
+          Schedules run and times are shown in the tenant time zone,{" "}
+          <Link href={TENANT_TIMEZONE_HREF} className="m-ink-accent underline-offset-2 hover:underline">{tz.replace(/_/g, " ")}</Link>; due runs start within 5 minutes.
           &ldquo;Changes only&rdquo; reads just the records SAP changed since the last download, with a full download at least once a week.
         </p>
         {profilesQ.isLoading ? <Skeleton height={120} /> : profilesQ.isError ? (
@@ -141,6 +143,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                       ? <CronPicker value={p.schedule_cron ?? ""} disabled={update.isPending}
                           onChange={(c) => update.mutate({ p, body: { schedule_cron: c } })} />
                       : <span className="font-mono">{presetLabel(p.schedule_cron)}</span>}
+                    <span className="block m-text-meta m-ink-3">{tz.replace(/_/g, " ")}</span>
                   </td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}>
                     {canManage
@@ -150,7 +153,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                           onValueChange={(v) => update.mutate({ p, body: { extraction_mode: v === "delta" ? "delta" : "full" } })} />
                       : <span>{modeLabel(p.extraction_mode)}</span>}
                   </td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.last_run_at ? relativeTime(p.last_run_at) : "Never"}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.last_run_at ? <span title={formatDate(p.last_run_at, "datetime", tz)}>{relativeTime(p.last_run_at)}</span> : "Never"}</td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime", tz) : "—"}</td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}><Status kind="lifecycle" value={p.active ? "active" : "paused"} /></td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}>

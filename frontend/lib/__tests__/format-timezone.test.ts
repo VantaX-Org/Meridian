@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { browserTimezone, formatDate, setFormatPrefs, setTenantTimezone } from "../format";
+import { browserTimezone, formatDate, isValidTimeZone, setFormatPrefs, setTenantTimezone } from "../format";
 
 afterEach(() => { setTenantTimezone(null); setFormatPrefs({}); });
 
@@ -23,5 +23,13 @@ describe("formatDate time zones", () => {
   it("falls back to UTC on an unknown zone and knows the browser's zone", () => {
     expect(formatDate(instant, "datetime", "Mars/Olympus")).toBe("2 Jan 2026, 22:00 UTC");
     expect(browserTimezone()).toMatch(/\S/);
+  });
+
+  it("accepts IANA zones and rejects anything else", () => {
+    expect(isValidTimeZone("Europe/Berlin")).toBe(true);
+    expect(isValidTimeZone("UTC")).toBe(true);
+    expect(isValidTimeZone("Mars/Olympus")).toBe(false);
+    expect(isValidTimeZone("")).toBe(false);
+    expect(isValidTimeZone(null)).toBe(false);
   });
 });

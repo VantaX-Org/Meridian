@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as usersApi from "@/lib/api/users";
@@ -40,6 +40,16 @@ describe("admin users page", () => {
     vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [], total: 0, limit: 50, offset: 0 });
     renderWithQuery(<AdminUsersPage />);
     await waitFor(() => expect(screen.getByText("Ana Steward")).toBeInTheDocument());
+  });
+
+  it("has no role matrix of its own and deep-links a user's grants to Roles and access", async () => {
+    vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });
+    vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });
+    renderWithQuery(<AdminUsersPage />);
+    fireEvent.click(await screen.findByText("Ana Steward"));
+    expect(screen.queryByRole("tab", { name: "Roles" })).toBeNull();
+    const dialog = await screen.findByRole("dialog", { name: "Ana Steward" });
+    expect(within(dialog).getByRole("link", { name: "Roles and access" })).toHaveAttribute("href", "/admin/roles?tab=users&user=u1");
   });
 
   it("shows a retryable error when users fail to load", async () => {

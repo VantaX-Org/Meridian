@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Card, DataTable, EmptyState, ErrorState, Field, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, type PillTone, PageFrame, Status, ProgressFill, toast } from "@/design";
+import { DrillLink, Button, Card, DataTable, EmptyState, ErrorState, Field, Mono, Notice, PageHeader, Pill, RetryJobButton, Score, Select, Skeleton, type PillTone, PageFrame, Status, ProgressFill, toast } from "@/design";
+import { JobError } from "@/components/job-error";
+import { explainJobError } from "@/lib/job-error";
+import { JOBS_QUERY_KEY } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
+import { getJobs } from "@/lib/api/jobs";
 import { getSystems } from "@/lib/api/connectivity";
 import { getModuleFieldMappings } from "@/lib/api/field-mappings";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
@@ -16,6 +20,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { runName } from "@/lib/run-scope";
 import { formatSize, readHeaderSample } from "@/lib/upload-preview";
 import type { Version } from "@/types/api";
+import type { Job as TrackedJob } from "@/types/jobs";
 import { clsx } from "clsx";
 
 /** Backend step ids to the label shown under the progress bar. */
@@ -28,6 +33,7 @@ const stepLabel = (step: string) => STEP_LABEL[step] ?? labelOf(step);
 
 const ACCEPT = ".csv,.tsv,.txt,.xlsx,.xls,.json,.parquet";
 const TERMINAL = new Set(["complete", "agents_complete", "ai_enriched", "failed", "agents_failed"]);
+const FAILED = new Set(["failed", "agents_failed"]);
 const NOT_MAPPED = "";
 const NO_SYSTEM = "";
 
@@ -60,6 +66,14 @@ export default function ImportPage() {
     queryFn: () => getVersions({ limit: 50 }),
     refetchInterval: (q) => (q.state.data?.versions.some((v) => !TERMINAL.has(v.status)) ? 5000 : false),
   });
+  // A failed import's reason lives on its job (the shell's job list); read it only when a row needs it.
+  const hasFailed = !!recent.data?.versions.some((v) => FAILED.has(v.status));
+  const jobsQ = useQuery({ queryKey: JOBS_QUERY_KEY, queryFn: () => getJobs({ limit: 100 }), enabled: hasFailed, staleTime: 5_000, retry: false, meta: { ignoreError: true } });
+  const failedJobs = useMemo(() => {
+    const byVersion = new Map<string, TrackedJob>();
+    for (const j of jobsQ.data ?? []) if (j.status === "failed" && j.version_id && !byVersion.has(j.version_id)) byVersion.set(j.version_id, j);
+    return byVersion;
+  }, [jobsQ.data]);
   const fieldsQ = useQuery({
     queryKey: ["field-mappings", "module", targetModule],
     queryFn: () => getModuleFieldMappings(targetModule!),
@@ -98,7 +112,7 @@ export default function ImportPage() {
     },
     onSuccess: (s) => {
       qc.invalidateQueries({ queryKey: ["versions-list"] });
-      if (s.status === "completed") toast.success("Import analysed"); else toast.error(s.error || "Analysis failed");
+      if (s.status === "completed") toast.success("Import analysed"); else toast.error(explainJobError(s.error)?.summary ?? "The analysis failed");
     },
     onError: (e) => { const m = apiErrorMessage(e); toast.error(m); setJob((j) => j ? { ...j, status: "failed", error: m } : null); },
   });
@@ -118,10 +132,27 @@ export default function ImportPage() {
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
     { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <DrillLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</DrillLink> : "") },
     { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <Score size="sm" value={d}><DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink></Score>; } },
-    { id: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
+    {
+      id: "status", header: "Status",
+      cell: ({ row }) => {
+        const v = row.original;
+        if (!FAILED.has(v.status)) return <Status kind="lifecycle" value={v.status} />;
+        const j = failedJobs.get(v.id);
+        return (
+          <div className="flex flex-col items-start gap-1 py-1">
+            <Status kind="lifecycle" value={v.status} />
+            {j?.error ? <JobError error={j.error} compact /> : <span className="m-text-meta m-ink-3">No reason was recorded</span>}
+            <span className="inline-flex items-center gap-3">
+              {j ? <RetryJobButton job={j} /> : null}
+              <Link href="/admin/jobs" className="m-text-meta m-ink-accent-ink underline">Job history</Link>
+            </span>
+          </div>
+        );
+      },
+    },
     { id: "when", header: "Imported", cell: ({ row }) => relativeTime(row.original.run_at) },
     { id: "open", header: "", size: 80, cell: ({ row }) => <Link href={`/runs/${row.original.id}`} className="m-ink-accent-ink underline">Open</Link> },
-  ], []);
+  ], [failedJobs]);
   // The module's standard fields, so a wrong proposal can be corrected before the import; read-only until they load.
   const fieldOptions = useMemo(() => [
     { value: NOT_MAPPED, label: "Not mapped" },
@@ -191,7 +222,7 @@ export default function ImportPage() {
               <p className="m-text-meta m-ink-3">{job ? stepLabel(job.step) : `Uploading ${uploadPct}%`}</p>
             </div>
           ) : null}
-          {job?.error ? <Notice tone="danger">Analysis failed: {job.error}</Notice> : null}
+          {job?.error ? <Notice tone="danger"><span className="flex flex-col gap-1"><span>The analysis failed.</span><JobError error={job.error} /></span></Notice> : null}
           {job?.error ? (
             <div><Button variant="secondary" onClick={() => { setJob(null); setUploadPct(0); }}>Try again</Button></div>
           ) : null}

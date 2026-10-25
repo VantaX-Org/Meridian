@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Checkbox, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, toast } from "@/design";
@@ -13,7 +13,8 @@ import {
 } from "@/lib/api/triage";
 import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorMessage } from "@/lib/error";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, isValidTimeZone } from "@/lib/format";
+import { timezoneOptions } from "@/lib/preferences";
 import { queryKeys } from "@/lib/query-keys";
 
 type User = { id: string; name: string; email: string };
@@ -52,9 +53,9 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, action, children, id }: { title: string; action?: React.ReactNode; children: React.ReactNode; id?: string }) {
   return (
-    <section aria-label={title}>
+    <section aria-label={title} id={id} className="scroll-mt-24">
       <LedgerHead title={title} action={action} />
       {children}
     </section>
@@ -481,7 +482,7 @@ function CalendarSection({ write }: { write: boolean }) {
   }
   if (settings.isLoading) return <Section title="Working calendar"><Skeleton height={160} /></Section>;
   return (
-    <Section title="Working calendar">
+    <Section title="Working calendar" id="calendar">
       {!write ? (
         <Notice tone="info">Changing the calendar needs the manage settings permission.</Notice>
       ) : null}
@@ -500,19 +501,36 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
   const [fallback, setFallback] = useState(settings.fallback_user_id ?? "");
   const [holidaysText, setHolidaysText] = useState(settings.holidays.join("\n"));
   const badDates = list(holidaysText).filter((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d));
+  const [confirmZone, setConfirmZone] = useState(false);
+  // Only IANA zones are accepted; a stored zone the browser does not know stays listed so the admin sees it, flagged.
+  const zoneError = isValidTimeZone(timezone) ? undefined : `${timezone || "This"} is not a recognised time zone. Pick one from the list`;
+  const zones = useMemo(() => {
+    const all = timezoneOptions();
+    const own = timezone && !all.includes(timezone) ? [timezone] : [];
+    return [...own, ...all].map((z) => ({ value: z, label: z.replace(/_/g, " ") }));
+  }, [timezone]);
+  const zoneChanged = timezone !== settings.timezone;
 
   const save = useMutation({
     mutationFn: () => saveTriageSettings({
       timezone, work_days: workDays, work_start: workStart, work_end: workEnd,
       holidays: list(holidaysText), fallback_user_id: fallback || null,
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSettings() }); toast.success("Calendar saved"); },
+    onSuccess: () => { setConfirmZone(false); qc.invalidateQueries({ queryKey: queryKeys.triageSettings() }); toast.success("Calendar saved"); },
     onError: (e) => toast.error(errText(e, "Calendar not saved")),
   });
+  const submit = () => (zoneChanged ? setConfirmZone(true) : save.mutate());
 
   return (
     <div className="flex flex-col gap-3 max-w-[480px]">
-      <Field label="Timezone"><Input value={timezone} disabled={!write} onChange={(e) => setTimezone(e.target.value)} /></Field>
+      <div className="flex flex-col gap-1">
+        <Field label="Time zone" error={zoneError}>
+          {write
+            ? <Select value={timezone} onValueChange={setTimezone} options={zones} placeholder="Pick a time zone" />
+            : <Input value={timezone} disabled readOnly />}
+        </Field>
+        <p className="m-text-meta m-ink-3">Extraction schedules, SLA clocks and dates for anyone without a zone of their own use this zone</p>
+      </div>
       <Field label="Work days">
         <div className="flex gap-2">
           {DAYS.map((label, i) => {
@@ -537,9 +555,19 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
       </Field>
       {write ? (
         <div>
-          <Button disabled={!!badDates.length || save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Save calendar"}</Button>
+          <Button disabled={!!badDates.length || !!zoneError || save.isPending} onClick={submit}>{save.isPending ? "Saving…" : "Save calendar"}</Button>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmZone}
+        onOpenChange={setConfirmZone}
+        title="Change the time zone"
+        body={`Every extraction schedule will run in ${timezone.replace(/_/g, " ")} instead of ${settings.timezone.replace(/_/g, " ")}, so a daily 02:00 extract moves to 02:00 there. SLA clocks and default dates follow too.`}
+        confirmLabel="Change time zone"
+        cancelLabel="Keep current zone"
+        pending={save.isPending}
+        onConfirm={() => save.mutate()}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as runsApi from "@/lib/api/v1/runs";
@@ -17,6 +17,9 @@ describe("extraction run page", () => {
       ],
     });
     renderWithQuery(<ExtractionPage />);
-    await waitFor(() => expect(screen.getByText(/RFC_COMMUNICATION_FAILURE/)).toBeInTheDocument());
+    // Plain words and the next step first; the worker's own text sits behind "Technical detail".
+    expect(await screen.findByText("Meridian could not reach the SAP system")).toBeInTheDocument();
+    expect(screen.getByText(/Check the host, port and network route/)).toBeInTheDocument();
+    expect(screen.getByText("Technical detail").closest("details")).toHaveTextContent("RFC_COMMUNICATION_FAILURE: connection reset");
   });
 });

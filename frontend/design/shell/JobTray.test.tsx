@@ -118,13 +118,14 @@ describe("JobTray", () => {
     await waitFor(() => expect(success).toHaveBeenCalledWith("Job queued", { description: "Extract material master from ECC PRD again" }));
   });
 
-  it("offers no Retry without the start permission", async () => {
+  it("shows Retry disabled, with the permission it needs, without the start permission", async () => {
     perms = new Set(["analyse"]);
     vi.mocked(getJobs).mockResolvedValueOnce([failedDownload]);
     renderWithClient(client);
     fireEvent.click(screen.getByLabelText("Jobs"));
     await screen.findByText("Failed");
-    expect(screen.queryByRole("button", { name: /^Retry/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Retry material_master. Needs extract permission" })).toBeDisabled();
+    expect(retryJob).not.toHaveBeenCalled();
   });
 
   it("retries only failed jobs of kinds whose start can run again", () => {

@@ -5,6 +5,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as versionsApi from "@/lib/api/versions";
 import * as uploadApi from "@/lib/api/upload";
+import * as jobsApi from "@/lib/api/jobs";
 import * as fieldMappingsApi from "@/lib/api/field-mappings";
 import * as preview from "@/lib/upload-preview";
 import type { SAPSystemExtended } from "@/types/api";
@@ -31,6 +32,30 @@ describe("import page", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     renderWithQuery(<ImportPage />);
     await waitFor(() => expect(screen.getByText(/No imports yet/)).toBeInTheDocument());
+  });
+});
+
+describe("a failed import in Recent imports", () => {
+  it("says why it failed, offers a retry and links to the job history", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...VERSION, status: "failed" }] });
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([{
+      id: "j1", kind: "analysis", status: "failed", label: "vendors.csv", stage: null, stages: [], percent: 40, rows_done: 0, rows_total: 0,
+      message: "Failed", tables: [], error: "SoftTimeLimitExceeded()", result: null, started_at: 1, updated_at: 2, finished_at: 2, version_id: "v1",
+    }]);
+    renderWithQuery(<ImportPage />);
+    expect(await screen.findByText("The job ran out of time before it finished")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry vendors.csv" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Job history" })).toHaveAttribute("href", "/admin/jobs");
+  });
+
+  it("still links to the job history when no reason was recorded", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...VERSION, status: "failed" }] });
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+    renderWithQuery(<ImportPage />);
+    expect(await screen.findByText("No reason was recorded")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Job history" })).toBeInTheDocument();
   });
 });
 
