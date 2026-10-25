@@ -89,7 +89,7 @@
   {
     "name": "admin-users",
     "path": "/admin/users",
-    "heading": "Users and audit"
+    "heading": "Users"
   },
   {
     "name": "design",
@@ -169,7 +169,7 @@
   {
     "name": "insights-process",
     "path": "/insights/process",
-    "heading": "Processes",
+    "heading": "Process readiness",
     "knownBad": [
       "/api/v1/business-process/"
     ]
@@ -280,17 +280,17 @@
   {
     "name": "rules-contracts",
     "path": "/rules/contracts",
-    "heading": "Contracts"
+    "heading": "Data contracts"
   },
   {
     "name": "rules-dictionary",
     "path": "/rules/dictionary",
-    "heading": "Data dictionary"
+    "heading": "Dictionary"
   },
   {
     "name": "rules-drafts",
     "path": "/rules/drafts",
-    "heading": "Drafts"
+    "heading": "Rule drafts"
   },
   {
     "name": "rules-learned",
