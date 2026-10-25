@@ -307,6 +307,9 @@ describe("RunDetailPage", () => {
     expect(row).toHaveTextContent("mm_missing_desc");
     expect(row).toHaveTextContent("Description missing");
     expect(screen.getByRole("link", { name: "2" })).toHaveAttribute("href", "/runs/v2?tab=findings&module=material_master&severity=critical");
+    // Affected counts are "Failing records"; "Records" is kept for totals.
+    expect(screen.getByRole("columnheader", { name: "Failing records" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Records" })).toBeNull();
   });
 
   it("draws the composite line for an upload from the scored runs of the same objects, keyed by run id", async () => {

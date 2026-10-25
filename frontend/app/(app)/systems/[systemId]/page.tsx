@@ -53,8 +53,9 @@ const meanDqs = (v: SystemVersion) => {
   return x.length ? x.reduce((a, b) => a + b, 0) / x.length : null;
 };
 const sumRecords = (v: SystemVersion) => Object.values(v.records ?? {}).reduce((a, b) => a + b, 0);
+/** The run's Findings tab, filtered to one object when given. */
 const findingsHref = (versionId: string, module?: string) =>
-  `/runs/${versionId}${module ? `?module=${module}` : ""}`;
+  `/runs/${versionId}?tab=findings${module ? `&module=${encodeURIComponent(module)}` : ""}`;
 /** "ECC Prod (Production)": the system and environment every confirmation names. */
 const systemScope = (s: { name: string; environment: string }) => `${s.name} (${environmentLabel(s.environment)})`;
 
@@ -72,7 +73,7 @@ function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
     },
     { id: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
     { id: "objects", header: "Objects", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}?tab=objects`}>{row.original.objects.length}</DrillLink> },
-    { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}`}>{sumRecords(row.original).toLocaleString()}</DrillLink> },
+    { id: "rows", header: "Records", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}`}>{sumRecords(row.original).toLocaleString()}</DrillLink> },
     { id: "analysed", header: "Analysed", cell: ({ row }) => when(row.original.analysed_at) },
     {
       id: "dqs",
@@ -281,7 +282,7 @@ export default function SystemPage() {
           href={`/systems/${systemId}?tab=objects`}
         />
         <Stat
-          label="Quality score"
+          label="Score"
           help="dqs"
           loading={versionsQ.isLoading}
           delta={dqsTrend(versions) != null && Math.abs(dqsTrend(versions) ?? 0) >= 0.05 ? <Delta value={dqsTrend(versions) ?? 0} run="the previous run" /> : undefined}
@@ -462,7 +463,7 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
             />
           )}
         </Card>
-        <Card title="Objects by rows" meta="Twelve largest">
+        <Card title="Objects by records" meta="Twelve largest">
           {!byRows.length ? (
             <EmptyState
               title="No rows loaded yet"
@@ -544,7 +545,7 @@ function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse, onExtra
           </div>
           {s ? (
             <div className="flex flex-col gap-1">
-              <dt className="m-text-label m-ink-3">Failing checks</dt>
+              <dt className="m-text-label m-ink-3">Failing rules</dt>
               <dd className="m-text-body m-numeric"><DrillLink href={findingsHref(latest.id, row.module)}>{s.failing_checks.toLocaleString()}</DrillLink></dd>
             </div>
           ) : null}
@@ -603,7 +604,7 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
       cell: ({ row }) => <Link href={`/objects/${row.original.module}`} className="underline">{formatModuleName(row.original.module)}</Link>,
     },
     { id: "enabled", header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
-    { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
+    { id: "rows", header: "Records", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
     { id: "synced", header: "Last extracted", cell: ({ row }) => when(row.original.last_synced_at) },
     {
       id: "dqs",

@@ -7,6 +7,7 @@ import * as meApi from "@/lib/api/me";
 import * as usersApi from "@/lib/api/users";
 import * as auditApi from "@/lib/api/audit";
 import * as connApi from "@/lib/api/connectivity";
+import * as triageApi from "@/lib/api/triage";
 import AdminRolesPage from "../page";
 import AdminRolesLoading from "../loading";
 
@@ -62,6 +63,7 @@ describe("admin roles page", () => {
     renderWithQuery(<AdminRolesPage />);
     const user = userEvent.setup();
     await screen.findByText("Ops");
+    expect(screen.getByRole("button", { name: "Actions for Viewer" })).toHaveClass("m-iconbtn", "m-iconbtn-sm");
     await user.click(screen.getByRole("button", { name: "Actions for Viewer" }));
     await user.click(await screen.findByRole("menuitem", { name: "Clone" }));
     await user.type(await screen.findByLabelText("New role name"), "Copy");
@@ -126,8 +128,14 @@ describe("admin roles page", () => {
       entries: p?.action === "role.create" ? [{ id: "a1", actor_user_id: null, actor_email: "root@x.io", action: "role.create", entity_type: "role", entity_id: "custom:ops", method: "POST", path: "/", status_code: 200, ip: null, user_agent: null, before_json: null, after_json: { n: 1 }, created_at: "2026-01-01T00:00:00Z" }] : [],
       total: 0, limit: 50, offset: 0,
     }));
+    vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({
+      timezone: "UTC", work_days: [1, 2, 3, 4, 5], work_start: "08:00:00", work_end: "17:00:00", holidays: [], fallback_user_id: null,
+    });
     renderWithQuery(<AdminRolesPage />);
-    expect(await screen.findByText("role.create")).toBeInTheDocument();
+    // The same sentence and tenant-zone time as Admin > Audit log; no raw action code or record id.
+    expect(await screen.findByText("root created a role")).toBeInTheDocument();
+    expect(screen.queryByText(/role\.create|custom:ops/)).toBeNull();
+    expect(screen.getByText(/Jan 2026/).closest("time")).toHaveAttribute("dateTime", "2026-01-01T00:00:00Z");
     // before and after read as a sentence per field, never raw JSON
     expect(screen.getByText("N: 1")).toBeInTheDocument();
     expect(screen.queryByText(/"after"/)).toBeNull();

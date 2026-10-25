@@ -39,6 +39,14 @@ describe("admin triage page", () => {
     expect(screen.getByText("Critical to stewards")).toBeInTheDocument();
   });
 
+  it("names the SLA scope column Object, as every other ledger does", async () => {
+    mockAll();
+    renderWithQuery(<AdminTriagePage />);
+    expect(await screen.findByText("All objects")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Object" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Module" })).toBeNull();
+  });
+
   it("flags a stored time zone that is not an IANA zone and blocks saving", async () => {
     mockAll();
     vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({ ...SETTINGS, timezone: "Mars/Olympus" });

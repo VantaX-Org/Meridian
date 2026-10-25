@@ -162,6 +162,9 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
   ];
 }
 
+/** Where `c` is someone else's key: a field, a control, or a dialog, listbox or menu that owns the keyboard. */
+const KEY_OWNERS = "input, textarea, select, [contenteditable], a, button, [role=dialog], [role=alertdialog], [role=listbox], [role=option], [role=menu], [role=menuitem], [role=combobox]";
+
 /** Bulk bar for the selection; `c` compares once exactly two runs are selected. */
 function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (a: Version, b: Version) => void }) {
   const two = selected.length === 2;
@@ -175,7 +178,7 @@ function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (
     if (!two) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (e.key !== "c" || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key !== "c" || e.metaKey || e.ctrlKey || e.altKey || t?.closest(KEY_OWNERS)) return;
       onCompare(selected[0], selected[1]);
     };
     window.addEventListener("keydown", onKey);

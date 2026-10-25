@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantsPicker, scopeLabel, type GrantRowView } from "@/components/admin/grants-picker";
 import { InviteForm } from "@/components/admin/invite-form";
@@ -22,7 +22,9 @@ import { getUsers } from "@/lib/api/users";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { useTenantTimezone } from "@/lib/tenant-zone";
 import type { User } from "@/types/api";
+import { auditSentence, When } from "../_lib/audit-sentence";
 
 const TABS = ["roles", "users", "invite", "requests", "history"] as const;
 
@@ -94,7 +96,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
         if (!r.built_in) items.push({ label: "Edit", onSelect: () => setEditing(r) }, { label: "Delete", onSelect: () => setDeleting(r) });
         return (
           <span onClick={(e) => e.stopPropagation()}>
-            <Menu trigger={<button aria-label={`Actions for ${r.name}`}><IconMore size={16} /></button>} items={items} />
+            <Menu trigger={<IconButton size="sm" aria-label={`Actions for ${r.name}`}><IconMore size={16} /></IconButton>} items={items} />
           </span>
         );
       },
@@ -368,6 +370,8 @@ function RequestsTab({ roles }: { roles: Role[] }) {
 const HISTORY_ACTIONS = ["role.create", "role.update", "role.delete", "grant.create", "grant.delete", "access_request.create", "access_request.decide"];
 
 function HistoryTab() {
+  const tz = useTenantTimezone();
+  const columns = useMemo(() => historyCols(tz), [tz]);
   const qs = useQueries({
     queries: HISTORY_ACTIONS.map((action) => ({ queryKey: ["audit-history", action], queryFn: () => getAuditEntries({ action, limit: 50 }) })),
   });
@@ -375,13 +379,13 @@ function HistoryTab() {
   if (qs.some((q) => q.isLoading)) return <Skeleton height={240} />;
   const entries: AuditEntry[] = qs.flatMap((q) => q.data?.entries ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at));
   if (!entries.length) return <EmptyState title="No role changes yet" detail="Role, grant and request changes are listed here." ghost="list" action={<Button variant="secondary" onClick={() => qs.forEach((x) => void x.refetch())}>Refresh</Button>} />;
-  return <DataTable columns={historyCols} data={entries} getRowId={(e) => e.id} />;
+  return <DataTable columns={columns} data={entries} getRowId={(e) => e.id} />;
 }
 
-const historyCols: ColumnDef<AuditEntry, unknown>[] = [
-  { id: "when", header: "When", cell: ({ row }) => <time dateTime={row.original.created_at}>{relativeTime(row.original.created_at)}</time> },
-  { id: "who", header: "Actor", cell: ({ row }) => row.original.actor_email ?? "system" },
-  { id: "act", header: "Action", cell: ({ row }) => <span><Mono>{row.original.action}</Mono> {row.original.entity_id ?? ""}</span> },
+/** The same reading as Admin › Audit log: the time in the tenant zone and one sentence per action. */
+const historyCols = (tz: string): ColumnDef<AuditEntry, unknown>[] => [
+  { id: "when", header: "When", cell: ({ row }) => <When iso={row.original.created_at} tz={tz} /> },
+  { id: "what", header: "What happened", cell: ({ row }) => auditSentence(row.original) },
   {
     id: "chg", header: "Change",
     cell: ({ row }) => {

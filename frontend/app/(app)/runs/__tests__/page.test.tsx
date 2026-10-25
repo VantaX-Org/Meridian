@@ -153,6 +153,27 @@ describe("RunsPage", () => {
     expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
   });
 
+  it("compares on c, but not while a dialog, menu or control has the keyboard", async () => {
+    push.mockClear();
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText("Select row v1"));
+    fireEvent.click(screen.getByLabelText("Select row v2"));
+    for (const role of ["dialog", "alertdialog", "listbox", "option", "menu", "menuitem", "combobox"]) {
+      const owner = document.createElement("div");
+      owner.setAttribute("role", role);
+      document.body.appendChild(owner);
+      fireEvent.keyDown(owner, { key: "c" });
+      owner.remove();
+    }
+    fireEvent.keyDown(screen.getByRole("button", { name: "Compare" }), { key: "c" });
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.body, { key: "c" });
+    expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
+  });
+
   it("shows live progress on a run that is still being analysed", async () => {
     const running: Version = { ...newer, id: "v3", label: "Tonight", status: "running" };
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [running, older] });

@@ -109,12 +109,12 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     },
     {
       accessorKey: "failing_checks",
-      header: "Failing checks",
+      header: "Failing rules",
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.failing_checks)}</DrillLink>,
     },
     {
       accessorKey: "affected_records",
-      header: "Affected records",
+      header: "Failing records",
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.affected_records)}</DrillLink>,
     },
     {
@@ -197,7 +197,7 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=high`}>{row.original.high.toLocaleString()}</DrillLink>,
     },
     {
-      id: "records", header: "Records", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
+      id: "records", header: "Failing records", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{(row.original.affected ?? 0).toLocaleString()}</DrillLink>,
     },
     {
@@ -475,7 +475,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
     { id: "dimension", header: "Dimension", accessorFn: (f) => labelOf(f.dimension) },
     {
       id: "affected",
-      header: "Records",
+      header: "Failing records",
       accessorFn: (f) => f.affected_count,
       cell: ({ row }) => (
         <DrillLink href={`/objects/${row.original.module}?run=${versionId}&tab=records&check_id=${row.original.check_id}`}>

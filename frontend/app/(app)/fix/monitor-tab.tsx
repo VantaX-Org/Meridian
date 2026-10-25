@@ -20,7 +20,7 @@ const scopeLabel = (m: MonitorItem) => m.system_name ?? (m.scope === "upload" ? 
 
 const regressedColumns: ColumnDef<RegressedCheck>[] = [
   { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Link href={`/rules/${row.original.check_id}`} className="underline"><Mono>{row.original.check_id}</Mono></Link> },
-  { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+  { accessorKey: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
   { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
   { accessorKey: "new", header: "New failing records", meta: { numeric: true }, cell: ({ row }) => row.original.new.toLocaleString() },
 ];

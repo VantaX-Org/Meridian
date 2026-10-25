@@ -39,8 +39,9 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
       <Button variant="ghost" onClick={() => onOpen(row.original.item.id)}>{row.original.item.name}</Button>
     ) },
     { id: "activities", header: "Activities", accessorFn: (r) => r.activities },
-    { id: "blocked", header: "Blocked", accessorFn: (r) => r.blocked },
-    { id: "degraded", header: "Degraded", accessorFn: (r) => r.degraded },
+    // The same counts as the page's No-go and At risk stats, under the same words.
+    { id: "blocked", header: "No-go", accessorFn: (r) => r.blocked },
+    { id: "degraded", header: "At risk", accessorFn: (r) => r.degraded },
     { id: "actions", header: "Actions", enableSorting: false, cell: ({ row }) => {
       const r = row.original;
       return (

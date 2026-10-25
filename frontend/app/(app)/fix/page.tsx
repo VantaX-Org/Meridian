@@ -105,7 +105,7 @@ export default function FixPage() {
   return (
     <div className="flex flex-col gap-4">
     <PageHeader
-      title="Fix"
+      title="Fix work"
       meta="Every record that fails a check, worst first: see what is wrong, set the right value, and send it for approval."
       actions={<Button variant="secondary" render={<Link href="/fix/what-if">What-if</Link>} />}
     />

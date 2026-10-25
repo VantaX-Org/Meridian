@@ -46,6 +46,26 @@ describe("rules contracts page", () => {
     await waitFor(() => expect(screen.getByText("Vendor master to S/4HANA")).toBeInTheDocument());
   });
 
+  it("says the latest check as a verdict, Go or No-go, never Compliant", async () => {
+    const broken: Contract = { ...CONTRACT, id: "c3", name: "Broken one", latest_compliant: false };
+    const fresh: Contract = { ...CONTRACT, id: "c4", name: "Fresh one", latest_compliant: null };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [CONTRACT, broken, fresh], total: 3 });
+    vi.spyOn(contractsApi, "getContractCompliance").mockResolvedValue({
+      contract_id: "c3",
+      compliance_history: [{ id: "h1", overall_compliant: false, recorded_at: "2026-01-02T00:00:00Z" }] as never,
+    });
+    renderWithQuery(<ContractsPage />);
+    const row = (name: string) => screen.getByText(name).closest("tr") as HTMLElement;
+    await waitFor(() => expect(screen.getByText("Vendor master to S/4HANA")).toBeInTheDocument());
+    expect(within(row("Vendor master to S/4HANA")).getByText("Go")).toHaveAttribute("data-status", "verdict");
+    expect(within(row("Broken one")).getByText("No-go")).toHaveAttribute("data-value", "no-go");
+    expect(within(row("Fresh one")).getByText("Not checked")).toBeInTheDocument();
+    expect(screen.queryByText(/Compliant|Not compliant/)).toBeNull();
+    fireEvent.click(screen.getByText("Broken one"));
+    await waitFor(() => expect(screen.getAllByText("No-go").length).toBeGreaterThanOrEqual(3));
+    expect(screen.queryByText(/Compliant|Not compliant/)).toBeNull();
+  });
+
   it("shows a retryable error when contracts fail to load", async () => {
     const spy = vi.spyOn(contractsApi, "getContracts").mockRejectedValue(new Error("network down"));
     renderWithQuery(<ContractsPage />);
