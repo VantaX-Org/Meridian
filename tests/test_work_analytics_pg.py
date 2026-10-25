@@ -199,7 +199,7 @@ async def test_analytics_numbers(seeded, client_for):
         assert tp["totals"] == {"accept": 2, "edit": 1, "not_an_issue": 1, "accept_risk": 0, "approve": 1, "total": 5}
         assert [(p["person"], p["total"]) for p in tp["people"]] == [("Ann", 3), ("Bob", 1), ("Cara", 1)]
         assert tp["people"][0] == {"person": "Ann", "total": 3, "accept": 1, "edit": 1, "not_an_issue": 1,
-                                        "accept_risk": 0, "approve": 0}
+                                        "accept_risk": 0, "approve": 0, "user_id": None}  # labels only, no user
         by_day = {d["day"]: d for d in tp["days"]}
         assert len(tp["days"]) == 30 and by_day[day(2)]["by_person"] == {"Ann": 2} and by_day[day(4)]["total"] == 1
         assert tp["workload"] == [

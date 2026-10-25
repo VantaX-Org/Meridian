@@ -65,6 +65,8 @@ export type DecisionKind = "accept" | "edit" | "not_an_issue" | "accept_risk" | 
 
 export interface PersonThroughput extends Record<DecisionKind, number> {
   person: string;
+  /** Their user id, when the decisions name one: their records open in Fix work (?assignee=). */
+  user_id?: string | null;
   total: number;
 }
 

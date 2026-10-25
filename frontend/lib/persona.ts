@@ -37,9 +37,11 @@ export function personaForRole(role: Role): Persona {
 
 /**
  * Where this role lands: its persona page, except stewards, who start on Fix work (the steward home,
- * /home/steward, stays routable and is still what "View as: Steward" opens).
+ * /home/steward, stays routable and is still what "View as: Steward" opens). A steward whose role may neither
+ * approve nor apply (a custom role) cannot open Fix work, so pass `can` and they land on the steward home instead.
  */
-export function homeHrefForRole(role: Role): string {
+export function homeHrefForRole(role: Role, can?: (action: string) => boolean): string {
   const persona = personaForRole(role);
-  return persona === "steward" ? "/fix" : `/home/${persona}`;
+  if (persona !== "steward") return `/home/${persona}`;
+  return !can || can("approve") || can("apply") ? "/fix" : "/home/steward";
 }

@@ -272,6 +272,25 @@ async def test_records_filter_by_a_key_part(run, client_for):
 
 
 @pytest.mark.anyio
+async def test_records_filter_blocking_every_status_and_source_system(run, client_for):
+    owner, tid, vid, _ = run
+    with owner.begin() as c:
+        sid = c.execute(text("SELECT scope FROM work_records WHERE version_id = :v LIMIT 1"), {"v": vid}).scalar()
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        get = lambda **params: client.get("/api/v1/work/records", params={"version_id": vid, **params}, headers=HEADERS)
+        assert (await get(severity="blocking")).json()["total"] == 2
+        assert (await get(severity="low")).json()["total"] == 0
+        assert (await get(status="all")).json()["total"] == 2
+        assert (await get(system=sid)).json()["total"] == 2
+        assert (await get(system="elsewhere")).json()["total"] == 0
+        groups = (await client.get("/api/v1/work/groups", params={"version_id": vid, "severity": "blocking"},
+                                   headers=HEADERS)).json()["groups"]
+        assert [g["check_id"] for g in groups] == ["MM001"]
+
+
+@pytest.mark.anyio
 async def test_accept_all_keeps_entered_values_and_cleaning_suggestions_can_be_accepted(run, client_for):
     owner, tid, vid, _ = run
     with owner.begin() as c:

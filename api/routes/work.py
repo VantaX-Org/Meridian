@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
-from api.services import worklist
+from api.services import work_analytics, worklist
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
                                dev_role_override, grants_for, has_permission, require_permission)
 from api.services.record_issues import scope_of
@@ -107,7 +107,7 @@ async def summary(
 async def groups(
     version_id: Optional[uuid.UUID] = None,
     module: Optional[str] = None,
-    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low)$"),
+    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$", description="blocking = critical or high"),
     proposed: Optional[bool] = Query(None, description="only groups with machine-proposed values"),
     q: Optional[str] = Query(None, max_length=200),
     limit: int = Query(200, ge=1, le=1000),
@@ -122,7 +122,9 @@ async def groups(
     if module:
         where.append("module = :m")
         p["m"] = module
-    if severity:
+    if severity == "blocking":
+        where.append("sev_rank <= 1")
+    elif severity:
         where.append("severity = :s")
         p["s"] = severity
     if proposed:
@@ -140,7 +142,7 @@ async def groups(
 
 
 def _records_where(tenant: Tenant, vid: str, request: Request, module, check_id, severity, status, assigned,
-                   proposed, q, due=None, part=None) -> tuple[list[str], dict]:
+                   proposed, q, due=None, part=None, system=None) -> tuple[list[str], dict]:
     where, p = ["w.tenant_id = :t", "w.version_id = CAST(:v AS uuid)"], {"t": str(tenant.id), "v": vid}
     if module:
         where.append("w.module = :m")
@@ -148,10 +150,17 @@ def _records_where(tenant: Tenant, vid: str, request: Request, module, check_id,
     if check_id:
         where.append("w.checks @> ARRAY[CAST(:c AS text)]")
         p["c"] = check_id
-    if severity:
+    if severity == "blocking":  # critical or high: what blocks SAP processes and the load
+        where.append("w.sev_rank <= 1")
+    elif severity:
         where.append("w.sev_rank = :sr")
         p["sr"] = SEVERITIES.index(severity)
-    if status == "open":
+    if system:
+        where.append("w.scope = :sys")
+        p["sys"] = system
+    if status == "all":
+        pass
+    elif status == "open":
         where.append("w.status = ANY(:st)")
         p["st"] = list(OPEN)
     elif status:
@@ -195,12 +204,13 @@ async def records(
     version_id: Optional[uuid.UUID] = None,
     module: Optional[str] = None,
     check_id: Optional[str] = None,
-    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low)$"),
-    status: Optional[str] = Query("open", pattern="^(open|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
+    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$", description="blocking = critical or high"),
+    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
     proposed: Optional[bool] = None,
     due: Optional[str] = Query(None, pattern="^(overdue|today)$", description="SLA: past due, or due within a day"),
     part: Optional[str] = Query(None, max_length=200, description="a key part, FIELD=VALUE (BUKRS=1000)"),
+    system: Optional[str] = Query(None, max_length=100, description="source system id, or 'upload'"),
     q: Optional[str] = Query(None, max_length=200),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
@@ -211,7 +221,8 @@ async def records(
     """Failing records of the run, worst first, a page at a time (keyset: no deep OFFSET at millions)."""
     await _rls(db, tenant)
     vid, _ = await _run(db, tenant, version_id)
-    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due, part)
+    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due, part,
+                              system)
     page_where = list(where)
     if after:
         rank, mod, key = _uncursor(after)
@@ -521,6 +532,7 @@ async def _mdm_links(db: AsyncSession, tenant: Tenant, module: str, record_key: 
     """The golden record that keys this record and its open duplicate candidates. Best effort under a short
     statement timeout: a slow MDM table never holds the panel up (the fields are None then)."""
     import logging
+    from urllib.parse import urlencode
 
     from sqlalchemy.exc import SQLAlchemyError
 
@@ -540,7 +552,9 @@ async def _mdm_links(db: AsyncSession, tenant: Tenant, module: str, record_key: 
                 SELECT count(*) FROM dedup_candidates
                  WHERE tenant_id = :t AND object_type = :m AND status = 'pending'
                    AND (record_key_a = ANY(:keys) OR record_key_b = ANY(:keys))"""), p)).scalar() or 0
-            out["duplicates"] = {"open": int(n), "href": "/fix?tab=dedup"}
+            # Match review, filtered to this record's pairs from the cleaning engine (the source counted here).
+            out["duplicates"] = {"open": int(n), "href": "/mdm/golden/merge?" + urlencode(
+                {"source": "cleaning", "object": module, "record": record_key})}
             await db.execute(text("SET LOCAL statement_timeout = DEFAULT"))
     except SQLAlchemyError as e:  # a timeout or a missing MDM table: the panel shows the record without these links
         logging.getLogger(__name__).info("work record: MDM links skipped for %s: %s", module, type(e).__name__)
@@ -730,6 +744,7 @@ async def decide(
     if touched:
         await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, touched))
     await db.commit()
+    work_analytics.forget(tenant.id)
     return {"updated": done, "draft_batch_id": draft}
 
 
@@ -790,6 +805,7 @@ async def accept_all(
     if rows:
         await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, [(check_id, k) for k, _ in rows]))
     await db.commit()
+    work_analytics.forget(tenant.id)
     return {"accepted": len(rows), "draft_batch_id": draft}
 
 
@@ -857,6 +873,7 @@ async def set_value(
     if rows:
         await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, [(check_id, k) for k, _ in rows]))
     await db.commit()
+    work_analytics.forget(tenant.id)
     return {"updated": len(rows), "draft_batch_id": draft}
 
 
@@ -880,12 +897,13 @@ async def export_sheet(
     version_id: Optional[uuid.UUID] = None,
     module: Optional[str] = None,
     check_id: Optional[str] = None,
-    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low)$"),
-    status: Optional[str] = Query("open", pattern="^(open|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
+    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$", description="blocking = critical or high"),
+    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = None,
     proposed: Optional[bool] = None,
     due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
     part: Optional[str] = Query(None, max_length=200),
+    system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -897,7 +915,8 @@ async def export_sheet(
 
     await _rls(db, tenant)
     vid, _ = await _run(db, tenant, version_id)
-    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due, part)
+    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due, part,
+                              system)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
         WITH auto AS (

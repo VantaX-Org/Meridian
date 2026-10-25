@@ -21,9 +21,10 @@ import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 
 const PAGE = 50;
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
-const STATUS_FILTERS = ["open", ...STATUS_ORDER] as const;
+const SEVERITY_LABEL: Record<string, string> = { blocking: "Blocking (critical or high)" };
+const STATUS_FILTERS = ["open", ...STATUS_ORDER, "all"] as const;
 const STATUS_FILTER_LABEL: Record<(typeof STATUS_FILTERS)[number], string> = {
-  open: "Still open", ...Object.fromEntries(STATUS_ORDER.map((s) => [s, STATUS[s].label])) as Record<(typeof STATUS_ORDER)[number], string>,
+  open: "Still open", all: "Every status", ...Object.fromEntries(STATUS_ORDER.map((s) => [s, STATUS[s].label])) as Record<(typeof STATUS_ORDER)[number], string>,
 };
 
 /** `module|record_key` for the URL's ?record=. */
@@ -49,6 +50,7 @@ function useFilters() {
     assigned: get("mine") ? "me" : get("assignee") || undefined,
     proposed: get("sugg") ? true : undefined,
     due: get("due") === "overdue" ? "overdue" : undefined,
+    system: get("system") || undefined,
     part: get("part") || undefined,
     q: get("q") || undefined,
   };
@@ -275,7 +277,8 @@ export function FixWork() {
   const chips: { label: string; value: string; key: string }[] = [
     filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "module" } : null,
     filter.check_id ? { label: "Issue", value: activeGroup?.message ?? filter.check_id, key: "check" } : null,
-    filter.severity ? { label: "Severity", value: filter.severity, key: "sev" } : null,
+    filter.severity ? { label: "Severity", value: SEVERITY_LABEL[filter.severity] ?? filter.severity, key: "sev" } : null,
+    filter.system ? { label: "System", value: filter.system === "upload" ? "uploads" : "one source system", key: "system" } : null,
     filter.assigned ? { label: "Assigned", value: filter.assigned === "me" ? "to me" : filter.assigned === "unassigned" ? "to nobody" : "to one person", key: filter.assigned === "me" ? "mine" : "assignee" } : null,
     filter.part ? { label: "Where", value: filter.part, key: "part" } : null,
     filter.proposed ? { label: "Has", value: "a suggested value", key: "sugg" } : null,
@@ -296,7 +299,7 @@ export function FixWork() {
         <Select label="Object" value={filter.module ?? "all"} onValueChange={(v) => set({ module: v === "all" ? null : v, object: null, check: null, record: null })}
           options={[{ value: "all", label: "Every object" }, ...s.objects.map((o) => ({ value: o.module, label: `${formatModuleName(o.module)} (${o.open.toLocaleString()})` }))]} />
         <Select label="Severity" value={filter.severity ?? "all"} onValueChange={(v) => set({ sev: v === "all" ? null : v, record: null })}
-          options={[{ value: "all", label: "Every severity" }, ...SEVERITIES.map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }))]} />
+          options={[{ value: "all", label: "Every severity" }, { value: "blocking", label: SEVERITY_LABEL.blocking }, ...SEVERITIES.map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }))]} />
         <Select label="Status" value={filter.status ?? "open"} onValueChange={(v) => set({ st: v === "open" ? null : v, record: null })}
           options={STATUS_FILTERS.map((v) => ({ value: v, label: STATUS_FILTER_LABEL[v] }))} />
         <Switch checked={!!filter.assigned} onCheckedChange={(on) => set({ mine: on ? "1" : null, record: null })} label="Mine" />
@@ -318,7 +321,7 @@ export function FixWork() {
       {chips.length ? (
         <div className="flex flex-wrap items-center gap-2">
           {chips.map((c) => <FilterChip key={c.key} label={c.label} value={c.value} onRemove={() => { set({ [c.key]: null, ...(c.key === "module" ? { object: null } : {}), record: null }); if (c.key === "q") setQ(""); }} />)}
-          <Button variant="ghost" size="sm" onClick={() => { setQ(""); set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, part: null, sugg: null, due: null, q: null, st: null, record: null }); }}>Clear filters</Button>
+          <Button variant="ghost" size="sm" onClick={() => { setQ(""); set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, system: null, part: null, sugg: null, due: null, q: null, st: null, record: null }); }}>Clear filters</Button>
         </div>
       ) : null}
 
@@ -346,7 +349,7 @@ export function FixWork() {
             : items.length === 0 ? (
               <EmptyState variant="inline" title={chips.length || filter.status !== "open" ? "No records match these filters" : "Nothing left to fix"}
                 detail={chips.length ? "Clear a filter to see more." : "Every failing record in this run has a decision."}
-                action={chips.length ? <Button variant="secondary" onClick={() => set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, part: null, sugg: null, due: null, q: null })}>Clear filters</Button> : undefined} />
+                action={chips.length ? <Button variant="secondary" onClick={() => set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, system: null, part: null, sugg: null, due: null, q: null })}>Clear filters</Button> : undefined} />
             ) : (
               <>
                 <ul className="max-h-[70vh] overflow-auto" aria-label="Records to fix">
