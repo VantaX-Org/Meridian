@@ -147,8 +147,8 @@ export default function MasterRecordPage() {
       meta={record.status === "superseded"
         ? "This record was merged into another golden record. Its own values are kept for an unmerge."
         : `The one trusted version of this record, built from ${systems.length.toLocaleString()} source ${systems.length === 1 ? "system" : "systems"}. ${promotable ? "Check the values, then promote it." : "It is the version other systems should use."}`}
-      actions={canApprove && promotable ? (
-        <Button disabled={promote.isPending} onClick={() => setConfirmPromote(true)}>Promote</Button>
+      actions={promotable ? (
+        <GatedPrimary kind="approve" allowed={canApprove} disabled={promote.isPending} onClick={() => setConfirmPromote(true)}>Promote</GatedPrimary>
       ) : undefined}
     >
       <EntityTabs entityType="master-records" entityId={id}

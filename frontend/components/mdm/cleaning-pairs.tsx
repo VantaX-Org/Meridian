@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, ConfirmDialog, DataTable, Drawer, ExplorerPage, Mono, Notice, Pager, Pill, Skeleton, asyncStateOf, toast } from "@/design";
 import { useRole } from "@/hooks/use-role";
+import { GatedPrimary } from "@/components/gated-primary";
 import { getDedupCandidates, getDedupPreview, mergeDedupCandidate, type DedupCandidate } from "@/lib/api/cleaning";
 import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
@@ -84,7 +85,7 @@ export function CleaningPairDetail({ pair, onMerged }: { pair: DedupCandidate; o
           />
         </div>
       ) : (
-        <Notice tone="info">Merging needs the approve permission.</Notice>
+        <div><GatedPrimary kind="approve" allowed={false}>Merge</GatedPrimary></div>
       )}
     </div>
   );

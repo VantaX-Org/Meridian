@@ -1,6 +1,7 @@
 // frontend/app/(app)/mdm/match-rules/__tests__/page.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import * as matchRulesApi from "@/lib/api/match-rules";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
@@ -105,5 +106,47 @@ describe("MatchRulesPage", () => {
     expect(screen.queryByRole("button", { name: "New rule" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Simulate" })).toBeNull();
     expect(get).not.toHaveBeenCalled();
+  });
+
+  it("tunes in percentages, then applies the tried weights to the object's rules after a confirm", async () => {
+    nav.qs = "tab=tuning";
+    vi.spyOn(matchRulesApi, "getMatchRules").mockResolvedValue({
+      rules: [
+        { id: "r1", tenant_id: "t1", domain: "material_master", field: "MATKL", match_type: "fuzzy", weight: 40, threshold: 0.85, active: true },
+        { id: "r2", tenant_id: "t1", domain: "material_master", field: "MATKL", match_type: "exact", weight: 40, threshold: 1, active: false },
+        { id: "r3", tenant_id: "t1", domain: "material_master", field: "MAKTX", match_type: "fuzzy", weight: 20, threshold: 0.8, active: true },
+      ],
+      total: 3,
+    });
+    const dry = vi.spyOn(mergeExplainApi, "matchTuningDryRun").mockResolvedValue({
+      domain: "material_master", pairs: 10, pairs_newly_linked: 1, pairs_unlinked: 0, band_moves: {}, clusters_before: 5, clusters_after: 4,
+      clusters_that_would_merge: 1, clusters_that_would_split: 0, applied: false,
+    });
+    const update = vi.spyOn(matchRulesApi, "updateMatchRule").mockImplementation(async (id, body) => ({ id, tenant_id: "t1", domain: "material_master", field: "MATKL", match_type: "fuzzy", weight: body.weight ?? 0, threshold: 0.85, active: true }));
+    renderWithQuery(<MatchRulesPage />);
+    expect(screen.getByText(/stored pairs of an object/)).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "Object" }));
+    await user.click(await screen.findByRole("option", { name: "Material master" }));
+    fireEvent.change(await screen.findByLabelText("MATKL (current 40)"), { target: { value: "60" } });
+    fireEvent.change(screen.getByLabelText("Auto-merge at %"), { target: { value: "90" } });
+    expect(screen.getByLabelText("Review floor %")).toHaveValue(30);
+    fireEvent.click(screen.getByRole("button", { name: "Run dry run" }));
+    await waitFor(() => expect(dry).toHaveBeenCalledWith({ domain: "material_master", auto_merge: 0.9, review_floor: 0.3, weights: { MATKL: 60 } }));
+    fireEvent.click(await screen.findByRole("button", { name: "Apply these weights" }));
+    const dialog = await screen.findByRole("dialog", { name: "Change the weight of 1 rule?" });
+    expect(update).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Apply weights" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("r1", { weight: 60 }));
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("names the role that clears a settled pair, with Request access wording", async () => {
+    nav.qs = "tab=constraints";
+    perms.granted = new Set(["manage_rules", "view"]);
+    vi.spyOn(mergeExplainApi, "getPairConstraints").mockResolvedValue([]);
+    renderWithQuery(<MatchRulesPage />);
+    expect(await screen.findByText(/Clearing a decision needs Data owner on all systems/)).toBeInTheDocument();
+    expect(screen.queryByText(/approve permission/)).not.toBeInTheDocument();
   });
 });

@@ -2,9 +2,8 @@
 
 /** MDM › Overview: the MDM health figure with its four inputs, then the match work waiting on a steward. */
 
-import { useMemo } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, ExplorerPage, Line, PageHeader, Pill, Stat, statusLabel, type CellMeta } from "@/design";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
@@ -12,21 +11,21 @@ import { getMdmHealth } from "@/lib/api/analytics";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { getQueueItems } from "@/lib/api/stewardship";
 import { formatModuleName, relativeTime } from "@/lib/format";
-import type { StewardshipQueueItem } from "@/types/api";
+import type { StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 
-const itemLabel = (t: string) => {
-  const s = t.replace(/_/g, " ");
-  return s.charAt(0).toUpperCase() + s.slice(1);
-};
+/** The statuses the inbox counts as live work (inbox/page.tsx LIVE). */
+const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
+const MATCH_WORK = "merge_decision";
+const SHOWN = 10;
 
-/** Match decisions come first (they move the golden records), then the earliest due. */
-const matchFirst = (a: StewardshipQueueItem, b: StewardshipQueueItem) =>
-  Number(b.item_type === "merge_decision") - Number(a.item_type === "merge_decision") ||
+/** Escalated first, then the earliest due. */
+const urgentFirst = (a: StewardshipQueueItem, b: StewardshipQueueItem) =>
+  Number(b.status === "escalated") - Number(a.status === "escalated") ||
   (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999");
 
 const columns: ColumnDef<StewardshipQueueItem>[] = [
-  { id: "item", header: "Work", cell: ({ row }) => (row.original.item_type === "merge_decision" ? <Pill tone="info">{itemLabel(row.original.item_type)}</Pill> : itemLabel(row.original.item_type)) },
+  { id: "item", header: "Work", cell: ({ row }) => <span className="inline-flex items-center gap-2">Merge decision{row.original.status === "escalated" ? <Pill tone="no-go">Escalated</Pill> : row.original.status === "in_progress" ? <Pill tone="at-risk">In progress</Pill> : null}</span> },
   { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.domain) },
   { id: "due", header: "Due", meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.due_at ? relativeTime(row.original.due_at) : `Opened ${relativeTime(row.original.created_at)}`) },
   // `focus` lands the inbox on this task; `type` keeps the list to its kind.
@@ -36,12 +35,20 @@ const columns: ColumnDef<StewardshipQueueItem>[] = [
 export default function MdmOverviewPage() {
   const dash = useQuery({ queryKey: ["mdm", "dashboard"], queryFn: getMdmDashboard });
   const health = useQuery({ queryKey: ["mdm", "health"], queryFn: () => getMdmHealth() });
-  const queue = useQuery({ queryKey: ["mdm", "queue-open"], queryFn: () => getQueueItems({ status: "open", limit: 10 }), meta: { ignoreError: true } });
+  // Match work only, in every status the inbox counts as live; the queue API filters one status a call.
+  const queues = useQueries({
+    queries: LIVE.map((status) => ({
+      queryKey: ["mdm", "queue", MATCH_WORK, status],
+      queryFn: () => getQueueItems({ item_type: MATCH_WORK, status, limit: SHOWN }),
+      meta: { ignoreError: true },
+    })),
+  });
   const m = dash.data?.latest ?? null;
   const trend = dash.data?.trend ?? [];
   const points = health.data?.data ?? [];
-  const items = useMemo(() => [...(queue.data?.items ?? [])].sort(matchFirst), [queue.data]);
-  const total = queue.data?.total ?? 0;
+  // A task can change status between the three reads; keep each once.
+  const items = [...new Map(queues.flatMap((q) => q.data?.items ?? []).map((t) => [t.id, t])).values()].sort(urgentFirst).slice(0, SHOWN);
+  const total = queues.reduce((n, q) => n + (q.data?.total ?? 0), 0);
   const failed = isListFailure(dash) ? dash : isListFailure(health) ? health : null;
   const state = dash.isLoading || health.isLoading ? "loading" : failed ? "error" : !m && points.length === 0 && items.length === 0 ? "empty" : undefined;
   const tone = m ? (m.mdm_health_score >= 85 ? "go" : m.mdm_health_score >= 60 ? "at-risk" : "no-go") : undefined;
@@ -88,7 +95,7 @@ export default function MdmOverviewPage() {
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void dash.refetch(); void health.refetch(); } }}
       table={
         <section aria-label="Match work">
-          <LedgerHead title="Match work" meta={total > items.length ? `${items.length.toLocaleString()} of ${total.toLocaleString()} open` : `${total.toLocaleString()} open`} action={<Link href="/inbox" className="m-text-meta m-ink-accent-ink hover:underline">Open inbox</Link>} />
+          <LedgerHead title="Match work" meta={total > items.length ? `${items.length.toLocaleString()} of ${total.toLocaleString()} waiting` : `${total.toLocaleString()} waiting`} action={<Link href="/inbox" className="m-text-meta m-ink-accent-ink hover:underline">Open inbox</Link>} />
           <DataTable
             columns={columns}
             data={items}
@@ -97,7 +104,7 @@ export default function MdmOverviewPage() {
             hideSearch
             height="auto"
             tableId="mdm-match-work"
-            emptyMessage="No open match work"
+            emptyMessage="No match work waiting"
           />
         </section>
       }

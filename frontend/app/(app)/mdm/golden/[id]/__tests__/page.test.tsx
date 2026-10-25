@@ -13,8 +13,9 @@ import MasterRecordPage from "../page";
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "m1" }),
 }));
+const role = vi.hoisted(() => ({ denied: new Set<string>() }));
 vi.mock("@/hooks/use-role", () => ({
-  useRole: () => ({ can: () => true }),
+  useRole: () => ({ can: (p: string) => !role.denied.has(p) }),
 }));
 
 const record: MasterRecordDetail = {
@@ -145,6 +146,20 @@ describe("MasterRecordPage", () => {
     expect(screen.queryByRole("button", { name: "Promote" })).not.toBeInTheDocument();
   });
 
+  it("keeps Promote in view, disabled with the role that grants it, without approve rights", async () => {
+    role.denied = new Set(["approve"]);
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({ ...record, status: "candidate" });
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    try {
+      renderWithQuery(<MasterRecordPage />);
+      const promote = await screen.findByRole("button", { name: /^Promote\. Needs Data owner on all systems — Request access$/ });
+      expect(promote).toBeDisabled();
+    } finally {
+      role.denied = new Set();
+    }
+  });
+
   it("promotes a candidate after a confirmation", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({ ...record, status: "candidate" });
     vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
@@ -182,6 +197,9 @@ describe("MasterRecordPage", () => {
     await within(dialog).findByText("Pump");
     expect(preview).toHaveBeenCalledWith("m1", ["MARA-2000"], "Preview");
     expect(unmerge).not.toHaveBeenCalled();
+    expect(within(dialog).getByRole("button", { name: "Split out" })).toBeDisabled();
+    expect(within(dialog).getByText("Give a reason to split it out")).toBeInTheDocument();
+    expect(within(dialog).getByText("Reason (required), kept in the merge history")).toBeInTheDocument();
     fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "Different material" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Split out" }));
     await waitFor(() => expect(unmerge).toHaveBeenCalledWith("m1", ["MARA-2000"], "Different material"));

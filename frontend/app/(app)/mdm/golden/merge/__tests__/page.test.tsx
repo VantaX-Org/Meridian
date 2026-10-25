@@ -149,6 +149,17 @@ describe("One review screen for both sources", () => {
     await waitFor(() => expect(merge).toHaveBeenCalledWith({ candidate_id: "d1", survivor_key: "7" }));
   });
 
+  it("keeps Merge in view, disabled with the role that grants it, without approve rights", async () => {
+    role.approve = false;
+    nav.params = new URLSearchParams({ source: "cleaning" });
+    vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue(list);
+    vi.spyOn(cleaningApi, "getDedupPreview").mockResolvedValue({ merge_preview: {} });
+    renderWithQuery(<GoldenRecordMergePage />);
+    fireEvent.click(await screen.findByText("7"));
+    expect(await screen.findByRole("button", { name: "Merge. Needs Data owner on all systems — Request access" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Keep A" })).not.toBeInTheDocument();
+  });
+
   it("cancelling the keep confirmation merges nothing", async () => {
     nav.params = new URLSearchParams({ source: "cleaning", object: "sd_customer_master" });
     vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue(list);
@@ -205,6 +216,9 @@ describe("Reviewing one pair", () => {
 
     const mergeButton = screen.getByRole("button", { name: "Merge" });
     expect(mergeButton).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Not a match" })).toBeDisabled();
+    expect(screen.getByText("Reason (required), kept in the merge history")).toBeInTheDocument();
+    expect(screen.getByText("Give a reason to merge or mark not a match")).toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Same company" } });
     await waitFor(() => expect(mergeButton).toBeEnabled());
     fireEvent.click(mergeButton);
@@ -242,7 +256,9 @@ describe("Reviewing one pair", () => {
     vi.spyOn(matchReviewApi, "getReviewPair").mockResolvedValue(detail);
     const merge = vi.spyOn(matchReviewApi, "mergePair");
     renderWithQuery(<GoldenRecordMergePage />);
-    expect(await screen.findByText(/needs the approve permission/)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Merge. Needs Data owner on all systems — Request access" })).toBeDisabled();
+    expect(screen.getByText("Merging a pair or marking it not a match needs Data owner on all systems")).toBeInTheDocument();
+    expect(screen.queryByText(/approve permission/)).not.toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(merge).not.toHaveBeenCalled();
   });

@@ -6,11 +6,12 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, Status, Textarea, buildDrillHref, type RecordStatus } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Select, Skeleton, Status, Textarea, buildDrillHref, type RecordStatus } from "@/design";
 import { RowLink, actionColumn } from "@/components/mdm/ledger";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
+import { usePeople } from "@/components/mdm/use-people";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -51,6 +52,8 @@ export default function GlossaryTermPage() {
   const { can } = useRole();
   const canApprove = can("approve");
   const canDraft = can("trigger_ai");
+  // Names the steward; an approver with a readable user list can also hand the term to someone (PUT data_steward_id).
+  const { people, nameOf } = usePeople();
   const [editDef, setEditDef] = useState<string | null>(null);
   const [draft, setDraft] = useState<AIDraftResponse | null>(null);
 
@@ -210,7 +213,17 @@ export default function GlossaryTermPage() {
           <dt className="m-ink-3">Technical name</dt>
           <dd><Mono>{term.technical_name}</Mono></dd>
           <dt className="m-ink-3">Steward</dt>
-          <dd>{term.data_steward_id ?? "Unassigned"}</dd>
+          <dd>
+            {canApprove && people.length ? (
+              <Select
+                label="Steward"
+                value={term.data_steward_id ?? ""}
+                options={[{ value: "", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name || p.email })),
+                  ...(term.data_steward_id && !people.some((p) => p.id === term.data_steward_id) ? [{ value: term.data_steward_id, label: "A user" }] : [])]}
+                onValueChange={(v) => { if (v !== (term.data_steward_id ?? "")) save.mutate({ data_steward_id: v }); }}
+              />
+            ) : term.data_steward_id ? nameOf(term.data_steward_id) ?? "A user" : "Unassigned"}
+          </dd>
         </dl>
       </Card>
 
