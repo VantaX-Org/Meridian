@@ -733,21 +733,25 @@ async def _forecast(src: Sources, vid: Optional[str], m: Match) -> dict:
                        facts=[fact(f"Days with a run: {days}", "Forecast", link["href"], days)])
     # The API leaves a horizon out (None) when the history is too short to project that far: speak to the
     # furthest one it gives.
-    def furthest(r: dict) -> tuple[str, float]:
-        return ("30 days", float(r["forecast_30d"])) if r.get("forecast_30d") is not None else ("7 days", float(r["forecast_7d"]))
-    f = rows[0] if m.module else min(rows, key=lambda r: furthest(r)[1])
+    def furthest(r: dict) -> tuple[str, str]:
+        return ("30 days", "30d") if r.get("forecast_30d") is not None else ("7 days", "7d")
+    f = rows[0] if m.module else min(rows, key=lambda r: float(r[f"forecast_{furthest(r)[1]}"]))
     name = module_name(str(f["module_id"]))
-    when, value = furthest(f)
-    text = (f"{name} is forecast at {value:.1f} in {when}, from {float(f['current_score']):.1f} now, "
-            f"with {float(f['confidence']):.0f}% confidence over {f.get('points')} {_plural(int(f.get('points') or 0), 'run')}.")
+    when, key = furthest(f)
+    value = float(f[f"forecast_{key}"])
+    low, high = f.get(f"forecast_{key}_low"), f.get(f"forecast_{key}_high")
+    rng = f" (likely between {float(low):.1f} and {float(high):.1f})" if low is not None and high is not None else ""
+    text = (f"{name} is forecast at {value:.1f} in {when}{rng}, from {float(f['current_score']):.1f} now, "
+            f"projected from {f.get('points')} {_plural(int(f.get('points') or 0), 'run')}.")
     if not m.module and len(rows) > 1:
         text += f" It is the lowest of {len(rows)} forecast objects."
     later = f", {value:.1f} in {when}" if when != "7 days" else ""
     facts = [fact(f"{name}: {float(f['current_score']):.1f} now, {float(f['forecast_7d']):.1f} in 7 days{later}",
                   "Forecast", link["href"], value),
-             fact(f"Confidence {float(f['confidence']):.0f}% over {f.get('points')} runs", "Forecast", link["href"],
-                  float(f["confidence"])),
+             fact(f"Projected from {f.get('points')} runs", "Forecast", link["href"], f.get("points")),
              fact(f"Objects forecast: {len(rows)}", "Forecast", link["href"], len(rows))]
+    if rng:
+        facts.insert(1, fact(f"{when} range: {float(low):.1f} to {float(high):.1f}", "Forecast", link["href"], value))
     data = [{"label": "Now", "value": float(f["current_score"])}, {"label": "7 days", "value": float(f["forecast_7d"])}]
     if when != "7 days":
         data.append({"label": when, "value": value})

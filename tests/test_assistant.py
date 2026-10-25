@@ -106,7 +106,8 @@ class FakeSources:
     async def forecast(self, module):
         return {"runs_seen": 6, "days_seen": 4, "early_warnings": [], "forecasts": [
             {"module_id": "material_master", "current_score": 61.0, "forecast_7d": 62.3, "forecast_30d": 65.8,
-             "forecast_90d": 70.0, "trend": "improving", "confidence": 72.0, "points": 4, "span_days": 30.0},
+             "forecast_90d": 70.0, "trend": "improving", "confidence": 72.0, "points": 4, "span_days": 30.0,
+             "forecast_30d_low": 61.2, "forecast_30d_high": 70.4},
             {"module_id": "fi_gl", "current_score": 93.0, "forecast_7d": 92.0, "forecast_30d": 88.5,
              "forecast_90d": 85.0, "trend": "declining", "confidence": 60.0, "points": 4, "span_days": 30.0},
         ]}
@@ -345,9 +346,11 @@ def test_value_at_risk_in_the_tenant_currency():
     assert out["data"][0] == {"label": "MRP RUN", "value": 135000}
 
 
-def test_forecast_names_the_lowest_object_and_its_confidence():
+def test_forecast_names_the_lowest_object_and_its_range():
     out = ask("What will the score be in 30 days?")
-    assert out["answer"].startswith("Material master is forecast at 65.8 in 30 days, from 61.0 now, with 72% confidence")
+    assert out["answer"].startswith("Material master is forecast at 65.8 in 30 days (likely between 61.2 and 70.4), "
+                                    "from 61.0 now, projected from 4 runs.")
+    assert "%" not in out["answer"] and out["grounded"]
     assert out["chart"] == "line"
 
 
