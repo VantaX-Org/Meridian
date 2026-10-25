@@ -27,7 +27,7 @@ function ParetoPanel({ title, data, id }: { title: string; data: Point[]; id: st
       {data.length ? (
         <ViewAsTable
           chart={<Pareto data={data} height={220} />}
-          table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar dense
+          table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar
             tableId={id} exportName={id} />} />
       ) : <EmptyState title="None in this view" />}
     </section>
@@ -77,7 +77,7 @@ export function ConformanceView({ runId, filters, rework, onClearFilters }: {
         <ParetoPanel title="Out-of-order steps" id="process-out-of-order"
           data={c.steps.filter((s) => s.out_of_order > 0).map((s) => ({ x: s.activity, y: s.out_of_order }))} />
       </div>
-      <DataTable columns={columns} data={steps} getRowId={(s) => s.activity} height="auto" dense
+      <DataTable columns={columns} data={steps} getRowId={(s) => s.activity} height="auto"
         tableId="process-conformance-steps" exportName={`process-conformance-${runId}`} />
     </div>
   );

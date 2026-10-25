@@ -185,13 +185,12 @@ export default function ReadinessPage() {
               data={blockers}
               getRowId={(c) => `${c.module}-${c.wave}`}
               hideToolbar
-              dense
               height="auto"
             />
           </div>
         ) : cells.length === 0 && failingAreas.length > 0 ? (
           <div role="region" aria-label="Blockers by S/4 area" tabIndex={0} className="overflow-x-auto">
-            <DataTable columns={areaColumns(run)} data={failingAreas} getRowId={(a) => a.area} hideToolbar dense height="auto" />
+            <DataTable columns={areaColumns(run)} data={failingAreas} getRowId={(a) => a.area} hideToolbar height="auto" />
           </div>
         ) : (
           <EmptyState variant="inline" title="No blockers in this run" detail={cells.length ? "Every object can load in its wave." : "No failing rule would stop an S/4 load."} action={<Link href={withScope("/objects", { run })} className="underline-offset-2 hover:underline">Open objects</Link>} />

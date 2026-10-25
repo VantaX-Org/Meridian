@@ -33,7 +33,7 @@ function DryRunResult({ result }: { result: Extract<RuleDraftDryRun, { evaluated
         <Stat label="Pass rate" value={`${(result.pass_rate * (result.pass_rate <= 1 ? 100 : 1)).toFixed(1)} %`} />
       </div>
       {result.sample.length > 0 ? (
-        <DataTable columns={columns} data={result.sample} getRowId={(r) => JSON.stringify(r)} hideToolbar dense height="auto" tableId="rule-draft-dry-run-sample" />
+        <DataTable columns={columns} data={result.sample} getRowId={(r) => JSON.stringify(r)} hideToolbar height="auto" tableId="rule-draft-dry-run-sample" />
       ) : null}
     </div>
   );

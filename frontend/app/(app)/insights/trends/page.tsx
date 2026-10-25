@@ -131,7 +131,7 @@ export default function TrendsPage() {
         </div>
         <div className="@5xl:col-span-12">
           <Card title="Run by run" meta={trend.length > 1 ? `${plural(fixedTotal, "rule")} fixed and ${newTotal.toLocaleString()} newly failing across these runs, each against the run before` : "Change appears after the second run"}>
-            <DataTable columns={runCols} data={byRun} getRowId={(r) => r.version_id} rowHref={(r) => runPageHref(r.version_id)} onRowClick={(r) => router.push(runPageHref(r.version_id))} hideToolbar dense height="auto" />
+            <DataTable columns={runCols} data={byRun} getRowId={(r) => r.version_id} rowHref={(r) => runPageHref(r.version_id)} onRowClick={(r) => router.push(runPageHref(r.version_id))} hideToolbar height="auto" />
           </Card>
         </div>
         <div className="@5xl:col-span-12">
@@ -139,7 +139,7 @@ export default function TrendsPage() {
             {movedRows.length === 0 && !moved.isLoading ? (
               <EmptyState variant="inline" title="No rule changed" detail={moved.isError ? "The rule changes did not load." : "No rule gained or lost failing records against the run before."} action={moved.isError ? <Button variant="secondary" onClick={() => void moved.refetch()}>Retry</Button> : <Link href={withScope("/insights/rules", { run })} className="underline-offset-2 hover:underline">Open failing rules</Link>} />
             ) : (
-              <DataTable columns={movedCols} data={movedRows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
+              <DataTable columns={movedCols} data={movedRows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
             )}
             {finding.drawer}
           </Card>

@@ -51,7 +51,7 @@ export function VariantsTable({ runId, filters, canExport, onOpenCase, onClearFi
   ];
 
   return (
-    <DataTable columns={columns} data={rows} getRowId={(v) => v.hash} height="auto" dense
+    <DataTable columns={columns} data={rows} getRowId={(v) => v.hash} height="auto"
       tableId="process-variants" exportName={`process-variants-${runId}`}
       renderDrawer={(v) => (
         <div className="grid gap-4">

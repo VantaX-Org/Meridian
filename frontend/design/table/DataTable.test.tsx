@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { DataTable } from "./DataTable";
 import { textColumn, numberColumn, idColumn, barFill, type CellMeta } from "./columns";
 import { Pager } from "./Pager";
@@ -240,6 +240,19 @@ describe("DataTable", () => {
     expect(screen.getByText("A1")).toHaveClass("m-mono");
     expect(screen.getByText(/^1\D?234$/)).toHaveClass("text-right", "m-numeric");
     expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "32px" });
+  });
+
+  it("defaults to the 40px row and follows the user's density tier", async () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "40px" });
+    document.documentElement.style.setProperty("--m-row-h", "48px");
+    document.documentElement.dataset.density = "comfortable";
+    try {
+      await waitFor(() => expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "48px" }));
+    } finally {
+      document.documentElement.style.removeProperty("--m-row-h");
+      delete document.documentElement.dataset.density;
+    }
   });
 
   it("marks selected rows and shows the floating bulk bar", () => {

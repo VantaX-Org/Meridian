@@ -424,7 +424,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
       {/* The ledger: the blocking findings ranked by records affected, each with its one action. */}
       <Card title="Blocking findings" dataTour="process-readiness" meta={`Fields that stop a process step, most records first${blockingFindings.length > 10 ? `; top 10 of ${blockingFindings.length.toLocaleString()}` : ""}`}>
         {blockingFindings.length ? (
-          <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar dense height="auto" />
+          <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar height="auto" />
         ) : <EmptyState title="Nothing blocks go-live" detail="No mandatory field fails in this process." action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run: latest.id, module: object })}>Open failing rules</Link>} />} />}
       </Card>
 
@@ -584,7 +584,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
                   ] as ColumnDef<(typeof bottlenecks)[number]>[]}
                   data={bottlenecks.slice(0, 8)}
                   getRowId={(b) => b.id}
-                  hideToolbar dense height="auto"
+                  hideToolbar height="auto"
                 />
               ) : <EmptyState title="Every step passes its checks" detail="No record in a mapped step fails a rule." action={openLink("Open failing rules", withScope("/insights/rules", { run: latest.id, module: active ?? undefined }))} />}
             </Card>

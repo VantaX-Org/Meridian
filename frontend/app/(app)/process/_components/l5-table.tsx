@@ -37,7 +37,7 @@ export function L5Table({ l4, onOpen }: { l4: L4; onOpen?: (id: string) => void 
     { id: "fields", header: "Fields", cell: ({ row }) => fmtCount(row.original.fields.length) },
   ];
   return (
-    <DataTable columns={columns} data={l4.activities} getRowId={(a) => a.id} height="auto" dense
+    <DataTable columns={columns} data={l4.activities} getRowId={(a) => a.id} height="auto"
       tableId="process-l5" exportName={`process-${l4.id}-activities`} />
   );
 }

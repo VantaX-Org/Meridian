@@ -156,14 +156,14 @@ export default function OperationsPage() {
       <TeamCard />
       {bottlenecks.length > 0 && (
         <Section title="Bottlenecks" height={120} query={ops} meta="Each waiting stage and what would clear it">
-          <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar dense height="auto" />
+          <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar height="auto" />
         </Section>
       )}
       <Section title="Sprint plans" height={120} query={sprints} meta="Suggested batches of fixes and what each would do to the score">
         {plans.length === 0 ? (
           <EmptyState variant="inline" title="No sprint plan yet" detail="Plans are suggested once Fix work holds open records." action={<Link href="/fix" className="underline-offset-2 hover:underline">Open Fix work</Link>} />
         ) : (
-          <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar dense height="auto" />
+          <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar height="auto" />
         )}
       </Section>
     </InsightFrame>

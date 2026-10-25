@@ -120,9 +120,9 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
         table={
           <div className="grid gap-3">
             <DataTable columns={nodeColumns(ownerL1?.id)} data={ranked} getRowId={(n) => n.id} onRowClick={(n) => click(n.id)}
-              height="auto" hideToolbar dense tableId="process-flow-nodes" exportName={`process-${d.node.id}-nodes`} />
+              height="auto" hideToolbar tableId="process-flow-nodes" exportName={`process-${d.node.id}-nodes`} />
             <DataTable columns={edgeColumns} data={d.edges} getRowId={(e) => `${e.source}>${e.target}`}
-              height="auto" hideToolbar dense tableId="process-flow-edges" exportName={`process-${d.node.id}-edges`} />
+              height="auto" hideToolbar tableId="process-flow-edges" exportName={`process-${d.node.id}-edges`} />
           </div>
         }
       />

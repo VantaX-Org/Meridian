@@ -76,7 +76,7 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
           detail={q.data?.shipped ? "This rule runs as shipped, unchanged" : "Versions appear when the rule is changed"}
         />
       ) : (
-        <DataTable columns={columns} data={versions} getRowId={(v) => String(v.version)} hideToolbar dense height="auto" tableId="rule-versions" />
+        <DataTable columns={columns} data={versions} getRowId={(v) => String(v.version)} hideToolbar height="auto" tableId="rule-versions" />
       )}</Async>
       <ConfirmDialog
         open={retiring !== null}

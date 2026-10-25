@@ -64,7 +64,7 @@ export function LiveSection() {
         ) : isListFailure(systemsQ) ? (
           <ErrorState message="Live system state could not be read" onRetry={() => void systemsQ.refetch()} />
         ) : systems.length ? (
-          <DataTable columns={systemColumns} data={systems} getRowId={(s) => s.id} rowHref={healthHref} onRowClick={(s) => router.push(healthHref(s))} height="auto" dense hideToolbar tableId="home-systems" />
+          <DataTable columns={systemColumns} data={systems} getRowId={(s) => s.id} rowHref={healthHref} onRowClick={(s) => router.push(healthHref(s))} height="auto" hideToolbar tableId="home-systems" />
         ) : (
           <EmptyState title="No systems connected" action={can("manage_systems") ? link("/systems?connect=1", "Connect a system") : undefined} />
         )}
@@ -72,7 +72,7 @@ export function LiveSection() {
 
       <Card title="Jobs running" padding="sm">
         {active.length ? (
-          <DataTable columns={jobColumns} data={active} getRowId={(j) => j.id} height="auto" dense hideToolbar tableId="home-jobs" />
+          <DataTable columns={jobColumns} data={active} getRowId={(j) => j.id} height="auto" hideToolbar tableId="home-jobs" />
         ) : (
           <EmptyState title="Nothing is running" action={can("trigger_sync") ? link("/systems", "Run extraction") : undefined} />
         )}

@@ -69,7 +69,8 @@ export interface DataTableProps<T> {
    * Omit both to keep the table's own uncontrolled sort state. */
   sorting?: SortingState;
   onSortingChange?: (sorting: SortingState) => void;
-  /** Compact rows (`--m-row-h-dense`). Initial density; the toolbar toggle takes over from there. */
+  /** Compact rows (`--m-row-h-dense`). Off by default: rows are `--m-row-h`, which the user's density preference
+   * (`<html data-density>`) retunes. Initial density only; the toolbar toggle takes over from there. */
   dense?: boolean;
   /** Key for saved views (per viewer, localStorage). Defaults to the column ids joined, so two tables
    * with the same columns share views; pass an explicit id when that matters. */
@@ -135,7 +136,7 @@ function PrefetchRow({ prefetchInfo, children, ...rest }: { prefetchInfo?: RowPr
 
 export function DataTable<T>({
   columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, maxHeight: maxHeightProp, height: heightProp, hideSearch = false, renderExpanded, emptyMessage, emptyAction,
-  sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = true,
+  sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = false,
   tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch, dataTour,
   label = "Data table", rowLabel,
 }: DataTableProps<T>) {
@@ -171,7 +172,13 @@ export function DataTable<T>({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [rowHeights, setRowHeights] = useState({ comfortable: ROW_H_FALLBACK, dense: ROW_H_DENSE_FALLBACK });
   useEffect(() => {
-    setRowHeights({ comfortable: readPx("--m-row-h", ROW_H_FALLBACK), dense: readPx("--m-row-h-dense", ROW_H_DENSE_FALLBACK) });
+    const read = () => setRowHeights({ comfortable: readPx("--m-row-h", ROW_H_FALLBACK), dense: readPx("--m-row-h-dense", ROW_H_DENSE_FALLBACK) });
+    read();
+    // The density preference lands on <html data-density> (presentation mode on data-present): re-read the tiers.
+    if (typeof MutationObserver === "undefined") return;
+    const mo = new MutationObserver(read);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-density", "data-present"] });
+    return () => mo.disconnect();
   }, []);
   const rowH = dense ? rowHeights.dense : rowHeights.comfortable;
   const uid = useId();

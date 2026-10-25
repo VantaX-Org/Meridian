@@ -218,7 +218,7 @@ function ImpactPanel({
       />
     );
   }
-  return <DataTable columns={impactColumns(currency, run)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
+  return <DataTable columns={impactColumns(currency, run)} data={rows} getRowId={(row) => row.feature} hideToolbar height="auto" />;
 }
 
 export default function ImpactPage() {
