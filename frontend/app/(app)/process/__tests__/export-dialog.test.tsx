@@ -26,7 +26,7 @@ describe("process ExportDialog", () => {
     const pptx = vi.spyOn(download, "downloadAuthenticated").mockResolvedValue();
     const signavio = vi.spyOn(discovery, "exportRun").mockResolvedValue();
     mount();
-    await userEvent.click(screen.getByLabelText("PowerPoint (.pptx)"));
+    await userEvent.click(screen.getByLabelText("Reference model deck (.pptx)"));
     await userEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(pptx).toHaveBeenCalledWith("/api/v1/process-designer/reference/export/pptx", "meridian-PTP-reference.pptx"));
     expect(signavio).not.toHaveBeenCalled();

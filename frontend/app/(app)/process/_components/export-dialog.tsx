@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Dialog, Mono, Notice } from "@/design";
+import { Button, Dialog, Mono, Notice, RadioGroup } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { pptxExportUrl } from "@/lib/api/process-designer";
 import { exportRun, type ProcessFilterParams } from "@/lib/api/process-discovery";
@@ -48,47 +48,21 @@ export function ExportDialog({ open, onOpenChange, runId, l1, node, nodeName, fi
         <Button onClick={() => run.mutate()} pending={run.isPending}>Export</Button>
       </>}>
       <div className="grid gap-4">
-        <fieldset className="grid gap-1">
-          <legend className="m-field-label mb-1">Format</legend>
-          <label className="flex items-center gap-2">
-            <input type="radio" name="format" checked={format === "signavio"} onChange={() => setFormat("signavio")} />
-            Signavio (BPMN 2.0)
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="radio" name="format" checked={format === "pptx"} onChange={() => setFormat("pptx")} />
-            PowerPoint (.pptx)
-          </label>
-        </fieldset>
+        <RadioGroup legend="Format" name="format" value={format} onValueChange={(v) => setFormat(v as "signavio" | "pptx")}
+          options={[{ value: "signavio", label: "Signavio (BPMN 2.0)" }, { value: "pptx", label: "Reference model deck (.pptx)" }]} />
         {format === "pptx" ? (
           <p className="m-ink-3">
             A deck of the reference L1 to L5 process model: a summary, one slide per L1 and one per L4. Discovered cases and filters are not part of the deck.
           </p>
         ) : (<>
-        <fieldset className="grid gap-1">
-          <legend className="m-field-label mb-1">Scope</legend>
-          <label className="flex items-center gap-2">
-            <input type="radio" name="scope" checked={scope === "package"} onChange={() => setScope("package")} />
-            Whole <Mono>{l1}</Mono> package (.zip, one .bpmn per process)
-          </label>
-          {node && node !== l1 && (
-            <label className="flex items-center gap-2">
-              <input type="radio" name="scope" checked={scope === "node"} onChange={() => setScope("node")} />
-              {nodeName} only (.bpmn)
-            </label>
-          )}
-        </fieldset>
+        <RadioGroup legend="Scope" name="scope" value={scope} onValueChange={(v) => setScope(v as "package" | "node")}
+          options={[
+            { value: "package", label: `Whole ${l1} package (.zip, one .bpmn per process)` },
+            ...(node && node !== l1 ? [{ value: "node", label: `${nodeName} only (.bpmn)` }] : []),
+          ]} />
         {filtered && (
-          <fieldset className="grid gap-1">
-            <legend className="m-field-label mb-1">Filters</legend>
-            <label className="flex items-center gap-2">
-              <input type="radio" name="filters" checked={useFilters} onChange={() => setUseFilters(true)} />
-              The filters of this view
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="radio" name="filters" checked={!useFilters} onChange={() => setUseFilters(false)} />
-              Every case in the run
-            </label>
-          </fieldset>
+          <RadioGroup legend="Filters" name="filters" value={useFilters ? "view" : "all"} onValueChange={(v) => setUseFilters(v === "view")}
+            options={[{ value: "view", label: "The filters of this view" }, { value: "all", label: "Every case in the run" }]} />
         )}
         <p className="m-ink-3">
           Edges carried by fewer than {fmtShare(EDGE_THRESHOLD)} of cases are left out. Each step keeps its case count, share and median time.

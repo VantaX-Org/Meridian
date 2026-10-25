@@ -2,20 +2,24 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Button, Checkbox, Dialog, Field, Input, Mono, Notice } from "@/design";
+import { Button, Checkbox, Dialog, Field, Input, Mono, Notice, RadioGroup } from "@/design";
 import { startRuns, type CatalogueRow, type RunMode } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 
-/** §7.3 "New run": L1 multi-select (all by default), mode (incremental once a run completed), period start (full only). */
+/**
+ * §7.3 "New run": L1 multi-select (all by default, or only the `?l1=` the link named), mode (incremental once a
+ * run completed), period start (full only).
+ */
 export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows }: {
   open: boolean; onOpenChange: (open: boolean) => void; systemId: string; systemName: string; rows: CatalogueRow[];
 }) {
   const qc = useQueryClient();
   const router = useRouter();
+  const only = useSearchParams().get("l1");
   const hasCompleted = rows.some((r) => r.last_run && r.coverage !== "reference");
-  const [l1s, setL1s] = useState<string[]>(() => rows.map((r) => r.l1));
+  const [l1s, setL1s] = useState<string[]>(() => (only && rows.some((r) => r.l1 === only) ? [only] : rows.map((r) => r.l1)));
   const [mode, setMode] = useState<RunMode>(hasCompleted ? "incremental" : "full");
   const [periodFrom, setPeriodFrom] = useState("");
   const start = useMutation({
@@ -48,17 +52,11 @@ export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows }:
             ))}
           </div>
         </fieldset>
-        <fieldset className="grid gap-1">
-          <legend className="m-field-label mb-1">Mode</legend>
-          <label className="flex items-center gap-2">
-            <input type="radio" name="mode" checked={mode === "incremental"} onChange={() => setMode("incremental")} />
-            Incremental: from the last run, with a 14-day overlap
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="radio" name="mode" checked={mode === "full"} onChange={() => setMode("full")} />
-            Full
-          </label>
-        </fieldset>
+        <RadioGroup legend="Mode" name="mode" value={mode} onValueChange={(v) => setMode(v as RunMode)}
+          options={[
+            { value: "incremental", label: "Incremental: from the last run, with a 14-day overlap" },
+            { value: "full", label: "Full" },
+          ]} />
         {mode === "full" && (
           <Field label="Period start (blank: the whole history)">
             <Input type="date" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />

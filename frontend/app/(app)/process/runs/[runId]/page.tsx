@@ -18,6 +18,11 @@ import { fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, stageLabel } fro
 
 type TableRow = { table: string; rows: number; partial: boolean; truncated: boolean };
 
+/** The cause category of a failed run, from its error text. */
+const causeOf = (e: string | null) =>
+  !e ? "The run failed" : /RFC|connect|timeout|refused|unreachable/i.test(e) ? "Connection to SAP failed"
+    : /extract|read failed|table/i.test(e) ? "Extraction failed" : /licen[cs]e/i.test(e) ? "Licence refused the run" : "The run failed";
+
 const TABLE_COLUMNS: ColumnDef<TableRow>[] = [
   { accessorKey: "table", header: "Table", cell: ({ row }) => <Mono>{row.original.table}</Mono> },
   { accessorKey: "rows", header: "Rows", cell: ({ row }) => fmtCount(row.original.rows) },
@@ -25,7 +30,7 @@ const TABLE_COLUMNS: ColumnDef<TableRow>[] = [
       <span className="flex gap-1">
         {row.original.partial && <Pill tone="at-risk">Partial</Pill>}
         {row.original.truncated && <Pill tone="at-risk">Truncated</Pill>}
-        {!row.original.partial && !row.original.truncated && <Pill tone="go">Complete</Pill>}
+        {!row.original.partial && !row.original.truncated && <Status kind="lifecycle" value="done" />}
       </span>
     ) },
 ];
@@ -75,7 +80,7 @@ export default function ProcessRunPage() {
           ? `${stageLabel(job)}, ${Math.round(job?.percent ?? 0)}%` : `started ${relativeTime(r.started_at)}`}</>}
         status={<><RunStatusPill status={r.status} />{r.coverage && <CoveragePill coverage={r.coverage} />}</>} />
       <InsightHeader
-        situation={{ sentence: `${r.l1} ${r.mode === "incremental" ? "incremental" : "full"} run, ${active ? "in progress" : r.status}.`,
+        situation={{ sentence: `${name} ${r.mode === "incremental" ? "incremental" : "full"} run, ${active ? "in progress" : r.status}.`,
           tone: r.status === "failed" ? "no-go" : r.status === "completed" ? "go" : "neutral" }}
         changed={{ sentence: r.finished_at ? `Finished ${relativeTime(r.finished_at)}.` : `Started ${relativeTime(r.started_at)}.` }}
         why={r.status === "completed" && r.coverage !== "reference"
@@ -83,8 +88,8 @@ export default function ProcessRunPage() {
               tone: fitnessTone(fitness) }
           : { sentence: r.status === "failed" ? "No model was produced." : "Figures appear once the run completes." }}
         next={r.status === "completed"
-          ? { sentence: `Read the as-is ${r.l1} flow.`,
-              action: { label: `Open ${r.l1}`, href: l1Href(r.l1, r.system_id, r.coverage === "reference" ? undefined : r.id) } }
+          ? { sentence: `Read the as-is ${name} flow.`,
+              action: { label: `Open ${name}`, href: l1Href(r.l1, r.system_id, r.coverage === "reference" ? undefined : r.id) } }
           : r.status === "failed"
             ? (canRun
               ? { sentence: "Fix the cause, then run the process again.", action: { label: "Retry", onClick: () => retry.mutate() } }
@@ -92,7 +97,7 @@ export default function ProcessRunPage() {
             : { sentence: "Leave this page open or come back later; the run continues in the background." }}
       />
       {r.status === "failed" && (
-        <ErrorState message={r.error ?? "The run failed without a message."} onRetry={canRun ? () => retry.mutate() : undefined} />
+        <ErrorState title={causeOf(r.error)} message={r.error ?? "The run failed without a message."} />
       )}
       {retry.isError && <Notice tone="danger" title="Could not start the retry">{apiErrorMessage(retry.error)}</Notice>}
       {r.coverage === "reference" && s.reason && (

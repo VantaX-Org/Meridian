@@ -74,7 +74,7 @@ describe("process catalogue", () => {
     vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
       { ...reference("PTP"), coverage: "discovered", last_run: lastRun({}) }, ...L1S.slice(1).map(reference)]);
     renderWithQuery(<ProcessCataloguePage />);
-    expect(await screen.findByRole("link", { name: /Open PTP variants/ })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /Open PTP process variants/ })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Run .*discovery/ })).toBeNull();
   });
 
@@ -145,6 +145,14 @@ describe("discovery runs", () => {
       l1s: L1S.filter((l) => l !== "OTC"), mode: "full", period_from: null }));
   });
 
+  it("preselects only the ?l1= process the home link named", async () => {
+    h.qs = "new=1&l1=OTC";
+    const start = vi.spyOn(pdApi, "startRuns").mockResolvedValue({ job_id: "job-9", run_ids: ["r1"] });
+    renderWithQuery(<ProcessRunsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Start run" }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith("sys-1", { l1s: ["OTC"], mode: "full", period_from: null }));
+  });
+
   it("hides New run from a user without run_process_discovery", async () => {
     h.can = () => false;
     vi.spyOn(pdApi, "listRuns").mockResolvedValue([RUN]);
@@ -183,6 +191,6 @@ describe("run detail", () => {
     renderWithQuery(<ProcessRunPage />);
     expect(await screen.findByText("CDHDR")).toBeTruthy();
     expect(screen.getByText("Truncated")).toBeTruthy();
-    expect(screen.getByText("Complete")).toBeTruthy();
+    expect(screen.getAllByText("Done").length).toBeGreaterThan(0);
   });
 });

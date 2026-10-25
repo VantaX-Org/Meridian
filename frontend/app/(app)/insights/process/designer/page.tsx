@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
+import { Button, ConfirmDialog, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import {
   adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
@@ -85,7 +85,7 @@ interface EditorProps {
   overlayOn: boolean;
   variants: ProcessVariant[];
   latestId: string | undefined;
-  findingHref: (module: string, checkId: string) => string | undefined;
+  findingHref: (module: string, checkId: string) => string;
 }
 
 function Editor(p: EditorProps) {
@@ -109,6 +109,8 @@ function Editor(p: EditorProps) {
   const [fail, setFail] = useState<SaveFailure | null>(null);
   const [prompt, setPrompt] = useState(false);
   const [naming, setNaming] = useState<string | null>(null);
+  // A model picked while there are unsaved edits waits here for "Discard and switch".
+  const [switching, setSwitching] = useState<string | null>(null);
   const dirty = doc !== initial;
 
   const go = (patch: Record<string, string | null>) => {
@@ -194,8 +196,13 @@ function Editor(p: EditorProps) {
     move: (id, dir) => edit((d) => D.moveItem(d, id, dir)),
   };
 
-  const exportZip = () => downloadAuthenticated(
-    signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip");
+  const switchTo = (m: string) => go({ model: m, v: null, attr: null, node: null });
+  const exportZip = useMutation({
+    mutationFn: () => downloadAuthenticated(
+      signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip"),
+    onSuccess: () => toast.success("Signavio package exported"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
   const exportPptx = useMutation({
     mutationFn: () => downloadAuthenticated(pptxExportUrl(model, viewingOld ? versionNo : undefined), "process-model.pptx"),
     onSuccess: () => toast.success("PowerPoint exported"),
@@ -211,12 +218,17 @@ function Editor(p: EditorProps) {
             label="Process model"
             value={model}
             options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
-            onValueChange={(m) => !dirty && go({ model: m, v: null, attr: null, node: null })} />
+            onValueChange={(m) => { if (m === model) return; if (dirty) setSwitching(m); else switchTo(m); }} />
           {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
           {canDesign ? <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button> : null}
-          {canExport ? <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button> : null}
+          {canExport ? <Button variant="secondary" disabled={dirty} pending={exportZip.isPending} onClick={() => exportZip.mutate()}>Export to Signavio</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} pending={exportPptx.isPending} onClick={() => exportPptx.mutate()}>Export to PowerPoint</Button> : null}
         </>} />
+
+      <ConfirmDialog open={switching !== null} onOpenChange={(o) => { if (!o) setSwitching(null); }}
+        title="Discard unsaved changes?" body="Switching models drops the edits you have not saved to this one."
+        confirmLabel="Discard and switch" cancelLabel="Keep editing" tone="danger"
+        onConfirm={() => { const m = switching; setSwitching(null); setDoc(initial); if (m) switchTo(m); }} />
 
       {naming !== null ? (
         <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (naming.trim()) create.mutate({ name: naming.trim(), from: model }); }}>
@@ -254,16 +266,16 @@ function Editor(p: EditorProps) {
         </form>
       ) : null}
 
-      <div className="flex items-center gap-2">
+      <div role="group" aria-label="Overlay" className="flex items-center gap-2">
         <span className="m-text-body">Overlay</span>
-        <Button variant={overlayOn ? "primary" : "secondary"} onClick={() => go({ overlay: null })}>Latest analysis</Button>
-        <Button variant={!overlayOn ? "primary" : "secondary"} onClick={() => go({ overlay: "none" })}>None</Button>
+        <Button variant="secondary" aria-pressed={overlayOn} onClick={() => go({ overlay: null })}>Latest analysis</Button>
+        <Button variant="secondary" aria-pressed={!overlayOn} onClick={() => go({ overlay: "none" })}>None</Button>
       </div>
 
       <div className="flex gap-6 flex-wrap">
         <Stat label="Activities" value={acts.length} delta={`${D.allL4(doc).length} sub-processes in ${doc.l1.length} processes.`} />
-        <Stat label="Blocked" value={ov ? count("red") : "—"} delta={noOverlay ?? (count("red") ? "Activities with a blocking failure." : "No activity is blocked.")} />
-        <Stat label="Degraded" value={ov ? count("amber") : "—"} delta={noOverlay ?? (count("amber") ? "Activities with some failing fields." : "No activity is degraded.")} />
+        <Stat label="No-go" value={ov ? count("red") : "—"} delta={noOverlay ?? (count("red") ? "Activities with a blocking failure." : "No activity is blocked.")} />
+        <Stat label="At risk" value={ov ? count("amber") : "—"} delta={noOverlay ?? (count("amber") ? "Activities with some failing fields." : "No activity is at risk.")} />
         <Stat label="Discovered variants" value={p.latestId ? p.variants.length : "—"} delta={p.latestId ? "Document types found in the data." : "Run an analysis to discover variants."} />
         <Stat label="Unmapped" value={p.latestId ? unmapped.length : "—"}
           delta={p.latestId ? (unmapped.length ? "Found in the data, not on any sub-process." : "Every variant sits on a sub-process.") : "Run an analysis to find unmapped variants."} />

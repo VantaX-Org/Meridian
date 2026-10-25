@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, Card, DataTable, DrillLink, EmptyState, Mono, Pill, Select, Skeleton, type InsightHeaderProps, type PillTone,
+  Button, DataTable, DrillLink, EmptyState, Mono, Pill, Select, type InsightHeaderProps, type PillTone,
 } from "@/design";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems } from "@/lib/api/connectivity";
@@ -100,71 +100,17 @@ export function processInsight(rows: CatalogueRow[], systemName: string, systemI
       sentence: finished.length ? `Last run finished ${relativeTime(finished[finished.length - 1])}.` : "No discovery run yet.",
     },
     why: worst
-      ? { sentence: `${worst.l1} fitness ${fmtFitness(worst.last_run?.fitness)} is the lowest.`,
+      ? { sentence: `${worst.name} fitness ${fmtFitness(worst.last_run?.fitness)} is the lowest.`,
           tone: fitnessTone(worst.last_run?.fitness), href: l1Href(worst.l1, systemId, worst.last_run?.id, "conformance") }
       : { sentence: "Conformance is measured once a process is discovered." },
     next: canRun
       ? { sentence: found.length ? "Refresh the event log since the last run." : "Extract the event tables and mine every process.",
           action: { label: found.length ? "Run incremental discovery" : "Run discovery", href: `/process/runs?system=${systemId}&new=1` } }
       : top
-        ? { sentence: `Read the most frequent ${top.l1} paths.`,
-            action: { label: `Open ${top.l1} variants`, href: l1Href(top.l1, systemId, top.last_run?.id, "variants") } }
+        ? { sentence: `Read the most frequent ${top.name} paths.`,
+            action: { label: `Open ${top.name} variants`, href: l1Href(top.l1, systemId, top.last_run?.id, "variants") } }
         : { sentence: "Ask a process analyst to run discovery." },
   };
-}
-
-function Figure({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-0.5">
-      <span className="m-text-label m-ink-3">{label}</span>
-      <span className="m-numeric m-text-body m-ink">{children}</span>
-    </div>
-  );
-}
-
-export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; systemId: string; jobs: Job[] }) {
-  return (
-    <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
-      {rows.map((r) => {
-        const run = r.last_run;
-        const active = r.in_progress;
-        const failed = r.failed;
-        const done = !!run && r.coverage !== "reference";
-        return (
-          <Card key={r.l1} title={r.name} meta={<Mono>{r.l1}</Mono>} padding="sm">
-            <div className="grid gap-2">
-              <div><CoveragePill coverage={r.coverage} /></div>
-              {r.reason && <p className="m-text-meta m-ink-3">{r.reason}</p>}
-              {active && (
-                <div className="grid gap-1">
-                  <Skeleton height={16} />
-                  <span className="m-text-meta m-ink-3">
-                    {stageLabel(jobs.find((j) => j.id === active.job_id)) ?? <RunStatusPill status={active.status} />}
-                  </span>
-                </div>
-              )}
-              {failed && !active && (
-                <span className="flex items-center gap-2"><RunStatusPill status="failed" />
-                  <DrillLink href={`/process/runs/${failed.id}`}>See the error</DrillLink></span>
-              )}
-              {done && (
-                <div className="grid grid-cols-4 gap-2">
-                  <Figure label="Cases"><DrillLink href={l1Href(r.l1, systemId, run.id, "cases")}>{fmtCount(run.cases)}</DrillLink></Figure>
-                  <Figure label="Variants"><DrillLink href={l1Href(r.l1, systemId, run.id, "variants")}>{fmtCount(run.variants)}</DrillLink></Figure>
-                  <Figure label="Fitness"><DrillLink href={l1Href(r.l1, systemId, run.id, "conformance")}>{fmtFitness(run.fitness)}</DrillLink></Figure>
-                  <Figure label="Median">{fmtSeconds(run.median_seconds)}</Figure>
-                </div>
-              )}
-              <div className="flex items-center justify-between m-text-meta m-ink-3">
-                <span>{run?.finished_at ? `Last run ${relativeTime(run.finished_at)}` : "Not run yet"}</span>
-                <DrillLink href={l1Href(r.l1, systemId, done ? run.id : undefined)}>Open {r.l1}</DrillLink>
-              </div>
-            </div>
-          </Card>
-        );
-      })}
-    </div>
-  );
 }
 
 export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[]; systemId: string; jobs: Job[] }) {
@@ -208,13 +154,18 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
     onRowClick={(r) => router.push(href(r))} rowHref={href} tableId="process-catalogue" dataTour="process-catalogue" exportName="process-catalogue" />;
 }
 
-export function RunsTable({ runs, jobs, systemName, hideToolbar }: {
-  runs: DiscoveryRun[]; jobs: Job[]; systemName: string; hideToolbar?: boolean;
+/** `names`: catalogue L1 id to process name; a run reads as its process, the id in Mono beside it. */
+export function RunsTable({ runs, jobs, systemName, names, hideToolbar }: {
+  runs: DiscoveryRun[]; jobs: Job[]; systemName: string; names?: ReadonlyMap<string, string>; hideToolbar?: boolean;
 }) {
   const job = (r: DiscoveryRun) => jobs.find((j) => j.id === r.job_id);
+  const nameOf = (l1: string) => names?.get(l1) ?? l1;
   const columns: ColumnDef<DiscoveryRun>[] = [
     { id: "system", header: "System", cell: () => systemName },
-    { accessorKey: "l1", header: "L1", cell: ({ row }) => <DrillLink href={`/process/runs/${row.original.id}`}><Mono>{row.original.l1}</Mono></DrillLink> },
+    { accessorKey: "l1", header: "Process", cell: ({ row }) => (
+        <span className="flex items-baseline gap-2">
+          <DrillLink href={`/process/runs/${row.original.id}`}>{nameOf(row.original.l1)}</DrillLink><Mono>{row.original.l1}</Mono>
+        </span>) },
     { accessorKey: "mode", header: "Mode", cell: ({ row }) => (row.original.mode === "incremental" ? "Incremental" : "Full") },
     { accessorKey: "status", header: "Status", cell: ({ row }) => <RunStatusPill status={row.original.status} /> },
     { id: "stage", header: "Stage", cell: ({ row }) => stageLabel(job(row.original)) ?? "—" },
@@ -225,7 +176,7 @@ export function RunsTable({ runs, jobs, systemName, hideToolbar }: {
     { id: "cases", header: "Cases", cell: ({ row }) => fmtCount(row.original.stats?.cases) },
     { accessorKey: "coverage", header: "Coverage", cell: ({ row }) => (row.original.coverage ? <CoveragePill coverage={row.original.coverage} /> : "—") },
     { id: "open", header: "", size: 80, enableSorting: false, cell: ({ row }) => (
-        <Link href={`/process/runs/${row.original.id}`} className="m-ink-accent-ink underline" aria-label={`Open run ${row.original.l1}`}>Open</Link>) },
+        <Link href={`/process/runs/${row.original.id}`} className="m-ink-accent-ink underline" aria-label={`Open run ${nameOf(row.original.l1)}`}>Open</Link>) },
   ];
   return <DataTable columns={columns} data={runs} getRowId={(r) => r.id} height="auto" hideToolbar={hideToolbar}
     tableId="process-runs" exportName="process-discovery-runs" />;

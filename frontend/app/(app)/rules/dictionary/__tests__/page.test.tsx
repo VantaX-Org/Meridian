@@ -11,7 +11,7 @@ describe("rules dictionary page", () => {
       { table: "MARA", field: "MATNR", domain: "MATNR", data_element: "MATNR", length: 40, missing: false } as api.DdicField,
     ]);
     renderWithQuery(<RuleDictionaryPage />);
-    expect(screen.getByText(/No dictionary snapshot yet/)).toBeInTheDocument();
+    expect(screen.getByText("Type TABLE.FIELD names to look them up")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Fields"), "MARA.MATNR");
     expect(await screen.findByText("MARA.MATNR")).toBeInTheDocument();
   });

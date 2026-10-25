@@ -9,6 +9,8 @@ import * as lineageApi from "@/lib/api/lineage";
 import type { RuleLineage } from "@/lib/api/lineage";
 import * as ownersApi from "@/lib/api/owners";
 import * as usersApi from "@/lib/api/users";
+import * as designerApi from "@/lib/api/process-designer";
+import type { ProcessModelDocument } from "@/types/process-model";
 import RulePage from "../page";
 
 vi.mock("next/navigation", () => ({
@@ -66,6 +68,22 @@ describe("rule detail page", () => {
     vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
     renderWithQuery(<RulePage />);
     await waitFor(() => expect(screen.getByText("AP001: Vendor number is mandatory")).toBeInTheDocument());
+  });
+
+  it("lists the reference process steps the check gates, linked to readiness", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [] });
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    const REF = { schema_version: 1, l1: [{ id: "PTP", name: "Procure to pay", description: "", order: 1, modules: ["accounts_payable"],
+      l2: [{ id: "PTP-VM", name: "Vendors", description: "", order: 1, l3: [{ id: "PTP-VM-P1", name: "Onboarding", description: "", order: 1,
+        l4: [{ id: "PTP-VM-FK01", name: "Create vendor", description: "", order: 1, tcode: "FK01", config_dependency: null, variants: [], diagram: { nodes: [], flows: [] },
+          activities: [{ id: "a1", name: "Enter", description: "", order: 1, tcode: "FK01", check_ids: [], sap_tables: [],
+            fields: [{ field: "LFA1.STCD1", check_id: "AP001", description: "", mandatory: true, config_source: null }] }] }] }] }] }] } as unknown as ProcessModelDocument;
+    vi.spyOn(designerApi, "getReference").mockResolvedValue(REF);
+    renderWithQuery(<RulePage />);
+    const link = await screen.findByRole("link", { name: "Procure to pay: Create vendor" });
+    expect(link.getAttribute("href")).toBe("/insights/process?l1=PTP");
+    expect(screen.getByText("Process steps it gates")).toBeInTheDocument();
   });
 
   it("renders where it applies, including the configured-in cell", async () => {

@@ -8,7 +8,8 @@ import type { Version } from "@/types/api";
 import type { LearnedRule } from "@/lib/api/learnedRules";
 import LearnedRulesPage from "../page";
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(""), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/rules/learned" }));
+const nav = vi.hoisted(() => ({ params: new URLSearchParams("") }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => nav.params, useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/rules/learned" }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const RULE: LearnedRule = {
@@ -39,6 +40,17 @@ describe("learned rules page", () => {
     expect(screen.getByText("99.1%")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /approve/i }));
     await waitFor(() => expect(approve).toHaveBeenCalledWith("p1", "medium"));
+  });
+
+  it("approves at the severity chosen in the filter bar", async () => {
+    vi.spyOn(api, "getLearnedRules").mockResolvedValue({ items: [RULE] });
+    const approve = vi.spyOn(api, "approveLearnedRule").mockResolvedValue({ id: "p1", status: "approved", rule_id: "LR-000002" });
+    renderWithQuery(<LearnedRulesPage />);
+    expect(await screen.findByText("MARC.BESKZ")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("combobox", { name: "Approve as" }));
+    await userEvent.click(await screen.findByRole("option", { name: "High" }));
+    await userEvent.click(screen.getByRole("button", { name: /approve/i }));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith("p1", "high"));
   });
 
   it("shows an error state with retry", async () => {

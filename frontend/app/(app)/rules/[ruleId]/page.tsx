@@ -8,11 +8,13 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status } from "@/design";
 import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
+import { getReference } from "@/lib/api/process-designer";
+import { useRole } from "@/hooks/use-role";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
 import { getRuleLineage } from "@/lib/api/lineage";
 import { apiErrorState } from "@/lib/error";
-import { formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { formatDate, formatModuleName, formatPct, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { ConditionList, ThresholdTable } from "../rule-ui";
@@ -102,6 +104,28 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
   );
 }
 
+/** The reference model's L4 steps whose activities carry this check (sap/process_definitions.py), with their L1. */
+function ProcessStepsRow({ checkId }: { checkId: string }) {
+  const q = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference, retry: false, meta: { ignoreError: true } });
+  const steps = (q.data?.l1 ?? []).flatMap((l1) => l1.l2.flatMap((l2) => l2.l3.flatMap((l3) => l3.l4
+    .filter((l4) => l4.activities.some((a) => a.check_ids.includes(checkId) || a.fields.some((f) => f.check_id === checkId)))
+    .map((l4) => ({ l1, l4 })))));
+  if (!steps.length) return null;
+  return (
+    <div className="flex justify-between"><dt className="m-ink-3">Process steps it gates</dt>
+      <dd className="text-right">
+        {steps.map(({ l1, l4 }, i) => (
+          <span key={l4.id}>
+            {i ? ", " : ""}
+            <Link href={`/insights/process?l1=${encodeURIComponent(l1.id)}`}>{l1.name}: {l4.name}</Link>
+            {l4.tcode ? <> (<Mono>{l4.tcode}</Mono>)</> : null}
+          </span>
+        ))}
+      </dd>
+    </div>
+  );
+}
+
 function LineageRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex justify-between gap-4">
@@ -181,6 +205,7 @@ export default function RulePage() {
   const { ruleId } = useParams<{ ruleId: string }>();
   const router = useRouter();
   const qc = useQueryClient();
+  const canManage = useRole().can("manage_rules");
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.ruleDetail(ruleId), queryFn: () => getRule(ruleId) });
   const history = useQuery({ queryKey: queryKeys.ruleHistory(ruleId), queryFn: () => getRuleHistory(ruleId, { limit: 20 }) });
   const toggleGen = useRef(0);
@@ -226,12 +251,14 @@ export default function RulePage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title={data.name}
-        meta={<Mono>{ruleId}</Mono>}
+        meta={<Mono>{checkId}</Mono>}
         status={<span className="inline-flex items-center gap-2"><Status kind="severity" value={data.severity} /><Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill></span>}
         actions={<>
-          <Button variant="secondary" onClick={() => toggle.mutate(!data.enabled)} disabled={toggle.isPending}>
-            {data.enabled ? "Disable rule" : "Enable rule"}
-          </Button>
+          {canManage && (
+            <Button variant="secondary" onClick={() => toggle.mutate(!data.enabled)} disabled={toggle.isPending}>
+              {data.enabled ? "Disable rule" : "Enable rule"}
+            </Button>
+          )}
           <Button render={<Link href={buildDrillHref({ object: data.module, ruleId: checkId })}>See failing records</Link>} />
         </>}
       />
@@ -241,8 +268,8 @@ export default function RulePage() {
           <DataTable
             columns={[
               { accessorKey: "run_at", header: "Run", cell: (i) => formatDate(i.getValue<string>(), "datetime") },
-              { accessorKey: "module", header: "Object" },
-              { accessorKey: "pass_rate", header: "Pass rate", meta: { numeric: true }, cell: (i) => { const v = i.getValue<number | null>(); return v == null ? "—" : `${(v * (v <= 1 ? 100 : 1)).toFixed(1)} %`; } },
+              { accessorKey: "module", header: "Object", cell: (i) => formatModuleName(i.getValue<string>()) },
+              { accessorKey: "pass_rate", header: "Pass rate", meta: { numeric: true }, cell: (i) => { const v = i.getValue<number | null>(); return formatPct(v == null ? null : v * (v <= 1 ? 100 : 1)); } },
             ]}
             data={history.data.runs}
             getRowId={(r) => r.version_id}
@@ -255,7 +282,7 @@ export default function RulePage() {
         <Stat
           label="Last pass rate"
           href={buildDrillHref({ object: data.module, ruleId: checkId })}
-          value={rate != null ? `${rate.toFixed(1)} %` : "—"}
+          value={formatPct(rate)}
           bar={rate ?? undefined}
           rule={rate != null ? { target: 100 } : undefined}
         />
@@ -268,6 +295,7 @@ export default function RulePage() {
         <div className="flex justify-between"><dt className="m-ink-3">Object</dt><dd>{formatModuleName(data.module)}</dd></div>
         <div className="flex justify-between"><dt className="m-ink-3">System</dt><dd>{labelOf(data.category)}</dd></div>
         <div className="flex justify-between"><dt className="m-ink-3">Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? <>, <Mono>{data.source_yaml}</Mono></> : null}</dd></div>
+        <ProcessStepsRow checkId={checkId} />
       </dl>
 
       {data.tags?.length ? <div className="flex flex-wrap gap-1">{data.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}
@@ -289,10 +317,10 @@ export default function RulePage() {
               x: formatDate(r.run_at, "date"),
               y: r.pass_rate != null ? r.pass_rate * (r.pass_rate <= 1 ? 100 : 1) : 0,
               object: r.module,
-              ruleId: data.id,
+              ruleId: checkId,
               runId: r.version_id,
             }))}
-            onPointClick={(p) => router.push(buildDrillHref({ object: p.object ?? data.module, ruleId: data.id, run: p.runId ?? "" }))}
+            onPointClick={(p) => router.push(buildDrillHref({ object: p.object ?? data.module, ruleId: checkId, run: p.runId ?? "" }))}
           />
         )}
       </div></Card>

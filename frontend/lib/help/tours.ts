@@ -142,6 +142,11 @@ export const TOURS: readonly TourDef[] = [
     route: "/home/process",
     steps: [
       {
+        target: "process-readiness", href: "/insights/process?tab=readiness", placement: "top",
+        title: "Can it run",
+        body: "The verdict for one end-to-end process: which gates are blocked, the rules failing them and the records behind each. Start here before any discovery run.",
+      },
+      {
         target: "process-catalogue", href: "/process", placement: "top",
         title: "Process list",
         body: "One row per level 1 process for the chosen system, with coverage, fitness, variants and cases. Select a process to drill down.",

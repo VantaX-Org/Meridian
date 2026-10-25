@@ -45,7 +45,7 @@ export interface AttributeProps {
   unmapped: ProcessVariant[];
   canAdopt: boolean;
   onAdopt: (variantId: string, l4Id: string) => void;
-  findingHref: (module: string, checkId: string) => string | undefined;
+  findingHref: (module: string, checkId: string) => string;
   patchActivity: (id: string, patch: Partial<{ name: string; description: string; tcode: string | null; fields: FieldRef[] }>) => void;
   patchL4: (id: string, patch: Partial<Pick<L4, "name" | "tcode" | "config_dependency" | "description">>) => void;
   patchNode: (l4Id: string, nodeId: string, label: string) => void;
@@ -108,7 +108,7 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
       setError("The dictionary did not answer. Try again.");
     }
   };
-  const link = (check: string) => l1.modules.map((m) => p.findingHref(m, check)).find(Boolean);
+  const link = (check: string) => (l1.modules[0] ? p.findingHref(l1.modules[0], check) : undefined);
   return (
     <>
       <Field label="Name">

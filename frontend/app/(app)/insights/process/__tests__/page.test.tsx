@@ -58,13 +58,39 @@ describe("ProcessInsightsPage", () => {
     expect(screen.getByText("Map")).toBeInTheDocument();
   });
 
-  it("shows the API error message for readiness and retries on click", async () => {
+  it("shows an error state for readiness and retries on click", async () => {
     vi.spyOn(versionsApi, "getVersions").mockRejectedValue(new Error("versions service unavailable"));
     renderWithQuery(<ProcessInsightsPage />);
-    await screen.findByText("versions service unavailable");
+    await screen.findByText("Could not reach the server.");
     const calls = (versionsApi.getVersions as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((versionsApi.getVersions as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+  });
+});
+
+describe("ProcessInsightsPage blocking ledger", () => {
+  it("names the rule in Mono, links every row to its records and reads unmapped gates as No fields mapped", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    const field = { field: "LFA1.STCD1", description: "Tax number", mandatory: true, config_source: "", check_id: "AP001",
+      dq_status: "red" as const, pass_rate: 40, affected_count: 321, finding_message: "Tax number missing" };
+    const l4 = (id: string, fields: (typeof field)[]) => ({
+      l4_id: id, l4_name: id, tcode: "FK01", description: "", config_dependency: null, step_status: "red" as const,
+      activities: [{ l5_id: `${id}-a`, l5_name: "Enter", description: "", tcode: "FK01", fields, check_ids: [], activity_status: "red" as const }],
+    });
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([{
+      l1_id: "PTP", l1_name: "Procure to pay", l1_description: "", system: "ecc",
+      l2_groups: [{ l2_id: "l2", l2_name: "Vendors", l3_processes: [
+        { l3_id: "g1", l3_name: "Onboarding", description: "", overall_readiness: "red", l4_subprocesses: [l4("FK01", [field])] },
+        { l3_id: "g2", l3_name: "Payment", description: "", overall_readiness: "green", l4_subprocesses: [l4("F110", [])] },
+      ] }],
+    }]);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    expect(await screen.findByText("AP001")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "321" }).getAttribute("href")).toBe("/objects/material_master?run=v1&tab=rules&check=AP001");
+    expect(screen.getByText("No fields mapped")).toBeInTheDocument();
+    expect(screen.getAllByText("No-go").length).toBeGreaterThan(0);
   });
 });
 

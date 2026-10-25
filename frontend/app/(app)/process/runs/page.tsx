@@ -27,8 +27,9 @@ export default function ProcessRunsPage() {
   const catalogue = useQuery({
     queryKey: queryKeys.processCatalogue(system?.id ?? ""),
     queryFn: () => getCatalogue(system!.id),
-    enabled: !!system && can("run_process_discovery"),
+    enabled: !!system,
   });
+  const names = new Map((catalogue.data ?? []).map((r) => [r.l1, r.name]));
 
   if (systems.isError) return <ProcessFrame><ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
   if (systems.isSuccess && !system) return <ProcessFrame><NoSystem /></ProcessFrame>;
@@ -50,7 +51,7 @@ export default function ProcessRunsPage() {
       )}
       {runs.isError
         ? <ErrorState {...apiErrorState(runs.error)} onRetry={() => runs.refetch()} />
-        : runs.data ? <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} /> : <RowsSkeleton />}
+        : runs.data ? <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} names={names} /> : <RowsSkeleton />}
       {catalogue.data && (
         <NewRunDialog open={newRun === "1"} onOpenChange={(o) => setNewRun(o ? "1" : "")}
           systemId={system.id} systemName={system.name} rows={catalogue.data} />

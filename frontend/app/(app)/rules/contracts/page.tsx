@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Stat, Textarea, type PillTone } from "@/design";
+import { Button, Card, DataTable, Drawer, EmptyState, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Skeleton, Stat, Textarea, type PillTone } from "@/design";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -189,9 +189,9 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
       <div>
         <h3 className="m-text-body font-semibold mb-2">Compliance history</h3>
         {compliance.isLoading ? (
-          <p className="m-text-body m-ink-3">Reading compliance history.</p>
+          <Skeleton height={64} />
         ) : !history.length ? (
-          <p className="m-text-body m-ink-3">No compliance checks recorded yet.</p>
+          <EmptyState title="No compliance checks recorded yet" detail="Checks are recorded each time an analysis of these objects finishes" />
         ) : (
           <ul className="flex flex-col gap-1">
             {history.map((h) => (

@@ -31,7 +31,7 @@ import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
 import { apiErrorState } from "@/lib/error";
-import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
+import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, formatPct, labelOf } from "@/lib/format";
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -66,7 +66,8 @@ const rateOf = (r: Rule): number | null => (r.last_pass_rate == null ? null : r.
 const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 3 };
 /** The ledger's rank: lowest pass rate first (the rules failing most records), rules not run yet last, then severity. */
 const byFailing = (a: Rule, b: Rule) => (rateOf(a) ?? 101) - (rateOf(b) ?? 101) || (SEV_RANK[a.severity] ?? 4) - (SEV_RANK[b.severity] ?? 4);
-const pct = (v: number) => `${(v * (v <= 1 ? 100 : 1)).toFixed(1)} %`;
+/** The API sends a fraction or a percent; one formatter either way. */
+const pct = (v: number) => formatPct(v * (v <= 1 ? 100 : 1));
 const matches = (r: Rule, q: string) => !q || [r.id, r.name, r.description ?? "", r.module, r.severity, ...(r.tags ?? [])].join(" ").toLowerCase().includes(q.toLowerCase());
 const detail = (e: unknown) => (isAxiosError<{ detail?: unknown }>(e) && typeof e.response?.data?.detail === "string" ? e.response.data.detail : null) ?? "Request failed";
 const splitList = (s: string) => s.split(/[,\n]/).map((v) => v.trim()).filter(Boolean);
@@ -269,7 +270,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
 
   const chips: FilterChip[] = [
     search && { key: "search", label: `Search: ${search}`, clear: () => setSearch("") },
-    category !== "all" && { key: "category", label: `System: ${CATEGORY_LABEL[category] ?? category}`, clear: () => setCategory("all") },
+    category !== "all" && { key: "category", label: `System type: ${CATEGORY_LABEL[category] ?? category}`, clear: () => setCategory("all") },
     module && { key: "module", label: `Object: ${formatModuleName(module)}`, clear: () => setModule("") },
     check && { key: "check", label: `Check: ${checkClassLabel(check)}`, clear: () => setCheck("") },
     dimension && { key: "dimension", label: `Dimension: ${labelOf(dimension)}`, clear: () => setDimension("") },
@@ -286,9 +287,9 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       <Field label="Search">
         <Input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter rules" />
       </Field>
-      <Field label="System">
-        <Select value={category === "all" ? "" : category} onValueChange={(v) => setCategory(v || "all")} placeholder="All systems"
-          options={[{ value: "", label: "All systems" }, ...Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ value, label }))]} />
+      <Field label="System type">
+        <Select value={category === "all" ? "" : category} onValueChange={(v) => setCategory(v || "all")} placeholder="All system types"
+          options={[{ value: "", label: "All system types" }, ...Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ value, label }))]} />
       </Field>
       {facetSelect("Check type", check, setCheck, facets.checks, checkClassLabel, "All check types")}
       {facetSelect("Dimension", dimension, setDimension, facets.dimensions, labelOf, "All dimensions")}
@@ -461,7 +462,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         </Field>
         {cls === "dependency_check" && textInput("determinant", "Determining field (e.g. LFA1.KTOKK; its value decides the field below)")}
         {needsField && textInput("field", "Field (e.g. LFA1.STCD1)")}
-        {cls === "regex_check" && textInput("pattern", "Pattern (regular expression -- values that do not match fail, e.g. ^[0-9]{10}$)")}
+        {cls === "regex_check" && textInput("pattern", "Pattern (regular expression; values that do not match fail, e.g. ^[0-9]{10}$)")}
         {(cls === "domain_value_check" || cls === "uniqueness_check") && (
           <Field label={cls === "domain_value_check" ? "Allowed values (comma or newline separated)" : "Fields that must be unique together (comma or newline separated)"}>
             <Textarea
@@ -502,7 +503,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
           <Notice tone="danger">The rule errored on this data: {result.error}</Notice>
         ) : (
           <section className="flex flex-col gap-2">
-            <h3 className="m-text-body font-semibold">Dry run{result.grain ? ` -- per ${result.grain} record` : ""}</h3>
+            <h3 className="m-text-body font-semibold">Dry run{result.grain ? `, per ${result.grain} record` : ""}</h3>
             <dl className="m-text-body flex flex-col gap-1">
               <div className="flex justify-between"><dt className="m-ink-3">Checked</dt><dd>{result.population.toLocaleString()}</dd></div>
               <div className="flex justify-between"><dt className="m-ink-3">Failing</dt><dd>{result.failing.toLocaleString()}</dd></div>

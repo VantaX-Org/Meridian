@@ -62,7 +62,10 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
       </div> : null}
       {data.length ? (
         <DataTable columns={columns} data={data} getRowId={(r) => r.item.id} onRowClick={(r) => onOpen(r.item.id)} />
-      ) : <EmptyState title="Nothing at this level yet. Add the first item." />}
+      ) : (
+        <EmptyState title="Nothing at this level yet"
+          action={canDesign ? <Button variant="secondary" disabled={level > 4} onClick={() => guard(() => actions.add(parent?.id ?? null))}>{`Add L${level}`}</Button> : undefined} />
+      )}
     </div>
   );
 }

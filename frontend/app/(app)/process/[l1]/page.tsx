@@ -73,7 +73,7 @@ export default function ProcessL1Page() {
     return wrap(<><PageHeader title={row?.name ?? l1} /><BodySkeleton rows={4} /></>);
   }
   if (!row) {
-    return wrap(<EmptyState title="Process not in catalogue" detail={`No level-1 process ${l1} exists.`}
+    return wrap(<EmptyState title="This process is not in the catalogue for this system" detail={`${system!.name} lists no level-1 process ${l1}.`}
       action={<Button render={<Link href="/process">Open the catalogue</Link>} />} />);
   }
 
@@ -103,7 +103,7 @@ export default function ProcessL1Page() {
     bpmn: mined(<BpmnView doc={doc} node={node} onOpenFlow={() => drill.set({ tab: "flow", case: null })} />),
     variants: mined(<VariantsTable runId={runId} filters={filters} canExport={canExport} onClearFilters={clearFilters}
       onOpenCase={(id) => drill.set({ tab: "cases", case: id })} />),
-    conformance: mined(<ConformanceView runId={runId} l1={l1} filters={filters} rework={r?.stats.rework} onClearFilters={clearFilters} />),
+    conformance: mined(<ConformanceView runId={runId} filters={filters} rework={r?.stats.rework} onClearFilters={clearFilters} />),
     cases: mined(<CaseExplorer runId={runId} filters={filters} caseId={drill.caseId} onClearFilters={clearFilters} onOpenCase={(id) => drill.set({ case: id })} />),
     reference: <ReferenceView doc={reference.data} l1={l1} node={node} onOpen={(id) => drill.set({ node: id })} />,
   };
@@ -113,7 +113,7 @@ export default function ProcessL1Page() {
     <ProcessFrame>
       <Header l1={l1} name={row.name} systemName={system!.name} systemId={system!.id} run={discovered ? r : undefined}
         reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)}
-        canRun={can("run_process_discovery")} />
+        canRun={can("run_process_discovery")} tab={tab} />
       <nav aria-label="Process levels">
         <ol className="flex flex-wrap items-center gap-1">
           {crumbs.map((c, i) => (
@@ -136,12 +136,22 @@ export default function ProcessL1Page() {
   );
 }
 
-function Header({ l1, name, systemName, systemId, run, reason, canExport, onExport, canRun }: {
+/** The next step each tab offers (one sentence, a full stop). */
+const NEXT: Record<Tab, string> = {
+  flow: "Click a step to drill into it.",
+  bpmn: "Read the diagram, then open the flow to see the cases behind each step.",
+  variants: "Read the most frequent paths first; rare variants point to rework.",
+  conformance: "Open the steps most often missing or out of order.",
+  cases: "Open a case to follow its events in order.",
+  reference: "Compare the reference steps with the discovered flow.",
+};
+
+function Header({ l1, name, systemName, systemId, run, reason, canExport, onExport, canRun, tab }: {
   l1: string; name: string; systemName: string; systemId: string; run: DiscoveryRunDetail | undefined; reason: string | null;
-  canExport: boolean; onExport: () => void; canRun: boolean;
+  canExport: boolean; onExport: () => void; canRun: boolean; tab: Tab;
 }) {
   const runLink = canRun
-    ? <Button render={<Link href={`/process/runs?system=${systemId}&new=1`}>Run discovery</Link>} /> : null;
+    ? <Button render={<Link href={`/process/runs?system=${systemId}&new=1&l1=${l1}`}>Run discovery</Link>} /> : null;
   if (!run) {
     return (
       <>
@@ -170,7 +180,7 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
         changed={{ sentence: run.finished_at ? `Discovered ${relativeTime(run.finished_at)}.` : "Discovery in progress." }}
         why={{ sentence: `Fitness ${fmtFitness(fitness)} against the reference, median ${fmtSeconds(s.throughput?.median_seconds)} end to end.`,
           tone: fitnessTone(fitness) }}
-        next={{ sentence: "Click a step to drill into it" }} />
+        next={{ sentence: NEXT[tab] }} />
     </>
   );
 }

@@ -4,7 +4,7 @@
  * (checks/house_rules.py). The miner proposes; a person with `approve` turns a
  * proposal into an active rule with a new LR- id; `manage_rules` can reject. */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, PageHeader, Pill, Select, asyncStateOf } from "@/design";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import {
   approveLearnedRule,
   getLearnedRules,
@@ -27,6 +28,7 @@ import {
 import { errorText } from "@/lib/api/remediation";
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage } from "@/lib/error";
+import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 const STATUS_OPTIONS = [
@@ -35,6 +37,8 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "Rejected" },
 ];
 const KIND_OPTIONS = [{ value: "all", label: "All kinds" }, ...Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))];
+const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+const SEVERITY_OPTIONS = SEVERITIES.map((value) => ({ value, label: labelOf(value) }));
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
 /** The part of a composite record key that is the rule's own field (`PRCTR=BAD-0037`), else its first part. */
@@ -47,9 +51,12 @@ function exampleOf(key: string, field: string): string {
 export default function LearnedRulesPage() {
   const qc = useQueryClient();
   const { can } = useRole();
-  const [status, setStatus] = useState<LearnedStatus>("pending");
-  const [kind, setKind] = useState<"all" | LearnedKind>("all");
-  const [severity] = useState<Severity>("medium");
+  const [statusRaw, setStatus] = useUrlState("status", "pending");
+  const status = oneOf(statusRaw, ["pending", "approved", "rejected"] as const satisfies readonly LearnedStatus[], "pending");
+  const [kindRaw, setKind] = useUrlState("kind", "all");
+  const kind = oneOf(kindRaw, ["all", ...(Object.keys(KIND_LABEL) as LearnedKind[])] as const, "all");
+  const [severityRaw, setSeverity] = useUrlState("severity", "medium");
+  const severity: Severity = oneOf(severityRaw, SEVERITIES, "medium");
   const q = useQuery({
     queryKey: queryKeys.learnedRules({ status, kind }),
     queryFn: () => getLearnedRules(status, kind === "all" ? undefined : kind),
@@ -110,8 +117,11 @@ export default function LearnedRulesPage() {
       }
       filterBar={
         <div className="flex items-end gap-3">
-          <Field label="Status"><Select value={status} onValueChange={(v) => setStatus(v as LearnedStatus)} options={STATUS_OPTIONS} /></Field>
-          <Field label="Kind"><Select value={kind} onValueChange={(v) => setKind(v as "all" | LearnedKind)} options={KIND_OPTIONS} /></Field>
+          <Field label="Status"><Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} /></Field>
+          <Field label="Kind"><Select value={kind} onValueChange={setKind} options={KIND_OPTIONS} /></Field>
+          {can("approve") && status === "pending" ? (
+            <Field label="Approve as"><Select value={severity} onValueChange={setSeverity} options={SEVERITY_OPTIONS} /></Field>
+          ) : null}
         </div>
       }
       state={asyncStateOf(q, () => items.length === 0, true)}

@@ -20,26 +20,22 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
+import { Button, Card, DataTable, Drawer, DrillLink, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
 import { apiErrorState } from "@/lib/error";
-import { isCompleteVersion, useFindingHref, useLatestVersion } from "@/components/process/shared";
+import { PROCESS_MODULES, isCompleteVersion, l1Fields, l4Fields, red, score, sev, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph } from "@/lib/api/process-mining";
-import { formatModuleName, formatDate, plural, runOptionLabels } from "@/lib/format";
-import { runScopeLabel } from "@/lib/run-scope";
+import { formatModuleName, plural } from "@/lib/format";
+import { runName, runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useRunList } from "@/hooks/use-run-list";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 
-/** Objects with an L1 to L5 definition (sap/process_definitions.py: procure to pay and order to cash). */
-export const PROCESS_MODULES = new Set(["accounts_payable", "fi_gl", "material_master", "mm_purchasing", "accounts_receivable", "sd_customer_master", "sd_sales_orders"]);
-import type {
-  BusinessProcessL1, BusinessProcessL3, BusinessProcessL4, BusinessProcessL5Field, ConfigImpactResult,
-} from "@/types/api";
+import type { BusinessProcessL3, ConfigImpactResult } from "@/types/api";
 
 /** Loading body at final height: stat row, one card (the four-sentence header is the page frame's). */
 function ViewSkeleton({ stats }: { stats: number }) {
@@ -67,11 +63,12 @@ function RunsWithProcess({ exclude }: { exclude?: string }) {
   const q = useRunList();
   const withProcess = (q.data?.versions ?? [])
     .filter((v) => v.id !== exclude && isCompleteVersion(v) && Object.keys(v.dqs_summary ?? {}).some((m) => PROCESS_MODULES.has(m)));
-  const names = runOptionLabels(withProcess);
   const options = withProcess
-    .map((v) => ({ value: v.id, label: `${names.get(v.id) ?? formatDate(v.run_at, "datetime")}, ${Object.keys(v.dqs_summary ?? {}).filter((m) => PROCESS_MODULES.has(m)).map(formatModuleName).join(", ")}` }));
+    .map((v) => ({ value: v.id, label: `${runName(v)}, ${Object.keys(v.dqs_summary ?? {}).filter((m) => PROCESS_MODULES.has(m)).map(formatModuleName).join(", ")}` }));
   if (q.isLoading) return <Skeleton height={32} width={280} />;
-  if (!options.length) return <p className="m-text-body m-ink-2">No finished run covers a procure to pay or order to cash object yet.</p>;
+  if (!options.length) {
+    return <EmptyState title="No finished run covers a procure to pay or order to cash object yet" action={openLink("Open runs", "/runs")} />;
+  }
   return (
     <Select
       label="Runs with a process definition"
@@ -85,24 +82,14 @@ function RunsWithProcess({ exclude }: { exclude?: string }) {
 
 const openLink = (label: string, href: string) => <Button variant="secondary" render={<Link href={href}>{label}</Link>} />;
 
-/* ---------- shared field-scoring helpers (ported from components/process/readiness.tsx) ---------- */
-
-const l4Fields = (l4: BusinessProcessL4): BusinessProcessL5Field[] => l4.activities.flatMap((a) => a.fields);
-function fields(l1: BusinessProcessL1): BusinessProcessL5Field[] {
-  return l1.l2_groups.flatMap((l2) => l2.l3_processes.flatMap((l3) => l3.l4_subprocesses.flatMap(l4Fields)));
-}
-const score = (fs: BusinessProcessL5Field[]) =>
-  fs.length ? Math.round((fs.filter((f) => f.dq_status === "green").length / fs.length) * 100) : 100;
-const red = (fs: BusinessProcessL5Field[]) => fs.filter((f) => f.dq_status === "red").length;
-const sev = (f: BusinessProcessL5Field): "critical" | "high" | "medium" =>
-  f.mandatory ? "critical" : (f.pass_rate ?? 100) < 50 ? "high" : "medium";
-
 const ORDER = { blocked: 0, degraded: 1, ok: 2 } as const;
 
 /* ---------- Readiness ---------- */
 
 const fmt1 = (n: number) => n.toFixed(1);
 const records = (n: number) => plural(n, "record");
+/** "87%" or, with nothing mapped to score, the reason. */
+const pctLabel = (n: number | null) => (n == null ? "No fields mapped" : `${n}%`);
 
 function ConfiguredInText({ items }: { items: ConfiguredIn[] }) {
   return (
@@ -138,7 +125,7 @@ function useExpandedBlocks() {
 }
 
 function NotApplicableList({ title, t, findingHref }: {
-  title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
+  title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string;
 }) {
   const { expandedTitles, toggle } = useExpandedBlocks();
   const expanded = expandedTitles.has(title);
@@ -157,7 +144,7 @@ function NotApplicableList({ title, t, findingHref }: {
         {shown.map((na) => (
           <li key={na.check_id} className="flex items-center gap-3">
             {na.severity ? <Status kind="severity" value={na.severity} /> : <Pill>Unrated</Pill>}
-            <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? "/analyse"}>
+            <Link className="flex-1 underline" href={findingHref(na.module, na.check_id)}>
               <Mono>{na.check_id}</Mono>
             </Link>
             <span className="m-text-body m-ink-2">
@@ -176,7 +163,7 @@ function NotApplicableList({ title, t, findingHref }: {
 }
 
 function RulesBlock({ title, t, findingHref, configuredIn }: {
-  title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
+  title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string;
   configuredIn?: ConfiguredIn[];
 }) {
   const failing = t.applicable - t.passes;
@@ -196,7 +183,7 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
           {t.top_failing.slice(0, 5).map((f) => (
             <li key={f.check_id} className="flex items-center gap-3">
               {f.severity ? <Status kind="severity" value={f.severity} /> : <Pill>Unrated</Pill>}
-              <Link className="flex-1 underline" href={findingHref(f.module, f.check_id) ?? "/analyse"}>
+              <Link className="flex-1 underline" href={findingHref(f.module, f.check_id)}>
                 <Mono>{f.check_id}</Mono>
               </Link>
               <span className="m-text-body">{records(f.affected_count)}</span>
@@ -209,15 +196,17 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
   );
 }
 
-interface BlockingRow { id: string; severity: ReturnType<typeof sev>; checkId: string; title: string; gate: string; affected: number; href?: string }
+interface BlockingRow { id: string; severity: ReturnType<typeof sev>; checkId: string | null; field: string; title: string; gate: string; affected: number; href: string }
 const blockingColumns: ColumnDef<BlockingRow>[] = [
   { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
+  { id: "rule", header: "Rule", accessorFn: (b) => b.checkId ?? "", cell: ({ row }) => <Mono>{row.original.checkId ?? row.original.field}</Mono> },
   { id: "finding", header: "Finding", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.title}>{row.original.title}</span> },
   { id: "gate", header: "Gate", accessorFn: (b) => b.gate },
-  { accessorKey: "affected", header: "Records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
+  { accessorKey: "affected", header: "Records", meta: { numeric: true }, cell: ({ row }) => (
+      <DrillLink href={row.original.href}>{row.original.affected.toLocaleString()}</DrillLink>) },
   {
     id: "action", header: "", enableSorting: false,
-    cell: ({ row }) => (row.original.href ? <Link href={row.original.href} className="m-ink-accent underline-offset-2 hover:underline">Fix</Link> : null),
+    cell: ({ row }) => <Link href={row.original.href} className="m-ink-accent underline-offset-2 hover:underline">Open records</Link>,
   },
 ];
 
@@ -247,9 +236,10 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   const dayOne = useDayOne();
   const { latest, isLoading: versionsLoading, error: versionsError, refetch: refetchVersions } = useLatestVersion();
   const modules = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
-  const [objectChoice, setObject] = useState("");
-  const object = objectChoice || modules[0] || "";
-  const [l1Choice, setL1] = useState("");
+  const [objectChoice, setObject] = useUrlState("object", "");
+  const [l1Choice, setL1] = useUrlState("l1", "");
+  // `?l1=` from the process home names the L1; its object is whichever analysed object carries that definition.
+  const object = oneOf(objectChoice, modules, (l1Choice && modules.find((m) => PROCESS_MODULES.has(m))) || modules[0] || "");
 
   const bp = useQuery({
     queryKey: queryKeys.businessProcess(latest?.id, object),
@@ -266,7 +256,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   const findingHref = useFindingHref(latest?.id);
   const systemScope = useSystemScope();
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true }, select: systemScope });
-  const [systemChoice, setSystem] = useState("all");
+  const [systemChoice, setSystem] = useUrlState("system", "all");
   const systemId = systemChoice === "all" ? undefined : systemChoice;
   const aware = useQuery({
     queryKey: queryKeys.configAwareScore(latest?.id, systemId),
@@ -280,23 +270,24 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   const l1 = processes.find((p) => p.l1_id === l1Choice) ?? processes[0];
 
   // Derived once here so the page frame's four sentences can be published from an effect below.
-  const all = useMemo(() => (l1 ? fields(l1) : []), [l1]);
+  const all = useMemo(() => (l1 ? l1Fields(l1) : []), [l1]);
   const pct = score(all);
   const blocking = red(all);
-  const gates = useMemo<{ l3: BusinessProcessL3; score: number; blocking: number }[]>(() => (l1 ? l1.l2_groups.flatMap((l2) =>
+  const gates = useMemo<{ l3: BusinessProcessL3; score: number | null; blocking: number }[]>(() => (l1 ? l1.l2_groups.flatMap((l2) =>
     l2.l3_processes.map((l3) => {
       const f3 = l3.l4_subprocesses.flatMap(l4Fields);
       return { l3, score: score(f3), blocking: red(f3) };
     })) : []), [l1]);
   const blockedGates = gates.filter((g) => g.blocking).length;
-  const blockingFindings = useMemo(() => (l1 ? l1.l2_groups.flatMap((l2) => l2.l3_processes.flatMap((l3) =>
+  const rulesHref = `/objects/${object}?run=${encodeURIComponent(latest?.id ?? "")}&tab=rules`;
+  const blockingFindings = useMemo<BlockingRow[]>(() => (l1 ? l1.l2_groups.flatMap((l2) => l2.l3_processes.flatMap((l3) =>
     l3.l4_subprocesses.flatMap((l4) => l4Fields(l4).filter((f) => f.dq_status === "red").map((f) => ({
-      id: `${l3.l3_id}-${l4.l4_id}-${f.field}`, severity: sev(f), checkId: f.check_id ?? f.field,
+      id: `${l3.l3_id}-${l4.l4_id}-${f.field}`, severity: sev(f), checkId: f.check_id, field: f.field,
       title: f.finding_message || f.description, gate: l3.l3_name, affected: f.affected_count,
-      href: f.check_id ? findingHref(object, f.check_id) : undefined,
-    }))))).sort((a, b) => b.affected - a.affected) : []), [l1, object, findingHref]);
+      href: f.check_id ? findingHref(object, f.check_id) : rulesHref,
+    }))))).sort((a, b) => b.affected - a.affected) : []), [l1, object, findingHref, rulesHref]);
   const failing = blockingFindings.reduce((a, b) => a + b.affected, 0);
-  const firstHref = blockingFindings.find((b) => b.href)?.href;
+  const firstHref = blockingFindings[0]?.href ?? rulesHref;
   const worst = [...gates].sort((a, b) => b.blocking - a.blocking)[0];
   const loading = versionsLoading || bp.isLoading || dayOne.status === "loading";
 
@@ -313,19 +304,19 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
     }
     onInsight({
       situation: {
-        sentence: `${blockedGates} of ${plural(gates.length, "gate")} blocked, ${pct}% of fields pass in ${l1.l1_name}. Readiness is scored per step from the chosen run.`,
-        tone: blockedGates ? "no-go" : pct >= 90 ? "go" : "at-risk",
+        sentence: `${blockedGates} of ${plural(gates.length, "gate")} blocked, ${pct == null ? "no fields mapped" : `${pct}% of fields pass`} in ${l1.l1_name}. Readiness is scored per step from the chosen run.`,
+        tone: verdictOf(blockedGates, pct),
       },
-      changed: { sentence: `Reading ${latest.label || formatDate(latest.run_at, "datetime")}; change appears when the next run of these objects finishes.` },
+      changed: { sentence: `Reading ${runName(latest)}; change appears when the next run of these objects finishes.` },
       why: { sentence: blocking ? `${plural(blocking, "blocking field fails", "blocking fields fail")} on ${records(failing)}.` : "No field blocks go-live.", tone: blocking ? "no-go" : "go" },
       next: blockedGates && worst
-        ? { sentence: `Clear the failing fields in ${worst.l3.l3_name}.`, action: { label: "Open findings", href: firstHref ?? "/inbox" } }
+        ? { sentence: `Clear the failing fields in ${worst.l3.l3_name}.`, action: { label: "Open records", href: firstHref } }
         : { sentence: "No gate is blocked.", action: { label: "Open rules", href: "/rules" } },
     });
   }, [loading, latest, l1, object, blockedGates, gates.length, pct, blocking, failing, worst, firstHref, onInsight]);
 
   if (loading) return <ViewSkeleton stats={4} />;
-  if (versionsError) return <ErrorState message={versionsError.message} onRetry={() => void refetchVersions()} />;
+  if (versionsError) return <ErrorState {...apiErrorState(versionsError)} onRetry={() => void refetchVersions()} />;
   if (!latest) {
     return <EmptyState title="No process readiness yet" detail={dayOne.step?.detail ?? "Readiness is read from the latest completed analysis. Sync a system and run an analysis."}
       action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />} />;
@@ -381,16 +372,23 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
             options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
             onValueChange={setSystem} />
         ) : null}
-        <span className="m-text-meta m-ink-3">
-          Version {latest.label ?? latest.id.slice(0, 8)}, run {formatDate(latest.run_at, "datetime")}
+        <span className="m-text-meta m-ink-3">{runScopeLabel(latest)}</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Status kind="verdict" value={verdictOf(blocking, pct)} variant="solid" />
+        <span className="m-text-h font-semibold m-ink">{l1.l1_name}</span>
+        <span className="m-text-body m-ink-2">
+          L1 is the end-to-end process, L2 to L4 the areas and steps inside it, L5 the fields each step writes; a gate is a
+          step that cannot run while one of its fields fails.
         </span>
       </div>
 
       {/* The ledger: the blocking findings ranked by records affected, each with its one action. */}
-      <Card title="Blocking findings" meta={blockingFindings.length > 10 ? `Top 10 of ${blockingFindings.length.toLocaleString()}` : undefined}>
+      <Card title="Blocking findings" dataTour="process-readiness" meta={blockingFindings.length > 10 ? `Top 10 of ${blockingFindings.length.toLocaleString()}` : undefined}>
         {blockingFindings.length ? (
           <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar dense height="auto" />
-        ) : <EmptyState title="Nothing blocks go-live" />}
+        ) : <EmptyState title="Nothing blocks go-live" action={openLink("Open rules", rulesHref)} />}
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -398,11 +396,9 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
           <ul className="flex flex-col gap-2">
             {gates.map((g) => (
               <li key={g.l3.l3_id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)]">
-                <Pill tone={g.blocking ? "no-go" : g.score >= 90 ? "go" : "at-risk"}>
-                  {g.blocking ? "Blocked" : g.score >= 90 ? "Ready" : "At risk"}
-                </Pill>
+                <Status kind="verdict" value={verdictOf(g.blocking, g.score)} />
                 <span className="flex-1">{g.l3.l3_name}</span>
-                <span className="m-text-body">{g.score}%</span>
+                <span className="m-text-body">{pctLabel(g.score)}</span>
               </li>
             ))}
           </ul>
@@ -480,7 +476,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
   const degradedSteps = activities.filter((a) => a.step_status === "amber").length;
   const picked = node ? activities.find((a) => a.id === node) ?? null : null;
 
-  const graphNodes = useMemo(() => (graphQ.data?.activities ?? []).map((a) => ({ id: a.id, size: a.affected_records })), [graphQ.data]);
+  const graphNodes = useMemo(() => (graphQ.data?.activities ?? []).map((a) => ({ id: a.id, label: a.label, size: a.affected_records })), [graphQ.data]);
   const graphEdges = useMemo(() => (graphQ.data?.transitions ?? []).map((t, i) => ({
     id: `${t.from}-${t.to}-${i}`, source: t.from, target: t.to, label: t.weight.toLocaleString(),
   })), [graphQ.data]);
@@ -503,7 +499,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
         sentence: `${plural(activities.length, "step")} mapped for ${formatModuleName(active ?? "")}, ${blockedSteps} blocked and ${degradedSteps} degraded, across ${plural(variants.length, "variant")}. The map is mined from the chosen run.`,
         tone: blockedSteps ? "no-go" : degradedSteps ? "at-risk" : "go",
       },
-      changed: { sentence: `Reading ${latest.label || formatDate(latest.run_at, "datetime")}.` },
+      changed: { sentence: `Reading ${runName(latest)}.` },
       why: { sentence: bottlenecks.length ? `${records(failingRecords)} fail in ${plural(bottlenecks.length, "step")}.` : "Every mapped step passes its checks.", tone: bottlenecks.length ? "no-go" : "go" },
       next: worstStep
         ? { sentence: `Open ${worstStep.label}, the worst step.`, action: { label: "Open step", onClick: () => setNode(worstStep.id) } }
@@ -531,7 +527,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
       ) : null}
 
       {graphQ.isLoading ? <ViewSkeleton stats={4} /> : graphQ.error ? (
-        <ErrorState message={(graphQ.error as Error).message} onRetry={() => void graphQ.refetch()} />
+        <ErrorState {...apiErrorState(graphQ.error)} onRetry={() => void graphQ.refetch()} />
       ) : (
         <>
           {activities.length ? (

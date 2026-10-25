@@ -29,14 +29,13 @@ function ParetoPanel({ title, data, id }: { title: string; data: Point[]; id: st
           chart={<Pareto data={data} height={220} />}
           table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar dense
             tableId={id} exportName={id} />} />
-      ) : <p className="m-ink-3">None in this view.</p>}
+      ) : <EmptyState title="None in this view" />}
     </section>
   );
 }
 
-export function ConformanceView({ runId, l1, filters, rework, onClearFilters }: {
+export function ConformanceView({ runId, filters, rework, onClearFilters }: {
   runId: string;
-  l1: string;
   filters: ProcessFilterParams;
   rework: Record<string, number> | undefined;
   onClearFilters?: () => void;
@@ -66,9 +65,10 @@ export function ConformanceView({ runId, l1, filters, rework, onClearFilters }: 
         <Stat label="Happy path" help="happyPath" value={fmtShare(c.happy_path?.share ?? 0)}
           hint={`${c.happy_path?.case_count ?? 0} cases follow ${(c.happy_path?.activities ?? []).join(" → ") || "—"}`} />
       </div>
-      {l1 === "SFX" && (
-        <Notice tone="info" title="Rework is not measured for SuccessFactors">
-          Each application keeps only its latest status, so a repeated step leaves no trace.
+      {/* Builders that cannot see a repeated step (SuccessFactors keeps only the latest status) leave rework out of the stats. */}
+      {!rework && (
+        <Notice tone="info" title="Rework is not measured for this process">
+          The source keeps only the latest status of each record, so a repeated step leaves no trace.
         </Notice>
       )}
       <div className="grid gap-4 lg:grid-cols-2">

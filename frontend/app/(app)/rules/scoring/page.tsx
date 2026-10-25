@@ -15,6 +15,7 @@ import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getCostModel, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { AlertThresholds, CostModel, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
@@ -61,7 +62,7 @@ export default function ScoringPage() {
       <div className="flex flex-col gap-4">
         <PageHeader title="Scoring and alerts" />
         {settings.isError ? (
-          <Notice tone="danger">Settings could not be loaded. Try again in a moment.</Notice>
+          <ErrorState title="Settings could not be loaded." message={apiErrorMessage(settings.error)} onRetry={() => void settings.refetch()} />
         ) : (
           <div className="flex flex-col gap-2"><Skeleton height={32} /><Skeleton height={32} /><Skeleton height={32} /></div>
         )}
