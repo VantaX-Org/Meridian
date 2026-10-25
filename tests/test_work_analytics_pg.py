@@ -211,6 +211,8 @@ async def test_analytics_numbers(seeded, client_for):
         assert [(c["check_id"], c["reopened"], c["rate_pct"]) for c in rc["by_check"]] == [("GL002", 1, 100.0), ("MM001", 1, 25.0)]
         assert [(x["scope"], x["name"], x["issues"], x["rate_pct"]) for x in rc["by_system"]] == [
             ("upload", "Uploads", 1, 100.0), (s["sid"], "ERP prod", 7, 14.3)]
+        # each system's records open in its own latest run; uploads have none
+        assert [x["version_id"] for x in rc["by_system"]] == [None, s["v2"]]
 
         roots = await _get(client, "/root-causes")
         assert roots["source"] == "work_records" and roots["total_records"] == 3

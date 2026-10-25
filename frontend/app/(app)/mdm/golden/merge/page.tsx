@@ -135,7 +135,7 @@ function MatchReview() {
         placeholder="All objects"
         value={domain}
         options={[{ value: "", label: "All objects" }, ...DOMAINS.map((d) => ({ value: d, label: formatModuleName(d) }))]}
-        onValueChange={(v) => setParams({ domain: v || null, object: null, page: null })}
+        onValueChange={(v) => setParams({ domain: v || null, object: null, record: null, pair: null, page: null })}
       />
       {record ? <FilterChip label="Pairs of" value={record} onRemove={() => setParams({ record: null, object: null, pair: null, page: null })} /> : null}
     </div>

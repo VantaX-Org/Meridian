@@ -114,7 +114,7 @@ export default function ProgressPage() {
   const systemColumns = useMemo<ColumnDef<SystemRecurrence>[]>(() => [
     { id: "name", header: "System", accessorFn: (r) => r.name ?? r.scope, cell: ({ row }) => row.original.name ?? <Mono>{row.original.scope}</Mono> },
     // Fix work has no system filter: the count opens this run's open records (one system per run).
-    { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ system: row.original.scope })} count={row.original.reopened} label={`Open the open records of ${row.original.name ?? row.original.scope}`}>{n(row.original.reopened)}</DrillCount> },
+    { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={row.original.version_id ? fix({ run: row.original.version_id, system: row.original.scope }) : undefined} count={row.original.reopened} label={`Open the open records of ${row.original.name ?? row.original.scope}`}>{n(row.original.reopened)}</DrillCount> },
     { accessorKey: "issues", header: "Tracked", meta: { numeric: true }, cell: ({ row }) => n(row.original.issues) },
     { accessorKey: "rate_pct", header: "Rate", meta: { numeric: true }, cell: ({ row }) => pct(row.original.rate_pct) },
   ], [fix]);

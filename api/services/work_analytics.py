@@ -31,6 +31,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.services.record_issues import DIFF_SQL
+from api.services.run_context import latest_run
 from api.services.run_lineage import same_lineage_as
 from api.services.version_status import finished_sql
 
@@ -254,7 +255,7 @@ _DECISIONS_SQL = f"""
          WHERE e.tenant_id = CAST(:t AS uuid) AND e.action IN ('approved', 'accepted')
            AND e.created_at >= CAST(:since AS date) AND {_MOD.format(c="i.module")}
     )
-    SELECT day, person, max(user_id) AS user_id, kind, count(*) AS n FROM d GROUP BY day, person, kind
+    SELECT day, person, user_id, kind, count(*) AS n FROM d GROUP BY day, person, user_id, kind
 """
 
 _WORKLOAD_SQL = f"""
@@ -275,12 +276,13 @@ async def throughput(db: AsyncSession, tenant_id: Any, module: str | None) -> di
     since = today - timedelta(days=THROUGHPUT_DAYS - 1)
     rows = (await db.execute(text(_DECISIONS_SQL), _p(tenant_id, module, since=since))).fetchall()
     per_day: dict[date, dict[str, int]] = {}
-    people: dict[str, dict] = {}
+    people: dict[tuple, dict] = {}
     for r in rows:
         per_day.setdefault(r.day, {})
         per_day[r.day][r.person] = per_day[r.day].get(r.person, 0) + int(r.n)
-        p = people.setdefault(r.person, {"person": r.person, "user_id": None, "total": 0, **{k: 0 for k in KINDS}})
-        p["user_id"] = p["user_id"] or r.user_id  # their records open in Fix work (?assignee=)
+        # One row per user (two people may share a name); label-only history stays apart and has no drill.
+        p = people.setdefault((r.user_id, r.person), {"person": r.person, "user_id": r.user_id, "total": 0,
+                                                       **{k: 0 for k in KINDS}})
         p[r.kind] += int(r.n)
         p["total"] += int(r.n)
     days = []
@@ -327,10 +329,13 @@ async def recurrence(db: AsyncSession, tenant_id: Any, module: str | None) -> di
     issues = sum(c["issues"] for c in checks)
     reopened = sum(c["reopened"] for c in checks)
     top = lambda xs, k: sorted((x for x in xs if x["reopened"]), key=lambda x: (-x["reopened"], -x["rate_pct"], x[k]))[:TOP]
+    by_system = top(systems, "scope")
+    for x in by_system:  # each system's records open in its own latest run
+        x["version_id"] = await latest_run(db, tenant_id, x["scope"], module)
     return {
         "totals": {"issues": issues, "reopened": reopened, "reopens": sum(c["reopens"] for c in checks),
                    "rate_pct": round(100.0 * reopened / issues, 1) if issues else 0.0},
-        "by_check": top(checks, "check_id"), "by_system": top(systems, "scope"),
+        "by_check": top(checks, "check_id"), "by_system": by_system,
     }
 
 
