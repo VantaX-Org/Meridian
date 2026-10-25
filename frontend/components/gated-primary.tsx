@@ -18,6 +18,9 @@ const PRIMARIES = {
 
 export type PrimaryKind = keyof typeof PRIMARIES;
 
+/** The role that grants a primary, as the tooltip names it. */
+export const primaryRole = (kind: PrimaryKind): string => PRIMARIES[kind].role;
+
 export function primaryTooltip(kind: PrimaryKind, scope?: string): string {
   return `Needs ${PRIMARIES[kind].role} on ${scope ?? "all systems"} — Request access`;
 }
