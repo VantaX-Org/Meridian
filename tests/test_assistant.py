@@ -1,5 +1,6 @@
-"""Ask Meridian (api/services/assistant.py, POST /api/v1/assistant/ask): intent matching, answer shape, the
-LLM fallback and what the model is allowed to see. The Insights services are faked; no database is used."""
+"""Ask Meridian (api/services/assistant.py, POST /api/v1/assistant/ask): intent matching, grounded answers (every
+number backed by a fact), retrieval and refusal, the model's reword-only role and what it may see. The Insights,
+impact, forecast and burn-down services are faked; no database is used."""
 import asyncio
 import uuid
 
@@ -94,6 +95,30 @@ class FakeSources:
              "records_blocked": 0},
         ]}
 
+    async def impact(self, vid):
+        return None if self.empty else {"version_id": RUN, "currency": "ZAR", "rows": [
+            {"feature": "MRP_RUN", "l1": "plan_to_produce", "status": "blocked", "record_count": 900,
+             "value_per_record": 150.0, "value_at_risk": 135000.0, "causing_rules": ["MM003"]},
+            {"feature": "AUTOMATIC_PAYMENT", "l1": "procure_to_pay", "status": "degraded", "record_count": 300,
+             "value_per_record": 50.0, "value_at_risk": 15000.0, "causing_rules": ["BP010"]},
+        ]}
+
+    async def forecast(self, module):
+        return {"runs_seen": 6, "days_seen": 4, "early_warnings": [], "forecasts": [
+            {"module_id": "material_master", "current_score": 61.0, "forecast_7d": 62.3, "forecast_30d": 65.8,
+             "forecast_90d": 70.0, "trend": "improving", "confidence": 72.0, "points": 4, "span_days": 30.0},
+            {"module_id": "fi_gl", "current_score": 93.0, "forecast_7d": 92.0, "forecast_30d": 88.5,
+             "forecast_90d": 85.0, "trend": "declining", "confidence": 60.0, "points": 4, "span_days": 30.0},
+        ]}
+
+    async def burndown(self, vid, module):
+        return None if self.empty else {
+            "version_id": RUN, "today": "2026-10-25", "open_now": 840, "open_records": 840, "fixed_7d": 210,
+            "pace_per_day": 30.0, "pace_window_days": 14, "projected_finish": "2026-11-23", "runs": [],
+            "days": [{"day": "2026-10-24", "open": 870, "opened": 0, "closed": 30},
+                     {"day": "2026-10-25", "open": 840, "opened": 0, "closed": 30}],
+        }
+
     async def owners(self):
         return {"owners": [
             {"owner": "Ana Steward", "score": 60.0, "delta": -2.0, "open_by_severity": {"critical": 2, "high": 5},
@@ -139,6 +164,15 @@ def _no_llm(monkeypatch):
     ("What changed since the last run?", "changes"),
     ("Which rules are newly failing?", "changes"),
     ("What can you answer?", "help"),
+    ("How many records fail MM045?", "rule"),
+    ("What does mm_bad_uom check?", "rule"),
+    ("What is the value at risk?", "value_at_risk"),
+    ("How much money is at stake?", "value_at_risk"),
+    ("What will the score be in 30 days?", "forecast"),
+    ("Forecast material master", "forecast"),
+    ("When will the open records be fixed?", "progress"),
+    ("Are we on track with the backlog?", "progress"),
+    ("How is project system doing?", "score"),
     ("Tell me a joke about penguins", None),
 ])
 def test_intent_matching(question, intent):
@@ -163,10 +197,18 @@ def test_context_module_used_when_question_names_none():
 
 # ── answers ──────────────────────────────────────────────────────────────────
 
+KEYS = {"answer", "intent", "data", "chart", "links", "ai", "phrased", "version_id", "facts", "coverage", "grounded"}
+
+
 def _shape(out: dict) -> None:
-    assert set(out) == {"answer", "intent", "data", "chart", "links", "ai", "version_id"}
+    assert set(out) == KEYS
     assert isinstance(out["answer"], str) and out["answer"]
-    assert out["ai"] is False
+    assert out["ai"] is False and out["phrased"] is False
+    # grounded: every number the answer states is one of its facts
+    assert out["grounded"] is True, out["answer"]
+    assert 0 <= out["coverage"] <= 1
+    for f in out["facts"]:
+        assert set(f) == {"statement", "value", "source", "href"} and f["statement"] and f["source"]
     assert out["chart"] in (None, "bar", "line")
     assert out["data"] is None or all(set(d) == {"label", "value"} for d in out["data"])
     for link in out["links"]:
@@ -183,12 +225,18 @@ def _shape(out: dict) -> None:
     ("How many fixes are approved?", "fixes"),
     ("Who has the most open work?", "owners"),
     ("What changed since the last run?", "changes"),
+    ("How many records fail MM003?", "rule"),
+    ("What is the value at risk?", "value_at_risk"),
+    ("What will the score be in 30 days?", "forecast"),
+    ("When will the open records be fixed?", "progress"),
 ])
 def test_every_intent_answers_in_shape(question, intent):
     out = ask(question)
     _shape(out)
     assert out["intent"] == intent
     assert out["links"]
+    assert out["facts"], "a grounded answer lists the figures it used"
+    assert out["coverage"] == 1
     # plain speech, at most three sentences
     assert out["answer"].count(". ") <= 2
 
@@ -274,34 +322,82 @@ def test_a_failing_service_never_raises(caplog):
     assert "db down" not in out["answer"]
 
 
-# ── the LLM fallback ─────────────────────────────────────────────────────────
+# ── the new intents ──────────────────────────────────────────────────────────
 
-def test_fallback_when_llm_off_lists_examples():
-    out = ask("Tell me a joke about penguins")
+def test_one_rule_by_id():
+    out = ask("How many records fail mm003?")
+    assert out["answer"].startswith("MM003 fails on 1,200 records in Material master.")
+    assert "It checks that material type is mandatory" in out["answer"]
+    assert "40 more than in the previous run" in out["answer"]
+    assert out["links"][0]["href"] == f"/objects/material_master?run={RUN}&rule=MM003"
+    assert out["facts"][0]["value"] == 1200
+
+
+def test_a_rule_that_does_not_fail_says_so():
+    out = ask("How many records fail XX999?")
+    assert out["intent"] == "rule" and out["answer"] == "XX999 does not fail in this run." and out["grounded"]
+
+
+def test_value_at_risk_in_the_tenant_currency():
+    out = ask("What is the value at risk?")
+    assert out["answer"].startswith("150,000 ZAR is at risk across 2 priced features.")
+    assert "mRP RUN" not in out["answer"] and "135,000 ZAR" in out["answer"]
+    assert out["data"][0] == {"label": "MRP RUN", "value": 135000}
+
+
+def test_forecast_names_the_lowest_object_and_its_confidence():
+    out = ask("What will the score be in 30 days?")
+    assert out["answer"].startswith("Material master is forecast at 65.8 in 30 days, from 61.0 now, with 72% confidence")
+    assert out["chart"] == "line"
+
+
+def test_progress_projects_the_finish_from_the_pace():
+    out = ask("When will the open records be fixed?")
+    assert out["answer"] == ("840 records are open to fix, and 210 were fixed in the last 7 days. "
+                             "At 30.0 records a day, the list is clear by 2026-11-23.")
+
+
+# ── grounding, retrieval and refusal ─────────────────────────────────────────
+
+def test_numbers_grounded_checks_every_number_against_the_facts():
+    facts = [a.fact("MM003 fails on 1,200 records", "Rule ranking", value=1200),
+             a.fact("Score now 72.4, change +2.4 points", "Run comparison")]
+    assert a.numbers_grounded("1,200 records fail and the score rose 2.4 to 72.4.", facts)
+    assert not a.numbers_grounded("1,300 records fail.", facts)
+    # ids and words with digits are not numbers
+    assert a.numbers_grounded("MM003 and BP010 in S4 fail.", facts)
+
+
+def test_retrieval_answers_from_matching_figures_with_coverage(monkeypatch):
+    out = ask("Is automatic payment affected?")
     _shape(out)
-    assert out["intent"] == "unknown"
-    for q in a.EXAMPLES:
-        assert q in out["answer"]
+    assert out["intent"] == "retrieval" and a.MIN_COVERAGE <= out["coverage"] < 1
+    assert "AUTOMATIC PAYMENT: 15,000 ZAR on 300 records (degraded)." in out["answer"]
+    assert any(f["source"] == "Value at risk" for f in out["facts"])
 
 
-def test_llm_context_holds_aggregates_only():
-    src = FakeSources()
-    ctx = a.llm_context(run(src.overview(None, None)), run(src.heatmap(None)), run(src.rules(None, None, None, 10)))
-    assert "MM003, Material master, critical, 1200" in ctx
-    assert "Material master: 61.0" in ctx
-    assert "rose 2.4 points" in ctx
-    assert SECRET_KEY not in ctx and SECRET_VALUE not in ctx
-    assert "Material type is mandatory" not in ctx  # rule ids only, not their wording
+def test_refuses_when_the_figures_do_not_cover_the_question():
+    out = ask("Tell me a joke about penguins")
+    assert out["intent"] == "refused" and out["coverage"] == 0 and out["facts"] == []
+    assert out["answer"].startswith("Your figures do not answer that.")
+    assert a.EXAMPLES[0] in out["answer"]
 
 
-def test_llm_fallback_marks_ai_and_audits(monkeypatch):
+def test_retrieve_ranks_by_shared_words():
+    facts = [a.fact("Wave 1 is no-go", "Wave readiness"), a.fact("Material master: 61.0", "Object scores")]
+    picked, coverage = a.retrieve("is wave 1 no-go", facts)
+    assert picked[0]["statement"] == "Wave 1 is no-go" and coverage == 1.0
+    assert a.retrieve("penguins", facts) == ([], 0.0)
+
+
+def _model(monkeypatch, reply):
     from llm import provider
 
     sent, logged = [], []
 
     async def fake_ainvoke(llm, messages, *, timeout_seconds=60):
         sent.append((messages, timeout_seconds))
-        return "Material master is the object to watch."
+        return reply
 
     class FakeLLM:
         model = "test-model"
@@ -310,32 +406,32 @@ def test_llm_fallback_marks_ai_and_audits(monkeypatch):
     monkeypatch.setattr(provider, "get_llm_safe", lambda: FakeLLM())
     monkeypatch.setattr(provider, "safe_ainvoke", fake_ainvoke)
     monkeypatch.setattr("api.utils.llm_logger.log_llm_call", lambda *args, **kw: logged.append(args))
+    return sent, logged
 
-    out = ask("Tell me a joke about penguins")
-    _shape({**out, "ai": False})
-    assert out["ai"] is True and out["intent"] == "ai"
-    assert out["answer"] == "Material master is the object to watch."
+
+def test_the_model_only_rewords_and_is_audited(monkeypatch):
+    sent, logged = _model(monkeypatch, "Automatic payment is degraded, with 15,000 ZAR at stake.")
+    out = ask("Is automatic payment affected?")
+    assert out["intent"] == "retrieval" and out["phrased"] is True and out["ai"] is True and out["grounded"]
+    assert out["answer"] == "Automatic payment is degraded, with 15,000 ZAR at stake."
     (messages, timeout), = sent
     assert timeout == a.LLM_TIMEOUT_S
     prompt = " ".join(m["content"] for m in messages)
-    assert "Tell me a joke about penguins" in prompt and "MM003" in prompt
+    assert "AUTOMATIC PAYMENT: 15,000 ZAR" in prompt
     assert SECRET_KEY not in prompt and SECRET_VALUE not in prompt
     assert len(logged) == 1 and logged[0][1] == "assistant" and logged[0][3] == "test-model"
 
 
-def test_llm_failure_falls_back_to_examples(monkeypatch):
-    from llm import provider
+def test_a_reword_that_adds_a_number_is_dropped(monkeypatch):
+    _model(monkeypatch, "Automatic payment is degraded on 17 records.")
+    out = ask("Is automatic payment affected?")
+    assert out["phrased"] is False and "17" not in out["answer"] and out["grounded"]
 
-    async def none(*args, **kw):
-        return None
 
-    monkeypatch.setattr(provider, "llm_is_noop", lambda: False)
-    monkeypatch.setattr(provider, "get_llm_safe", lambda: object())
-    monkeypatch.setattr(provider, "safe_ainvoke", none)
-    monkeypatch.setattr("api.utils.llm_logger.log_llm_call", lambda *args, **kw: None)
-    out = ask("Tell me a joke about penguins")
-    assert out["ai"] is False and out["intent"] == "unknown"
-    assert a.EXAMPLES[0] in out["answer"]
+def test_the_model_is_never_asked_for_a_recognised_question(monkeypatch):
+    sent, _ = _model(monkeypatch, "anything")
+    assert ask("Which objects are weakest?")["phrased"] is False
+    assert sent == []
 
 
 # ── the route ────────────────────────────────────────────────────────────────
@@ -368,6 +464,7 @@ def test_route_answers(client):
     body = r.json()
     assert body["intent"] == "weakest_objects" and body["ai"] is False and body["chart"] == "bar"
     assert body["version_id"] == RUN
+    assert body["grounded"] is True and body["coverage"] == 1 and body["facts"][0]["source"] == "Object scores"
 
 
 @pytest.mark.parametrize("question", ["", "   ", "x" * 501])

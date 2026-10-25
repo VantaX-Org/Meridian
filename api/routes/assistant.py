@@ -1,7 +1,7 @@
 """POST /api/v1/assistant/ask: Ask Meridian, the in-app question box.
 
-Answers come from the Insights services first (api/services/assistant.py); the LLM is only the fallback and sees
-aggregated findings only. Any signed-in user with view permission may ask; every read is scoped to the tenant.
+Answers are assembled from the figures the Insights, Fix work and Progress services compute, and carry those figures
+as their proof (api/services/assistant.py). The model, when configured, only rewords facts it is given. Any signed-in user with view permission may ask; every read is scoped to the tenant.
 """
 import uuid
 from typing import Annotated, Literal, Optional, Union
@@ -34,14 +34,29 @@ class AnswerLink(BaseModel):
     href: str
 
 
+class Fact(BaseModel):
+    """One figure the answer was assembled from."""
+    statement: str
+    value: Optional[float] = None
+    source: str
+    href: Optional[str] = None
+
+
 class AskAnswer(BaseModel):
     answer: str
     intent: str
     data: Optional[list[DataPoint]] = None
     chart: Optional[Literal["bar", "line"]] = None
     links: list[AnswerLink] = []
+    #: the model reworded the assembled facts (``phrased``); kept as ``ai`` for older clients
     ai: bool = False
+    phrased: bool = False
     version_id: Optional[str] = None
+    facts: list[Fact] = []
+    #: how much of the question the facts cover, 0 to 1
+    coverage: float = 1.0
+    #: every number in ``answer`` appears in ``facts``
+    grounded: bool = True
 
 
 @router.post("/ask", response_model=AskAnswer, dependencies=[Depends(require_permission("view"))])
