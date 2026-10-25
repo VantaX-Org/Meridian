@@ -10,6 +10,14 @@ describe("HelpHint", () => {
     expect(screen.getByRole("button", { name: "About Data quality score" })).toBeInTheDocument();
   });
 
+  it("gives the 14px glyph a 24px hit area without taking more room", () => {
+    render(<HelpHint term="dqs" />);
+    const trigger = screen.getByRole("button", { name: "About Data quality score" });
+    expect(trigger.style.width).toBe("24px");
+    expect(trigger.style.height).toBe("24px");
+    expect(trigger.style.margin).toBe("-5px");
+  });
+
   it("opens the long text and a learn more link on click", async () => {
     render(<HelpHint term="cap" />);
     expect(screen.queryByText(GLOSSARY.cap.long)).not.toBeInTheDocument();

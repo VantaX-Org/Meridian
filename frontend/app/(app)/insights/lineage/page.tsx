@@ -252,7 +252,7 @@ export default function LineagePage() {
                   <p className="m-text-body m-ink-2">
                     {nodes.length.toLocaleString()} items and {edges.length.toLocaleString()} links {direction === "both" ? "up and downstream of" : direction === "up" ? "upstream of" : "downstream of"} {label(focus)}.
                     {capped ? ` Nearest ${MAX_NODES} of ${graphQ.data?.nodes.length.toLocaleString()} items shown; choose fewer steps to see the rest.` : ""}
-                    {" "}Red squares are reached by a failing rule. Red and orange links block or degrade their target.
+                    {" "}Items with a dashed red outline are reached by a failing rule. A dashed link blocks its target; a dotted link degrades it.
                   </p>
                 </>
               ) : <EmptyState title="Nothing is linked to this item" detail="Check the spelling, try an item from the table below, or choose more steps." action={rows[0] ? <Button onClick={() => trace(rows[0].id)}>{`Trace ${rows[0].label}`}</Button> : <Button render={<Link href="/rules">Open rules</Link>} />} />}

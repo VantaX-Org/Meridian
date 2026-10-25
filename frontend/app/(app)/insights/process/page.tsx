@@ -179,7 +179,7 @@ function RulesBlock({ title, t, findingHref, configuredIn, run }: {
   const failing = t.applicable - t.passes;
   return (
     <div className="flex flex-col gap-1">
-      <h4 className="font-medium">{title}</h4>
+      <h3 className="font-medium">{title}</h3>
       <p className="m-text-body m-ink-2">
         {t.score === null ? "No rules apply" : `${fmt1(t.score)}% pass: ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} rules that apply`}, {failing.toLocaleString()} failing
       </p>

@@ -1,6 +1,9 @@
 // frontend/design/charts/charts.test.tsx
 import { describe, expect, it, vi } from "vitest";
-import { render, fireEvent, screen } from "@testing-library/react";
+import { render, fireEvent, screen, within } from "@testing-library/react";
+import type { JSX } from "react";
+import { LineageChart, AT_RISK_NOTE } from "./Lineage";
+import type { ChartPoint } from "./theme";
 import { Heatmap, toneOfTier } from "./Heatmap";
 import { Pareto } from "./Pareto";
 import { Bar, categoryAxisWidth } from "./Bar";
@@ -367,5 +370,78 @@ describe("Radar below the minimum width", () => {
     expect(RADAR_MIN_WIDTH).toBe(300);
     const { container } = render(<Radar data={[{ x: "Accuracy", y: 91 }]} label="Dimensions" />);
     expect(container.querySelector("[data-radar='radar']")).not.toBeNull();
+  });
+});
+
+describe("clickable charts have a keyboard path", () => {
+  const points = [{ x: "MM001", y: 12, label: "Missing unit" }, { x: "MM002", y: 4 }];
+  const cases: [string, (onPointClick: (p: ChartPoint) => void) => JSX.Element][] = [
+    ["Bar", (f) => <Bar data={points} onPointClick={f} label="Rules" />],
+    ["Line", (f) => <Line data={points} onPointClick={f} label="Rules" />],
+    ["Pareto", (f) => <Pareto data={points} onPointClick={f} label="Rules" />],
+    ["Waterfall", (f) => <Waterfall data={points} onPointClick={f} label="Rules" />],
+    ["Radar", (f) => <Radar data={points} onPointClick={f} label="Rules" />],
+  ];
+  it.each(cases)("%s renders one named button per point, outside the image, calling onPointClick", (_, chart) => {
+    const onPointClick = vi.fn();
+    render(chart(onPointClick));
+    const list = screen.getByRole("list", { name: "Open a point in Rules" });
+    expect(screen.getByRole("img").contains(list)).toBe(false);
+    const first = within(list).getByRole("button", { name: "Missing unit, 12" });
+    first.focus();
+    expect(first).toHaveFocus();
+    fireEvent.click(first);
+    expect(onPointClick).toHaveBeenCalledWith(expect.objectContaining({ x: "MM001", y: 12 }));
+    expect(within(list).getAllByRole("button")).toHaveLength(2);
+  });
+  it("leaves a chart without onPointClick with no buttons", () => {
+    render(<Bar data={points} label="Rules" />);
+    expect(screen.queryByRole("list")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+  it("names a multi-series point by its series", () => {
+    const onPointClick = vi.fn();
+    render(<Line data={[]} series={[{ name: "Plant 1000", data: [{ x: "Oct", y: 90 }] }, { name: "Plant 2000", data: [{ x: "Oct", y: 80 }] }]} onPointClick={onPointClick} label="Score" />);
+    fireEvent.click(screen.getByRole("button", { name: "Plant 2000 Oct, 80" }));
+    expect(onPointClick).toHaveBeenCalledWith({ x: "Oct", y: 80 });
+  });
+});
+
+describe("Waterfall and Radar respect reduced motion", () => {
+  it.each([
+    ["Waterfall", () => <Waterfall data={data} label="Change" />],
+    ["Radar", () => <Radar data={data} label="Dimensions" />],
+  ] as const)("%s reads prefers-reduced-motion before it animates", (_, chart) => {
+    const original = window.matchMedia;
+    const matchMedia = vi.fn((q: string) => ({ matches: true, media: q, onchange: null, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() }));
+    window.matchMedia = matchMedia as unknown as typeof window.matchMedia;
+    try {
+      render(chart());
+      expect(matchMedia).toHaveBeenCalledWith("(prefers-reduced-motion: reduce)");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
+
+describe("LineageChart never rests on colour", () => {
+  it("outlines an at-risk node, names it in the title, and dashes a blocking link", () => {
+    class StubRO { observe() {} disconnect() {} unobserve() {} }
+    vi.stubGlobal("ResizeObserver", StubRO);
+    try {
+      const { container } = render(
+        <LineageChart
+          nodes={[{ id: "c", type: "check", label: "MM001", atRisk: true }, { id: "k", type: "kpi", label: "DPO" }]}
+          edges={[{ source: "c", target: "k", impact: "full_block" }]}
+        />,
+      );
+      const titles = Array.from(container.querySelectorAll("title")).map((t) => t.textContent);
+      expect(titles).toContain(`MM001, ${AT_RISK_NOTE}`);
+      expect(titles).toContain("DPO");
+      expect(container.querySelector("[data-at-risk]")).toHaveAttribute("stroke-dasharray");
+      expect(container.querySelector("path[data-impact='full_block']")).toHaveAttribute("stroke-dasharray", "6 3");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

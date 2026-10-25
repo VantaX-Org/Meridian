@@ -5,6 +5,7 @@ import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, Responsive
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { ChartTooltip } from "./Tooltip";
 import { hoverBar } from "./HoverBar";
+import { ChartPointActions } from "./PointActions";
 import { mMotion, reducedMotion } from "../tokens";
 import { formatNumber } from "../../lib/format";
 
@@ -47,6 +48,7 @@ export function Bar({
 }) {
   const animate = draw && !reducedMotion();
   return (
+    <>
     <div role="img" aria-label={chartSummary(data, label)}>
     <ResponsiveContainer width="100%" height={height}>
       {/* The right margin keeps the value label of a full-width bar inside the chart. */}
@@ -77,5 +79,7 @@ export function Bar({
       </BarChart>
     </ResponsiveContainer>
     </div>
+    <ChartPointActions points={data} onPointClick={onPointClick} label={label} format={tick} />
+    </>
   );
 }

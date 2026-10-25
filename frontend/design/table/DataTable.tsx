@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import {
   type ColumnDef,
+  type Row,
   type RowSelectionState,
   type SortingState,
   type VisibilityState,
@@ -88,6 +89,10 @@ export interface DataTableProps<T> {
   hideToolbar?: boolean;
   /** `data-tour` value on the table card, so a guided tour can spotlight it (lib/help/tours.ts). */
   dataTour?: string;
+  /** Accessible name of the grid, e.g. "Rules". Defaults to "Data table". */
+  label?: string;
+  /** Names a row for its selection checkbox ("Select <name>"). Defaults to the row's first text cell, then its id. */
+  rowLabel?: (row: T) => string;
 }
 
 export interface RowPrefetch {
@@ -132,6 +137,7 @@ export function DataTable<T>({
   columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, maxHeight: maxHeightProp, height: heightProp, hideSearch = false, renderExpanded, emptyMessage, emptyAction,
   sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = true,
   tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch, dataTour,
+  label = "Data table", rowLabel,
 }: DataTableProps<T>) {
   "use no memo";
   const maxHeight = maxHeightProp ?? heightProp ?? "calc(100vh - 240px)";
@@ -171,6 +177,19 @@ export function DataTable<T>({
   const uid = useId();
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // A checkbox reads "Select Plant 1000", never "Select row 3f2a…": the caller's name, else the first text cell.
+  const nameOfRow = (row: Row<T>): string => {
+    const named = rowLabel?.(row.original);
+    if (named) return named;
+    for (const cell of row.getVisibleCells()) {
+      if (cell.column.id === SELECT_COLUMN_ID || cell.column.id === EXPAND_COLUMN_ID) continue;
+      const v = cell.getValue();
+      // A raw timestamp names nothing a reader would say aloud; the next text cell does.
+      if (typeof v === "string" && v.trim() && !/^\d{4}-\d{2}-\d{2}(T|$)/.test(v)) return v;
+    }
+    return `row ${row.id}`;
+  };
+
   const selectColumn: ColumnDef<T> = {
     id: SELECT_COLUMN_ID,
     header: ({ table }) => (
@@ -182,7 +201,7 @@ export function DataTable<T>({
     ),
     cell: ({ row }) => (
       <Checkbox
-        aria-label={`Select row ${row.id}`}
+        aria-label={`Select ${nameOfRow(row)}`}
         checked={row.getIsSelected()}
         onChange={row.getToggleSelectedHandler()}
         onClick={(e) => e.stopPropagation()}
@@ -395,7 +414,7 @@ export function DataTable<T>({
           style={{ color: "var(--m-ink)" }}
           role="grid"
           tabIndex={0}
-          aria-label="Data table"
+          aria-label={label}
           aria-rowcount={rowModel.length + 1}
           aria-activedescendant={activeRendered ? rowDomId(activeIndex) : undefined}
           onKeyDown={onGridKeyDown}

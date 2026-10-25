@@ -8,7 +8,7 @@ import { Tooltip } from "./Tooltip";
 import { IconInfo } from "../icons";
 
 /**
- * A 14px info button for a glossary term. Hover or focus shows the short
+ * A 14px info button (a 24px hit area) for a glossary term. Hover or focus shows the short
  * definition in a tooltip; a click opens a popover with the long text and a
  * "Learn more" link when the entry has one.
  */
@@ -24,7 +24,8 @@ export function HelpHint({ term, onHero = false }: { term: GlossaryKey; /** Hero
           <Popover.Trigger
             aria-label={`About ${entry.term}`}
             className="m-motion-colors inline-flex shrink-0 items-center justify-center rounded-full"
-            style={{ width: 14, height: 14, color: onHero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}
+            // A 24px hit area around the 14px glyph; the -5px margin keeps its footprint at 14px, so nothing shifts.
+            style={{ width: 24, height: 24, margin: -5, color: onHero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}
           />
         }
       >
@@ -37,7 +38,7 @@ export function HelpHint({ term, onHero = false }: { term: GlossaryKey; /** Hero
               <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{entry.long}</p>
               {entry.href && (
                 <p className="mt-2 m-text-body">
-                  <Link href={entry.href} style={{ color: "var(--m-accent)" }}>Learn more</Link>
+                  <Link href={entry.href} className="m-ink-accent underline underline-offset-2">Learn more</Link>
                 </p>
               )}
             </Card>

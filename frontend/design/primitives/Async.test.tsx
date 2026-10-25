@@ -22,7 +22,8 @@ describe("asyncStateOf", () => {
 describe("Async", () => {
   it("shows the skeleton while loading", () => {
     const { container } = render(<Async query={q({ isLoading: true })} skeleton={120}>never</Async>);
-    expect(container.querySelector("[data-state='loading']")).not.toBeNull();
+    expect(container.querySelector("[data-state='loading']")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
     expect(screen.queryByText("never")).toBeNull();
   });
   it("shows apiErrorState's title and retries the query", () => {

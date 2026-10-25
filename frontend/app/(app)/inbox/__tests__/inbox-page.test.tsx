@@ -361,6 +361,39 @@ describe("InboxPage task sources", () => {
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/objects/material_master/records/100001"));
   });
 
+  it("leaves Enter and the letter keys to a dialog's own buttons", async () => {
+    vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({ id: "cq1", object_type: "material_master", record_key: "100001", rule_id: null, record_data_before: null, record_data_after: null } as never);
+    const assign = vi.spyOn(stewardship, "assignItem").mockResolvedValue({} as never);
+    nav.push.mockClear();
+    const detail = await mountOne({ item_type: "writeback_approval", source_id: "cq1" });
+    await within(detail).findByRole("link", { name: "Open record" });
+    fireEvent.click(within(detail).getByRole("button", { name: "Reject" }));
+    const dialog = await screen.findByRole("dialog", { name: "Reject with reason" });
+    const keep = within(dialog).getByRole("button", { name: "Keep task open" });
+    keep.focus();
+    // Enter on the dialog's button is the button's: the window handler neither opens the record nor cancels it.
+    expect(fireEvent.keyDown(keep, { key: "Enter" })).toBe(true);
+    fireEvent.keyDown(keep, { key: "a" });
+    fireEvent.keyDown(keep, { key: "x" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(nav.push).not.toHaveBeenCalled();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("opens the record from Enter on a queue row, not from Enter on a detail button", async () => {
+    vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({ id: "cq1", object_type: "material_master", record_key: "100001", rule_id: null, record_data_before: null, record_data_after: null } as never);
+    nav.push.mockClear();
+    const detail = await mountOne({ item_type: "writeback_approval", source_id: "cq1" });
+    await within(detail).findByRole("link", { name: "Open record" });
+    const approve = within(detail).getByRole("button", { name: "Approve" });
+    expect(fireEvent.keyDown(approve, { key: "Enter" })).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(nav.push).not.toHaveBeenCalled();
+    const row = within(screen.getByRole("list", { name: "Tasks" })).getAllByRole("button")[0];
+    fireEvent.keyDown(row, { key: "Enter" });
+    await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/objects/material_master/records/100001"));
+  });
+
   it("confirms a single write-back approve, naming the field, value and record, before calling the API", async () => {
     vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({
       id: "cq1", object_type: "material_master", record_key: "100001", rule_id: null,

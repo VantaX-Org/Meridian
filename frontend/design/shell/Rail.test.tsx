@@ -177,6 +177,15 @@ describe("Rail (the index bar)", () => {
     expect(screen.queryAllByRole("link", { current: "page" })).toHaveLength(0);
   });
 
+  it("names a pill with a health pip from its visible text first, then the health", async () => {
+    const { getSystems } = await import("@/lib/api/connectivity");
+    vi.mocked(getSystems).mockResolvedValueOnce([{ health_status: "healthy" }, { health_status: "unreachable" }] as never);
+    renderRail();
+    fireEvent.click(await screen.findByRole("button", { name: "More" }));
+    const link = await screen.findByRole("link", { name: "Systems, 1 of 2 systems healthy" });
+    expect(link.getAttribute("aria-label")?.startsWith(link.textContent ?? "")).toBe(true);
+  });
+
   it("brand home link keeps its accessible name", async () => {
     renderRail();
     expect(await screen.findByRole("link", { name: "Meridian" })).toBeInTheDocument();

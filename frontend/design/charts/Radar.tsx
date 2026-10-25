@@ -9,11 +9,18 @@ import {
 import { ChartTooltip } from "./Tooltip";
 import { Bar } from "./Bar";
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
+import { ChartPointActions } from "./PointActions";
+import { mMotion, reducedMotion } from "../tokens";
 
 /** Under this width the angle labels ("Accuracy", "Validity") would be clipped, so the radar yields to bars. */
 export const RADAR_MIN_WIDTH = 300;
 
-export function Radar({ data, onPointClick, label, height = 280 }: { data: ChartPoint[]; onPointClick?: (point: ChartPoint) => void; label?: string; height?: number }) {
+export function Radar({ data, onPointClick, label, height = 280, draw = true }: {
+  data: ChartPoint[]; onPointClick?: (point: ChartPoint) => void; label?: string; height?: number;
+  /** Draws in on mount. On by default, off under reduced motion. */
+  draw?: boolean;
+}) {
+  const animate = draw && !reducedMotion();
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number | null>(null);
   useEffect(() => {
@@ -27,8 +34,9 @@ export function Radar({ data, onPointClick, label, height = 280 }: { data: Chart
   return (
     <div ref={box} data-radar={narrow ? "bars" : "radar"}>
       {narrow ? (
-        <Bar data={data} onPointClick={onPointClick} label={label} height={Math.max(160, data.length * 28)} />
+        <Bar data={data} onPointClick={onPointClick} label={label} height={Math.max(160, data.length * 28)} draw={draw} />
       ) : (
+        <>
         <div role="img" aria-label={chartSummary(data, label)}>
           <ResponsiveContainer width="100%" height={height}>
             {/* 70 percent leaves a ring for the angle labels at every width above the fallback. */}
@@ -43,6 +51,9 @@ export function Radar({ data, onPointClick, label, height = 280 }: { data: Chart
                 stroke={chartTheme.series[0]}
                 strokeWidth={2}
                 fill={chartTheme.seriesFill[0]}
+                isAnimationActive={animate}
+                animationDuration={mMotion.draw}
+                animationEasing="ease-out"
                 dot={(dotProps: DotItemDotProps) => (
                   <circle
                     key={dotProps.index}
@@ -58,6 +69,8 @@ export function Radar({ data, onPointClick, label, height = 280 }: { data: Chart
             </RadarChart>
           </ResponsiveContainer>
         </div>
+        <ChartPointActions points={data} onPointClick={onPointClick} label={label} />
+        </>
       )}
     </div>
   );

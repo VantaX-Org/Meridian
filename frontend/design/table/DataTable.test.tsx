@@ -26,6 +26,17 @@ describe("DataTable", () => {
     expect(cells[0]).toHaveTextContent("Alpha");
   });
 
+  it("names the grid and each row's checkbox by what the row is, never its id", () => {
+    const { unmount } = render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
+    expect(screen.getByRole("grid", { name: "Data table" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeInTheDocument();
+    unmount();
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} label="Plants" rowLabel={(r) => `plant ${r.name}`} />);
+    expect(screen.getByRole("grid", { name: "Plants" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select plant Bravo" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /Select row/ })).toBeNull();
+  });
+
   it("filters rows via the global filter input", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
     fireEvent.change(screen.getByPlaceholderText("Type to filter rows"), { target: { value: "Bravo" } });
@@ -75,18 +86,18 @@ describe("DataTable", () => {
     // Space selects, it does not open.
     fireEvent.keyDown(grid, { key: " " });
     expect(onRowClick).toHaveBeenCalledTimes(2);
-    expect(screen.getByLabelText("Select row 2")).toBeChecked();
+    expect(screen.getByLabelText("Select Bravo")).toBeChecked();
     fireEvent.keyDown(grid, { key: "x" });
-    expect(screen.getByLabelText("Select row 2")).not.toBeChecked();
+    expect(screen.getByLabelText("Select Bravo")).not.toBeChecked();
     fireEvent.keyDown(grid, { key: "End" });
     expect(grid).toHaveAttribute("aria-activedescendant", (screen.getByText("Alpha").closest("tr") as HTMLTableRowElement).id);
     fireEvent.keyDown(grid, { key: "Home" });
     expect(grid).toHaveAttribute("aria-activedescendant", bravoRow.id);
 
-    fireEvent.click(screen.getByLabelText("Select row 1"));
+    fireEvent.click(screen.getByLabelText("Select Alpha"));
     expect(onRowClick).toHaveBeenCalledTimes(2);
     fireEvent.keyDown(grid, { key: "Escape" });
-    expect(screen.getByLabelText("Select row 1")).not.toBeChecked();
+    expect(screen.getByLabelText("Select Alpha")).not.toBeChecked();
   });
 
   it("virtualises large row sets: total height matches getTotalSize and scrolling reveals later rows", () => {
@@ -183,11 +194,11 @@ describe("DataTable", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "Alpha" } });
     fireEvent.click(screen.getByLabelText("Select all rows"));
-    expect(screen.getByLabelText("Select row 1")).toBeChecked();
+    expect(screen.getByLabelText("Select Alpha")).toBeChecked();
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "" } });
-    expect(screen.getByLabelText("Select row 2")).not.toBeChecked();
-    fireEvent.keyDown(screen.getByLabelText("Select row 1"), { key: "Escape" });
-    expect(screen.getByLabelText("Select row 1")).not.toBeChecked();
+    expect(screen.getByLabelText("Select Bravo")).not.toBeChecked();
+    fireEvent.keyDown(screen.getByLabelText("Select Alpha"), { key: "Escape" });
+    expect(screen.getByLabelText("Select Alpha")).not.toBeChecked();
   });
 
   it("exposes grid row semantics", () => {
@@ -212,8 +223,8 @@ describe("DataTable", () => {
         )}
       />,
     );
-    fireEvent.click(screen.getByLabelText("Select row 2"));
-    fireEvent.click(screen.getByLabelText("Select row 1"));
+    fireEvent.click(screen.getByLabelText("Select Bravo"));
+    fireEvent.click(screen.getByLabelText("Select Alpha"));
     expect(screen.getByText("2 selected")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Delete"));
     expect(onAction).toHaveBeenCalledWith(expect.arrayContaining([
@@ -233,7 +244,7 @@ describe("DataTable", () => {
 
   it("marks selected rows and shows the floating bulk bar", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={(s) => <button>Act {s.length}</button>} />);
-    fireEvent.click(screen.getByLabelText("Select row 1"));
+    fireEvent.click(screen.getByLabelText("Select Alpha"));
     expect(screen.getByText("1 selected")).toBeInTheDocument();
     expect(screen.getByText("Act 1")).toBeInTheDocument();
     expect(screen.getAllByRole("row")[2]).toHaveClass("bg-[var(--m-accent-soft)]");

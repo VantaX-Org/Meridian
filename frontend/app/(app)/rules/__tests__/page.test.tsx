@@ -103,11 +103,11 @@ describe("rule enable switch", () => {
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     const update = vi.spyOn(rulesApi, "updateRule").mockRejectedValue(new Error("nope"));
     renderWithQuery(<RulesPage />);
-    const sw = await screen.findByRole("switch", { name: "Enabled: Vendor number is mandatory" });
+    const sw = await screen.findByRole("switch", { name: "On: Vendor number is mandatory" });
     expect(sw).toHaveAttribute("aria-checked", "true");
     await userEvent.setup().click(sw);
     expect(update).toHaveBeenCalledWith("r1", { enabled: false });
-    await waitFor(() => expect(screen.getByRole("switch", { name: /Enabled:/ })).toHaveAttribute("aria-checked", "true"));
+    await waitFor(() => expect(screen.getByRole("switch", { name: /: Vendor number is mandatory$/ })).toHaveAttribute("aria-checked", "true"));
   });
 
   it("flips the switch state when the update succeeds", async () => {
@@ -116,8 +116,8 @@ describe("rule enable switch", () => {
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     vi.spyOn(rulesApi, "updateRule").mockImplementation(async () => { enabled = false; return { ...RULE, enabled }; });
     renderWithQuery(<RulesPage />);
-    const sw = await screen.findByRole("switch", { name: /Enabled:/ });
+    const sw = await screen.findByRole("switch", { name: /: Vendor number is mandatory$/ });
     await userEvent.setup().click(sw);
-    await waitFor(() => expect(screen.getByRole("switch", { name: /Enabled:/ })).toHaveAttribute("aria-checked", "false"));
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Off: Vendor number is mandatory" })).toHaveAttribute("aria-checked", "false"));
   });
 });

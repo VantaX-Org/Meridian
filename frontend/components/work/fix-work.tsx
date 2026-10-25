@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
+import { keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { RecordPanel } from "./record-panel";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 
@@ -33,8 +34,6 @@ const splitRecord = (v: string | null): [string, string] | null => {
   const i = v ? v.indexOf("|") : -1;
   return v && i > 0 ? [v.slice(0, i), v.slice(i + 1)] : null;
 };
-const typing = (t: EventTarget | null) =>
-  t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) || !!t.closest("[role=dialog]"));
 
 function useFilters() {
   const search = useSearchParams();
@@ -242,14 +241,15 @@ export function FixWork() {
   // Keyboard triage: j/k (or arrows) move, a accepts the record's suggestions, t takes it, u undoes, Enter opens it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+      // Fields, dialogs, menus and other buttons keep their keys; Enter opens only from a record row or the page.
+      if (e.metaKey || e.ctrlKey || e.altKey || keyBelongsElsewhere(e, "[data-testid=work-record]")) return;
       if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); next(); }
       else if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); pick(items[Math.max(0, index - 1)]); }
       else if (!current) return;
       else if (e.key === "a" && canFix) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "accept" }], { onSuccess: next });
       else if (e.key === "t" && can("assign")) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "assign", assignee: "me" }]);
       else if (e.key === "u" && canFix) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "undo" }]);
-      else if (e.key === "Enter") router.push(`/objects/${current.module}/records/${encodeURIComponent(current.record_key)}${run ? `?run=${run}` : ""}`);
+      else if (e.key === "Enter") { e.preventDefault(); router.push(`/objects/${current.module}/records/${encodeURIComponent(current.record_key)}${run ? `?run=${run}` : ""}`); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

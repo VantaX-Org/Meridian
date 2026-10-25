@@ -145,9 +145,9 @@ describe("RunsPage", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText("Select row v1"));
+    fireEvent.click(screen.getByLabelText("Select Oct 1 upload"));
     expect(screen.getByText("Select two runs")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Select row v2"));
+    fireEvent.click(screen.getByLabelText("Select Oct 8 upload"));
     const bulkBar = screen.getByText("2 selected").parentElement as HTMLElement;
     fireEvent.click(within(bulkBar).getByRole("button", { name: "Compare" }));
     expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");

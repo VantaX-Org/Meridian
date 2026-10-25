@@ -79,7 +79,10 @@ export function TablesTab({ id }: { id: string }) {
           {(data?.items ?? []).map((t) => (
             <tr key={t.table} className="cursor-pointer" onClick={() => setOpen(t.table)}>
               <td className={`${td} font-mono [border-color:var(--m-line)]`}>
-                {t.table} {t.customer_table && <Pill>customer</Pill>}
+                {/* The keyboard path into the drawer; the row click stays for the mouse. */}
+                <button type="button" className="font-mono text-left m-ink-accent hover:underline underline-offset-2"
+                  onClick={(e) => { e.stopPropagation(); setOpen(t.table); }}>{t.table}</button>
+                {" "}{t.customer_table && <Pill>customer</Pill>}
               </td>
               <td className={clsx(td, "[border-color:var(--m-line)]")}>{t.description ?? "—"}</td>
               <td className={clsx(td, "[border-color:var(--m-line)]")}>{t.delivery_class ?? "—"}</td>

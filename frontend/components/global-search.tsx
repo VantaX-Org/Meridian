@@ -116,6 +116,8 @@ export function GlobalSearch() {
       : !items.length && data
         ? "No failing record matches"
         : null;
+  // Always mounted, so a screen reader hears each change: the result count, searching, or the failure.
+  const announce = !shown ? "" : status ?? (items.length ? plural(items.length, "matching record") : "");
 
   return (
     <div ref={rootRef} className="relative" data-testid="global-search">
@@ -140,9 +142,10 @@ export function GlobalSearch() {
         onKeyDown={onKeyDown}
         className="m-input w-[180px] xl:w-[260px] pl-7"
       />
+      <span role="status" className="sr-only">{announce}</span>
       {shown && (
         <div className="m-popup absolute right-0 top-[calc(100%+4px)] z-50 w-[440px] max-w-[calc(100vw-32px)]">
-          {status && <p className="m-text-meta m-ink-3 px-2 py-2" role="status">{status}</p>}
+          {status && <p className="m-text-meta m-ink-3 px-2 py-2" aria-hidden="true">{status}</p>}
           <ul id={listId} role="listbox" aria-label="Matching records">
             {items.map((item, i) => {
               const st = STATUS[item.status];

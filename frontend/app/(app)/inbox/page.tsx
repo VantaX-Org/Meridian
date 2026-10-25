@@ -47,7 +47,7 @@ import {
 } from "@/lib/api/exceptions";
 import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
 import { MODULE_LABELS, formatDate, formatInt, formatModuleName, formatMoney, labelOf, relativeTime } from "@/lib/format";
-import { inboxKeyHandler } from "@/lib/inbox-keys";
+import { inboxKeyHandler, keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, IssuesPanel, SapMonitorPanel } from "./inbox-panels";
 import { EXC_PAGE, taskSourceLink } from "./task-source";
@@ -452,10 +452,11 @@ export default function InboxPage() {
   // Enter opens what the task points at: its id is a pair, golden record, proposal, exception, contract or term id,
   // never an SAP record key, so the target follows the task type (a proposal opens its record by its key).
   const openRecord = useCallback((index: number) => {
-    if (isExceptions) return; // exceptions have no object/record to open — the row carries its own detail.
+    if (isExceptions) return false; // exceptions have no object/record to open — the row carries its own detail.
     const t = items[index];
-    if (!t) return;
+    if (!t) return false;
     void resolveTaskLink(qc, t).then((link) => { if (link) router.push(link.href); });
+    return true;
   }, [isExceptions, items, router, qc]);
 
   // The keys belong to the task and exception workbenches only; the other tabs own their tables.
@@ -463,8 +464,8 @@ export default function InboxPage() {
   useEffect(() => {
     if (!keysLive) return;
     const onKey = (ev: KeyboardEvent) => {
-      const el = ev.target as HTMLElement | null;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      // Fields, dialogs, menus and other buttons keep their keys; Enter on a queue row still opens the record.
+      if (keyBelongsElsewhere(ev, "[data-tour=inbox-queue] li")) return;
       if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
       const t = isExceptions ? null : items[focusedIndex];
       const e = isExceptions ? excItems[focusedIndex] : null;

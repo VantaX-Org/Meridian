@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
 import { Field } from "./Field";
@@ -29,6 +29,7 @@ export function ConfirmDialog({
   onConfirm: () => void;
 }) {
   const [typed, setTyped] = useState("");
+  const matchId = useId();
   // Clear on every close, including a controlled close after success, and whenever the value to type changes
   // (state adjusted during render, the React-documented pattern, so no effect is needed).
   const resetKey = `${open}:${typeToConfirm ?? ""}`;
@@ -67,12 +68,13 @@ export function ConfirmDialog({
               placeholder={typeToConfirm}
               autoComplete="off"
               spellCheck={false}
-              onKeyDown={(e) => { if (e.key === "Enter" && matched && !pending) onConfirm(); }}
+              aria-describedby={matchId}
+              onKeyDown={(e) => { if (e.key === "Enter" && matched && !confirmDisabled && !pending) onConfirm(); }}
             />
           </Field>
         )}
         {typeToConfirm !== undefined && (
-          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+          <p id={matchId} className="m-text-meta m-ink-3">
             Matches exactly: <Mono inline>{typeToConfirm}</Mono>
           </p>
         )}

@@ -176,7 +176,8 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
         <Link
           href={resolveNavHref(item.href, role)}
           aria-current={active ? "page" : undefined}
-          aria-label={showPip && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
+          // With a health pip the name starts with the visible pill text and keeps the badge count, then the health.
+          aria-label={showPip && healthLabel ? `${PILL_LABEL[item.href] ?? item.label}${count > 0 ? ` ${count > 99 ? "99+" : count}` : ""}, ${healthLabel}` : undefined}
           className="m-topnav-link"
         >
           {renderIcon(item)}
