@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Checkbox, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, toast } from "@/design";
+import { Button, Checkbox, ChoiceGroup, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, toast } from "@/design";
 import { LedgerHead, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -13,7 +13,7 @@ import {
 } from "@/lib/api/triage";
 import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorMessage } from "@/lib/error";
-import { formatModuleName, isValidTimeZone } from "@/lib/format";
+import { formatModuleName, isValidTimeZone, labelOf } from "@/lib/format";
 import { timezoneOptions } from "@/lib/preferences";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -38,19 +38,6 @@ function useUsers() {
   const users: User[] = q.data ?? [];
   const name = (id: string | null) => (!id ? "None" : users.find((u) => u.id === id)?.name ?? id.slice(0, 8));
   return { users, name, isError: q.isError, error: q.error, refetch: q.refetch };
-}
-
-function Toggle({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className="px-2 py-0.5 m-text-meta rounded-full border m-ink-3 [border-color:var(--m-line)] [background:var(--m-sheet)] aria-pressed:[color:var(--m-pass)] aria-pressed:[border-color:var(--m-pass)] aria-pressed:[background:var(--m-sheet-raised)]"
-    >
-      {children}
-    </button>
-  );
 }
 
 function Section({ title, action, children, id }: { title: string; action?: React.ReactNode; children: React.ReactNode; id?: string }) {
@@ -256,7 +243,7 @@ function RulesSection({ write }: { write: boolean }) {
   };
 
   const ruleCols: ColumnDef<AssignmentRule, unknown>[] = [
-    { id: "n", header: "#", cell: ({ row }) => <span className="font-mono m-text-meta">{row.index + 1}</span> },
+    { id: "n", header: "#", cell: ({ row }) => <span className="m-numeric m-text-meta">{row.index + 1}</span> },
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
     { id: "match", header: "Matches", cell: ({ row }) => <span className="m-ink-3">{matchText(row.original.match)}</span> },
     { id: "to", header: "Assigns to", cell: ({ row }) => target(row.original) },
@@ -348,11 +335,13 @@ function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () 
           />
         </Field>
         <Field label="Severity">
-          <div className="flex gap-2">
-            {SEVERITIES.map((s) => (
-              <Toggle key={s} active={severity.includes(s)} onClick={() => setSeverity(toggled(severity, s, !severity.includes(s)))}>{s}</Toggle>
-            ))}
-          </div>
+          <ChoiceGroup
+            multiple
+            label="Severity"
+            value={severity}
+            onChange={setSeverity}
+            options={SEVERITIES.map((s) => ({ value: s, label: labelOf(s) }))}
+          />
         </Field>
         {MATCH_FIELDS.map(([k, label]) => (
           <Field key={k} label={`${label} (comma-separated)`}>
@@ -532,16 +521,14 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
         <p className="m-text-meta m-ink-3">Extraction schedules, SLA clocks and dates for anyone without a zone of their own use this zone</p>
       </div>
       <Field label="Work days">
-        <div className="flex gap-2">
-          {DAYS.map((label, i) => {
-            const iso = i + 1;
-            return (
-              <Toggle key={iso} active={workDays.includes(iso)} onClick={() => write && setWorkDays(toggled(workDays, iso, !workDays.includes(iso)))}>
-                {label}
-              </Toggle>
-            );
-          })}
-        </div>
+        <ChoiceGroup
+          multiple
+          label="Work days"
+          disabled={!write}
+          value={workDays.map(String)}
+          onChange={(days) => setWorkDays(days.map(Number))}
+          options={DAYS.map((label, i) => ({ value: String(i + 1), label }))}
+        />
       </Field>
       <div className="flex gap-3">
         <Field label="Day starts"><Input type="time" value={workStart} disabled={!write} onChange={(e) => setWorkStart(e.target.value)} /></Field>

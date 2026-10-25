@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/design";
+import { ChoiceGroup } from "@/design";
 
 export interface QuickFilterOption {
   value: string;
@@ -20,20 +20,13 @@ export function QuickFilters({ label, options, value, onChange }: {
   onChange: (value: string) => void;
 }) {
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-2">
-      <span className="m-text-meta m-ink-3 min-w-[44px]">{label}</span>
-      {options.map((o) => (
-        <Button
-          key={o.value}
-          variant="secondary"
-          size="sm"
-          aria-pressed={value === o.value}
-          className="aria-pressed:[color:var(--m-accent-ink)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[background:var(--m-accent-soft)]"
-          onClick={() => onChange(o.value)}
-        >
-          {o.count === undefined ? o.label : `${o.label} (${o.count.toLocaleString()})`}
-        </Button>
-      ))}
-    </div>
+    <ChoiceGroup
+      label={label}
+      showLabel
+      labelClassName="min-w-[44px]"
+      value={value}
+      onChange={onChange}
+      options={options.map((o) => ({ value: o.value, label: o.count === undefined ? o.label : `${o.label} (${o.count.toLocaleString()})` }))}
+    />
   );
 }

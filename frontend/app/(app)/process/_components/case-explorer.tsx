@@ -38,7 +38,7 @@ export function CaseExplorer({ runId, filters, caseId, onOpenCase, onClearFilter
         : (
           <Card padding="sm" meta={q.data.total > q.data.items.length ? `First ${fmtCount(q.data.items.length)} of ${fmtCount(q.data.total)} cases` : undefined}>
             <DataTable columns={COLUMNS} data={q.data.items} getRowId={(c) => c.case_id} onRowClick={(c) => onOpenCase(c.case_id)}
-              height="auto" dense tableId="process-cases" exportName={`process-cases-${runId}`} />
+              height="auto" tableId="process-cases" exportName={`process-cases-${runId}`} />
           </Card>
         )}
       <CaseDrawer runId={runId} filters={filters} caseId={caseId} onClose={() => onOpenCase(null)} />

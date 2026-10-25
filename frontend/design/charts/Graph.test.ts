@@ -30,12 +30,12 @@ describe("layoutGraph", () => {
 });
 
 describe("edge styling", () => {
-  it("edgeWidth maps weight 0 to 1 and weight 1 to 5, clamped", () => {
+  it("edgeWidth maps weight 0 to 1 and weight 1 to 5 plus one for the frequent band, clamped", () => {
     expect(edgeWidth(0)).toBe(1);
-    expect(edgeWidth(1)).toBe(5);
+    expect(edgeWidth(1)).toBe(6);
     expect(edgeWidth(0.5)).toBe(3);
     expect(edgeWidth(-2)).toBe(1);
-    expect(edgeWidth(9)).toBe(5);
+    expect(edgeWidth(9)).toBe(6);
   });
 
   it("edgeBand splits at 0.25 and 0.6", () => {
@@ -48,7 +48,7 @@ describe("edge styling", () => {
   it("edgeColor puts bottleneck over rework over band", () => {
     expect(edgeColor({ weight: 0.9, bottleneck: true, rework: true })).toBe("var(--m-critical)");
     expect(edgeColor({ weight: 0.9, rework: true })).toBe("var(--m-high)");
-    expect(edgeColor({ weight: 0.9 })).toBe("var(--m-accent)");
+    expect(edgeColor({ weight: 0.9 })).toBe("var(--m-ink-2)");
     expect(edgeColor({ weight: 0.1 })).toBe("var(--m-line-strong)");
   });
 });

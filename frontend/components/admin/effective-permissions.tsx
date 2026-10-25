@@ -37,14 +37,14 @@ export function EffectivePermissionsView({ userId, systems }: { userId: string; 
         <Field label="Module"><Select value={modKey} onValueChange={setModKey} options={[{ value: ALL, label: "All modules" }, ...modules.map((m) => ({ value: m, label: m }))]} /></Field>
       </div>
       {q.isError ? <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} /> : !q.data ? <Skeleton height={160} /> : (
-        <table className="m-text-meta" aria-label="Effective permissions">
+        <table className="m-table" aria-label="Effective permissions">
           <thead>
-            <tr><th scope="col" className="text-left pr-3">Resource</th>{Object.keys(Object.values(q.data.resources)[0] ?? {}).map((a) => <th key={a} scope="col" className="px-2">{a}</th>)}</tr>
+            <tr><th scope="col">Resource</th>{Object.keys(Object.values(q.data.resources)[0] ?? {}).map((a) => <th key={a} scope="col" className="text-center">{a}</th>)}</tr>
           </thead>
           <tbody>
             {Object.entries(q.data.resources).map(([r, acts]) => (
               <tr key={r}>
-                <th scope="row" className="text-left pr-3 py-1 font-normal">{r}</th>
+                <th scope="row" className="font-normal">{r}</th>
                 {Object.entries(acts).map(([a, ok]) => (
                   <td key={a} className="text-center" title={ok ? sources(r, a) || undefined : undefined}>
                     {ok ? <span aria-label={`${r} ${a} allowed`}>Yes</span> : <span className="sr-only">{`${r} ${a} not allowed`}</span>}

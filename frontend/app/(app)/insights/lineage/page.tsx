@@ -44,7 +44,7 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
   const d = q.data;
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="font-medium">Rules that check it</h3>
+      <h3 className="m-text-h font-semibold m-ink">Rules that check it</h3>
       <p className="m-text-body m-ink-2">
         {d.steps.length.toLocaleString()} process {d.steps.length === 1 ? "step feeds" : "steps feed"} this item.{" "}
         {d.coverage_gaps.length ? `${d.coverage_gaps.length.toLocaleString()} of them ${d.coverage_gaps.length === 1 ? "has" : "have"} no rule checking the data.` : "Every step has a rule checking its data."}
@@ -83,7 +83,7 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
   }
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="font-medium">What this rule reaches</h3>
+      <h3 className="m-text-h font-semibold m-ink">What this rule reaches</h3>
       <p className="m-text-body m-ink-2">
         {d.failing_records.toLocaleString()} failing {d.failing_records === 1 ? "record" : "records"}{d.keys_truncated ? " (first ones only)" : ""} on{" "}
         {d.object ?? "an unmapped object"} touch {d.processes_touched.length.toLocaleString()} {d.processes_touched.length === 1 ? "process" : "processes"}.
@@ -264,7 +264,7 @@ export default function LineagePage() {
                 ? <EmptyState title="No failing rule reaches a KPI, process or feature" detail="The failing rules in this run touch nothing the lineage map links to." action={<Button render={<Link href={`/insights/rules?run=${encodeURIComponent(latest.id)}`}>Open failing rules</Link>} />} />
                 : <EmptyState title="No lineage yet" detail={dayOne.step?.detail ?? "Impact needs a completed analysis."} action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
             )
-            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />}</Async>
+            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar height="auto" />}</Async>
         </Card>
       </InsightFrame>
 

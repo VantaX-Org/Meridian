@@ -47,7 +47,7 @@ function RuleTable({ title, rules, onOpen, versionId, name }: {
       {rules.length === 0 ? (
         <EmptyState variant="inline" title="None" />
       ) : (
-        <DataTable columns={columns} data={rules} getRowId={(r) => `${r.module}/${r.check_id}`} onRowClick={onOpen} dense height={320} tableId={name} exportName={name} />
+        <DataTable columns={columns} data={rules} getRowId={(r) => `${r.module}/${r.check_id}`} onRowClick={onOpen} height={320} tableId={name} exportName={name} />
       )}
     </Card>
   );
@@ -83,7 +83,7 @@ function RecordDrawer({ rule, result, onClose }: { rule: RuleDelta | null; resul
             <Stat label="Records introduced" value={n(rule.records_introduced)} />
           </div>
           {fixes.length > 0 ? (
-            <DataTable columns={columns} data={fixes} getRowId={(f) => `${f.field}/${f.record_key}`} hideToolbar dense height={360} tableId="what-if-record-fixes" />
+            <DataTable columns={columns} data={fixes} getRowId={(f) => `${f.field}/${f.record_key}`} hideToolbar height={360} tableId="what-if-record-fixes" />
           ) : (
             <EmptyState variant="inline" title="No record fixes proposed" detail="This rule changed counts without a proposed value" />
           )}

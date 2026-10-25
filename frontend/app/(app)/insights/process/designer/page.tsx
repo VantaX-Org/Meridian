@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ConfirmDialog, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
+import { Button, ChoiceGroup, ConfirmDialog, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { runScopeLabel } from "@/lib/run-scope";
 import {
@@ -294,11 +294,13 @@ function Editor(p: EditorProps) {
         </form>
       ) : null}
 
-      <div className="flex items-center gap-2" role="group" aria-label="Show data on the model">
-        <span className="m-text-body">Show data on the model</span>
-        <Button variant={overlayOn ? "secondary" : "ghost"} aria-pressed={overlayOn} onClick={() => go({ overlay: null })}>Selected run</Button>
-        <Button variant={!overlayOn ? "secondary" : "ghost"} aria-pressed={!overlayOn} onClick={() => go({ overlay: "none" })}>None</Button>
-      </div>
+      <ChoiceGroup
+        label="Show data on the model"
+        showLabel
+        value={overlayOn ? "run" : "none"}
+        onChange={(v) => go({ overlay: v === "run" ? null : "none" })}
+        options={[{ value: "run", label: "Selected run" }, { value: "none", label: "None" }]}
+      />
 
       <div className="flex gap-6 flex-wrap">
         <Stat label="Activities" value={acts.length} delta={`${D.allL4(doc).length} sub-processes in ${doc.l1.length} processes.`} />

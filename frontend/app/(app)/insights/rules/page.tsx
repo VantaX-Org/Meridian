@@ -243,8 +243,8 @@ export default function RulesPage() {
         <>
           {/* The ledger first: the rules (or groups) ranked by impact, the last column the row's one action. */}
           {axis === "rule"
-            ? <DataTable columns={columns} data={rows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} dense />
-            : <DataTable columns={groupColumns} data={groups} getRowId={(g) => g.key} onRowClick={drill} dense />}
+            ? <DataTable columns={columns} data={rows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} />
+            : <DataTable columns={groupColumns} data={groups} getRowId={(g) => g.key} onRowClick={drill} />}
           {pareto.length > 0 && (
             <Card title={`Impact by ${axisInTitle}`} meta={axis === "rule" ? `${plural(n80, "rule accounts", "rules account")} for 80% of impact` : `${n80} of ${groups.length} ${n80 === 1 ? "accounts" : "account"} for 80% of impact`}>
               <Pareto

@@ -26,7 +26,7 @@ export interface InsightHeaderProps {
   /** Opt-in hero zone: a white score sheet with up to four stats above the sentences. One per page. */
   hero?: boolean;
   /** `to` is the route the stat opens. */
-  stats?: (Pick<StatProps, "label" | "value" | "hint" | "tone" | "decimals" | "versionId"> & { to?: string })[];
+  stats?: (Pick<StatProps, "label" | "value" | "hint" | "tone" | "decimals" | "versionId" | "spark"> & { to?: string })[];
   /** Hero only: the verdict (typographic score and sentence) that leads the band; the stats sit beside it. */
   lead?: ReactNode;
   /** Inside another sheet (the Home hero): the four cells under a hairline, no border or background of their own. */

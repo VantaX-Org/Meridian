@@ -76,15 +76,15 @@ export function ConditionList({ conditions }: { conditions: Record<string, unkno
 export function ThresholdTable({ thresholds }: { thresholds: object }) {
   const rows = Object.entries(thresholds);
   return (
-    <table className="m-text-body w-full">
+    <table className="m-table">
       <thead>
-        <tr className="m-text-label text-left m-ink-3"><th className="py-1 font-medium">Threshold</th><th className="py-1 font-medium">Value</th></tr>
+        <tr><th>Threshold</th><th>Value</th></tr>
       </thead>
       <tbody>
         {rows.map(([k, v]) => (
-          <tr key={k} className="[border-top:1px_solid_var(--m-line)]">
-            <td className="py-1">{k.replace(/_/g, " ")}</td>
-            <td className="py-1"><Mono>{scalar(v)}</Mono></td>
+          <tr key={k}>
+            <td>{k.replace(/_/g, " ")}</td>
+            <td><Mono>{scalar(v)}</Mono></td>
           </tr>
         ))}
       </tbody>

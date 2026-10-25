@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Drawer, EmptyState, ErrorState, Input, Mono, Pager, Pill, Select, Skeleton, type PillTone } from "@/design";
+import { Button, Card, Choice, Drawer, EmptyState, ErrorState, Input, Mono, Pager, Pill, Select, Skeleton, type PillTone } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import {
   getConfigDeviation,
@@ -25,8 +25,6 @@ const STATUS_TONE: Record<string, PillTone> = {
   failed: "no-go", unreachable: "no-go",
 };
 const tone = (s: string | null | undefined): PillTone => STATUS_TONE[s ?? ""] ?? "neutral";
-const th = "px-3 py-2 text-left font-medium";
-const td = "px-3 py-1.5 border-t";
 const muted = "m-text-body";
 
 /** Loading and failure for one panel's query: a skeleton in the table's place, or the server's reason with Retry. */
@@ -53,11 +51,9 @@ export function TablesTab({ id }: { id: string }) {
       <div className="flex items-center gap-2">
         <Input key={search} defaultValue={search} className="w-full" placeholder="Search table or description, then Enter" aria-label="Search tables"
           onKeyDown={(e) => { if (e.key === "Enter") { setSearch(e.currentTarget.value); setOffset(0); } }} />
-        <Button variant="secondary" aria-pressed={customerOnly}
-          className="shrink-0 aria-pressed:[color:var(--m-accent-ink)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[background:var(--m-accent-soft)]"
-          onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
+        <Choice pressed={customerOnly} className="shrink-0" onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
           Customer extensions only
-        </Button>
+        </Choice>
       </div>
       <p className={clsx(muted, "m-ink-2")}>The tables Meridian found in this system. Open one to compare its fields with SAP standard.</p>
       <QueryGate q={tablesQ} />
@@ -68,26 +64,26 @@ export function TablesTab({ id }: { id: string }) {
           action={filtered ? <Button variant="secondary" onClick={() => { setSearch(""); setCustomerOnly(false); setOffset(0); }}>Show all tables</Button> : undefined}
         />
       ) : null}
-      {data && data.items.length > 0 ? <table className="w-full m-text-body">
+      {data && data.items.length > 0 ? <table className="m-table">
         <thead><tr>
-          <th className={clsx(th, "m-ink-3")}>Table</th><th className={clsx(th, "m-ink-3")}>Description</th>
-          <th className={clsx(th, "m-ink-3")}>Delivery class</th>
-          <th className={`${th} text-right m-ink-3`}>Fields</th>
-          <th className={`${th} text-right m-ink-3`}>Customer fields</th>
+          <th>Table</th><th>Description</th>
+          <th>Delivery class</th>
+          <th className="text-right">Fields</th>
+          <th className="text-right">Customer fields</th>
         </tr></thead>
         <tbody>
           {(data?.items ?? []).map((t) => (
             <tr key={t.table} className="cursor-pointer" onClick={() => setOpen(t.table)}>
-              <td className={`${td} font-mono [border-color:var(--m-line)]`}>
+              <td className="font-mono">
                 {/* The keyboard path into the drawer; the row click stays for the mouse. */}
                 <button type="button" className="font-mono text-left m-ink-accent hover:underline underline-offset-2"
                   onClick={(e) => { e.stopPropagation(); setOpen(t.table); }}>{t.table}</button>
                 {" "}{t.customer_table && <Pill>customer</Pill>}
               </td>
-              <td className={clsx(td, "[border-color:var(--m-line)]")}>{t.description ?? "—"}</td>
-              <td className={clsx(td, "[border-color:var(--m-line)]")}>{t.delivery_class ?? "—"}</td>
-              <td className={`${td} text-right tabular-nums [border-color:var(--m-line)]`}>{t.field_count}</td>
-              <td className={`${td} text-right tabular-nums [border-color:var(--m-line)]`}>{t.customer_fields || ""}</td>
+              <td>{t.description ?? "—"}</td>
+              <td>{t.delivery_class ?? "—"}</td>
+              <td className="text-right">{t.field_count}</td>
+              <td className="text-right">{t.customer_fields || ""}</td>
             </tr>
           ))}
         </tbody>
@@ -119,21 +115,21 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
               <Pill tone="at-risk">{data.standard_fields_missing.length} standard fields absent</Pill>
             )}
           </div>
-          <table className="w-full m-text-body">
+          <table className="m-table">
             <thead><tr>
-              <th className={clsx(th, "m-ink-3")}>Field</th><th className={clsx(th, "m-ink-3")}>This system</th>
-              <th className={clsx(th, "m-ink-3")}>SAP standard</th><th className={clsx(th, "m-ink-3")}>Check table</th>
-              <th className={clsx(th, "m-ink-3")}>Deviation</th>
+              <th>Field</th><th>This system</th>
+              <th>SAP standard</th><th>Check table</th>
+              <th>Deviation</th>
             </tr></thead>
             <tbody>
               {data.fields.map((f) => (
                 <tr key={f.name}>
-                  <td className={`${td} font-mono [border-color:var(--m-line)]`}>{f.key ? <strong>{f.name}</strong> : f.name}
+                  <td className="font-mono">{f.key ? <strong>{f.name}</strong> : f.name}
                     <div className="m-text-label m-ink-3">{f.description}</div></td>
-                  <td className={`${td} font-mono [border-color:var(--m-line)]`}>{f.type}({f.length}{f.decimals ? `,${f.decimals}` : ""}) {f.domain ?? ""}</td>
-                  <td className={`${td} font-mono [border-color:var(--m-line)]`}>{f.standard ? `${f.standard.type}(${f.standard.length}) ${f.standard.domain ?? ""}` : "—"}</td>
-                  <td className={`${td} font-mono [border-color:var(--m-line)]`}>{f.check_table ?? ""}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{f.deviation && <Pill tone={f.deviation === "customer_field" ? "neutral" : "at-risk"}>{labelOf(f.deviation)}</Pill>}</td>
+                  <td className="font-mono">{f.type}({f.length}{f.decimals ? `,${f.decimals}` : ""}) {f.domain ?? ""}</td>
+                  <td className="font-mono">{f.standard ? `${f.standard.type}(${f.standard.length}) ${f.standard.domain ?? ""}` : "—"}</td>
+                  <td className="font-mono">{f.check_table ?? ""}</td>
+                  <td>{f.deviation && <Pill tone={f.deviation === "customer_field" ? "neutral" : "at-risk"}>{labelOf(f.deviation)}</Pill>}</td>
                 </tr>
               ))}
             </tbody>
@@ -173,13 +169,13 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
             {data.synced_at ? `, ${relativeTime(data.synced_at)}` : ""}. Checks validate against these values, so customer-configured codes count as valid.
           </p>
           <div className="max-h-[480px] overflow-auto">
-            <table className="w-full m-text-body">
-              <thead className="sticky top-0 [background:var(--m-sheet-raised)]">
-                <tr>{cols.map((c) => <th key={c} className={clsx(th, "m-ink-3")}>{c}</th>)}</tr>
+            <table className="m-table">
+              <thead className="sticky top-0">
+                <tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr>
               </thead>
               <tbody>
                 {data.rows.map((r, i) => (
-                  <tr key={i}>{cols.map((c) => <td key={c} className={`${td} font-mono [border-color:var(--m-line)]`}>{String(r[c] ?? "")}</td>)}</tr>
+                  <tr key={i}>{cols.map((c) => <td key={c} className="font-mono">{String(r[c] ?? "")}</td>)}</tr>
                 ))}
               </tbody>
             </table>
@@ -197,18 +193,18 @@ function DeviationPanel({ id }: { id: string }) {
   const list = (vals: string[]) => (vals.length ? vals.slice(0, 12).join(", ") + (vals.length > 12 ? ` +${vals.length - 12}` : "") : "—");
   return (
     <Card title="Deviation from SAP standard">
-      <table className="w-full m-text-body">
+      <table className="m-table">
         <thead><tr>
-          <th className={clsx(th, "m-ink-3")}>Check table</th>
-          <th className={clsx(th, "m-ink-3")}>Custom (not in SAP standard)</th>
-          <th className={clsx(th, "m-ink-3")}>SAP standard, not configured</th>
+          <th>Check table</th>
+          <th>Custom (not in SAP standard)</th>
+          <th>SAP standard, not configured</th>
         </tr></thead>
         <tbody>
           {data.tables.map((t) => (
             <tr key={t.reference}>
-              <td className={`${td} font-mono [border-color:var(--m-line)]`}>{t.reference}</td>
-              <td className={`${td} font-mono [border-color:var(--m-line)]`}>{list(t.custom)}</td>
-              <td className={`${td} font-mono [border-color:var(--m-line)]`}>{list(t.missing)}</td>
+              <td className="font-mono">{t.reference}</td>
+              <td className="font-mono">{list(t.custom)}</td>
+              <td className="font-mono">{list(t.missing)}</td>
             </tr>
           ))}
         </tbody>
@@ -259,21 +255,21 @@ export function SnapshotsTab({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-4">
       <p className={clsx(muted, "m-ink-2")}>Each time Meridian read this system&apos;s design. Compare two to see which tables and fields changed.</p>
-      <table className="w-full m-text-body">
+      <table className="m-table">
         <thead><tr>
-          <th className={clsx(th, "m-ink-3")}>Started</th><th className={clsx(th, "m-ink-3")}>Status</th>
-          <th className={`${th} text-right m-ink-3`}>Tables</th>
-          <th className={`${th} text-right m-ink-3`}>Customer tables</th>
-          <th className={`${th} text-right m-ink-3`}>Customer fields</th>
+          <th>Started</th><th>Status</th>
+          <th className="text-right">Tables</th>
+          <th className="text-right">Customer tables</th>
+          <th className="text-right">Customer fields</th>
         </tr></thead>
         <tbody>
           {snaps.map((s) => (
             <tr key={s.id}>
-              <td className={clsx(td, "[border-color:var(--m-line)]")}>{s.started_at ? formatDate(s.started_at, "datetime") : "—"}</td>
-              <td className={clsx(td, "[border-color:var(--m-line)]")}><span title={s.error ?? undefined}><Pill tone={tone(s.status)}>{labelOf(s.status)}</Pill></span></td>
-              <td className={`${td} text-right tabular-nums [border-color:var(--m-line)]`}>{s.tables}</td>
-              <td className={`${td} text-right tabular-nums [border-color:var(--m-line)]`}>{s.customer_tables}</td>
-              <td className={`${td} text-right tabular-nums [border-color:var(--m-line)]`}>{s.customer_fields}</td>
+              <td>{s.started_at ? formatDate(s.started_at, "datetime") : "—"}</td>
+              <td><span title={s.error ?? undefined}><Pill tone={tone(s.status)}>{labelOf(s.status)}</Pill></span></td>
+              <td className="text-right">{s.tables}</td>
+              <td className="text-right">{s.customer_tables}</td>
+              <td className="text-right">{s.customer_fields}</td>
             </tr>
           ))}
         </tbody>
@@ -285,20 +281,20 @@ export function SnapshotsTab({ id }: { id: string }) {
             <Select label="Compare to" value={b} options={opts} onValueChange={setTo} />
           </div>
           {diff && (diff.changes.length === 0 ? <p className={clsx(muted, "m-ink-2")}>No dictionary changes between these snapshots.</p> : (
-            <table className="w-full m-text-body">
+            <table className="m-table">
               <thead><tr>
-                <th className={clsx(th, "m-ink-3")}>Table</th><th className={clsx(th, "m-ink-3")}>Field</th>
-                <th className={clsx(th, "m-ink-3")}>Change</th><th className={clsx(th, "m-ink-3")}>Detail</th>
+                <th>Table</th><th>Field</th>
+                <th>Change</th><th>Detail</th>
               </tr></thead>
               <tbody>
                 {diff.changes.map((c, i) => (
                   <tr key={i}>
-                    <td className={`${td} font-mono [border-color:var(--m-line)]`}>{c.table}</td>
-                    <td className={`${td} font-mono [border-color:var(--m-line)]`}>{c.field ?? ""}</td>
-                    <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                    <td className="font-mono">{c.table}</td>
+                    <td className="font-mono">{c.field ?? ""}</td>
+                    <td>
                       <Pill tone={c.change.endsWith("removed") ? "no-go" : c.change.endsWith("added") ? "neutral" : "at-risk"}>{c.change.replace("_", " ")}</Pill>
                     </td>
-                    <td className={`${td} font-mono [border-color:var(--m-line)]`}>{c.diff ? Object.entries(c.diff).map(([k, [x, y]]) => `${k}: ${String(x)} to ${String(y)}`).join("; ") : ""}</td>
+                    <td className="font-mono">{c.diff ? Object.entries(c.diff).map(([k, [x, y]]) => `${k}: ${String(x)} to ${String(y)}`).join("; ") : ""}</td>
                   </tr>
                 ))}
               </tbody>

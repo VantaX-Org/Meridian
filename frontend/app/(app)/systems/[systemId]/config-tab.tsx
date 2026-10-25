@@ -103,7 +103,7 @@ function InventorySection() {
         return (
           <div className="flex flex-col gap-4">
             <Card title="By module" meta="All systems; select a module for its elements">
-              <DataTable columns={moduleCols} data={[...byModule.values()]} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar dense height="auto" tableId="config-inventory-modules" />
+              <DataTable columns={moduleCols} data={[...byModule.values()]} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar height="auto" tableId="config-inventory-modules" />
             </Card>
             <DataTable columns={cols} data={d.elements} getRowId={(e) => `${e.module}/${e.element_type}/${e.element_value}`} height={420} exportName="config-inventory" />
             <InventoryModuleDrawer module={moduleOpen} onClose={() => setModuleOpen(null)} />
@@ -206,7 +206,7 @@ function AlignmentSection() {
           <div className="flex flex-col gap-4">
             {byModule.size > 0 ? (
               <Card title="By module" meta="All systems; select a module for its findings">
-                <DataTable columns={moduleCols} data={[...byModule.values()].sort((a, b) => SEVERITY_ORDER.indexOf(a.worst) - SEVERITY_ORDER.indexOf(b.worst) || b.total - a.total)} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar dense height="auto" tableId="config-alignment-modules" />
+                <DataTable columns={moduleCols} data={[...byModule.values()].sort((a, b) => SEVERITY_ORDER.indexOf(a.worst) - SEVERITY_ORDER.indexOf(b.worst) || b.total - a.total)} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar height="auto" tableId="config-alignment-modules" />
               </Card>
             ) : null}
             <FindingsTable rows={d.findings} name="config-alignment" />

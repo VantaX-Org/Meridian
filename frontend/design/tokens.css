@@ -14,6 +14,7 @@
   --m-sheet-sunken: #E4E8EE;    /* code/sample wells, bar tracks, ghost shapes */
   --m-rail: #FFFFFF;            /* sidebar background: a light sheet */
   --m-rail-hover: var(--m-sheet-raised);
+  --m-rail-fg: var(--m-ink-2);
   --m-rail-edge: var(--m-line); /* rail right rule */
   --m-line: #E6EAF0;            /* hairline borders (1px) */
   --m-line-strong: #CBD2DC;     /* input borders, table head rule */
@@ -191,13 +192,12 @@
   --m-motion-duration: 120ms;    /* hover, focus, colour, lift */
   --m-motion-slow: 240ms;        /* reveal, fade, menu open */
   --m-motion-draw: 480ms;        /* ring, line and bar draw-in, count settle flash */
-  --m-motion-count: 900ms;       /* count-up */
-  --m-motion-shimmer: 1400ms;    /* skeleton sweep */
+  --m-motion-count: 480ms;       /* count-up: the draw length, so a number settles with its bar */
+  --m-motion-shimmer: 1400ms;    /* skeleton sweep and spinner: a loop, not a transition (the one duration off the 120/240/480 scale) */
   --m-motion-stagger-step: 40ms; /* per-child delay */
   --m-motion-stagger-bar: 20ms;  /* per-bar delay in chart draw-in */
   --m-ease: cubic-bezier(0.2, 0, 0, 1);
   --m-ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --m-ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1);   /* lift only */
   --m-motion-ease: var(--m-ease);
   --m-motion-ease-out: var(--m-ease-out);
   --m-motion-rise-y: 6px;
@@ -212,6 +212,7 @@
   --m-rail: #141A27;
   --m-rail-edge: var(--m-line);
   --m-rail-hover: var(--m-sheet-raised);
+  --m-rail-fg: var(--m-ink-2);
   --m-line: #2A3344;
   --m-line-strong: #3B475C;
   --m-scrim: rgb(0 0 0 / 0.6);
@@ -297,6 +298,7 @@
     --m-rail: #141A27;
     --m-rail-edge: var(--m-line);
     --m-rail-hover: var(--m-sheet-raised);
+    --m-rail-fg: var(--m-ink-2);
     --m-line: #2A3344;
     --m-line-strong: #3B475C;
     --m-scrim: rgb(0 0 0 / 0.6);
@@ -534,7 +536,7 @@
 .m-score-hero { min-width: 260px; width: 100%; }
 .m-fade-bottom { background-image: var(--m-grad-fade-bottom); }
 
-.m-lift, .m-lift-sm { transition: transform var(--m-motion-duration) var(--m-ease-spring), box-shadow var(--m-motion-duration) var(--m-ease), background-color var(--m-motion-duration) var(--m-ease); }
+.m-lift, .m-lift-sm { transition: transform var(--m-motion-duration) var(--m-ease-out), box-shadow var(--m-motion-duration) var(--m-ease), background-color var(--m-motion-duration) var(--m-ease); }
 .m-lift:hover, .m-lift:focus-visible { transform: translateY(-1px); box-shadow: var(--m-elev-2); background-color: var(--m-sheet-raised); }
 .m-lift-sm:hover { transform: translateY(-1px); }
 .m-lift:active, .m-lift-sm:active { transform: translateY(0); }
@@ -690,8 +692,9 @@
 /* Choice chips: one pressed option per group (a filter row), a pill that fills with the accent tint when chosen. */
 .m-choice { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: var(--m-radius-pill); border: 1px solid var(--m-line); background: var(--m-sheet); color: var(--m-ink-2); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); font-weight: 500; cursor: pointer; transition: color var(--m-motion-duration) var(--m-motion-ease-out), background-color var(--m-motion-duration) var(--m-motion-ease-out), border-color var(--m-motion-duration) var(--m-motion-ease-out); }
 .m-choice:hover { background: var(--m-sheet-raised); color: var(--m-ink); border-color: var(--m-line-strong); }
-.m-choice[aria-pressed="true"] { background: var(--m-accent-soft); color: var(--m-accent-ink); border-color: var(--m-accent); }
+.m-choice[aria-pressed="true"], .m-choice[aria-checked="true"] { background: var(--m-accent-soft); color: var(--m-accent-ink); border-color: var(--m-accent); }
 .m-choice:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
+.m-choice:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 /* ProgressFill: the accent fill inside a caller-owned progress track. */
 .m-progress-fill { display: block; height: 100%; background: var(--m-accent); }
 /* Aletheia attribution: the licensed mark, required on every screen (Aletheia licence, section 6). Fixed bottom

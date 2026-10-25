@@ -2,11 +2,12 @@
 
 /** Insights › Operations: team throughput, bottlenecks, capacity and sprint plans. */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { clsx } from "clsx";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, Card, DataTable, EmptyState, Mono, Select, Stat } from "@/design";
+import { Bar, Button, Card, DataTable, DrillLink, EmptyState, Mono, Select, Stat } from "@/design";
 import { getAssignableUsers } from "@/lib/api/users";
 import {
   getOperational, getSprints, getTeamPerformance, type Bottleneck, type SprintPlan,
@@ -70,7 +71,7 @@ function TeamCard() {
           options={(users.data ?? []).map((u) => ({ value: u.id, label: u.name || u.email }))}
         />
         {s ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="m-stat-grid">
             <Stat label="Processed" value={s.total_processed} />
             <Stat label="Approval rate" value={`${s.approval_rate}%`} />
             <Stat label="Review hours" value={s.total_review_hours} />
@@ -81,6 +82,19 @@ function TeamCard() {
         )}
       </div>
     </Card>
+  );
+}
+
+/** One secondary queue figure: the label, the value (a drill link when it opens rows) and an optional hint. */
+function QueueFigure({ label, value, hint, href, critical = false }: { label: string; value: ReactNode; hint?: string; href?: string; critical?: boolean }) {
+  return (
+    <>
+      <dt className="m-ink-3">{label}</dt>
+      <dd className={clsx("m-numeric font-medium", critical ? "m-ink-critical" : "m-ink")}>
+        {href ? <DrillLink href={href}>{value}</DrillLink> : value}
+        {hint ? <span className="ml-2 m-text-meta font-normal m-ink-3">{hint}</span> : null}
+      </dd>
+    </>
   );
 }
 
@@ -129,18 +143,22 @@ export default function OperationsPage() {
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
     >
       <Section title="Throughput and capacity" height={160} query={ops}>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="Processed" href={CLEANING} value={k?.total_processed ?? "—"} hint={k?.total_detected != null ? `of ${k.total_detected.toLocaleString()} detected` : undefined} />
-          <Stat label="Throughput" href={CLEANING} value={k?.throughput ?? "—"} hint="Items per day" />
-          <Stat label="Automation rate" value={k ? pct(k.automation_rate) : "—"} />
-          <Stat label="Rejection rate" value={k ? pct(k.rejection_rate) : "—"} tone={k && k.rejection_rate > 0 ? "at-risk" : undefined} />
-          <Stat label="Rollback rate" value={k ? pct(k.rollback_rate) : "—"} tone={k && k.rollback_rate > 0 ? "no-go" : undefined} />
-          <Stat label="Time to resolve" href={CLEANING} value={k ? hours(k.mttr_hours) : "—"} />
-          <Stat label="Within agreed time (SLA)" value={k ? pct(k.sla_compliance_pct) : "—"} />
-          <Stat label="In progress" href={CLEANING} value={k?.items_in_flight ?? "—"} />
-          <Stat label="Average queue age" href={CLEANING} value={k ? hours(k.avg_queue_age_hours) : "—"} />
-          <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
-          <Stat label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} href={topRule ? fixHref({ check: topRule }) : undefined} />
+        <div className="flex flex-col gap-4">
+          <div className="m-stat-grid">
+            <Stat label="Processed" href={CLEANING} value={k?.total_processed ?? "—"} hint={k?.total_detected != null ? `of ${k.total_detected.toLocaleString()} detected` : undefined} />
+            <Stat label="In progress" href={CLEANING} value={k?.items_in_flight ?? "—"} />
+            <Stat label="Within agreed time (SLA)" value={k ? pct(k.sla_compliance_pct) : "—"} />
+            <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
+          </div>
+          <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 m-text-body border-t pt-4 [border-color:var(--m-line)]" aria-label="Queue figures">
+            <QueueFigure label="Throughput" href={CLEANING} value={k?.throughput ?? "—"} hint="Items per day" />
+            <QueueFigure label="Time to resolve" href={CLEANING} value={k ? hours(k.mttr_hours) : "—"} />
+            <QueueFigure label="Average queue age" href={CLEANING} value={k ? hours(k.avg_queue_age_hours) : "—"} />
+            <QueueFigure label="Automation rate" value={k ? pct(k.automation_rate) : "—"} />
+            <QueueFigure label="Rejection rate" value={k ? pct(k.rejection_rate) : "—"} />
+            <QueueFigure label="Rollback rate" value={k ? pct(k.rollback_rate) : "—"} critical={!!k && k.rollback_rate > 0} />
+            <QueueFigure label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} href={topRule ? fixHref({ check: topRule }) : undefined} />
+          </dl>
         </div>
       </Section>
       <Section title="Queue age by stage" height={160} query={ops}>
@@ -156,14 +174,14 @@ export default function OperationsPage() {
       <TeamCard />
       {bottlenecks.length > 0 && (
         <Section title="Bottlenecks" height={120} query={ops} meta="Each waiting stage and what would clear it">
-          <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar dense height="auto" />
+          <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar height="auto" />
         </Section>
       )}
       <Section title="Sprint plans" height={120} query={sprints} meta="Suggested batches of fixes and what each would do to the score">
         {plans.length === 0 ? (
           <EmptyState variant="inline" title="No sprint plan yet" detail="Plans are suggested once Fix work holds open records." action={<Link href="/fix" className="underline-offset-2 hover:underline">Open Fix work</Link>} />
         ) : (
-          <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar dense height="auto" />
+          <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar height="auto" />
         )}
       </Section>
     </InsightFrame>

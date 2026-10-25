@@ -263,7 +263,7 @@ export default function ProgressPage() {
         {thr.data && thr.data.people.length ? (
           <div className="flex flex-col gap-4">
             <Bar data={thr.data.people.slice(0, 12).map((p) => ({ x: p.person, y: p.total }))} height={Math.max(120, Math.min(12, thr.data.people.length) * 32)} label="Decisions per person, last 30 days" />
-            <DataTable columns={peopleColumns} data={thr.data.people} getRowId={(r) => r.person} hideToolbar dense height="auto" />
+            <DataTable columns={peopleColumns} data={thr.data.people} getRowId={(r) => r.person} hideToolbar height="auto" />
           </div>
         ) : (
           <EmptyState variant="inline" title="No decisions in the last 30 days" action={<Link href={fixHref} className={linkClass}>Start fixing</Link>} />
@@ -271,7 +271,7 @@ export default function ProgressPage() {
         {thr.data && thr.data.workload.length > 0 && (
           <div className="mt-4 flex flex-col gap-2">
             <p className="m-text-meta m-ink-3">Open work per person</p>
-            <DataTable columns={workloadColumns} data={thr.data.workload} getRowId={(r) => r.assignee_id ?? "unassigned"} hideToolbar dense height="auto" />
+            <DataTable columns={workloadColumns} data={thr.data.workload} getRowId={(r) => r.assignee_id ?? "unassigned"} hideToolbar height="auto" />
           </div>
         )}
       </Section>
@@ -288,7 +288,7 @@ export default function ProgressPage() {
                 ))}
               </p>
             )}
-            <DataTable columns={ttfColumns} data={ttf.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar dense height="auto" />
+            <DataTable columns={ttfColumns} data={ttf.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar height="auto" />
           </div>
         ) : (
           <EmptyState variant="inline" title="Nothing fixed yet" detail="Fix times appear once a run shows a record passing" action={<Link href={fixHref} className={linkClass}>Open Fix work</Link>} />
@@ -299,8 +299,8 @@ export default function ProgressPage() {
       <Section title="Problems that come back" height={200} query={rec} meta={rec.data?.totals.reopened ? `${plural(rec.data.totals.reopened, "failing record")} failed again after a fix: ${pct(rec.data.totals.rate_pct)} of ${n(rec.data.totals.issues)} tracked` : undefined}>
         {rec.data && rec.data.by_check.length ? (
           <div className="flex flex-col gap-4">
-            <DataTable columns={recurColumns} data={rec.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar dense height="auto" />
-            {rec.data.by_system.length > 0 && <DataTable columns={systemColumns} data={rec.data.by_system} getRowId={(r) => r.scope} hideToolbar dense height="auto" />}
+            <DataTable columns={recurColumns} data={rec.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar height="auto" />
+            {rec.data.by_system.length > 0 && <DataTable columns={systemColumns} data={rec.data.by_system} getRowId={(r) => r.scope} hideToolbar height="auto" />}
           </div>
         ) : (
           <EmptyState variant="inline" title="Nothing has come back after a fix" action={<Link href={withScope("/insights/rules", { run })} className={linkClass}>Open rules</Link>} />
@@ -318,7 +318,7 @@ export default function ProgressPage() {
           <div className="flex flex-col gap-4">
             <Pareto data={activeDim.top.map((v) => ({ x: v.value, y: v.records }))} label={`Failing records by ${activeDim.label.toLowerCase()}`} onPointClick={(p) => router.push(fix({ part: { field: activeDim.field, value: String(p.x) } }))} />
             <p className="m-text-meta m-ink-3">Read from the record key: <Mono>{activeDim.field}</Mono></p>
-            <DataTable columns={rootColumns} data={activeDim.top} getRowId={(r) => r.value} hideToolbar dense height="auto" />
+            <DataTable columns={rootColumns} data={activeDim.top} getRowId={(r) => r.value} hideToolbar height="auto" />
           </div>
         ) : (
           <EmptyState variant="inline" title="No organisational unit in the failing records' keys" action={<Link href={withScope("/insights/rules", { run })} className={linkClass}>Explore by rule</Link>} />
@@ -334,7 +334,7 @@ export default function ProgressPage() {
               { label: "Sent to SAP", value: prop.data.totals.exported },
               { label: "Fixed", value: prop.data.totals.fixed },
             ]} onStageClick={(stage) => { const st = STAGE_STATUS[stage.label]; if (st) router.push(fix({ st })); }} />
-            <DataTable columns={sourceColumns} data={prop.data.sources.filter((s) => s.proposed || s.fixed || s.still_failing)} getRowId={(r) => r.source} hideToolbar dense height="auto" />
+            <DataTable columns={sourceColumns} data={prop.data.sources.filter((s) => s.proposed || s.fixed || s.still_failing)} getRowId={(r) => r.source} hideToolbar height="auto" />
           </div>
         ) : (
           <EmptyState variant="inline" title="No values proposed yet" action={<Link href={fixHref} className={linkClass}>Open Fix work</Link>} />
@@ -348,7 +348,7 @@ export default function ProgressPage() {
         meta={change.data?.previous ? `Compared with ${runName(change.data.previous)}: ${n(change.data.totals.fixed)} fixed, ${n(change.data.totals.new)} new, ${n(change.data.totals.still_failing)} still failing${change.data.not_comparable_checks ? `; ${plural(change.data.not_comparable_checks, "rule")} not in both runs left out` : ""}` : undefined}
       >
         {change.data?.previous ? (
-          change.data.objects.length ? <DataTable columns={changeColumns} data={change.data.objects} getRowId={(r) => r.module} hideToolbar dense height="auto" />
+          change.data.objects.length ? <DataTable columns={changeColumns} data={change.data.objects} getRowId={(r) => r.module} hideToolbar height="auto" />
             : <EmptyState variant="inline" title="No object failed in either run" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
         ) : (
           <EmptyState variant="inline" title="No earlier run of this system to compare with" detail="The change appears after the next run" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />

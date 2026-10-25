@@ -8,8 +8,7 @@ import { createAccessRequest } from "@/lib/api/me";
 import { apiErrorMessage } from "@/lib/error";
 import type { RequestTarget } from "@/lib/rbac";
 
-const field = "w-full rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body";
-const fieldStyle = { borderColor: "var(--m-line)", color: "var(--m-ink)" };
+const field = "m-input m-textarea w-full";
 
 /**
  * Request access (rbac.md §5): resource, action and scope prefilled, a reason,
@@ -50,21 +49,21 @@ function RequestForm({ target, onClose }: { target: RequestTarget; onClose: () =
         send.mutate();
       }}
     >
-      <dl className="grid grid-cols-[80px_1fr] gap-x-3 gap-y-1 m-text-body" style={{ color: "var(--m-ink)" }}>
-        <dt style={{ color: "var(--m-ink-3)" }}>Resource</dt>
+      <dl className="grid grid-cols-[80px_1fr] gap-x-3 gap-y-1 m-text-body m-ink">
+        <dt className="m-ink-3">Resource</dt>
         <dd><Mono>{target.resource}</Mono></dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Action</dt>
+        <dt className="m-ink-3">Action</dt>
         <dd><Mono>{target.action}</Mono></dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Scope</dt>
+        <dt className="m-ink-3">Scope</dt>
         <dd>{scope}</dd>
       </dl>
-      <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+      <label className="flex flex-col gap-1 m-text-meta m-ink-2">
         Reason
-        <textarea className={field} style={fieldStyle} rows={3} maxLength={2000} value={reason}
+        <textarea className={field} rows={3} maxLength={2000} value={reason}
           onChange={(e) => setReason(e.target.value)} />
       </label>
       {send.isError && (
-        <p role="alert" className="m-text-meta" style={{ color: "var(--m-critical)" }}>
+        <p role="alert" className="m-text-meta m-ink-critical">
           {apiErrorMessage(send.error)}
         </p>
       )}

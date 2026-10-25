@@ -197,7 +197,7 @@ describe("chart tooltip and theme", () => {
     expect(dots).toEqual(["var(--m-dom-material)", "var(--m-dom-vendor)"]);
     expect(container.querySelectorAll(".m-pulse-once")).toHaveLength(1);
     expect(container.querySelector("[data-bottleneck]")).toHaveAttribute("aria-label", "Node B");
-    expect(container.querySelector("line")?.getAttribute("data-edge-width")).toBe("5");
+    expect(container.querySelector("line")?.getAttribute("data-edge-width")).toBe("6"); // the frequent band is one pixel heavier
   });
 
   it("Graph does not replay the pulse when pulse is false", () => {

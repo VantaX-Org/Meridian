@@ -89,14 +89,14 @@ export function MergedRecords({ id, onChanged }: { id: string; onChanged: () => 
             {preview.isLoading ? <Skeleton height={60} /> : preview.isError ? (
               <Notice tone="warning">{apiErrorMessage(preview.error)}</Notice>
             ) : changes.length ? (
-              <table className="m-text-body w-full" aria-label="What the golden record keeps">
-                <thead><tr className="m-text-label text-left m-ink-3"><th className="py-1 font-medium">Field</th><th className="py-1 font-medium">Now</th><th className="py-1 font-medium">After the split</th></tr></thead>
+              <table className="m-table" aria-label="What the golden record keeps">
+                <thead><tr><th>Field</th><th>Now</th><th>After the split</th></tr></thead>
                 <tbody>
                   {changes.map((c) => (
-                    <tr key={c.field} className="[border-top:1px_solid_var(--m-line)]">
-                      <td className="py-1"><Mono>{c.field}</Mono></td>
-                      <td className="py-1">{c.before || "blank"}</td>
-                      <td className="py-1 font-semibold">{c.after || "blank"}</td>
+                    <tr key={c.field}>
+                      <td><Mono>{c.field}</Mono></td>
+                      <td>{c.before || "blank"}</td>
+                      <td className="font-semibold">{c.after || "blank"}</td>
                     </tr>
                   ))}
                 </tbody>

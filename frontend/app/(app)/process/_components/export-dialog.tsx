@@ -68,7 +68,7 @@ export function ExportDialog({ open, onOpenChange, runId, l1, node, nodeName, fi
           Edges carried by fewer than {fmtShare(EDGE_THRESHOLD)} of cases are left out. Each step keeps its case count, share and median time.
         </p>
         <section className="grid gap-1">
-          <h2 className="font-semibold">Import into Signavio</h2>
+          <h2 className="m-text-h font-semibold m-ink">Import into Signavio</h2>
           <ol className="grid list-decimal gap-1 pl-5">
             <li>Open the target folder in Signavio Process Manager.</li>
             <li>Choose Import, then BPMN 2.0 (.bpmn), and upload the files from the zip. Start with <Mono>{`L1_${l1}.bpmn`}</Mono>, then the rest.</li>

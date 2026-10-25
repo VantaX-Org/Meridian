@@ -121,7 +121,7 @@ export default function OwnersPage() {
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
       <Card title="Score by owner" meta="Lowest score first" dataTour="owners">
-        <DataTable columns={scoreColumns} data={ranked} getRowId={(o) => o.owner} hideToolbar dense height="auto" />
+        <DataTable columns={scoreColumns} data={ranked} getRowId={(o) => o.owner} hideToolbar height="auto" />
       </Card>
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
         {ranked.map((owner) => (

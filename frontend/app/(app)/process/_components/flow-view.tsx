@@ -120,9 +120,9 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
         table={
           <div className="grid gap-3">
             <DataTable columns={nodeColumns(ownerL1?.id)} data={ranked} getRowId={(n) => n.id} onRowClick={(n) => click(n.id)}
-              height="auto" hideToolbar dense tableId="process-flow-nodes" exportName={`process-${d.node.id}-nodes`} />
+              height="auto" hideToolbar tableId="process-flow-nodes" exportName={`process-${d.node.id}-nodes`} />
             <DataTable columns={edgeColumns} data={d.edges} getRowId={(e) => `${e.source}>${e.target}`}
-              height="auto" hideToolbar dense tableId="process-flow-edges" exportName={`process-${d.node.id}-edges`} />
+              height="auto" hideToolbar tableId="process-flow-edges" exportName={`process-${d.node.id}-edges`} />
           </div>
         }
       />
@@ -154,7 +154,7 @@ function L5Drawer({ doc, id, onClose }: { doc: ProcessModelDocument; id: string 
             ))}
           </dl>
           <section className="grid gap-1">
-            <h2 className="font-semibold">Fields</h2>
+            <h2 className="m-text-h font-semibold m-ink">Fields</h2>
             {a.fields.length ? (
               <ul className="grid gap-1">
                 {a.fields.map((f) => (

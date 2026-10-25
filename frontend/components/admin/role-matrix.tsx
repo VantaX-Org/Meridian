@@ -41,17 +41,17 @@ export function RoleMatrix({ matrix, onChange, label, scoped = false }: { matrix
   const toggle = (r: string, a: string) => onChange?.({ ...matrix, [r]: { ...matrix[r], [a]: !matrix[r][a] } });
   return (
     <div className="overflow-x-auto">
-      <table className="m-text-meta" aria-label={label}>
+      <table className="m-table" aria-label={label}>
         <thead>
           <tr>
-            <th scope="col" className="text-left pr-3">Resource</th>
-            {actions.map((a) => <th key={a} scope="col" className="text-center px-2">{permissionLabel(a)}</th>)}
+            <th scope="col">Resource</th>
+            {actions.map((a) => <th key={a} scope="col" className="text-center">{permissionLabel(a)}</th>)}
           </tr>
         </thead>
         <tbody>
           {resources.map((r) => (
             <tr key={r}>
-              <th scope="row" className="text-left pr-3 py-1 font-normal">
+              <th scope="row" className="font-normal">
                 {r}
                 {scoped && TENANT_WIDE.has(r) ? (
                   <span className="ml-1 align-middle">

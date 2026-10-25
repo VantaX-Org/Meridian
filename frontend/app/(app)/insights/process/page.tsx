@@ -179,7 +179,7 @@ function RulesBlock({ title, t, findingHref, configuredIn, run }: {
   const failing = t.applicable - t.passes;
   return (
     <div className="flex flex-col gap-1">
-      <h3 className="font-medium">{title}</h3>
+      <h3 className="m-text-h font-semibold m-ink">{title}</h3>
       <p className="m-text-body m-ink-2">
         {t.score === null ? "No rules apply" : `${fmt1(t.score)}% pass: ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} rules that apply`}, {failing.toLocaleString()} failing
       </p>
@@ -424,7 +424,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
       {/* The ledger: the blocking findings ranked by records affected, each with its one action. */}
       <Card title="Blocking findings" dataTour="process-readiness" meta={`Fields that stop a process step, most records first${blockingFindings.length > 10 ? `; top 10 of ${blockingFindings.length.toLocaleString()}` : ""}`}>
         {blockingFindings.length ? (
-          <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar dense height="auto" />
+          <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar height="auto" />
         ) : <EmptyState title="Nothing blocks go-live" detail="No mandatory field fails in this process." action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run: latest.id, module: object })}>Open failing rules</Link>} />} />}
       </Card>
 
@@ -584,7 +584,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
                   ] as ColumnDef<(typeof bottlenecks)[number]>[]}
                   data={bottlenecks.slice(0, 8)}
                   getRowId={(b) => b.id}
-                  hideToolbar dense height="auto"
+                  hideToolbar height="auto"
                 />
               ) : <EmptyState title="Every step passes its checks" detail="No record in a mapped step fails a rule." action={openLink("Open failing rules", withScope("/insights/rules", { run: latest.id, module: active ?? undefined }))} />}
             </Card>

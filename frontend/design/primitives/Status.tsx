@@ -49,7 +49,7 @@ const SEVERITY_ALIAS: Record<string, SeverityLevel> = {
 const LIFECYCLE_ALIAS: Record<string, Lifecycle> = {
   queued: "queued", pending: "queued", scheduled: "queued", uploaded: "queued", waiting: "queued",
   running: "running", processing: "running", analysing: "running", analyzing: "running", "in-progress": "running", started: "running", extracting: "running", validating: "running", building: "running", mining: "running",
-  done: "done", complete: "done", completed: "done", "agents-complete": "done", "ai-enriched": "done", ok: "done", success: "done", succeeded: "done", finished: "done",
+  done: "done", complete: "done", completed: "done", loaded: "done", "agents-complete": "done", "ai-enriched": "done", ok: "done", success: "done", succeeded: "done", finished: "done",
   failed: "failed", "agents-failed": "failed", error: "failed", errored: "failed",
 };
 

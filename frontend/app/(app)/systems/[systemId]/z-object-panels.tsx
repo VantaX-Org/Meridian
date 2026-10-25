@@ -126,11 +126,11 @@ export function RulesSection({ canCreate }: { canCreate: boolean }) {
         {custom.length === 0 ? (
           <EmptyState variant="inline" title="No custom Z rules yet" detail="Templates below cover the common checks." action={newRule} />
         ) : (
-          <DataTable columns={ruleCols} data={custom} getRowId={(r) => r.id} hideToolbar dense height="auto" tableId="z-custom-rules" />
+          <DataTable columns={ruleCols} data={custom} getRowId={(r) => r.id} hideToolbar height="auto" tableId="z-custom-rules" />
         )}
       </Card>
       <Card title="Rule templates">
-        <DataTable columns={templateCols} data={q.data?.templates ?? []} getRowId={(t) => t.template_id} hideToolbar dense height="auto" tableId="z-rule-templates" />
+        <DataTable columns={templateCols} data={q.data?.templates ?? []} getRowId={(t) => t.template_id} hideToolbar height="auto" tableId="z-rule-templates" />
       </Card>
       <NewRuleDrawer open={creating} onOpenChange={setCreating} entries={entries} />
     </div>

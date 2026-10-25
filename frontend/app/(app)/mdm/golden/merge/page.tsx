@@ -15,7 +15,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, ExplorerPage, FilterChip, Mono, PageHeader, Pager, Pill,
+  Button, ChoiceGroup, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, ExplorerPage, FilterChip, Mono, PageHeader, Pager, Pill,
   Select, Skeleton, asyncStateOf, toast,
 } from "@/design";
 import { CleaningPairs, cleaningPairsKey } from "@/components/mdm/cleaning-pairs";
@@ -114,23 +114,23 @@ function MatchReview() {
 
   const filterBar = (
     <div className="flex flex-wrap items-end gap-3">
-      <div role="group" aria-label="Source" className="flex flex-wrap gap-1">
-        {(["matcher", "cleaning"] as const).map((s) => (
-          <Button key={s} size="sm" variant={source === s ? "secondary" : "ghost"} aria-pressed={source === s} onClick={() => setParams({ source: s === "matcher" ? null : s, band: null, pair: null, page: null })}>
-            {SOURCE_LABEL[s]}{counts[s] != null ? ` (${counts[s].toLocaleString()})` : ""}
-          </Button>
-        ))}
-      </div>
-      {source === "matcher" ? <div role="group" aria-label="Score band" className="flex flex-wrap gap-1">
-        {BANDS.map((b) => {
-          const n = b === "all" ? waiting : bands?.[b];
-          return (
-            <Button key={b} size="sm" variant={band === b ? "secondary" : "ghost"} aria-pressed={band === b} onClick={() => setParams({ band: b === "review" ? null : b, page: null })}>
-              {b === "all" ? "All waiting" : BAND_LABEL[b]}{n != null ? ` (${n.toLocaleString()})` : ""}
-            </Button>
-          );
-        })}
-      </div> : null}
+      <ChoiceGroup
+        label="Source"
+        value={source}
+        onChange={(s) => setParams({ source: s === "matcher" ? null : s, band: null, pair: null, page: null })}
+        options={(["matcher", "cleaning"] as const).map((s) => ({ value: s, label: `${SOURCE_LABEL[s]}${counts[s] != null ? ` (${counts[s].toLocaleString()})` : ""}` }))}
+      />
+      {source === "matcher" ? (
+        <ChoiceGroup
+          label="Score band"
+          value={band}
+          onChange={(b) => setParams({ band: b === "review" ? null : b, page: null })}
+          options={BANDS.map((b) => {
+            const n = b === "all" ? waiting : bands?.[b];
+            return { value: b, label: `${b === "all" ? "All waiting" : BAND_LABEL[b]}${n != null ? ` (${n.toLocaleString()})` : ""}` };
+          })}
+        />
+      ) : null}
       <Select
         label="Object"
         placeholder="All objects"

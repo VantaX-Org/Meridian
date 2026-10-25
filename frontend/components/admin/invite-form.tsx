@@ -53,7 +53,7 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
         })}
         onRemove={(g) => setGrants((cur) => cur.filter((c) => c.id !== g.id))}
       />
-      {grants.length === 0 ? <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Add at least one grant to invite.</p> : null}
+      {grants.length === 0 ? <p className="m-text-meta m-ink-3">Add at least one grant to invite.</p> : null}
       <div className="flex gap-2">
         <Button type="submit" disabled={!form.valid || grants.length === 0 || m.isPending}>Send invitation</Button>
         <Button type="button" variant="secondary" onClick={onDone}>Close</Button>

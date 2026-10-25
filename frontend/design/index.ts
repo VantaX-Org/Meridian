@@ -34,6 +34,7 @@ export * from "./primitives/HelpHint";
 export * from "./primitives/PageHeader";
 export * from "./primitives/Checkbox";
 export * from "./primitives/FilterChip";
+export * from "./primitives/ChoiceGroup";
 export * from "./primitives/Input";
 export * from "./primitives/Radio";
 export * from "./primitives/Switch";

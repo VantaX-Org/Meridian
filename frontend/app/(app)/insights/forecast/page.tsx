@@ -217,7 +217,7 @@ export default function ForecastPage() {
         {warnings.length === 0 ? (
           <EmptyState title="No early warnings" detail="Every object is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
         ) : (
-        <DataTable columns={warningColumns} data={warnings} getRowId={(w) => `${w.module_id}-${w.signal}-${w.message}`} hideToolbar dense height="auto" />
+        <DataTable columns={warningColumns} data={warnings} getRowId={(w) => `${w.module_id}-${w.signal}-${w.message}`} hideToolbar height="auto" />
         )}
       </Card>
     </InsightFrame>

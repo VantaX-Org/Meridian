@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Card, DataTable, EmptyState, ErrorState, Field, Mono, Notice, PageHeader, Pill, RetryJobButton, Score, Select, Skeleton, type PillTone, PageFrame, Status, ProgressFill, toast } from "@/design";
+import { DrillLink, Button, Card, ChoiceGroup, DataTable, EmptyState, ErrorState, Field, Mono, Notice, PageHeader, Pill, RetryJobButton, Score, Select, Skeleton, type PillTone, PageFrame, Status, ProgressFill, toast } from "@/design";
 import { JobError } from "@/components/job-error";
 import { explainJobError } from "@/lib/job-error";
 import { JOBS_QUERY_KEY } from "@/hooks/use-jobs";
@@ -307,19 +307,12 @@ export default function ImportPage() {
               <p className="m-text-body m-ink-2">
                 {targetModule ? "Which SAP object this file holds. Change it if Meridian guessed wrong." : "Pick the SAP object this file holds to run the import."}
               </p>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Object">
-                {match.available_modules.map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => chooseObject(m.value)}
-                    aria-pressed={targetModule === m.value}
-                    className="px-2 py-0.5 m-text-meta rounded-full border m-ink [border-color:var(--m-line)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[color:var(--m-accent)]"
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
+              <ChoiceGroup
+                label="Object"
+                value={targetModule ?? ""}
+                onChange={chooseObject}
+                options={match.available_modules}
+              />
               {systemsQ.data?.length ? (
                 <div className="flex flex-col gap-1.5">
                   <Field label="System">

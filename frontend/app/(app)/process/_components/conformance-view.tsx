@@ -23,11 +23,11 @@ const POINT_COLUMNS: ColumnDef<Point>[] = [
 function ParetoPanel({ title, data, id }: { title: string; data: Point[]; id: string }) {
   return (
     <section className="grid gap-2">
-      <h2 className="font-semibold">{title}</h2>
+      <h2 className="m-text-h font-semibold m-ink">{title}</h2>
       {data.length ? (
         <ViewAsTable
           chart={<Pareto data={data} height={220} />}
-          table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar dense
+          table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar
             tableId={id} exportName={id} />} />
       ) : <EmptyState title="None in this view" />}
     </section>
@@ -59,7 +59,7 @@ export function ConformanceView({ runId, filters, rework, onClearFilters }: {
 
   return (
     <div className="grid gap-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="m-stat-grid">
         <Stat label="Fitness" help="fitness" value={fmtFitness(c.fitness)} tone={tone === "go" || tone === "at-risk" || tone === "no-go" ? tone : undefined}
           hint="Share of reference steps each case performs in order" />
         <Stat label="Happy path" help="happyPath" value={fmtShare(c.happy_path?.share ?? 0)}
@@ -77,7 +77,7 @@ export function ConformanceView({ runId, filters, rework, onClearFilters }: {
         <ParetoPanel title="Out-of-order steps" id="process-out-of-order"
           data={c.steps.filter((s) => s.out_of_order > 0).map((s) => ({ x: s.activity, y: s.out_of_order }))} />
       </div>
-      <DataTable columns={columns} data={steps} getRowId={(s) => s.activity} height="auto" dense
+      <DataTable columns={columns} data={steps} getRowId={(s) => s.activity} height="auto"
         tableId="process-conformance-steps" exportName={`process-conformance-${runId}`} />
     </div>
   );

@@ -11,10 +11,6 @@ import type { SyncProfile } from "@/types/api";
 import { TENANT_TIMEZONE_HREF, useTenantTimezone } from "@/lib/tenant-zone";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { clsx } from "clsx";
-
-const th = "px-3 py-2 text-left font-medium";
-const td = "px-3 py-1.5 border-t";
 
 const CUSTOM = "custom";
 const PRESETS = [
@@ -127,25 +123,25 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
         {profilesQ.isLoading ? <Skeleton height={120} /> : profilesQ.isError ? (
           <ErrorState {...apiErrorState(profilesQ.error)} onRetry={() => void profilesQ.refetch()} />
         ) : profiles.length ? (
-          <table className="w-full m-text-body">
+          <table className="m-table">
             <thead><tr>
-              <th className={clsx(th, "m-ink-3")}>Object</th><th className={clsx(th, "m-ink-3")}>Schedule</th>
-              <th className={clsx(th, "m-ink-3")}>Mode</th>
-              <th className={clsx(th, "m-ink-3")}>Last run</th><th className={clsx(th, "m-ink-3")}>Next run</th>
-              <th className={clsx(th, "m-ink-3")}>Status</th><th className={clsx(th, "m-ink-3")} />
+              <th>Object</th><th>Schedule</th>
+              <th>Mode</th>
+              <th>Last run</th><th>Next run</th>
+              <th>Status</th><th />
             </tr></thead>
             <tbody>
               {profiles.map((p) => (
                 <tr key={p.id}>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{formatModuleName(p.domain)}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                  <td>{formatModuleName(p.domain)}</td>
+                  <td>
                     {canManage
                       ? <CronPicker value={p.schedule_cron ?? ""} disabled={update.isPending}
                           onChange={(c) => update.mutate({ p, body: { schedule_cron: c } })} />
-                      : <span className="font-mono">{presetLabel(p.schedule_cron)}</span>}
+                      : <span>{presetLabel(p.schedule_cron)}</span>}
                     <span className="block m-text-meta m-ink-3">{tz.replace(/_/g, " ")}</span>
                   </td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                  <td>
                     {canManage
                       ? <Select
                           label="Extraction mode"
@@ -153,10 +149,10 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                           onValueChange={(v) => update.mutate({ p, body: { extraction_mode: v === "delta" ? "delta" : "full" } })} />
                       : <span>{modeLabel(p.extraction_mode)}</span>}
                   </td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.last_run_at ? <span title={formatDate(p.last_run_at, "datetime", tz)}>{relativeTime(p.last_run_at)}</span> : "Never"}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime", tz) : "—"}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}><Status kind="lifecycle" value={p.active ? "active" : "paused"} /></td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                  <td>{p.last_run_at ? <span title={formatDate(p.last_run_at, "datetime", tz)}>{relativeTime(p.last_run_at)}</span> : "Never"}</td>
+                  <td>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime", tz) : "—"}</td>
+                  <td><Status kind="lifecycle" value={p.active ? "active" : "paused"} /></td>
+                  <td>
                     {canManage && (
                       <div className="flex gap-1">
                         <Button variant="ghost" disabled={update.isPending}
