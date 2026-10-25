@@ -4,9 +4,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Button, DataTable, DrillLink, EmptyState, Mono, Status } from "@/design";
+import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, Skeleton, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { createBlockerFixBatch, getMigrationFindings } from "@/lib/api/migration";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -30,7 +30,7 @@ export function BlockersTab({ waveId, runId, blockers, runAction }: { waveId: st
   });
   const fix = useMutation({
     mutationFn: (b: WaveBlocker) => createBlockerFixBatch(waveId, { module: b.module, gap_type: b.gap_type, field: b.field }),
-    onSuccess: () => toast.success("Fix batch drafted. Review it under Cleaning."),
+    onSuccess: () => toast.success("Fix batch drafted. Review it under Fix before it is applied."),
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
@@ -50,9 +50,12 @@ export function BlockersTab({ waveId, runId, blockers, runAction }: { waveId: st
   ];
 
   if (!runId) return <EmptyState title="Not run yet" detail="Run this wave to see its blockers." action={runAction} />;
-  if (!blockers.length) return <EmptyState title="The latest run found no critical or high gaps." />;
+  if (!blockers.length) {
+    return <EmptyState title="No blockers" detail="The latest run found no critical or high gaps. Run the wave again after the next data change." action={runAction} />;
+  }
   return (
     <div className="flex flex-col gap-4">
+      <p className="m-text-body m-ink-2">Gaps that stop records from loading, most records first. Open one to see the records, or draft a fix batch for it.</p>
       <DataTable columns={columns} data={blockers} getRowId={(b) => `${b.module}|${b.gap_type}|${b.field ?? ""}`}
                  onRowClick={setOpen} />
       {open ? (
@@ -60,8 +63,12 @@ export function BlockersTab({ waveId, runId, blockers, runAction }: { waveId: st
           <p className="m-text-body font-semibold m-ink">
             {open.label}: {formatModuleName(open.gap_type)} {open.field ?? ""}
           </p>
-          <DataTable columns={GAP_COLUMNS} data={gaps.data?.items ?? []}
-                     getRowId={(g) => `${g.record_key ?? ""}|${g.target_field ?? ""}|${g.source_value ?? ""}`} />
+          {gaps.isLoading ? <Skeleton height={160} /> : gaps.isError ? (
+            <ErrorState {...apiErrorState(gaps.error)} onRetry={() => void gaps.refetch()} />
+          ) : (
+            <DataTable columns={GAP_COLUMNS} data={gaps.data?.items ?? []}
+                       getRowId={(g) => `${g.record_key ?? ""}|${g.target_field ?? ""}|${g.source_value ?? ""}`} />
+          )}
         </div>
       ) : null}
     </div>

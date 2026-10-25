@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { useQueries } from "@tanstack/react-query";
-import type { Verdict } from "@/design";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { buildDrillHref, type Verdict } from "@/design";
 import { getBusinessProcess } from "@/lib/api/connectivity";
+import { getFindings } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { isFinished } from "@/lib/runs";
 import { queryKeys } from "@/lib/query-keys";
@@ -29,18 +30,23 @@ export function useLatestVersion() {
   return { latest, isLoading: q.isLoading || fetchingRun, error: q.error as Error | null, refetch: q.refetch };
 }
 
-/** The records a rule fails in a run: the object's rules tab filtered to that check. */
-export const ruleRecordsHref = (module: string, checkId: string, versionId?: string) => {
-  const p = new URLSearchParams();
-  if (versionId) p.set("run", versionId);
-  p.set("tab", "rules");
-  p.set("check", checkId);
-  return `/objects/${module}?${p}`;
-};
-
-/** Link from a check in a version to its failing records. The process APIs name checks, not findings. */
+/**
+ * Link for a check of a version that failed on that object: the object's records tab filtered to that check, in that
+ * run; undefined when the run's findings (worst first, 200 rows) do not hold the check on that object, so a caller
+ * that tries several objects lands on the one where it failed. The process APIs name checks, not findings, and the old
+ * `/analyse/finding/<id>` link only redirected to the objects list, so the rule's records were lost on the way.
+ */
 export function useFindingHref(versionId: string | undefined) {
-  return useCallback((module: string, checkId: string) => ruleRecordsHref(module, checkId, versionId), [versionId]);
+  const q = useQuery({
+    queryKey: ["findings.by-check", versionId], enabled: !!versionId, retry: false, meta: { ignoreError: true },
+    queryFn: () => getFindings({ version_id: versionId, sort: "impact", limit: 200 }),
+  });
+  const failed = useMemo(() => new Set((q.data?.findings ?? []).map((f) => `${f.module}:${f.check_id}`)), [q.data]);
+  return useCallback(
+    (module: string, checkId: string): string | undefined =>
+      failed.has(`${module}:${checkId}`) ? buildDrillHref({ object: module, ruleId: checkId, run: versionId }) : undefined,
+    [failed, versionId],
+  );
 }
 
 /* ---------- field scoring: the readiness page and the process home read the same numbers ---------- */

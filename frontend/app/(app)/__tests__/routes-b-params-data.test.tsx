@@ -51,28 +51,32 @@ const GARBAGE = ["constructor", "__proto__", "zzz"];
 const inbox = () => import("../inbox/page");
 const fix = () => import("../fix/page");
 
+// The inbox shows active filters as removable chips ("Remove filter Type"), never a "Showing ..." sentence.
+const chip = (label: string) => screen.queryByRole("button", { name: `Remove filter ${label}` })?.parentElement?.textContent ?? null;
+
 describe("inbox filters against loaded tasks", () => {
-  it("type=match_review filters to that type, with a banner", async () => {
+  it("type=match_review filters to that type, with a chip", async () => {
     await show(inbox, "type=match_review");
     await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
     expect(screen.queryByText(/record rec-B/)).toBeNull();
-    expect(showing()?.textContent).toBe("Match review tasks only");
+    expect(showing()).toBeNull();
+    expect(chip("Type")).toBe("TypeMatch review");
   });
-  it.each(GARBAGE)("type=%s applies no filter and shows no banner", async (g) => {
+  it.each(GARBAGE)("type=%s applies no filter and shows no chip", async (g) => {
     await show(inbox, `type=${g}`);
     await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
     expect(screen.getByText(/record rec-B/)).toBeInTheDocument();
-    expect(showing()).toBeNull();
+    expect(chip("Type")).toBeNull();
   });
   it("view=mine filters to my tasks with proper wording", async () => {
     await show(inbox, "view=mine");
     await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
     expect(screen.queryByText(/record rec-B/)).toBeNull();
-    expect(showing()?.textContent).toBe("Tasks assigned to me only");
+    expect(chip("Who")).toBe("WhoMine");
   });
-  it("view=breached banner reads as Overdue, not a lowercased key", async () => {
+  it("legacy view=breached reads as the Overdue urgency filter, not a lowercased key", async () => {
     await show(inbox, "view=breached");
-    await waitFor(() => expect(showing()?.textContent).toBe("Overdue tasks only"));
+    await waitFor(() => expect(chip("When")).toBe("WhenOverdue"));
   });
 });
 

@@ -19,6 +19,7 @@ from api.services.insights_impact import by_l1, feature_l1, tenant_currency, val
 from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
 from api.services.insights_readiness import build_wave_cells
 from api.services.rbac import require_permission
+from api.services.run_context import latest_run
 from api.services.scoring import scoring_config
 
 router = APIRouter(prefix="/api/v1/insights", tags=["insights"])
@@ -246,7 +247,8 @@ async def get_owners(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
         card = build_owner_card(owner, agg["score"], agg["delta"], agg["open_by_severity"],
                                  agg["fixed_since_baseline"], agg["oldest_item_age_days"])
         last_sent = last_sent_by_user.get(agg["user_id"])
-        rows.append({**card.__dict__, "schedule": "weekly", "last_sent": last_sent.isoformat() if last_sent else None})
+        rows.append({**card.__dict__, "user_id": str(agg["user_id"]) if agg.get("user_id") else None,
+                     "schedule": "weekly", "last_sent": last_sent.isoformat() if last_sent else None})
     return {"owners": rows}
 
 
@@ -385,11 +387,7 @@ async def get_exec(
             newest = (current.get("version_ids") or [None])[0]
             version_id = uuid.UUID(newest) if newest else None
     if version_id is None:
-        version_id = (await db.execute(
-            text("SELECT id FROM analysis_versions WHERE tenant_id = :t "
-                 "AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery' ORDER BY run_at DESC LIMIT 1"),
-            {"t": str(tenant.id)},
-        )).scalar()
+        version_id = await latest_run(db, tenant.id)
         if version_id is None:
             # No analysis run at all for this tenant — not an error, just a day-one
             # tenant. 200 with empty fields so the page renders its empty state.

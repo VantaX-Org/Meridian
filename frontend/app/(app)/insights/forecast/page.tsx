@@ -4,23 +4,24 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, EmptyState, Line, Select, Status, statusLabel } from "@/design";
+import { Button, Card, DataTable, EmptyState, Line, Select, Status, statusLabel } from "@/design";
 import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning, type PredictiveResponse } from "@/lib/api/analytics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
-import { withScope } from "../_components/useInsightScope";
+import { useInsightScope, withScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 /** The API's traffic-light signal in the product's one verdict vocabulary. */
 const SIGNAL_VERDICT: Record<EarlyWarning["signal"], string> = { red: "no-go", amber: "at-risk", green: "go" };
 
 /** The API's trend enum as a plain phrase. */
-const TREND_WORDS: Record<string, string> = { improving: "improving", stable: "holding steady", declining: "declining", critical: "falling fast" };
+const TREND_WORDS: Record<string, string> = { improving: "heading up", stable: "holding steady", declining: "heading down", critical: "falling fast" };
 const trendWords = (t: string) => TREND_WORDS[t] ?? t.replace(/_/g, " ");
 
 const warningColumns: ColumnDef<EarlyWarning>[] = [
-  { accessorKey: "module_id", header: "Object", cell: ({ row }) => <DrillLink object={row.original.module_id}>{formatModuleName(row.original.module_id)}</DrillLink> },
+  { accessorKey: "module_id", header: "Object", cell: ({ row }) => formatModuleName(row.original.module_id) },
   {
     accessorKey: "signal",
     header: "Verdict",
@@ -57,6 +58,7 @@ export function forecastEmptyDetail(d: Pick<PredictiveResponse, "reason" | "runs
  * the header names what it saw ("Every object, 6 runs on 1 day") rather than a run.
  */
 export default function ForecastPage() {
+  const { run } = useInsightScope();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.analyticsPredictive(),
     queryFn: () => getPredictiveAnalytics(),
@@ -107,15 +109,17 @@ export default function ForecastPage() {
   return (
     <InsightFrame
       title="Forecast"
-      meta={seen ? `Every object, ${seen}` : undefined}
+      purpose={PAGE_PURPOSE["/insights/forecast"]}
+      meta={seen ? `Every object, from ${seen}` : undefined}
+      run={run}
       insight={{
         situation: {
           sentence: worst ? `${formatModuleName(worst.module_id)} is predicted at ${worst.forecast_30d} in 30 days: ${statusLabel("verdict", forecastVerdict(worst, warnings))}` : "Not enough runs to forecast",
           tone: declining.length ? "at-risk" : "go",
         },
-        changed: { sentence: `${plural(declining.length, "object is", "objects are")} declining` },
+        changed: { sentence: `${plural(declining.length, "object is", "objects are")} heading down` },
         why: { sentence: warnings.length ? `${plural(warnings.length, "early warning is", "early warnings are")} open` : "No early warning is open" },
-        next: { sentence: worst ? `Review rules for ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: worst ? "Open failing rules" : "Open runs", href: worst ? withScope("/insights/rules", { module: worst.module_id }) : "/runs" } },
+        next: { sentence: worst ? `Review the failing rules of ${formatModuleName(worst.module_id)}` : "Run another analysis", action: { label: worst ? "Open failing rules" : "Open runs", href: worst ? withScope("/insights/rules", { module: worst.module_id }) : "/runs" } },
       }}
       state={state}
       skeleton={
@@ -132,7 +136,7 @@ export default function ForecastPage() {
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
     >
-      <Card title="Predicted DQS">
+      <Card title="Predicted score" meta="Today's score and the expected score in 7, 30 and 90 days if nothing changes">
         <div className="flex flex-col gap-3">
           {forecasts.length > 0 && (
             <Select
@@ -142,18 +146,18 @@ export default function ForecastPage() {
               options={forecasts.map((f) => ({ value: f.module_id, label: formatModuleName(f.module_id) }))}
             />
           )}
-          {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
+          {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this object" detail="It needs runs on three different days." action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
           {hidden > 0 && (
-            <p className="m-text-meta m-ink-3">{`${hidden} more objects, shown one at a time when selected above`}</p>
+            <p className="m-text-meta m-ink-3">{`${plural(hidden, "more object")}, shown one at a time when selected above`}</p>
           )}
           {selected && (
             <p className="m-text-body m-ink-2">
-              {`${formatModuleName(selected.module_id)} is ${trendWords(selected.trend)}, ${selected.confidence}% confidence over ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
+              {`${formatModuleName(selected.module_id)}: ${trendWords(selected.trend)}, ${selected.confidence}% confidence, from ${plural(selected.points, "run")} across ${plural(selected.span_days, "day")}`}
             </p>
           )}
         </div>
       </Card>
-      <Card title="Early warnings">
+      <Card title="Early warnings" meta="Objects the forecast flags, with what to do about each">
         {warnings.length === 0 ? (
           <EmptyState title="No early warnings" detail="Every object is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
         ) : (

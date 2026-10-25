@@ -83,6 +83,7 @@ export default function ExtractionPage() {
   const narrative = (
     <>
       {v ? <>Extracted {formatDate(v.run_at, "datetime")}, run {runName(v)}.</> : version.isPending ? <Skeleton width={240} height={20} /> : <>The run of this extraction could not be read.</>}
+      {" "}Each step Meridian ran to pull this data from SAP, and how long it took.
       {activeJob ? (
         <>
           <RunProgressBanner
@@ -103,7 +104,7 @@ export default function ExtractionPage() {
           tone="danger"
           action={
             <>
-              <Button variant="secondary" render={<Link href={`/systems/${systemId}?tab=health`}>Test connection</Link>} />
+              <Button variant="secondary" render={<Link href={`/systems/${systemId}?tab=health`}>Check the connection</Link>} />
               <Button variant="secondary" render={<Link href={`/systems/${systemId}?extract=1`}>Extract again</Link>} />
             </>
           }

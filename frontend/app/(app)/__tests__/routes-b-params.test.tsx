@@ -39,13 +39,13 @@ const designer = () => import("../insights/process/designer/page");
 const GARBAGE = ["constructor", "__proto__", "toString", "zzz"];
 
 describe("wave 10 URL params are whitelisted", () => {
-  it.each(GARBAGE)("fix ?tab=%s falls back to the cleaning queue", async (g) => {
+  it.each(GARBAGE)("fix ?tab=%s falls back to records to fix", async (g) => {
     await show(fix, `tab=${g}`);
-    expect(selected()).toMatch(/Cleaning queue/);
+    expect(selected()).toMatch(/Records to fix/);
   });
   it("fix ?tab=batches selects batches", async () => {
     await show(fix, "tab=batches");
-    expect(selected()).toMatch(/Batches/);
+    expect(selected()).toMatch(/Approvals and export/);
   });
   it.each(GARBAGE)("fix batches ?status=%s and ?sort=%s apply no filter and show no banner", async (g) => {
     await show(fix, `tab=batches&status=${g}&sort=${g}`);
@@ -60,11 +60,14 @@ describe("wave 10 URL params are whitelisted", () => {
   it.each(GARBAGE)("inbox ?view, ?type, ?kind = %s apply no filter and show no banner", async (g) => {
     await show(inbox, `view=${g}&type=${g}&kind=${g}`);
     expect(showing()).toBeNull();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
   });
-  it("inbox ?view=mine shows a filter banner with Show all", async () => {
+  // The inbox shows its filters as removable chips (no "Showing" sentence), with one Clear filters button.
+  it("inbox ?view=mine shows a Who chip with Clear filters", async () => {
     await show(inbox, "view=mine");
-    expect(showing()).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Show all" })).toBeTruthy();
+    expect(showing()).toBeNull();
+    expect(screen.getByRole("button", { name: "Remove filter Who" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Clear filters" })).toBeTruthy();
   });
 
   it.each(GARBAGE)("process ?tab=%s falls back to readiness", async (g) => {

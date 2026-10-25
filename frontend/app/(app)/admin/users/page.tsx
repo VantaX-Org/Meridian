@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore, toast } from "@/design";
+import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore, toast } from "@/design";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { permissionLabel } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
   if (!canManage) {
     return (
       <div>
-        <EmptyState title="Managing users needs an administrator" detail="Ask an administrator to change roles or invite people." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
+        <EmptyState title="Only administrators manage users" detail="Ask an administrator to invite someone, change a role or review the audit log." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
   }
@@ -65,7 +65,7 @@ export default function AdminUsersPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Users"
-        meta="Who can sign in, with which role, and what they did"
+        meta="Who can sign in and what each person may do. Invite people, change a role, or suspend someone's access"
         actions={
           <>
             <Button variant="secondary" render={<Link href="/admin/audit">Audit log</Link>} />
@@ -194,7 +194,7 @@ function RolesView() {
 
   return (
     <div className="flex flex-col gap-6 pt-4">
-      <p className="m-text-body m-ink-3">Permissions come from the API role matrix, the frontend keeps no copy.</p>
+      <p className="m-text-body m-ink-3">What each role may do. To change someone&apos;s role, open them on the Users tab.</p>
       {matrixQ.isError ? (
         <ErrorState {...apiErrorState(matrixQ.error)} onRetry={() => matrixQ.refetch()} />
       ) : matrix ? (
@@ -251,14 +251,15 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
       <p className="m-text-meta m-ink-3">{ROLE_META[role].desc}</p>
       <p className="m-text-meta m-ink-3">Scoped grants (a role at one system or module) are managed under <Link href={`/admin/roles?tab=users`} className="underline">Roles and access</Link>.</p>
       <label className="flex items-center gap-2 m-text-body">
-        <input type="checkbox" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
+        <Checkbox aria-label="Active" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
         <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>
       </label>
       <div className="flex gap-2">
-        <Button type="submit" disabled={m.isPending}>Save</Button>
+        <Button type="submit" pending={m.isPending}>Save</Button>
         <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
       </div>
-      <Button type="button" variant="danger" disabled={removing} onClick={() => setConfirmRemove(true)}>Remove user</Button>
+      <p className="m-text-meta m-ink-3">To stop someone signing in but keep their name on past work, untick Active and save instead of removing them.</p>
+      <div><Button type="button" variant="ghost" disabled={removing} onClick={() => setConfirmRemove(true)}>Remove user</Button></div>
 
       <ConfirmDialog
         open={confirmSave}

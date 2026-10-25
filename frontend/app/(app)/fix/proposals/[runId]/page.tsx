@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, ConfirmDialog, DataTable, Drawer, EmptyState, EntityTabs, ErrorState, ExplorerPage, Field, PageHeader, Pager, Skeleton, Mono, Notice, Stat, Status, Textarea, toast, type CellMeta, type ExportOption } from "@/design";
 import { ProposalCell, proposalOf } from "@/components/fix/proposal";
-import { kindText } from "@/components/fix/kind";
+import { ALL_RUNS, kindText } from "@/components/fix/kind";
 import {
   approveCleaning,
   bulkApprove,
@@ -53,9 +53,9 @@ export function FixSteps({ current }: { current: (typeof STEPS)[number] }) {
 }
 
 /** Every approve, reject, apply and rollback on the proposals this run found, from the cleaning audit log. */
-function BatchAudit({ runId }: { runId: string }) {
+function BatchAudit({ runId }: { runId: string | undefined }) {
   const q = useQuery({
-    queryKey: ["cleaning-audit", "run", runId],
+    queryKey: ["cleaning-audit", "run", runId ?? ALL_RUNS],
     queryFn: () => getCleaningAudit({ version_id: runId, per_page: 100 }),
     retry: false,
   });
@@ -77,35 +77,39 @@ const PAGE_SIZE = 100;
  * second person's approval and the export to SAP.
  */
 export default function ProposalsPage() {
-  const { runId } = useParams<{ runId: string }>();
+  const { runId: segment } = useParams<{ runId: string }>();
+  // "all": every run, for proposals that carry none (the match engine's review pairs).
+  const runId = segment === ALL_RUNS ? undefined : segment;
   const kind = useSearchParams().get("kind") ?? undefined;
   const router = useRouter();
   const qc = useQueryClient();
   const canApprove = useRole().can("approve");
   const [page, setPage] = useState(1);
-  const key = [...queryKeys.batch(runId), kind ?? "", page];
+  const key = [...queryKeys.batch(segment), kind ?? "", page];
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: key,
     queryFn: () => getCleaningQueue({ version_id: runId, kind, per_page: PAGE_SIZE, page }),
   });
-  const version = useQuery({ queryKey: ["version", runId], queryFn: () => getVersion(runId), retry: false });
+  const version = useQuery({ queryKey: ["version", runId], queryFn: () => getVersion(runId as string), enabled: !!runId, retry: false });
   const groups = useQuery({ queryKey: ["cleaning", "groups"], queryFn: getCleaningGroups });
   const approvedQ = useQuery({
-    queryKey: [...queryKeys.batch(runId), kind ?? "", "approved"],
+    queryKey: [...queryKeys.batch(segment), kind ?? "", "approved"],
     queryFn: () => getCleaningQueue({ version_id: runId, kind, status: "approved", per_page: 1 }),
   });
   const items = useMemo(() => data?.items ?? [], [data]);
   const ranked = useMemo(() => [...items].sort((x, y) => y.confidence - x.confidence), [items]);
   // Waiting proposals of this run and kind at or above the threshold, across every page: what "Accept N" approves.
-  const mine = (groups.data?.groups ?? []).filter((g) => g.version_id === runId && (!kind || g.kind === kind));
+  const mine = (groups.data?.groups ?? []).filter((g) => (runId ? g.version_id === runId : true) && (!kind || g.kind === kind));
   const what = kind ? kindText(kind, mine[0]?.rule_name) : "Proposals";
   const waiting = mine.reduce((n, g) => n + g.records, 0);
   const confidentCount = mine.reduce((n, g) => n + g.confident, 0);
   const approvedCount = approvedQ.data?.total ?? 0;
-  const run = version.data ? runName(version.data) : "this run";
+  const run = !runId ? "every run" : version.data ? runName(version.data) : "this run";
+  // A match to review changes no value, so there is nothing to load into SAP from a fix batch.
+  const draftable = kind !== "match";
 
   const invalidate = () => {
-    void qc.invalidateQueries({ queryKey: queryKeys.batch(runId) });
+    void qc.invalidateQueries({ queryKey: queryKeys.batch(segment) });
     void qc.invalidateQueries({ queryKey: ["cleaning", "groups"] });
   };
 
@@ -147,7 +151,7 @@ export default function ProposalsPage() {
     onError: (e) => { setAskAccept(false); setFailure(`Not approved: ${apiErrorMessage(e)}`); },
   });
   const toBatch = useMutation({
-    mutationFn: () => createBatchFromCleaning(`${what} from ${run}`, { version_id: runId, kind }),
+    mutationFn: () => createBatchFromCleaning(`${what} from ${run}`, { ...(runId ? { version_id: runId } : {}), kind }),
     onSuccess: (b) => {
       toast.success(`Fix batch drafted with ${b.items.toLocaleString()} change${b.items === 1 ? "" : "s"}`, {
         action: { label: "Open batch", onClick: () => router.push(`/fix?tab=batches&batch=${b.id}`) },
@@ -217,7 +221,7 @@ export default function ProposalsPage() {
     <FixSteps current="Proposal" />
     <PageHeader
       title={what}
-      meta={`${objectName ? `${objectName}, ` : ""}found by ${run}`}
+      meta={`${objectName ? `${objectName}, ` : ""}${runId ? `found by ${run}` : "across every run"}`}
       actions={canApprove ? (
         <>
           <Button
@@ -227,17 +231,19 @@ export default function ProposalsPage() {
           >
             Accept {confidentCount.toLocaleString()} at {HIGH_CONFIDENCE_LABEL}
           </Button>
-          <Button
-            variant="primary"
-            disabled={approvedCount === 0 || toBatch.isPending}
-            onClick={() => toBatch.mutate()}
-          >
-            Draft fix batch from {approvedCount.toLocaleString()} approved
-          </Button>
+          {draftable ? (
+            <Button
+              variant="primary"
+              disabled={approvedCount === 0 || toBatch.isPending}
+              onClick={() => toBatch.mutate()}
+            >
+              Draft fix batch from {approvedCount.toLocaleString()} approved
+            </Button>
+          ) : null}
         </>
       ) : undefined}
     />
-    <EntityTabs entityType="cleaning" entityId={runId} audit={<BatchAudit runId={runId} />} exportOptions={exportOptions} overview={
+    <EntityTabs entityType="cleaning" entityId={segment} audit={<BatchAudit runId={runId} />} exportOptions={exportOptions} overview={
     <ExplorerPage
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{

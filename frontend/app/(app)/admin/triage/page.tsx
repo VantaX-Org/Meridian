@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, toast } from "@/design";
+import { Button, Checkbox, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, toast } from "@/design";
 import { LedgerHead, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -84,14 +84,14 @@ export default function AdminTriagePage() {
 
   return (
     <div className="flex flex-col gap-4" aria-busy={teams.isLoading || undefined}>
-      <PageHeader title="Triage" meta="Who gets new issues, how long they have, and the calendar the clocks run on" />
+      <PageHeader title="Triage" meta="Who gets each new issue, how long they have to fix it, and the working days the clock counts. These drive the urgency colours in the inbox" />
 
       <div className="flex gap-4">
         <Stat label="Rules switched off" value={idle} tone={idle ? "at-risk" : undefined} loading={ruleQ.isLoading} delta={`of ${ruleQ.data?.length ?? 0} assignment rules`} />
       </div>
 
       {!rules && !settings ? (
-        <Notice tone="info">Changing triage needs the manage rules or manage settings permission.</Notice>
+        <Notice tone="info">You can read these settings. Ask an administrator to change teams, rules, deadlines or the calendar.</Notice>
       ) : null}
 
       <TeamsSection write={rules} />
@@ -194,8 +194,8 @@ function TeamForm({ team, onClose }: { team: TriageTeam | null; onClose: () => v
           <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
             {users.map((u) => (
               <label key={u.id} className="flex items-center gap-2 m-text-body">
-                <input
-                  type="checkbox"
+                <Checkbox
+                  aria-label={u.name}
                   checked={members.includes(u.id)}
                   onChange={(e) => setMembers(toggled(members, u.id, e.target.checked))}
                 />
@@ -259,7 +259,7 @@ function RulesSection({ write }: { write: boolean }) {
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
     { id: "match", header: "Matches", cell: ({ row }) => <span className="m-ink-3">{matchText(row.original.match)}</span> },
     { id: "to", header: "Assigns to", cell: ({ row }) => target(row.original) },
-    { id: "on", header: "Enabled", cell: ({ row }) => <input type="checkbox" checked={row.original.enabled} disabled={!write} onChange={() => toggle.mutate(row.original)} aria-label={`${row.original.name} enabled`} /> },
+    { id: "on", header: "Enabled", cell: ({ row }) => <Checkbox checked={row.original.enabled} disabled={!write} onChange={() => toggle.mutate(row.original)} aria-label={`${row.original.name} enabled`} /> },
     {
       id: "act", header: "Action",
       cell: ({ row }) => write ? (
@@ -456,7 +456,7 @@ function PolicyForm({ policy, onClose }: { policy: SlaPolicy | null; onClose: ()
         <Field label="Resolve minutes"><Input type="number" min="1" value={resolve} onChange={(e) => setResolve(e.target.value)} /></Field>
         <Field label="At-risk %"><Input type="number" min="1" max="99" value={atRisk} onChange={(e) => setAtRisk(e.target.value)} /></Field>
         <label className="flex items-center gap-2 m-text-body">
-          <input type="checkbox" checked={businessHours} onChange={(e) => setBusinessHours(e.target.checked)} />
+          <Checkbox aria-label="Business hours only" checked={businessHours} onChange={(e) => setBusinessHours(e.target.checked)} />
           Business hours only
         </label>
         <div className="flex gap-2 justify-end">
@@ -533,7 +533,7 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
         <Select value={fallback} onValueChange={setFallback} options={[{ value: "", label: "None" }, ...users.map((u) => ({ value: u.id, label: u.name }))]} />
       </Field>
       <Field label="Holidays (YYYY-MM-DD, one per line)" error={badDates.length ? `Not a date: ${badDates.join(", ")}` : undefined}>
-        <textarea className="m-input [height:auto] [padding:6px_10px]" rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
+        <Textarea rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
       </Field>
       {write ? (
         <div>

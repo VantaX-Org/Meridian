@@ -2,14 +2,15 @@
 
 /** Process › Discovery runs (process-discovery spec §7.3): every run on the system, live stage, New run. */
 import { useQuery } from "@tanstack/react-query";
-import { PageHeader, Button, ErrorState, Notice } from "@/design";
+import Link from "next/link";
+import { PageHeader, Button, EmptyState, ErrorState, Notice } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { ACTIVE_RUN, getCatalogue, listRuns } from "@/lib/api/process-discovery";
 import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { ProcessFrame, RowsSkeleton } from "../_components/process-header";
+import { PROCESS_PURPOSE, ProcessFrame, RowsSkeleton, processMeta } from "../_components/process-header";
 import { NewRunDialog } from "../_components/new-run-dialog";
 import { NoSystem, RunsTable, SystemSelect, useProcessSystem } from "../_components/shared";
 
@@ -33,11 +34,11 @@ export default function ProcessRunsPage() {
 
   if (systems.isError) return <ProcessFrame><ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
   if (systems.isSuccess && !system) return <ProcessFrame><NoSystem /></ProcessFrame>;
-  if (!system) return <ProcessFrame><PageHeader title="Discovery runs" /><RowsSkeleton /></ProcessFrame>;
+  if (!system) return <ProcessFrame><PageHeader title="Discovery runs" meta={processMeta(PROCESS_PURPOSE.runs)} /><RowsSkeleton /></ProcessFrame>;
   const extraction = active.find((j) => j.kind === "extraction" && j.system_id === system.id);
   return (
     <ProcessFrame>
-      <PageHeader title="Discovery runs" meta={system.name}
+      <PageHeader title="Discovery runs" meta={processMeta(PROCESS_PURPOSE.runs)}
         actions={(
           <>
             <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />
@@ -51,7 +52,14 @@ export default function ProcessRunsPage() {
       )}
       {runs.isError
         ? <ErrorState {...apiErrorState(runs.error)} onRetry={() => runs.refetch()} />
-        : runs.data ? <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} names={names} /> : <RowsSkeleton />}
+        : !runs.data ? <RowsSkeleton />
+        : runs.data.length === 0 ? (
+          <EmptyState title="No discovery run yet" ghost="table"
+            detail={`Discovery reads the documents of ${system.name} and mines how each process really runs.`}
+            action={can("run_process_discovery")
+              ? <Button onClick={() => setNewRun("1")} disabled={!catalogue.data}>New run</Button>
+              : <Button variant="secondary" render={<Link href={`/process?system=${system.id}`}>Open processes</Link>} />} />
+        ) : <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} names={names} />}
       {catalogue.data && (
         <NewRunDialog open={newRun === "1"} onOpenChange={(o) => setNewRun(o ? "1" : "")}
           systemId={system.id} systemName={system.name} rows={catalogue.data} />

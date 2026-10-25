@@ -1,20 +1,20 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status, useBreadcrumbTitle } from "@/design";
-import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
+import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status, useBreadcrumbTitle } from "@/design";
+import { exportRuleHistory, getRule, getRuleByCode, getRuleHistory, updateRule, type Rule, type RuleHistoryRun } from "@/lib/api/rules";
 import { getReference } from "@/lib/api/process-designer";
 import { useRole } from "@/hooks/use-role";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
 import { getRuleLineage } from "@/lib/api/lineage";
 import { apiErrorState } from "@/lib/error";
-import { formatDate, formatModuleName, formatPct, labelOf } from "@/lib/format";
+import { checkClassLabel, formatDate, formatModuleName, formatPct, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { ConditionList, ThresholdTable } from "../rule-ui";
@@ -201,6 +201,77 @@ function LineageAndOwnership({ checkId, builtIn }: { checkId: string; builtIn: b
   );
 }
 
+/** The rule in plain words: what it tests, why it matters, and how many records fail it now, with the way to them. */
+function WhatItChecks({ rule, checkId, latest, historyLoading }: { rule: Rule; checkId: string; latest: RuleHistoryRun | undefined; historyLoading: boolean }) {
+  const q = useQuery({
+    queryKey: ["rules", "by-code", checkId, rule.module],
+    queryFn: () => getRuleByCode(checkId, rule.module),
+    enabled: !!checkId,
+    retry: false,
+    meta: { ignoreError: true },
+  });
+  const d = q.data;
+  const records = buildDrillHref({ object: rule.module, ruleId: checkId });
+  const what = d?.message ?? rule.name.slice(rule.name.indexOf(":") + 1).trim();
+  const why = d?.why_it_matters ?? rule.description;
+  let failing: ReactNode;
+  if (historyLoading) failing = <Skeleton height={20} />;
+  else if (!latest) failing = <span className="m-ink-3">No analysis has checked this rule yet. Run one to see which records fail.</span>;
+  else if (latest.affected_count === 0) failing = <>Every one of the {latest.total_count.toLocaleString()} records checked passes, as of {formatDate(latest.run_at, "date")}.</>;
+  else failing = (
+    <>
+      <DrillLink href={records}>{latest.affected_count.toLocaleString()}</DrillLink> of {latest.total_count.toLocaleString()} records fail, as of {formatDate(latest.run_at, "date")}.{" "}
+      <Link className="m-ink-accent-ink hover:underline" href={records}>Fix them on the object</Link>
+    </>
+  );
+  return (
+    <Card title="What it checks">
+      <dl className="m-text-body flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <dt className="m-text-label m-ink-3">The check</dt>
+          <dd>
+            {what}
+            {d?.check_class || d?.field ? (
+              <span className="m-ink-3"> ({d?.check_class ? checkClassLabel(d.check_class).toLowerCase() : "check"}{d?.field ? <> on <Mono>{d.field}</Mono></> : null})</span>
+            ) : null}
+          </dd>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <dt className="m-text-label m-ink-3">Why it matters</dt>
+          <dd>{why || <span className="m-ink-3">No reason is written down for this rule yet.</span>}</dd>
+        </div>
+        {d?.sap_impact ? (
+          <div className="flex flex-col gap-0.5">
+            <dt className="m-text-label m-ink-3">What it breaks in SAP</dt>
+            <dd>{d.sap_impact}</dd>
+          </div>
+        ) : null}
+        <div className="flex flex-col gap-0.5">
+          <dt className="m-text-label m-ink-3">Failing now</dt>
+          <dd>{failing}</dd>
+        </div>
+      </dl>
+    </Card>
+  );
+}
+
+/** /rules/<check id> (the code every screen shows) opens the rule: it is resolved to the rule's id. */
+function RuleByCode({ code }: { code: string }) {
+  const router = useRouter();
+  const q = useQuery({ queryKey: ["rules", "by-code", code], queryFn: () => getRuleByCode(code) });
+  useEffect(() => {
+    if (q.data?.rule_uuid) router.replace(`/rules/${q.data.rule_uuid}`);
+  }, [q.data, router]);
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
+  if (q.data && !q.data.rule_uuid) {
+    return (
+      <EmptyState title={`${code} has not run here yet`} detail="The rule exists in the library, but no run of this tenant has evaluated it."
+        action={<Button render={<Link href={`/rules?module=${encodeURIComponent(q.data.module)}`}>Open the rules of this object</Link>} />} />
+    );
+  }
+  return <Skeleton height={320} />;
+}
+
 export default function RulePage() {
   const { ruleId } = useParams<{ ruleId: string }>();
   const router = useRouter();
@@ -236,6 +307,8 @@ export default function RulePage() {
       </div>
     );
   }
+  // The rules API takes the rule's id; a check id (what every screen shows) answers 400: resolve it instead.
+  if (isError && isAxiosError(error) && error.response?.status === 400) return <RuleByCode code={decodeURIComponent(ruleId)} />;
   if (isError && isAxiosError(error) && error.response?.status === 404) {
     return (
       <EmptyState
@@ -254,7 +327,7 @@ export default function RulePage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title={data.name}
-        meta={<Mono>{checkId}</Mono>}
+        meta={`Checks ${formatModuleName(data.module)} records. ${data.enabled ? "Runs on every analysis." : "Switched off, so it does not run."}`}
         status={<span className="inline-flex items-center gap-2"><Status kind="severity" value={data.severity} /><Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill></span>}
         actions={<>
           {canManage && (
@@ -281,6 +354,8 @@ export default function RulePage() {
           />
         ) : undefined}
         overview={<>
+      <WhatItChecks rule={data} checkId={checkId} latest={history.data?.runs[0]} historyLoading={history.isLoading} />
+
       <div className="m-stat-grid">
         <Stat
           label="Last pass rate"
@@ -291,8 +366,6 @@ export default function RulePage() {
         />
         <Stat label="Last run" value={formatDate(data.last_run_at, "datetime")} href={buildDrillHref({ object: data.module, ruleId: checkId })} />
       </div>
-
-      {data.description ? <p className="m-text-body m-ink-3">{data.description}</p> : null}
 
       <dl className="m-text-body flex flex-col gap-1">
         <div className="flex justify-between"><dt className="m-ink-3">Object</dt><dd>{formatModuleName(data.module)}</dd></div>

@@ -58,9 +58,10 @@ describe("RulesPage", () => {
     expect(screen.getAllByText("MTART").length).toBeGreaterThan(0);
     expect(await screen.findByRole("columnheader", { name: "Cost at risk (ZAR)" })).toBeInTheDocument();
     expect(screen.getAllByText(/ZAR[\u00a0 ]?1[,. \u00a0]250/).length).toBeGreaterThan(0);
-    const links = screen.getAllByRole("link", { name: "Open records" });
-    expect(links[0]).toHaveAttribute("href", "/objects/material_master?tab=records&run=v1&check=A1");
-    expect(links[0].getAttribute("href")).not.toContain("/records?");
+    // Each rule's failing records open in Fix work, filtered to that rule on its object.
+    const links = screen.getAllByText("Open records").map((e) => e.closest("a"));
+    expect(links[0]).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=A1");
+    expect(links[0]?.getAttribute("aria-label")).toMatch(/^Open the [\d,]+ failing records of rule A1 in material master$/);
     expect(screen.getByText("Impact by rule")).toBeInTheDocument();
     // The shared tab strip and action bar come with the frame.
   });
@@ -75,10 +76,28 @@ describe("RulesPage", () => {
     query = "run=v1";
   });
 
-  it("shows the empty state", async () => {
+  it("says why nothing is listed: no rule fails in the run", async () => {
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] });
     mount();
-    expect(await screen.findByText("No failing rules")).toBeInTheDocument();
+    expect(await screen.findByText("No rule fails in this run")).toBeInTheDocument();
+    for (const a of screen.getAllByRole("link", { name: "Open runs" })) expect(a).toHaveAttribute("href", "/runs");
+  });
+
+  it("says the filters hide every rule, and clears them", async () => {
+    query = "run=v1&severity=critical";
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] });
+    mount();
+    expect(await screen.findByText("No failing rules match")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Clear filters" })[0]).toHaveAttribute("href", "/insights/rules?run=v1");
+    query = "run=v1";
+  });
+
+  it("puts the rule's plain name first and its check id second, under a one-line purpose", async () => {
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [row("A1", 80)] });
+    mount();
+    expect(await screen.findByTestId("page-purpose")).toHaveTextContent("Which checks cost the most, and where to start.");
+    expect(screen.queryByRole("columnheader", { name: "Name" })).toBeNull();
+    expect((await screen.findAllByText("A1")).length).toBeGreaterThan(0);
   });
 
   it("shows an error with retry", async () => {

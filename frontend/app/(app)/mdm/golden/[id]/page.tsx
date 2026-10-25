@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, Status, toast } from "@/design";
-import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, unmergeMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
+import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, Status, toast, type RecordStatus } from "@/design";
+import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
+import { MergedRecords } from "@/components/mdm/merged-records";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
@@ -53,7 +54,6 @@ export default function MasterRecordPage() {
   const canApply = can("apply");
   const [confirmPromote, setConfirmPromote] = useState(false);
   const [confirmWriteback, setConfirmWriteback] = useState(false);
-  const [confirmUnmerge, setConfirmUnmerge] = useState(false);
 
   const recordQuery = useQuery<MasterRecordDetail>({
     queryKey: queryKeys.masterRecord(id),
@@ -81,17 +81,9 @@ export default function MasterRecordPage() {
       toast.error(apiErrorMessage(error));
     },
   });
-  const unmerge = useMutation({
-    mutationFn: () => unmergeMasterRecord(id),
-    onSuccess: () => { invalidate(); setConfirmUnmerge(false); toast.success("Unmerged. The record is a candidate again"); },
-    onError: (error) => { setConfirmUnmerge(false); toast.error(apiErrorMessage(error)); },
-  });
   const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(id),
-    onSuccess: (r) => {
-      setConfirmWriteback(false);
-      if (r.writeback_supported) toast.success(r.message); else toast(r.message);
-    },
+    onSuccess: () => setConfirmWriteback(false),
     onError: (error) => {
       setConfirmWriteback(false);
       toast.error(apiErrorMessage(error));
@@ -126,6 +118,12 @@ export default function MasterRecordPage() {
     );
   }
 
+  // RecordPage only speaks the record-quality vocabulary; the golden-record status is the Pill in the overview.
+  const status: RecordStatus = record.status === "golden"
+    ? { label: "passing", tone: "go" }
+    : { label: "in batch", tone: record.status === "superseded" ? "neutral" : "at-risk" };
+  const promotable = record.status !== "golden" && record.status !== "superseded";
+
   const fields = Object.entries(record.golden_fields);
   const sources = Object.entries(record.source_contributions);
   const relationships = relationshipsQuery.data?.relationships ?? [];
@@ -134,13 +132,25 @@ export default function MasterRecordPage() {
   const sourceRows: SourceRow[] = sources.map(([system, c]) => ({ system, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
 
   return (
-    <RecordPage recordKey={record.sap_object_key} object={record.domain}>
+    <RecordPage
+      recordKey={record.sap_object_key}
+      object={record.domain}
+      status={status}
+      meta={record.status === "superseded"
+        ? "This record was merged into another golden record. Its own values are kept for an unmerge."
+        : `The one trusted version of this record, built from ${sources.length.toLocaleString()} ${sources.length === 1 ? "source" : "sources"}. ${promotable ? "Check the values, then promote it." : "It is the version other systems should use."}`}
+      actions={canApprove && promotable ? (
+        <Button disabled={promote.isPending} onClick={() => setConfirmPromote(true)}>Promote</Button>
+      ) : undefined}
+    >
       <EntityTabs entityType="master-records" entityId={id}
         related={<>
       <section aria-label="Related records">
         <LedgerHead title="Related records" meta={String(relationships.length)} />
-        {relationships.length === 0 ? (
-          <EmptyState variant="inline" title="No related records" />
+        {relationshipsQuery.isLoading ? <Skeleton height={80} /> : relationshipsQuery.isError ? (
+          <ErrorState {...apiErrorState(relationshipsQuery.error)} onRetry={() => void relationshipsQuery.refetch()} />
+        ) : relationships.length === 0 ? (
+          <EmptyState variant="inline" title="No related records found" detail="Links appear when another object refers to this key." action={<Link className="m-ink-accent-ink hover:underline" href={`/objects/${record.domain}`}>Open the object</Link>} />
         ) : (
           <DataTable columns={relCols} getRowId={(r) => r.id} data={relationships as Rel[]} height="auto" />
         )}
@@ -149,8 +159,10 @@ export default function MasterRecordPage() {
         history={<>
       <section aria-label="History">
         <LedgerHead title="History" meta={String(history.length)} />
-        {history.length === 0 ? (
-          <EmptyState variant="inline" title="No changes recorded" />
+        {historyQuery.isLoading ? <Skeleton height={80} /> : historyQuery.isError ? (
+          <ErrorState {...apiErrorState(historyQuery.error)} onRetry={() => void historyQuery.refetch()} />
+        ) : history.length === 0 ? (
+          <EmptyState variant="inline" title="No changes recorded" detail="Promotions, merges and steward picks are listed here." action={<Link className="m-ink-accent-ink hover:underline" href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
         ) : (
           <DataTable columns={histCols} getRowId={(r) => r.id} data={history as Hist[]} height="auto" />
         )}
@@ -160,14 +172,6 @@ export default function MasterRecordPage() {
       <section className="flex items-center gap-2">
         <Status kind="lifecycle" value={record.status} />
         <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
-        {canApprove ? (
-          <Button
-            disabled={record.status === "golden" || record.status === "superseded" || promote.isPending}
-            onClick={() => setConfirmPromote(true)}
-          >
-            {promote.isPending ? "Promoting…" : "Promote"}
-          </Button>
-        ) : null}
         <GatedPrimary
           kind="writeback"
           allowed={canApply}
@@ -177,37 +181,28 @@ export default function MasterRecordPage() {
         >
           {writeback.isPending ? "Writing back…" : "Write back"}
         </GatedPrimary>
-        {canApprove && record.status === "superseded" ? (
-          <Button variant="secondary" disabled={unmerge.isPending} onClick={() => setConfirmUnmerge(true)}>Unmerge</Button>
-        ) : null}
         <Button variant="ghost" render={<Link href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
       </section>
+      {writeback.data ? (
+        <p className="m-text-body m-ink-3">{writeback.data.message}</p>
+      ) : null}
+
       <ConfirmDialog
         open={confirmPromote}
         onOpenChange={setConfirmPromote}
         title="Promote to golden record?"
-        body={<>This replaces the current golden fields for <Mono>{record.sap_object_key}</Mono> with the merged values. This cannot be undone.</>}
+        body={<p className="m-text-body m-ink-2">This replaces the current golden fields for <Mono>{record.sap_object_key}</Mono> with the merged values. This cannot be undone.</p>}
         confirmLabel="Promote"
         cancelLabel="Keep as is"
         pending={promote.isPending}
         onConfirm={() => promote.mutate()}
       />
       <ConfirmDialog
-        open={confirmUnmerge}
-        onOpenChange={setConfirmUnmerge}
-        title={`Unmerge ${record.sap_object_key}?`}
-        body={<>The record stops being part of the golden record it was merged into and becomes a candidate again. The history keeps both the merge and this unmerge.</>}
-        confirmLabel="Unmerge"
-        cancelLabel="Keep merged"
-        pending={unmerge.isPending}
-        onConfirm={() => unmerge.mutate()}
-      />
-      <ConfirmDialog
         open={confirmWriteback}
         onOpenChange={setConfirmWriteback}
         title={`Write back ${record.sap_object_key}?`}
         body={
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 m-text-body m-ink-2">
             <p>Fields: {fields.length ? fields.map(([f]) => f).join(", ") : "none"}</p>
             <p>Target system{sources.length === 1 ? "" : "s"}: {sources.length ? sources.map(([s]) => s).join(", ") : "none recorded"}</p>
           </div>
@@ -221,7 +216,7 @@ export default function MasterRecordPage() {
       <section aria-label="Golden fields">
         <LedgerHead title="Golden fields" meta={String(fields.length)} />
         {fields.length === 0 ? (
-          <EmptyState variant="inline" title="No golden fields recorded" />
+          <EmptyState variant="inline" title="No golden fields recorded" detail="Fields fill in when the golden record is built from its sources." action={<Link className="m-ink-accent-ink hover:underline" href="/mdm/survivorship">Survivorship rules</Link>} />
         ) : (
           <DataTable columns={fieldCols} getRowId={(r) => r.field} data={fieldRows} height="auto" />
         )}
@@ -230,18 +225,20 @@ export default function MasterRecordPage() {
       <section aria-label="Source contributions">
         <LedgerHead title="Source contributions" meta={String(sources.length)} />
         {sources.length === 0 ? (
-          <EmptyState variant="inline" title="No sources recorded" />
+          <EmptyState variant="inline" title="No sources recorded" detail="A source is added each time an extraction carries this key." action={<Link className="m-ink-accent-ink hover:underline" href="/systems">Open systems</Link>} />
         ) : (
           <DataTable columns={sourceCols} getRowId={(r) => r.system} data={sourceRows} height="auto" />
         )}
       </section>
 
+      <MergedRecords id={record.id} onChanged={invalidate} />
+
         </>}
       />
 
       <section>
-        <Link href="/insights/duplicates" className="m-text-body m-ink-accent">
-          Review merge candidates in duplicates
+        <Link href={`/mdm/golden/merge?domain=${encodeURIComponent(record.domain)}`} className="m-text-body m-ink-accent">
+          Review match pairs for {formatModuleName(record.domain)}
         </Link>
       </section>
     </RecordPage>

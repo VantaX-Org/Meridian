@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
+import { AnalyseAction } from "./analyse-action";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pill, Score, Skeleton, Tabs, type PillTone, Status } from "@/design";
@@ -21,7 +21,7 @@ import { useRowDrawer } from "./row-drawer";
 const STATUS_TONE: Record<string, PillTone> = { active: "go", partial: "at-risk", dormant: "at-risk", inactive: "no-go", ghost: "no-go" };
 const n = (v: number) => v.toLocaleString();
 const dash = (v: string | null | undefined) => v ?? "—";
-const analyseAction = <Button render={<Link href="/runs">Open runs</Link>} />;
+const analyseAction = <AnalyseAction />;
 
 /** One config-intelligence list: loading, 404 (no analysis yet) as an honest empty state, error, then the body. */
 function Feed<T>({ q, empty, children }: { q: UseQueryResult<T>; empty: string; children: (data: T) => ReactNode }) {

@@ -5,17 +5,20 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, Status, domainOf, type RecordStatus } from "@/design";
+import { Button, Card, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, Status, domainOf, type RecordStatus } from "@/design";
 import { getObjectRecord, getObjectRecordFindings } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
 import { getRecordReportUrl } from "@/lib/api/reports";
 import { queryKeys } from "@/lib/query-keys";
 import { parseRecordKey } from "@/lib/record-key";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
+import { RecordPanel, workRecordKey } from "@/components/work/record-panel";
+import { getWorkRecord } from "@/lib/api/work";
+import { FieldSheet, sheetFields } from "./_field-sheet";
 
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
@@ -74,6 +77,16 @@ export default function RecordFixSheetPage() {
     enabled: !!run && isMaterial,
   });
 
+  // The record's decisions for the run: what fails, the suggested values and the fix buttons. A record the run's work
+  // list does not hold (it passes, or the work list is not built) answers 404 and the panel is left out.
+  const workQuery = useQuery({
+    queryKey: workRecordKey(object, key, run),
+    queryFn: () => getWorkRecord(object, key, run),
+    enabled: !!run && !!key,
+    retry: false,
+    meta: { ignoreError: true },
+  });
+
   if (recordQuery.isLoading || (!run && scope.resolving)) {
     return (
       <div className="flex flex-col gap-2 p-6">
@@ -114,6 +127,9 @@ export default function RecordFixSheetPage() {
   const failing = isMaterial ? hasMissing : failingRules.length > 0;
   const status: RecordStatus = failing ? { label: "failing", tone: "no-go" } : { label: "passing", tone: "go" };
   const fieldRows = Object.entries(material.mara ?? {}).filter(([, v]) => v != null && String(v).trim() !== "");
+  // Every field of the sheet plus the fields the checks read, grouped by table, the failing ones highlighted.
+  const sheetTable = material.labels.Table ?? (isMaterial ? "MARA" : "Record");
+  const sheet = sheetFields(material.mara ?? {}, workQuery.data?.values ?? {}, workQuery.data?.issues ?? [], sheetTable);
 
   const findings = findingsQuery.data;
   const supersession = supersessionQuery.data;
@@ -143,6 +159,7 @@ export default function RecordFixSheetPage() {
         { label: "Fields with a value", value: fieldRows.length },
       ]}
     >
+      {workQuery.isError && isNotFound(workQuery.error) ? null : <RecordPanel module={object} recordKey={key} run={run} fullRecordLink={false} />}
       <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} overview={<>
       <Card title="Identity" domain={domainOf(object)}>
         <dl className="m-text-body grid grid-cols-2 gap-x-6 gap-y-1">
@@ -206,19 +223,7 @@ export default function RecordFixSheetPage() {
         </Card>
       )}
 
-      {generic && (
-        <Card title="Fields">
-          <DataTable
-            columns={[
-              { id: "field", header: "Field", accessorFn: (r: [string, string | null]) => r[0], cell: ({ row }) => <Mono>{row.original[0]}</Mono> },
-              { id: "value", header: "Value", accessorFn: (r: [string, string | null]) => r[1] ?? "", cell: ({ row }) => <Mono>{row.original[1]}</Mono> },
-            ]}
-            data={fieldRows}
-            getRowId={(r) => r[0]}
-            maxHeight={420}
-          />
-        </Card>
-      )}
+      <FieldSheet fields={sheet} />
 
       {isMaterial && (
         <Card title="Findings">

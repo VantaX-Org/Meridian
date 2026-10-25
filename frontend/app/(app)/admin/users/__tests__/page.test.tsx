@@ -26,7 +26,7 @@ describe("admin users page", () => {
     role.loading = true;
     try {
       renderWithQuery(<AdminUsersPage />);
-      expect(screen.queryByText(/Managing users needs an administrator/)).toBeNull();
+      expect(screen.queryByText(/Only administrators manage users/)).toBeNull();
       expect(document.querySelector("[aria-busy='true']")).not.toBeNull();
     } finally {
       role.loading = false;

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from api.routes.findings import _COMPLETE, composite_dqs
 from api.services import s4_readiness
+from api.services.run_context import latest_run_sync
 from api.services.run_lineage import lineage_key, lineage_sql
 from api.services.insights_impact import feature_l1, tenant_currency, value_at_risk, worst_l1
 from api.services.pdf_reports import (
@@ -348,11 +349,11 @@ def cleansing_steps(failing_n: int, proposed: int, high: int, approved: int, app
 
 def resolve_version(s: Session, tid: str, vid: Optional[str]) -> Optional[dict]:
     """The requested run, else the tenant's latest complete one."""
-    if vid:
-        return _one(s, "SELECT id, label, run_at, status, dqs_summary, metadata FROM analysis_versions "
-                       "WHERE id = CAST(:v AS uuid) AND tenant_id = :t", v=str(vid), t=tid)
-    return _one(s, f"SELECT id, label, run_at, status, dqs_summary, metadata FROM analysis_versions "
-                   f"WHERE tenant_id = :t AND {_COMPLETE} ORDER BY run_at DESC LIMIT 1", t=tid)
+    vid = vid or latest_run_sync(s, tid)
+    if not vid:
+        return None
+    return _one(s, "SELECT id, label, run_at, status, dqs_summary, metadata FROM analysis_versions "
+                   "WHERE id = CAST(:v AS uuid) AND tenant_id = :t", v=str(vid), t=tid)
 
 
 def lineage_of(version: dict) -> str:

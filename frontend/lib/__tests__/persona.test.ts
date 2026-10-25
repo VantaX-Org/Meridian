@@ -23,8 +23,8 @@ describe("personaForRole", () => {
   });
 
   it("sends each persona key to its rbac.py PERSONA_HOME", () => {
-    expect(homeHrefForRole("data_steward")).toBe("/home/steward");
-    expect(homeHrefForRole("data_owner")).toBe("/home/steward");
+    expect(homeHrefForRole("data_steward")).toBe("/fix");
+    expect(homeHrefForRole("data_owner")).toBe("/fix");
     expect(homeHrefForRole("programme_lead")).toBe("/home/lead");
     expect(homeHrefForRole("platform_admin")).toBe("/home/lead");
   });
@@ -37,8 +37,10 @@ describe("personaForRole", () => {
     expect(legacyRole("sap_basis")).toBe("sap_basis");
   });
 
-  it("sends steward-persona roles to the steward home and everyone else to lead", () => {
-    expect(homeHrefForRole("approver")).toBe("/home/steward");
+  it("lands steward-persona roles on Fix work and everyone else on their persona home", () => {
+    expect(homeHrefForRole("steward")).toBe("/fix");
+    expect(homeHrefForRole("approver")).toBe("/fix");
+    expect(personaForRole("steward")).toBe("steward"); // "View as: Steward" still opens /home/steward
     expect(homeHrefForRole("analyst")).toBe("/home/lead");
     expect(homeHrefForRole("process_analyst")).toBe("/home/process");
   });

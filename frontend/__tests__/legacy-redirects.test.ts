@@ -30,7 +30,7 @@ const EXPECTED: Record<string, string> = {
   "/glossary/:id": "/mdm/glossary/:id",
   "/golden-records": "/mdm/golden",
   "/golden-records/:id": "/mdm/golden/:id",
-  "/golden-records/:id/merge": "/mdm/golden/merge",
+  "/golden-records/:id/merge": "/mdm/golden/merge?id=:id",
   "/match-rules": "/mdm/match-rules",
   "/match-rules/constraints": "/mdm/match-rules",
   "/match-rules/tuning": "/mdm/match-rules",

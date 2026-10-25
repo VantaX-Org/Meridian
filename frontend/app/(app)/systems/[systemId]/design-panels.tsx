@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Drawer, EmptyState, ErrorState, Input, Pager, Pill, Select, Skeleton, type PillTone } from "@/design";
+import { Button, Card, Drawer, EmptyState, ErrorState, Input, Mono, Pager, Pill, Select, Skeleton, type PillTone } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import {
   getConfigDeviation,
@@ -29,6 +29,13 @@ const th = "px-3 py-2 text-left font-medium";
 const td = "px-3 py-1.5 border-t";
 const muted = "m-text-body";
 
+/** Loading and failure for one panel's query: a skeleton in the table's place, or the server's reason with Retry. */
+function QueryGate({ q, height = 200 }: { q: { isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown }; height?: number }) {
+  if (q.isLoading) return <Skeleton height={height} />;
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
+  return null;
+}
+
 export function TablesTab({ id }: { id: string }) {
   const [search, setSearch] = useState("");
   const [customerOnly, setCustomerOnly] = useState(false);
@@ -38,22 +45,30 @@ export function TablesTab({ id }: { id: string }) {
     queryKey: queryKeys.designTables(id, { search, customerOnly, offset }),
     queryFn: () => getDesignTables(id, { search: search || undefined, customer_only: customerOnly, limit: PAGE, offset }),
   });
-  const data = tablesQ.data;
+  const { data } = tablesQ;
   const total = data?.total ?? 0;
+  const filtered = Boolean(search) || customerOnly;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <Input className="w-full" placeholder="Search table or description, then Enter" aria-label="Search tables"
+        <Input key={search} defaultValue={search} className="w-full" placeholder="Search table or description, then Enter" aria-label="Search tables"
           onKeyDown={(e) => { if (e.key === "Enter") { setSearch(e.currentTarget.value); setOffset(0); } }} />
-        <Button variant={customerOnly ? "primary" : "secondary"} onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
+        <Button variant="secondary" aria-pressed={customerOnly}
+          className="shrink-0 aria-pressed:[color:var(--m-accent-ink)] aria-pressed:[border-color:var(--m-accent)] aria-pressed:[background:var(--m-accent-soft)]"
+          onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
           Customer extensions only
         </Button>
       </div>
-      {tablesQ.isLoading ? <div aria-busy="true"><Skeleton height={200} /></div>
-        : tablesQ.isError ? <ErrorState {...apiErrorState(tablesQ.error)} onRetry={() => void tablesQ.refetch()} />
-        : !data?.items.length ? <EmptyState title="No tables match" detail={search || customerOnly ? "Clear the search or the filter." : "Discover design reads the data dictionary."} ghost="table" />
-        : (
-      <table className="w-full m-text-body">
+      <p className={clsx(muted, "m-ink-2")}>The tables Meridian found in this system. Open one to compare its fields with SAP standard.</p>
+      <QueryGate q={tablesQ} />
+      {data && data.items.length === 0 ? (
+        <EmptyState
+          title={filtered ? "No tables match" : "No tables read yet"}
+          detail={filtered ? "Clear the search or show every table." : "Run design discovery from the Connection card above to read this system's tables."}
+          action={filtered ? <Button variant="secondary" onClick={() => { setSearch(""); setCustomerOnly(false); setOffset(0); }}>Show all tables</Button> : undefined}
+        />
+      ) : null}
+      {data && data.items.length > 0 ? <table className="w-full m-text-body">
         <thead><tr>
           <th className={clsx(th, "m-ink-3")}>Table</th><th className={clsx(th, "m-ink-3")}>Description</th>
           <th className={clsx(th, "m-ink-3")}>Delivery class</th>
@@ -73,8 +88,7 @@ export function TablesTab({ id }: { id: string }) {
             </tr>
           ))}
         </tbody>
-      </table>
-        )}
+      </table> : null}
       <Pager page={Math.floor(offset / PAGE) + 1} pageCount={Math.max(1, Math.ceil(total / PAGE))} pageSize={PAGE} total={total}
         onPageChange={(p) => setOffset((p - 1) * PAGE)} />
       <TableDrawer id={id} table={open} onClose={() => setOpen(null)} />
@@ -83,7 +97,7 @@ export function TablesTab({ id }: { id: string }) {
 }
 
 function TableDrawer({ id, table, onClose }: { id: string; table: string | null; onClose: () => void }) {
-  const { data, error } = useQuery({
+  const { data, error, refetch } = useQuery({
     queryKey: queryKeys.designTable(id, table),
     queryFn: () => getDesignTable(id, table as string),
     enabled: Boolean(table),
@@ -91,8 +105,8 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
   const deviations = data?.fields.filter((f) => f.deviation).length ?? 0;
   return (
     <Drawer open={Boolean(table)} onOpenChange={(next) => { if (!next) onClose(); }} title={table ?? ""}>
-      {error ? <ErrorState {...apiErrorState(error)} />
-        : !data ? <div aria-busy="true"><Skeleton height={160} /></div> : (
+      {error ? <ErrorState {...apiErrorState(error)} onRetry={() => void refetch()} />
+        : !data ? <Skeleton height={160} /> : (
         <div className="flex flex-col gap-3">
           <p className={clsx(muted, "m-ink-2")}>{data.description}</p>
           <div className="flex flex-wrap gap-2">
@@ -135,9 +149,12 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
 export function ConfigTab({ id, tables }: { id: string; tables: { table: string; scope: string; rows: number; source: string; synced_at: string | null }[] }) {
   const wanted = useSearchParams().get("table");
   const [open, setOpen] = useState(tables.find((t) => t.table === wanted)?.table ?? tables[0]?.table ?? "");
-  const { data } = useQuery({ queryKey: queryKeys.designConfig(id, open), queryFn: () => getDesignConfig(id, open), enabled: Boolean(open) });
+  const configQ = useQuery({ queryKey: queryKeys.designConfig(id, open), queryFn: () => getDesignConfig(id, open), enabled: Boolean(open) });
+  const { data } = configQ;
   const cols = data?.rows[0] ? Object.keys(data.rows[0]) : [];
-  if (!tables.length) return <EmptyState title="No configuration tables read yet" detail="Discover design reads them from the system." ghost="table" />;
+  if (!tables.length) {
+    return <EmptyState title="No configuration read yet" detail="Discovery reads configuration tables along with the data dictionary. Run it again from the Connection card above." />;
+  }
   return (
     <div className="flex flex-col gap-3">
       <DeviationPanel id={id} />
@@ -145,6 +162,7 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
         label="Configuration table"
         value={open} onValueChange={setOpen}
         options={tables.map((t) => ({ value: t.table, label: `${t.table}, ${t.rows} rows, ${t.source}` }))} />
+      <QueryGate q={configQ} />
       {data && (
         <>
           <p className={clsx(muted, "m-ink-2")}>
@@ -197,14 +215,18 @@ function DeviationPanel({ id }: { id: string }) {
 }
 
 export function CoverageTab({ id }: { id: string }) {
-  const { data } = useQuery({ queryKey: queryKeys.designCoverage(id), queryFn: () => getDesignCoverage(id) });
+  const coverageQ = useQuery({ queryKey: queryKeys.designCoverage(id), queryFn: () => getDesignCoverage(id) });
+  const { data } = coverageQ;
   const parts = Object.entries(data?.coverage ?? {});
   return (
     <div className="flex flex-col gap-4">
       <p className={clsx(muted, "m-ink-2")}>
-        Every object Meridian tried to read, and the outcome. &ldquo;Not found&rdquo; means the object does not exist in
-        this release; &ldquo;Failed&rdquo; usually means a missing RFC authorisation (S_TABU_DIS / S_TABU_NAM).
+        Every table Meridian tried to read, and what happened. &ldquo;Not found&rdquo; means the table does not exist in
+        this SAP release; &ldquo;Failed&rdquo; usually means the connection user lacks table read access
+        (<Mono>S_TABU_DIS</Mono> or <Mono>S_TABU_NAM</Mono>). Ask your SAP Basis team to grant it.
       </p>
+      <QueryGate q={coverageQ} />
+      {data && parts.length === 0 ? <EmptyState title="Nothing read yet" detail="Coverage fills in after design discovery runs." /> : null}
       {parts.map(([part, items]) => (
         <Card key={part} title={part}>
           <div className="flex flex-wrap gap-2">
@@ -230,11 +252,10 @@ export function SnapshotsTab({ id }: { id: string }) {
   const b = to || done[0]?.id || "";
   const { data: diff } = useQuery({ queryKey: queryKeys.designDiff(id, a, b), queryFn: () => getDesignDiff(id, a, b), enabled: Boolean(a && b && a !== b) });
   const opts = done.map((s) => ({ value: s.id, label: `${s.started_at ? formatDate(s.started_at, "datetime") : s.id}, ${s.tables} tables` }));
-  if (snapsQ.isLoading) return <div aria-busy="true"><Skeleton height={160} /></div>;
-  if (snapsQ.isError) return <ErrorState {...apiErrorState(snapsQ.error)} onRetry={() => void snapsQ.refetch()} />;
-  if (!snaps.length) return <EmptyState title="No discovery yet" detail="Each discovery is kept here, so two can be compared." ghost="list" />;
+  if (snapsQ.isLoading || snapsQ.isError) return <QueryGate q={snapsQ} />;
   return (
     <div className="flex flex-col gap-4">
+      <p className={clsx(muted, "m-ink-2")}>Each time Meridian read this system&apos;s design. Compare two to see which tables and fields changed.</p>
       <table className="w-full m-text-body">
         <thead><tr>
           <th className={clsx(th, "m-ink-3")}>Started</th><th className={clsx(th, "m-ink-3")}>Status</th>

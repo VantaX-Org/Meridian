@@ -1,154 +1,86 @@
 # Keyboard shortcuts and search
 
-Meridian can be driven from the keyboard, and one search box takes you to any page, object, record or rule. This chapter lists every key, explains how search reads what you type, and shows how to work with tables.
+Cleaning data is repetitive, so Meridian can be driven from the keyboard: you can work a whole list of records without touching the mouse. This chapter lists every key and explains the two search boxes. Keys never fire while you are typing in a box, a list or a text area, or while a dialog is open, and they ignore Ctrl, ⌘ and Alt unless stated. On Windows and Linux, read ⌘ as Ctrl.
 
-## How to see the shortcuts
+Press `?` on any page, or choose **Keyboard shortcuts** in the help menu, to see the list for the page you are on.
 
-Press **?** on any page, or open the help menu (**?** in the index bar) and choose **Keyboard shortcuts**. A panel titled **Keyboard shortcuts** opens with the line "Press ? any time to open this list".
+## Everywhere
 
-- The **?** key does nothing while you are typing in a box, a list or a text area, so you can still type a question mark.
-- On the Inbox, the Inbox keys are listed first.
+- `/`: jump into **Find a record by key or name** in the scope bar.
+- Ctrl K (⌘K): open **Search or jump to...**, for any page, object, rule or record key.
+- `?`: show the keyboard shortcuts.
+- Ctrl 1 (⌘1): go to your Home page.
+- `Escape`: close the **More** menu, a dialog, a side panel or a guided tour.
 
-## The shortcut sheet
+## Fix work
 
-The sheet groups the keys as Navigation, Tables, Inbox and Global. On Windows and Linux, read ⌘ as Ctrl.
+On the **Records to fix** tab:
 
-### Navigation
+- `j` or the Down arrow: next record.
+- `k` or the Up arrow: previous record.
+- `a`: accept the record's suggested values. They go into your draft fix batch, and the next record comes up.
+- `t`: take the record, so it is assigned to you.
+- `u`: undo the record's proposed values.
+- `Enter`: open the full record.
 
-- ⌘1: Go to Home. It opens the home for your role, from any page, even while you type in a box.
+`a` and `u` need the apply permission and `t` the assign permission. The keys are printed under the list as a reminder.
 
-### Tables
+## Objects
 
-These keys work when a table has the focus. Select a row or press Tab until the table is outlined.
+On an object's page:
 
-- ↑ / ↓: Move between rows.
-- Home / End: Jump to the first or last row.
-- Enter: Open the focused row.
-- Space: Select the focused row, where the table lets you select rows. The x key does the same.
-- Escape: Clear the selection and close the row's detail panel.
+- `1` to `5`: open **Records to fix**, **Overview**, **Rules**, **Fields** and **Records by rule**.
+- On **Records to fix**, `j` and `k` (or the arrow keys) move between records and `Enter` opens the full record.
+- `f`: open the full record of the row the keyboard is on in a rule's record list, or of the first record.
 
-### Inbox
+## Inbox
 
-These keys work on the Inbox list. They do nothing while you type in a box, or with Ctrl, ⌘ or Alt held.
-
-- j / k: Next or previous task.
-- Enter: Open the record behind the task.
-- a: Assign the task to me.
-- r: Resolve (approve) the task.
-- x: Reject the task with a reason. A box asks for the reason.
-- Escape: Close the panel.
-
-The a, r and x keys need a role that can approve. On the **Exceptions** view, a assigns the exception to you and r opens the box to resolve it with a reason.
-
-### Global
-
-- ⌘K (Ctrl K): Search or jump to a page.
-- ?: Show keyboard shortcuts.
-
-## Keys on particular pages
-
-A few pages have keys of their own that the sheet does not list.
-
-- On an object's page, 1, 2, 3 and 4 open the **Overview**, **Rules**, **Fields** and **Records** tabs.
-- On an object's page, f opens the fix sheet for the record row the keyboard is on, or for the first record in the list when no row is focused.
-- On **Runs**, with exactly two runs selected, c opens the comparison of the two.
-- In the process designer, Ctrl S (⌘S) saves the model.
-- Escape closes the **More** menu, a guided tour, a dialog or a side panel, and leaves presentation mode.
-
-## Search and jump
-
-The search box **Search or jump to…** sits on the right of the index bar. Select it or press Ctrl K (⌘K) from any page. The box reads "Type a page, object, check ID or record key".
-
-### How to jump to a page
-
-1. Press Ctrl K.
-2. Type part of a page name, such as `scoring` or `golden`.
-3. Use ↑ and ↓ to choose, and press Enter.
-
-The list holds every page your role can open, grouped by the sections of the **More** menu. The tabs of the Insights views are listed with their view's name, such as "Summary: Reports", "Progress: Trends" or "Explore: Value at risk". The bar at the foot of the box reminds you: ↑↓ navigate, ↵ open, esc close. When nothing matches, the box says "Nothing matches." with a hint.
-
-### How search reads what you type
-
-Search reads your words with fixed rules, in the browser, without any AI. Words it recognises appear as chips under the box, and the first choice in the list becomes **Open filtered view**. When it recognises nothing, the first choice is **Search for** your text, which opens the search page.
-
-It recognises:
-
-- An object, by its name or its ID, such as `material master` or `material_master`. The longest name wins, so "material master" is not read as "material".
-- A severity: `critical`, `high`, `medium` or `low`.
-- A dimension: `completeness`, `accuracy`, `consistency`, `timeliness`, `uniqueness` or `validity`.
-- An owner, written as `owner` followed by the name.
-- `last run`, the newest finished run.
-- A rule ID, such as `MM003`, `S4HC042` or `S4R-WM-QUANT-NEG`. Upper or lower case both work.
-- A record key: a number of 6 to 18 digits, or 10 letters and digits with at least one digit, such as a material or vendor number.
-
-Other words are ignored, and a chip shows only where the page it opens can use it.
-
-Where it takes you:
-
-- An object and a record key open that record's page, for example `material master 10001234`.
-- A record key alone opens the search page for that key.
-- A rule ID alone opens the rule, for example `MM003`. With an object, it opens the object's **Records** tab for that rule, for example `material master MM003`.
-- An object with a severity or a dimension opens the object's **Rules** tab narrowed to them, for example `critical completeness material master`.
-- An object alone opens its page. An object page always shows the object's newest finished run, so `last run` changes nothing there.
-- A dimension, an owner or `last run` without an object opens the **Objects** list with that filter, for example `owner anna accuracy`. With `last run` the list is the newest run instead of the current state.
-- Anything else, including a severity with no object, opens the search page with your text.
-
-## The search page
-
-The search page at [/search](/search) lists matches across Meridian. Its header reads "Objects, rules, glossary terms, batches and runs".
-
-1. Type in the **Search** box, for example a name, a rule ID, a batch ID or a run ID, and press Enter.
-2. Read the results. Each row shows its **Type** (**Object**, **Rule**, **Batch**, **Run** or **Glossary term**) and the **Result**. Systems are listed too.
-3. Select a row, or **Open** at its end, to go there.
-
-Exact matches on the ID or name come first, then names that start with your text, then names that contain it.
-
-- The chips under the box, such as "Text: …", show what you searched for. Select a chip to remove it.
-- Opened with a run in the address, the page lists that run's objects, and a "Run: …" chip shows it.
-- **Export** downloads **Findings (.xlsx)** when your role can export.
-- With no text, the page says "Search objects, records, checks and rules." With no results, it says "Nothing matches." and names what search covers.
+- `j` and `k`: next or previous item.
+- `Enter`: open the record behind the item.
+- `a`: claim the item.
+- `r`: approve the task, or open the resolve box on an exception.
+- `x`: reject the task with a reason.
+- `Escape`: close the panel.
 
 ## Tables
 
-Most lists in Meridian use the same table. Above it, on the left, is the filter box; on the right the table options.
+When a table has the focus (select a row, or press Tab until it is outlined):
 
-### How to sort and filter
+- Up and Down arrows: move between rows. Home and End: first or last row.
+- `Enter`: open the focused row. Space: select it, where the table allows.
+- `Escape`: clear the selection.
 
-1. Select a column header to sort by it. An arrow shows the direction.
-2. Select the header again to reverse the order, and once more to clear the sort.
-3. Type in **Type to filter rows** to keep only rows that contain your text in any column.
+On **Runs**, with two runs ticked, `c` opens their comparison.
 
-When the filter removes every row, the table says "No rows match this filter" and offers **Clear filter**. A table with no data at all shows one row with a short message, such as "No rows".
+## Finding a record
 
-Small tables inside a page show the filter box only once they hold eight rows or more.
+**Find a record by key or name** sits in the scope bar on every page. It searches the failing records of the run you are viewing.
 
-### Table options
+1. Press `/`, or select the box.
+2. Type at least two characters of a record key or a name, such as a material number or a vendor name.
+3. Move through the matches with the arrow keys. Each shows its name or key, its object and its status.
+4. Press `Enter` to open the record in its object, on **Records to fix**, with the record picked. `Escape` closes the list.
 
-- **Columns** shows or hides each column.
-- **Views** saves the current columns, row height and sort under a name. Type a name in **View name** and select **Save view**. Select a saved view to apply it, or **Remove** to delete it. Saved views belong to you and follow you to any browser. **Reset saved views** in [Preferences](/me/preferences) removes them all.
-- **Compact rows** and **Comfortable rows** switch the row height for this table. Tables open with compact rows. Your **Row density** preference sets how tall each of these is.
-- **Export table** downloads the rows. **CSV** holds the rows that pass your filter, with the visible columns. Some tables add a server export, such as an Excel file. The button shows only for roles that can export.
+Only records that fail a check in the run are listed. To find a record that passes, open the object and use its search, or the search page below.
 
-### Selecting rows
+## Search or jump
 
-Where a table offers bulk actions, each row has a box and the header has **Select all rows**. A bar at the bottom then shows "3 selected" and the actions for the selected rows. Roles that can change nothing, such as Viewer and Auditor, see no boxes.
+**Search or jump to...** (Ctrl K) lists every page your role can open, grouped by the sections of the **More** menu. Type part of a name, such as `scoring` or `golden`, choose with the arrow keys and press `Enter`. It also reads what you type with fixed rules, without any AI:
 
-Some tables open a side panel when you select a row, and some rows have a chevron that expands detail under the row.
+- an object, such as `material master`;
+- a severity or a dimension, such as `critical` or `completeness`;
+- a rule ID, such as `MM003`;
+- a record key, such as a 10-digit material number.
 
-### Exports elsewhere on a page
+An object and a record key open that record; a rule ID opens the rule; an object with a severity or dimension opens its **Rules** tab narrowed to them. Anything else opens the search page.
 
-Pages also carry an **Export** button in their header. With one format it downloads straight away; with several it opens a menu. While the file is prepared the button reads **Preparing**, and a message says "Download started". If there is nothing to export, the message says "Nothing to export". On report pages the menu also offers **Print**, and a viewer, who cannot export, sees **Print** alone.
+## The search page
 
-## Good to know
-
-- Tables with more than 200 rows draw only the rows on screen, so long lists stay fast. Printing a page prints every row.
-- Search lists only the pages your role can open.
-- Your table views, sort and density are saved per table. Two tables with the same columns share their views.
+The search page at [/search](/search) lists objects, rules, glossary terms, batches and runs that match your text, exact matches first. Select a row to open it. With the export permission, **Export** downloads the findings.
 
 ## Related
 
-- [Welcome to Meridian](/docs?page=welcome)
-- [Inbox](/docs?page=inbox)
+- [Fix work](/docs?page=fix)
 - [Objects](/docs?page=objects)
-- [Runs](/docs?page=runs)
+- [Inbox](/docs?page=inbox)
 - [Glossary](/docs?page=glossary)

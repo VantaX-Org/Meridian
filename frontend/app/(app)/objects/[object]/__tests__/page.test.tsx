@@ -8,6 +8,7 @@ import * as rulesApi from "@/lib/api/rules";
 import * as fieldProfileApi from "@/lib/api/field-profile";
 import * as insightsApi from "@/lib/api/insights";
 import * as remediationApi from "@/lib/api/remediation";
+import * as workApi from "@/lib/api/work";
 import type { Version } from "@/types/api";
 import ObjectDetailPage from "../page";
 
@@ -54,6 +55,9 @@ beforeEach(() => {
   vi.spyOn(rulesApi, "getRuleHistoryBatch").mockResolvedValue({ version_id: "v1", module: "material_master", history: {} });
   vi.spyOn(fieldProfileApi, "getProfileByVersion").mockResolvedValue({ version_id: "v1", object: "material_master", objects: ["material_master"], tables: [], dependencies: [] });
   vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({ version_id: "v1", check_id: "mm_missing_desc", total: 0, records: [] });
+  vi.spyOn(workApi, "getWorkSummary").mockResolvedValue({ version_id: "v1", scope: "s", built: true, objects: [], totals: { records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0 } });
+  vi.spyOn(workApi, "getWorkGroups").mockResolvedValue({ version_id: "v1", built: true, total: 0, groups: [] });
+  vi.spyOn(workApi, "getWorkRecords").mockResolvedValue({ version_id: "v1", total: 0, total_capped: false, next: null, items: [] });
 });
 
 describe("ObjectDetailPage", () => {
@@ -73,8 +77,8 @@ describe("ObjectDetailPage", () => {
     expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
     expect(getObject).toHaveBeenCalledWith("material_master", "mm-latest");
     expect(getObject).not.toHaveBeenCalledWith("material_master", "bp-new");
-    // The header names the run, offers its lineage, and nothing is pinned, so there is no "Back to latest".
-    expect(screen.getByRole("combobox", { name: "Showing run" })).toHaveTextContent("material_master_25k, 14 Oct 2026");
+    // The header names the run (the scope bar picks it), and nothing is pinned, so there is no "Back to latest".
+    expect(screen.getByTestId("run-scope")).toHaveTextContent("As of material_master_25k, 14 Oct 2026");
     expect(screen.queryByRole("link", { name: "Back to latest" })).toBeNull();
     expect(replace).not.toHaveBeenCalled();
   });
@@ -122,6 +126,7 @@ describe("ObjectDetailPage", () => {
   });
 
   it("renders the overview workbench: the score, the stats, the failing rules ranked by records and the dimension bars", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
     expect(screen.getByText("Material master")).toBeInTheDocument();
@@ -259,7 +264,7 @@ describe("ObjectDetailPage", () => {
 
   it("prompts to pick a rule on the records tab when no check_id is set", async () => {
     renderWithQuery(<ObjectDetailPage />);
-    fireEvent.click(await screen.findByRole("tab", { name: "Records" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Records by rule" }));
     await waitFor(() =>
       expect(screen.getByText(/choose a rule to see its failing records/i)).toBeInTheDocument(),
     );
@@ -330,7 +335,7 @@ describe("ObjectDetailPage", () => {
   it("preserves check_id when switching tabs away from and back to records", async () => {
     searchParams = new URLSearchParams("run=v1&tab=records&check_id=mm_missing_desc");
     renderWithQuery(<ObjectDetailPage />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Records", selected: true })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Records by rule", selected: true })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
     expect(push).toHaveBeenLastCalledWith("/objects/material_master?run=v1&tab=overview&check_id=mm_missing_desc");
   });
@@ -426,16 +431,18 @@ describe("ObjectDetailPage", () => {
 });
 
 describe("ObjectDetailPage keyboard and gating", () => {
-  it("keys 1-4 switch tabs", async () => {
+  it("keys 1-5 switch tabs", async () => {
     renderWithQuery(<ObjectDetailPage />);
     await screen.findByText("Material master");
     fireEvent.keyDown(document.body, { key: "2" });
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("tab=rules"));
-    fireEvent.keyDown(document.body, { key: "4" });
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("tab=overview"));
+    fireEvent.keyDown(document.body, { key: "3" });
+    expect(push).toHaveBeenLastCalledWith(expect.stringContaining("tab=rules"));
+    fireEvent.keyDown(document.body, { key: "5" });
     expect(push).toHaveBeenLastCalledWith(expect.stringContaining("tab=records"));
   });
 
-  it("1-4 ignored while typing in an input", async () => {
+  it("1-5 ignored while typing in an input", async () => {
     renderWithQuery(<ObjectDetailPage />);
     await screen.findByText("Material master");
     const input = document.createElement("input");
@@ -487,16 +494,20 @@ describe("ObjectDetailPage keyboard and gating", () => {
   });
 
   it("shows the header counts and affected records from a complete payload", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("Records affected")).toBeInTheDocument();
-    expect(screen.getByText("120")).toBeInTheDocument();
-    expect(await screen.findByText(/1 failing rules, 120 affected records/)).toBeInTheDocument();
+    expect(screen.getAllByText("120").length).toBeGreaterThan(0);
+    // Each header count opens what it counts.
+    expect((await screen.findByText("1 failing rules")).closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
+    expect(screen.getByText("120 affected records").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fix");
   });
 
   it("does not throw when composite_score is null and dimension_scores is empty", async () => {
     vi.spyOn(objectsApi, "getObject").mockResolvedValue({
       ...OBJECT, composite_score: null, readiness: null, dimension_scores: {},
     });
+    searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("No dimension scores")).toBeInTheDocument();
     expect(screen.getByText("Records affected")).toBeInTheDocument();

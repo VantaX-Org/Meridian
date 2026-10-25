@@ -6,7 +6,8 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, Status, Textarea, type RecordStatus } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, Status, Textarea, buildDrillHref, type RecordStatus } from "@/design";
+import { RowLink, actionColumn } from "@/components/mdm/ledger";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
@@ -27,9 +28,10 @@ const approvedCols: ColumnDef<Approved>[] = [
 ];
 const ruleCols: ColumnDef<Rule>[] = [
   { id: "rule", header: "Rule", cell: ({ row }) => <DrillLink href={`/rules/${encodeURIComponent(row.original.rule_id)}`}><Mono>{row.original.rule_id}</Mono></DrillLink> },
-  { id: "sev", header: "Severity", accessorFn: (r) => r.severity ?? "", cell: ({ row }) => (row.original.severity ? <Status kind="severity" value={row.original.severity} /> : "—") },
-  { id: "pass", header: "Pass rate", accessorFn: (r) => (r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "—") },
-  { id: "aff", header: "Affected of total", accessorFn: (r) => `${(r.affected_count ?? 0).toLocaleString()} of ${r.total_count?.toLocaleString() ?? "—"}` },
+  { id: "sev", header: "Severity", cell: ({ row }) => (row.original.severity ? <Status kind="severity" value={row.original.severity} /> : "") },
+  { id: "pass", header: "Pass rate", accessorFn: (r) => (r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "") },
+  { id: "aff", header: "Records failing", accessorFn: (r) => `${(r.affected_count ?? 0).toLocaleString()}${r.total_count != null ? ` of ${r.total_count.toLocaleString()}` : ""}` },
+  actionColumn((r) => <RowLink href={buildDrillHref({ object: r.domain, ruleId: r.rule_id })} label={`See records failing ${r.rule_id}`}>Fix</RowLink>),
 ];
 const changeCols: ColumnDef<Change>[] = [
   { id: "when", header: "When", accessorFn: (e) => e.changed_at, cell: ({ row }) => formatDate(row.original.changed_at, "datetime") },
@@ -124,7 +126,13 @@ export default function GlossaryTermPage() {
     : { label: "passing", tone: "go" };
 
   return (
-    <RecordPage recordKey={term.business_name} object={term.domain} status={status} mono={false}>
+    <RecordPage
+      recordKey={term.business_name}
+      object={term.domain}
+      status={status}
+      mono={false}
+      meta="What this field means to the business, where it lives in SAP, and the rules that check it"
+    >
       <EntityTabs entityType="glossary" entityId={id} overview={<>
       <section className="flex items-center gap-2">
         <Pill tone={term.status === "active" ? "go" : term.status === "under_review" ? "at-risk" : "no-go"}>
@@ -162,7 +170,8 @@ export default function GlossaryTermPage() {
           </Card>
         ) : null}
         <Field label="Business definition">
-          <Textarea rows={4}
+          <Textarea
+            rows={4}
             value={currentDef}
             readOnly={!canApprove}
             onChange={(e) => setEditDef(e.target.value)}
@@ -208,7 +217,7 @@ export default function GlossaryTermPage() {
       <section aria-label="Approved values">
         <LedgerHead title="Approved values" meta={String(approved.length)} />
         {approved.length === 0 ? (
-          <EmptyState variant="inline" title="No approved values are defined for this field" />
+          <p className="m-text-body m-ink-3">No approved values are defined for this field, so any value passes the value checks</p>
         ) : (
           <DataTable columns={approvedCols} getRowId={(r) => r.code} data={approved.map(([code, label]) => ({ code, label }))} height="auto" />
         )}

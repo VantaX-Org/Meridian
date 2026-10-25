@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input, PageFrame, Textarea, toast } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input, PageFrame, Textarea, toast } from "@/design";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -43,8 +43,8 @@ const MATCH_TYPES: { value: MatchType; label: string }[] = [
   { value: "semantic", label: "Semantic" },
 ];
 const KINDS: { value: PairConstraintKind; label: string }[] = [
-  { value: "do_not_match", label: "Do not match" },
-  { value: "always_match", label: "Always match" },
+  { value: "do_not_match", label: "Not a match" },
+  { value: "always_match", label: "Same record" },
 ];
 
 function domainOptions(extra: string[]) {
@@ -61,7 +61,7 @@ export default function MatchRulesPage() {
     <PageFrame>
       <PageHeader
         title="Match rules"
-        meta="How the matcher scores duplicate candidates, what a change would do, and the pairs stewards have pinned"
+        meta="How the matcher decides two records are the same: the fields it compares, what a change would do, and the pairs stewards have settled"
       />
       <Tabs
         value={tab}
@@ -69,7 +69,7 @@ export default function MatchRulesPage() {
         items={[
           { value: "rules", label: "Rules", content: <RulesTab /> },
           { value: "tuning", label: "Tuning", content: <TuningTab /> },
-          { value: "constraints", label: "Constraints", content: <ConstraintsTab /> },
+          { value: "constraints", label: "Settled pairs", content: <ConstraintsTab /> },
         ]}
       />
     </PageFrame>
@@ -82,10 +82,10 @@ export default function MatchRulesPage() {
 function NeedsManageRules() {
   return (
     <EmptyState
-      title="Only rule managers can edit match rules"
-      detail="Ask an administrator for a role that manages rules, such as steward."
+      title="You need permission to manage rules"
+      detail="Ask an administrator for a role that manages rules, such as steward. You can still review match pairs."
       ghost="list"
-      action={<Button variant="secondary" render={<Link href="/mdm/glossary">Open glossary</Link>} />}
+      action={<Button variant="secondary" render={<Link href="/mdm/golden/merge">Review match pairs</Link>} />}
     />
   );
 }
@@ -121,8 +121,8 @@ function RulesEditor() {
   });
   const remove = useMutation({
     mutationFn: (r: MatchRule) => deleteMatchRule(r.id),
-    onSuccess: () => { setConfirmDelete(false); refresh(); close(); },
-    onError: (e) => { setConfirmDelete(false); toast.error(apiErrorMessage(e)); },
+    onSuccess: () => { refresh(); close(); setConfirmDelete(false); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const simulate = useMutation({
     mutationFn: (d: string) => simulateMatchRules({ domain: d }),
@@ -223,10 +223,10 @@ function RulesEditor() {
           open={confirmDelete}
           onOpenChange={setConfirmDelete}
           title={`Delete the ${editing.field} rule?`}
-          tone="danger"
-          body={`The matcher stops comparing ${editing.field} for ${formatModuleName(editing.domain)}. Pairs already scored keep their score until the next run.`}
+          body={<p className="m-text-body m-ink-2">The matcher stops comparing {editing.field} for {formatModuleName(editing.domain)} from the next match run. Pairs already scored keep their score.</p>}
           confirmLabel="Delete rule"
-          cancelLabel="Keep"
+          cancelLabel="Keep rule"
+          tone="danger"
           pending={remove.isPending}
           onConfirm={() => remove.mutate(editing)}
         />
@@ -351,14 +351,13 @@ function ConstraintsTab() {
   const [domain, setDomain] = useState("");
   const [kind, setKind] = useState<PairConstraintKind | "">("");
   const [key, setKey] = useState("");
-  /** The constraint a reason is being written for; null closes the drawer. */
-  const [clearing, setClearing] = useState<PairConstraint | null>(null);
-  const [reason, setReason] = useState("");
   const params = { domain: domain || undefined, kind: kind || undefined, key: key.trim() || undefined };
   const list = useQuery({ queryKey: queryKeys.pairConstraints(params), queryFn: () => getPairConstraints(params) });
+  const [clearing, setClearing] = useState<PairConstraint | null>(null);
+  const [reason, setReason] = useState("");
   const clear = useMutation({
-    mutationFn: ({ c, why }: { c: PairConstraint; why: string }) => clearPairConstraint(c.id, why || undefined),
-    onSuccess: () => { setClearing(null); setReason(""); toast("Constraint cleared"); void qc.invalidateQueries({ queryKey: queryKeys.pairConstraintsAll() }); },
+    mutationFn: (c: PairConstraint) => clearPairConstraint(c.id, reason.trim() || undefined),
+    onSuccess: () => { setClearing(null); setReason(""); toast("Decision cleared"); void qc.invalidateQueries({ queryKey: queryKeys.pairConstraintsAll() }); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const rows = list.data ?? [];
@@ -375,7 +374,7 @@ function ConstraintsTab() {
   return (
     <div className="flex flex-col gap-3">
       <p className="m-text-body m-ink-3">
-        Stewards create these by accepting or rejecting a pair, or by unmerging. They override the score until cleared.
+        A steward settles a pair by merging it, marking it not a match, or splitting a record out. The decision beats the score until it is cleared.
       </p>
       <div className="flex items-center gap-2">
         <Select label="Object" placeholder="All objects" value={domain} options={domainOptions([])} onValueChange={setDomain} />
@@ -398,27 +397,26 @@ function ConstraintsTab() {
         <DataTable<PairConstraint> columns={columns} data={rows} getRowId={(c) => c.id} />
       ) : (
         <EmptyState
-          title="No pair constraints yet"
-          detail="Accept or reject a pair in duplicates to create one."
-          action={<Button render={<Link href="/insights/duplicates">Open duplicates</Link>} />}
+          title="No settled pairs yet"
+          detail="Merge a pair or mark it not a match in match review to settle it."
+          action={<Button render={<Link href="/mdm/golden/merge">Review match pairs</Link>} />}
         />
       )}
-      <Drawer
-        open={clearing !== null}
-        onOpenChange={(open) => { if (!open) { setClearing(null); setReason(""); } }}
-        title="Clear this constraint"
-        subtitle={clearing ? `${clearing.key_lo} and ${clearing.key_hi}` : undefined}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => { setClearing(null); setReason(""); }}>Keep</Button>
-            <Button disabled={clear.isPending} onClick={() => clearing && clear.mutate({ c: clearing, why: reason.trim() })}>Clear constraint</Button>
-          </>
-        }
-      >
-        <Field label="Reason (optional)">
-          <Textarea rows={4} value={reason} onChange={(e) => setReason(e.target.value)} />
-        </Field>
-      </Drawer>
+      <ConfirmDialog
+        open={!!clearing}
+        onOpenChange={(o) => { if (!o) { setClearing(null); setReason(""); } }}
+        title="Clear this decision?"
+        body={clearing ? (
+          <div className="flex flex-col gap-3 m-text-body">
+            <p className="m-ink-2">{clearing.key_lo} and {clearing.key_hi} go back to being judged by their score on the next match run.</p>
+            <Field label="Reason (optional)"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+          </div>
+        ) : null}
+        confirmLabel="Clear decision"
+        cancelLabel="Keep it"
+        pending={clear.isPending}
+        onConfirm={() => { if (clearing) clear.mutate(clearing); }}
+      />
     </div>
   );
 }

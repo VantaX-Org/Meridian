@@ -153,6 +153,15 @@ describe("discovery runs", () => {
     await waitFor(() => expect(start).toHaveBeenCalledWith("sys-1", { l1s: ["OTC"], mode: "full", period_from: null }));
   });
 
+  it("says why the list is empty and offers New run, under a one-line purpose", async () => {
+    renderWithQuery(<ProcessRunsPage />);
+    expect(await screen.findByText("No discovery run yet")).toBeTruthy();
+    expect(screen.getByText(/Every discovery run on this system/)).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "New run" }).every((b) => !(b as HTMLButtonElement).disabled)).toBe(true));
+    fireEvent.click(screen.getAllByRole("button", { name: "New run" })[1]);
+    expect(await screen.findByRole("button", { name: "Start run" })).toBeTruthy();
+  });
+
   it("hides New run from a user without run_process_discovery", async () => {
     h.can = () => false;
     vi.spyOn(pdApi, "listRuns").mockResolvedValue([RUN]);

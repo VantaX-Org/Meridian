@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat, Status } from "@/design";
+import { Button, chartSummary, DataTable, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat, Status } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -19,31 +19,33 @@ import {
 } from "@/lib/api/insights";
 import { domainOf } from "@/design/tokens";
 import { getCostModel } from "@/lib/api/settings";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { labelOf, plural } from "@/lib/format";
 import { previousInLineage } from "@/lib/runs";
 import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { DrillCount } from "../_components/DrillCount";
 import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 
-/** Real route for a single check/rule, independent of any module context —
- * unlike `/objects/[object]`, this resolves from the check id alone. */
-function ruleHref(checkId: string): string {
-  return `/rules/${encodeURIComponent(checkId)}`;
+/**
+ * A rule's failing records in Fix work, from the check id alone (an impact row names no object). `/rules/<id>` takes
+ * the rules row id, not a check id, so it is not a target here.
+ */
+function ruleRecordsHref(checkId: string, run?: string): string {
+  return fixHref({ run, check: checkId });
 }
 
 /** A feature's display name: a machine id reads as words; a transaction code (MIGO) keeps its case. */
 const featureLabel = (feature: string) => (feature.includes("_") || feature === feature.toLowerCase() ? labelOf(feature) : feature);
 
-/** The failing rules behind a feature, on the rules page, scoped to the run. */
-const rulesBehind = (run: string | undefined, rules: string[]) => withScope("/insights/rules", { run, check: rules.join(",") || undefined });
-
-function CheckChips({ ids }: { ids: string[] }) {
+function CheckChips({ ids, run }: { ids: string[]; run?: string }) {
   return (
     <div className="flex flex-wrap gap-1">
       {ids.map((id) => (
-        <Link key={id} href={ruleHref(id)}>
+        <Link key={id} href={ruleRecordsHref(id, run)} aria-label={drillLabel({ what: "failing records", check: id })}>
           <Pill>
             <Mono>{id}</Mono>
           </Pill>
@@ -58,14 +60,16 @@ export function impactRows(rows: ImpactRow[]): ImpactRow[] {
   return rows.filter((r) => r.record_count > 0 || r.value_at_risk > 0);
 }
 
-const impactColumns = (run: string | undefined, currency?: string | null): ColumnDef<ImpactRow>[] => [
+const impactColumns = (currency?: string | null, run?: string): ColumnDef<ImpactRow>[] => [
   {
+    // An SAP feature (a transaction or capability) is a name, not an object: it has no page of its own to open.
     accessorKey: "feature",
-    header: "Feature",
+    header: "SAP feature",
     cell: ({ row }) => (
-      <DrillLink href={rulesBehind(run, row.original.causing_rules)}>
-        {featureLabel(row.original.feature)}
-      </DrillLink>
+      <span className="flex flex-col">
+        <span>{featureLabel(row.original.feature)}</span>
+        {row.original.l1 ? <span className="m-text-meta m-ink-3">{l1Label(row.original.l1)}</span> : null}
+      </span>
     ),
   },
   { accessorKey: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.status} /> },
@@ -73,7 +77,13 @@ const impactColumns = (run: string | undefined, currency?: string | null): Colum
     accessorKey: "record_count",
     header: "Blocked records",
     meta: { numeric: true },
-    cell: ({ row }) => <DrillLink href={rulesBehind(run, row.original.causing_rules)}>{row.original.record_count.toLocaleString()}</DrillLink>,
+    // The count opens the failing records of the rule that blocks the feature (the first, when several do); with no
+    // rule named it is a plain figure.
+    cell: ({ row }) => {
+      const [first, ...more] = row.original.causing_rules;
+      const label = `${drillLabel({ count: row.original.record_count, what: "blocked records", check: first })} that block ${featureLabel(row.original.feature)}${more.length ? `; ${plural(more.length, "more rule")} in the rules column` : ""}`;
+      return <DrillCount href={first ? ruleRecordsHref(first, run) : undefined} count={row.original.record_count} label={label}>{row.original.record_count.toLocaleString()}</DrillCount>;
+    },
   },
   {
     accessorKey: "value_at_risk",
@@ -84,13 +94,13 @@ const impactColumns = (run: string | undefined, currency?: string | null): Colum
   },
   {
     id: "causing_rules",
-    header: "Blocking rule",
-    cell: ({ row }) => <CheckChips ids={row.original.causing_rules} />,
+    header: "Rules behind it",
+    cell: ({ row }) => <CheckChips ids={row.original.causing_rules} run={run} />,
   },
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (row.original.causing_rules[0]
-      ? <Link href={ruleHref(row.original.causing_rules[0])} className="m-ink-accent underline-offset-2 hover:underline">Open rule</Link>
+      ? <Link href={ruleRecordsHref(row.original.causing_rules[0], run)} aria-label={`Open the records that block ${featureLabel(row.original.feature)}`} className="m-ink-accent underline underline-offset-2">Open records</Link>
       : "—"),
   },
 ];
@@ -108,20 +118,20 @@ const itemColumns: ColumnDef<ProvenCostItem>[] = [
   { accessorKey: "amount", header: "Amount", cell: ({ row }) => row.original.amount.toLocaleString() },
 ];
 
-const provenCostColumns: ColumnDef<ProvenCostRow>[] = [
-  { accessorKey: "label", header: "Metric" },
-  { accessorKey: "documents", header: "Documents" },
-  { id: "amount", header: "Proven amount", cell: ({ row }) => formatRowAmount(row.original) },
+const provenCostColumns = (run?: string): ColumnDef<ProvenCostRow>[] => [
+  { accessorKey: "label", header: "What it costs" },
+  { accessorKey: "documents", header: "Documents", meta: { numeric: true } },
+  { id: "amount", header: "Proven amount", meta: { numeric: true }, cell: ({ row }) => formatRowAmount(row.original) },
   {
     id: "check_ids",
-    header: "Linked checks",
-    cell: ({ row }) => <CheckChips ids={row.original.check_ids} />,
+    header: "Rules behind it",
+    cell: ({ row }) => <CheckChips ids={row.original.check_ids} run={run} />,
   },
 ];
 
 /** Each insight query renders its own loading/error/empty state, so one query
  * failing or still loading never hides the other section's data. */
-function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, Error> }) {
+function ProvenCostPanel({ query, run }: { query: UseQueryResult<ProvenCostResponse, Error>; run?: string }) {
   if (query.isLoading) return <Skeleton height={120} />;
   if (isListFailure(query)) {
     return (
@@ -141,22 +151,22 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
         <Stat
-          label="Largest L1 proven cost"
+          label="Largest proven cost, one process"
           help="provenCost"
           value={topCost ? formatMoney(topCost.amount, currency) : "—"}
           hint={topCost ? `${l1Label(topCost.l1)}, across ${topCost.processes} ${topCost.processes === 1 ? "process" : "processes"}` : undefined}
         />
         <Stat
-          label="Largest L1 at risk"
+          label="Most at risk, one process"
           value={topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—"}
           hint={topRisk ? `${l1Label(topRisk.l1)}, across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
         />
       </div>
       {rows.length === 0 ? (
-        <EmptyState title="No proven cost findings yet" detail="Proven cost appears once a run finds posted documents that break a rule." action={<Link href="/rules">Open rules</Link>} />
+        <EmptyState title="No proven cost yet" detail="Proven cost appears once a run finds posted documents that break a rule." action={<Link href="/rules" className="underline-offset-2 hover:underline">Open rules</Link>} />
       ) : (
         <DataTable
-          columns={provenCostColumns}
+          columns={provenCostColumns(run)}
           data={rows}
           getRowId={(row) => row.metric}
           renderDrawer={(row) => (
@@ -178,9 +188,9 @@ function ImpactPanel({
   query: UseQueryResult<ImpactResponse, Error>;
   dayOne: ReturnType<typeof useDayOne>;
   currency?: string | null;
-  run?: string;
   /** True when the tenant's cost model prices no feature yet, so no value at risk can exist. */
   unpriced: boolean;
+  run?: string;
 }) {
   if (query.isLoading || dayOne.status === "loading") return <Skeleton height={160} />;
   if (isListFailure(query)) {
@@ -211,16 +221,18 @@ function ImpactPanel({
       />
     );
   }
-  return <DataTable columns={impactColumns(run, currency)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
+  return <DataTable columns={impactColumns(currency, run)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
 }
 
 export default function ImpactPage() {
-  const { run, runs } = useInsightScope();
+  const { run, runs, resolving } = useInsightScope();
   const dayOne = useDayOne();
 
+  // Both follow the run the header names; they wait for it rather than read whatever run the API thinks is latest.
   const impactQuery = useQuery({
     queryKey: queryKeys.insights("impact", run),
     queryFn: () => getImpact({ version_id: run }),
+    enabled: !!run,
   });
   // What changed: the same features at the run before this one in its lineage (same system, or uploads of the same objects).
   const current = runs.find((r) => r.id === run);
@@ -233,6 +245,7 @@ export default function ImpactPage() {
   const provenCostQuery = useQuery({
     queryKey: queryKeys.insights("proven-cost", run),
     queryFn: () => getProvenCost({ version_id: run }),
+    enabled: !!run,
   });
 
   // The cost model says whether any feature is priced; without pricing, zero value at risk is expected, not a finding.
@@ -259,14 +272,21 @@ export default function ImpactPage() {
             : `${Math.abs(rows.length - prevRows.length).toLocaleString()} ${rows.length > prevRows.length ? "more" : "fewer"} features blocked than in the previous run`;
 
   // Each card follows its own query, so proven cost shows while a large impact query is still running.
-  const state: "loading" | undefined = dayOne.status === "loading" ? "loading" : undefined;
+  const state: "loading" | "empty" | undefined = dayOne.status === "loading" || resolving ? "loading" : !run ? "empty" : undefined;
 
   return (
     <InsightFrame
       title="Value at risk"
+      purpose={PAGE_PURPOSE["/insights/impact"]}
       scope
       run={run}
       state={state}
+      emptyProps={{
+        title: "No value at risk yet",
+        detail: dayOne.step?.detail ?? "Value at risk is worked out from a finished run.",
+        ghost: "table",
+        action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+      }}
       skeleton={
         <>
           <CardSkeleton height={240} />
@@ -278,7 +298,7 @@ export default function ImpactPage() {
         loading: impactQuery.isLoading,
         situation: {
           sentence: top && top.value_at_risk > 0
-            ? `${formatMoney(top.value_at_risk, currency)} at risk in ${featureLabel(top.feature)}, the largest of ${plural(rows.length, "blocked feature")}`
+            ? `${formatMoney(top.value_at_risk, currency)} at risk in ${featureLabel(top.feature)}, the largest of ${plural(rows.length, "blocked SAP feature")}`
             : rows.length ? `${plural(rows.length, "feature is", "features are")} blocked, but none is priced yet` : "No feature carries value at risk",
           tone: top && top.value_at_risk > 0 ? "at-risk" : rows.length ? "at-risk" : "go",
         },
@@ -287,20 +307,22 @@ export default function ImpactPage() {
         next: unpriced
           ? { sentence: "Give each SAP feature a value and the defects get a price", action: { label: "Open settings", href: "/admin/settings" } }
           : top
-          ? { sentence: `Fix the rules behind ${featureLabel(top.feature)}`, action: { label: "Open failing rules", href: rulesBehind(run, top.causing_rules) } }
-          : { sentence: "Run an analysis", action: { label: "Open runs", href: "/runs" } },
+          ? top.causing_rules[0]
+            ? { sentence: `Fix the rule behind ${featureLabel(top.feature)}`, action: { label: "Open its records", href: ruleRecordsHref(top.causing_rules[0], run) } }
+            : { sentence: `Fix the rules behind ${featureLabel(top.feature)}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run }) } }
+          : { sentence: "Nothing is blocked; keep the score where it is", action: { label: "Open failing rules", href: withScope("/insights/rules", { run }) } },
       }}
     >
-      <Card title="Features at risk" meta="Ranked by value at risk">
+      <Card title="SAP features at risk" meta="Ranked by value at risk: blocked records times the value of each">
         <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} run={run} />
       </Card>
       {byFeature.length > 0 && (
-        <Card title="Cost by feature">
+        <Card title="Value at risk by feature" meta="The few features that carry most of it come first">
           <div role="img" aria-label={chartSummary(byFeature, "Value at risk by feature")}><Pareto data={byFeature} height={180} /></div>
         </Card>
       )}
-      <Card title="Proven cost findings">
-        <ProvenCostPanel query={provenCostQuery} />
+      <Card title="Proven cost" meta="Money already lost in posted documents that break a rule">
+        <ProvenCostPanel query={provenCostQuery} run={run} />
       </Card>
     </InsightFrame>
   );

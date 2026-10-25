@@ -53,6 +53,14 @@ describe("learned rules page", () => {
     await waitFor(() => expect(approve).toHaveBeenCalledWith("p1", "high"));
   });
 
+  it("explains an empty proposal list and offers to mine again", async () => {
+    vi.spyOn(api, "getLearnedRules").mockResolvedValue({ items: [] });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v9", status: "complete" } as Version] });
+    renderWithQuery(<LearnedRulesPage />);
+    expect(await screen.findByText("No proposals waiting")).toBeInTheDocument();
+    expect(await screen.findByText(/Mine now to look again/)).toBeInTheDocument();
+  });
+
   it("shows an error state with retry", async () => {
     const get = vi.spyOn(api, "getLearnedRules").mockRejectedValue(new Error("boom"));
     renderWithQuery(<LearnedRulesPage />);

@@ -95,10 +95,6 @@ class MetricsResponse(BaseModel):
     sla_compliance_rate: float
     ai_acceptance_rate: Optional[float] = None
     steward_breakdown: Optional[list[dict]] = None
-    # Incident timing over the last 30 days: hours from creation to first acknowledgement and to resolution.
-    median_time_to_response_hours: Optional[float] = None
-    median_time_to_fixed_hours: Optional[float] = None
-    timing_by_domain: list[dict] = Field(default_factory=list)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -353,22 +349,6 @@ async def get_stewardship_metrics(
             for r in result.fetchall()
         ]
 
-    # Time to response (first acknowledgement or assignment) and time to fixed, medians over 30 days.
-    timing_sql = """
-        SELECT {group} AS grp,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (COALESCE(acknowledged_at, assigned_at) - created_at)) / 3600)
-                FILTER (WHERE COALESCE(acknowledged_at, assigned_at) IS NOT NULL) AS response_h,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)
-                FILTER (WHERE resolved_at IS NOT NULL) AS fixed_h,
-            COUNT(*) FILTER (WHERE resolved_at IS NOT NULL) AS resolved
-        FROM stewardship_queue
-        WHERE tenant_id = :tid AND created_at >= now() - interval '30 days'
-        GROUP BY {group}
-    """
-    overall = (await db.execute(text(timing_sql.format(group="1")), {"tid": tid})).fetchone()
-    by_domain = (await db.execute(text(timing_sql.format(group="domain")), {"tid": tid})).fetchall()
-    hours = lambda v: round(float(v), 1) if v is not None else None  # noqa: E731
-
     return MetricsResponse(
         items_by_type=items_by_type,
         items_by_status=items_by_status,
@@ -377,12 +357,6 @@ async def get_stewardship_metrics(
         sla_compliance_rate=sla_compliance,
         ai_acceptance_rate=ai_acceptance_rate,
         steward_breakdown=steward_breakdown,
-        median_time_to_response_hours=hours(overall[1]) if overall else None,
-        median_time_to_fixed_hours=hours(overall[2]) if overall else None,
-        timing_by_domain=[
-            {"domain": r[0], "median_response_hours": hours(r[1]), "median_fixed_hours": hours(r[2]), "resolved": int(r[3] or 0)}
-            for r in by_domain
-        ],
     )
 
 

@@ -53,7 +53,7 @@ describe("ProcessInsightsPage", () => {
     });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<ProcessInsightsPage />);
-    await waitFor(() => expect(screen.getByText("Gates")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Process steps")).toBeInTheDocument());
     expect(screen.getByText("Readiness")).toBeInTheDocument();
     expect(screen.getByText("Map")).toBeInTheDocument();
   });
@@ -88,7 +88,7 @@ describe("ProcessInsightsPage blocking ledger", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<ProcessInsightsPage />);
     expect(await screen.findByText("AP001")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "321" }).getAttribute("href")).toBe("/objects/material_master?run=v1&tab=rules&check=AP001");
+    expect(screen.getAllByRole("link", { name: "Fix" }).length).toBeGreaterThan(0);
     expect(screen.getByText("No fields mapped")).toBeInTheDocument();
     expect(screen.getAllByText("No-go").length).toBeGreaterThan(0);
   });

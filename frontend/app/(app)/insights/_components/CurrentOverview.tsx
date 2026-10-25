@@ -18,16 +18,19 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { blockingTotal, runObjectsName, stateDqs, stateObjects, stateRows, stateSeries, stateSummary, tierOf } from "@/lib/current-state";
 import { DIMENSIONS, dimensionHeatmapCells, runCap, runDimensions, worstObjectsFirst } from "@/lib/home-metrics";
 import { verdictSentence } from "@/lib/home-narrative";
-import { deltaSentence, formatModuleName, plural, round1, trendSentence } from "@/lib/format";
+import { checkClassLabel, deltaSentence, formatModuleName, plural, round1, trendSentence } from "@/lib/format";
 import { previousInLineage } from "@/lib/runs";
 import { runScopeLabel } from "@/lib/run-scope";
 import { apiErrorMessage } from "@/lib/error";
+import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Finding } from "@/types/api";
+import { DrillCount } from "./DrillCount";
 import { InsightFrame, formatMoney } from "./InsightFrame";
 import { CleansingFunnel, RootCauseList, S4Chart, s4Totals } from "./RunAnalyses";
 import { InsightActions } from "./InsightActions";
+import { PAGE_PURPOSE } from "./InsightViews";
 import { Section } from "./Section";
 import { useCurrentState } from "./useCurrentState";
 import { withScope } from "./useInsightScope";
@@ -35,15 +38,37 @@ import { withScope } from "./useInsightScope";
 const VERDICT = { pass: "Go", warn: "At risk", fail: "No-go" } as const;
 const TONE = { pass: "go", warn: "at-risk", fail: "no-go" } as const;
 
+/** A finding's failing records in Fix work, in the run that found them. */
+const findingRecords = (f: Finding) => fixHref({ run: f.version_id, module: f.module, check: f.check_id });
+
 const findingColumns: ColumnDef<Finding>[] = [
-  { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-  { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module) },
+  {
+    accessorKey: "check_id", header: "Rule",
+    // Plain words first (the finding's message, else the kind of check), the check id under them.
+    cell: ({ row }) => {
+      const words = row.original.details?.message || (row.original.check_class ? checkClassLabel(row.original.check_class) : null);
+      return (
+        <span className="flex flex-col [min-width:14rem]">
+          {words ? <span className="line-clamp-2" title={words}>{words}</span> : null}
+          <span className={words ? "m-text-meta m-ink-3" : undefined}>
+            <DrillCount href={findingRecords(row.original)} label={drillLabel({ what: "failing records", check: row.original.check_id, module: row.original.module })}><Mono>{row.original.check_id}</Mono></DrillCount>
+          </span>
+        </span>
+      );
+    },
+  },
+  {
+    id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module),
+    cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount>,
+  },
   { accessorKey: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
-  { accessorKey: "affected_count", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.affected_count.toLocaleString() },
+  { accessorKey: "affected_count", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => (
+    <DrillCount href={findingRecords(row.original)} count={row.original.affected_count} label={drillLabel({ count: row.original.affected_count, what: "failing records", check: row.original.check_id, module: row.original.module })}>{row.original.affected_count.toLocaleString()}</DrillCount>
+  ) },
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (
-      <Link href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: row.original.version_id })} onClick={(e) => e.stopPropagation()} className="m-ink-accent underline-offset-2 hover:underline">Open</Link>
+      <Link href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: row.original.version_id })} onClick={(e) => e.stopPropagation()} aria-label={`Open rule ${row.original.check_id} on ${formatModuleName(row.original.module)}`} className="m-ink-accent underline underline-offset-2">Open</Link>
     ),
   },
 ];
@@ -125,6 +150,7 @@ export function CurrentOverview() {
   return (
     <InsightFrame
       title="Insights"
+      purpose={PAGE_PURPOSE["/insights"]}
       scope
       actions={<InsightActions current />}
       insight={{
@@ -156,7 +182,7 @@ export function CurrentOverview() {
             label: "Auto-fixable records",
             value: ov ? ov.auto_fixable.records : "—",
             hint: ov?.auto_fixable.pct != null ? `${Math.round(ov.auto_fixable.pct)}% of failing records` : undefined,
-            to: withScope("/fix", { source: "rule", confidence: "high" }),
+            to: fixHref({ sugg: true }),
           },
         ],
         situation: {
@@ -199,14 +225,14 @@ export function CurrentOverview() {
         <div className="grid gap-4 @5xl:grid-cols-12">
           <div className="@5xl:col-span-8">
             <Card title="Trend" meta={trendNote}>
-              {series.length < 2 ? <p className="m-text-body m-ink-3">A trend needs at least two scored runs.</p> : (
+              {series.length < 2 ? <p className="m-text-body m-ink-3">A trend needs a second scored run. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p> : (
                 <Line data={series} label="DQS of all objects over runs" dqsThreshold={bands?.target} height={180} />
               )}
             </Card>
           </div>
           <div className="@5xl:col-span-4">
-            <Card title="Dimensions" meta="Mean over the objects">
-              {dims.length === 0 ? <p className="m-text-body m-ink-3">No dimension scores yet.</p>
+            <Card title="Dimensions" meta="The six measures behind the score, averaged over the objects">
+              {dims.length === 0 ? <p className="m-text-body m-ink-3">No object has dimension scores yet. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p>
                 : dims.length < 3 ? <Bar data={dims} label="Dimension scores, all objects" height={140} />
                 : <Radar data={dims} label="Dimension scores, all objects" height={200} />}
             </Card>
@@ -232,23 +258,23 @@ export function CurrentOverview() {
           </div>
 
           <div className="@5xl:col-span-6">
-            <Section title="Value at risk" height={120} query={ovQ} meta="Worst L1 process; never summed across L1s">
+            <Section title="Value at risk" height={120} query={ovQ} meta="The end-to-end process with the most at risk; processes are never added together">
               {ov?.value_at_risk.worst_l1 ? (
                 <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
                   <Stat
-                    label={`Worst L1, ${l1Label(ov.value_at_risk.worst_l1)}`}
+                    label={`Most at risk, ${l1Label(ov.value_at_risk.worst_l1)}`}
                     value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
-                    href="/insights/impact"
+                    href={withScope("/insights/impact", { run: newest?.id })}
                   />
-                  <Stat label="Features blocked" value={ov.value_at_risk.features_blocked} href="/insights/impact" />
+                  <Stat label="SAP features blocked" value={ov.value_at_risk.features_blocked} href={withScope("/insights/impact", { run: newest?.id })} />
                 </div>
               ) : (
-                <p className="m-text-body m-ink-3">No priced feature is affected.</p>
+                <p className="m-text-body m-ink-3">No priced SAP feature is blocked. <Link href="/insights/impact" className="m-ink-accent underline underline-offset-2">Open value at risk</Link></p>
               )}
             </Section>
           </div>
           <div className="@5xl:col-span-6">
-            <Card title="Runs" meta="One run's analysis">
+            <Card title="Runs" meta="Open one run to see its numbers alone">
               <ul className="flex flex-col gap-2" data-testid="per-run-list">
                 {perRun.slice(0, 6).map(({ run, own }) => (
                   <li key={run.id} className="flex flex-wrap items-baseline justify-between gap-x-3 m-text-body">
@@ -264,8 +290,8 @@ export function CurrentOverview() {
           </div>
 
           <div className="@5xl:col-span-12">
-            <Card title="Object heatmap" meta="Each object at its latest run">
-              {heatCells.length === 0 ? <p className="m-text-body m-ink-3">No object scores yet.</p> : (
+            <Card title="Object heatmap" meta="Each object's score per dimension at its latest run; select a cell to open it">
+              {heatCells.length === 0 ? <p className="m-text-body m-ink-3">No object is scored yet. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p> : (
                 <div role="region" aria-label="Object scores by dimension" tabIndex={0} className="overflow-x-auto">
                   <Heatmap
                     rows={heatRows.map((r) => r.label)}

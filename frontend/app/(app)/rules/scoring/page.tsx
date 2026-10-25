@@ -60,7 +60,7 @@ export default function ScoringPage() {
   if (!settings.data) {
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="Scoring and alerts" />
+        <PageHeader title="Scoring and alerts" meta="How the quality score is weighted, when an alert fires and who is told" />
         {settings.isError ? (
           <ErrorState title="Settings could not be loaded." message={apiErrorMessage(settings.error)} onRetry={() => void settings.refetch()} />
         ) : (
@@ -131,7 +131,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Scoring and alerts" meta="Score weights, alert thresholds and who is told" />
+      <PageHeader title="Scoring and alerts" meta="How the quality score is weighted, when an alert fires and who is told" />
       {!write ? <Notice tone="info">These settings are read only for your role</Notice> : null}
 
       {!agg.isError && !agg.isLoading && current === null ? (

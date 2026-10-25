@@ -14,17 +14,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, ConfirmDialog, Drawer, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, emptyExportOptions, toast, type PillTone, Input, Mono, Status } from "@/design";
+import { Button, Card, ConfirmDialog, Drawer, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, emptyExportOptions, toast, type PillTone, Input, Mono, Status } from "@/design";
 import { ProposalCell, proposalOf } from "@/components/fix/proposal";
 import { Fact, Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
 import { ExceptionThread } from "@/components/inbox/exception-thread";
+import { QuickFilters } from "@/components/inbox/quick-filters";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { exportIssues } from "@/lib/api/issues";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
-import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
-import { getUsers } from "@/lib/api/users";
+import { bulkTriage, getTriageMetrics, ownerRungs } from "@/lib/api/triage";
+import { getAssignableUsers, getUsers } from "@/lib/api/users";
 import { getCleaningItem } from "@/lib/api/cleaning";
 import { getException } from "@/lib/api/exceptions";
 import { getRules } from "@/lib/api/rules";
@@ -54,21 +55,31 @@ const HOUR = 3_600_000;
 const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
 const STATUS_TONE: Record<StewardshipStatus, PillTone> = { open: "neutral", in_progress: "at-risk", escalated: "no-go", resolved: "go" };
 const EXC_STATUS_TONE: Record<ExceptionStatus, PillTone> = { open: "neutral", investigating: "at-risk", pending_approval: "at-risk", resolved: "go", verified: "go", closed: "neutral" };
-/** Each tab with its one-line definition, printed under the tab strip. */
 const KINDS = [
-  { value: "task", label: "Tasks", meta: "Decisions waiting on a steward: merges, golden records, write-backs and reviews" },
-  { value: "exception", label: "Exceptions", meta: "Signals raised by exception rules on new findings, with an SLA" },
-  { value: "issues", label: "Issues", meta: "One open issue per failing SAP record, closed when the record passes" },
-  { value: "sap", label: "SAP monitor", meta: "Failed jobs, locked records and other live signals from SAP" },
-  { value: "approvals", label: "Approvals", meta: "Write-backs waiting for a second person before they reach SAP" },
+  { value: "task", label: "Tasks" },
+  { value: "exception", label: "Exceptions" },
+  { value: "issues", label: "Issues" },
+  { value: "sap", label: "SAP monitor" },
+  { value: "approvals", label: "Approvals" },
 ];
-const VIEWS = [
-  { value: "all", label: "All open" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" },
-  { value: "breached", label: "Overdue" }, { value: "today", label: "Due today" }, { value: "escalated", label: "Escalated" },
-];
-const VIEW_BANNER: Record<string, string> = {
-  mine: "Tasks assigned to me", unassigned: "Unassigned tasks", breached: "Overdue tasks",
-  today: "Tasks due today", escalated: "Escalated tasks", all: "All tasks",
+/** Who holds the task. Stacks with WHEN and the priority filter. */
+const WHO = [{ value: "all", label: "Everyone" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" }] as const;
+/** How urgent it is: past due (red), due inside the next 24 hours (amber), or escalated. */
+const WHEN = [{ value: "any", label: "Any time" }, { value: "overdue", label: "Overdue" }, { value: "soon", label: "Due in 24 hours" }, { value: "escalated", label: "Escalated" }] as const;
+type Who = (typeof WHO)[number]["value"];
+type When = (typeof WHEN)[number]["value"];
+/** Older links put the urgency in `view`; they still land on the same list. */
+const LEGACY: Record<string, When> = { breached: "overdue", today: "soon", escalated: "escalated" };
+/** Own keys only, so ?view=constructor or __proto__ never reads a prototype member. */
+const legacyWhen = (v: string): When | undefined => (Object.hasOwn(LEGACY, v) ? LEGACY[v] : undefined);
+const WHO_CHIP: Record<Who, string> = { all: "", mine: "Mine", unassigned: "Unassigned" };
+const WHEN_CHIP: Record<When, string> = { any: "", overdue: "Overdue", soon: "Due in 24 hours", escalated: "Escalated" };
+const PURPOSE: Record<string, string> = {
+  task: "Fixes and matches waiting for a steward. Claim one, check it, then approve or reject it",
+  exception: "Business exceptions raised by your exception rules. Assign, escalate or resolve each one",
+  issues: "Each row is one SAP record that fails a rule. Claim it, fix it in SAP, then mark it resolved",
+  sap: "Live signals from SAP, such as failed jobs and locked records. Open one to see what happened",
+  approvals: "Changes to SAP that wait for a second person. Approve the ones you did not request",
 };
 /** How many tasks per status the list loads at a time; "Load more" widens it. */
 const PAGE = 200;
@@ -94,7 +105,8 @@ const ROOT_CAUSES: { value: RootCauseType | "other"; label: string }[] = [
 /** Stands in for "no due date" so those tasks sort last. */
 const NO_DUE = Number.MAX_SAFE_INTEGER;
 const BULK_CONFIDENCE = 0.85;
-const isToday = (iso: string | null, now: number) => !!iso && new Date(iso).toDateString() === new Date(now).toDateString();
+const DAY = 24 * HOUR;
+const priorityLabel = (p: number) => (p === 1 ? "Priority 1 (highest)" : `Priority ${p}`);
 
 /** 45m, 5h, 3d */
 function span(ms: number): string {
@@ -105,28 +117,27 @@ function span(ms: number): string {
 
 type Sla = { state: "none" | "ok" | "risk" | "breached"; remaining: number | null };
 
-/** Time left against the task's due date (or created + SLA hours); at risk inside the last half of the window. */
+/** Time left against the task's due date (or created + SLA hours): overdue once past it, due soon inside the last 24 hours. */
 function slaOf(t: StewardshipQueueItem, now: number): Sla {
   const due = t.due_at ? Date.parse(t.due_at) : t.sla_hours ? Date.parse(t.created_at) + t.sla_hours * HOUR : null;
   if (due === null || Number.isNaN(due)) return { state: "none", remaining: null };
   const remaining = due - now;
   if (remaining < 0) return { state: "breached", remaining };
-  const window = (t.sla_hours ?? 24) * HOUR;
-  return { state: remaining < window * 0.5 ? "risk" : "ok", remaining };
+  return { state: remaining < DAY ? "risk" : "ok", remaining };
 }
 
 const SLA_TONE: Record<Sla["state"], PillTone> = { none: "neutral", ok: "go", risk: "at-risk", breached: "no-go" };
-const slaText = (s: Sla) => (s.remaining === null ? "no SLA" : s.remaining < 0 ? `${span(s.remaining)} over` : `${span(s.remaining)} left`);
+const slaText = (s: Sla) => (s.remaining === null ? "No due date" : s.remaining < 0 ? `${span(s.remaining)} overdue` : `Due in ${span(s.remaining)}`);
 
 /** The severity bar of a task row: its SLA state on the severity scale, so the list ranks by what is about to breach. */
 const SLA_BAR: Record<Sla["state"], WorkbenchTone> = { breached: "critical", risk: "medium", ok: "low", none: "low" };
 
 /** SLA pill of an exception: over, inside its last day, or comfortable. */
 function excSla(deadline: string | null, now: number): { tone: PillTone; text: string; bar: WorkbenchTone } {
-  if (!deadline) return { tone: "neutral", text: "no SLA", bar: "low" };
+  if (!deadline) return { tone: "neutral", text: "No due date", bar: "low" };
   const remaining = Date.parse(deadline) - now;
-  if (remaining < 0) return { tone: "no-go", text: `${span(remaining)} over`, bar: "critical" };
-  return { tone: remaining < 24 * HOUR ? "at-risk" : "go", text: `${span(remaining)} left`, bar: remaining < 24 * HOUR ? "medium" : "low" };
+  if (remaining < 0) return { tone: "no-go", text: `${span(remaining)} overdue`, bar: "critical" };
+  return { tone: remaining < DAY ? "at-risk" : "go", text: `Due in ${span(remaining)}`, bar: remaining < DAY ? "medium" : "low" };
 }
 
 /** Run one call per task; report how many went through rather than failing the batch on the first error. */
@@ -153,10 +164,16 @@ export default function InboxPage() {
   const canApprove = can("approve");
   const canSeeTeam = can("assign");
   const canManageRules = can("manage_rules");
+  // Reassigning to another person goes through the triage bulk endpoint, which needs `assign`.
+  const canReassign = can("assign");
   const [viewRaw, setView] = useUrlState("view", "all");
+  const [whenRaw, setWhen] = useUrlState("due", "any");
+  const [prioRaw, setPrio] = useUrlState("prio", "");
   const [typeRaw, setType] = useUrlState("type", "all");
+  const [assigneeRaw, setAssignee] = useUrlState("assignee", "");
   const [kindRaw, setKind] = useUrlState("kind", "task");
-  const view = oneOf(viewRaw, VIEWS.map((v) => v.value), "all");
+  const view: Who = oneOf(viewRaw, WHO.map((v) => v.value), "all");
+  const when: When = legacyWhen(viewRaw) ?? oneOf(whenRaw, WHEN.map((v) => v.value), "any");
   // Approvals needs `approve`; a deep link by anyone else falls back to Tasks.
   const kind = oneOf(kindRaw, KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => k.value), "task");
   const isExceptions = kind === "exception";
@@ -164,13 +181,20 @@ export default function InboxPage() {
   // One replace: separate useUrlState setters would each rebuild the query from the same stale string.
   const showAll = (alsoSearch: boolean) => {
     const params = new URLSearchParams(urlParams.toString());
-    params.delete("view");
-    params.delete("type");
-    params.delete("assignee");
+    for (const k of ["view", "type", "due", "prio", "assignee"]) params.delete(k);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     if (alsoSearch) setSearch("");
   };
+  // An older link (?view=breached) is rewritten once to the stacked filters, so the pills can change it afterwards.
+  useEffect(() => {
+    const legacy = legacyWhen(viewRaw);
+    if (!legacy) return;
+    const params = new URLSearchParams(urlParams.toString());
+    params.delete("view");
+    params.set("due", legacy);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [viewRaw, urlParams, pathname, router]);
   const [rawFocusedIndex, setFocusedIndex] = useState(0);
   // `?focus=` (a link from MDM or a notification) lands on that task once the list holds it.
   const focusId = urlParams.get("focus");
@@ -178,6 +202,7 @@ export default function InboxPage() {
   const [rollbackNote, setRollbackNote] = useState<string | null>(null);
   const [rejectIds, setRejectIds] = useState<string[] | null>(null);
   const [reason, setReason] = useState("");
+  const [reasonTouched, setReasonTouched] = useState(false);
   const [resolutionType, setResolutionType] = useState("steward_resolved");
   const [rootCause, setRootCause] = useState("other");
   const [escalateIds, setEscalateIds] = useState<string[] | null>(null);
@@ -203,6 +228,8 @@ export default function InboxPage() {
   const metricsQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, refetchInterval: 60_000, enabled: !isExceptions });
   // The user list needs `manage_users`; without it assignees show as "You" or an id prefix.
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users") });
+  // People a task can be handed to; needs `assign`, and also names assignees for roles without `manage_users`.
+  const assignableQ = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: canReassign, staleTime: 300_000 });
 
   const excQ = useQuery({
     queryKey: queryKeys.inbox({ kind: "exception", per_page: 100 }),
@@ -224,17 +251,24 @@ export default function InboxPage() {
   const all = useMemo(() => queues.flatMap((q) => q.data?.items ?? []), [queues]);
   const queueTotal = queues.reduce((n, q) => n + (q.data?.total ?? 0), 0);
 
-  const names = useMemo(() => new Map((usersQ.data?.users ?? []).map((u) => [u.id, u.name])), [usersQ.data]);
+  // Guarded: an unexpected payload must not take the whole inbox down.
+  const assignable = useMemo(() => (Array.isArray(assignableQ.data) ? assignableQ.data : []), [assignableQ.data]);
+  const directory = useMemo(() => [...assignable, ...(Array.isArray(usersQ.data?.users) ? usersQ.data.users : [])], [usersQ.data, assignable]);
+  const names = useMemo(() => new Map(directory.map((u) => [u.id, u.name || u.email])), [directory]);
+  const people = useMemo(
+    () => assignable.filter((u) => u.id !== user?.id).map((u) => ({ value: u.id, label: u.name || u.email })),
+    [assignable, user?.id],
+  );
   // `?assignee=` comes from the owners view, which names an owner by display name or email, not by id.
-  const assignee = urlParams.get("assignee")?.trim() ?? "";
+  const assignee = assigneeRaw.trim();
   const assigneeIds = useMemo(() => {
     if (!assignee) return null;
     const a = assignee.toLowerCase();
-    const ids = new Set((usersQ.data?.users ?? []).filter((u) => u.name.toLowerCase() === a || u.email.toLowerCase() === a).map((u) => u.id));
+    const ids = new Set(directory.filter((u) => (u.name ?? "").toLowerCase() === a || (u.email ?? "").toLowerCase() === a).map((u) => u.id));
     ids.add(assignee);
     if (user && (user.email?.toLowerCase() === a || user.name?.toLowerCase() === a)) ids.add(user.id);
     return ids;
-  }, [assignee, usersQ.data, user]);
+  }, [assignee, directory, user]);
   const who = useCallback(
     (id: string | null) => (!id ? "Unassigned" : id === user?.id ? "You" : names.get(id) ?? "Unknown user"),
     [names, user?.id],
@@ -242,21 +276,28 @@ export default function InboxPage() {
 
   // A type is only a filter when the loaded tasks carry it; unknown values apply nothing.
   const type = useMemo(() => oneOf(typeRaw, [...new Set(all.map((t) => t.item_type))], "all"), [typeRaw, all]);
+  const priorities = useMemo(() => [...new Set(all.map((t) => t.priority))].sort((a, b) => a - b), [all]);
+  const prio = priorities.includes(Number(prioRaw)) ? Number(prioRaw) : null;
+  const matchesWho = useCallback((t: StewardshipQueueItem, w: Who) =>
+    w === "all" || (w === "mine" ? t.assigned_to === user?.id : !t.assigned_to), [user?.id]);
+  const matchesWhen = useCallback((t: StewardshipQueueItem, w: When) => {
+    if (w === "any") return true;
+    if (w === "escalated") return t.status === "escalated";
+    const s = slaOf(t, now).state;
+    return w === "overdue" ? s === "breached" : s === "risk";
+  }, [now]);
   const items = useMemo(() => {
     const q = search.trim().toLowerCase();
     const rows = all.filter((t) => {
       if (type !== "all" && t.item_type !== type) return false;
+      if (prio !== null && t.priority !== prio) return false;
       if (assigneeIds && !(t.assigned_to && assigneeIds.has(t.assigned_to))) return false;
-      if (view === "mine" && t.assigned_to !== user?.id) return false;
-      if (view === "unassigned" && t.assigned_to) return false;
-      if (view === "breached" && slaOf(t, now).state !== "breached") return false;
-      if (view === "today" && !isToday(t.due_at, now)) return false;
-      if (view === "escalated" && t.status !== "escalated") return false;
+      if (!matchesWho(t, view) || !matchesWhen(t, when)) return false;
       return !q || [t.id, t.source_id, t.domain, t.item_type, who(t.assigned_to)].some((v) => v.toLowerCase().includes(q));
     });
     const due = (t: StewardshipQueueItem) => slaOf(t, now).remaining ?? NO_DUE;
     return rows.sort((x, y) => due(x) - due(y) || x.priority - y.priority);
-  }, [all, type, view, search, now, user?.id, who, assigneeIds]);
+  }, [all, type, prio, view, when, search, now, who, matchesWho, matchesWhen, assigneeIds]);
 
   const excItems = useMemo(() => {
     const excAll = excQ.data?.exceptions ?? [];
@@ -280,19 +321,19 @@ export default function InboxPage() {
     [all],
   );
 
+  // Each row's counts honour the other row's choice, so the numbers on the pills are what a click would show.
   const counts = useMemo(() => {
-    const sla = all.map((t) => slaOf(t, now).state);
+    const byWho = all.filter((t) => matchesWhen(t, when));
+    const byWhen = all.filter((t) => matchesWho(t, view));
     return {
-      mine: all.filter((t) => t.assigned_to && t.assigned_to === user?.id).length,
-      unassigned: all.filter((t) => !t.assigned_to).length,
-      breached: sla.filter((s) => s === "breached").length,
-      today: all.filter((t) => isToday(t.due_at, now)).length,
-      escalated: all.filter((t) => t.status === "escalated").length,
+      who: Object.fromEntries(WHO.map((w) => [w.value, byWho.filter((t) => matchesWho(t, w.value)).length])) as Record<Who, number>,
+      when: Object.fromEntries(WHEN.map((w) => [w.value, byWhen.filter((t) => matchesWhen(t, w.value)).length])) as Record<When, number>,
+      overdue: all.filter((t) => matchesWhen(t, "overdue")).length,
+      soon: all.filter((t) => matchesWhen(t, "soon")).length,
     };
-  }, [all, now, user?.id]);
+  }, [all, view, when, matchesWho, matchesWhen]);
 
   const refresh = useCallback(() => {
-    setChecked(new Set());
     void qc.invalidateQueries({ queryKey: ["inbox"] });
     void qc.invalidateQueries({ queryKey: queryKeys.stewardshipMetrics() });
     void qc.invalidateQueries({ queryKey: queryKeys.exceptionMetrics() });
@@ -353,15 +394,22 @@ export default function InboxPage() {
   const assign = useMutation({
     onMutate: async ({ ids, userId }: { ids: string[]; userId: string }) => { setRollbackNote(null); return { snap: await patchQueue(ids, (t) => ({ ...t, assigned_to: userId })) }; },
     mutationFn: ({ ids, userId }: { ids: string[]; userId: string }) => each(ids, (id) => assignItem(id, userId)),
-    onSuccess: (r) => done("Assigned", r),
-    onError: (e, _v, ctx) => rollback(ctx?.snap, `Not assigned: ${apiErrorMessage(e)}`),
+    onSuccess: (r) => done("Claimed", r),
+    onError: (e, _v, ctx) => rollback(ctx?.snap, `Not claimed: ${apiErrorMessage(e)}`),
+  });
+  // Hand tasks to someone else in one call; the server records each change and restarts the SLA clock.
+  const reassign = useMutation({
+    onMutate: async ({ ids, userId }: { ids: string[]; userId: string }) => { setRollbackNote(null); return { snap: await patchQueue(ids, (t) => ({ ...t, assigned_to: userId })) }; },
+    mutationFn: ({ ids, userId }: { ids: string[]; userId: string }) => bulkTriage({ kind: "queue", ids, action: "reassign", user_id: userId }),
+    onSuccess: (r, { ids, userId }) => done(`Reassigned to ${who(userId)}:`, { ok: r.updated, failed: ids.length - r.updated }),
+    onError: (e, _v, ctx) => rollback(ctx?.snap, `Not reassigned: ${apiErrorMessage(e)}`),
   });
 
   // Exception mutations: same intent (assign/escalate/resolve) as the stewardship ones above, but
   // the exceptions API (lib/api/exceptions.ts) takes structured bodies with different field names —
   // reconciled here rather than in a second table, per the task brief.
   const excAssign = useMutation({
-    mutationFn: ({ ids, userId }: { ids: string[]; userId: string }) => each(ids, (id) => assignException(id, { user_id: userId })),
+    mutationFn: ({ ids, userId }: { ids: string[]; userId: string }) => each(ids, (id) => assignException(id, { user_id: userId, user_name: names.get(userId) })),
     onSuccess: (r) => done("Assigned", r),
     onError: (e) => toast.error(`Not assigned: ${apiErrorMessage(e)}`),
   });
@@ -378,7 +426,7 @@ export default function InboxPage() {
   });
   const busy = isExceptions
     ? excAssign.isPending || excEscalate.isPending || excResolve.isPending
-    : approve.isPending || reject.isPending || escalate.isPending || assign.isPending;
+    : approve.isPending || reject.isPending || escalate.isPending || assign.isPending || reassign.isPending;
 
   const openRecord = useCallback((index: number) => {
     if (isExceptions) return; // exceptions have no object/record to open — the row carries its own detail.
@@ -434,7 +482,7 @@ export default function InboxPage() {
       id: t.id,
       label: `${labelOf(t.item_type)} ${t.source_id}`,
       title: <>{labelOf(t.item_type)} in {formatModuleName(t.domain)}</>,
-      meta: `${who(t.assigned_to)}, P${t.priority}, record ${t.source_id}, ${span(now - Date.parse(t.created_at))} old`,
+      meta: `${who(t.assigned_to)}, priority ${t.priority}, record ${t.source_id}, raised ${span(now - Date.parse(t.created_at))} ago`,
       aside: <Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>,
       tone: SLA_BAR[sla.state],
     };
@@ -455,6 +503,7 @@ export default function InboxPage() {
     if (on) next.add(id); else next.delete(id);
     return next;
   }), []);
+  const onCheckAll = useCallback((on: boolean) => setChecked(new Set(on ? (isExceptions ? excItems : items).map((r) => r.id) : [])), [isExceptions, excItems, items]);
   const selectedTask = isExceptions ? undefined : items[focusedIndex];
   const selectedExc = isExceptions ? excItems[focusedIndex] : undefined;
 
@@ -466,22 +515,21 @@ export default function InboxPage() {
     : isLoading ? "loading" : isError ? "error" : items.length === 0 ? (dayOne.status === "loading" ? "loading" : "empty") : undefined;
 
   const kindToggle = (
-    <div className="flex flex-col gap-1">
-      <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ value: k.value, label: k.label, content: null }))} value={kind} onValueChange={setKind} />
-      <p className="m-text-meta m-ink-3">{KINDS.find((k) => k.value === kind)?.meta}</p>
-    </div>
+    <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ value: k.value, label: k.label, content: null }))} value={kind} onValueChange={setKind} />
   );
-  const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.breached;
+  const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.overdue;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
   const exportOptions = [{ format: "xlsx" as const, label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }];
+  // Counts belong to the tasks and exceptions lists; the other tabs load their own and say only what they are for.
+  const counted = kind === "task" || kind === "exception";
   const header = (
     <PageHeader
       title="Inbox"
-      meta={`${formatInt(openCount)} open, ${formatInt(overdue)} overdue`}
+      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue. ${PURPOSE[kind]}` : PURPOSE[kind]}
       tabs={kindToggle}
       actions={
         isExceptions
-          ? canManageRules ? <Button variant="secondary" onClick={() => setRulesOpen(true)}>Manage exception rules</Button> : undefined
+          ? canManageRules ? <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button> : undefined
           : kind === "task" ? <ExportMenu options={items.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} /> : undefined
       }
     />
@@ -502,8 +550,12 @@ export default function InboxPage() {
           ? (excQ.data?.exceptions.length ?? 0) === 0
             ? {
                 title: "No exceptions",
-                detail: "Exceptions are raised by exception rules on new findings.",
-                action: canManageRules ? <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button> : <Button variant="secondary" render={<Link href="/objects">Open objects</Link>} />,
+                detail: canManageRules
+                  ? "Exceptions are raised when a new finding matches an exception rule. Add a rule to start"
+                  : "Exceptions are raised when a new finding matches an exception rule. Ask an admin to add one",
+                action: canManageRules
+                  ? <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button>
+                  : <Button variant="secondary" onClick={() => setKind("task")}>Open tasks</Button>,
               }
             : { title: "No exceptions in this view", detail: "Clear the search to see all exceptions", action: <Button variant="secondary" onClick={() => setSearch("")}>Clear search</Button> }
           : all.length === 0
@@ -512,14 +564,14 @@ export default function InboxPage() {
               detail: dayOne.step?.detail ?? "Tasks arrive when findings are assigned or proposals need review.",
               action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
             }
-          : { title: "No tasks in this view", detail: "Show all tasks to see the rest of the queue", action: <Button variant="secondary" onClick={() => showAll(true)}>Show all</Button> }
+          : { title: "No tasks match these filters", detail: "Show all tasks to see the rest of the queue", action: <Button variant="secondary" onClick={() => showAll(true)}>Show all</Button> }
       }
       errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
       summary={
         <div className="flex flex-col gap-4">
           <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,240px))]">
-            <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} href={isExceptions ? undefined : "/inbox?view=breached"} />
-            {!isExceptions && <Stat label="Due today" value={counts.today} loading={isLoading} href="/inbox?view=today" />}
+            <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} onClick={isExceptions ? undefined : () => setWhen("overdue")} />
+            {!isExceptions && <Stat label="Due in 24 hours" value={counts.soon} tone={counts.soon > 0 ? "at-risk" : undefined} loading={isLoading} onClick={() => setWhen("soon")} />}
           </div>
           {!isExceptions && !isLoading && queueTotal > all.length && (
             <Notice action={<Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)}>Load more</Button>}>
@@ -532,20 +584,22 @@ export default function InboxPage() {
       filterBar={
         <div className="flex flex-wrap gap-3 items-end">
           {!isExceptions && (
-            <div className="flex flex-wrap gap-2">
-              {VIEWS.map((v) => {
-                const n = v.value === "all" ? all.length : counts[v.value as keyof typeof counts];
-                return (
-                  <Button key={v.value} variant={view === v.value ? "primary" : "secondary"} onClick={() => setView(v.value)}>
-                    {v.label} ({n})
-                  </Button>
-                );
-              })}
+            <div className="flex flex-col gap-2">
+              <QuickFilters label="Who" value={view} onChange={(v) => setView(v === "all" ? "" : v)}
+                options={WHO.map((w) => ({ value: w.value, label: w.label, count: counts.who[w.value] }))} />
+              <QuickFilters label="When" value={when} onChange={(v) => setWhen(v === "any" ? "" : v)}
+                options={WHEN.map((w) => ({ value: w.value, label: w.label, count: counts.when[w.value] }))} />
             </div>
           )}
           {!isExceptions && (
             <Field label="Type">
               <Select value={type === "all" ? "" : type} onValueChange={(v) => setType(v || "all")} options={typeOptions} placeholder="All types" />
+            </Field>
+          )}
+          {!isExceptions && priorities.length > 1 && (
+            <Field label="Priority">
+              <Select value={prio === null ? "" : String(prio)} onValueChange={setPrio} placeholder="Any priority"
+                options={[{ value: "", label: "Any priority" }, ...priorities.map((p) => ({ value: String(p), label: priorityLabel(p) }))]} />
             </Field>
           )}
           <Field label="Search">
@@ -555,10 +609,15 @@ export default function InboxPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </Field>
-          {!isExceptions && (view !== "all" || type !== "all" || !!assignee) && (
-            <Notice action={<Button variant="ghost" onClick={() => showAll(false)}>Show all</Button>}>
-              {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null, assignee ? `Tasks held by ${assignee}` : null].filter(Boolean).join(", ")} only
-            </Notice>
+          {!isExceptions && (view !== "all" || when !== "any" || type !== "all" || prio !== null || !!assignee) && (
+            <div className="flex flex-wrap items-center gap-2" aria-label="Active filters">
+              {view !== "all" && <FilterChip label="Who" value={WHO_CHIP[view]} onRemove={() => setView("")} />}
+              {when !== "any" && <FilterChip label="When" value={WHEN_CHIP[when]} onRemove={() => setWhen("")} />}
+              {type !== "all" && <FilterChip label="Type" value={labelOf(type)} onRemove={() => setType("")} />}
+              {prio !== null && <FilterChip label="Priority" value={String(prio)} onRemove={() => setPrio("")} />}
+              {assignee && <FilterChip label="Owner" value={assignee} onRemove={() => setAssignee("")} />}
+              <Button variant="ghost" size="sm" onClick={() => showAll(false)}>Clear filters</Button>
+            </div>
           )}
           {rollbackNote && <Notice tone="danger">{rollbackNote}</Notice>}
         </div>
@@ -572,11 +631,13 @@ export default function InboxPage() {
             checked={checked}
             onCheck={onCheck}
             listLabel="Exceptions"
+            onCheckAll={onCheckAll}
             bulk={(ids) => (
               <>
-                {canSeeTeam && user && <Button variant="secondary" disabled={busy} onClick={() => excAssign.mutate({ ids, userId: user.id })}>Assign to me</Button>}
-                <Button variant="secondary" disabled={busy} onClick={() => setEscalateIds(ids)}>Escalate</Button>
-                {canApprove && <Button variant="secondary" disabled={busy} onClick={() => setRejectIds(ids)}>Resolve with notes</Button>}
+                {canSeeTeam && user && <Button variant="secondary" size="sm" disabled={busy} onClick={() => excAssign.mutate({ ids, userId: user.id })}>Claim</Button>}
+                {canSeeTeam && people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={(userId) => excAssign.mutate({ ids, userId })} />}
+                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setEscalateIds(ids)}>Escalate</Button>}
+                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setRejectIds(ids)}>Resolve with notes</Button>}
               </>
             )}
             detail={selectedExc ? (
@@ -588,9 +649,10 @@ export default function InboxPage() {
                 canResolve={canApprove}
                 canAssign={canSeeTeam && !!user}
                 currency={costModel.data?.currency}
+                people={canSeeTeam ? people : []}
                 onResolve={() => setRejectIds([selectedExc.id])}
                 onEscalate={() => setEscalateIds([selectedExc.id])}
-                onAssign={() => user && excAssign.mutate({ ids: [selectedExc.id], userId: user.id })}
+                onAssign={(userId) => excAssign.mutate({ ids: [selectedExc.id], userId: userId ?? user?.id ?? "" })}
               />
             ) : null}
           />
@@ -602,12 +664,14 @@ export default function InboxPage() {
             checked={checked}
             onCheck={onCheck}
             listLabel="Tasks"
+            onCheckAll={onCheckAll}
             bulk={(ids) => (
               <>
-                {canApprove && <Button variant="secondary" disabled={busy} onClick={() => setApproveIds(ids)}>Approve {ids.length.toLocaleString()} at {HIGH_CONFIDENCE_LABEL}</Button>}
-                {canApprove && <Button variant="secondary" disabled={busy} onClick={() => setRejectIds(ids)}>Reject with reason</Button>}
-                <Button variant="secondary" disabled={busy} onClick={() => escalate.mutate(ids)}>Escalate</Button>
-                {canApprove && user && <Button variant="secondary" disabled={busy} onClick={() => assign.mutate({ ids, userId: user.id })}>Assign to me</Button>}
+                {canApprove && user && <Button variant="secondary" size="sm" disabled={busy} onClick={() => assign.mutate({ ids, userId: user.id })}>Claim</Button>}
+                {canReassign && people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={(userId) => reassign.mutate({ ids, userId })} />}
+                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setApproveIds(ids)}>Approve {ids.length.toLocaleString()} at {HIGH_CONFIDENCE_LABEL}</Button>}
+                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setRejectIds(ids)}>Reject with reason</Button>}
+                <Button variant="secondary" size="sm" disabled={busy} onClick={() => escalate.mutate(ids)}>Escalate</Button>
               </>
             )}
             detail={selectedTask ? (
@@ -618,11 +682,13 @@ export default function InboxPage() {
                 assignee={who(selectedTask.assigned_to)}
                 busy={busy}
                 canApprove={canApprove}
-                canAssign={canApprove && !!user && !selectedTask.assigned_to}
+                canAssign={canApprove && !!user && selectedTask.assigned_to !== user.id}
+                people={canReassign ? people : []}
                 onApprove={() => approve.mutate([selectedTask.id])}
                 onReject={() => setRejectIds([selectedTask.id])}
                 onEscalate={() => escalate.mutate([selectedTask.id])}
                 onAssign={() => user && assign.mutate({ ids: [selectedTask.id], userId: user.id })}
+                onReassign={(userId) => reassign.mutate({ ids: [selectedTask.id], userId })}
               />
             ) : null}
           />
@@ -632,10 +698,15 @@ export default function InboxPage() {
         <>
           <Drawer
             open={rejectIds !== null}
-            onOpenChange={(open) => !open && setRejectIds(null)}
+            onOpenChange={(open) => { if (!open) { setRejectIds(null); setReasonTouched(false); } }}
             title={isExceptions ? "Resolve exception" : "Reject with reason"}
           >
             <div className="flex flex-col gap-3">
+              <p className="m-text-body m-ink-2">
+                {isExceptions
+                  ? "Say what was done, so the next person can see how it was closed."
+                  : "Say why the suggestion is wrong. The reason is kept on the task and helps Meridian suggest better next time."}
+              </p>
               {isExceptions ? (
                 <>
                   <Field label="Resolution">
@@ -646,10 +717,11 @@ export default function InboxPage() {
                   </Field>
                 </>
               ) : null}
-              <Field label={isExceptions ? "Notes" : "Reason"}>
+              <Field label={isExceptions ? "Notes" : "Reason"} error={reasonTouched && !reason.trim() ? "Write a reason first" : undefined}>
                 <Textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
+                  onBlur={() => setReasonTouched(true)}
                   rows={4}
                 />
               </Field>
@@ -697,28 +769,30 @@ export default function InboxPage() {
           />
           <Drawer open={rulesOpen} onOpenChange={setRulesOpen} title="Exception rules">
             <div className="flex flex-col gap-4">
+              <p className="m-text-body m-ink-2">A rule raises an exception when a new finding matches its condition. Turn a rule off to stop new exceptions from it.</p>
               <div className="flex flex-col gap-2">
-                {excRulesQ.isLoading ? (
-                  <Skeleton height={96} />
-                ) : excRulesQ.isError ? (
-                  <ErrorState {...apiErrorState(excRulesQ.error)} onRetry={() => void excRulesQ.refetch()} />
-                ) : (excRulesQ.data?.rules ?? []).length === 0 ? (
-                  <EmptyState variant="inline" title="No exception rules yet" detail="Create one below" />
-                ) : (excRulesQ.data?.rules ?? []).map((r: ExceptionRule) => (
+                {excRulesQ.isLoading ? <Skeleton height={80} /> : null}
+                {excRulesQ.isError ? <ErrorState {...apiErrorState(excRulesQ.error)} onRetry={() => void excRulesQ.refetch()} /> : null}
+                {(excRulesQ.data?.rules ?? []).map((r: ExceptionRule) => (
                   <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2">
                     <div className="flex flex-col">
                       <span className="m-text-body font-medium">{r.name}</span>
                       <span className="m-text-body m-ink-3">{formatModuleName(r.object_type)}, {labelOf(r.rule_type)}</span>
                     </div>
-                    <Button variant="secondary" disabled={toggleRule.isPending} onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
-                      {r.is_active ? "Disable" : "Enable"}
-                    </Button>
+                    {canManageRules ? (
+                      <Button variant="secondary" size="sm" disabled={toggleRule.isPending} onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
+                        {r.is_active ? "Turn off" : "Turn on"}
+                      </Button>
+                    ) : <Pill tone={r.is_active ? "go" : "neutral"}>{r.is_active ? "On" : "Off"}</Pill>}
                   </div>
                 ))}
+                {excRulesQ.data && excRulesQ.data.rules.length === 0 && (
+                  <span className="m-text-body m-ink-3">No exception rules yet. Add one below.</span>
+                )}
               </div>
-              <div className="flex flex-col gap-2">
+              {canManageRules ? <div className="flex flex-col gap-2">
                 <span className="m-text-body font-medium">New rule</span>
-                <Field label="Name">
+                <Field label="Name (required)">
                   <Input
                     value={ruleDraft.name}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, name: e.target.value })}
@@ -727,13 +801,13 @@ export default function InboxPage() {
                 <Field label="Rule type">
                   <Select value={ruleDraft.rule_type} options={RULE_TYPES} onValueChange={(v) => setRuleDraft({ ...ruleDraft, rule_type: v })} />
                 </Field>
-                <Field label="Object">
+                <Field label="Object (required)">
                   <Select value={ruleDraft.object_type} options={OBJECT_OPTIONS} placeholder="Choose an object" onValueChange={(v) => setRuleDraft({ ...ruleDraft, object_type: v })} />
                 </Field>
                 <Field label="Severity">
                   <Select value={ruleDraft.severity} options={SEVERITY_OPTIONS} onValueChange={(v) => setRuleDraft({ ...ruleDraft, severity: v as Severity })} />
                 </Field>
-                <Field label="Condition">
+                <Field label="Condition (required)">
                   <Input
                     value={ruleDraft.condition}
                     onChange={(e) => setRuleDraft({ ...ruleDraft, condition: e.target.value })}
@@ -749,7 +823,7 @@ export default function InboxPage() {
                     Create rule
                   </Button>
                 </div>
-              </div>
+              </div> : null}
             </div>
           </Drawer>
         </>
@@ -807,9 +881,10 @@ function TaskSource({ t }: { t: StewardshipQueueItem }) {
 }
 
 /** The selected task: what it is, where it stands against its SLA, the model's suggestion and the one decision. */
-function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, onApprove, onReject, onEscalate, onAssign }: {
+function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, people, onApprove, onReject, onEscalate, onAssign, onReassign }: {
   t: StewardshipQueueItem; sla: Sla; now: number; assignee: string; busy: boolean; canApprove: boolean; canAssign: boolean;
-  onApprove: () => void; onReject: () => void; onEscalate: () => void; onAssign: () => void;
+  people: { value: string; label: string }[];
+  onApprove: () => void; onReject: () => void; onEscalate: () => void; onAssign: () => void; onReassign: (userId: string) => void;
 }) {
   return (
     <Card
@@ -819,8 +894,9 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, onAppr
         <div className="flex flex-wrap items-center gap-2">
           {canApprove && <Button variant="primary" disabled={busy} onClick={onApprove}>Approve</Button>}
           {canApprove && <Button variant="secondary" disabled={busy} onClick={onReject}>Reject</Button>}
+          {canAssign && <Button variant="ghost" disabled={busy} onClick={onAssign}>Claim</Button>}
+          {people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={onReassign} />}
           <Button variant="ghost" disabled={busy || t.status === "escalated"} onClick={onEscalate}>Escalate</Button>
-          {canAssign && <Button variant="ghost" disabled={busy} onClick={onAssign}>Assign to me</Button>}
         </div>
       }
     >
@@ -828,7 +904,7 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, onAppr
         <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
           <Fact label="Record"><Mono>{t.source_id}</Mono></Fact>
           <Fact label="Object">{formatModuleName(t.domain)}</Fact>
-          <Fact label="Priority">{`P${t.priority}`}</Fact>
+          <Fact label="Priority">{priorityLabel(t.priority)}</Fact>
           <Fact label="Status"><Pill tone={STATUS_TONE[t.status]}>{labelOf(t.status)}</Pill></Fact>
           <Fact label="Assignee">{assignee}</Fact>
           <Fact label="Age">{span(now - Date.parse(t.created_at))}</Fact>
@@ -838,8 +914,8 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, onAppr
         <TaskSource t={t} />
         {t.ai_recommendation ? (
           <p className="m-text-body m-ink-2">
-            Suggested decision: {labelOf(t.ai_recommendation)}
-            {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% confidence` : ""}
+            Meridian suggests: {labelOf(t.ai_recommendation)}
+            {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}. Check the record before you decide.
           </p>
         ) : null}
         <div>
@@ -851,9 +927,10 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, onAppr
 }
 
 /** The selected exception: severity, SLA, what happened and the one decision. */
-function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, currency, onResolve, onEscalate, onAssign }: {
+function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, currency, people, onResolve, onEscalate, onAssign }: {
   e: Exception; now: number; assignee: string; busy: boolean; canResolve: boolean; canAssign: boolean; currency?: string | null;
-  onResolve: () => void; onEscalate: () => void; onAssign: () => void;
+  people: { value: string; label: string }[];
+  onResolve: () => void; onEscalate: () => void; onAssign: (userId?: string) => void;
 }) {
   const sla = excSla(e.sla_deadline, now);
   const open = e.status !== "resolved" && e.status !== "closed";
@@ -864,8 +941,9 @@ function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, curren
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {canResolve && open && <Button variant="primary" disabled={busy} onClick={onResolve}>Resolve</Button>}
-          <Button variant="ghost" disabled={busy || e.escalation_tier > 0} onClick={onEscalate}>Escalate</Button>
-          {canAssign && !e.assigned_to && <Button variant="ghost" disabled={busy} onClick={onAssign}>Assign to me</Button>}
+          {canAssign && !e.assigned_to && <Button variant="ghost" disabled={busy} onClick={() => onAssign()}>Claim</Button>}
+          {open && people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={(id) => onAssign(id)} />}
+          {canResolve && <Button variant="ghost" disabled={busy || e.escalation_tier > 0} onClick={onEscalate}>Escalate</Button>}
         </div>
       }
     >
@@ -884,6 +962,12 @@ function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, curren
       </div>
     </Card>
   );
+}
+
+/** One pick hands the selected work to that person: the select resets so the same name can be picked again. */
+function ReassignSelect({ people, disabled, onPick }: { people: { value: string; label: string }[]; disabled: boolean; onPick: (userId: string) => void }) {
+  if (disabled) return <Button variant="ghost" size="sm" disabled>Reassign</Button>;
+  return <Select label="Reassign to" value="" placeholder="Reassign to…" options={people} onValueChange={(v) => { if (v) onPick(v); }} />;
 }
 
 /**

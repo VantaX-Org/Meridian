@@ -3,7 +3,8 @@
 import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/design";
-import { Button, Card, Pill } from "@/design";
+import { Button, Card, ErrorState, Pill, Skeleton } from "@/design";
+import { apiErrorDetail, apiErrorState } from "@/lib/error";
 import {
   getReferenceLists,
   uploadBicDirectory,
@@ -18,24 +19,27 @@ const KINDS = [
     upload: uploadPostalCodes,
     unit: "codes",
     help: "Official postal codes (CSV: country,postcode). Addresses in a listed country are checked against it at the next analysis.",
-    error: "Upload failed — expected a CSV with columns country,postcode",
+    error: "Upload failed. Expected a CSV with the columns country and postcode",
   },
   {
     kind: "bic",
     upload: uploadBicDirectory,
     unit: "BICs",
     help: "SWIFT BIC directory (CSV, first column: BIC). Bank BICs in a covered country are checked against it at the next analysis.",
-    error: "Upload failed — expected a CSV whose first column is the BIC",
+    error: "Upload failed. Expected a CSV whose first column is the BIC",
   },
 ] as const;
 
 /** Licensed reference lists the customer supplies (never read from SAP): postal codes, SWIFT directory. */
 export function ReferencePanel({ id }: { id: string }) {
-  const { data: lists = [] } = useQuery({ queryKey: queryKeys.referenceLists(id), queryFn: () => getReferenceLists(id) });
+  const q = useQuery({ queryKey: queryKeys.referenceLists(id), queryFn: () => getReferenceLists(id) });
+  const lists = q.data ?? [];
   return (
-    <Card title="Reference data">
+    <Card title="Reference data" meta="Official lists you supply, so addresses and bank codes are checked against the real values">
       <div className="flex flex-col gap-3">
-        {KINDS.map((k) => (
+        {q.isLoading ? <Skeleton height={80} /> : null}
+        {q.isError ? <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} /> : null}
+        {!q.isLoading && !q.isError && KINDS.map((k) => (
           <ReferenceRow key={k.kind} id={id} spec={k} list={lists.find((l) => l.kind === k.kind)} />
         ))}
       </div>
@@ -52,7 +56,7 @@ function ReferenceRow({ id, spec, list }: { id: string; spec: (typeof KINDS)[num
       toast.success(`${r.records.toLocaleString()} ${spec.unit} loaded for ${r.countries.join(", ")}`);
       void qc.invalidateQueries({ queryKey: queryKeys.referenceLists(id) });
     },
-    onError: () => toast.error(spec.error),
+    onError: (e) => toast.error(apiErrorDetail(e) ?? spec.error),
   });
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -62,11 +66,11 @@ function ReferenceRow({ id, spec, list }: { id: string; spec: (typeof KINDS)[num
           {list.records.toLocaleString()} {spec.unit}, {list.countries.join(", ")}
         </Pill>
       ) : (
-        <Pill>none loaded</Pill>
+        <Pill>None loaded</Pill>
       )}
       <input ref={input} type="file" accept=".csv,text/csv" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
-      <Button variant="ghost" disabled={upload.isPending} onClick={() => input.current?.click()}>
+      <Button variant="ghost" pending={upload.isPending} onClick={() => input.current?.click()}>
         {list ? "Replace list" : "Upload list"}
       </Button>
     </div>

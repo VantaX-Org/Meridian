@@ -30,7 +30,8 @@ export default function AdminAIPage() {
   if (!allowed) {
     return (
       <div className="flex flex-col gap-4">
-        {note("Administrators change the language model. Ask an administrator to change the provider, model or endpoint.")}
+        <PageHeader title="AI" meta="Which language model writes summaries and fix proposals" />
+        {note("Only administrators change the language model. Ask an administrator to change the provider, model or endpoint.")}
       </div>
     );
   }
@@ -53,7 +54,7 @@ export default function AdminAIPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="AI" meta="The language model that writes narrative and remediation proposals" />
+      <PageHeader title="AI" meta="Choose which language model writes summaries and fix proposals. Test the connection, then save" />
 
       <div className="flex gap-4">
         <div className="flex flex-col gap-1">
@@ -77,7 +78,7 @@ export default function AdminAIPage() {
 
       {note("The model never sees SAP data. It receives aggregated finding summaries and writes narrative and remediation proposals. Every score, count and rate comes from deterministic checks.")}
 
-      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <div aria-busy="true"><Skeleton height={240} /></div>}
+      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <div aria-busy="true"><Skeleton height={320} /></div>}
     </div>
   );
 }
@@ -134,7 +135,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
         </Field>
         {p?.description ? <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">{p.description}</p> : null}
 
-        <Field label="Model">
+        <Field label="Model" error={!form.model?.trim() ? "Name the model to use" : undefined}>
           <Input value={form.model ?? ""} onChange={(e) => set({ model: e.target.value })} />
         </Field>
 
@@ -169,30 +170,30 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
         <Field label="Temperature">
           <Input type="number" step="0.1" min="0" max="2" value={String(form.temperature ?? "")} onChange={(e) => set({ temperature: num(e.target.value) })} />
         </Field>
-        <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">0 is deterministic; narrative reads best at 0.2 to 0.4</p>
+        <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">How varied the wording is. 0 gives the same words every time; summaries read best at 0.2 to 0.4</p>
 
         <Field label="Max tokens">
           <Input type="number" min="1" value={String(form.max_tokens ?? "")} onChange={(e) => set({ max_tokens: num(e.target.value) })} />
         </Field>
 
-        <Field label="Request timeout">
+        <Field label="Request timeout (seconds)">
           <Input type="number" min="1" value={String(form.request_timeout ?? "")} onChange={(e) => set({ request_timeout: num(e.target.value) })} />
         </Field>
-        <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">seconds; bundled Ollama needs 120</p>
+        <p className="m-text-meta -mt-2 sm:col-span-2 m-ink-3">The bundled local model needs 120</p>
       </div>
 
       {test.data ? note(
-        <>{test.data.message}{test.data.response_preview ? ` — "${test.data.response_preview}"` : ""}</>,
+        <>{test.data.message}{test.data.response_preview ? `: "${test.data.response_preview}"` : ""}</>,
         test.data.success ? "success" : "danger",
       ) : null}
       {test.error ? note(apiErrorMessage(test.error), "danger") : null}
 
       <div className="flex gap-2">
-        <Button variant="secondary" disabled={test.isPending} onClick={() => { setTestedBody(JSON.stringify(body())); test.mutate(); }}>
-          {test.isPending ? "Testing…" : "Test connection"}
+        <Button variant="secondary" pending={test.isPending} onClick={() => { setTestedBody(JSON.stringify(body())); test.mutate(); }}>
+          {test.isPending ? "Testing" : "Test connection"}
         </Button>
-        <Button disabled={save.isPending} onClick={onSave}>
-          {save.isPending ? "Saving…" : "Save settings"}
+        <Button pending={save.isPending} disabled={!form.model?.trim()} onClick={onSave}>
+          {save.isPending ? "Saving" : "Save settings"}
         </Button>
       </div>
       <ConfirmDialog

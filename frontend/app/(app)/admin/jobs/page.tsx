@@ -38,7 +38,7 @@ const columns: ColumnDef<Job>[] = [
   { id: "rows", header: "Rows", cell: ({ row }) => row.original.rows_done.toLocaleString() },
   { id: "start", header: "Started", cell: ({ row }) => when(row.original.started_at) },
   { id: "end", header: "Finished", cell: ({ row }) => (row.original.finished_at ? when(row.original.finished_at) : "—") },
-  { id: "msg", header: "Detail", cell: ({ row }) => row.original.error ?? row.original.message },
+  { id: "msg", header: "Detail", cell: ({ row }) => row.original.error ?? row.original.message ?? "—" },
   actionColumn((j) => {
     const again = retryHref(j);
     return (
@@ -55,7 +55,7 @@ export default function JobsPage() {
   const jobs = q.data ?? [];
   return (
     <ExplorerPage
-      header={<PageHeader title="Jobs" meta="Extractions, analyses, uploads and simulations" />}
+      header={<PageHeader title="Jobs" meta="Every extraction, analysis, upload and simulation that ran, newest first. Open a job to see its result, or read why it failed under Detail" />}
       state={asyncStateOf(q, () => jobs.length === 0, true)}
       emptyProps={{ title: "No jobs have run yet", detail: "Extractions, analyses, uploads and simulations are listed here.", action: <Button render={<Link href="/import">Import data</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}

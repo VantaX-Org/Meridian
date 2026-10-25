@@ -28,6 +28,9 @@ const DOMAIN_OPTIONS = [
   { value: "business_partner", label: "Business partner" },
 ];
 
+/** Keeps a percentage box to whole numbers 0 to 100, so a stray letter never reaches the API as NaN. */
+const pctInput = (raw: string) => { const d = raw.replace(/\D/g, "").slice(0, 3); return d === "" ? "" : String(Math.min(100, Number(d))); };
+
 const STATUS_LABEL: Record<string, string> = { candidate: "Candidate", pending_review: "Pending review", golden: "Golden", superseded: "Superseded" };
 
 const columns: ColumnDef<MasterRecordSummary>[] = [
@@ -78,7 +81,13 @@ export default function GoldenRecordsPage() {
 
   return (
     <ExplorerPage
-      header={<PageHeader title="Golden records" meta={query.data ? `${query.data.total.toLocaleString()} records` : undefined} />}
+      header={
+        <PageHeader
+          title="Golden records"
+          meta={`${query.data ? `${query.data.total.toLocaleString()} records. ` : ""}One trusted version of each SAP record, merged from every system that holds it.`}
+          actions={<Button render={<Link href="/mdm/golden/merge">Review match pairs</Link>} />}
+        />
+      }
       filterBar={
         <div className="flex items-end gap-3">
           <Field label="Object">
@@ -90,7 +99,7 @@ export default function GoldenRecordsPage() {
           <Field label="Min confidence %">
             <Input
               value={minConfidence}
-              onChange={(e) => setParams({ min: e.target.value })}
+              onChange={(e) => setParams({ min: pctInput(e.target.value) })}
               placeholder="0-100"
               inputMode="numeric" className="[width:90px]"
             />
@@ -98,7 +107,7 @@ export default function GoldenRecordsPage() {
           <Field label="Max confidence %">
             <Input
               value={maxConfidence}
-              onChange={(e) => setParams({ max: e.target.value })}
+              onChange={(e) => setParams({ max: pctInput(e.target.value) })}
               placeholder="0-100"
               inputMode="numeric" className="[width:90px]"
             />
@@ -121,7 +130,7 @@ export default function GoldenRecordsPage() {
       emptyProps={
         filtered
           ? { title: "No records match", detail: "Clear a filter to widen the list.", action: <Button variant="secondary" onClick={() => setParams({ domain: "", status: "", min: "", max: "" })}>Clear filters</Button> }
-          : { title: "No golden records", action: <Button render={<Link href="/mdm/match-rules">Open match rules</Link>} /> }
+          : { title: "No golden records yet", detail: "They are built when a match run groups the same record from your systems. Set the match rules first.", action: <Button render={<Link href="/mdm/match-rules">Open match rules</Link>} /> }
       }
       errorProps={{
         message: apiErrorMessage(query.error),

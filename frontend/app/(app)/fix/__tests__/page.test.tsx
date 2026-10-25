@@ -48,6 +48,8 @@ const group = (over: Partial<CleaningGroup>): CleaningGroup => ({
 });
 
 beforeEach(() => {
+  // These cover the cleaning proposals tab; Records to fix (the default) is covered in components/work.
+  searchParams.set("tab", "cleaning");
   push.mockClear();
   vi.mocked(getCleaningGroups).mockReset();
 });
@@ -71,6 +73,15 @@ describe("FixPage", () => {
     expect(row).toHaveTextContent("85%");
     // Duplicates are merged on the Duplicates tab, not drafted into a fix batch.
     expect(screen.getByRole("link", { name: "Review Duplicate records from material_master_25k" })).toHaveAttribute("href", "/fix?tab=dedup");
+  });
+
+  it("lists the match engine's review pairs, which carry no run, on an every-run page", async () => {
+    vi.mocked(getCleaningGroups).mockResolvedValue({
+      groups: [group({ version_id: null, kind: "match", object_type: "business_partner", run_label: null, run_at: null })],
+      records: 2, confident: 1, runs: 0,
+    });
+    renderWithQuery(<FixPage />);
+    expect(await screen.findByRole("link", { name: "Review Match review from Matching" })).toHaveAttribute("href", "/fix/proposals/all?kind=match");
   });
 
   it("opens the run and rule on row click", async () => {
@@ -99,5 +110,22 @@ describe("FixPage", () => {
     renderWithQuery(<FixPage />);
 
     expect(await screen.findByText("No cleaning proposals")).toBeInTheDocument();
+  });
+});
+
+describe("FixPage under a chosen run", () => {
+  it("shows that run's proposals and the matcher's, which carry no run", async () => {
+    searchParams.set("run", "R1");
+    try {
+      vi.mocked(getCleaningGroups).mockResolvedValue({
+        groups: [group({ records: 5 }), group({ version_id: "R2", records: 7 }), group({ version_id: null, kind: "match", records: 3 })],
+        records: 15, confident: 3, runs: 2,
+      });
+      renderWithQuery(<FixPage />);
+      expect(await screen.findByText("8")).toBeInTheDocument();
+      expect(screen.getAllByRole("link", { name: /^Review/ })).toHaveLength(2);
+    } finally {
+      searchParams.delete("run");
+    }
   });
 });

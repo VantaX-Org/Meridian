@@ -10,26 +10,24 @@
       ]
     },
     {
-      "title": "Workspaces",
+      "title": "Daily work",
       "pages": [
-        { "slug": "home", "title": "Home" },
-        { "slug": "systems", "title": "Systems" },
+        { "slug": "fix", "title": "Fix work" },
+        { "slug": "approvals", "title": "Approvals and export" },
         { "slug": "objects", "title": "Objects" },
-        { "slug": "runs", "title": "Runs" },
-        { "slug": "rules", "title": "Rules" },
-        { "slug": "insights", "title": "Insights" },
-        { "slug": "reports", "title": "Reports" },
-        { "slug": "assistant", "title": "Ask Meridian" },
-        { "slug": "inbox", "title": "Inbox" },
-        { "slug": "fix", "title": "Fix" },
-        { "slug": "mdm", "title": "Master data" },
-        { "slug": "migration", "title": "Migration" },
-        { "slug": "process", "title": "Processes" }
+        { "slug": "progress", "title": "Progress" },
+        { "slug": "inbox", "title": "Inbox" }
       ]
     },
     {
-      "title": "Administration",
-      "pages": [{ "slug": "admin", "title": "Administration" }]
+      "title": "More",
+      "pages": [
+        { "slug": "analysis", "title": "Analysis" },
+        { "slug": "mdm", "title": "Master data" },
+        { "slug": "rules", "title": "Rules" },
+        { "slug": "data-in", "title": "Data in" },
+        { "slug": "admin", "title": "Administration" }
+      ]
     },
     {
       "title": "Reference",

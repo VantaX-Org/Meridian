@@ -6,8 +6,9 @@ import ProposalsPage from "../page";
 import { approveCleaning, bulkApprove, getCleaningAudit, getCleaningGroups, getCleaningQueue, rejectCleaning, type CleaningQueueItem } from "@/lib/api/cleaning";
 import { createBatchFromCleaning } from "@/lib/api/remediation";
 
-const searchParams = new URLSearchParams("kind=MARA.MEINS");
-vi.mock("next/navigation", () => ({ useParams: () => ({ runId: "R1" }), useSearchParams: () => searchParams, useRouter: () => ({ push: vi.fn() }) }));
+let searchParams = new URLSearchParams("kind=MARA.MEINS");
+let routeRun = "R1";
+vi.mock("next/navigation", () => ({ useParams: () => ({ runId: routeRun }), useSearchParams: () => searchParams, useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/lib/api/cleaning", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/cleaning")>("@/lib/api/cleaning");
@@ -138,5 +139,20 @@ describe("ProposalsPage", () => {
 
     expect(await screen.findByText("Steward One")).toBeInTheDocument();
     expect(getCleaningAudit).toHaveBeenCalledWith(expect.objectContaining({ version_id: "R1" }));
+  });
+
+  it("covers every run for match pairs: no run filter, and no fix batch since nothing changes", async () => {
+    routeRun = "all";
+    searchParams = new URLSearchParams("kind=match");
+    queue([item({ record_key: "BP1|BP1x", version_id: null })]);
+    vi.mocked(bulkApprove).mockResolvedValue({ approved_count: 1, skipped_count: 0 });
+    renderWithQuery(<ProposalsPage />);
+
+    await screen.findByText("BP1|BP1x");
+    expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ version_id: undefined, kind: "match" }));
+    expect(screen.getByRole("heading", { name: "Match review" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Draft fix batch/ })).not.toBeInTheDocument();
+    routeRun = "R1";
+    searchParams = new URLSearchParams("kind=MARA.MEINS");
   });
 });

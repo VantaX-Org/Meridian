@@ -70,7 +70,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     // one list per lineage, never the superseded controlling upload and never run=latest
     expect(getObjects.mock.calls.map((c) => c[0]).sort()).toEqual(["co2", "mm", "sys"]);
     expect(cellLink("60")).toHaveAttribute("href", "/objects/controlling?tab=rules");
-    expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?tab=rules");
+    expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?tab=fix");
     expect(screen.getByTestId("run-scope")).toHaveTextContent("Current state of 3 objects, latest run 16 Oct 2026");
     expect(screen.queryByText("Back to latest")).toBeNull();
     // the stats read the merged list: one not ready, one at risk, one go, 0 critical + 3 high blocking
@@ -110,7 +110,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("Business partner")).toBeInTheDocument());
     expect(bodyRows()).toHaveLength(3);
-    expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?tab=rules");
+    expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?tab=fix");
     expect(screen.queryByText(/could not reach the server/i)).toBeNull();
   });
 
@@ -121,7 +121,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     await waitFor(() => expect(ledger().getByText("Business partner")).toBeInTheDocument());
     expect(bodyRows()).toHaveLength(1);
     expect(getObjects.mock.calls.map((c) => c[0])).toEqual(["sys"]);
-    expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?run=sys&tab=rules");
+    expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?run=sys&tab=fix");
     await waitFor(() => expect(screen.getByTestId("run-scope")).toHaveTextContent("As of sys run"));
     expect(screen.getByText("Back to latest")).toBeInTheDocument();
   });

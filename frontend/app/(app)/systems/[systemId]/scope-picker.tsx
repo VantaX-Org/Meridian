@@ -4,10 +4,11 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, Checkbox, ConfirmDialog, DataTable, EmptyState, Field, Input, Mono, Skeleton, toast } from "@/design";
+import { Button, Card, Checkbox, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Skeleton, toast } from "@/design";
 import { environmentLabel } from "@/components/systems/connect-system-dialog";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { clsx } from "clsx";
 import { getSystemObjects, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
-import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -18,10 +19,9 @@ const SCOPE_LABEL: Record<ScopeKey, string> = {
   purchasing_orgs: "Purchasing organisations",
 };
 const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
-const Help = ({ children }: { children: React.ReactNode }) => <p className="m-text-meta m-ink-3">{children}</p>;
-const objects_ = (n: number) => `${n.toLocaleString()} ${n === 1 ? "object" : "objects"}`;
+const note = "m-text-body";
 
-/** Choose objects and scope, confirm, then extract into a new run. The one Extract drawer's body. */
+/** Choose objects and scope, confirm inline, then extract into a new run. The one Extract drawer's body. */
 export function ScopePicker({ id, system, onDownloaded }: {
   id: string;
   /** Named in the confirmation: which system and environment is about to be read. */
@@ -29,7 +29,7 @@ export function ScopePicker({ id, system, onDownloaded }: {
   onDownloaded: (jobId: string) => void;
 }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [scopeText, setScopeText] = useState<Partial<Record<ScopeKey, string>>>({});
   const [dates, setDates] = useState<{ date_from?: string; date_to?: string }>({});
@@ -60,7 +60,7 @@ export function ScopePicker({ id, system, onDownloaded }: {
       qc.invalidateQueries({ queryKey: queryKeys.systemVersions(id) });
       onDownloaded(job.job_id);
     },
-    onError: (e) => toast.error(apiErrorMessage(e) || "Extraction refused"),
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   const columns = useMemo<ColumnDef<Obj, unknown>[]>(() => [
@@ -87,6 +87,7 @@ export function ScopePicker({ id, system, onDownloaded }: {
   return (
     <Card title="Extract objects into a new run" meta={chosen.length ? `${chosen.length} selected` : undefined}>
       {isLoading ? <Skeleton height={160} />
+        : isError ? <ErrorState {...apiErrorState(error)} onRetry={() => void refetch()} />
         : !objects.length ? <EmptyState title="No objects to extract" detail="This system exposes no objects yet. Check the connection on the Health tab." action={<Button render={<Link href={`/systems/${id}?tab=health`}>Test connection</Link>} />} /> : (
         <div className="flex flex-col gap-4">
           <DataTable columns={columns} data={objects} getRowId={(o) => o.object} onRowClick={(o) => toggle(o.object)} height={340} />
@@ -94,57 +95,53 @@ export function ScopePicker({ id, system, onDownloaded }: {
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {filters.map((k) => (
-                  <div key={k} className="flex flex-col gap-1">
-                    <Field label={SCOPE_LABEL[k]}>
-                      <Input className="w-full" value={scopeText[k] ?? ""} placeholder="1000, 2000" onChange={(e) => setScopeText({ ...scopeText, [k]: e.target.value })} />
-                    </Field>
-                    <Help>Comma-separated; empty reads all</Help>
-                  </div>
+                  <Field key={k} label={`${SCOPE_LABEL[k]}, comma-separated (leave empty to read all)`}>
+                    <Input className="w-full" value={scopeText[k] ?? ""} placeholder="1000, 2000" onChange={(e) => setScopeText({ ...scopeText, [k]: e.target.value })} />
+                  </Field>
                 ))}
                 {windowed.length > 0 ? (
                   <>
-                    <div className="flex flex-col gap-1">
-                      <Field label="Documents from">
-                        <Input className="w-full" type="date" value={dates.date_from ?? ""} onChange={(e) => setDates({ ...dates, date_from: e.target.value || undefined })} />
-                      </Field>
-                      <Help>Replaces the default window for {windowed.join(", ")}</Help>
-                    </div>
+                    <Field label={`Documents from (replaces the default window for ${windowed.map(formatModuleName).join(", ")})`}>
+                      <Input className="w-full" type="date" value={dates.date_from ?? ""} onChange={(e) => setDates({ ...dates, date_from: e.target.value || undefined })} />
+                    </Field>
                     <Field label="Documents to">
                       <Input className="w-full" type="date" value={dates.date_to ?? ""} onChange={(e) => setDates({ ...dates, date_to: e.target.value || undefined })} />
                     </Field>
                   </>
                 ) : null}
-                <div className="flex flex-col gap-1">
-                  <Field label="Run label">
-                    <Input className="w-full" value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
-                  </Field>
-                  <Help>Optional; names the run in every list</Help>
-                </div>
+                <Field label="Run label (optional)">
+                  <Input className="w-full" value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
+                </Field>
               </div>
-              <Help>
+              <p className={clsx(note, "m-ink-2")}>
                 Organisational filters restrict every table that carries the field. General data without it is read in full so no record loses its context.
-              </Help>
+              </p>
               <label className="flex items-center gap-2 m-text-body m-ink">
                 <Checkbox aria-label="Skip records flagged for deletion" checked={excludeDeleted} onChange={(e) => setExcludeDeleted(e.target.checked)} />
                 Skip records flagged for deletion
               </label>
-              <Help>Faster reads. Leave off for a full quality score, because inactive data is itself a finding.</Help>
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => setConfirm(false)}>{`Extract ${objects_(chosen.length)}`}</Button>
-                <Button variant="secondary" onClick={() => setConfirm(true)}>Extract and analyse</Button>
-              </div>
-              <ConfirmDialog
-                open={confirm !== null}
-                onOpenChange={(o) => { if (!o) setConfirm(null); }}
-                title={`Extract ${objects_(chosen.length)} from ${system ? `${system.name} (${environmentLabel(system.environment)})` : "this system"}${confirm ? " and analyse" : ""}`}
-                body={`${chosen.map((o) => formatModuleName(o.object)).join(", ")}. ${scopeSentence} Only these are read, into a new run. Read-only: Meridian never writes to SAP.`}
-                confirmLabel={confirm ? "Extract and analyse" : "Extract now"}
-                cancelLabel="Keep scope"
-                pending={download.isPending}
-                onConfirm={() => download.mutate(confirm === true)}
-              />
+              <p className={clsx(note, "m-ink-2")}>
+                Faster reads. Leave off for a full quality score, because inactive data is itself a finding.
+              </p>
+              {confirm === null ? (
+                <div className="flex gap-2">
+                  <Button onClick={() => setConfirm(true)}>Extract and analyse</Button>
+                  <Button variant="secondary" onClick={() => setConfirm(false)}>{`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"} only`}</Button>
+                </div>
+              ) : (
+                <Notice
+                  tone="warning"
+                  title={`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"} from ${system ? `${system.name} (${environmentLabel(system.environment)})` : "this system"}${confirm ? " and analyse" : ""}?`}
+                  action={<>
+                    <Button onClick={() => download.mutate(confirm)} pending={download.isPending}>{confirm ? "Start extract and analysis" : "Start extract"}</Button>
+                    <Button variant="ghost" onClick={() => setConfirm(null)}>Keep scope</Button>
+                  </>}
+                >
+                  {chosen.map((o) => formatModuleName(o.object)).join(", ")}. {scopeSentence} Only these are read, into a new run. Read-only: Meridian never writes to SAP.
+                </Notice>
+              )}
             </div>
-          ) : <p className="m-text-body m-ink-2">Select the objects to extract.</p>}
+          ) : <p className={clsx(note, "m-ink-2")}>Tick the objects to extract. Each extract becomes a new run you can analyse and compare.</p>}
         </div>
       )}
     </Card>

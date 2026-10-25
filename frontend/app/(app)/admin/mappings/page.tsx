@@ -82,7 +82,7 @@ export default function AdminMappingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Field mapping" meta="Imported files are matched on these customer columns" />
+      <PageHeader title="Field mapping" meta="Which column in your files holds each standard SAP field. Type your column header next to a field and save the row" />
       <Notice tone="info">A standard field with no customer column is skipped by every check that needs it.</Notice>
 
       <div className="flex gap-4">
@@ -98,7 +98,7 @@ export default function AdminMappingsPage() {
           options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]}
         />
         {object || search ? <Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear</Button> : null}
-        {write ? <Button variant="secondary" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button> : null}
+        {write ? <Button variant="ghost" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button> : null}
       </div>
 
       <ConfirmDialog
@@ -117,7 +117,7 @@ export default function AdminMappingsPage() {
           object || search ? (
             <EmptyState title="No standard field matches" detail="Clear the filter to see every field." action={<Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear filter</Button>} />
           ) : (
-            <EmptyState title="No field mappings" detail="Import a file to map its columns." action={<Button render={<Link href="/import">Import file</Link>} />} />
+            <EmptyState title="No field mappings" detail="Mappings are created the first time a file is imported. Import one to start." action={<Button render={<Link href="/import">Import file</Link>} />} />
           )
         ) : (
           <section aria-label="Field mappings">

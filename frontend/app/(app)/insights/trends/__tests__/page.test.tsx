@@ -72,6 +72,11 @@ describe("TrendsPage", () => {
     expect(rows[0]).toHaveTextContent("+10");
     expect(rows[0]).toHaveTextContent("900");
     expect(rows[1]).toHaveTextContent("first run");
+    // Each run's counts open that run's failing records in Fix work.
+    expect(screen.getByRole("link", { name: "Open the 900 failing records of run v2" })).toHaveAttribute("href", "/fix?run=v2");
+    expect(screen.getByRole("link", { name: "Open the critical failing records of run v2" })).toHaveAttribute("href", "/fix?run=v2&sev=critical");
+    expect(screen.getByRole("link", { name: "Open the high failing records of run v1" })).toHaveAttribute("href", "/fix?run=v1&sev=high");
+    expect(screen.queryByRole("link", { name: "Open the critical failing records of run v1" })).toBeNull();
   });
 
   it("shows the empty state", async () => {
@@ -94,7 +99,7 @@ describe("TrendsPage", () => {
     expect(screen.queryByRole("combobox", { name: "System" })).toBeNull();
     // The ledger's Change column says what it is measured against.
     expect(screen.getByRole("button", { name: "About Previous run" })).toBeInTheDocument();
-    expect(screen.getByText("Ranked by impact on the score, against the run before")).toBeInTheDocument();
+    expect(screen.getByText("Ranked by the change in failing records since the run before")).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("combobox", { name: "Window" }));
     const option = await screen.findByRole("option", { name: "Last 6 runs" });
     fireEvent.mouseMove(option);

@@ -46,6 +46,12 @@ def seeded():
             INSERT INTO cleaning_queue (id, tenant_id, object_type, status, confidence, record_key, version_id, merge_preview)
             VALUES (gen_random_uuid(), :t, 'material_master', 'detected', 98, 'MAT1|MAT1_dup', :v,
                     CAST('{"MARA.MAKTX": {"a": "Bolt", "b": "Bolt", "survivor": "Bolt"}}' AS jsonb))"""), {"t": tid, "v": vid})
+        # Two review pairs as the match engine queues them: no run, no value, no preview, 0..1 confidence.
+        for a, conf in (("BP1", 0.91), ("BP2", 0.7)):
+            c.execute(text("""
+                INSERT INTO cleaning_queue (id, tenant_id, object_type, record_key, status, confidence, priority)
+                VALUES (gen_random_uuid(), :t, 'business_partner', :rk, 'detected', :conf, 2)"""),
+                {"t": tid, "rk": f"{a}|{a}x", "conf": conf})
         for i in range(3):
             c.execute(text("""INSERT INTO dedup_candidates (id, tenant_id, object_type, record_key_a, record_key_b, match_score,
                                                             match_method, status)
@@ -83,9 +89,11 @@ async def test_groups_cover_proposals_without_a_batch(seeded, monkeypatch):
         r = await client.get("/api/v1/cleaning/queue/groups", headers=HEADERS)
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["records"] == 7 and body["runs"] == 1  # the approved item is not open work
+    assert body["records"] == 9 and body["runs"] == 1  # the approved item is not open work
     by_kind = {g["kind"]: g for g in body["groups"]}
-    assert set(by_kind) == {"MARA.MEINS", "MARA.MATKL", "duplicate"}
+    assert set(by_kind) == {"MARA.MEINS", "MARA.MATKL", "duplicate", "match"}
+    # The match engine's pairs carry no run: they are listed, not dropped.
+    assert (by_kind["match"]["version_id"], by_kind["match"]["records"], by_kind["match"]["confident"]) == (None, 2, 1)
     meins = by_kind["MARA.MEINS"]
     assert (meins["version_id"], meins["records"], meins["confident"], meins["run_label"]) == (vid, 5, 3, "mm_run")
     assert meins["avg_confidence"] == pytest.approx(0.76)  # read as 0..1 though stored 0..100
@@ -147,3 +155,16 @@ async def test_dedup_candidates_come_a_page_at_a_time(seeded, monkeypatch):
     body = r.json()
     assert body["total"] == 3
     assert [i["record_key_a"] for i in body["items"]] == ["A2"]
+
+
+@pytest.mark.anyio
+async def test_match_pairs_with_no_run_can_be_listed_and_accepted(seeded, monkeypatch):
+    tid, _ = seeded
+    _as(monkeypatch, tid)
+    async with await _client() as client:
+        r = await client.get("/api/v1/cleaning/queue", params={"kind": "match"}, headers=HEADERS)
+        assert sorted(i["record_key"] for i in r.json()["items"]) == ["BP1|BP1x", "BP2|BP2x"]
+        ok = await client.post("/api/v1/cleaning/bulk-approve", headers=HEADERS,
+                               json={"kind": "match", "min_confidence": 0.85, "max_count": 5000})
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["approved_count"] == 1

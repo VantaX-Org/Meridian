@@ -51,6 +51,9 @@ describe("ReadinessPage", () => {
     expect(await screen.findByRole("button", { name: "Material master Wave 2: at-risk" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Records blocked" })).toBeInTheDocument();
     expect(screen.getByText("At risk")).toBeInTheDocument();
+    // The object opens its records in Fix work; the blocking counts open its blocking rules (Fix work has no blocking filter).
+    expect(screen.getByRole("link", { name: "Open the open records of material master" })).toHaveAttribute("href", "/fix?run=v1&module=material_master");
+    expect(screen.getByRole("link", { name: "Open the 1 blocking rule of Material master" })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules&blocking=true");
   });
 
   it("shows a loading skeleton while the request is in flight", () => {

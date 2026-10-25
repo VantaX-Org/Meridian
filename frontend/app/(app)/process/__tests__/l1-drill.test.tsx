@@ -251,8 +251,11 @@ describe("process L1 drill", () => {
     vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
       { ...ROW, coverage: "reference", reason: "No PTP tables on this system.", last_run: null }]);
     renderWithQuery(<ProcessL1Page />);
-    expect(await screen.findByText("Reference, not discovered")).toBeTruthy();
+    expect(await screen.findByText("Reference only, not discovered")).toBeTruthy();
     expect(screen.getAllByText("No PTP tables on this system.").length).toBeGreaterThan(0);
+    // The empty tab offers the way out: the reference tab.
+    fireEvent.click(screen.getByRole("button", { name: "Open the reference" }));
+    expect(lastReplace().get("tab")).toBe("reference");
   });
 
   it("shows an error state when the DFG fails", async () => {

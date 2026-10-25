@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, IconMore, toast } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantsPicker, scopeLabel, type GrantRowView } from "@/components/admin/grants-picker";
 import { InviteForm } from "@/components/admin/invite-form";
@@ -36,7 +36,7 @@ export default function AdminRolesPage() {
   if (!can("manage_users")) {
     return (
       <div>
-        <EmptyState title="Managing users needs an administrator" detail="Ask an administrator to change roles or grants." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
+        <EmptyState title="Only administrators manage roles" detail="Ask an administrator to change roles or what people can reach." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
   }
@@ -44,8 +44,8 @@ export default function AdminRolesPage() {
   const custom = roles.filter((r) => !r.built_in).length;
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Roles and access" meta={`${roles.length} roles, ${custom} custom`} />
-      <Notice tone="info">Built-in roles are read-only, clone one to change it. Grant a role at a system or module to scope it, so people get the least access that lets them work.</Notice>
+      <PageHeader title="Roles and access" meta={`${rolesQ.isLoading ? "" : `${roles.length} roles, ${custom} custom. `}Decide what each role may do and which systems or objects each person reaches`} />
+      <Notice tone="info">Built-in roles cannot be changed: clone one to make your own. Give a role for one system or object only, so people get just the access their work needs.</Notice>
       <Tabs
         value={tab} onValueChange={setTab}
         items={[
@@ -342,7 +342,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       </Dialog>
       <Dialog open={!!declining} onOpenChange={(o) => { if (!o) setDeclining(null); }} title="Decline request">
         <div className="flex flex-col gap-3">
-          <Field label="Reason"><textarea className="m-input [height:auto] [padding:6px_10px]" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} /></Field>
+          <Field label="Reason"><Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} /></Field>
           <div className="flex gap-2">
             <Button disabled={!reason.trim() || decide.isPending} onClick={() => declining && decide.mutate({ id: declining.id, body: { decision: "declined", reason } })}>Decline request</Button>
             <Button variant="secondary" onClick={() => setDeclining(null)}>Close</Button>

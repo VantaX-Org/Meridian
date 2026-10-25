@@ -37,7 +37,7 @@ describe("InboxPage counts", () => {
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 41191, backlog_by_owner: [] } as never);
     renderWithQuery(<InboxPage />);
-    expect(await screen.findByText("1 open, 0 overdue")).toBeTruthy();
+    expect(await screen.findByText(/^1 open, 0 overdue\. Fixes and matches waiting for a steward/)).toBeTruthy();
     expect(await screen.findByText("Who holds the work across all queues")).toBeTruthy();
     expect(screen.getByText("41,191 open across all queues")).toBeTruthy();
   });
@@ -155,7 +155,7 @@ describe("InboxPage workbench", () => {
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({} as never);
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({} as never);
     renderWithQuery(<InboxPage />);
-    await screen.findByText("One open issue per failing SAP record, closed when the record passes");
+    await screen.findByText(/Each row is one SAP record that fails a rule/);
     fireEvent.keyDown(window, { key: "r" });
     fireEvent.keyDown(window, { key: "Enter" });
     expect(resolve).not.toHaveBeenCalled();
@@ -203,7 +203,7 @@ describe("InboxPage workbench", () => {
     renderWithQuery(<InboxPage />);
     await waitFor(() => expect(screen.getByRole("list", { name: "Tasks" }).querySelectorAll("li")).toHaveLength(1));
     expect(screen.getByRole("region", { name: "Selected item" })).toHaveTextContent("rec-a");
-    expect(screen.getByText("Tasks held by ann@acme.test only")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove filter Owner" })).toBeInTheDocument();
   });
 
   it("offers Load more when the queue holds more than the newest page", async () => {
@@ -238,5 +238,63 @@ describe("InboxPage workbench", () => {
     expect(detail).toHaveTextContent("Critical");
     expect(detail).toHaveTextContent("over");
     expect(within(detail).getByRole("button", { name: "Resolve" })).toBeInTheDocument();
+  });
+});
+
+describe("InboxPage urgency and stacked filters", () => {
+  const HOUR = 3_600_000;
+  const mount = () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    const soon = new Date(Date.now() + 5 * HOUR).toISOString();
+    const later = new Date(Date.now() + 72 * HOUR).toISOString();
+    const past = new Date(Date.now() - 3 * HOUR).toISOString();
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [
+        task("late", "material_master", { due_at: past, assigned_to: "me" }),
+        task("soon", "business_partner", { due_at: soon, priority: 2 }),
+        task("calm", "fi_gl", { due_at: later, assigned_to: "me" }),
+      ] : [],
+      total: p?.status === "open" ? 3 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    vi.spyOn(users, "getUsers").mockResolvedValue({ users: [] } as never);
+    vi.spyOn(users, "getAssignableUsers").mockResolvedValue([{ id: "u2", name: "Sam Steward", email: "sam@example.com", role: "steward" }]);
+    renderWithQuery(<InboxPage />);
+  };
+
+  it("colours overdue red and due within 24 hours amber, in plain words", async () => {
+    mount();
+    const list = await screen.findByRole("list", { name: "Tasks" });
+    expect(within(list).getByText("3h overdue")).toBeInTheDocument();
+    expect(within(list).getByText("Due in 5h")).toBeInTheDocument();
+    expect(within(list).getByText("Due in 3d")).toBeInTheDocument();
+  });
+
+  it("stacks who and when, and the pill counts follow the other row", async () => {
+    mount();
+    const who = await screen.findByRole("group", { name: "Who" });
+    const when = screen.getByRole("group", { name: "When" });
+    expect(await within(who).findByRole("button", { name: "Mine (2)" })).toBeInTheDocument();
+    expect(within(when).getByRole("button", { name: "Overdue (1)" })).toBeInTheDocument();
+    expect(within(when).getByRole("button", { name: "Due in 24 hours (1)" })).toBeInTheDocument();
+    // Picking "Mine" narrows the urgency counts to my tasks: one of mine is overdue, none is due soon.
+    fireEvent.click(within(who).getByRole("button", { name: "Mine (2)" }));
+    expect(nav.replace).toHaveBeenCalled();
+  });
+
+  it("claims or reassigns every ticked task from the bulk bar", async () => {
+    mount();
+    const bulk = vi.spyOn(triage, "bulkTriage").mockResolvedValue({ action: "reassign", updated: 3, sla: {} });
+    const assign = vi.spyOn(stewardship, "assignItem").mockResolvedValue({ id: "x", status: "in_progress" });
+    fireEvent.click(await screen.findByLabelText("Select all 3"));
+    const bar = await screen.findByTestId("inbox-bulk");
+    expect(bar).toHaveTextContent("3 selected");
+    fireEvent.click(within(bar).getByRole("button", { name: "Claim" }));
+    await waitFor(() => expect(assign).toHaveBeenCalledTimes(3));
+    expect(assign.mock.calls.every((c) => c[1] === "me")).toBe(true);
+    expect(await within(bar).findByLabelText("Reassign to")).toBeInTheDocument();
+    expect(bulk).not.toHaveBeenCalled();
   });
 });

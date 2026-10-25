@@ -21,7 +21,7 @@ import {
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
 import { getMiningDuplicates } from "@/lib/api/mining";
 import { previousInLineage } from "@/lib/runs";
-import { apiErrorState } from "@/lib/error";
+import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { plural } from "@/lib/format";
 import { Skeleton } from "@/design";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
@@ -29,6 +29,7 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
+import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { MinedAnomalies, MinedDuplicates, MinedRelationships } from "./mined-tabs";
 
 export default function DuplicatesPage() {
@@ -125,12 +126,21 @@ export default function DuplicatesPage() {
 
   const canPropose = masterId !== null && pairs.length > 0;
 
+  const [proposing, setProposing] = useState(false);
   async function handleCreateMergeProposals() {
     if (pairs.length === 0) return;
-    const result = await createMergeProposals(pairs);
-    toast(`Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`, {
-      action: { label: "Review in the inbox", onClick: () => router.push("/inbox?tab=queue") },
-    });
+    setProposing(true);
+    try {
+      const result = await createMergeProposals(pairs);
+      toast(`Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`, {
+        action: { label: "Review in the inbox", onClick: () => router.push("/inbox") },
+      });
+    } catch (e) {
+      // A failed proposal says so; it never fails silently as an unhandled rejection.
+      toast.error(apiErrorMessage(e));
+    } finally {
+      setProposing(false);
+    }
   }
 
   const state: "loading" | "empty" | "error" | undefined =
@@ -140,13 +150,16 @@ export default function DuplicatesPage() {
   return (
     <InsightFrame
       title="Duplicates"
+      purpose={PAGE_PURPOSE["/insights/duplicates"]}
       scope
       run={run || undefined}
       insight={{
         situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${plural(nodes.length, "record is", "records are")} in this cluster` },
         changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: picked && !cluster.isLoading ? `${plural(edges.length, "matched pair links", "matched pairs link")} these records` : "A cluster shows which records would merge into one" },
-        next: { sentence: nodes.length ? "Choose the surviving record, then propose the merge" : "Pick an object and a record" },
+        next: nodes.length
+          ? { sentence: "Choose the record to keep, then propose the merge" }
+          : { sentence: "Not sure which record to check? Start from the likely duplicate pairs", action: { label: "Open likely duplicates", onClick: () => setTab("pairs") } },
         loading: picked && cluster.isLoading,
       }}
     >
@@ -156,7 +169,7 @@ export default function DuplicatesPage() {
         items={[
           { value: "clusters", label: "Clusters", content: (
             <div className="flex flex-col gap-4">
-      <Card title="Find a cluster">
+      <Card title="Find a record's duplicates" meta="Choose the object, then enter the record's key, for example a material or vendor number">
         <div className="flex gap-3 items-end">
           <Field label="Object">
             <Select
@@ -169,9 +182,9 @@ export default function DuplicatesPage() {
               placeholder="Choose an object"
             />
           </Field>
-          <Field label="Record ID">
+          <Field label="Record key">
             <Input
-              aria-label="Record ID"
+              aria-label="Record key"
               value={recordId}
               onChange={(e) => {
                 setRecordId(e.target.value);
@@ -181,32 +194,37 @@ export default function DuplicatesPage() {
           </Field>
         </div>
       </Card>
-      {state === "loading" ? (
+      {!run && !scope.resolving ? (
+        <EmptyState title="No finished run yet" detail="Duplicates are found in the records of a finished run." ghost="grid" action={<Button render={<Link href="/runs">Open runs</Link>}/>} />
+      ) : objects.isError ? (
+        <ErrorState {...apiErrorState(objects.error)} onRetry={() => void objects.refetch()} />
+      ) : state === "loading" ? (
         <div aria-busy="true"><CardSkeleton height={320} /></div>
       ) : state === "error" ? (
         <ErrorState {...apiErrorState(cluster.error)} onRetry={() => void cluster.refetch()} />
       ) : state === "empty" ? (
         picked ? (
-          <EmptyState title="No duplicate clusters" detail="This record has no matches." ghost="grid" action={<Button render={<Link href="/mdm/match-rules">Match rules</Link>} />} />
+          <EmptyState title="No duplicates for this record" detail="No other record matches it under the current match rules. Check the key, or loosen the match rules." ghost="grid" action={<Button variant="secondary" render={<Link href="/mdm/match-rules">Open match rules</Link>} />} />
         ) : (
-          <EmptyState title="Pick an object and a record to see its duplicate cluster" detail="Records with matches show their cluster here." ghost="grid" action={<Button render={<Link href="/objects">Open objects</Link>} />} />
+          <EmptyState title="Choose an object and a record" detail="Its duplicates show here as a cluster. To browse candidates instead, open the likely duplicate pairs." ghost="grid" action={<Button variant="secondary" onClick={() => setTab("pairs")}>Open likely duplicates</Button>} />
         )
       ) : (
-        <Card title="Cluster">
+        <Card title="Duplicate cluster" meta="Each dot is a record; a line means two records match. Select the record to keep.">
           <div className="flex flex-col gap-4">
             <Graph nodes={nodes} edges={edges} onNodeClick={(id) => setMasterId(id)} />
             <ClusterPanel nodes={nodes} masterId={masterId} onPick={setMasterId} mergeImpactCount={mergeImpactCount} />
             <div>
-              <Button onClick={handleCreateMergeProposals} disabled={!canPropose}>
+              <Button onClick={() => void handleCreateMergeProposals()} disabled={!canPropose} pending={proposing}>
                 Create merge proposal
               </Button>
+              {!masterId ? <p className="mt-1 m-text-meta m-ink-3">Choose the record to keep first</p> : null}
             </div>
           </div>
         </Card>
       )}
             </div>
           ) },
-          { value: "pairs", label: "Mined duplicates", content: <MinedDuplicates run={run} /> },
+          { value: "pairs", label: "Likely duplicates", content: <MinedDuplicates run={run} /> },
           { value: "anomalies", label: "Anomalies", content: <MinedAnomalies run={run} /> },
           { value: "relationships", label: "Relationships", content: <MinedRelationships run={run} /> },
         ]}
@@ -229,7 +247,7 @@ function ClusterPanel({
   return (
     <fieldset className="flex flex-col gap-2 p-3 rounded border [border-color:var(--m-line)]">
       <legend className="m-text-meta m-ink-2">
-        Pick the surviving (master) record
+        Choose the record to keep (the master)
       </legend>
       {nodes.map((node) => (
         <label key={node.id} className="flex items-center gap-2 m-text-body">
@@ -244,7 +262,7 @@ function ClusterPanel({
         </label>
       ))}
       <p className="m-text-meta m-ink-3">
-        Merge impact: {plural(mergeImpactCount, "document")} would move
+        {plural(mergeImpactCount, "linked document")} would move to it
       </p>
     </fieldset>
   );

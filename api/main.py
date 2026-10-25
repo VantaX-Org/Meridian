@@ -28,6 +28,8 @@ from api.routes.runs import router as runs_router
 from api.routes.objects import router as objects_router
 from api.routes.object_records import router as object_records_router
 from api.routes.record_issues import router as record_issues_router
+from api.routes.work import router as work_router
+from api.routes.work_analytics import router as work_analytics_router
 from api.routes.triage import router as triage_router
 from api.routes.remediation import router as remediation_router
 from api.routes.rule_authoring import router as rule_authoring_router
@@ -303,6 +305,8 @@ app.include_router(migration_router)
 app.include_router(exceptions_router)
 app.include_router(source_design_router)
 app.include_router(record_issues_router)
+app.include_router(work_router)
+app.include_router(work_analytics_router)
 app.include_router(materials_router)
 app.include_router(runs_router)
 app.include_router(objects_router)

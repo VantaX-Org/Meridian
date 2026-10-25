@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as pairingApi from "@/lib/api/config-pairing";
 import * as migrationApi from "@/lib/api/migration";
+import * as systemsApi from "@/lib/api/connectivity";
 import type { WaveCockpit } from "@/types/api";
 import WaveCockpitPage from "../page";
 
@@ -112,19 +113,25 @@ describe("WaveCockpitPage empty states", () => {
 
   beforeEach(() => { allowed = true; vi.restoreAllMocks(); });
 
-  it("sends a wave with no modules to the waves list from the overview", async () => {
+  it("opens the wave editor from the overview when the wave has no objects", async () => {
     search = new URLSearchParams("tab=overview");
     vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(NO_MODULES);
+    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
+    const update = vi.spyOn(migrationApi, "updateWave").mockResolvedValue({ ...COCKPIT.wave, modules: ["fi_gl"] });
     renderWithQuery(<WaveCockpitPage />);
-    const empty = await emptyOf("No modules in this wave");
-    expect(within(empty).getByRole("link", { name: "Open waves" })).toHaveAttribute("href", "/migration");
+    const empty = await emptyOf("No objects in this wave");
+    fireEvent.click(within(empty).getByRole("button", { name: "Add objects" }));
+    fireEvent.change(await screen.findByLabelText("Objects"), { target: { value: "fi_gl" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save wave" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("w1", expect.objectContaining({ modules: ["fi_gl"] })));
   });
 
-  it("sends a wave with no modules to the waves list from the mapping tab", async () => {
+  it("sends a viewer without edit rights to the waves list from the mapping tab", async () => {
+    allowed = false;
     search = new URLSearchParams("tab=mapping");
     vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(NO_MODULES);
     renderWithQuery(<WaveCockpitPage />);
-    const empty = await emptyOf("No modules in this wave");
+    const empty = await emptyOf("No objects in this wave");
     expect(within(empty).getByRole("link", { name: "Open waves" })).toHaveAttribute("href", "/migration");
   });
 

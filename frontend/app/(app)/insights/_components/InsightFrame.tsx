@@ -28,6 +28,11 @@ export function useRunLabel(versionId?: string | null): string | undefined {
 
 export interface InsightFrameProps {
   title: string;
+  /**
+   * One plain sentence under the title: what the page shows and what to do with it ("Which checks cost the most, and
+   * where to start."). The scope line ("As of ...") and `meta` follow it on the next line.
+   */
+  purpose?: string;
   /** One line of context; with `scope` it follows the "As of" run line. */
   meta?: ReactNode;
   /**
@@ -100,7 +105,7 @@ function InsightRunScope({ present }: { present: boolean }) {
         hrefFor={(id) => hrefWithRun(pathname, search, id)}
       />
       {!present && canShowCurrent && explicit && (
-        <Link href={hrefWithRun(pathname, search, null)} className="m-ink-accent underline-offset-2 hover:underline">Back to current state</Link>
+        <Link href={hrefWithRun(pathname, search, null)} className="m-ink-accent underline underline-offset-2">Back to current state</Link>
       )}
     </span>
   );
@@ -139,7 +144,7 @@ function InsightScopeLine({ present }: { present: boolean }) {
 export { SLOW_LOAD_MESSAGE } from "@/design";
 
 export function InsightFrame({
-  title, meta, scope, actions, controls, toolbar, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
+  title, purpose, meta, scope, actions, controls, toolbar, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
 }: InsightFrameProps) {
   // A skeleton that never resolves becomes an error with Retry after the shared timeout (inside Async); the
   // header gives way with it.
@@ -165,17 +170,23 @@ export function InsightFrame({
       <InsightActions run={run} module={module} options={exportOptions} />
     </div>
   );
+  const line = scope ? (
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      <InsightScopeLine present={present} />
+      {meta != null && meta !== "" && <span>{meta}</span>}
+    </span>
+  ) : meta;
   return (
     // No padding of its own: the (app) layout's frame pads every page once, and a second padding doubled the gutter.
     <div className="flex w-full flex-col [gap:var(--m-section-gap)]">
       <PageHeader
         title={title}
-        meta={scope ? (
-          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-            <InsightScopeLine present={present} />
-            {meta != null && meta !== "" && <span>{meta}</span>}
-          </span>
-        ) : meta}
+        meta={purpose ? (
+          <>
+            <span data-testid="page-purpose" className="block m-text-body m-ink-2">{purpose}</span>
+            {line != null && line !== "" && <span className="mt-1 block">{line}</span>}
+          </>
+        ) : line}
         actions={actionBar}
         tabs={<InsightTabs />}
       />

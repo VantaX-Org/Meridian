@@ -11,7 +11,7 @@ import { ACTIVE_RUN, getCatalogue, getRun, startRuns } from "@/lib/api/process-d
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { BodySkeleton, ProcessFrame } from "../../_components/process-header";
+import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "../../_components/process-header";
 import { CoveragePill, RunStatusPill } from "../../_components/coverage-pill";
 import { fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, stageLabel } from "../../_components/shared";
 
@@ -63,7 +63,7 @@ export default function ProcessRunPage() {
   const runName = run.data ? catalogue.data?.find((c) => c.l1 === run.data!.l1)?.name ?? run.data.l1 : null;
   useBreadcrumbTitle(runName ? { label: `${runName} discovery run`, parent: { label: "Discovery runs", href: "/process/runs" } } : null);
   if (run.isError) return <ProcessFrame><ErrorState {...apiErrorState(run.error)} onRetry={() => run.refetch()} /></ProcessFrame>;
-  if (!run.data) return <ProcessFrame><PageHeader title="Discovery run" /><BodySkeleton rows={4} /></ProcessFrame>;
+  if (!run.data) return <ProcessFrame><PageHeader title="Discovery run" meta={processMeta(PROCESS_PURPOSE.run)} /><BodySkeleton rows={4} /></ProcessFrame>;
   const r = run.data;
   const name = catalogue.data?.find((c) => c.l1 === r.l1)?.name ?? r.l1;
   const job = jobs.find((j) => j.id === r.job_id);
@@ -78,23 +78,23 @@ export default function ProcessRunPage() {
   return (
     <ProcessFrame>
       <PageHeader title={name}
-        meta={<><Mono>{r.l1}</Mono> {active && stageLabel(job)
-          ? `${stageLabel(job)}, ${Math.round(job?.percent ?? 0)}%` : `started ${relativeTime(r.started_at)}`}</>}
+        meta={processMeta(PROCESS_PURPOSE.run, <><Mono>{r.l1}</Mono> {active && stageLabel(job)
+          ? `${stageLabel(job)}, ${Math.round(job?.percent ?? 0)}%` : `started ${relativeTime(r.started_at)}`}</>)}
         status={<><RunStatusPill status={r.status} />{r.coverage && <CoveragePill coverage={r.coverage} />}</>} />
       <InsightHeader
-        situation={{ sentence: `${name} ${r.mode === "incremental" ? "incremental" : "full"} run, ${active ? "in progress" : r.status}.`,
+        situation={{ sentence: `${name}, ${r.mode === "incremental" ? "incremental" : "full"} run, ${active ? "in progress" : r.status === "completed" ? "finished" : r.status}.`,
           tone: r.status === "failed" ? "no-go" : r.status === "completed" ? "go" : "neutral" }}
         changed={{ sentence: r.finished_at ? `Finished ${relativeTime(r.finished_at)}.` : `Started ${relativeTime(r.started_at)}.` }}
         why={r.status === "completed" && r.coverage !== "reference"
-          ? { sentence: `${fmtCount(s.cases)} cases, fitness ${fmtFitness(fitness)}, median ${fmtSeconds(s.throughput?.median_seconds)}.`,
+          ? { sentence: `${fmtCount(s.cases)} cases, ${fmtFitness(fitness)} fit with the SAP reference, a typical case takes ${fmtSeconds(s.throughput?.median_seconds)}.`,
               tone: fitnessTone(fitness) }
           : { sentence: r.status === "failed" ? "No model was produced." : "Figures appear once the run completes." }}
         next={r.status === "completed"
-          ? { sentence: `Read the as-is ${name} flow.`,
+          ? { sentence: `Read how ${name} really runs.`,
               action: { label: `Open ${name}`, href: l1Href(r.l1, r.system_id, r.coverage === "reference" ? undefined : r.id) } }
           : r.status === "failed"
             ? (canRun
-              ? { sentence: "Fix the cause, then run the process again.", action: { label: "Retry", onClick: () => retry.mutate() } }
+              ? { sentence: "Fix the cause, then run the process again.", action: { label: retry.isPending ? "Starting" : "Retry", onClick: () => { if (!retry.isPending) retry.mutate(); } } }
               : { sentence: "Ask a process analyst to run it again." })
             : { sentence: "Leave this page open or come back later; the run continues in the background." }}
       />

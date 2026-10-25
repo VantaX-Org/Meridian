@@ -48,6 +48,14 @@ export function yDomain(values: readonly number[], target?: number): [number, nu
   return [Math.min(min, Math.max(0, max - 20)), Math.max(max, Math.min(100, min + 20))];
 }
 
+/** A count axis: from 0 to the next round number above the largest value (1, 2 or 5 times a power of ten). */
+export function countDomain(values: readonly number[]): [number, number] {
+  const hi = Math.max(1, ...values);
+  const step = 10 ** Math.floor(Math.log10(hi));
+  const nice = [1, 2, 5, 10].map((m) => m * step).find((v) => v >= hi) ?? hi;
+  return [0, nice];
+}
+
 /**
  * A tick reads short: no year when every point shares one, minutes not seconds, no "#2" twin suffix. The tooltip
  * keeps the full label.
@@ -68,6 +76,7 @@ export function Line({
   annotations,
   series,
   xDomain,
+  counts = false,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
@@ -83,6 +92,8 @@ export function Line({
   series?: LineSeries[];
   /** Every x the axis must show, so sibling charts share one domain even where this series has no value. */
   xDomain?: { x: string | number; label?: string }[];
+  /** Counts, not scores: the y axis runs from 0 to a round number above the largest value. */
+  counts?: boolean;
 }) {
   const animate = draw && !reducedMotion();
   const [isolated, setIsolated] = useState<string | null>(null);
@@ -105,7 +116,8 @@ export function Line({
   const years = new Set(rows.map((r) => /\b(\d{4})\b/.exec(labelOf(r.x))?.[1]).filter(Boolean));
   const tickOf = (x: string | number) => tickText(labelOf(x), years.size === 1);
   const rightMargin = lastTickMargin(rows.length ? tickOf(rows[rows.length - 1].x) : undefined);
-  const domain = yDomain(rows.flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").map(([, v]) => Number(v))).filter(Number.isFinite), dqsThreshold);
+  const values = rows.flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").map(([, v]) => Number(v))).filter(Number.isFinite);
+  const domain = counts ? countDomain(values) : yDomain(values, dqsThreshold);
   const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
   return (
     <div role="img" aria-label={chartSummary(summaryData, label)}>

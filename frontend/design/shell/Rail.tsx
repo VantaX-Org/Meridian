@@ -12,31 +12,25 @@ import { useRole } from "../../hooks/use-role";
 import { personaForRole, type Persona } from "../../lib/persona";
 import { MeridianMark } from "../icons/Mark";
 import { IconChevronDown } from "../icons";
-import { activeHref, flattenNav, resolveNavHref, type NavGroup, type NavItem } from "../../lib/nav";
+import { activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
 import { Badge } from "../primitives/Badge";
 import { Skeleton } from "../primitives/Skeleton";
 
 /**
- * The index bar: the product's top row. The brand, the six places a person goes (Home, Objects, Fix, Inbox,
- * Runs, Insights, Systems) as one pill strip with live counts, a "More" disclosure holding every other
- * visible page grouped as the nav defines them, and the shell's controls on the right (search, jobs,
- * notifications, help, the user). It replaces the sidebar: there is no collapsed state and no flyout.
+ * The index bar: the product's top row. The brand, the four places everyone works from (Fix work, Objects,
+ * Progress, Inbox: lib/nav.ts's main group) as one pill strip with live counts, a "More" menu holding every
+ * other visible page under its section (Analysis, Master data, Rules, Data in, Admin), and the shell's controls
+ * on the right (search, jobs, notifications, help, the user). There is no sidebar, collapsed state or flyout.
  * Links never carry `?run=`: each section opens on its own latest run (lib/run-scope.ts).
- * The process persona's strip swaps Fix for Processes: its day is the catalogue, not the fix queue.
+ * The process persona's strip swaps Fix work for Processes (`railSplit`): its day is the catalogue, not the fix queue.
  */
 
-const PRIMARY = ["/home/lead", "/objects", "/fix", "/inbox", "/runs", "/insights", "/systems"] as const;
-const PRIMARY_PROCESS = ["/home/lead", "/objects", "/process", "/inbox", "/runs", "/insights", "/systems"] as const;
 /** The pill label where the nav label is too long for the strip. */
 const PILL_LABEL: Record<string, string> = { "/process": "Processes" };
-/** Items whose children are tabs of the item's own page, so the panel lists the item once and not its tabs. */
+/** Items whose children are tabs of the item's own page, so the More panel lists the item once and not its tabs. */
 const FOLDED = new Set(["/admin/settings"]);
 const MORE_PANEL_ID = "topnav-more";
 const ICON_SIZE = 16;
-
-export function primaryHrefs(persona: Persona): readonly string[] {
-  return persona === "process" ? PRIMARY_PROCESS : PRIMARY;
-}
 
 /** Worst system health across all connected systems, for the Systems item's pip. Null when there are no systems at all. */
 function worstHealth(systems: readonly { health_status: string }[] | undefined): "critical" | "high" | "pass" | null {
@@ -52,22 +46,39 @@ const HEALTH_PIP_COLOR: Record<"critical" | "high" | "pass", string> = {
   pass: "var(--m-pass)",
 };
 
+type MoreGroup = { group: string; items: NavItem[] };
+
 /**
- * The "More" panel's groups: every visible item that is not a primary pill, with its children, under its nav
- * group. A folded item (Settings) stands for its tabs; an href is listed once however the nav reaches it.
+ * The pills and the More panel for one persona: main's split (lib/nav.ts `splitNav`), then two adjustments.
+ * A folded item (Settings) stands for its tabs, so its children leave the panel. The process persona's day is
+ * the catalogue, not the fix queue: its strip swaps Fix work for As-is processes (labelled Processes), still
+ * four pills, and Fix work moves to the top of More.
  */
-export function moreGroups(groups: readonly NavGroup[], primaryList: readonly string[] = PRIMARY): { group: string; items: NavItem[] }[] {
-  const primary = new Set<string>(primaryList);
-  const seen = new Set<string>();
-  const children = (i: NavItem) => (FOLDED.has(i.href) ? [] : [...(i.children ?? [])]);
-  return groups
-    .map((g) => ({
-      group: g.group,
-      items: g.items
-        .flatMap((i) => (primary.has(i.href) ? children(i) : [i, ...children(i)]))
-        .filter((i) => !seen.has(i.href) && seen.add(i.href)),
-    }))
-    .filter((g) => g.items.length > 0);
+export function railSplit(
+  groups: readonly NavGroup[],
+  persona: Persona,
+  resolve: (href: string) => string = (h) => h,
+): { main: NavItem[]; more: MoreGroup[] } {
+  const split = splitNav(groups, resolve);
+  const folded = new Set(
+    flattenNav(groups.flatMap((g) => g.items))
+      .filter((i) => FOLDED.has(i.href))
+      .flatMap((i) => (i.children ?? []).map((c) => c.href)),
+  );
+  let main = split.main;
+  let more: MoreGroup[] = split.more.map((g) => ({ group: g.group, items: g.items.filter((i) => !folded.has(i.href)) }));
+  const processItem = persona === "process" ? groups.flatMap((g) => g.items).find((i) => i.href === "/process") : undefined;
+  if (processItem) {
+    const fixIndex = main.findIndex((i) => i.href === "/fix");
+    const fixItem = fixIndex >= 0 ? main[fixIndex] : undefined;
+    main = fixItem ? main.map((i, n) => (n === fixIndex ? processItem : i)) : [processItem, ...main];
+    more = more.map((g) => ({ group: g.group, items: g.items.filter((i) => i.href !== "/process") }));
+    if (fixItem) {
+      const [first, ...rest] = more;
+      more = first ? [{ group: first.group, items: [fixItem, ...first.items] }, ...rest] : [{ group: "Work", items: [fixItem] }];
+    }
+  }
+  return { main, more: more.filter((g) => g.items.length > 0) };
 }
 
 export interface RailProps {
@@ -100,13 +111,10 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
     [pathname, searchParams, flatItems],
   );
 
-  const topLevel = useMemo(() => groups.flatMap((g) => g.items), [groups]);
-  const primary = primaryHrefs(personaForRole(role));
-  const primaryItems = useMemo(
-    () => primary.map((href) => topLevel.find((i) => i.href === href)).filter((i): i is NavItem => !!i),
-    [topLevel, primary],
+  const { main: primaryItems, more } = useMemo(
+    () => railSplit(groups, personaForRole(role), (href) => resolveNavHref(href, role)),
+    [groups, role],
   );
-  const more = useMemo(() => moreGroups(groups, primary), [groups, primary]);
   const moreActive = more.some((g) => g.items.some((i) => i.href === activeItemHref));
 
   // The panel closes on Escape, on a click outside it and when focus leaves it.
@@ -131,10 +139,24 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
 
   const isActive = (item: NavItem) => item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref);
 
+  const hasPip = (item: NavItem) => item.href === "/systems" && healthTone !== null;
+  const renderIcon = (item: NavItem) => (
+    <span className="relative inline-flex shrink-0">
+      <item.icon size={ICON_SIZE} />
+      {hasPip(item) && healthTone && (
+        <span
+          aria-hidden="true"
+          className="absolute rounded-full"
+          style={{ width: 6, height: 6, top: -2, right: -2, background: HEALTH_PIP_COLOR[healthTone], border: "1.5px solid var(--m-sheet)" }}
+        />
+      )}
+    </span>
+  );
+
   const renderPill = (item: NavItem) => {
     const active = isActive(item);
     const count = item.badgeKey ? counts?.[item.badgeKey] ?? 0 : 0;
-    const showPip = item.href === "/systems" && healthTone !== null;
+    const showPip = hasPip(item);
     return (
       <li key={item.href}>
         <Link
@@ -143,16 +165,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
           aria-label={showPip && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
           className="m-topnav-link"
         >
-          <span className="relative inline-flex shrink-0">
-            <item.icon size={ICON_SIZE} />
-            {showPip && healthTone && (
-              <span
-                aria-hidden="true"
-                className="absolute rounded-full"
-                style={{ width: 6, height: 6, top: -2, right: -2, background: HEALTH_PIP_COLOR[healthTone], border: "1.5px solid var(--m-sheet)" }}
-              />
-            )}
-          </span>
+          {renderIcon(item)}
           <span>{PILL_LABEL[item.href] ?? item.label}</span>
           {count > 0 && (
             <span key={count} className="m-motion-rise" data-severity={item.badgeKey === "fix" ? "critical" : undefined}>
@@ -212,10 +225,11 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
                             key={item.href}
                             href={resolveNavHref(item.href, role)}
                             aria-current={item.href === activeItemHref ? "page" : undefined}
+                            aria-label={hasPip(item) && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
                             className="m-topnav-item"
                             onClick={() => setMoreOpen(false)}
                           >
-                            <item.icon size={ICON_SIZE} />
+                            {renderIcon(item)}
                             <span className="truncate">{item.label}</span>
                           </Link>
                         ))}
