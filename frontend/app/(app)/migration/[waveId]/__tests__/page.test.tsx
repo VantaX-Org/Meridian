@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as pairingApi from "@/lib/api/config-pairing";
 import * as migrationApi from "@/lib/api/migration";
 import * as systemsApi from "@/lib/api/connectivity";
+import * as triageApi from "@/lib/api/triage";
 import type { WaveCockpit } from "@/types/api";
 import WaveCockpitPage from "../page";
 
@@ -45,6 +46,19 @@ describe("WaveCockpitPage", () => {
     expect(screen.getByText("97.0%")).toBeInTheDocument();
     expect(screen.getByText("BP supplier")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sign off" })).not.toBeInTheDocument();
+  });
+
+  it("shows the sign-off time in the tenant's time zone", async () => {
+    search = new URLSearchParams();
+    vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({
+      timezone: "Asia/Tokyo", work_days: [1, 2, 3, 4, 5], work_start: "08:00:00", work_end: "17:00:00",
+      holidays: [], fallback_user_id: null,
+    });
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue({
+      ...COCKPIT, wave: { ...COCKPIT.wave, signed_off_by: "u1", signed_off_at: "2026-10-10T22:30:00Z" },
+    });
+    renderWithQuery(<WaveCockpitPage />);
+    expect(await screen.findByText(/signed off 11 Oct 2026, 07:30 GMT\+9/)).toBeInTheDocument();
   });
 
   it("drafts a fix batch from a blocker", async () => {

@@ -9,7 +9,7 @@ import { homeHrefForRole } from "@/lib/persona";
 
 export default function HomeRedirect() {
   const router = useRouter();
-  const { role, loading } = useRole();
-  useEffect(() => { if (!loading) router.replace(homeHrefForRole(role)); }, [role, loading, router]);
+  const { role, can, loading } = useRole();
+  useEffect(() => { if (!loading) router.replace(homeHrefForRole(role, can)); }, [role, can, loading, router]);
   return <div aria-busy="true" className="flex flex-col gap-4"><Skeleton height={56} /><Skeleton height={240} /></div>;
 }

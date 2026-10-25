@@ -189,6 +189,8 @@ def test_rule_update_and_billing_routes(engines, monkeypatch):
             assert (await c.get(billing, headers={"X-User-Role": "analyst"})).status_code == 403
             r = await c.get(billing, headers={"X-User-Role": "admin"})
             assert r.status_code == 200 and r.json()["period"] == "2026-09"
+            assert r.json()["currency"] == "ZAR"  # the price list's currency, on computed and stored reads
+            assert (await c.get(billing, headers={"X-User-Role": "admin"})).json()["currency"] == "ZAR"
         await aeng.dispose()
 
     asyncio.run(scenario())

@@ -2,7 +2,7 @@
 
 GET  /api/v1/stewardship                — list queue items with filters
 GET  /api/v1/stewardship/{id}           — single queue item with source context
-PUT  /api/v1/stewardship/{id}/assign    — assign to a steward
+PUT  /api/v1/stewardship/{id}/assign    — assign to a steward (user_id null releases it)
 PUT  /api/v1/stewardship/{id}/resolve   — resolve (approve/reject) an item
 PUT  /api/v1/stewardship/{id}/escalate  — escalate an item
 POST /api/v1/stewardship/bulk-approve   — bulk approve high-confidence items
@@ -68,7 +68,8 @@ class QueueListResponse(BaseModel):
 
 
 class AssignBody(BaseModel):
-    user_id: str
+    # Required, but may be null: an explicit null releases the task back to the unassigned pool.
+    user_id: Optional[str] = Field(..., description="steward user id, or null to release")
 
 
 class ResolveBody(BaseModel):
@@ -405,6 +406,9 @@ async def assign_queue_item(
 ):
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
+    if body.user_id is None:
+        return await _release_queue_item(db, str(tenant.id), item_id)
+
     result = await db.execute(
         text("UPDATE stewardship_queue SET assigned_to = :uid, status = 'in_progress', updated_at = now(), assigned_at = now(), assigned_team_id = NULL, assigned_by_rule = NULL WHERE id = :id AND tenant_id = :tid RETURNING id"),
         {"uid": body.user_id, "id": item_id, "tid": str(tenant.id)},
@@ -417,6 +421,28 @@ async def assign_queue_item(
     await db.run_sync(lambda s: apply_sla(s, tid, "queue", [item_id]))
     await db.commit()
     return {"id": item_id, "status": "in_progress", "assigned_to": body.user_id}
+
+
+async def _release_queue_item(db: AsyncSession, tid: str, item_id: str) -> dict:
+    """Clear owner and team; a claimed (in_progress) task goes back to open. assigned_at stays set so
+    the auto-assign sweep, which only routes never-assigned items, does not hand it straight back.
+    The SLA clock keeps running: the task is still due, it only lost its owner."""
+    row = (await db.execute(
+        text("""
+            UPDATE stewardship_queue SET assigned_to = NULL, assigned_team_id = NULL, assigned_by_rule = NULL,
+                   status = CASE WHEN status = 'in_progress' THEN 'open' ELSE status END, updated_at = now()
+             WHERE id = :id AND tenant_id = :tid AND status NOT IN ('resolved', 'accepted')
+            RETURNING status"""),
+        {"id": item_id, "tid": tid},
+    )).fetchone()
+    if not row:
+        exists = (await db.execute(text("SELECT 1 FROM stewardship_queue WHERE id = :id AND tenant_id = :tid"),
+                                   {"id": item_id, "tid": tid})).scalar()
+        if not exists:
+            raise HTTPException(status_code=404, detail="Queue item not found")
+        raise HTTPException(status_code=409, detail="A closed task cannot be released")
+    await db.commit()
+    return {"id": item_id, "status": row[0], "assigned_to": None}
 
 
 # ── PUT /stewardship/{id}/resolve ────────────────────────────────────────────

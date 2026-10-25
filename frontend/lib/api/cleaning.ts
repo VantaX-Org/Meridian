@@ -162,11 +162,13 @@ export async function getCleaningAudit(params: {
 
 // ── Dedup ────────────────────────────────────────────────────────────────────
 
-/** Candidate pairs across every object type (the matcher keys them by SAP module); `match_score` is 0..100. */
+/** Candidate pairs across every object type (the matcher keys them by SAP module); `match_score` is 0..100.
+ * `record` keeps one record's pairs: either side's key, whole or as the bare value of its first part. */
 export async function getDedupCandidates(params: {
   object_type?: string;
   min_score?: number;
   status?: string;
+  record?: string;
   page?: number;
   per_page?: number;
 } = {}): Promise<{ items: DedupCandidate[]; total: number }> {

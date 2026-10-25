@@ -84,6 +84,8 @@ export interface TriageSettings {
 export type BulkAction =
   | "assign"
   | "reassign"
+  /** Back to unassigned: owner and team cleared, a claimed task reopens. */
+  | "release"
   | "snooze"
   | "unsnooze"
   | "priority"

@@ -138,9 +138,12 @@ export async function getExceptionMetrics(
   return data;
 }
 
+/** A billing period with the ISO 4217 currency its amounts are in (the price list's, not converted). */
+export type ExceptionBillingPeriod = ExceptionBilling & { currency: string };
+
 export async function getExceptionBilling(
   period: string
-): Promise<ExceptionBilling> {
+): Promise<ExceptionBillingPeriod> {
   const { data } = await apiClient.get("/api/v1/exceptions/billing", {
     params: { period },
   });

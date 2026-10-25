@@ -144,7 +144,8 @@ class SettingsIn(BaseModel):
 class BulkIn(BaseModel):
     kind: Kind
     ids: list[uuid.UUID] = Field(min_length=1, max_length=5000)
-    action: Literal["assign", "reassign", "snooze", "unsnooze", "priority", "acknowledge", "wait", "resume"]
+    action: Literal["assign", "reassign", "release", "snooze", "unsnooze", "priority", "acknowledge", "wait",
+                    "resume"]
     user_id: Optional[uuid.UUID] = None
     team_id: Optional[uuid.UUID] = None
     reason: Optional[str] = Field(None, max_length=1000)
@@ -611,7 +612,7 @@ async def _bulk_update(db: AsyncSession, tid: str, kind: str, ids: list, set_sql
 @router.post("/bulk", response_model=BulkOut)
 async def bulk_action(body: BulkIn, request: Request, db: AsyncSession = Depends(get_db),
                       tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("assign"))):
-    """Assign (unassigned items only), reassign, snooze (reason + expiry), unsnooze, set priority,
+    """Assign (unassigned items only), reassign, release (back to unassigned), snooze (reason + expiry), unsnooze, set priority,
     acknowledge, wait on SAP / requester (pauses the SLA clock) and resume (restarts it)."""
     tid = await _rls(db, tenant)
     ids = [str(i) for i in dict.fromkeys(body.ids)]
@@ -651,6 +652,18 @@ async def bulk_action(body: BulkIn, request: Request, db: AsyncSession = Depends
             return n
 
         updated = await db.run_sync(run)
+    elif a == "release":
+        # Back to the unassigned pool: owner and team cleared, a claimed task (in_progress) reopens.
+        # assigned_at stays so the auto-assign sweep does not route it straight back; the SLA clock runs on.
+        status_sql = ", status = CASE WHEN t.status = 'in_progress' THEN 'open' ELSE t.status END" \
+            if kind == "queue" else ""
+        updated = await _bulk_update(
+            db, tid, kind, ids, f"assigned_to = NULL, assigned_team_id = NULL, assigned_by_rule = NULL{status_sql}",
+            "(t.assigned_to IS NOT NULL OR t.assigned_team_id IS NOT NULL)", "t.assigned_to::text", "assign", None,
+            body.note or "release (bulk)", who)
+        if kind == "issue" and updated:
+            from api.services import worklist
+            await db.run_sync(lambda s: worklist.refresh_issues(s, tid, ids))
     elif a == "snooze":
         updated = await _bulk_update(db, tid, kind, ids, "snoozed_until = :until, snooze_reason = :reason", "true",
                                      "t.snoozed_until::text", "snooze", body.until.isoformat(), body.reason, who,

@@ -507,16 +507,26 @@ async def list_match_pairs(domain: Optional[str] = None, band: Optional[Band] = 
                            min_score: Optional[float] = Query(None, ge=0, le=1),
                            max_score: Optional[float] = Query(None, ge=0, le=1),
                            include_decided: bool = False,
+                           record: Optional[str] = Query(None, min_length=1, max_length=2000,
+                                                         description="Only the pairs that hold this record key"),
                            limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
                            _: str = Depends(require_permission("view")), db: AsyncSession = Depends(get_db),
                            tenant: Tenant = Depends(get_tenant)) -> PairListResponse:
     """Pairs waiting on a steward: no verdict, no constraint, not already in one golden record.
 
     ``bands`` counts every band under the same filters, so the page can offer "uncertain only" with its size.
+    ``record`` keeps one record's pairs: either side's SAP key (master_records.sap_object_key) is the record
+    key, whole or as the bare value of its first part (MATNR=1 -> 1).
     """
+    from api.routes.work import _key_candidates
+
     tid = await _rls(db, tenant)
     params = _review_params(tid, domain, min_score, max_score, include_decided)
-    base = _REVIEW_PAIRS.format(where="")
+    where = ""
+    if record:
+        where = "AND (ms.candidate_a_key = ANY(:keys) OR ms.candidate_b_key = ANY(:keys))"
+        params["keys"] = _key_candidates(record)
+    base = _REVIEW_PAIRS.format(where=where)
     counts = {r[0]: int(r[1]) for r in await db.execute(text(f"SELECT band, COUNT(*) FROM ({base}) q GROUP BY band"),
                                                         params)}
     banded = f"SELECT * FROM ({base}) q WHERE (CAST(:band AS text) IS NULL OR band = :band)"

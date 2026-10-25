@@ -45,6 +45,12 @@ describe("personaForRole", () => {
     expect(homeHrefForRole("process_analyst")).toBe("/home/process");
   });
 
+  it("lands a steward who may neither approve nor apply on the steward home", () => {
+    expect(homeHrefForRole("steward", () => false)).toBe("/home/steward");
+    expect(homeHrefForRole("steward", (a) => a === "apply")).toBe("/fix");
+    expect(homeHrefForRole("analyst", () => false)).toBe("/home/lead");
+  });
+
   it("sends the SAP basis role to the basis home", () => {
     expect(homeHrefForRole("sap_basis")).toBe("/home/basis");
   });

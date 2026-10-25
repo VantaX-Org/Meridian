@@ -6,11 +6,12 @@ import FixPage from "../page";
 import { getCleaningGroups, type CleaningGroup } from "@/lib/api/cleaning";
 
 const push = vi.fn();
+const replace = vi.fn();
 // Stable instance across re-renders: useUrlState's sync effect depends on this
 // object's identity (see app/(app)/rules/__tests__/page.test.tsx for the same pattern).
 const searchParams = new URLSearchParams();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, replace: vi.fn() }),
+  useRouter: () => ({ push, replace }),
   usePathname: () => "/fix",
   useSearchParams: () => searchParams,
 }));
@@ -72,7 +73,7 @@ describe("FixPage", () => {
     expect(row).toHaveTextContent("Material master");
     expect(row).toHaveTextContent("85%");
     // Duplicates are merged on the Duplicates tab, not drafted into a fix batch.
-    expect(screen.getByRole("link", { name: "Review Duplicate records from material_master_25k" })).toHaveAttribute("href", "/fix?tab=dedup");
+    expect(screen.getByRole("link", { name: "Review Duplicate records from material_master_25k" })).toHaveAttribute("href", "/mdm/golden/merge?source=cleaning");
   });
 
   it("lists the match engine's review pairs, which carry no run, on an every-run page", async () => {
@@ -97,6 +98,24 @@ describe("FixPage", () => {
     renderWithQuery(<FixPage />);
 
     expect(await screen.findByText("No cleaning proposals")).toBeInTheDocument();
+  });
+});
+
+describe("FixPage duplicates tab", () => {
+  it("sends old links to Match review, the one place duplicate pairs are reviewed, keeping a record filter", async () => {
+    searchParams.set("tab", "dedup");
+    searchParams.set("object", "material_master");
+    searchParams.set("record", "MATNR=2");
+    replace.mockClear();
+    try {
+      renderWithQuery(<FixPage />);
+      const href = "/mdm/golden/merge?source=cleaning&object=material_master&record=MATNR%3D2";
+      expect(await screen.findByRole("link", { name: "Open Match review" })).toHaveAttribute("href", href);
+      await waitFor(() => expect(replace).toHaveBeenCalledWith(href));
+    } finally {
+      searchParams.delete("object");
+      searchParams.delete("record");
+    }
   });
 });
 
