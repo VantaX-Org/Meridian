@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -96,7 +96,11 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
   const { role } = useRole();
   const moreRef = useRef<HTMLLIElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const morePanelRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  // The panel is fixed to the viewport under the More button: the pill strip scrolls sideways (overflow-x), which
+  // would clip anything positioned inside it, so the panel renders outside the strip and is anchored by coordinates.
+  const [moreAnchor, setMoreAnchor] = useState<{ top: number; left: number } | null>(null);
 
   const { data: counts } = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, refetchInterval: 60_000 });
   const { data: systems } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -127,13 +131,23 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
       }
     };
     const onClick = (e: globalThis.MouseEvent) => {
-      if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false);
+      const target = e.target as Node;
+      if (!moreRef.current?.contains(target) && !morePanelRef.current?.contains(target)) setMoreOpen(false);
     };
+    const place = () => {
+      const rect = moreButtonRef.current?.getBoundingClientRect();
+      if (rect) setMoreAnchor({ top: rect.bottom + 8, left: rect.left });
+    };
+    place();
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onClick);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
     return () => {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClick);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
     };
   }, [moreOpen]);
 
@@ -207,41 +221,45 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
                   <span>More</span>
                   <IconChevronDown size={14} style={{ transform: moreOpen ? "rotate(180deg)" : undefined }} />
                 </button>
-                {moreOpen && (
-                  <div
-                    id={MORE_PANEL_ID}
-                    role="group"
-                    aria-label="More pages"
-                    className="m-topnav-more m-elev-2 m-motion-scale-in"
-                    onBlur={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node | null) && e.relatedTarget !== moreButtonRef.current) setMoreOpen(false);
-                    }}
-                  >
-                    {more.map((g) => (
-                      <div key={g.group} className="m-topnav-group">
-                        <span className="m-topnav-group-label">{g.group}</span>
-                        {g.items.map((item) => (
-                          <Link
-                            key={item.href}
-                            href={resolveNavHref(item.href, role)}
-                            aria-current={item.href === activeItemHref ? "page" : undefined}
-                            aria-label={hasPip(item) && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
-                            className="m-topnav-item"
-                            onClick={() => setMoreOpen(false)}
-                          >
-                            {renderIcon(item)}
-                            <span className="truncate">{item.label}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </li>
             )}
           </ul>
         )}
       </nav>
+      {/* Outside the nav: the pill strip scrolls sideways and would clip the panel. */}
+      {moreOpen && more.length > 0 && (
+        <div
+          ref={morePanelRef}
+          id={MORE_PANEL_ID}
+          role="group"
+          aria-label="More pages"
+          className="m-topnav-more m-elev-2 m-motion-scale-in"
+          data-testid="topnav-more-panel"
+          style={moreAnchor ? ({ "--rail-more-top": `${moreAnchor.top}px`, "--rail-more-left": `${moreAnchor.left}px` } as CSSProperties) : undefined}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null) && e.relatedTarget !== moreButtonRef.current) setMoreOpen(false);
+          }}
+        >
+          {more.map((g) => (
+            <div key={g.group} className="m-topnav-group">
+              <span className="m-topnav-group-label">{g.group}</span>
+              {g.items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={resolveNavHref(item.href, role)}
+                  aria-current={item.href === activeItemHref ? "page" : undefined}
+                  aria-label={hasPip(item) && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
+                  className="m-topnav-item"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  {renderIcon(item)}
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="m-topnav-right">
         <div data-tour="command-palette" className="flex items-center">{commandPalette}</div>

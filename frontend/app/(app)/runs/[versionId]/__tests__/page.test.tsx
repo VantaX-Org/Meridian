@@ -371,6 +371,19 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
   });
 
+  it("filters the findings by critical and high together, with a plain chip and a matching Severity value", async () => {
+    searchParams = new URLSearchParams("tab=findings&severity=critical,high");
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    const list = vi.spyOn(findingsApi, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ version_id: "v2", severity: "critical,high" })));
+    expect(await screen.findByRole("button", { name: /Severity: Critical and high/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Critical,high/)).toBeNull();
+    // the Severity select shows the filter, not a blank value
+    expect(screen.getAllByText("Critical and high").length).toBeGreaterThan(0);
+    searchParams = new URLSearchParams();
+  });
+
   it("shows a loading skeleton while the run loads", async () => {
     vi.spyOn(versionsApi, "getVersion").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<RunDetailPage />);

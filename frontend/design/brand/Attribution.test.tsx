@@ -20,6 +20,19 @@ describe("Aletheia attribution (licence section 6: on every screen)", () => {
     }
   });
 
+  it("never draws over a dialog, drawer or menu (z 50) and never takes a click", () => {
+    const css = readFileSync(join(root, "design/tokens.css"), "utf8");
+    const rule = /\.m-attribution\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    const z = Number(/z-index:\s*(\d+)/.exec(rule)?.[1]);
+    expect(z).toBeLessThan(50);
+    // still above the page, the BulkBar (z 10) and the Ask launcher (z 40)
+    expect(z).toBeGreaterThan(40);
+    expect(rule).toMatch(/pointer-events:\s*none/);
+    for (const file of ["design/primitives/Dialog.tsx", "design/primitives/Drawer.tsx"]) {
+      expect(readFileSync(join(root, file), "utf8"), file).toMatch(/fixed z-50/);
+    }
+  });
+
   it("ships Aletheia's own mark file, byte for byte", () => {
     const shipped = readFileSync(join(root, "public/brand/aletheia-mark.svg"), "utf8");
     expect(shipped).toContain('viewBox="290 220 420 420"');

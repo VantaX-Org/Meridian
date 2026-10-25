@@ -252,9 +252,13 @@ function TourRunner({ def, navigate, resolveHref }: { def: TourDef } & Pick<Tour
                 <Notice tone="warning">This part of the page is not available to you or has not loaded</Notice>
               </div>
             )}
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <Button variant="ghost" disabled={index === 0} onClick={() => go(index - 1, -1)}>Back</Button>
-              <Button data-tour-primary="" variant="primary" onClick={() => go(index + 1, 1)}>{last ? "Done" : "Next"}</Button>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              {/* A visible way out besides Escape; leaving early does not mark the tour done (as Escape). */}
+              {last ? <span /> : <Button variant="ghost" onClick={() => close(false)}>Skip tour</Button>}
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" disabled={index === 0} onClick={() => go(index - 1, -1)}>Back</Button>
+                <Button data-tour-primary="" variant="primary" onClick={() => go(index + 1, 1)}>{last ? "Done" : "Next"}</Button>
+              </div>
             </div>
           </Card>
         </div>

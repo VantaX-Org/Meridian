@@ -31,7 +31,7 @@ import {
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import {
-  blockingTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
+  criticalHighHref, criticalHighTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
   type StateRow,
 } from "@/lib/current-state";
 import { formatDate, formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
@@ -395,11 +395,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const counts = shellCountsQ.data;
   const unhealthy = activeSystems.filter(isFailing).length;
   const notLoaded = Math.max((landscapeQ.data?.total ?? 0) - (landscapeQ.data?.loaded ?? 0), 0);
-  // Failing critical and high checks of every object in scope.
-  const blocking = blockingTotal(state);
-  // The findings behind the count: one run's findings tab, critical first (the run page's own drill); several runs
-  // have no one findings list, so the objects below target stand in.
-  const blockingHref = scopeRuns.length === 1 ? `/runs/${scopeRuns[0].id}?tab=findings&severity=critical,high` : objectsHref({ readiness: "fail" });
+  // Failing critical and high checks of every object in scope ("blocking" is the insights overview's own set).
+  const criticalHigh = criticalHighTotal(state);
+  // The findings behind the count: one run's findings tab, or the current-state findings on the Insights overview.
+  const criticalHighLink = criticalHighHref(scopeRuns);
   const countsReady = !!counts;
   const queueItems = queueQ.data?.items ?? [];
   const inboxCard = role === "steward" ? (
@@ -423,7 +422,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     role === "lead" ? (
       <WorkRow>
         <Stat label="Objects below target" value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTarget.length ? "no-go" : "go"} href={objectsHref({ readiness: "fail" })} />
-        <Stat label="Blocking findings" value={blocking.toLocaleString()} hint={blocking ? "critical and high" : "none"} tone={blocking ? "no-go" : "go"} href={blockingHref} />
+        <Stat label="Critical and high findings" value={criticalHigh.toLocaleString()} hint={criticalHigh ? "failing rules" : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
         <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
     ) : role === "steward" ? (

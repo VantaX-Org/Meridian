@@ -31,6 +31,8 @@ const BANNED: [RegExp, string][] = [
   [/"Needs attention"/, "a Status verdict (connection health keeps Healthy; a score verdict is Go, At risk, No-go)"],
   [/Showing \$\{|"Showing the first/, "table meta without a Showing sentence"],
   [/Proof of progress/, '"Progress report"'],
+  // One name for the scope of Home and the Insights overview and summary: "Current state" (CURRENT_STATE_LABEL).
+  [/All runs, current state|Back to all runs|label: "Current state"/, '"Current state" (CURRENT_STATE_LABEL from lib/current-state) for the scope of Home and Insights; one run is named by runScopeLabel'],
   [/v\.label \?\? formatDate\(|label \|\| formatDate\(v\.run_at|\.label \?\? formatDate\(/, "runName() or runScopeLabel() from lib/run-scope"],
 ];
 

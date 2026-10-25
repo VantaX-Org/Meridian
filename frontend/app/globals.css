@@ -255,7 +255,8 @@
   .m-topnav-link[aria-current="page"], .m-topnav-link[data-active="true"] { background: var(--m-sheet); color: var(--m-ink); box-shadow: var(--m-elev-card); }
   .m-topnav-link:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
   .m-topnav-right { display: flex; align-items: center; gap: var(--m-space-2); margin-left: auto; white-space: nowrap; }
-  .m-topnav-more { position: absolute; top: calc(100% + 8px); left: 0; z-index: 50; min-width: 600px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m-space-4); padding: var(--m-space-4); background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); }
+  /* Fixed under the More button (Rail.tsx sets the anchor): the pill strip scrolls sideways and would clip it. */
+  .m-topnav-more { position: fixed; top: var(--rail-more-top, calc(var(--m-topbar-h) + 8px)); left: max(var(--m-space-4), min(var(--rail-more-left, var(--m-space-4)), calc(100vw - 600px - var(--m-space-4)))); z-index: 50; min-width: 600px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m-space-4); padding: var(--m-space-4); background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); }
   .m-topnav-group { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .m-topnav-group-label { font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; color: var(--m-ink-3); padding: 4px 8px; }
   .m-topnav-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--m-radius-control); color: var(--m-ink-2); font-size: var(--m-text-body); font-weight: 500; text-decoration: none; min-width: 0; }
@@ -268,8 +269,12 @@
   .m-scopebar:not(:has(nav a, nav [data-testid="crumb-scope"]:not(.sr-only), nav h1:not(.sr-only), .m-scopebar-trailing > *)) { min-height: 0; height: 0; padding: 0; border: 0; }
   @media (max-width: 1023px) {
     .m-topnav { padding: 0 var(--m-space-4); gap: var(--m-space-3); }
-    .m-topnav-more { min-width: 0; width: calc(100vw - 32px); grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .m-scopebar { padding: 0 var(--m-space-4); }
+    .m-topnav-more { left: var(--m-space-4); min-width: 0; width: calc(100vw - 32px); max-height: calc(100vh - var(--rail-more-top, var(--m-topbar-h)) - var(--m-space-4)); overflow-y: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* Below lg the scope bar wraps: the title first, then search and the pickers on as many rows as they need, so a
+       390px screen never scrolls sideways. */
+    .m-scopebar { padding: var(--m-space-2) var(--m-space-4); flex-wrap: wrap; row-gap: var(--m-space-2); }
+    .m-scopebar-trailing { flex-wrap: wrap; white-space: normal; margin-left: 0; min-width: 0; max-width: 100%; }
+    .m-scopebar-trailing > * { min-width: 0; max-width: 100%; }
   }
 
   /* ---------- The object map (design/charts/ObjectMap.tsx): area is records, colour is verdict ---------- */

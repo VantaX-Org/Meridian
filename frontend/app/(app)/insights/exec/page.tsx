@@ -4,11 +4,13 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button, buildDrillHref, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict, Score } from "@/design";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { getRoi } from "@/lib/api/analytics";
-import { getFindingsAggregate } from "@/lib/api/findings";
+import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
+import { stateDelta } from "@/lib/current-state";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCurrentOverview, getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
@@ -27,6 +29,8 @@ import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
+import { currentFindingColumns, currentFixFirst } from "../_components/CurrentOverview";
+import { useCurrentState } from "../_components/useCurrentState";
 
 
 
@@ -74,9 +78,21 @@ const ownerColumns = (run?: string): ColumnDef<OwnerCardResponse>[] => [
 export default function ExecPage() {
   const { run, mode, runs } = useInsightScope();
   const isCurrent = mode === "current";
+  const router = useRouter();
   const dayOne = useDayOne();
   const finding = useFindingOpener(run);
-  const rules = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "top10"), queryFn: () => getRuleRanking({ version_id: run, limit: 10 }), enabled: !!run });
+  // One run: that run's rules ranked by impact. The current state: each object's findings from its own latest run,
+  // as on the Insights overview (same request and cache entry), never the newest run's rules alone.
+  const rules = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "top10"), queryFn: () => getRuleRanking({ version_id: run, limit: 10 }), enabled: !!run && !isCurrent });
+  const current = useCurrentState();
+  const currentFindings = useQuery({
+    queryKey: ["home-top-findings", "current"],
+    queryFn: () => getFindings({ sort: "impact", limit: 100 }),
+    enabled: isCurrent && !!current.newest,
+  });
+  const currentFix = currentFixFirst(currentFindings.data?.findings ?? [], current.objects, current.modules, 10);
+  // The change the newest run made to the current state: the same delta Home and the Insights overview show.
+  const currentDelta = isCurrent ? stateDelta(current.runs, current.finished, current.modules) : null;
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("exec", isCurrent ? "current" : run),
@@ -98,6 +114,7 @@ export default function ExecPage() {
     enabled: !!run,
   });
   const dqs = overview.data;
+  const delta = isCurrent ? currentDelta : dqs?.delta ?? null;
   const VERDICT_SENTENCE: Record<string, string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
   // The score, cap and reason from the exec API (the current-state composite in current mode); the overview's otherwise.
   const exec = data;
@@ -166,7 +183,7 @@ export default function ExecPage() {
                   cap={cap}
                   versionId={vid}
                   hint={cap != null ? `Capped at ${cap}` : undefined}
-                  delta={!isCurrent && dqs?.delta != null ? <Delta value={dqs.delta} /> : undefined}
+                  delta={delta != null ? <Delta value={delta} /> : undefined}
                 />
               {aggregate.data && <div className="pt-6"><DqsScore agg={aggregate.data} versionId={vid} cap={cap} capReason={capReason} /></div>}
             </div>
@@ -175,8 +192,8 @@ export default function ExecPage() {
                 {dqs?.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
               </span>
               <span className="m-text-body m-ink-2">
-                {/* The current state spans runs, so it has no single previous run to move from. */}
-                {capped && capReason ? `Capped: ${shortCapReason(capReason)}` : isCurrent ? "Every object at its latest run" : deltaSentence(dqs?.delta)}
+                {/* The current state moves by the newest run's change (stateDelta), as on Home and the overview. */}
+                {capped && capReason ? `Capped: ${shortCapReason(capReason)}` : isCurrent ? (delta != null ? deltaSentence(delta, "with the latest run") : "Every object at its latest run") : deltaSentence(dqs?.delta)}
               </span>
             </div>
           </div>
@@ -219,9 +236,21 @@ export default function ExecPage() {
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
-          <Section title="Fix first" height={240} query={rules} meta="Ranked by impact on the score" actions={<Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}>
-            <DataTable columns={ruleColumns(run, true)} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
-          </Section>
+          {isCurrent ? (
+            <Section title="Fix first" height={240} query={currentFindings} meta="Highest-impact failing rules, each object at its latest run" actions={<Link href="/insights" className="m-text-body underline-offset-2 hover:underline">Open overview</Link>}>
+              <DataTable
+                columns={currentFindingColumns}
+                data={currentFix}
+                getRowId={(f) => f.id}
+                onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
+                hideToolbar dense height="auto"
+              />
+            </Section>
+          ) : (
+            <Section title="Fix first" height={240} query={rules} meta="Ranked by impact on the score" actions={<Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}>
+              <DataTable columns={ruleColumns(run, true)} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
+            </Section>
+          )}
         </div>
         <div className="@5xl:col-span-12">
           <Card title="Readiness by wave" meta={cells.length ? `${goCells} go, ${atRiskCells} at risk, ${noGo} no-go` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open waves</Link>}>

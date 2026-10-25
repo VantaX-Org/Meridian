@@ -150,6 +150,25 @@ describe("Rail (the index bar)", () => {
     expect(screen.queryByRole("group", { name: "More pages" })).toBeNull();
   });
 
+  it("renders the More panel outside the sideways-scrolling pill strip, anchored under the button", async () => {
+    renderRail();
+    const button = await screen.findByRole("button", { name: "More" });
+    button.getBoundingClientRect = () => ({ top: 8, bottom: 40, left: 420, right: 480, width: 60, height: 32, x: 420, y: 8, toJSON: () => ({}) });
+    fireEvent.click(button);
+    const panel = screen.getByRole("group", { name: "More pages" });
+    // .m-topnav-nav has overflow-x: auto, which forces overflow-y to clip: a panel inside it never shows.
+    expect(panel.closest(".m-topnav-nav")).toBeNull();
+    expect(panel.closest("nav")).toBeNull();
+    expect(panel.closest("header")).not.toBeNull();
+    expect(panel.style.getPropertyValue("--rail-more-top")).toBe("48px");
+    expect(panel.style.getPropertyValue("--rail-more-left")).toBe("420px");
+    // A click inside the panel keeps it open; a click outside closes it.
+    fireEvent.mouseDown(panel);
+    expect(screen.getByRole("group", { name: "More pages" })).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("group", { name: "More pages" })).toBeNull();
+  });
+
   it("the More button reads as active when the current page lives inside it", async () => {
     pathname = "/mdm/glossary";
     renderRail();
