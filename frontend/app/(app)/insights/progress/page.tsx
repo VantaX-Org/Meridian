@@ -51,7 +51,9 @@ type SystemRecurrence = Recurrence["by_system"][number];
 export default function ProgressPage() {
   const dayOne = useDayOne();
   const router = useRouter();
-  const { run, module, runs, resolving } = useInsightScope();
+  const { run, module, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  // No run because the run list (or the day-one sources) failed: an error, never "Nothing to track yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const { can } = useRole();
   const qc = useQueryClient();
   const scope = { versionId: run, module };
@@ -185,7 +187,7 @@ export default function ProgressPage() {
   const neverRan = !!b && !b.version_id && b.days.every((d) => d.open === 0 && d.opened === 0);
   const state: "loading" | "empty" | "error" | undefined = resolving || burn.isLoading || dayOne.status === "loading"
     ? "loading"
-    : burn.isError ? "error" : neverRan ? "empty" : undefined;
+    : burn.isError || (neverRan && loadError) ? "error" : neverRan ? "empty" : undefined;
   // One noun: a failing record is one record failing one rule (the burn-down's unit); records to fix are the distinct
   // records in the work list.
   const openLabel = b?.open_records != null ? "Records to fix" : "Failing records";
@@ -235,7 +237,7 @@ export default function ProgressPage() {
         ghost: "chart",
         action: <DayOneAction step={dayOne.step} fallbackHref={runsHref} fallbackLabel="Open runs" />,
       }}
-      errorProps={{ message: apiErrorMessage(burn.error), onRetry: () => void burn.refetch() }}
+      errorProps={burn.isError ? { error: burn.error, onRetry: () => void burn.refetch() } : { error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
     >
       <div id="burndown" className="scroll-mt-24">
       <Card

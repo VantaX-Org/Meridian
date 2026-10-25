@@ -11,7 +11,7 @@ import { getAssignableUsers } from "@/lib/api/users";
 import {
   getOperational, getSprints, getTeamPerformance, type Bottleneck, type SprintPlan,
 } from "@/lib/api/analytics";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { fixHref } from "@/lib/drill";
 import { labelOf, plural } from "@/lib/format";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
@@ -126,7 +126,7 @@ export default function OperationsPage() {
       }
       state={loading ? "loading" : failed ? "error" : empty ? "empty" : undefined}
       emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href={CLEANING}>Open cleaning proposals</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
+      errorProps={{ error: failed?.error, onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
     >
       <Section title="Throughput and capacity" height={160} query={ops}>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

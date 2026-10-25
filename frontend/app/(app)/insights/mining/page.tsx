@@ -121,6 +121,7 @@ function EntityLinks() {
         </p>
         {q.isLoading || dayOne.status === "loading" ? <Skeleton height={320} />
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={320} onNodeClick={(id) => setDomain(id === domain ? "" : id)} />
+          : dayOne.status === "error" ? <ErrorState {...apiErrorState(dayOne.error)} onRetry={dayOne.refetch} />
           : (
             <EmptyState
               title="No record links found yet"

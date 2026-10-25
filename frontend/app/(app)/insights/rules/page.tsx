@@ -11,7 +11,7 @@ import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pareto, Select, 
 import { FilterChips } from "@/app/(app)/objects/_header";
 import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
 import { getCostModel } from "@/lib/api/settings";
-import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
+import { isListFailure, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, plural } from "@/lib/format";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
@@ -64,8 +64,10 @@ export default function RulesPage() {
   const checks = (check ?? "").split(",").filter(Boolean);
   const axisParam = search.get("axis") as Axis | null;
   const axis: Axis = axisParam && AXES.some((a) => a.value === axisParam) ? axisParam : "rule";
-  const { run, module, versions, runs, resolving } = useInsightScope();
+  const { run, module, versions, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
   const dayOne = useDayOne();
+  // No run to rank because the run list (or the day-one sources) failed: an error, never "No failing rules yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const finding = useFindingOpener(run);
   // Every filter lives in the URL (design rule 9), so a view can be saved, shared and restored.
   const severity = search.get("severity") ?? ANY;
@@ -181,7 +183,7 @@ export default function RulesPage() {
   const axisLabel = AXES.find((a) => a.value === axis)?.label ?? "Rule";
   // "Impact by S/4 status" keeps the product name's case; every other axis reads in lower case.
   const axisInTitle = axis === "s4" ? axisLabel : axisLabel.toLowerCase();
-  const state = resolving || q.isLoading || versions.isLoading || dayOne.status === "loading" ? "loading" : isListFailure(q) ? "error" : !run ? "empty" : undefined;
+  const state = resolving || q.isLoading || versions.isLoading || dayOne.status === "loading" ? "loading" : loadError || isListFailure(q) ? "error" : !run ? "empty" : undefined;
   const top = rows[0];
   const hasFilters = Object.entries(filters).some(([k, v]) => k !== "axis" && !!v);
   const totalAffected = rows.reduce((n, r) => n + r.affected, 0);
@@ -217,7 +219,7 @@ export default function RulesPage() {
       state={state}
       skeleton={<><Skeleton height={220} /><Skeleton height={320} /></>}
       emptyProps={{ title: "No failing rules yet", detail: dayOne.step?.detail ?? "Rules are ranked once a run has finished analysing.", ghost: "table", action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" /> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      errorProps={loadError ? { error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } } : { error: q.error, onRetry: () => void q.refetch() }}
     >
       <div className="flex flex-col gap-2">
         <FilterChips label="Group by" value={axis} options={AXES} onChange={setAxis} />

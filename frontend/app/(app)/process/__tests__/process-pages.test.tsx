@@ -213,3 +213,14 @@ describe("run detail", () => {
     expect(screen.getAllByText("Done").length).toBeGreaterThan(0);
   });
 });
+
+describe("run detail not found", () => {
+  it("says the run is not found with a way back, never \"Not found.\" with Retry only", async () => {
+    h.can = () => true;
+    vi.spyOn(pdApi, "getRun").mockRejectedValue(Object.assign(new Error("nf"), { isAxiosError: true, response: { status: 404, data: {} } }));
+    renderWithQuery(<ProcessRunPage />);
+    expect(await screen.findByText("Discovery run not found")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to discovery runs" }).getAttribute("href")).toBe("/process/runs");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+});

@@ -189,7 +189,7 @@ function MatchReview() {
       filterBar={filterBar}
       state={asyncStateOf(list, () => pairs.length === 0)}
       emptyProps={empty}
-      errorProps={{ message: apiErrorMessage(list.error), onRetry: () => void list.refetch() }}
+      errorProps={{ error: list.error, onRetry: () => void list.refetch() }}
       table={
         <div className="flex flex-col gap-3">
           <DataTable columns={columns} data={pairs} getRowId={(r) => r.id} onRowClick={(r) => setParams({ pair: r.id })} tableId="mdm-match-review" />

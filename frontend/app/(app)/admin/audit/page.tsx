@@ -10,7 +10,6 @@ import { Button, DataTable, EmptyState, ExplorerPage, ExportMenu, Field, Input, 
 import {
   exportAuditEntries, getAuditEntries, getLlmAudit, type AuditEntry, type AuditListParams, type LlmAuditEntry,
 } from "@/lib/api/audit";
-import { apiErrorMessage } from "@/lib/error";
 import { getUsers } from "@/lib/api/users";
 import { queryKeys } from "@/lib/query-keys";
 import { useTenantTimezone } from "@/lib/tenant-zone";
@@ -115,7 +114,7 @@ function AuditTable({ params, empty }: { params: AuditListParams; empty: string 
       emptyProps={filtered
         ? { title: "Nothing matches these filters", detail: "Widen the dates or pick someone else.", action: <Button variant="secondary" onClick={() => reset(() => { setActor(ALL); setFrom(""); setTo(""); })}>Clear filters</Button> }
         : { title: empty, detail: "Changes people make are recorded here as they happen.", action: <Button variant="secondary" onClick={() => void q.refetch()}>Refresh</Button> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <div className="flex flex-col gap-2">
           <DataTable columns={columns} data={entries} getRowId={(r) => r.id} renderExpanded={(e) => <RequestDetail e={e} />} />
@@ -140,7 +139,7 @@ function LlmAudit() {
       ) : undefined}
       state={asyncStateOf(q, () => entries.length === 0, true)}
       emptyProps={{ title: "No AI calls recorded", detail: "Every call to a model is listed here with its latency and outcome", action: <Button variant="secondary" render={<Link href="/admin/ai">Open AI settings</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={<DataTable columns={columns} data={entries} getRowId={(r) => r.id} />}
     />
   );

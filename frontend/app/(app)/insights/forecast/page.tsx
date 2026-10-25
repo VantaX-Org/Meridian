@@ -6,7 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, DataTable, EmptyState, Line, Select, Status, statusLabel, type LineSeries } from "@/design";
 import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning, type PredictiveResponse } from "@/lib/api/analytics";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
@@ -180,7 +180,7 @@ export default function ForecastPage() {
         ghost: "chart",
         action: <Button render={<Link href="/runs">Open runs</Link>} />,
       }}
-      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+      errorProps={{ error: error, onRetry: () => void refetch() }}
     >
       <Card title="Predicted score" meta="Daily scores so far and the expected score if nothing changes; the shaded band is the range it is likely to fall in">
         <div className="flex flex-col gap-3">

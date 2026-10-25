@@ -480,6 +480,17 @@ describe("ObjectDetailPage keyboard and gating", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it("shows the run list's error with Retry, never \"No run has measured this object\"", async () => {
+    searchParams = new URLSearchParams("");
+    const list = vi.spyOn(versionsApi, "getVersions").mockRejectedValue(Object.assign(new Error("x"), { isAxiosError: true, response: { status: 403, data: {} } }));
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("You do not have access to this.")).toBeInTheDocument();
+    expect(screen.queryByText("No run has measured this object")).toBeNull();
+    const calls = list.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(calls));
+  });
+
   it("empty-state copy: no run, no rule, all records pass", async () => {
     searchParams = new URLSearchParams("");
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [], total: 0 });

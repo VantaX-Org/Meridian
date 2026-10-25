@@ -84,9 +84,11 @@ async function getAllRules(category?: string): Promise<Rule[]> {
 
 function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthoring: (v: boolean) => void }) {
   const qc = useQueryClient();
-  const canManage = useRole().can("manage_rules");
+  const { can } = useRole();
+  const canManage = can("manage_rules");
   const dayOne = useDayOne();
-  const hasFinishedRun = dayOne.status !== "loading" && dayOne.step === null;
+  // Only a read that answered says whether a run has finished; a failed read is unknown, not "yes".
+  const hasFinishedRun = dayOne.status === "ready" && dayOne.step === null;
   const [category, setCategory] = useUrlState("category", "all");
   const [module, setModule] = useUrlState("module", "");
   const [check, setCheck] = useUrlState("check", "");
@@ -315,6 +317,8 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       <LedgerHead title="Coverage by object" meta="How many rules apply on this configuration" />
       {dayOne.status === "loading" || rulesQ.isLoading ? (
         <Skeleton height={coverageRows.length ? coverageRows.length * 40 + 40 : 240} />
+      ) : dayOne.status === "error" ? (
+        <ErrorState {...apiErrorState(dayOne.error)} onRetry={dayOne.refetch} />
       ) : hasFinishedRun ? (
         <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} tableId="rules-coverage" />
       ) : (
@@ -327,9 +331,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
     <div className="flex flex-col gap-4 py-4">
       {!canManage ? <Notice tone="info">Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
       <div className="m-stat-grid">
-        <Stat label="Failing" value={failingCount.toLocaleString()} href="/rules?state=failing" tone={failingCount ? "at-risk" : undefined} hint="Last pass rate under 100" loading={rulesQ.isLoading} />
-        <Stat label="Disabled" value={disabledCount.toLocaleString()} href="/rules?state=disabled" loading={rulesQ.isLoading} />
-        <Stat label="Not run yet" value={notRunCount.toLocaleString()} href="/rules?state=not_run" loading={rulesQ.isLoading} />
+        {/* A failed read has no counts: "—", never zeros above the error. */}
+        <Stat label="Failing" value={rulesQ.isError ? "—" : failingCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=failing"} tone={!rulesQ.isError && failingCount ? "at-risk" : undefined} hint="Last pass rate under 100" loading={rulesQ.isLoading} />
+        <Stat label="Disabled" value={rulesQ.isError ? "—" : disabledCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=disabled"} loading={rulesQ.isLoading} />
+        <Stat label="Not run yet" value={rulesQ.isError ? "—" : notRunCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=not_run"} loading={rulesQ.isLoading} />
       </div>
       {filterBar}
       <FilterChips chips={chips} onClearAll={clearFilters} />
@@ -351,8 +356,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       ) : (
         <EmptyState
           title="No rules loaded"
-          detail="Built-in rules ship with Meridian. If this list is empty, check HQ sync in settings."
-          action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
+          detail={can("manage_settings")
+            ? "Built-in rules ship with Meridian. If this list is empty, check HQ sync in settings."
+            : "Built-in rules ship with Meridian. If this list is empty, ask an administrator to check HQ sync in settings."}
+          action={can("manage_settings") ? <Button render={<Link href="/admin/settings">Open settings</Link>} /> : undefined}
         />
       )}
       {coverage}

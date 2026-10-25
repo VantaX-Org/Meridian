@@ -20,7 +20,6 @@ import { DIMENSIONS, dimensionHeatmapCells, runCap, runDimensions, worstObjectsF
 import { verdictSentence } from "@/lib/home-narrative";
 import { checkClassLabel, deltaSentence, formatModuleName, plural, trendSentence } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
-import { apiErrorMessage } from "@/lib/error";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -107,7 +106,9 @@ export function CurrentOverview() {
   const severities = severityFilterOf(search?.get("severity"));
   const severityKey = severities?.join(",");
   const dayOne = useDayOne();
-  const { finished, runs, objects, newest, modules, loading: listLoading } = useCurrentState();
+  const { finished, runs, objects, newest, modules, loading: listLoading, error: listError, refetch: refetchList } = useCurrentState();
+  // The run list (or the day-one sources) failing is an error, never "No insights yet".
+  const loadError = listError ?? (dayOne.status === "error" ? dayOne.error : null);
   // The tenant's score bands; the same request (and cache entry) as the homes' objects list.
   const bandsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const bands = bandsQ.data?.thresholds;
@@ -172,8 +173,8 @@ export function CurrentOverview() {
     })
     .sort((a, b) => a.worstScore - b.worstScore);
 
-  const state: "loading" | "empty" | undefined =
-    listLoading || dayOne.status === "loading" ? "loading" : !newest || objects.length === 0 ? "empty" : undefined;
+  const state: "loading" | "empty" | "error" | undefined =
+    listLoading || dayOne.status === "loading" ? "loading" : loadError ? "error" : !newest || objects.length === 0 ? "empty" : undefined;
   const loading = state === "loading";
   const verdict = tier ? VERDICT[tier] : loading ? "Scoring" : "Not scored yet";
   const tone = tier ? TONE[tier] : undefined;
@@ -240,7 +241,7 @@ export function CurrentOverview() {
         ghost: "table",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
-      errorProps={{ message: apiErrorMessage(bandsQ.error) }}
+      errorProps={{ error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
     >
       <div className="flex flex-col [gap:var(--m-section-gap)]" data-testid="insights-overview">
         {/* The ledger: the failing rules ranked by impact, each object at its latest run, each with its one action. */}

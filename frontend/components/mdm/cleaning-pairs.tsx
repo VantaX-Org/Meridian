@@ -112,7 +112,7 @@ export function CleaningPairs({ header, filterBar, filters }: { header: ReactNod
       filterBar={filterBar}
       state={asyncStateOf(q, () => items.length === 0, true)}
       emptyProps={{ ...empty, action: <Button variant="secondary" render={<Link href="/mdm/match-rules">Tune match rules</Link>} />, ghost: "table" }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <div className="flex flex-col gap-3">
           <DataTable columns={columns} data={items} getRowId={(r) => r.id} onRowClick={setSelected} tableId="mdm-match-review-cleaning" />

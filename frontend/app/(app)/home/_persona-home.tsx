@@ -40,7 +40,7 @@ import { fixHref } from "@/lib/drill";
 import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
 import { reportFilename } from "@/lib/report-filename";
 import { StateScope } from "@/components/run-scope";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorState, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
@@ -123,6 +123,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
 
   const loading = dayOne.status === "loading" || objectsQ.isLoading;
   const erroring = dayOne.status === "error" || isListFailure(objectsQ);
+  // The message comes from whichever read failed; Retry reads all four again (objects, runs, systems, landscape).
+  const failure = isListFailure(objectsQ) ? objectsQ.error : dayOne.error;
 
   if (loading) return <HomePage persona={role} state="loading" />;
   if (erroring) {
@@ -130,7 +132,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       <HomePage
         persona={role}
         state="error"
-        error={{ message: apiErrorMessage(objectsQ.error), onRetry: () => { void objectsQ.refetch(); void versionsQ.refetch(); } }}
+        error={{ error: failure, onRetry: () => { void objectsQ.refetch(); void versionsQ.refetch(); void systemsQ.refetch(); void landscapeQ.refetch(); } }}
       />
     );
   }
@@ -405,7 +407,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const queueItems = queueQ.data?.items ?? [];
   const inboxCard = role === "steward" ? (
     <Card title="Inbox" meta={countsReady ? `${plural(counts.inbox, "open item")}` : undefined} padding="sm">
-      {queueQ.isLoading ? <Skeleton height={120} /> : queueItems.length === 0 ? (
+      {queueQ.isLoading ? <Skeleton height={120} /> : queueQ.isError ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 m-text-body" data-testid="home-inbox-error">
+          <span>{`The inbox did not load. ${apiErrorState(queueQ.error).title}`}</span>
+          <Button variant="secondary" onClick={() => void queueQ.refetch()}>Retry</Button>
+        </div>
+      ) : queueItems.length === 0 ? (
         <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?tab=cleaning" className="underline-offset-2 hover:underline">Open cleaning proposals</Link>} />
       ) : (
         <ul className="flex flex-col" data-testid="home-inbox-items">

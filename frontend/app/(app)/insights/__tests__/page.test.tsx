@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: () => null,
 }));
 
@@ -304,5 +304,28 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     mockAll();
     mount();
     expect(await screen.findByTestId("hero-verdict")).toHaveClass("m-hero-verdict");
+  });
+});
+
+describe("InsightsOverviewPage when the run list fails", () => {
+  const http500 = () => Object.assign(new Error("x"), { isAxiosError: true, response: { status: 500, data: {} } });
+
+  it("shows the error with Retry before \"No insights yet\" on the current state", async () => {
+    query = "";
+    const list = vi.spyOn(versionsApi, "getVersions").mockRejectedValue(http500());
+    mount();
+    expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+    expect(screen.queryByText("No insights yet")).toBeNull();
+    const calls = list.mock.calls.length;
+    screen.getByRole("button", { name: "Retry" }).click();
+    await vi.waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(calls));
+  });
+
+  it("shows the error, not \"No insights yet\", for an object filter with no run to resolve", async () => {
+    query = "module=material_master";
+    vi.spyOn(versionsApi, "getVersions").mockRejectedValue(http500());
+    mount();
+    expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+    expect(screen.queryByText("No insights yet")).toBeNull();
   });
 });

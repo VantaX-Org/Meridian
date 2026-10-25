@@ -34,7 +34,7 @@ export function SuppressionsPanel() {
     <ExplorerPage
       state={asyncStateOf(q, () => rows.length === 0, true)}
       emptyProps={{ title: "No active suppressions", detail: "A suppression keeps a rule or one record out of the score until it expires", action: <Button variant="secondary" render={<Link href="/rules">Browse rules</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => q.refetch() }}
       table={<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />}
     />
   );
@@ -59,7 +59,7 @@ export function FeedbackPanel() {
     <ExplorerPage
       state={asyncStateOf(q, () => rows.length === 0, true)}
       emptyProps={{ title: "No steward feedback yet", detail: "Verdicts appear when stewards mark flagged records as real or false positive", action: <Button variant="secondary" render={<Link href="/runs">View runs</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => q.refetch() }}
       table={<DataTable columns={feedbackColumns} data={rows} getRowId={(r) => r.check_id} />}
     />
   );

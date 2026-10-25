@@ -137,7 +137,7 @@ export default function ReportsPage() {
       }
       state={asyncStateOf(versions, () => runs.length === 0, true)}
       emptyProps={{ title: "No completed run yet", detail: "Reports are rendered from a finished run.", ghost: "table", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
+      errorProps={{ error: versions.error, onRetry: () => void versions.refetch() }}
     >
       <>
       {!can("export") ? (

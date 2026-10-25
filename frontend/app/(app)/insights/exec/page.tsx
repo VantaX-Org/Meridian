@@ -66,10 +66,12 @@ const ownerColumns = (run?: string): ColumnDef<OwnerCardResponse>[] => [
 ];
 
 export default function ExecPage() {
-  const { run, mode, runs } = useInsightScope();
+  const { run, mode, runs, error: listError, refetch: refetchList } = useInsightScope();
   const isCurrent = mode === "current";
   const router = useRouter();
   const dayOne = useDayOne();
+  // No run because the run list (or the day-one sources) failed: an error, never "No executive summary yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const waveIds = useWaveIds();
   const finding = useFindingOpener(run);
   // One run: that run's rules ranked by impact. The current state: each object's findings from its own latest run,
@@ -117,7 +119,7 @@ export default function ExecPage() {
   const exportVid = data?.latest_version_id ?? vid;
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
     ? "loading"
-    : isListFailure({ isError, error })
+    : loadError || isListFailure({ isError, error })
       ? "error"
       // Only a tenant with no run is empty: a scored run with no waves, features or owners still shows the score,
       // Fix first and ROI, each section carrying its own empty line; the current state has no version_id by design.
@@ -219,7 +221,7 @@ export default function ExecPage() {
         detail: dayOne.step?.detail ?? "It appears once a run has finished analysing.",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
-      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+      errorProps={loadError ? { error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } } : { error, onRetry: () => void refetch() }}
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">

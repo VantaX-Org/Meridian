@@ -9,7 +9,7 @@ import Link from "next/link";
 import { Button, DataTable, ExplorerPage, Field, Input, Mono, Notice, PageHeader } from "@/design";
 import { getDdicFields, type DdicField } from "@/lib/api/rules";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 
 export default function RuleDictionaryPage() {
   const [text, setText] = useState("");
@@ -34,7 +34,7 @@ export default function RuleDictionaryPage() {
       emptyProps={names.length === 0
         ? { title: "No dictionary snapshot yet", detail: "Type TABLE.FIELD names above to look them up in the shipped dictionary.", action: <Button variant="secondary" onClick={() => setText("MARA.MATNR, KNA1.KUNNR")}>Try an example</Button>, ghost: "table" }
         : { title: "Not in the dictionary", detail: `${names.join(", ")} ${names.length === 1 ? "is" : "are"} not in the shipped dictionary. Check the spelling, or connect a system to read its own dictionary.`, action: <Button variant="secondary" render={<Link href="/systems">Open systems</Link>} />, ghost: "table" }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => q.refetch() }}
       table={<DataTable columns={columns} data={items} getRowId={(r) => `${r.table}.${r.field}`} />}
     />
   );

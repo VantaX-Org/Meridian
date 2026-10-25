@@ -139,7 +139,7 @@ export default function MigrationPage() {
             : "A wave groups the objects you move to S/4HANA together. Ask an analyst to create the first one.",
           action: createButton,
         }}
-        errorProps={{ message: apiErrorMessage(waves.error), onRetry: () => void waves.refetch() }}
+        errorProps={{ error: waves.error, onRetry: () => void waves.refetch() }}
       />
       <CreateWaveDialog open={creating} onOpenChange={setCreating} />
     </>

@@ -9,7 +9,7 @@ import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Skeleton, Stat
 import { drillLabel, fixHref } from "@/lib/drill";
 import { getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName, plural } from "@/lib/format";
 import { previousInLineage } from "@/lib/runs";
@@ -58,8 +58,10 @@ const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
 
 export default function ReadinessPage() {
   const router = useRouter();
-  const { run, runs, versions } = useInsightScope();
+  const { run, runs, versions, error: listError, refetch: refetchList } = useInsightScope();
   const dayOne = useDayOne();
+  // No run because the run list (or the day-one sources) failed: an error, never "No readiness data yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const waveIds = useWaveIds();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -94,7 +96,7 @@ export default function ReadinessPage() {
   let state: "loading" | "empty" | "error" | undefined;
   if (isLoading || dayOne.status === "loading") {
     state = "loading";
-  } else if (isListFailure({ isError, error })) {
+  } else if (isListFailure({ isError, error }) || (loadError && (!data || data.cells.length === 0))) {
     state = "error";
   } else if (data && data.cells.length === 0 && !s4Run) {
     // Nothing to score at all: no run and no waves. With a run, the S/4 strip still renders below.
@@ -166,7 +168,7 @@ export default function ReadinessPage() {
         </>
       }
       emptyProps={{ title: "No readiness data yet", detail: dayOne.step?.detail ?? "Readiness needs a finished run.", action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />, ghost: "grid" }}
-      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+      errorProps={isError ? { error, onRetry: () => void refetch() } : { error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
     >
       <Card
         title="Blocked objects"

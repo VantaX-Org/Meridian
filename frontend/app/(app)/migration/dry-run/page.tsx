@@ -68,7 +68,7 @@ function DryRunPicker({ notADryRun }: { notADryRun?: boolean }) {
           detail: "Start one from a migration wave with Dry run (S/4 load). It checks every record against the S/4HANA load rules without loading anything.",
           action: <Button render={<Link href="/migration">Open migration cockpit</Link>} />,
         }}
-        errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+        errorProps={{ error: q.error, onRetry: () => q.refetch() }}
         table={<DataTable columns={pickerColumns} data={runs} getRowId={(r) => r.id} onRowClick={(r) => router.push(`/migration/dry-run?run=${r.id}`)} />}
       />
     </div>

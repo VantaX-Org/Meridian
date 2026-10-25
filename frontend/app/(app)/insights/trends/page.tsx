@@ -9,7 +9,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, DataTable, Delta, EmptyState, Heatmap, HelpHint, Line, Pill, Select, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
 import { getRuleRanking, getTrends, type RuleRow, type TrendRun } from "@/lib/api/insights";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { labelOf, plural, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -57,7 +57,9 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
 }
 
 export default function TrendsPage() {
-  const { run, runs, versions, resolving } = useInsightScope();
+  const { run, runs, versions, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  // No run because the run list failed: an error, never "No runs to compare yet".
+  const loadError = run ? null : listError;
   const finding = useFindingOpener(run);
   const [win, setWin] = useState("12");
   // The run fixes the system: the trend is the lineage of the scoped run, never a second system choice.
@@ -97,7 +99,7 @@ export default function TrendsPage() {
   const narrative = last && first && composite.length > 1 ? trendSentence(first.y, last.y, composite.length) : "A trend needs at least two scored runs.";
   const change = last && first && composite.length > 1 ? Math.round((last.y - first.y) * 10) / 10 : null;
   const biggestMove = movedRows[0];
-  const state = resolving || q.isLoading || versions.isLoading ? "loading" : isListFailure(q) ? "error" : !run || trend.length === 0 ? "empty" : undefined;
+  const state = resolving || q.isLoading || versions.isLoading ? "loading" : loadError || isListFailure(q) ? "error" : !run || trend.length === 0 ? "empty" : undefined;
 
   return (
     <InsightFrame
@@ -121,7 +123,7 @@ export default function TrendsPage() {
       state={state}
       skeleton={<><CardSkeleton height={240} /><CardSkeleton height={140} /></>}
       emptyProps={{ title: "No runs to compare yet", detail: "Trends appear after the second finished run of the same system or upload.", ghost: "chart", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      errorProps={loadError ? { error: loadError, onRetry: refetchList } : { error: q.error, onRetry: () => void q.refetch() }}
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">

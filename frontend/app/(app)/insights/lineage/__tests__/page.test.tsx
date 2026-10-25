@@ -13,7 +13,7 @@ vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(""), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/" }));
 // DayOneAction renders its fallback link, as it does with no day-one step.
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: ({ fallbackHref, fallbackLabel }: { fallbackHref: string; fallbackLabel: string }) => <a href={fallbackHref}>{fallbackLabel}</a>,
 }));
 

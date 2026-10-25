@@ -66,7 +66,7 @@ beforeEach(() => {
 
 describe("PersonaHomePage 404 handling", () => {
   it("treats a 404 from the objects list as empty, not an error", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(objectsApi, "getObjects").mockRejectedValue(new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, { status: 404 } as AxiosResponse));
 
     renderWithQuery(<LeadHomePage />);
@@ -79,7 +79,7 @@ describe("PersonaHomePage 404 handling", () => {
 
 describe("PersonaHomePage data layout", () => {
   it("shows the run DQS, six linked dimension stats and the ledger of what moves the score", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
 
     renderWithQuery(<LeadHomePage />);
 
@@ -99,7 +99,7 @@ describe("PersonaHomePage Brief geometry", () => {
   const find = (check_id: string, module: string, extra: Record<string, unknown> = {}) => ({ id: `${module}-${check_id}`, version_id: "v1", check_id, module, severity: "critical", details: { message: "Material description is missing." }, ...extra });
 
   beforeEach(() => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [two] });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS });
   });
@@ -164,7 +164,7 @@ describe("PersonaHomePage Brief geometry", () => {
 
 describe("PersonaHomePage lineage and heatmap", () => {
   it("prints each dimension score in the heatmap cell with the readiness as its tone", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     renderWithQuery(<LeadHomePage />);
     const cell = await screen.findByLabelText("Material master Uniqueness: 95, go");
     expect(cell).toHaveTextContent("95");
@@ -173,7 +173,7 @@ describe("PersonaHomePage lineage and heatmap", () => {
   });
 
   it("calls the only run of its lineage the first run instead of comparing with another object's run", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     const other: Version = {
       ...LATEST, id: "v0", label: "Controlling", run_at: "2026-10-01T00:00:00Z",
       dqs_summary: { controlling: { ...LATEST.dqs_summary!.material_master, composite_score: 95 } },
@@ -196,7 +196,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   const finding = (check_id: string) => ({ id: check_id, version_id: "v1", check_id, module: "material_master", severity: "critical" });
 
   it("names up to two distinct critical rules in the cap line as drill links, never /findings", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
     vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
       findings: [finding("MM-001"), finding("MM-001"), finding("MM-002"), finding("MM-003")],
@@ -212,7 +212,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("counts the critical rules it does not name", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
     vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
       findings: [finding("MM-001"), finding("MM-002"), finding("MM-003")],
@@ -225,7 +225,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("takes count and names from the cap reason, so the line always adds up, even before findings load", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     const reason = "4 critical failures over tolerance (BP019: 4% of BUT000 rows; BP002: 3% of BUT000 rows; BP007: 2% of BUT000 rows; BP011: 2% of BUT000 rows) — score capped at 70";
     const bp: Version = { ...LATEST, dqs_summary: { material_master: { ...LATEST.dqs_summary!.material_master, composite_score: 70, critical_count: 6, capped: true, cap_reason: reason } } };
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [bp] });
@@ -242,7 +242,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("counts an object whose cap reason names no rule by its critical count", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     const mm = LATEST.dqs_summary!.material_master;
     const two: Version = { ...LATEST, dqs_summary: {
       material_master: { ...mm, composite_score: 85, critical_count: 1, capped: true, cap_reason: "1 critical failure over tolerance (BP019: 4% of BUT000 rows) — score capped at 85" },
@@ -257,7 +257,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("shows plain cap text while findings load", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
     vi.spyOn(findingsApi, "getFindings").mockReturnValue(new Promise(() => {}));
 
@@ -268,7 +268,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("counts critical plus high findings and links one run's count to its findings, critical and high", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
 
     renderWithQuery(<LeadHomePage />);
 
@@ -278,7 +278,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("sets the steward's work row and inbox items before the score, and the lead's after it", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [
       { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-08T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", ai_recommendation: null, ai_confidence: null },
     ], total: 1 } as unknown as Awaited<ReturnType<typeof stewardshipApi.getQueueItems>>);
@@ -296,7 +296,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("keeps the lead's score before the work row", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     renderWithQuery(<LeadHomePage />);
     const hero = await screen.findByTestId("home-verdict-row");
     const inbox = screen.getByText("Open inbox").closest("a") as HTMLElement;
@@ -304,7 +304,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("shows a dash, no hint, for inbox and proposals until counts load", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(shellApi, "getShellCounts").mockReturnValue(new Promise(() => {}));
 
     renderWithQuery(<StewardHomePage />);
@@ -318,7 +318,7 @@ describe("PersonaHomePage blocking and loading states", () => {
 
 describe("PersonaHomePage header actions (T20)", () => {
   it("offers the executive PDF in the header when a run is ready", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
 
     renderWithQuery(<LeadHomePage />);
 
@@ -334,7 +334,7 @@ describe("PersonaHomePage header actions (T20)", () => {
   });
 
   it("gives the steward one Export menu, not two side by side", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
 
     renderWithQuery(<StewardHomePage />);
 
@@ -345,7 +345,7 @@ describe("PersonaHomePage header actions (T20)", () => {
   it("does not render the header export action while gated by useDayOne's day-one journey", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({
       step: { key: "connect", href: "/systems", label: "Connect a system.", detail: "", actionable: true },
-      status: "ready",
+      status: "ready", error: null, refetch: vi.fn(),
     });
 
     renderWithQuery(<LeadHomePage />);
@@ -391,7 +391,7 @@ describe("PersonaHomePage current state across objects", () => {
   ];
 
   beforeEach(() => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: RUNS });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "co2", objects: [], thresholds: { target: 90, warning: 75, critical: 60 } });
   });
@@ -460,5 +460,35 @@ describe("PersonaHomePage current state across objects", () => {
     } finally {
       nav.search = "";
     }
+  });
+});
+
+describe("PersonaHomePage error state", () => {
+  const http = (status: number) => new AxiosError("x", "ERR_BAD_RESPONSE", undefined, undefined, { status, data: {} } as AxiosResponse);
+  const callCount = (f: unknown) => (f as { mock: { calls: unknown[] } }).mock.calls.length;
+
+  it("names the failing source's error and Retry reads objects, runs, systems and the landscape again", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockRejectedValue(http(500));
+    renderWithQuery(<LeadHomePage />);
+
+    expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+    expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+    const sources = [objectsApi.getObjects, versionsApi.getVersions, connectivityApi.getSystems, configLoadApi.getConfigLandscape];
+    const before = sources.map(callCount);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => sources.forEach((f, i) => expect(callCount(f)).toBeGreaterThan(before[i])));
+  });
+
+  it("shows an inline error with Retry on the steward's inbox card, never \"Nothing waits in the inbox\"", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    const queue = vi.spyOn(stewardshipApi, "getQueueItems").mockRejectedValue(http(503));
+    renderWithQuery(<StewardHomePage />);
+
+    const alert = await screen.findByTestId("home-inbox-error");
+    expect(alert).toHaveTextContent("The inbox did not load");
+    expect(screen.queryByText("Nothing waits in the inbox")).toBeNull();
+    const calls = queue.mock.calls.length;
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(queue.mock.calls.length).toBeGreaterThan(calls));
   });
 });

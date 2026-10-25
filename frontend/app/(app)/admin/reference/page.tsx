@@ -10,7 +10,7 @@ import { Button, DataTable, ExplorerPage, PageHeader, Select } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { getSystems } from "@/lib/api/connectivity";
 import { getReferenceLists, type ReferenceList } from "@/lib/api/system-objects";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 
 /** Reference list kinds as words. */
@@ -44,7 +44,7 @@ export default function ReferenceAdminPage() {
         detail: list.length === 0 ? "Reference lists belong to a system. Connect a system first." : "Upload postal codes or a bank code list on the system's Health tab. Until then those checks use format rules only.",
         action: <Button render={<Link href={list.length === 0 ? "/systems?connect=1" : id ? `/systems/${id}?tab=health` : "/systems"}>{list.length === 0 ? "Connect a system" : "Open the system"}</Link>} />,
       }}
-      errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void systems.refetch(); void q.refetch(); } }}
+      errorProps={{ error: failed?.error, onRetry: () => { void systems.refetch(); void q.refetch(); } }}
       table={<DataTable columns={[...columns, actionColumn<ReferenceList>(() => (id ? <RowLink href={`/systems/${id}?tab=health`}>Open system</RowLink> : null))]} data={rows} getRowId={(r) => r.kind} />}
     />
   );

@@ -100,6 +100,9 @@ export default function RecordFixSheetPage() {
       </div>
     );
   }
+  if (!run && scope.error) {
+    return <ErrorState {...apiErrorState(scope.error)} onRetry={scope.refetch} />;
+  }
   if (!run) {
     return (
       <EmptyState

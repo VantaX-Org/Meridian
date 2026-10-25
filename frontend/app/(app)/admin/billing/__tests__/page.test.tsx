@@ -4,6 +4,9 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as exceptionsApi from "@/lib/api/exceptions";
 import ExceptionBillingPage from "../page";
 
+const perms = vi.hoisted(() => ({ settings: true }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => a !== "manage_settings" || perms.settings, loading: false }) }));
+
 const BILLING: exceptionsApi.ExceptionBillingPeriod = {
   period: "2026-01",
   tier1_count: 2,
@@ -41,6 +44,20 @@ describe("admin billing page", () => {
     vi.spyOn(exceptionsApi, "getExceptionBilling").mockResolvedValue({ ...BILLING, currency: "nope" });
     renderWithQuery(<ExceptionBillingPage />);
     await waitFor(() => expect(screen.getByText((650).toLocaleString(undefined, { minimumFractionDigits: 2 }))).toBeInTheDocument());
+  });
+
+  it("says the page needs manage_settings, and never asks the API, for a user without it", async () => {
+    perms.settings = false;
+    const spy = vi.spyOn(exceptionsApi, "getExceptionBilling").mockResolvedValue(BILLING);
+    try {
+      renderWithQuery(<ExceptionBillingPage />);
+      expect(await screen.findByText("Exception billing needs the manage-settings permission")).toBeInTheDocument();
+      expect(screen.getByText(/ask an administrator/i)).toBeInTheDocument();
+      expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      perms.settings = true;
+    }
   });
 
   it("shows a retryable error when billing fails to load", async () => {

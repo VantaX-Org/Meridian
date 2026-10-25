@@ -133,7 +133,7 @@ export default function SurvivorshipPage() {
         state={asyncStateOf(q, () => rules.length === 0, true)}
         emptyProps={{ title: "No survivorship rules", detail: "Until a rule exists for a field, the newest source value wins. You can still pick a value per field when you merge a pair.",
           action: editable ? <Button onClick={() => setAdding(true)}>New rule</Button> : <Button variant="secondary" render={<Link href="/mdm/golden/merge">Review match pairs</Link>} /> }}
-        errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+        errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
         filterBar={editable ? undefined : <p className="m-text-meta m-ink-2">Only master data editors can change survivorship rules</p>}
         table={<Drafts.Provider value={draftContext}><DataTable columns={columns} data={rules} getRowId={(r) => r.id} /></Drafts.Provider>}
       />

@@ -118,7 +118,7 @@ export default function OwnersPage() {
         ghost: "list",
         action: <Button render={<Link href="/fix">Open Fix work</Link>} />,
       }}
-      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+      errorProps={{ error: error, onRetry: () => void refetch() }}
     >
       <Card title="Score by owner" meta="Lowest score first" dataTour="owners">
         <DataTable columns={scoreColumns} data={ranked} getRowId={(o) => o.owner} hideToolbar dense height="auto" />

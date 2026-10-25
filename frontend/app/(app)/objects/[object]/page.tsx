@@ -413,6 +413,10 @@ export default function ObjectDetailPage() {
       </PageFrame>
     );
   }
+  if (!run && scope.error) {
+    // The run list failed: we cannot tell whether a run measured this object.
+    return <ErrorState {...apiErrorState(scope.error)} onRetry={scope.refetch} />;
+  }
   if (!run) {
     return (
       <EmptyState

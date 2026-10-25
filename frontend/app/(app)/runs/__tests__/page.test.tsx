@@ -24,7 +24,7 @@ vi.mock("@/app/(app)/systems/[systemId]/scope-picker", () => ({ ScopePicker: () 
 // useDayOne() shares the systems/versions query keys with this page's own queries;
 // mocking it outright avoids a real-vs-mocked getSystems collision on queryKeys.systems().
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: ({ step, fallbackHref, fallbackLabel }: { step: { href: string | null; label: string; actionable: boolean } | null; fallbackHref: string; fallbackLabel: string }) =>
     step && (!step.actionable || !step.href) ? (
       <span>{step.label}</span>

@@ -16,7 +16,7 @@ import { getSyncProfiles } from "@/lib/api/systems";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
 import { exportRuns } from "@/lib/api/versions";
 import { getTriageSettings } from "@/lib/api/triage";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { browserTimezone, formatDate, relativeTime, systemTypeLabel } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
@@ -291,7 +291,7 @@ export default function SystemsPage() {
         ),
         ghost: "table",
       }}
-      errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}
+      errorProps={{ error: error, onRetry: () => refetch() }}
     />
     <ConnectSystemDialog open={connecting} onOpenChange={openConnect} />
     </>

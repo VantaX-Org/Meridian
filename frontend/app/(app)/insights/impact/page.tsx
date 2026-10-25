@@ -222,8 +222,10 @@ function ImpactPanel({
 }
 
 export default function ImpactPage() {
-  const { run, runs, resolving } = useInsightScope();
+  const { run, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
   const dayOne = useDayOne();
+  // No run because the run list (or the day-one sources) failed: an error, never "No value at risk yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
 
   // Both follow the run the header names; they wait for it rather than read whatever run the API thinks is latest.
   const impactQuery = useQuery({
@@ -269,7 +271,7 @@ export default function ImpactPage() {
             : `${Math.abs(rows.length - prevRows.length).toLocaleString()} ${rows.length > prevRows.length ? "more" : "fewer"} features blocked than in the previous run`;
 
   // Each card follows its own query, so proven cost shows while a large impact query is still running.
-  const state: "loading" | "empty" | undefined = dayOne.status === "loading" || resolving ? "loading" : !run ? "empty" : undefined;
+  const state: "loading" | "empty" | "error" | undefined = dayOne.status === "loading" || resolving ? "loading" : loadError ? "error" : !run ? "empty" : undefined;
 
   return (
     <InsightFrame
@@ -278,6 +280,7 @@ export default function ImpactPage() {
       scope
       run={run}
       state={state}
+      errorProps={{ error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
       emptyProps={{
         title: "No value at risk yet",
         detail: dayOne.step?.detail ?? "Value at risk is worked out from a finished run.",

@@ -275,7 +275,7 @@ export default function ProposalsPage() {
         detail: "Every proposal here has been approved, rejected or drafted into a fix batch.",
         action: <Button render={<Link href={backHref}>Back to the cleaning queue</Link>} />,
       }}
-      errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
+      errorProps={{ error: error, onRetry: refetch }}
       summary={items.length > 0 ? (
         <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,360px))]">
           <Stat label="Waiting for review" value={waiting.toLocaleString()} />

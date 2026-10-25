@@ -27,7 +27,6 @@ import {
 } from "@/lib/api/learnedRules";
 import { errorText } from "@/lib/api/remediation";
 import { getVersions } from "@/lib/api/versions";
-import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -135,7 +134,7 @@ export default function LearnedRulesPage() {
           }
         : { title: status === "approved" ? "Nothing approved yet" : "Nothing rejected", detail: "Proposals you decide on are listed here.", action: <Button variant="secondary" onClick={() => setStatus("pending")}>Show proposals waiting</Button> }}
       errorProps={{
-        message: apiErrorMessage(q.error),
+        error: q.error,
         onRetry: () => q.refetch(),
       }}
       table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
