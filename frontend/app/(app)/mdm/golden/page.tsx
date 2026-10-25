@@ -6,8 +6,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, type CellMeta, ExplorerPage, Field, Input, Mono, PageHeader, Pager, Pill, Select, asyncStateOf } from "@/design";
+import { Button, DataTable, type CellMeta, ExplorerPage, Field, Input, Mono, PageHeader, Pager, Select, asyncStateOf } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
+import { GoldenStatusPill } from "@/components/mdm/golden-status";
 import { getMasterRecords } from "@/lib/api/master-records";
 import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
@@ -31,12 +32,10 @@ const DOMAIN_OPTIONS = [
 /** Keeps a percentage box to whole numbers 0 to 100, so a stray letter never reaches the API as NaN. */
 const pctInput = (raw: string) => { const d = raw.replace(/\D/g, "").slice(0, 3); return d === "" ? "" : String(Math.min(100, Number(d))); };
 
-const STATUS_LABEL: Record<string, string> = { candidate: "Candidate", pending_review: "Pending review", golden: "Golden", superseded: "Superseded" };
-
 const columns: ColumnDef<MasterRecordSummary>[] = [
   { accessorKey: "sap_object_key", header: "SAP key", size: 200, cell: ({ row }) => <Mono>{row.original.sap_object_key}</Mono> },
   { id: "domain", header: "Object", size: 160, cell: ({ row }) => formatModuleName(row.original.domain) },
-  { id: "status", header: "Status", size: 130, accessorFn: (r) => r.status, cell: ({ row }) => <Pill tone={row.original.status === "golden" ? "go" : row.original.status === "superseded" ? "neutral" : "info"}>{STATUS_LABEL[row.original.status] ?? row.original.status.replace(/_/g, " ")}</Pill> },
+  { id: "status", header: "Status", size: 130, accessorFn: (r) => r.status, cell: ({ row }) => <GoldenStatusPill status={row.original.status} /> },
   { accessorKey: "source_count", header: "Sources", size: 90, meta: { numeric: true } satisfies CellMeta },
   { id: "conf", header: "Confidence", size: 110, meta: { numeric: true } satisfies CellMeta, accessorFn: (r) => r.overall_confidence, cell: ({ row }) => `${Math.round(row.original.overall_confidence * 100)}%` },
   { accessorKey: "pending_issues", header: "Open issues", size: 110, meta: { numeric: true } satisfies CellMeta },

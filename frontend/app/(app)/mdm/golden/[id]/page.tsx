@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, Status, toast, type RecordStatus } from "@/design";
+import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, toast } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { MergedRecords } from "@/components/mdm/merged-records";
 import { GatedPrimary } from "@/components/gated-primary";
+import { GoldenStatusPill, sourceSystems } from "@/components/mdm/golden-status";
 import { useRole } from "@/hooks/use-role";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -21,7 +22,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 type Rel = { id: string; relationship_type: string; to_key: string; to_domain: string };
 type Hist = { id: string; changed_at: string; change_type: string; changed_by?: string | null };
 type FieldRow = { field: string; value: unknown };
-type SourceRow = { system: string; value: unknown; confidence: number; ai: string | null | undefined };
+/** One golden field and the source system its surviving value came from (source_contributions is keyed by field). */
+type SourceRow = { field: string; system: string; value: unknown; confidence: number; ai: string | null | undefined };
 
 const show = (v: unknown) => (v == null ? "None" : String(v));
 
@@ -40,7 +42,8 @@ const fieldCols: ColumnDef<FieldRow>[] = [
   { id: "value", header: "Value", accessorFn: (r) => show(r.value) },
 ];
 const sourceCols: ColumnDef<SourceRow>[] = [
-  { id: "system", header: "System", cell: ({ row }) => <Mono>{row.original.system}</Mono> },
+  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
+  { id: "system", header: "Source system", cell: ({ row }) => <Mono>{row.original.system}</Mono> },
   { id: "value", header: "Value", accessorFn: (r) => show(r.value) },
   { id: "conf", header: "Confidence", accessorFn: (r) => `${Math.round(r.confidence * 100)}%` },
   { id: "ai", header: "Model recommendation", accessorFn: (r) => r.ai ?? "None" },
@@ -83,7 +86,15 @@ export default function MasterRecordPage() {
   });
   const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(id),
-    onSuccess: () => setConfirmWriteback(false),
+    onSuccess: (result) => {
+      setConfirmWriteback(false);
+      void qc.invalidateQueries({ queryKey: queryKeys.masterRecordHistory(id) });
+      const targets = sourceSystems(recordQuery.data?.source_contributions ?? {});
+      const named = targets.length ? targets.join(", ") : "SAP";
+      // The API says whether it wrote to SAP; when it only hands back the values, say so rather than claim a write.
+      if (result.writeback_supported) toast.success(`${recordQuery.data?.sap_object_key ?? "Record"} written back to ${named}`);
+      else toast.info(`Not written to ${named}. ${result.message}`);
+    },
     onError: (error) => {
       setConfirmWriteback(false);
       toast.error(apiErrorMessage(error));
@@ -118,27 +129,24 @@ export default function MasterRecordPage() {
     );
   }
 
-  // RecordPage only speaks the record-quality vocabulary; the golden-record status is the Pill in the overview.
-  const status: RecordStatus = record.status === "golden"
-    ? { label: "passing", tone: "go" }
-    : { label: "in batch", tone: record.status === "superseded" ? "neutral" : "at-risk" };
+  // RecordPage's status speaks the record-quality vocabulary, so it is omitted; the lifecycle Pill is in the overview.
   const promotable = record.status !== "golden" && record.status !== "superseded";
 
   const fields = Object.entries(record.golden_fields);
-  const sources = Object.entries(record.source_contributions);
+  const contributions = Object.entries(record.source_contributions);
+  const systems = sourceSystems(record.source_contributions);
   const relationships = relationshipsQuery.data?.relationships ?? [];
   const history = historyQuery.data ?? [];
   const fieldRows: FieldRow[] = fields.map(([field, value]) => ({ field, value }));
-  const sourceRows: SourceRow[] = sources.map(([system, c]) => ({ system, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
+  const sourceRows: SourceRow[] = contributions.map(([field, c]) => ({ field, system: c.source_system, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
 
   return (
     <RecordPage
       recordKey={record.sap_object_key}
       object={record.domain}
-      status={status}
       meta={record.status === "superseded"
         ? "This record was merged into another golden record. Its own values are kept for an unmerge."
-        : `The one trusted version of this record, built from ${sources.length.toLocaleString()} ${sources.length === 1 ? "source" : "sources"}. ${promotable ? "Check the values, then promote it." : "It is the version other systems should use."}`}
+        : `The one trusted version of this record, built from ${systems.length.toLocaleString()} source ${systems.length === 1 ? "system" : "systems"}. ${promotable ? "Check the values, then promote it." : "It is the version other systems should use."}`}
       actions={canApprove && promotable ? (
         <Button disabled={promote.isPending} onClick={() => setConfirmPromote(true)}>Promote</Button>
       ) : undefined}
@@ -170,7 +178,7 @@ export default function MasterRecordPage() {
         </>}
         overview={<>
       <section className="flex items-center gap-2">
-        <Status kind="lifecycle" value={record.status} />
+        <GoldenStatusPill status={record.status} />
         <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
         <GatedPrimary
           kind="writeback"
@@ -204,7 +212,7 @@ export default function MasterRecordPage() {
         body={
           <div className="flex flex-col gap-2 m-text-body m-ink-2">
             <p>Fields: {fields.length ? fields.map(([f]) => f).join(", ") : "none"}</p>
-            <p>Target system{sources.length === 1 ? "" : "s"}: {sources.length ? sources.map(([s]) => s).join(", ") : "none recorded"}</p>
+            <p>Target system{systems.length === 1 ? "" : "s"}: {systems.length ? systems.join(", ") : "none recorded"}</p>
           </div>
         }
         confirmLabel="Write back"
@@ -223,11 +231,11 @@ export default function MasterRecordPage() {
       </section>
 
       <section aria-label="Source contributions">
-        <LedgerHead title="Source contributions" meta={String(sources.length)} />
-        {sources.length === 0 ? (
+        <LedgerHead title="Source contributions" meta={`${contributions.length.toLocaleString()} ${contributions.length === 1 ? "field" : "fields"} from ${systems.length.toLocaleString()} ${systems.length === 1 ? "system" : "systems"}`} />
+        {contributions.length === 0 ? (
           <EmptyState variant="inline" title="No sources recorded" detail="A source is added each time an extraction carries this key." action={<Link className="m-ink-accent-ink hover:underline" href="/systems">Open systems</Link>} />
         ) : (
-          <DataTable columns={sourceCols} getRowId={(r) => r.system} data={sourceRows} height="auto" />
+          <DataTable columns={sourceCols} getRowId={(r) => r.field} data={sourceRows} height="auto" />
         )}
       </section>
 

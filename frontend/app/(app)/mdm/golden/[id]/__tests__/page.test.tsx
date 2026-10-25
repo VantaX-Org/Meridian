@@ -2,6 +2,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import { toast } from "@/design";
 import * as masterRecordsApi from "@/lib/api/master-records";
 import * as relationshipsApi from "@/lib/api/relationships";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
@@ -20,9 +21,12 @@ const record: MasterRecordDetail = {
   id: "m1",
   domain: "material_master",
   sap_object_key: "MARA-1000",
-  golden_fields: { MATKL: "FERT" },
+  golden_fields: { MATKL: "FERT", MAKTX: "Bolt", MEINS: "EA" },
+  // Keyed by field, as api/services/golden_record_engine.py writes it; two fields came from ECC, one from S/4HANA Cloud.
   source_contributions: {
-    ECC: { value: "FERT", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.9 },
+    MATKL: { value: "FERT", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.9 },
+    MAKTX: { value: "Bolt", source_system: "S4HANA_CLOUD", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.8 },
+    MEINS: { value: "EA", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.7 },
   },
   overall_confidence: 0.9,
   status: "golden",
@@ -49,6 +53,71 @@ describe("MasterRecordPage", () => {
     expect(screen.getAllByText("FERT").length).toBeGreaterThan(0);
     // The merge comparison is reachable from the record.
     expect(screen.getByRole("link", { name: "Compare sources" })).toHaveAttribute("href", `/mdm/golden/merge?id=${record.id}`);
+  });
+
+  it("counts distinct source systems and lists one source row per field", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    renderWithQuery(<MasterRecordPage />);
+    expect(await screen.findByText(/built from 2 source systems\./)).toBeInTheDocument();
+    const sources = screen.getByRole("region", { name: "Source contributions" });
+    expect(within(sources).getByText("3 fields from 2 systems")).toBeInTheDocument();
+    expect(within(sources).getByRole("columnheader", { name: "Source system" })).toBeInTheDocument();
+    const maktx = within(sources).getByText("MAKTX").closest("tr") as HTMLElement;
+    expect(within(maktx).getByText("S4HANA_CLOUD")).toBeInTheDocument();
+    expect(within(maktx).getByText("80%")).toBeInTheDocument();
+  });
+
+  it("names the real target systems before a write-back and reports the outcome", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    const history = vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    const writeback = vi.spyOn(masterRecordsApi, "writebackMasterRecord").mockResolvedValue({
+      record_id: "m1", domain: "material_master", golden_fields: record.golden_fields, writeback_supported: true, message: "Written",
+    });
+    const success = vi.spyOn(toast, "success");
+    renderWithQuery(<MasterRecordPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Write back" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Target systems: ECC, S4HANA_CLOUD")).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Target systems?: .*MATKL/)).not.toBeInTheDocument();
+    const before = history.mock.calls.length;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Write back" }));
+    await waitFor(() => expect(writeback).toHaveBeenCalledWith("m1"));
+    await waitFor(() => expect(success).toHaveBeenCalledWith("MARA-1000 written back to ECC, S4HANA_CLOUD"));
+    // The history refreshes so the write-back shows up there.
+    await waitFor(() => expect(history.mock.calls.length).toBeGreaterThan(before));
+  });
+
+  it("says when the API only returned the values instead of claiming a write", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    vi.spyOn(masterRecordsApi, "writebackMasterRecord").mockResolvedValue({
+      record_id: "m1", domain: "material_master", golden_fields: {}, writeback_supported: false, message: "Apply the findings via 4-eyes.",
+    });
+    const success = vi.spyOn(toast, "success");
+    const info = vi.spyOn(toast, "info");
+    renderWithQuery(<MasterRecordPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Write back" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Write back" }));
+    await waitFor(() => expect(info).toHaveBeenCalledWith("Not written to ECC, S4HANA_CLOUD. Apply the findings via 4-eyes."));
+    expect(success).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["candidate", "Candidate"],
+    ["pending_review", "Pending review"],
+    ["golden", "Golden"],
+    ["superseded", "Superseded"],
+  ] as const)("labels a %s record by its lifecycle", async (status, label) => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({ ...record, status });
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    renderWithQuery(<MasterRecordPage />);
+    expect(await screen.findByText(label)).toBeInTheDocument();
+    expect(screen.queryByText(/in batch/i)).not.toBeInTheDocument();
   });
 
   it("shows an empty state when the record does not exist", async () => {
