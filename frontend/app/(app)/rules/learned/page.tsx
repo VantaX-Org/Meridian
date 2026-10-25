@@ -104,7 +104,7 @@ export default function LearnedRulesPage() {
       header={
         <PageHeader
           title="Learned rules"
-          meta="Patterns your data follows for at least 95% of records"
+          meta="Patterns your own data follows for at least 95% of records. Approve one to make it a rule; the records that break it then show as findings."
           actions={can("manage_rules") ? <Button onClick={() => mine.mutate()} pending={mine.isPending} disabled={!latestRun}>Mine now</Button> : undefined}
         />
       }
@@ -115,7 +115,15 @@ export default function LearnedRulesPage() {
         </div>
       }
       state={asyncStateOf(q, () => items.length === 0, true)}
-      emptyProps={{ title: "No learned rules yet", detail: "Mining runs after the second analysis", action: <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
+      emptyProps={status === "pending"
+        ? {
+            title: "No proposals waiting",
+            detail: latestRun ? "Mining looks for new patterns after each analysis. Mine now to look again." : "Mining needs a finished analysis first.",
+            action: can("manage_rules") && latestRun
+              ? <Button onClick={() => mine.mutate()} pending={mine.isPending}>Mine now</Button>
+              : <Button variant="secondary" render={<Link href={latestRun ? "/rules" : "/runs"}>{latestRun ? "Open rules" : "Open runs"}</Link>} />,
+          }
+        : { title: status === "approved" ? "Nothing approved yet" : "Nothing rejected", detail: "Proposals you decide on are listed here.", action: <Button variant="secondary" onClick={() => setStatus("pending")}>Show proposals waiting</Button> }}
       errorProps={{
         message: apiErrorMessage(q.error),
         onRetry: () => q.refetch(),

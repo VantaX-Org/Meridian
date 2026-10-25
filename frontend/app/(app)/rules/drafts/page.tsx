@@ -32,9 +32,9 @@ export default function RuleDraftsPage() {
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Rule drafts" meta="Edit, dry run and publish rules before they run" actions={<><Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />{newDraft}</>} />}
+        header={<PageHeader title="Rule drafts" meta="A draft is a rule that does not run yet. Dry run it on real data, then publish it to run on every analysis." actions={<><Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />{newDraft}</>} />}
         state={asyncStateOf(q, () => items.length === 0, true)}
-        emptyProps={{ title: "No drafts", detail: "Start a draft, or let the model write the first version", ghost: "table", action: newDraft ?? <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
+        emptyProps={{ title: "No drafts", detail: "Start a draft here, or from New rule on the rules page.", ghost: "table", action: newDraft ?? <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
         errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
         table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} onRowClick={(r) => setSelected(r)} tableId="rule-drafts" />}
       />

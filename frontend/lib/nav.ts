@@ -157,6 +157,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/mdm", requires: req("mdm", "view"), label: "Overview", icon: IconDatabase, keywords: "mdm master data health score trend" },
       { href: "/mdm/survivorship", requires: req("mdm", "view"), label: "Survivorship", icon: IconSliders, keywords: "survivorship rules golden source precedence" },
       { href: "/mdm/golden", requires: req("mdm", "view"), label: "Golden records", icon: IconLayers, keywords: "master mdm" },
+      { href: "/mdm/golden/merge", requires: req("mdm", "view"), label: "Match review", icon: IconMerge, keywords: "duplicates match merge pairs survivor not a match" },
       { href: "/mdm/glossary", requires: req("glossary", "view"), label: "Glossary", icon: IconBook, keywords: "terms business" },
       { href: "/mdm/match-rules", requires: req("mdm", "view"), label: "Match rules", icon: IconMerge, keywords: "tuning constraints" },
     ],

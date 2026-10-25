@@ -117,6 +117,7 @@ class MergeEventOut(BaseModel):
 class UnmergeBody(BaseModel):
     keys: list[str] = Field(min_length=1, max_length=500)
     reason: str = Field(min_length=1, max_length=2000)
+    dry_run: bool = False
 
 
 class ReasonBody(BaseModel):
@@ -162,6 +163,80 @@ class DryRunResponse(BaseModel):
     clusters_that_would_merge: int
     clusters_that_would_split: int
     applied: bool
+
+
+Band = Literal["auto_merge", "review", "low"]
+
+
+class PairListItem(BaseModel):
+    id: str
+    domain: str
+    a: str
+    b: str
+    total: float
+    band: Band
+    auto_action: str
+    steward_decision: Optional[str] = None
+    constraint: Optional[str] = None
+    explanation: Optional[dict[str, Any]] = None
+    field_scores: dict[str, Any] = {}
+    a_record_id: Optional[str] = None
+    b_record_id: Optional[str] = None
+    same_cluster: bool = False
+
+
+class PairListResponse(BaseModel):
+    pairs: list[PairListItem]
+    total: int
+    bands: dict[str, int]
+    thresholds: dict[str, float]
+
+
+class PairSide(BaseModel):
+    key: str
+    record_id: Optional[str] = None
+    confidence: Optional[float] = None
+    fields: dict[str, Any] = {}
+
+
+class PairDetail(PairListItem):
+    record_a: PairSide
+    record_b: PairSide
+    default_survivor: str
+
+
+class PairMergeBody(BaseModel):
+    survivor: Optional[str] = Field(default=None, max_length=200)
+    overrides: dict[str, Optional[str]] = {}
+    reason: Optional[str] = Field(default=None, max_length=2000)
+    dry_run: bool = False
+
+
+class PairMergeResponse(BaseModel):
+    match_score_id: str
+    survivor_key: str
+    merged_key: str
+    golden_record_id: str
+    golden_fields: dict[str, Any]
+    survivorship: dict[str, Any]
+    filled_fields: list[str]
+    event_id: Optional[str] = None
+    dry_run: bool
+
+
+class BulkMergeBody(BaseModel):
+    domain: Optional[str] = None
+    min_score: float = Field(ge=0.5, le=1)
+    reason: str = Field(min_length=1, max_length=2000)
+    limit: int = Field(default=200, ge=1, le=500)
+
+
+class BulkMergeResponse(BaseModel):
+    considered: int
+    merged: int
+    already_together: int
+    blocked: int
+    missing_record: int
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -333,7 +408,16 @@ async def match_tuning_dry_run(body: DryRunBody, _: str = Depends(require_permis
 async def unmerge_records(record_id: uuid.UUID, body: UnmergeBody, _: str = Depends(require_permission("approve")),
                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     tid = await _rls(db, tenant)
-    return await _mutate(db, mdm_merge.unmerge(db, tid, str(record_id), body.keys, current_user_id(), body.reason))
+    coro = mdm_merge.unmerge(db, tid, str(record_id), body.keys, current_user_id(), body.reason)
+    if body.dry_run:  # preview: run the real unmerge, report what it would leave, keep nothing
+        try:
+            res = await coro
+        except (mdm_merge.MergeStateError, mdm_merge.PairConstraintError) as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        finally:
+            await db.rollback()
+        return {**res, "event_id": None, "dry_run": True}
+    return await _mutate(db, coro)
 
 
 @router.post("/master-records/{record_id}/undo-last-merge")
@@ -374,3 +458,182 @@ async def delete_pair_constraint(constraint_id: uuid.UUID, reason: Optional[str]
     tid = await _rls(db, tenant)
     res = await _mutate(db, mdm_merge.clear_constraint(db, tid, str(constraint_id), current_user_id(), reason))
     return _not_found(res, "Pair constraint")
+
+
+# ── Match review queue ───────────────────────────────────────────────────────
+
+# One row per scored pair (match_scores is unique per pair), with its band, any steward constraint and whether
+# both keys already sit in one golden record. Constraint keys are matched in both orders: key_lo/key_hi come
+# from Python ordering, which can differ from the database collation's LEAST/GREATEST.
+_REVIEW_PAIRS = """
+    WITH p AS (
+      SELECT ms.id, ms.domain, ms.candidate_a_key AS a, ms.candidate_b_key AS b, ms.total_score AS total,
+             ms.auto_action, ms.steward_decision, ms.explanation, ms.field_scores,
+             (SELECT pc.kind FROM mdm_pair_constraints pc
+               WHERE pc.tenant_id = ms.tenant_id AND pc.domain = ms.domain
+                 AND ((pc.key_lo = ms.candidate_a_key AND pc.key_hi = ms.candidate_b_key)
+                   OR (pc.key_lo = ms.candidate_b_key AND pc.key_hi = ms.candidate_a_key)) LIMIT 1) AS pc_kind,
+             ma.id AS a_id, mb.id AS b_id,
+             COALESCE(COALESCE(ma.merged_into, ma.id) = COALESCE(mb.merged_into, mb.id), false) AS same_cluster,
+             CASE WHEN ms.total_score >= :am THEN 'auto_merge' WHEN ms.total_score >= :rf THEN 'review'
+                  ELSE 'low' END AS band
+        FROM match_scores ms
+        LEFT JOIN master_records ma ON ma.tenant_id = ms.tenant_id AND ma.domain = ms.domain
+                                   AND ma.sap_object_key = ms.candidate_a_key
+        LEFT JOIN master_records mb ON mb.tenant_id = ms.tenant_id AND mb.domain = ms.domain
+                                   AND mb.sap_object_key = ms.candidate_b_key
+       WHERE ms.tenant_id = :tid AND (CAST(:d AS text) IS NULL OR ms.domain = :d) {where}
+    )
+    SELECT * FROM p
+     WHERE (:inc OR (steward_decision IS NULL AND pc_kind IS NULL AND NOT same_cluster))
+       AND (CAST(:lo AS float) IS NULL OR total >= :lo) AND (CAST(:hi AS float) IS NULL OR total <= :hi)
+"""
+
+
+def _pair_item(r: Any) -> dict:
+    return {"id": str(r.id), "domain": r.domain, "a": r.a, "b": r.b, "total": float(r.total), "band": r.band,
+            "auto_action": r.auto_action, "steward_decision": r.steward_decision, "constraint": r.pc_kind,
+            "explanation": r.explanation, "field_scores": r.field_scores or {},
+            "a_record_id": str(r.a_id) if r.a_id else None, "b_record_id": str(r.b_id) if r.b_id else None,
+            "same_cluster": bool(r.same_cluster)}
+
+
+def _review_params(tid: str, domain: Optional[str], lo: Optional[float], hi: Optional[float], all_: bool) -> dict:
+    return {"tid": tid, "d": domain, "lo": lo, "hi": hi, "inc": all_, "am": AUTO_MERGE, "rf": REVIEW_FLOOR}
+
+
+@router.get("/match-scores", response_model=PairListResponse)
+async def list_match_pairs(domain: Optional[str] = None, band: Optional[Band] = None,
+                           min_score: Optional[float] = Query(None, ge=0, le=1),
+                           max_score: Optional[float] = Query(None, ge=0, le=1),
+                           include_decided: bool = False,
+                           limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
+                           _: str = Depends(require_permission("view")), db: AsyncSession = Depends(get_db),
+                           tenant: Tenant = Depends(get_tenant)) -> PairListResponse:
+    """Pairs waiting on a steward: no verdict, no constraint, not already in one golden record.
+
+    ``bands`` counts every band under the same filters, so the page can offer "uncertain only" with its size.
+    """
+    tid = await _rls(db, tenant)
+    params = _review_params(tid, domain, min_score, max_score, include_decided)
+    base = _REVIEW_PAIRS.format(where="")
+    counts = {r[0]: int(r[1]) for r in await db.execute(text(f"SELECT band, COUNT(*) FROM ({base}) q GROUP BY band"),
+                                                        params)}
+    banded = f"SELECT * FROM ({base}) q WHERE (CAST(:band AS text) IS NULL OR band = :band)"
+    total = sum(counts.values()) if band is None else counts.get(band, 0)
+    rows = await db.execute(text(f"{banded} ORDER BY total DESC, id LIMIT :n OFFSET :off"),
+                            {**params, "band": band, "n": limit, "off": offset})
+    return PairListResponse(pairs=[PairListItem(**_pair_item(r)) for r in rows], total=total,
+                            bands={b: counts.get(b, 0) for b in ("auto_merge", "review", "low")},
+                            thresholds={"auto_merge": AUTO_MERGE, "review_floor": REVIEW_FLOOR})
+
+
+async def _pair_row(db: AsyncSession, tid: str, score_id: uuid.UUID) -> Any:
+    row = (await db.execute(text(_REVIEW_PAIRS.format(where="AND ms.id = :sid")),
+                            {**_review_params(tid, None, None, None, True), "sid": str(score_id)})).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Match score not found")
+    return row
+
+
+async def _side(db: AsyncSession, tid: str, domain: str, key: str) -> dict:
+    r = (await db.execute(text("SELECT id, overall_confidence, COALESCE(own_fields, golden_fields) FROM master_records "
+                               "WHERE tenant_id = :tid AND domain = :d AND sap_object_key = :k"),
+                          {"tid": tid, "d": domain, "k": key})).first()
+    if r is None:
+        return {"key": key}
+    return {"key": key, "record_id": str(r[0]), "confidence": float(r[1] or 0), "fields": r[2] or {}}
+
+
+def _default_survivor(a: dict, b: dict) -> str:
+    """The higher-confidence record survives (the steward merge rule); A on a tie."""
+    return b["key"] if (b.get("confidence") or 0) > (a.get("confidence") or 0) else a["key"]
+
+
+@router.get("/match-scores/{score_id}", response_model=PairDetail)
+async def get_match_pair(score_id: uuid.UUID, _: str = Depends(require_permission("view")),
+                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> PairDetail:
+    tid = await _rls(db, tenant)
+    row = await _pair_row(db, tid, score_id)
+    a, b = await _side(db, tid, row.domain, row.a), await _side(db, tid, row.domain, row.b)
+    return PairDetail(**_pair_item(row), record_a=PairSide(**a), record_b=PairSide(**b),
+                      default_survivor=_default_survivor(a, b))
+
+
+async def _merge_pair(db: AsyncSession, tid: str, row: Any, survivor: Optional[str], overrides: dict,
+                      reason: Optional[str]) -> Optional[dict]:
+    if survivor is None:
+        survivor = _default_survivor(await _side(db, tid, row.domain, row.a), await _side(db, tid, row.domain, row.b))
+    if survivor not in (row.a, row.b):
+        raise HTTPException(status_code=422, detail="survivor must be one of the pair's two keys")
+    merged = row.b if survivor == row.a else row.a
+    res = await mdm_merge.merge_master_records(db, tid, row.domain, survivor, merged, current_user_id(),
+                                               overrides or None, reason=reason)
+    if res is None:
+        return None
+    surv = (await db.execute(text("SELECT survivorship_explanation FROM master_records WHERE tenant_id = :tid "
+                                  "AND id = :id"), {"tid": tid, "id": res["survivor_id"]})).scalar()
+    return {"survivor_key": survivor, "merged_key": merged, "golden_record_id": res["survivor_id"],
+            "golden_fields": res["golden_fields"], "survivorship": surv or {}, "filled_fields": res["filled_fields"],
+            "event_id": res["event_id"]}
+
+
+async def _accept(db: AsyncSession, tid: str, score_id: str, reason: Optional[str]) -> None:
+    await mdm_merge.record_pair_decision(db, tid, score_id, "accept", reason, current_user_id())
+    await db.execute(text("UPDATE match_scores SET auto_action = 'merged' WHERE tenant_id = :tid AND id = :id"),
+                     {"tid": tid, "id": score_id})
+
+
+@router.post("/match-scores/{score_id}/merge", response_model=PairMergeResponse)
+async def merge_match_pair(score_id: uuid.UUID, body: PairMergeBody,
+                           _: str = Depends(require_permission("approve")), db: AsyncSession = Depends(get_db),
+                           tenant: Tenant = Depends(get_tenant)) -> PairMergeResponse:
+    """Merge one pair into one golden record. Each entry in ``overrides`` is a field the steward picked a value
+    for; it is stored as a steward override. ``dry_run`` runs the real merge and rolls it back, so the preview
+    is exactly what a commit would store."""
+    if not body.dry_run and not (body.reason or "").strip():
+        raise HTTPException(status_code=422, detail="reason is required to merge")
+    tid = await _rls(db, tenant)
+    row = await _pair_row(db, tid, score_id)
+    try:
+        res = await _merge_pair(db, tid, row, body.survivor, body.overrides, body.reason)
+        if res is None:
+            raise HTTPException(status_code=409, detail="These records are already in one golden record, "
+                                                        "or one of them has no golden record yet")
+        if body.dry_run:
+            await db.rollback()
+            return PairMergeResponse(match_score_id=str(row.id), **{**res, "event_id": None}, dry_run=True)
+        await _accept(db, tid, str(row.id), body.reason)
+    except mdm_merge.PairConstraintError as e:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=str(e))
+    except HTTPException:
+        await db.rollback()
+        raise
+    await db.commit()
+    return PairMergeResponse(match_score_id=str(row.id), **res, dry_run=False)
+
+
+@router.post("/match-scores/bulk-merge", response_model=BulkMergeResponse)
+async def bulk_merge_pairs(body: BulkMergeBody, _: str = Depends(require_permission("approve")),
+                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> BulkMergeResponse:
+    """Merge every undecided pair scoring at or above ``min_score`` (highest first), each in its own savepoint:
+    a pair blocked by a do-not-match constraint is skipped, the rest still merge."""
+    tid = await _rls(db, tenant)
+    rows = list(await db.execute(text(f"{_REVIEW_PAIRS.format(where='')} ORDER BY total DESC, id LIMIT :n"),
+                                 {**_review_params(tid, body.domain, body.min_score, None, False), "n": body.limit}))
+    out = {"considered": len(rows), "merged": 0, "already_together": 0, "blocked": 0, "missing_record": 0}
+    for row in rows:
+        if row.a_id is None or row.b_id is None:
+            out["missing_record"] += 1
+            continue
+        try:
+            async with db.begin_nested():
+                res = await _merge_pair(db, tid, row, None, {}, body.reason)
+                await _accept(db, tid, str(row.id), body.reason)
+        except mdm_merge.PairConstraintError:
+            out["blocked"] += 1
+            continue
+        out["merged" if res else "already_together"] += 1
+    await db.commit()
+    return BulkMergeResponse(**out)
