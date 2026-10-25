@@ -40,10 +40,11 @@ export async function getQueueItem(
   return data;
 }
 
+/** Assign a task to a steward; `null` releases it back to the unassigned pool. */
 export async function assignItem(
   id: string,
-  userId: string
-): Promise<{ id: string; status: string }> {
+  userId: string | null
+): Promise<{ id: string; status: string; assigned_to?: string | null }> {
   const { data } = await apiClient.put(`/api/v1/stewardship/${id}/assign`, {
     user_id: userId,
   });

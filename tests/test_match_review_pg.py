@@ -94,6 +94,15 @@ def test_match_review_queue(app_engine, monkeypatch):  # noqa: F811
             assert unc["total"] == 1 and unc["pairs"][0]["band"] == "review"
             assert (await c.get("/api/v1/match-scores", headers=analyst,
                                 params={"max_score": 0.5})).json()["total"] == 1
+            # one record's pairs: either side, by the whole key or the bare value of its first part
+            mine = (await c.get("/api/v1/match-scores", headers=analyst, params={"record": "B2"})).json()
+            assert [p["a"] for p in mine["pairs"]] == ["B1"] and mine["bands"] == {"auto_merge": 1, "review": 0,
+                                                                                   "low": 0}
+            bare = (await c.get("/api/v1/match-scores", headers=analyst,
+                                params={"record": "PARTNER=A1|X=1", "domain": DOMAIN})).json()
+            assert [p["a"] for p in bare["pairs"]] == ["A1"]
+            assert (await c.get("/api/v1/match-scores", headers=analyst,
+                                params={"record": "A1", "domain": "material_master"})).json()["total"] == 0
 
             d = (await c.get(f"/api/v1/match-scores/{ids['A']}", headers=analyst)).json()
             assert d["default_survivor"] == "A1" and d["record_b"]["fields"]["TAXNUM"] == "T1"

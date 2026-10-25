@@ -176,6 +176,8 @@ export interface RecordFilter {
   assigned?: string;
   proposed?: boolean;
   due?: "overdue" | "today";
+  /** Source system scope of the run. */
+  system?: string;
   /** One part of the record key, FIELD=VALUE (BUKRS=1000): one company code, plant or sales org. */
   part?: string;
   q?: string;

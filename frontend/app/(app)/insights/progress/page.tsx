@@ -89,10 +89,13 @@ export default function ProgressPage() {
 
   // ── columns ────────────────────────────────────────────────────────────────
   const peopleColumns = useMemo<ColumnDef<PersonThroughput>[]>(() => [
-    { accessorKey: "person", header: "Person" },
+    { accessorKey: "person", header: "Person", cell: ({ row }) => (
+      <DrillCount href={row.original.user_id ? fix({ assignee: row.original.user_id }) : undefined}
+        label={`Open the records assigned to ${row.original.person}`}>{row.original.person}</DrillCount>
+    ) },
     ...KINDS.map((k): ColumnDef<PersonThroughput> => ({ id: k, accessorFn: (r) => r[k], header: DECISION_LABELS[k], meta: { numeric: true }, cell: ({ row }) => n(row.original[k]) })),
     { accessorKey: "total", header: "Decisions", meta: { numeric: true }, cell: ({ row }) => n(row.original.total) },
-  ], []);
+  ], [fix]);
 
   const workloadColumns = useMemo<ColumnDef<Workload>[]>(() => [
     { id: "who", header: "Assigned to", accessorFn: (r) => r.name ?? "Nobody yet", cell: ({ row }) => {
@@ -134,7 +137,7 @@ export default function ProgressPage() {
   const systemColumns = useMemo<ColumnDef<SystemRecurrence>[]>(() => [
     { id: "name", header: "System", accessorFn: (r) => r.name ?? r.scope, cell: ({ row }) => row.original.name ?? <Mono>{row.original.scope}</Mono> },
     // Fix work has no system filter: the count opens this run's open records (one system per run).
-    { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix()} count={row.original.reopened} label={`Open the open records of this run, ${row.original.name ?? row.original.scope} included`}>{n(row.original.reopened)}</DrillCount> },
+    { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={row.original.version_id ? fix({ run: row.original.version_id, system: row.original.scope }) : undefined} count={row.original.reopened} label={`Open the open records of ${row.original.name ?? row.original.scope}`}>{n(row.original.reopened)}</DrillCount> },
     { accessorKey: "issues", header: "Tracked", meta: { numeric: true }, cell: ({ row }) => n(row.original.issues) },
     { accessorKey: "rate_pct", header: "Rate", meta: { numeric: true }, cell: ({ row }) => pct(row.original.rate_pct) },
   ], [fix]);

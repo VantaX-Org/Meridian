@@ -2,8 +2,8 @@
 // bar and chart point that stands for records opens exactly those records. Omitted filters stay off the URL.
 import { formatModuleName, formatNumber } from "./format";
 
-export type FixSeverity = "critical" | "high" | "medium" | "low";
-export type FixStatus = "open" | "to_fix" | "proposed" | "approved" | "sent" | "not_an_issue" | "fixed";
+export type FixSeverity = "critical" | "high" | "medium" | "low" | "blocking";
+export type FixStatus = "open" | "to_fix" | "proposed" | "approved" | "sent" | "not_an_issue" | "fixed" | "all";
 
 export interface FixFilter {
   /** Run (version id). The scope bar keeps ?run= on its own; pass it only when the page shows one specific run. */
@@ -22,6 +22,8 @@ export interface FixFilter {
   /** Only records with a suggested value. */
   sugg?: boolean;
   due?: "overdue";
+  /** Source system scope of the run (the system name). */
+  system?: string;
   /** A key field value of the record, as "FIELD=VALUE" or { field, value }. */
   part?: string | { field: string; value: string };
   q?: string;
@@ -32,7 +34,7 @@ export interface FixFilter {
 /** "Material master" reads "material master" mid-sentence; "FI general ledger" keeps its acronym. */
 const inSentence = (s: string): string => (/^[A-Z][A-Z0-9]/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
 
-const ORDER = ["run", "module", "check", "sev", "st", "mine", "assignee", "sugg", "due", "part", "q", "record"] as const;
+const ORDER = ["run", "module", "check", "sev", "st", "mine", "assignee", "sugg", "due", "system", "part", "q", "record"] as const;
 
 /** `/fix?module=material_master&check=MM_001&sev=critical`: Fix work filtered to exactly these records. */
 export function fixHref(filter: FixFilter = {}): string {
@@ -46,6 +48,7 @@ export function fixHref(filter: FixFilter = {}): string {
     assignee: filter.assignee || undefined,
     sugg: filter.sugg ? "1" : undefined,
     due: filter.due,
+    system: filter.system || undefined,
     part: typeof filter.part === "string" ? filter.part || undefined : filter.part ? `${filter.part.field}=${filter.part.value}` : undefined,
     q: filter.q || undefined,
     record: filter.record ? `${filter.record.module}|${filter.record.key}` : undefined,

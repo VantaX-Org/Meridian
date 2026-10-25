@@ -12,14 +12,15 @@ describe("useRole with persona role keys", () => {
   beforeEach(() => h.replace.mockClear());
 
   it.each([
-    ["data_steward", "/fix"],
-    ["data_owner", "/fix"],
-    ["programme_lead", "/home/lead"],
-    ["platform_admin", "/home/lead"],
-    ["sap_basis", "/home/basis"],
-    ["process_analyst", "/home/process"],
-  ])("keeps %s (not viewer) and lands it on %s", async (role, home) => {
-    h.user = { role, permissions: [] };
+    ["data_steward", "/fix", ["approve"]],
+    ["data_owner", "/fix", ["approve"]],
+    ["data_steward", "/home/steward", []], // a custom steward role that may neither approve nor apply
+    ["programme_lead", "/home/lead", []],
+    ["platform_admin", "/home/lead", []],
+    ["sap_basis", "/home/basis", []],
+    ["process_analyst", "/home/process", []],
+  ])("keeps %s (not viewer) and lands it on %s", async (role, home, permissions) => {
+    h.user = { role, permissions };
     expect(renderHook(() => useRole()).result.current.role).toBe(role);
     render(<HomeRedirect />);
     await waitFor(() => expect(h.replace).toHaveBeenCalledWith(home));

@@ -5,6 +5,7 @@ import * as connectivityApi from "@/lib/api/connectivity";
 import * as systemObjectsApi from "@/lib/api/system-objects";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as systemsApi from "@/lib/api/systems";
+import * as triageApi from "@/lib/api/triage";
 import type { SAPSystemExtended, SyncProfile } from "@/types/api";
 import type { SystemVersion } from "@/lib/api/system-objects";
 import SystemsPage from "../page";
@@ -100,7 +101,13 @@ describe("systems list page", () => {
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
   });
 
-  it("shows the next run time in the user's time zone, labelled (UTC when none is chosen)", async () => {
+  it("shows the next run time in the tenant's time zone, not UTC", async () => {
+    // Fixed instant: 2026-01-02T22:00:00Z is 2026-01-03T00:00 in Johannesburg (UTC+2), a date-crossing
+    // instant, so a test that silently stayed in UTC would show the wrong day too.
+    vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({
+      timezone: "Africa/Johannesburg", work_days: [1, 2, 3, 4, 5], work_start: "08:00:00", work_end: "17:00:00",
+      holidays: [], fallback_user_id: null,
+    });
     const PROFILE: SyncProfile = {
       id: "p1", system_id: "s1", domain: "material_master", tables: [], schedule_cron: "0 0 * * *",
       active: true, last_run_at: null, next_run_at: "2026-01-02T22:00:00Z", extraction_mode: "full",
@@ -111,7 +118,7 @@ describe("systems list page", () => {
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([PROFILE]);
     vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
-    await waitFor(() => expect(screen.getByText(/Next 2 Jan 2026, 22:00 UTC/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/3 Jan 2026, 00:00 GMT\+2/)).toBeInTheDocument());
   });
 
   it("?connect=1 lands with the connect dialog open", async () => {

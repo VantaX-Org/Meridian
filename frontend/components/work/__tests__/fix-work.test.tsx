@@ -130,6 +130,15 @@ describe("FixWork", () => {
     expect(screen.getByText("WERKS=1000")).toBeInTheDocument();
   });
 
+  it("takes blocking severity, every status and one source system from the URL", async () => {
+    search = new URLSearchParams("sev=blocking&st=all&system=S1");
+    renderWithQuery(<FixWork />);
+    await screen.findAllByTestId("work-record");
+    expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ severity: "blocking", status: "all", system: "S1" }));
+    expect(screen.getAllByText("Blocking (critical or high)").length).toBeGreaterThan(0);
+    expect(screen.getByText("one source system")).toBeInTheDocument();
+  });
+
   it("says when filters match nothing and clears them", async () => {
     search = new URLSearchParams("sev=low");
     vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 0, total_capped: false, next: null, items: [] });

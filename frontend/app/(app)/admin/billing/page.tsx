@@ -12,12 +12,24 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, Field, Input, ReportPage, Stat } from "@/design";
 import { getExceptionBilling } from "@/lib/api/exceptions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { formatNumber } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { ExceptionBilling } from "@/types/api";
 
 const TIERS = [1, 2, 3, 4] as const;
 type Tier = (typeof TIERS)[number];
-const money = (v: number) => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** An amount in the period's currency in the user's locale ("ZAR 8,000.00", "R 8 000,00"); a bad or missing code shows the plain number. */
+const money = (v: number, currency: string | undefined) => {
+  const digits = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  if (currency) {
+    try {
+      return formatNumber(Number(v), { style: "currency", currency, ...digits });
+    } catch {
+      // unknown ISO code: fall through to the plain number
+    }
+  }
+  return formatNumber(Number(v), digits);
+};
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
 interface TierRow { tier: Tier; count: number; amount: number }
@@ -37,7 +49,7 @@ export default function ExceptionBillingPage() {
   const columns: ColumnDef<TierRow>[] = [
     { id: "tier", header: "Tier", cell: ({ row }) => `Tier ${row.original.tier}` },
     { id: "count", header: "Resolved", cell: ({ row }) => row.original.count },
-    { id: "amount", header: "Amount", cell: ({ row }) => money(row.original.amount) },
+    { id: "amount", header: b?.currency ? `Amount (${b.currency})` : "Amount", cell: ({ row }) => money(row.original.amount, b?.currency) },
   ];
 
   let state: "loading" | "empty" | "error" | undefined;
@@ -53,8 +65,8 @@ export default function ExceptionBillingPage() {
       charts={
         <div className="flex flex-col gap-4">
           <div className="flex gap-6">
-            <Stat label="Total" value={b ? money(b.total_amount) : q.isLoading ? "–" : "Pick a month"} />
-            <Stat label="Base fee" value={b ? money(b.base_fee) : q.isLoading ? "–" : "—"} />
+            <Stat label="Total" value={b ? money(b.total_amount, b.currency) : q.isLoading ? "–" : "Pick a month"} />
+            <Stat label="Base fee" value={b ? money(b.base_fee, b.currency) : q.isLoading ? "–" : "—"} />
           </div>
           <div className="[max-width:200px]">
             <Field label="Month">

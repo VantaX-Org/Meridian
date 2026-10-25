@@ -2,6 +2,8 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import * as cleaningApi from "@/lib/api/cleaning";
+import type { DedupCandidate } from "@/lib/api/cleaning";
 import * as masterRecordsApi from "@/lib/api/master-records";
 import * as matchReviewApi from "@/lib/api/match-review";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
@@ -60,10 +62,17 @@ const preview = (name: string, rule: string) => ({
   filled_fields: [], event_id: null, dry_run: true,
 });
 
+const candidate: DedupCandidate = {
+  id: "d1", object_type: "material_master", record_key_a: "2", record_key_b: "7", match_score: 90, match_method: "fuzzy",
+  match_fields: null, status: "pending", survivor_key: null, merged_at: null, created_at: "2026-10-01T00:00:00Z",
+};
+
 beforeEach(() => {
   nav.params = new URLSearchParams();
   nav.replace.mockReset();
   role.approve = true;
+  vi.restoreAllMocks();
+  vi.spyOn(cleaningApi, "getDedupCandidates").mockResolvedValue({ items: [candidate], total: 3 });
 });
 
 describe("Match review queue", () => {
@@ -104,6 +113,54 @@ describe("Match review queue", () => {
     renderWithQuery(<GoldenRecordMergePage />);
     await screen.findByText("Matched on NAME_ORG1, differs on TAXNUM");
     expect(screen.queryByRole("button", { name: "Merge likely duplicates" })).not.toBeInTheDocument();
+  });
+});
+
+describe("One review screen for both sources", () => {
+  it("counts the cleaning engine's pairs and switches to them", async () => {
+    vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue(list);
+    renderWithQuery(<GoldenRecordMergePage />);
+    expect(await screen.findByRole("button", { name: "Match engine (7)" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(await screen.findByRole("button", { name: "Cleaning engine (3)" }));
+    expect(nav.replace).toHaveBeenCalledWith("/mdm/golden/merge?source=cleaning", { scroll: false });
+  });
+
+  it("lists the cleaning engine's pairs and keeps one record of a pair", async () => {
+    nav.params = new URLSearchParams({ source: "cleaning" });
+    const counts = vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue(list);
+    vi.spyOn(cleaningApi, "getDedupPreview").mockResolvedValue({ merge_preview: { MAKTX: { a: "Bolt", b: "Bolt M8", survivor: "Bolt M8" } } });
+    const merge = vi.spyOn(cleaningApi, "mergeDedupCandidate").mockResolvedValue({ id: "d1", status: "merged", survivor_key: "7", merged_at: "2026-10-02T00:00:00Z" });
+    renderWithQuery(<GoldenRecordMergePage />);
+    expect(screen.getByRole("heading", { name: "Match review" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Match engine (7)" })).toHaveAttribute("aria-pressed", "false");
+    expect(counts).toHaveBeenCalledWith(expect.objectContaining({ limit: 1 }));
+    expect(screen.queryByRole("group", { name: "Score band" })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByText("7"));
+    expect(await screen.findByText("Bolt M8")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Keep B" }));
+    await waitFor(() => expect(merge).toHaveBeenCalledWith({ candidate_id: "d1", survivor_key: "7" }));
+  });
+
+  it("keeps one record's pairs in both sources, with a chip to clear it", async () => {
+    nav.params = new URLSearchParams({ source: "cleaning", object: "material_master", record: "MATNR=2" });
+    const counts = vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue({ ...list, pairs: [], total: 0, bands: { review: 0, auto_merge: 0, low: 0 } });
+    renderWithQuery(<GoldenRecordMergePage />);
+    expect(await screen.findByText("Pairs of")).toBeInTheDocument();
+    expect(screen.getByText("MATNR=2")).toBeInTheDocument();
+    await waitFor(() => expect(cleaningApi.getDedupCandidates).toHaveBeenCalledWith(expect.objectContaining({ object_type: "material_master", record: "MATNR=2", page: 1 })));
+    expect(counts).toHaveBeenCalledWith(expect.objectContaining({ domain: "material_master", record: "MATNR=2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove filter Pairs of" }));
+    expect(nav.replace).toHaveBeenCalledWith("/mdm/golden/merge?source=cleaning", { scroll: false });
+  });
+
+  it("says when the match engine has no pair for the record and offers the other source", async () => {
+    nav.params = new URLSearchParams({ object: "material_master", record: "MATNR=2" });
+    const get = vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue({ ...list, pairs: [], total: 0, bands: { review: 0, auto_merge: 0, low: 0 } });
+    renderWithQuery(<GoldenRecordMergePage />);
+    expect(await screen.findByText("No match engine pairs for MATNR=2")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith(expect.objectContaining({ domain: "material_master", record: "MATNR=2", band: "review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show cleaning engine pairs" }));
+    expect(nav.replace).toHaveBeenCalledWith(expect.stringContaining("source=cleaning"), { scroll: false });
   });
 });
 

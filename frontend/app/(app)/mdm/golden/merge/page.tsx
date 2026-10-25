@@ -2,9 +2,11 @@
 "use client";
 
 /**
- * MDM › Match review. Without `?id` it is the review queue: the pairs the matcher scored but nobody has
- * decided, uncertain ones first, each opened in a drawer to merge, mark not a match or leave for later.
- * With `?id` it compares one golden record field by field against every contributing source.
+ * MDM › Match review, the one place every duplicate pair is reviewed. Without `?id` it is the review queue,
+ * from one of two sources: the match engine's scored pairs (default; uncertain ones first, each opened in a
+ * drawer to merge, mark not a match or leave for later) or, with `?source=cleaning`, the cleaning engine's
+ * duplicate candidates (compare and keep one record). `?object=<module>&record=<key>` keeps one record's pairs
+ * in either source. With `?id` it compares one golden record field by field against every contributing source.
  */
 
 import { useMemo, useState } from "react";
@@ -13,13 +15,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, ExplorerPage, Mono, PageHeader, Pager, Pill, Select,
-  Skeleton, asyncStateOf, toast,
+  Button, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, ExplorerPage, FilterChip, Mono, PageHeader, Pager, Pill,
+  Select, Skeleton, asyncStateOf, toast,
 } from "@/design";
+import { CleaningPairs, cleaningPairsKey } from "@/components/mdm/cleaning-pairs";
 import { LedgerHead, RowButton, actionColumn } from "@/components/mdm/ledger";
 import { BAND_LABEL, pct, whyMatched } from "@/components/mdm/match-review-model";
 import { PairReview, matchReviewKey } from "@/components/mdm/pair-review";
 import { useRole } from "@/hooks/use-role";
+import { getDedupCandidates } from "@/lib/api/cleaning";
 import { getMasterRecord } from "@/lib/api/master-records";
 import { setStewardOverrides } from "@/lib/api/merge-explain";
 import { bulkMergePairs, getReviewPairs, type ReviewPair, type ScoreBand } from "@/lib/api/match-review";
@@ -32,6 +36,8 @@ const BULK_LIMIT = 500;
 const BANDS: (ScoreBand | "all")[] = ["review", "auto_merge", "low", "all"];
 const DOMAINS = ["business_partner", "material_master", "sd_customer_master", "accounts_payable", "accounts_receivable", "employee_central"];
 const BAND_TONE: Record<ScoreBand, "info" | "go" | "neutral"> = { review: "info", auto_merge: "go", low: "neutral" };
+type Source = "matcher" | "cleaning";
+const SOURCE_LABEL: Record<Source, string> = { matcher: "Match engine", cleaning: "Cleaning engine" };
 
 export default function GoldenRecordMergePage() {
   const id = useSearchParams().get("id");
@@ -47,7 +53,10 @@ function MatchReview() {
   const canDecide = useRole().can("approve");
   const bandRaw = sp.get("band") ?? "review";
   const band = (BANDS as string[]).includes(bandRaw) ? (bandRaw as ScoreBand | "all") : "review";
-  const domain = sp.get("domain") ?? "";
+  const source: Source = sp.get("source") === "cleaning" ? "cleaning" : "matcher";
+  // `object` comes with `record` from a record's page (the record panel); `domain` is the Object picker.
+  const domain = sp.get("object") ?? sp.get("domain") ?? "";
+  const record = sp.get("record") ?? "";
   const pairId = sp.get("pair");
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -59,14 +68,31 @@ function MatchReview() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
-  const filters = { band: band === "all" ? undefined : band, domain: domain || undefined };
+  const filters = { band: band === "all" ? undefined : band, domain: domain || undefined, record: record || undefined };
   const list = useQuery({
     queryKey: [...matchReviewKey, "list", filters, page],
     queryFn: () => getReviewPairs({ ...filters, limit: PAGE, offset: (page - 1) * PAGE }),
+    enabled: source === "matcher",
+  });
+  // What the other source holds under the same object and record, for the source switch.
+  const matcherCount = useQuery({
+    queryKey: [...matchReviewKey, "count", domain, record],
+    queryFn: () => getReviewPairs({ domain: domain || undefined, record: record || undefined, limit: 1 }),
+    enabled: source !== "matcher",
+  });
+  const cleaningFilters = { object_type: domain || undefined, record: record || undefined };
+  const cleaningCount = useQuery({
+    queryKey: [...cleaningPairsKey, "count", cleaningFilters],
+    queryFn: () => getDedupCandidates({ ...cleaningFilters, per_page: 1 }),
   });
   const pairs = useMemo(() => list.data?.pairs ?? [], [list.data]);
   const bands = list.data?.bands;
   const waiting = bands ? bands.review + bands.auto_merge + bands.low : 0;
+  const countBands = source === "matcher" ? bands : matcherCount.data?.bands;
+  const counts: Record<Source, number | undefined> = {
+    matcher: countBands ? countBands.review + countBands.auto_merge + countBands.low : undefined,
+    cleaning: cleaningCount.data?.total,
+  };
   const thresholds = list.data?.thresholds ?? { auto_merge: 0.95, review_floor: 0.3 };
 
   /** After a verdict, open the next pair in the list (or close when it was the last). */
@@ -86,9 +112,16 @@ function MatchReview() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- setParams only reads the URL, which is the dependency
   ], [sp]);
 
-  const bandFilter = (
+  const filterBar = (
     <div className="flex flex-wrap items-end gap-3">
-      <div role="group" aria-label="Score band" className="flex flex-wrap gap-1">
+      <div role="group" aria-label="Source" className="flex flex-wrap gap-1">
+        {(["matcher", "cleaning"] as const).map((s) => (
+          <Button key={s} size="sm" variant={source === s ? "secondary" : "ghost"} aria-pressed={source === s} onClick={() => setParams({ source: s === "matcher" ? null : s, band: null, pair: null, page: null })}>
+            {SOURCE_LABEL[s]}{counts[s] != null ? ` (${counts[s].toLocaleString()})` : ""}
+          </Button>
+        ))}
+      </div>
+      {source === "matcher" ? <div role="group" aria-label="Score band" className="flex flex-wrap gap-1">
         {BANDS.map((b) => {
           const n = b === "all" ? waiting : bands?.[b];
           return (
@@ -97,18 +130,42 @@ function MatchReview() {
             </Button>
           );
         })}
-      </div>
+      </div> : null}
       <Select
         label="Object"
         placeholder="All objects"
         value={domain}
         options={[{ value: "", label: "All objects" }, ...DOMAINS.map((d) => ({ value: d, label: formatModuleName(d) }))]}
-        onValueChange={(v) => setParams({ domain: v || null, page: null })}
+        onValueChange={(v) => setParams({ domain: v || null, object: null, record: null, pair: null, page: null })}
       />
+      {record ? <FilterChip label="Pairs of" value={record} onRemove={() => setParams({ record: null, object: null, pair: null, page: null })} /> : null}
     </div>
   );
 
-  const empty = waiting === 0
+  const header = (
+    <PageHeader
+      title="Match review"
+      meta={source === "cleaning"
+        ? "Every duplicate pair is reviewed here. These are the pairs the cleaning engine found: compare the two records and keep one."
+        : `Every duplicate pair is reviewed here. Pairs the match engine scored between ${pct(thresholds.review_floor)} and ${pct(thresholds.auto_merge)} need a person. Merge them, mark them not a match, or leave them for later.`}
+      actions={source === "matcher" && !record && canDecide && bands && bands.auto_merge > 0 ? (
+        <Button onClick={() => setBulkOpen(true)}>Merge likely duplicates</Button>
+      ) : undefined}
+    />
+  );
+
+  if (source === "cleaning") {
+    return <CleaningPairs key={`${domain}|${record}`} header={header} filterBar={filterBar} filters={cleaningFilters} />;
+  }
+
+  const empty = record && waiting === 0
+    ? {
+        title: `No match engine pairs for ${record}`,
+        detail: "The match engine has no undecided pair holding this record.",
+        action: <Button variant="secondary" onClick={() => setParams({ source: "cleaning", band: null, page: null })}>Show cleaning engine pairs</Button>,
+        ghost: "table" as const,
+      }
+    : waiting === 0
     ? {
         title: "No pairs waiting",
         detail: domain
@@ -128,16 +185,8 @@ function MatchReview() {
 
   return (
     <ExplorerPage
-      header={
-        <PageHeader
-          title="Match review"
-          meta={`Pairs the matcher scored between ${pct(thresholds.review_floor)} and ${pct(thresholds.auto_merge)} need a person. Merge them, mark them not a match, or leave them for later.`}
-          actions={canDecide && bands && bands.auto_merge > 0 ? (
-            <Button onClick={() => setBulkOpen(true)}>Merge likely duplicates</Button>
-          ) : undefined}
-        />
-      }
-      filterBar={bandFilter}
+      header={header}
+      filterBar={filterBar}
       state={asyncStateOf(list, () => pairs.length === 0)}
       emptyProps={empty}
       errorProps={{ message: apiErrorMessage(list.error), onRetry: () => void list.refetch() }}

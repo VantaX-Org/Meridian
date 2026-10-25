@@ -701,6 +701,11 @@ async def get_metrics(
 # ── 13. GET /api/v1/exceptions/billing — billing for period ─────────────────
 
 
+# The currency the amounts are in: ExceptionBillingCalculator.TIER_PRICES and the base fee are a ZAR price
+# list and nothing converts them, so this is not the tenant's cost-model currency (tenants.cost_model).
+BILLING_CURRENCY = "ZAR"
+
+
 @router.get("/exceptions/billing", dependencies=[Depends(require_permission("manage_settings"))])
 async def get_billing(
     period: str = Query(..., description="YYYY-MM format"),
@@ -717,7 +722,7 @@ async def get_billing(
     )
     row = existing.fetchone()
     if row:
-        return _row_to_dict(row)
+        return {**_row_to_dict(row), "currency": BILLING_CURRENCY}
 
     # Compute from resolved exceptions in that period
     result = await db.execute(
@@ -765,4 +770,4 @@ async def get_billing(
     )
     await db.commit()
 
-    return billing
+    return {**billing, "currency": BILLING_CURRENCY}

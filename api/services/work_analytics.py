@@ -31,6 +31,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.services.record_issues import DIFF_SQL
+from api.services.run_context import latest_run
 from api.services.run_lineage import same_lineage_as
 from api.services.version_status import finished_sql
 
@@ -57,6 +58,13 @@ SEVERITIES = ("critical", "high", "medium", "low")
 # CACHE_TTL_S per (tenant, arguments), in this process.
 CACHE_TTL_S = 300.0
 _cache: dict[tuple, tuple[float, dict]] = {}
+
+
+def forget(tenant_id) -> None:
+    """Drop a tenant's cached measures after a decision so Progress shows it at once."""
+    t = str(tenant_id)
+    for k in [k for k in _cache if k[1] == t]:
+        _cache.pop(k, None)
 
 
 def _memo(fn):
@@ -228,25 +236,26 @@ async def time_to_fix(db: AsyncSession, tenant_id: Any, module: str | None, days
 _DECISIONS_SQL = f"""
     WITH d AS (
         SELECT {_DAY.format(c="i.updated_at")} AS day, COALESCE(b.created_by_label, 'Unknown') AS person,
+               b.created_by::text AS user_id,
                CASE WHEN i.proposal_source = 'rule' THEN 'accept' ELSE 'edit' END AS kind
           FROM remediation_batches b JOIN remediation_items i ON i.batch_id = b.id
          WHERE b.tenant_id = CAST(:t AS uuid) AND b.filter->>'source' = 'worklist'
            AND i.proposed_value IS NOT NULL AND i.updated_at >= CAST(:since AS date)
            AND {_MOD.format(c="i.module")}
         UNION ALL
-        SELECT {_DAY.format(c="e.created_at")}, COALESCE(e.user_label, 'Unknown'),
+        SELECT {_DAY.format(c="e.created_at")}, COALESCE(e.user_label, 'Unknown'), e.user_id::text,
                CASE WHEN ri.resolution = 'false_positive' THEN 'not_an_issue' ELSE 'accept_risk' END
           FROM record_issue_events e JOIN record_issues ri ON ri.id = e.issue_id
          WHERE e.tenant_id = CAST(:t AS uuid) AND e.action = 'status' AND e.to_value = 'accepted'
            AND e.created_at >= CAST(:since AS date) AND e.user_label IS DISTINCT FROM 'system'
            AND {_MOD.format(c="ri.module")}
         UNION ALL
-        SELECT {_DAY.format(c="e.created_at")}, COALESCE(e.user_label, 'Unknown'), 'approve'
+        SELECT {_DAY.format(c="e.created_at")}, COALESCE(e.user_label, 'Unknown'), e.user_id::text, 'approve'
           FROM remediation_events e JOIN remediation_items i ON i.id = e.item_id
          WHERE e.tenant_id = CAST(:t AS uuid) AND e.action IN ('approved', 'accepted')
            AND e.created_at >= CAST(:since AS date) AND {_MOD.format(c="i.module")}
     )
-    SELECT day, person, kind, count(*) AS n FROM d GROUP BY day, person, kind
+    SELECT day, person, user_id, kind, count(*) AS n FROM d GROUP BY day, person, user_id, kind
 """
 
 _WORKLOAD_SQL = f"""
@@ -267,11 +276,13 @@ async def throughput(db: AsyncSession, tenant_id: Any, module: str | None) -> di
     since = today - timedelta(days=THROUGHPUT_DAYS - 1)
     rows = (await db.execute(text(_DECISIONS_SQL), _p(tenant_id, module, since=since))).fetchall()
     per_day: dict[date, dict[str, int]] = {}
-    people: dict[str, dict] = {}
+    people: dict[tuple, dict] = {}
     for r in rows:
         per_day.setdefault(r.day, {})
         per_day[r.day][r.person] = per_day[r.day].get(r.person, 0) + int(r.n)
-        p = people.setdefault(r.person, {"person": r.person, "total": 0, **{k: 0 for k in KINDS}})
+        # One row per user (two people may share a name); label-only history stays apart and has no drill.
+        p = people.setdefault((r.user_id, r.person), {"person": r.person, "user_id": r.user_id, "total": 0,
+                                                       **{k: 0 for k in KINDS}})
         p[r.kind] += int(r.n)
         p["total"] += int(r.n)
     days = []
@@ -318,10 +329,13 @@ async def recurrence(db: AsyncSession, tenant_id: Any, module: str | None) -> di
     issues = sum(c["issues"] for c in checks)
     reopened = sum(c["reopened"] for c in checks)
     top = lambda xs, k: sorted((x for x in xs if x["reopened"]), key=lambda x: (-x["reopened"], -x["rate_pct"], x[k]))[:TOP]
+    by_system = top(systems, "scope")
+    for x in by_system:  # each system's records open in its own latest run
+        x["version_id"] = await latest_run(db, tenant_id, x["scope"], module)
     return {
         "totals": {"issues": issues, "reopened": reopened, "reopens": sum(c["reopens"] for c in checks),
                    "rate_pct": round(100.0 * reopened / issues, 1) if issues else 0.0},
-        "by_check": top(checks, "check_id"), "by_system": top(systems, "scope"),
+        "by_check": top(checks, "check_id"), "by_system": by_system,
     }
 
 

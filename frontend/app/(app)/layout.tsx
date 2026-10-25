@@ -17,6 +17,8 @@ import { useRole } from "@/hooks/use-role";
 import { flattenNav, resolveNavHref } from "@/lib/nav";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
+import { getTriageSettings } from "@/lib/api/triage";
+import { setTenantTimezone } from "@/lib/format";
 import { PermissionsProvider } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
 import { GlobalObjectPicker, GlobalRunPicker, RunCarrier } from "@/components/global-run";
@@ -87,7 +89,12 @@ function useUnhandledRejectionReporting() {
 
 /** Loads the user's server-side preferences once after sign-in and keeps them in step with local changes. */
 function PreferencesSync() {
-  usePreferencesSync(useAuth().user?.id);
+  const userId = useAuth().user?.id;
+  usePreferencesSync(userId);
+  // The tenant's time zone is the date default for anyone who chose no zone of their own. Keyed by user so a
+  // sign-in to another tenant never formats with the previous tenant's zone (unset until it loads).
+  const tz = useQuery({ queryKey: [...queryKeys.triageSettings(), userId], queryFn: getTriageSettings, staleTime: 300_000, select: (st) => st.timezone }).data;
+  useEffect(() => { setTenantTimezone(tz); }, [tz]);
   return null;
 }
 

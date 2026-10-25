@@ -283,15 +283,36 @@ const DATE_OPTS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", 
 const DATETIME_OPTS: Intl.DateTimeFormatOptions = { ...DATE_OPTS, hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
 const SECONDS_OPTS: Intl.DateTimeFormatOptions = { ...DATETIME_OPTS, second: "2-digit" };
 
-/** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09" (UTC unless the user chose a time zone), or with
- * `tz: "SAST"` (UTC+2, the zone the scheduler's cron runs in, used only for schedule and next-run times),
- * "2 Oct 2026, 07:09 SAST". An unparseable value is an em dash. */
-export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz: "UTC" | "SAST" = "UTC"): string {
+/** The tenant's time zone (IANA), set by whoever loads it (GET /api/v1/triage/settings): the default when the user
+ * chose no zone of their own. Unset means UTC. */
+let tenantZone: string | undefined;
+
+export function setTenantTimezone(zone: string | null | undefined): void {
+  tenantZone = zone || undefined;
+}
+
+/** The browser's IANA zone, for when no tenant zone is known yet. */
+export function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+/** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09", in the user's chosen zone, else the tenant's, else
+ * UTC. With an explicit IANA `tz` (schedule and sign-off times, read in the tenant's zone) the time is shown in
+ * that zone and labelled with it: "2 Oct 2026, 07:09 GMT+2". An unparseable value is an em dash. */
+export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz?: string): string {
   if (iso === null || iso === undefined || iso === "") return "—";
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
-  if (tz === "SAST" && kind === "datetime") return `${intl(DATETIME_OPTS, "Africa/Johannesburg").format(d)} SAST`;
-  return intl(kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : DATETIME_OPTS, formatPrefs.timezone ?? "UTC").format(d);
+  const opts = kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : DATETIME_OPTS;
+  if (!tz) return intl(opts, formatPrefs.timezone ?? tenantZone ?? "UTC").format(d);
+  const text = intl(opts, tz).format(d);
+  if (kind === "date") return text;
+  const zone = intl({ timeZoneName: "short" }, tz).formatToParts(d).find((p) => p.type === "timeZoneName")?.value;
+  return zone ? `${text} ${zone}` : text;
 }
 
 const LABEL_OVERRIDES: Record<string, string> = {

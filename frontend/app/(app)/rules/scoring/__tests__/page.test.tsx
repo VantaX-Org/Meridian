@@ -36,9 +36,10 @@ describe("rules scoring page", () => {
     vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
     renderWithQuery(<ScoringPage />);
-    await waitFor(() => expect(screen.getByText("Dimension weights")).toBeInTheDocument());
+    expect(await screen.findByText("Dimension weights", undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(await screen.findByText("88.5", undefined, { timeout: 5000 })).toBeInTheDocument();
-  });
+    // Two queries then a form: under full-suite load this takes longer than the 5 s default.
+  }, 15_000);
 
   it("saves weights on the 100 scale the API stores", async () => {
     vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);

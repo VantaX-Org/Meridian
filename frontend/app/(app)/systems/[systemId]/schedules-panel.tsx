@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, ConfirmDialog, ErrorState, Input, Select, Skeleton, Status, toast } from "@/design";
-import { usePreferences } from "@/hooks/use-preferences";
+import { getTriageSettings } from "@/lib/api/triage";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { createSyncProfile, deleteSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
-import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { browserTimezone, formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { clsx } from "clsx";
 
@@ -81,8 +81,8 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
 
 export function SchedulesPanel({ id, canManage }: { id: string; canManage: boolean }) {
   const qc = useQueryClient();
-  const { prefs } = usePreferences();
-  const tz = prefs.timezone || "UTC";
+  // Schedules run on the tenant's clock (Admin › Triage settings), so their times are shown in it.
+  const tz = useQuery({ queryKey: queryKeys.triageSettings(), queryFn: getTriageSettings, staleTime: 300_000, select: (st) => st.timezone }).data ?? browserTimezone();
   const profilesQ = useQuery({ queryKey: queryKeys.syncProfiles(id), queryFn: () => getSyncProfiles(id) });
   const profiles = profilesQ.data ?? [];
   const { data: catalogue } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id), enabled: canManage });
@@ -95,7 +95,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
 
   const update = useMutation({
     mutationFn: ({ p, body }: { p: SyncProfile; body: { schedule_cron?: string; active?: boolean; extraction_mode?: "full" | "delta" } }) => updateSyncProfile(id, p.id, body),
-    onSuccess: (saved) => { toast.success(saved.next_run_at ? `Schedule saved. Next run ${formatDate(saved.next_run_at, "datetime")} ${tz}` : "Schedule saved"); refresh(); },
+    onSuccess: (saved) => { toast.success(saved.next_run_at ? `Schedule saved. Next run ${formatDate(saved.next_run_at, "datetime", tz)}` : "Schedule saved"); refresh(); },
     onError,
   });
   const create = useMutation({
@@ -103,7 +103,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
       const o = catalogue?.objects.find((x) => x.object === adding);
       return createSyncProfile(id, { system_id: id, domain: adding, tables: o?.tables ?? [], schedule_cron: cron, active: true, extraction_mode: mode });
     },
-    onSuccess: (saved) => { toast.success(saved.next_run_at ? `Schedule added. Next run ${formatDate(saved.next_run_at, "datetime")} ${tz}` : "Schedule added"); setAdding(""); refresh(); },
+    onSuccess: (saved) => { toast.success(saved.next_run_at ? `Schedule added. Next run ${formatDate(saved.next_run_at, "datetime", tz)}` : "Schedule added"); setAdding(""); refresh(); },
     onError,
   });
   const remove = useMutation({
@@ -151,7 +151,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                       : <span>{modeLabel(p.extraction_mode)}</span>}
                   </td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.last_run_at ? relativeTime(p.last_run_at) : "Never"}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.active && p.next_run_at ? `${formatDate(p.next_run_at, "datetime")} ${tz}` : "—"}</td>
+                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime", tz) : "—"}</td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}><Status kind="lifecycle" value={p.active ? "active" : "paused"} /></td>
                   <td className={clsx(td, "[border-color:var(--m-line)]")}>
                     {canManage && (

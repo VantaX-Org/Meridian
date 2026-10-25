@@ -7,7 +7,6 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, FilterChip, Mono, PageHeader, Score, Skeleton, Stat, Status, emptyExportOptions } from "@/design";
 import { HEALTH_LABEL, HEALTH_VERDICT, dqsTrend, latestDqs, nextRun } from "./_health";
-import { usePreferences } from "@/hooks/use-preferences";
 import { useUrlState } from "@/hooks/use-url-state";
 import { usePermissions, useSystemScope } from "@/lib/permissions";
 import { ConnectSystemDialog } from "@/components/systems/connect-system-dialog";
@@ -16,8 +15,9 @@ import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSyncProfiles } from "@/lib/api/systems";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
 import { exportRuns } from "@/lib/api/versions";
+import { getTriageSettings } from "@/lib/api/triage";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatDate, relativeTime, systemTypeLabel } from "@/lib/format";
+import { browserTimezone, formatDate, relativeTime, systemTypeLabel } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
 
@@ -68,11 +68,11 @@ function configSub(c: {
 export default function SystemsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { prefs } = usePreferences();
-  const tz = prefs.timezone || "UTC";
   const systemScope = useSystemScope();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, select: systemScope });
   const systems = data ?? [];
+  // Next-run times read in the tenant's zone (the triage calendar), the browser's until it loads.
+  const tenantTz = useQuery({ queryKey: queryKeys.triageSettings(), queryFn: getTriageSettings, staleTime: 300_000, select: (st) => st.timezone }).data ?? browserTimezone();
   const versionsQ = useQueries({
     queries: systems.map((s) => ({ queryKey: queryKeys.systemVersions(s.id), queryFn: () => getSystemVersions(s.id) })),
   });
@@ -196,7 +196,7 @@ export default function SystemsPage() {
         return (
           <span className="inline-flex flex-col items-start">
             {row.original.last_sync_at ? relativeTime(row.original.last_sync_at) : "Never"}
-            <span className="m-text-meta m-ink-3">{n ? `Next ${formatDate(n, "datetime")} ${tz}` : "Manual only"}</span>
+            <span className="m-text-meta m-ink-3">{n ? `Next ${formatDate(n, "datetime", tenantTz)}` : "Manual only"}</span>
           </span>
         );
       },

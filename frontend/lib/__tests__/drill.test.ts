@@ -21,6 +21,10 @@ describe("fixHref", () => {
     expect(fixHref({ module: "fi_gl", part: { field: "WERKS", value: "30 00" } })).toBe("/fix?module=fi_gl&part=WERKS%3D30+00");
   });
 
+  it("carries blocking severity, every status and a source system", () => {
+    expect(fixHref({ sev: "blocking", st: "all", system: "S1" })).toBe("/fix?sev=blocking&st=all&system=S1");
+  });
+
   it("carries flags, assignee, record and run", () => {
     expect(fixHref({ run: "v1", mine: true, sugg: true, due: "overdue", assignee: "u-1" })).toBe("/fix?run=v1&mine=1&assignee=u-1&sugg=1&due=overdue");
     expect(fixHref({ record: { module: "material_master", key: "MATNR=1|WERKS=2" } })).toBe("/fix?record=material_master%7CMATNR%3D1%7CWERKS%3D2");

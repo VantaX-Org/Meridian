@@ -158,6 +158,24 @@ async def test_dedup_candidates_come_a_page_at_a_time(seeded, monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_dedup_candidates_of_one_record(seeded, monkeypatch):
+    """Match review's "Pairs of" filter: either side of the pair, by the whole key or its bare first value."""
+    tid, _ = seeded
+    _as(monkeypatch, tid)
+    async with await _client() as client:
+        by_b = await client.get("/api/v1/dedup/candidates", headers=HEADERS,
+                                params={"object_type": "business_partner", "record": "B1"})
+        bare = await client.get("/api/v1/dedup/candidates", headers=HEADERS, params={"record": "PARTNER=A2|X=1"})
+        other = await client.get("/api/v1/dedup/candidates", headers=HEADERS,
+                                 params={"object_type": "material_master", "record": "B1"})
+    assert by_b.status_code == 200, by_b.text
+    assert [(i["record_key_a"], i["record_key_b"]) for i in by_b.json()["items"]] == [("A1", "B1")]
+    assert by_b.json()["total"] == 1
+    assert [i["record_key_a"] for i in bare.json()["items"]] == ["A2"]
+    assert other.json() == {"items": [], "total": 0, "page": 1, "per_page": 100}
+
+
+@pytest.mark.anyio
 async def test_match_pairs_with_no_run_can_be_listed_and_accepted(seeded, monkeypatch):
     tid, _ = seeded
     _as(monkeypatch, tid)

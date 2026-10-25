@@ -13,7 +13,8 @@ import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, runWave, signoffWave,
 } from "@/lib/api/migration";
 import { downloadRealignment } from "@/lib/api/config-pairing";
-import { formatDate, trendSentence } from "@/lib/format";
+import { browserTimezone, formatDate, trendSentence } from "@/lib/format";
+import { getTriageSettings } from "@/lib/api/triage";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
 import { CreateWaveDialog, STAGE_LABEL } from "../create-wave-dialog";
@@ -50,6 +51,8 @@ export default function WaveCockpitPage() {
   const { can } = useRole();
   const [editing, setEditing] = useState(false);
   const cockpit = useQuery({ queryKey: queryKeys.migrationCockpit(waveId), queryFn: () => getWaveCockpit(waveId) });
+  // Sign-off time read in the tenant's zone (the triage calendar), the browser's until it loads.
+  const tenantTz = useQuery({ queryKey: queryKeys.triageSettings(), queryFn: getTriageSettings, staleTime: 300_000, select: (st) => st.timezone }).data ?? browserTimezone();
   const signoff = useMutation({
     mutationFn: () => signoffWave(waveId),
     onSuccess: () => {
@@ -120,7 +123,7 @@ export default function WaveCockpitPage() {
       <PageHeader
         title={w.name}
         status={<Status kind="verdict" value={c.verdict} />}
-        meta={`${STAGE_LABEL[w.stage]}, target ${w.target_date ? formatDate(w.target_date, "date") : "not set"}, ${w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", "SAST")}` : "not signed off"}. Clear the blockers until readiness reaches ${w.min_readiness}%, then sign the wave off`}
+        meta={`${STAGE_LABEL[w.stage]}, target ${w.target_date ? formatDate(w.target_date, "date") : "not set"}, ${w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", tenantTz)}` : "not signed off"}. Clear the blockers until readiness reaches ${w.min_readiness}%, then sign the wave off`}
         actions={
           <>
             {can("analyse") ? <Button variant="ghost" onClick={() => setEditing(true)}>Edit wave</Button> : null}
