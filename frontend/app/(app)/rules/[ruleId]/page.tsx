@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -231,6 +231,23 @@ function WhatItChecks({ rule, checkId, latest, historyLoading }: { rule: Rule; c
   );
 }
 
+/** /rules/<check id> (the code every screen shows) opens the rule: it is resolved to the rule's id. */
+function RuleByCode({ code }: { code: string }) {
+  const router = useRouter();
+  const q = useQuery({ queryKey: ["rules", "by-code", code], queryFn: () => getRuleByCode(code) });
+  useEffect(() => {
+    if (q.data?.rule_uuid) router.replace(`/rules/${q.data.rule_uuid}`);
+  }, [q.data, router]);
+  if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
+  if (q.data && !q.data.rule_uuid) {
+    return (
+      <EmptyState title={`${code} has not run here yet`} detail="The rule exists in the library, but no run of this tenant has evaluated it."
+        action={<Button render={<Link href={`/rules?module=${encodeURIComponent(q.data.module)}`}>Open the rules of this object</Link>} />} />
+    );
+  }
+  return <Skeleton height={320} />;
+}
+
 export default function RulePage() {
   const { ruleId } = useParams<{ ruleId: string }>();
   const router = useRouter();
@@ -262,6 +279,8 @@ export default function RulePage() {
       </div>
     );
   }
+  // The rules API takes the rule's id; a check id (what every screen shows) answers 400: resolve it instead.
+  if (isError && isAxiosError(error) && error.response?.status === 400) return <RuleByCode code={decodeURIComponent(ruleId)} />;
   if (isError && isAxiosError(error) && error.response?.status === 404) {
     return (
       <EmptyState

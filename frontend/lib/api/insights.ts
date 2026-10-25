@@ -141,6 +141,8 @@ export async function getProvenCost(params?: { version_id?: string }): Promise<P
 
 export interface OwnerCardResponse {
   owner: string;
+  /** The owner's user id: their records open in Fix work (?assignee=). */
+  user_id?: string | null;
   score: number;
   delta: number;
   open_by_severity: Record<string, number>;

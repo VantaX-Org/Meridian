@@ -75,20 +75,20 @@ export default function ProgressPage() {
     { id: "who", header: "Assigned to", accessorFn: (r) => r.name ?? "Nobody yet", cell: ({ row }) => {
       const w = row.original;
       if (!w.name) return <span className="m-ink-3">Nobody yet</span>;
-      return <DrillCount href={w.assignee_id ? fix({ assignee: w.assignee_id }) : undefined} label={`Open the records assigned to ${w.name}`}>{w.name}</DrillCount>;
+      return <DrillCount href={fix({ assignee: w.assignee_id ?? "unassigned" })} label={`Open the records assigned to ${w.name}`}>{w.name}</DrillCount>;
     } },
     { accessorKey: "open", header: "Open", meta: { numeric: true }, cell: ({ row }) => {
       const w = row.original;
-      return <DrillCount href={w.assignee_id ? fix({ assignee: w.assignee_id }) : undefined} count={w.open} label={`${drillLabel({ count: w.open, what: "open records" })} assigned to ${w.name ?? "this person"}`}>{n(w.open)}</DrillCount>;
+      return <DrillCount href={fix({ assignee: w.assignee_id ?? "unassigned" })} count={w.open} label={`${drillLabel({ count: w.open, what: "open records" })} assigned to ${w.assignee_id ? w.name ?? "this person" : "nobody"}`}>{n(w.open)}</DrillCount>;
     } },
     { accessorKey: "critical", header: "Critical", meta: { numeric: true }, cell: ({ row }) => {
       const w = row.original;
-      return <DrillCount href={w.assignee_id ? fix({ assignee: w.assignee_id, sev: "critical" }) : undefined} count={w.critical} label={`${drillLabel({ count: w.critical, sev: "critical" })} assigned to ${w.name ?? "this person"}`}>{n(w.critical)}</DrillCount>;
+      return <DrillCount href={fix({ assignee: w.assignee_id ?? "unassigned", sev: "critical" })} count={w.critical} label={`${drillLabel({ count: w.critical, sev: "critical" })} assigned to ${w.assignee_id ? w.name ?? "this person" : "nobody"}`}>{n(w.critical)}</DrillCount>;
     } },
     { accessorKey: "overdue", header: "Overdue", meta: { numeric: true }, cell: ({ row }) => {
       const w = row.original;
       if (!w.overdue) return "0";
-      return <DrillCount href={w.assignee_id ? fix({ assignee: w.assignee_id, due: "overdue" }) : undefined} label={`${drillLabel({ count: w.overdue, what: "overdue records" })} assigned to ${w.name ?? "this person"}`}><span className="m-ink-critical">{n(w.overdue)}</span></DrillCount>;
+      return <DrillCount href={fix({ assignee: w.assignee_id ?? "unassigned", due: "overdue" })} label={`${drillLabel({ count: w.overdue, what: "overdue records" })} assigned to ${w.assignee_id ? w.name ?? "this person" : "nobody"}`}><span className="m-ink-critical">{n(w.overdue)}</span></DrillCount>;
     } },
   ], [fix]);
 

@@ -171,6 +171,8 @@ describe("ProgressPage", () => {
     expect(link("Open the 2 critical records assigned to Bea")).toBe("/fix?run=bp2&sev=critical&assignee=u-7");
     expect(link("Open the 1 overdue record assigned to Bea")).toBe("/fix?run=bp2&assignee=u-7&due=overdue");
     expect(screen.queryByRole("link", { name: /assigned to this person/ })).toBeNull();
+    // the unassigned row opens the records nobody has taken
+    expect(screen.getAllByRole("link", { name: /assigned to nobody/ })[0].getAttribute("href")).toContain("assignee=unassigned");
     expect(link("Open the open records of WERKS 1000")).toBe("/fix?run=bp2&part=WERKS%3D1000");
     expect(link("Open the critical open records of WERKS 1000")).toBe("/fix?run=bp2&sev=critical&part=WERKS%3D1000");
     expect(link("Open the 2 fixed records of material master")).toBe("/fix?run=bp2&module=material_master&st=fixed");

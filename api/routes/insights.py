@@ -247,7 +247,8 @@ async def get_owners(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
         card = build_owner_card(owner, agg["score"], agg["delta"], agg["open_by_severity"],
                                  agg["fixed_since_baseline"], agg["oldest_item_age_days"])
         last_sent = last_sent_by_user.get(agg["user_id"])
-        rows.append({**card.__dict__, "schedule": "weekly", "last_sent": last_sent.isoformat() if last_sent else None})
+        rows.append({**card.__dict__, "user_id": str(agg["user_id"]) if agg.get("user_id") else None,
+                     "schedule": "weekly", "last_sent": last_sent.isoformat() if last_sent else None})
     return {"owners": rows}
 
 

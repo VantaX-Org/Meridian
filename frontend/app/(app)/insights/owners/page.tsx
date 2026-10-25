@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { fixHref } from "@/lib/drill";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -23,7 +24,9 @@ const openCount = (o: OwnerCardResponse) => Object.values(o.open_by_severity).re
 const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
   { accessorKey: "score", header: "Score", meta: { numeric: true, heat: "seq", heatRange: [0, 100] } },
-  { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true } },
+  { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true }, cell: ({ row }) => row.original.user_id
+    ? <Link href={fixHref({ assignee: row.original.user_id })} aria-label={`Open the ${openCount(row.original).toLocaleString()} open records of ${row.original.owner}`} className="m-ink-accent underline underline-offset-2">{openCount(row.original).toLocaleString()}</Link>
+    : openCount(row.original).toLocaleString() },
   { accessorKey: "delta", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
   { accessorKey: "fixed_since_baseline", header: "Fixed since the first run", meta: { numeric: true } },
   { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline underline-offset-2">Open inbox</Link> },

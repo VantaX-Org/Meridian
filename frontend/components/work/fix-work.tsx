@@ -276,7 +276,7 @@ export function FixWork() {
     filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "module" } : null,
     filter.check_id ? { label: "Issue", value: activeGroup?.message ?? filter.check_id, key: "check" } : null,
     filter.severity ? { label: "Severity", value: filter.severity, key: "sev" } : null,
-    filter.assigned ? { label: "Assigned", value: filter.assigned === "me" ? "to me" : "to one person", key: filter.assigned === "me" ? "mine" : "assignee" } : null,
+    filter.assigned ? { label: "Assigned", value: filter.assigned === "me" ? "to me" : filter.assigned === "unassigned" ? "to nobody" : "to one person", key: filter.assigned === "me" ? "mine" : "assignee" } : null,
     filter.part ? { label: "Where", value: filter.part, key: "part" } : null,
     filter.proposed ? { label: "Has", value: "a suggested value", key: "sugg" } : null,
     filter.due ? { label: "Due", value: "overdue", key: "due" } : null,

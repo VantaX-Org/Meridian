@@ -52,7 +52,8 @@ const readinessColumns = (run?: string): ColumnDef<ReadinessCell>[] => [
 ];
 
 const ownerColumns = (run?: string): ColumnDef<OwnerCardResponse>[] => [
-  { accessorKey: "owner", header: "Owner" },
+  { accessorKey: "owner", header: "Owner", cell: ({ row }) => row.original.user_id
+    ? <DrillLink href={fixHref({ assignee: row.original.user_id, run })}>{row.original.owner}</DrillLink> : row.original.owner },
   { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href={withScope("/insights/owners", { run })}>{row.original.score}</DrillLink> },
   { accessorKey: "delta", header: "Change", cell: ({ row }) => <Delta value={row.original.delta} /> },
 ];
