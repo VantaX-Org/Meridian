@@ -159,8 +159,8 @@ describe("RunsPage", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText("Select row v1"));
-    fireEvent.click(screen.getByLabelText("Select row v2"));
+    fireEvent.click(screen.getByLabelText("Select Oct 1 upload"));
+    fireEvent.click(screen.getByLabelText("Select Oct 8 upload"));
     for (const role of ["dialog", "alertdialog", "listbox", "option", "menu", "menuitem", "combobox"]) {
       const owner = document.createElement("div");
       owner.setAttribute("role", role);
