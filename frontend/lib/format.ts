@@ -291,6 +291,17 @@ export function setTenantTimezone(zone: string | null | undefined): void {
   tenantZone = zone || undefined;
 }
 
+/** True when `zone` is a time zone this runtime knows (an IANA name such as "Europe/Berlin", or "UTC"). */
+export function isValidTimeZone(zone: string | null | undefined): boolean {
+  if (!zone || !zone.trim()) return false;
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** The browser's IANA zone, for when no tenant zone is known yet. */
 export function browserTimezone(): string {
   try {

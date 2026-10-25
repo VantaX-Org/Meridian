@@ -96,7 +96,9 @@ describe("JobTray", () => {
     fireEvent.click(screen.getByLabelText("Jobs"));
     const status = await screen.findByText("Failed");
     expect(status).toHaveAttribute("data-status", "lifecycle");
-    expect(screen.getByTestId("job-error")).toHaveTextContent("RFC_COMMUNICATION_FAILURE on BUT000");
+    // Plain words in the tray; the worker's own text stays on hover.
+    expect(screen.getByTestId("job-error")).toHaveTextContent("Meridian could not reach the SAP system");
+    expect(screen.getByTestId("job-error")).toHaveAttribute("title", "RFC_COMMUNICATION_FAILURE on BUT000");
     expect(screen.getByRole("link", { name: "Open Analysis" })).toHaveAttribute("href", "/runs/v-9");
   });
 
@@ -118,13 +120,14 @@ describe("JobTray", () => {
     await waitFor(() => expect(success).toHaveBeenCalledWith("Job queued", { description: "Extract material master from ECC PRD again" }));
   });
 
-  it("offers no Retry without the start permission", async () => {
+  it("shows Retry disabled, with the permission it needs, without the start permission", async () => {
     perms = new Set(["analyse"]);
     vi.mocked(getJobs).mockResolvedValueOnce([failedDownload]);
     renderWithClient(client);
     fireEvent.click(screen.getByLabelText("Jobs"));
     await screen.findByText("Failed");
-    expect(screen.queryByRole("button", { name: /^Retry/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Retry material_master. Needs extract permission" })).toBeDisabled();
+    expect(retryJob).not.toHaveBeenCalled();
   });
 
   it("retries only failed jobs of kinds whose start can run again", () => {

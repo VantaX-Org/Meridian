@@ -5,13 +5,12 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore, toast } from "@/design";
-import { LedgerHead } from "@/components/mdm/ledger";
+import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Async, IconMore, toast } from "@/design";
 import { permissionLabel } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
-import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { apiErrorMessage } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
 import { InviteForm } from "@/components/admin/invite-form";
 import { relativeTime } from "@/lib/format";
@@ -45,8 +44,8 @@ const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
 
 export default function AdminUsersPage() {
-  const [tabRaw, setTab] = useUrlState("tab", "users");
-  const tab = (["users", "roles"] as string[]).includes(tabRaw) ? tabRaw : "users";
+  // Old links: ?tab=roles (the retired role matrix) and ?tab=audit point at the pages that own them now.
+  const [tabRaw] = useUrlState("tab", "users");
   const { can, loading } = useRole();
   const canManage = can("manage_users");
   const [invite, setInvite] = useState(false);
@@ -68,25 +67,20 @@ export default function AdminUsersPage() {
         meta="Who can sign in and what each person may do. Invite people, change a role, or suspend someone's access"
         actions={
           <>
+            <Button variant="secondary" render={<Link href="/admin/roles">Roles and access</Link>} />
             <Button variant="secondary" render={<Link href="/admin/audit">Audit log</Link>} />
-            {tab === "users" ? <Button onClick={() => setInvite(true)}>Invite user</Button> : null}
+            <Button onClick={() => setInvite(true)}>Invite user</Button>
           </>
         }
       />
       {tabRaw === "audit" ? <EmptyState variant="inline" title="The audit log has its own page" action={<Button render={<Link href="/admin/audit">Open the audit log</Link>} />} /> : null}
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        items={[
-          { value: "users", label: "Users", content: <UsersView invite={invite} setInvite={setInvite} /> },
-          { value: "roles", label: "Roles", content: <RolesView /> },
-        ]}
-      />
+      {tabRaw === "roles" ? <EmptyState variant="inline" title="Roles are managed under Roles and access" action={<Button render={<Link href="/admin/roles">Open roles and access</Link>} />} /> : null}
+      <p className="m-text-body m-ink-3">
+        What each role may do, and roles granted for one system or object, are set under <Link href="/admin/roles" className="m-ink-accent hover:underline">Roles and access</Link>.
+      </p>
+      <UsersView invite={invite} setInvite={setInvite} />
     </div>
   );
-  // ponytail: dropped URL-sync for the active tab. Tabs now takes onValueChange, but
-  // each view is its own component below and its query only runs once its panel
-  // mounts, so a tab switch needs no URL state to work correctly.
 }
 
 function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: boolean) => void }) {
@@ -172,45 +166,6 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
   );
 }
 
-function RolesView() {
-  const matrixQ = useQuery({ queryKey: queryKeys.authRoles(), queryFn: getRoleMatrix });
-  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
-  const users = (usersQ.data?.users ?? []).filter((u) => u.is_active);
-  const matrix = matrixQ.data;
-  const actions = useMemo(() => Array.from(new Set(Object.values(matrix ?? {}).flat())).sort(), [matrix]);
-
-  const matrixCols = useMemo<ColumnDef<UserRole, unknown>[]>(() => [
-    { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original].label}<div className="m-text-label m-ink-3">{ROLE_META[row.original].desc}</div></span> },
-    ...actions.map((a): ColumnDef<UserRole, unknown> => ({
-      id: a, header: permissionLabel(a),
-      cell: ({ row }) => (matrix?.[row.original]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="sr-only">Not allowed</span>),
-    })),
-  ], [actions, matrix]);
-  const holderCols = useMemo<ColumnDef<UserRole, unknown>[]>(() => [
-    { id: "role", header: "Role", cell: ({ row }) => <strong>{ROLE_META[row.original].label}</strong> },
-    { id: "n", header: "Users", cell: ({ row }) => users.filter((u) => u.role === row.original).length },
-    { id: "who", header: "Who", cell: ({ row }) => users.filter((u) => u.role === row.original).map((u) => u.name).join(", ") },
-  ], [users]);
-
-  return (
-    <div className="flex flex-col gap-6 pt-4">
-      <p className="m-text-body m-ink-3">What each role may do. To change someone&apos;s role, open them on the Users tab.</p>
-      {matrixQ.isError ? (
-        <ErrorState {...apiErrorState(matrixQ.error)} onRetry={() => matrixQ.refetch()} />
-      ) : matrix ? (
-        <section aria-label="Role matrix">
-          <LedgerHead title="Role matrix" />
-          <DataTable columns={matrixCols} data={ROLES} getRowId={(r) => r} />
-        </section>
-      ) : <Skeleton height={240} />}
-      <section aria-label="Who holds each role">
-        <LedgerHead title="Who holds each role" />
-        <DataTable columns={holderCols} data={ROLES.filter((r) => users.some((u) => u.role === r))} getRowId={(r) => r} />
-      </section>
-    </div>
-  );
-}
-
 /** The actions a role gains and loses when it changes, in words, for the confirmation. */
 function roleChangeSentence(matrix: Record<string, string[]> | undefined, from: UserRole, to: UserRole): string {
   const a = new Set(matrix?.[from] ?? []);
@@ -249,7 +204,7 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
         <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
       </Field>
       <p className="m-text-meta m-ink-3">{ROLE_META[role].desc}</p>
-      <p className="m-text-meta m-ink-3">Scoped grants (a role at one system or module) are managed under <Link href={`/admin/roles?tab=users`} className="underline">Roles and access</Link>.</p>
+      <p className="m-text-meta m-ink-3">Scoped grants (a role at one system or module) are managed under <Link href={`/admin/roles?tab=users&user=${encodeURIComponent(user.id)}`} className="underline">Roles and access</Link>.</p>
       <label className="flex items-center gap-2 m-text-body">
         <Checkbox aria-label="Active" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
         <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>

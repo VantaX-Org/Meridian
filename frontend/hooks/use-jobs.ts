@@ -7,6 +7,8 @@ import { getJobs, streamJobs } from "@/lib/api/jobs";
 import type { Job } from "@/types/jobs";
 
 export const JOBS_QUERY_KEY = ["jobs"] as const;
+/** Admin › Jobs: the longer history list, patched by the same stream so a finished job leaves "Running". */
+export const JOBS_HISTORY_QUERY_KEY = ["jobs", "history"] as const;
 const ACTIVE = new Set(["queued", "running"]);
 
 /**
@@ -38,6 +40,8 @@ export function useJobStream(): void {
             job,
             ...prev.filter((j) => j.id !== job.id),
           ]);
+          // Only patch a history list someone has loaded; never seed one from a single event.
+          qc.setQueryData<Job[]>(JOBS_HISTORY_QUERY_KEY, (prev) => (prev ? [job, ...prev.filter((j) => j.id !== job.id)] : prev));
           if (job.status === "completed") {
             if (job.touches && job.touches.length > 0) {
               qc.invalidateQueries({ predicate: touchedPredicate(job.touches) });

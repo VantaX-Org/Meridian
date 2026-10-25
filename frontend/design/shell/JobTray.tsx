@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useJobs, useJobStream } from "../../hooks/use-jobs";
+import { explainJobError } from "../../lib/job-error";
 import { onJobTrayOpen } from "../../lib/job-tray-bus";
 import type { Job } from "../../types/jobs";
 import { IconButton } from "../primitives/IconButton";
@@ -74,7 +75,7 @@ export function JobTray() {
                   <RetryJobButton job={job} />
                 </div>
                 {job.status === "failed" && job.error && (
-                  <p className="m-text-meta m-ink-2" data-testid="job-error">{job.error}</p>
+                  <p className="m-text-meta m-ink-2" data-testid="job-error" title={job.error}>{explainJobError(job.error)?.summary ?? job.error}</p>
                 )}
                 <div
                   role="progressbar"

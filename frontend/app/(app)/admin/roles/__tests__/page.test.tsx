@@ -11,8 +11,13 @@ import AdminRolesPage from "../page";
 import AdminRolesLoading from "../loading";
 
 let tab = "roles";
+let userParam = "";
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
-vi.mock("@/hooks/use-url-state", () => ({ useUrlState: () => [tab, vi.fn()] }));
+// Each key keeps its own state, seeded from the "URL" the test sets.
+vi.mock("@/hooks/use-url-state", async () => {
+  const { useState } = await import("react");
+  return { useUrlState: (key: string, initial = "") => useState(key === "tab" ? tab : key === "user" ? userParam : initial) };
+});
 
 const BUILTIN: rolesApi.Role = { key: "viewer", name: "Viewer", description: null, built_in: true, legacy: true, cloned_from: null, updated_at: null, users: 2 };
 const CUSTOM: rolesApi.Role = { key: "custom:ops", name: "Ops", description: null, built_in: false, legacy: false, cloned_from: "viewer", updated_at: "2026-01-01T00:00:00Z", users: 0 };
@@ -20,6 +25,7 @@ const MATRIX = { findings: { read: true, write: false }, users: { read: false, w
 
 beforeEach(() => {
   tab = "roles";
+  userParam = "";
   vi.restoreAllMocks();
   vi.spyOn(rolesApi, "listRoles").mockResolvedValue([BUILTIN, CUSTOM]);
   vi.spyOn(rolesApi, "getRolePermissions").mockImplementation(async (key) => ({ key, built_in: key === "viewer", matrix: MATRIX }));
@@ -70,8 +76,26 @@ describe("admin roles page", () => {
 
     await user.click(screen.getByRole("button", { name: "Actions for Ops" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    await user.click(await screen.findByRole("button", { name: "Delete role" }));
+    expect(await screen.findByText(/No one holds this role now/)).toBeInTheDocument();
+    // The role's name must be typed before the delete enables.
+    expect(screen.getByRole("button", { name: "Delete role" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Type to confirm"), { target: { value: "Op" } });
+    expect(screen.getByRole("button", { name: "Delete role" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Type to confirm"), { target: { value: "Ops" } });
+    await user.click(screen.getByRole("button", { name: "Delete role" }));
     await waitFor(() => expect(del).toHaveBeenCalledWith("custom:ops"));
+  }, 60_000); // clone, edit and type-to-confirm delete in one walk; slow under a loaded full run
+
+  it("opens a user's grants from ?user= and names the base role", async () => {
+    tab = "users";
+    userParam = "u1";
+    vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [{ id: "u1", tenant_id: "t", clerk_user_id: null, email: "a@x.io", name: "Ana", role: "viewer", permissions: null, is_active: true, last_login: null, created_at: "2026-01-01T00:00:00Z" }] });
+    vi.spyOn(rolesApi, "listGrants").mockResolvedValue([]);
+    vi.spyOn(rolesApi, "getUserEffective").mockResolvedValue({ role: "viewer", roles: [], actions: [], resources: {}, scopes: [], home: "/" });
+    renderWithQuery(<AdminRolesPage />);
+    expect(await screen.findByRole("dialog", { name: "Ana" })).toBeInTheDocument();
+    expect(screen.getByText("Base role")).toBeInTheDocument();
+    expect(screen.queryByText("Legacy role")).toBeNull();
   });
 
   it("adds and removes a grant, and shows effective permissions", async () => {

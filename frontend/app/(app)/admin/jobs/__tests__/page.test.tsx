@@ -32,13 +32,44 @@ describe("admin jobs page", () => {
     await waitFor(() => expect(retry).toHaveBeenCalledWith("j1"));
   });
 
-  it("shows no Retry to a user without the start permission, nor on an upload", async () => {
+  it("shows Retry disabled with the permission it needs, and none on an upload", async () => {
     perms = new Set(["trigger_sync"]);
     vi.spyOn(jobsApi, "getJobs").mockResolvedValue([BASE, { ...BASE, id: "j2", kind: "upload", label: "file.csv" }]);
     renderWithQuery(<JobsPage />);
     await screen.findByText("file.csv");
-    expect(screen.queryByRole("button", { name: /^Retry/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Retry Re-analysis. Needs analyse permission" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /^Retry file\.csv/ })).toBeNull();
   });
+
+  it("shows Extract again disabled without the extract permission", async () => {
+    perms = new Set();
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([{ ...BASE, kind: "extraction", label: "material_master" }]);
+    renderWithQuery(<JobsPage />);
+    expect(await screen.findByRole("button", { name: "Extract material_master again. Needs extract permission" })).toBeDisabled();
+    expect(screen.queryByRole("link", { name: /Extract material_master again/ })).toBeNull();
+  });
+
+  it("explains a failed job in plain words and keeps the raw error behind a disclosure", async () => {
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([{ ...BASE, error: "RFC_LOGON_FAILURE: Name or password is incorrect" }]);
+    renderWithQuery(<JobsPage />);
+    expect(await screen.findByText("SAP refused the sign-in")).toBeInTheDocument();
+    expect(screen.queryByText(/RFC_LOGON_FAILURE/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Expand row" }));
+    expect(screen.getByText("Technical detail")).toBeInTheDocument();
+    expect(screen.getByText("RFC_LOGON_FAILURE: Name or password is incorrect")).toBeInTheDocument();
+  });
+
+  it("filters by status and polls while a job is still running", async () => {
+    const get = vi.spyOn(jobsApi, "getJobs").mockResolvedValue([
+      BASE, { ...BASE, id: "j2", status: "running", label: "Nightly extract", error: null, finished_at: null },
+    ]);
+    renderWithQuery(<JobsPage />);
+    await screen.findByText("Nightly extract");
+    fireEvent.click(screen.getByRole("button", { name: "Failed" }));
+    expect(screen.queryByText("Nightly extract")).toBeNull();
+    expect(screen.getByText("Re-analysis")).toBeInTheDocument();
+    await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(1), { timeout: 7_000 });
+  }, 10_000);
 
   it("sends a failed extraction without a recorded request to its system's Extract drawer", async () => {
     perms = new Set(["trigger_sync"]);
