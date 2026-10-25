@@ -66,7 +66,7 @@ test.describe("viewer gating", () => {
 
   test("Users shows the administrator notice instead of the user list", async ({ app }) => {
     await app.goto("/admin/users", { waitUntil: "load" });
-    await expect(app.getByText(/managing users needs an administrator/i)).toBeVisible({ timeout: 20_000 });
+    await expect(app.getByText(/only administrators manage users/i)).toBeVisible({ timeout: 20_000 });
     await expect(app.getByRole("button", { name: "Invite user" })).toHaveCount(0);
   });
 
@@ -84,7 +84,10 @@ test.describe("viewer gating", () => {
         els
           .filter((el) => {
             const r = (el as HTMLElement).getBoundingClientRect();
-            return r.width > 0 && r.height > 0 && !el.closest("th, [role='columnheader']") && !el.classList.contains("m-stat");
+            // a picker (the scope bar's run and object choice) changes what is shown, not the data; an error
+            // state's Retry reads the data again (pages whose API is not in the recording show one)
+            return r.width > 0 && r.height > 0 && !el.closest("th, [role='columnheader']") && !el.classList.contains("m-stat")
+              && el.getAttribute("role") !== "combobox" && !el.closest("[data-state='error']");
           })
           .map((el) => ({
             name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim(),
