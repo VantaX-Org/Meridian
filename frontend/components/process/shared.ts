@@ -17,16 +17,60 @@ export const PROCESS_MODULES: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * The objects each L1 with a readiness definition covers (sap/process_definitions.py `modules`), the general ledger
+ * last since both processes post to it. The readiness API reads one object at a time, so a link to one L1 names an
+ * object of that L1.
+ */
+export const PROCESS_L1_MODULES: Readonly<Record<string, readonly string[]>> = {
+  PTP: ["accounts_payable", "mm_purchasing", "material_master", "fi_gl"],
+  OTC: ["accounts_receivable", "sd_customer_master", "sd_sales_orders", "fi_gl"],
+};
+
+/** The objects of `modules` that carry `l1`'s definition, in definition order; empty for an L1 without one. */
+export const modulesOfL1 = (l1: string, modules: readonly string[]): string[] =>
+  (PROCESS_L1_MODULES[l1] ?? []).filter((m) => modules.includes(m));
+
+/**
+ * The readiness page for one L1, over one object of it and one run, so it never opens another L1 of the run. `object`
+ * defaults to the L1's first object; the page moves to an object of that L1 the run covers when this one is absent.
+ * Undefined for an L1 with no readiness definition.
+ */
+export function readinessHref({ l1, object, run }: { l1: string; object?: string; run?: string | null }): string | undefined {
+  const own = PROCESS_L1_MODULES[l1];
+  if (!own) return undefined;
+  const p = new URLSearchParams({ l1, object: object && own.includes(object) ? object : own[0] });
+  if (run) p.set("run", run);
+  return `/insights/process?${p}`;
+}
+
+/**
+ * Where a process step a rule gates opens. An L1 with a readiness definition opens its readiness over the rule's
+ * object when that object belongs to the L1 (in `run`, the newest run that evaluated the rule), else over the L1's
+ * first object in the latest run; any other L1 opens the step in its reference model on the process page.
+ */
+export function processStepHref({ l1, l4, module, run }: { l1: string; l4: string; module: string; run: string | undefined }): string {
+  const own = PROCESS_L1_MODULES[l1]?.includes(module) ?? false;
+  return readinessHref({ l1, object: own ? module : undefined, run: own ? run : undefined })
+    ?? `/process/${encodeURIComponent(l1)}?${new URLSearchParams({ tab: "reference", node: l4 })}`;
+}
+
+/** The system a run read its data from; undefined for uploads. */
+export const systemOfVersion = (v: Version): string | undefined => v.metadata?.system_id ?? undefined;
+
+/**
  * The run the topbar selected (`?run=`) when it is finished, else the latest finished analysis. Reads the shared
  * run list, and a `?run=` older than the list by id, so a selected run is never swapped for the newest one.
+ * `systemId` keeps both to that system's runs (a `?run=` of another system is passed over); `null` means the system
+ * is not known yet, so nothing is chosen.
  */
-export function useLatestVersion() {
+export function useLatestVersion(systemId?: string | null) {
   const run = useSearchParams().get("run");
-  const { list: q, versions: vs, fetchingRun } = useRunListWith(run);
-  const latest = useMemo(
-    () => (fetchingRun ? undefined : vs.find((v) => v.id === run && isCompleteVersion(v)) ?? vs.find(isCompleteVersion)),
-    [vs, run, fetchingRun],
-  );
+  const { list: q, versions: all, fetchingRun } = useRunListWith(run);
+  const latest = useMemo(() => {
+    if (fetchingRun || systemId === null) return undefined;
+    const vs = systemId === undefined ? all : all.filter((v) => systemOfVersion(v) === systemId);
+    return vs.find((v) => v.id === run && isCompleteVersion(v)) ?? vs.find(isCompleteVersion);
+  }, [all, run, fetchingRun, systemId]);
   return { latest, isLoading: q.isLoading || fetchingRun, error: q.error as Error | null, refetch: q.refetch };
 }
 
@@ -84,9 +128,10 @@ export function l1Readiness(l1: BusinessProcessL1, module: string): L1Readiness 
 /**
  * Readiness of every L1 the latest finished run can score, keyed by L1 id (PTP, OTC): one business process read
  * per process object in the run. The first read of an L1 wins, since every read carries the whole run's findings.
+ * `systemId` scores from that system's newest finished run only (see `useLatestVersion`).
  */
-export function useProcessReadiness() {
-  const { latest, isLoading, error } = useLatestVersion();
+export function useProcessReadiness(systemId?: string | null) {
+  const { latest, isLoading, error } = useLatestVersion(systemId);
   const modules = useMemo(() => Object.keys(latest?.dqs_summary ?? {}).filter((m) => PROCESS_MODULES.has(m)), [latest]);
   const reads = useQueries({
     queries: modules.map((m) => ({

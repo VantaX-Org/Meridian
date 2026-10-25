@@ -62,7 +62,7 @@ export default function ProcessL1Page() {
   });
   const reference = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference });
   // The process is the page's h1, under Processes.
-  useBreadcrumbTitle(row ? { label: row.name, parent: { label: "As-is processes", href: "/process" } } : null);
+  useBreadcrumbTitle(row && system ? { label: row.name, parent: { label: "As-is processes", href: `/process?system=${encodeURIComponent(system.id)}` } } : null);
 
   const wrap = (n: ReactNode) => <ProcessFrame>{n}</ProcessFrame>;
   if (systems.isError) return wrap(<ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} />);
@@ -75,7 +75,7 @@ export default function ProcessL1Page() {
   }
   if (!row) {
     return wrap(<EmptyState title="Process not in the catalogue" detail={`There is no end-to-end process with the code ${l1}. It may have been renamed.`}
-      action={<Button render={<Link href="/process">Open the catalogue</Link>} />} />);
+      action={<Button render={<Link href={`/process?system=${encodeURIComponent(system!.id)}`}>Open the catalogue</Link>} />} />);
   }
 
   const r = run.data;
@@ -216,7 +216,7 @@ function ReferenceView({ doc, l1, node, onOpen }: {
   const hit = locate(doc, node ?? l1);
   if (!hit) return <EmptyState title="Not in the reference model" detail="This step exists only in the discovered flow."
       action={<Button render={<Link href="/insights/process/designer">Open designer</Link>} />} />;
-  if (hit.level === 4) return <L5Table l4={hit.item as L4} onOpen={noop} />;
+  if (hit.level === 4) return <L5Table l4={hit.item as L4} />;
   return (
     <>
       <Notice tone="info" title="Reference model">The SAP best-practice steps this process is measured against.</Notice>

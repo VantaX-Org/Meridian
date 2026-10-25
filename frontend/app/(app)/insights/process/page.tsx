@@ -20,9 +20,9 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
+import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Notice, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
 import { apiErrorState } from "@/lib/error";
-import { PROCESS_MODULES, isCompleteVersion, l1Fields, l4Fields, red, score, sev, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
+import { PROCESS_MODULES, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
@@ -251,8 +251,12 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   const modules = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
   const [objectChoice, setObject] = useUrlState("object", "");
   const [l1Choice, setL1] = useUrlState("l1", "");
-  // `?l1=` from the process home names the L1; its object is whichever analysed object carries that definition.
-  const object = oneOf(objectChoice, modules, (l1Choice && modules.find((m) => PROCESS_MODULES.has(m))) || modules[0] || "");
+  // `?l1=` names the L1; the object read must carry that L1's definition, since the API returns one object's processes.
+  // A `?object=` of another L1 (or one this run lacks) moves to the first object of that L1 the run covers.
+  const l1Objects = useMemo(() => (l1Choice ? modulesOfL1(l1Choice, modules) : []), [l1Choice, modules]);
+  const object = l1Objects.length
+    ? oneOf(objectChoice, l1Objects, l1Objects[0])
+    : oneOf(objectChoice, modules, modules.find((m) => PROCESS_MODULES.has(m)) || modules[0] || "");
 
   const bp = useQuery({
     queryKey: queryKeys.businessProcess(latest?.id, object),
@@ -280,7 +284,9 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   });
 
   const processes = useMemo(() => bp.data ?? [], [bp.data]);
-  const l1 = processes.find((p) => p.l1_id === l1Choice) ?? processes[0];
+  // A named L1 the loaded object does not carry is never swapped for another L1: the page says so instead.
+  const l1Missing = !!l1Choice && processes.length > 0 && !processes.some((p) => p.l1_id === l1Choice);
+  const l1 = l1Choice ? processes.find((p) => p.l1_id === l1Choice) : processes[0];
 
   // Derived once here so the page frame's four sentences can be published from an effect below.
   const all = useMemo(() => (l1 ? l1Fields(l1) : []), [l1]);
@@ -308,7 +314,12 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
     if (loading) { onInsight({ loading: true, situation: { sentence: "" }, changed: { sentence: "" }, why: { sentence: "" }, next: { sentence: "" } }); return; }
     if (!latest || !l1) {
       onInsight({
-        situation: { sentence: !latest ? "No finished run to read process readiness from." : `${formatModuleName(object)} has no L1 to L5 process definition.`, tone: "neutral" },
+        situation: {
+          sentence: !latest ? "No finished run to read process readiness from."
+            : l1Missing ? `This run has no ${l1Choice} object, so ${l1Choice} readiness cannot be read from it.`
+              : `${formatModuleName(object)} has no L1 to L5 process definition.`,
+          tone: "neutral",
+        },
         changed: { sentence: "Readiness is scored per step from the run you choose." },
         why: { sentence: "Only procure to pay and order to cash objects carry a process definition." },
         next: { sentence: !latest ? "Run an analysis first." : "Pick a run that covers a process object.", action: !latest ? { label: "Open runs", href: "/runs" } : undefined },
@@ -326,7 +337,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         ? { sentence: `Clear the failing fields in ${worst.l3.l3_name}.`, action: { label: "Open failing records", href: firstHref ?? withScope(`/objects/${object}`, { run: latest.id, tab: "rules" }) } }
         : { sentence: "No step is blocked; keep an eye on the amber fields.", action: { label: "Open failing rules", href: withScope("/insights/rules", { run: latest.id, module: object }) } },
     });
-  }, [loading, latest, l1, object, blockedGates, gates.length, pct, blocking, failing, worst, firstHref, onInsight]);
+  }, [loading, latest, l1, l1Missing, l1Choice, object, blockedGates, gates.length, pct, blocking, failing, worst, firstHref, onInsight]);
 
   if (loading) return <ViewSkeleton stats={4} />;
   if (versionsError) return <ErrorState {...apiErrorState(versionsError)} onRetry={() => void refetchVersions()} />;
@@ -339,6 +350,20 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
     <Select label="Object" value={object} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
       onValueChange={(m) => { setObject(m); setL1(""); }} />
   );
+
+  if (l1Missing) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-3 items-center flex-wrap">{objectPicker}<RunsWithProcess exclude={latest.id} /></div>
+        <Notice tone="warning" title={`No ${l1Choice} object in this run`}>
+          {`${runScopeLabel(latest)} covers ${formatModuleName(object)}, which carries ${processes.map((p) => p.l1_name).join(" and ")}, not ${l1Choice}. Choose a run above that covers a ${l1Choice} object, or read the process this object carries.`}
+        </Notice>
+        <div>
+          <Button variant="secondary" onClick={() => setL1("")}>{`Show ${processes[0].l1_name}`}</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!l1) {
     return (

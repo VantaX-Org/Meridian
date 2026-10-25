@@ -38,14 +38,15 @@ type Edge = Dfg["edges"][number];
 const PSEUDO = new Set(["START", "END"]);
 const PSEUDO_LABEL: Record<string, string> = { START: "Start", END: "End" };
 
-const NODE_COLUMNS: ColumnDef<NodeStats>[] = [
+/** `l1`: the process the nodes belong to, so a DQ defects count opens that process's readiness. */
+const nodeColumns = (l1: string | undefined): ColumnDef<NodeStats>[] => [
   { accessorKey: "id", header: "ID", cell: ({ row }) => <Mono>{row.original.id}</Mono> },
   { accessorKey: "name", header: "Name" },
   { accessorKey: "case_count", header: "Cases", cell: ({ row }) => fmtCount(row.original.case_count) },
   { accessorKey: "share", header: "Share", cell: ({ row }) => fmtShare(row.original.share) },
   { accessorKey: "median_seconds", header: "Median", cell: ({ row }) => fmtSeconds(row.original.median_seconds) },
   { accessorKey: "fitness", header: "Fitness", cell: ({ row }) => fmtFitness(row.original.fitness) },
-  { id: "dq_defects", header: "DQ defects", accessorFn: (n) => n.dq_defects ?? -1, cell: ({ row }) => <DqDefects n={row.original.dq_defects} versionId={row.original.dq_version_id} /> },
+  { id: "dq_defects", header: "DQ defects", accessorFn: (n) => n.dq_defects ?? -1, cell: ({ row }) => <DqDefects n={row.original.dq_defects} versionId={row.original.dq_version_id} l1={l1} /> },
 ];
 
 export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
@@ -76,7 +77,8 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
   const used = new Set(d.edges.flatMap((e) => [e.source, e.target]));
   const max = Math.max(1, ...d.edges.map((e) => e.count));
   // The L1 owner module colours every node; the pulse plays for the first load only, not on filter changes.
-  const owner = doc.l1.find((x) => locate({ ...doc, l1: [x] }, d.node.id))?.modules[0];
+  const ownerL1 = doc.l1.find((x) => locate({ ...doc, l1: [x] }, d.node.id));
+  const owner = ownerL1?.modules[0];
   const domain = domainOf(owner);
   const orderOf = (id: string) => locate(doc, id)?.item.order;
   const bottlenecks = bottleneckKeys(d.edges);
@@ -117,7 +119,7 @@ export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {
         }
         table={
           <div className="grid gap-3">
-            <DataTable columns={NODE_COLUMNS} data={ranked} getRowId={(n) => n.id} onRowClick={(n) => click(n.id)}
+            <DataTable columns={nodeColumns(ownerL1?.id)} data={ranked} getRowId={(n) => n.id} onRowClick={(n) => click(n.id)}
               height="auto" hideToolbar dense tableId="process-flow-nodes" exportName={`process-${d.node.id}-nodes`} />
             <DataTable columns={edgeColumns} data={d.edges} getRowId={(e) => `${e.source}>${e.target}`}
               height="auto" hideToolbar dense tableId="process-flow-edges" exportName={`process-${d.node.id}-edges`} />

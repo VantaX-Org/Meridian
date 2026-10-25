@@ -225,14 +225,34 @@ describe("process L1 drill", () => {
     expect(screen.getAllByText("Purchasing").length).toBeGreaterThan(0);
   });
 
-  it("links each node's DQ defects to the failing objects and dashes an unmapped node", async () => {
+  it("links each node's DQ defects to its process's readiness in that run and dashes an unmapped node", async () => {
     vi.spyOn(pdApi, "getDfg").mockResolvedValue(dfg(2, node("PTP", "Procure to Pay", 100),
       [{ ...node("PTP-01", "Purchasing", 100), dq_defects: 12, dq_version_id: "v-ecc" }, { ...node("PTP-02", "Receiving", 50), dq_defects: null }]));
     renderWithQuery(<ProcessL1Page />);
     await screen.findByRole("button", { name: "Node Purchasing" });
     fireEvent.click(screen.getByRole("button", { name: "View as table" }));
-    expect(screen.getByRole("link", { name: "12" }).getAttribute("href")).toBe("/objects?run=v-ecc&readiness=fail");
+    expect(screen.getByRole("link", { name: "12" }).getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable&run=v-ecc");
     expect(screen.getByRole("columnheader", { name: /DQ defects/ })).toBeTruthy();
+  });
+
+  it("reads the reference L5 table as plain names and dashes, never dead links or 0 cases", async () => {
+    h.qs = "system=sys-1&tab=reference&node=PTP-01-01-01";
+    const bare: L4 = { ...L4_PO, activities: L4_PO.activities.map((a) => ({ ...a, discovery: undefined })) };
+    vi.spyOn(designerApi, "getReference").mockResolvedValue({ ...DOC, l1: [{ ...DOC.l1[0], l2: [{ ...DOC.l1[0].l2[0],
+      l3: [{ ...DOC.l1[0].l2[0].l3[0], l4: [bare] }] }] }] });
+    renderWithQuery(<ProcessL1Page />);
+    const row = (await screen.findByText("PTP-01-01-01-A2")).closest("tr")!;
+    expect(within(row).getByText("Release PO").closest("button")).toBeNull();
+    expect(within(row).queryByText("0%")).toBeNull();
+    const cells = within(row).getAllByRole("cell").map((c) => c.textContent);
+    expect(cells[3]).toBe("—");
+    expect(cells[4]).toBe("—");
+  });
+
+  it("keeps the system on Open the catalogue when the L1 is not in it", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([]);
+    renderWithQuery(<ProcessL1Page />);
+    expect((await screen.findByRole("link", { name: "Open the catalogue" })).getAttribute("href")).toBe("/process?system=sys-1");
   });
 
   it("defaults a reference-only L1 to the reference tab and explains the other tabs", async () => {
