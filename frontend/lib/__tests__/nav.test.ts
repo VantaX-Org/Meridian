@@ -145,9 +145,9 @@ describe("menu structure", () => {
     expect(sectionOf("/admin/users")).toBe("Admin");
   });
 
-  it("keeps the /fix page title short while the menu says Fix work", () => {
-    expect(getPageTitle("/fix")).toBe("Fix");
-    expect(getPageTitle("/fix/B1")).toBe("Fix");
+  it("titles /fix as the menu does: Fix work", () => {
+    expect(getPageTitle("/fix")).toBe("Fix work");
+    expect(getPageTitle("/fix/B1")).toBe("Fix work");
     expect(getPageTitle("/insights/progress")).toBe("Progress");
   });
 

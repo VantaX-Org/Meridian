@@ -157,7 +157,7 @@ export default function SystemsPage() {
     },
     {
       id: "dqs",
-      header: "Quality score",
+      header: "Score",
       size: 190,
       cell: ({ row }) => {
         const d = dqsById.get(row.original.id);

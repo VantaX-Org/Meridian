@@ -34,7 +34,7 @@ export function ConfigMatchesTab({ versionId }: { versionId: string }) {
     onError: (e: Error) => toast.error(errorText(e)),
   });
   const cols = useMemo<ColumnDef<ConfigMatch, unknown>[]>(() => [
-    { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
     { id: "record", header: "Record", cell: ({ row }) => <Mono>{dash(row.original.record_key)}</Mono> },
     { id: "field", header: "Field", cell: ({ row }) => dash(row.original.field) },

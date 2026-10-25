@@ -240,8 +240,22 @@ describe("system detail page", () => {
     renderWithQuery(<SystemPage />);
     const ring = await screen.findByRole("img", { name: "Score 70" });
     const stat = ring.closest("a");
-    expect(stat).toHaveTextContent("Quality score");
+    expect(stat).toHaveTextContent("Score");
+    expect(stat).not.toHaveTextContent("Quality score");
     expect(stat).not.toHaveTextContent("70.0");
+  });
+
+  it("opens the latest run's Findings tab from the score and open-findings tiles", async () => {
+    mockHappyPath();
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    const ring = await screen.findByRole("img", { name: "Score 70" });
+    expect(ring.closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings");
+    const open = screen.getByText("Open findings").closest("a");
+    expect(open).toHaveAttribute("href", "/runs/v1?tab=findings");
   });
 
   it("links each run on the Runs tab to its extraction log, a failed one by why it failed", async () => {

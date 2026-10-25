@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button, DataTable, Drawer, ExplorerPage, Field, Input, PageHeader, Pill, Select, Skeleton, Stat, Textarea, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, Field, Input, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, type PillTone } from "@/design";
 import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
@@ -24,6 +24,9 @@ import type { Contract, ContractStatus } from "@/types/api";
 type StatusFilter = "all" | "breached" | ContractStatus;
 const STATUSES: StatusFilter[] = ["all", "breached", "active", "pending_approval", "draft", "expired"];
 const breached = (c: Contract) => c.status === "active" && c.latest_compliant === false;
+/** A compliance check reads as a verdict: Go when it held, No-go when it broke. */
+const Compliance = ({ ok }: { ok: boolean | null | undefined }) =>
+  ok == null ? <>Not checked</> : <Status kind="verdict" value={ok ? "go" : "no-go"} />;
 const TONE: Record<ContractStatus, PillTone> = { active: "go", pending_approval: "at-risk", draft: "neutral", expired: "no-go" };
 
 export default function ContractsPage() {
@@ -76,7 +79,7 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
     {
       id: "compliance",
       header: "Latest check",
-      cell: ({ row }) => (row.original.latest_compliant === true ? "Compliant" : row.original.latest_compliant === false ? "Not compliant" : "Not checked"),
+      cell: ({ row }) => <Compliance ok={row.original.latest_compliant} />,
     },
     { id: "checked", header: "Checked", cell: ({ row }) => (row.original.last_checked ? relativeTime(row.original.last_checked) : "—") },
     actionColumn((c) => <RowButton label={`Open ${c.name}`} onClick={() => setSelectedId(c.id)}>Open</RowButton>),
@@ -170,7 +173,7 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
       <dl className="grid grid-cols-[140px_1fr] gap-y-1 m-text-body">
         <dt className="m-ink-3">Producer</dt><dd>{c.producer}</dd>
         <dt className="m-ink-3">Consumer</dt><dd>{c.consumer}</dd>
-        <dt className="m-ink-3">Latest check</dt><dd>{c.latest_compliant === true ? "Compliant" : c.latest_compliant === false ? "Not compliant" : "Not checked"}</dd>
+        <dt className="m-ink-3">Latest check</dt><dd><Compliance ok={c.latest_compliant} /></dd>
         <dt className="m-ink-3">Checked</dt><dd>{c.last_checked ? relativeTime(c.last_checked) : "Never"}</dd>
         <dt className="m-ink-3">Created</dt><dd>{relativeTime(c.created_at)}{by(c.created_by)}</dd>
         <dt className="m-ink-3">Activated</dt><dd>{c.activated_at ? `${relativeTime(c.activated_at)}${by(c.approved_by)}` : "Not yet"}</dd>
@@ -199,7 +202,7 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
           <ul className="flex flex-col gap-1">
             {history.map((h) => (
               <li key={h.id} className="flex items-center gap-2 m-text-body">
-                <Pill tone={h.overall_compliant ? "go" : "no-go"}>{h.overall_compliant ? "Compliant" : "Not compliant"}</Pill>
+                <Compliance ok={h.overall_compliant} />
                 <span className="m-ink-3">{relativeTime(h.recorded_at)}</span>
               </li>
             ))}

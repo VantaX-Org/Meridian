@@ -22,7 +22,7 @@ const SEVERITIES: TriageSeverity[] = ["critical", "high", "medium", "low"];
 const STRATEGIES = [{ value: "round_robin", label: "Round robin" }, { value: "least_loaded", label: "Least loaded" }];
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MATCH_FIELDS = [
-  ["module", "Modules"], ["check_id", "Check ids"], ["dimension", "Dimensions"],
+  ["module", "Objects"], ["check_id", "Check ids"], ["dimension", "Dimensions"],
   ["company_code", "Company codes"], ["plant", "Plants"], ["sales_org", "Sales orgs"],
 ] as const;
 type ListField = (typeof MATCH_FIELDS)[number][0];
@@ -383,7 +383,7 @@ function PoliciesSection({ write }: { write: boolean }) {
 
   const slaCols: ColumnDef<SlaPolicy, unknown>[] = [
     { id: "sev", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
-    { id: "mod", header: "Module", cell: ({ row }) => (row.original.module ? formatModuleName(row.original.module) : "All modules") },
+    { id: "mod", header: "Object", cell: ({ row }) => (row.original.module ? formatModuleName(row.original.module) : "All objects") },
     { id: "ack", header: "Acknowledge", cell: ({ row }) => mins(row.original.ack_minutes) },
     { id: "res", header: "Resolve", cell: ({ row }) => mins(row.original.resolve_minutes) },
     { id: "risk", header: "At-risk", cell: ({ row }) => `${row.original.at_risk_pct}%` },
@@ -452,7 +452,7 @@ function PolicyForm({ policy, onClose }: { policy: SlaPolicy | null; onClose: ()
         <Field label="Severity">
           <Select value={severity} onValueChange={(v) => setSeverity(v as TriageSeverity)} options={SEVERITIES.map((s) => ({ value: s, label: s }))} />
         </Field>
-        <Field label="Module (blank = all modules)"><Input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
+        <Field label="Object (blank = all objects)"><Input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
         <Field label="Acknowledge minutes (optional)"><Input type="number" min="0" value={ack} onChange={(e) => setAck(e.target.value)} /></Field>
         <Field label="Resolve minutes"><Input type="number" min="1" value={resolve} onChange={(e) => setResolve(e.target.value)} /></Field>
         <Field label="At-risk %"><Input type="number" min="1" max="99" value={atRisk} onChange={(e) => setAtRisk(e.target.value)} /></Field>

@@ -250,8 +250,6 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/me/preferences": "Preferences",
   "/rules/learned": "Learned rules",
   "/inbox/notifications": "Notifications",
-  // The menu says "Fix work"; the page keeps its short title.
-  "/fix": "Fix",
   // Insight views carry short rail labels; the pages keep their full titles.
   "/insights/exec": "Executive summary",
   "/insights/progress": "Progress",
