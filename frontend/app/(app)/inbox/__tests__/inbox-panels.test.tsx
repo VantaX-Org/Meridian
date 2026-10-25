@@ -56,6 +56,18 @@ describe("ApprovalsPanel", () => {
     await waitFor(() => expect(approve).toHaveBeenCalledWith("a2"));
   });
 
+  it("names the requester from the assignable list when the full user list is not readable", async () => {
+    vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({
+      approvals: [{ id: "a3", finding_id: null, version_id: null, requested_by: "u-sam", records_updated: 3, sap_host: "ecc-prd", created_at: null }],
+      live_enabled: true,
+    });
+    vi.spyOn(users, "getUsers").mockRejectedValue(new Error("403"));
+    vi.spyOn(users, "getAssignableUsers").mockResolvedValue([{ id: "u-sam", name: "Sam Steward", email: "sam@example.com", role: "steward" }]);
+    renderWithQuery(<ApprovalsPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    expect(await screen.findByText(/3 records on ecc-prd, requested by Sam Steward/)).toBeInTheDocument();
+  });
+
   it("shows an empty state when nothing is pending", async () => {
     vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({ approvals: [], live_enabled: true });
     renderWithQuery(<ApprovalsPanel />);

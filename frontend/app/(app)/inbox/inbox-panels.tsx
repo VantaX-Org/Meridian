@@ -275,9 +275,14 @@ export function ApprovalsPanel() {
   const { can } = useRole();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["inbox", "approvals"], queryFn: getPendingApprovals, retry: false });
-  // The user list needs `manage_users`; without it a requester reads as "You" or "Unknown user", never an id.
+  // Names come from the assignable list (`assign`), or the full user list (`manage_users`); a requester neither
+  // names reads as "Unknown user", never an id.
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users"), meta: { ignoreError: true } });
-  const names = useMemo(() => new Map((usersQ.data?.users ?? []).map((u) => [u.id, u.name])), [usersQ.data]);
+  const assignableQ = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: can("assign"), staleTime: 300_000, meta: { ignoreError: true } });
+  const names = useMemo(
+    () => new Map([...(Array.isArray(assignableQ.data) ? assignableQ.data : []), ...(usersQ.data?.users ?? [])].map((u) => [u.id, u.name || u.email])),
+    [usersQ.data, assignableQ.data],
+  );
   const who = (id: string | null) => (!id ? "Unknown user" : id === user?.id ? "You" : names.get(id) ?? "Unknown user");
   const [asking, setAsking] = useState<PendingApproval | null>(null);
   const approve = useMutation({
