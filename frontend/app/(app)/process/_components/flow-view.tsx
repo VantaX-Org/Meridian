@@ -154,7 +154,7 @@ function L5Drawer({ doc, id, onClose }: { doc: ProcessModelDocument; id: string 
             ))}
           </dl>
           <section className="grid gap-1">
-            <h2 className="font-semibold">Fields</h2>
+            <h2 className="m-text-h font-semibold m-ink">Fields</h2>
             {a.fields.length ? (
               <ul className="grid gap-1">
                 {a.fields.map((f) => (

@@ -172,9 +172,9 @@ export const mSpace = {
 export const mRadius = { control: 10, sheet: 16, tile: 0, pill: 999 } as const;
 
 export const mMotion = {
-  duration: 120, slow: 240, draw: 480, count: 900, shimmer: 1400, staggerStep: 40, staggerBar: 20,
+  duration: 120, slow: 240, draw: 480, count: 480, shimmer: 1400, staggerStep: 40, staggerBar: 20,
   ease: "cubic-bezier(0.2, 0, 0, 1)",
-  easeSpring: "cubic-bezier(0.34, 1.2, 0.64, 1)",
+  easeOut: "cubic-bezier(0, 0, 0.2, 1)",
 } as const;
 
 /** Elevation levels: flat (hairline), raised (menus), floating (drawer, dialog, palette), plus focus ring. */

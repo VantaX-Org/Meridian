@@ -141,7 +141,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
 
         {p?.requires_base_url ? (
           <Field label="Endpoint URL">
-            <Input type="url" className="font-mono" value={form.base_url ?? ""} onChange={(e) => set({ base_url: e.target.value })} />
+            <Input type="url" value={form.base_url ?? ""} onChange={(e) => set({ base_url: e.target.value })} />
           </Field>
         ) : null}
 

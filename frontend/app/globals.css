@@ -116,9 +116,11 @@
     font-size: 14px;
     @apply font-sans;
   }
-  h1, .text-display-lg { font-family: var(--m-font-sans); font-weight: 600; font-size: 2rem; line-height: 1.15; letter-spacing: -0.01em; }
-  h2, .text-display { font-family: var(--m-font-sans); font-weight: 600; font-size: 1.5rem; line-height: 1.2; }
-  h3, .text-heading { font-family: var(--m-font-sans); font-weight: 600; font-size: 1.25rem; line-height: 1.3; }
+  /* Headings sit on the token type scale: h1 the page title, h2 and h3 the section heading. A heading still sets its
+     size with an m-text-* class; these only keep a bare one from falling back to browser sizes. */
+  h1, .text-display-lg { font-family: var(--m-font-sans); font-weight: 600; font-size: var(--m-text-title); line-height: var(--m-leading-title); letter-spacing: var(--m-tracking-title); }
+  h2, .text-display { font-family: var(--m-font-sans); font-weight: 600; font-size: var(--m-text-section); line-height: var(--m-leading-section); letter-spacing: var(--m-tracking-title); }
+  h3, .text-heading { font-family: var(--m-font-sans); font-weight: 600; font-size: var(--m-text-section); line-height: var(--m-leading-section); }
   .text-tabular { font-variant-numeric: tabular-nums; }
   .font-mono { font-variant-numeric: tabular-nums slashed-zero; }
   input, textarea, [contenteditable] { caret-color: var(--m-accent); }

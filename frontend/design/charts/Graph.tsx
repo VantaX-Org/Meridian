@@ -31,7 +31,8 @@ export interface GraphEdge {
 /** Edge stroke width in px: `1 + 4 * weight`, weight clamped to 0..1, so 1 to 5. A missing weight counts as 0.34. */
 export function edgeWidth(weight: number | undefined): number {
   const w = Math.min(1, Math.max(0, weight ?? 0.34));
-  return 1 + 4 * w;
+  // The frequent band carries its weight in the stroke (one pixel heavier), not in a hue: the accent is interaction only.
+  return 1 + 4 * w + (edgeBand(w) === "high" ? 1 : 0);
 }
 
 export type EdgeBand = "low" | "mid" | "high";
@@ -42,7 +43,7 @@ export function edgeBand(weight: number | undefined): EdgeBand {
   return w < 0.25 ? "low" : w <= 0.6 ? "mid" : "high";
 }
 
-const BAND_COLOR: Record<EdgeBand, string> = { low: "var(--m-line-strong)", mid: "var(--m-ink-3)", high: "var(--m-accent)" };
+const BAND_COLOR: Record<EdgeBand, string> = { low: "var(--m-line-strong)", mid: "var(--m-ink-3)", high: "var(--m-ink-2)" };
 
 /** Stroke colour of an edge: critical for a bottleneck, high for rework, else its frequency band. */
 export function edgeColor(e: Pick<GraphEdge, "weight" | "bottleneck" | "rework">): string {
@@ -135,10 +136,10 @@ export function layoutGraph(
 
 /** Legend row for the process map: three frequency bands, bottleneck, rework and a chip per domain present. */
 export function GraphLegend({ domains = [], bottleneck = false, rework = false }: { domains?: DomainKey[]; bottleneck?: boolean; rework?: boolean }) {
-  const line = (color: string, label: string, dashed = false) => (
+  const line = (color: string, label: string, dashed = false, width = 2) => (
     <li key={label} className="inline-flex items-center gap-2">
       <svg width={20} height={8} aria-hidden>
-        <line x1={0} x2={20} y1={4} y2={4} stroke={color} strokeWidth={2} strokeDasharray={dashed ? "6 4" : undefined} />
+        <line x1={0} x2={20} y1={4} y2={4} stroke={color} strokeWidth={width} strokeDasharray={dashed ? "6 4" : undefined} />
       </svg>
       {label}
     </li>
@@ -147,7 +148,7 @@ export function GraphLegend({ domains = [], bottleneck = false, rework = false }
     <ul className="flex flex-wrap items-center gap-x-4 gap-y-2" style={{ listStyle: "none", margin: 0, padding: 0, fontSize: "var(--m-text-meta)", lineHeight: "var(--m-leading-meta)", color: "var(--m-ink-2)" }}>
       {line(BAND_COLOR.low, "Rare")}
       {line(BAND_COLOR.mid, "Common")}
-      {line(BAND_COLOR.high, "Frequent")}
+      {line(BAND_COLOR.high, "Frequent", false, 3.5)}
       {bottleneck && line("var(--m-critical)", "Bottleneck")}
       {rework && line("var(--m-high)", "Rework", true)}
       {domains.map((d) => (

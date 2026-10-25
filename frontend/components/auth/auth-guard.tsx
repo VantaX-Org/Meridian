@@ -17,15 +17,14 @@ function SessionLoading({ onRetry }: { onRetry: () => void }) {
   const stuck = useLoadingTimeout(true);
   if (stuck) {
     return (
-      <div className="flex h-screen items-center justify-center" style={{ background: "var(--m-canvas)" }}>
+      <div className="flex h-screen items-center justify-center [background:var(--m-canvas)]">
         <ErrorState title="This is taking longer than expected." message="The server has not answered the session check. Retry, or check that the API is running." onRetry={onRetry} />
       </div>
     );
   }
   return (
     <div
-      className="flex h-screen items-center justify-center m-text-body"
-      style={{ background: "var(--m-canvas)", color: "var(--m-ink-3)" }}
+      className="flex h-screen items-center justify-center m-text-body m-ink-3 [background:var(--m-canvas)]"
       role="status"
       aria-busy="true"
       aria-label="Loading Meridian"
@@ -56,7 +55,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) return <SessionLoading key={tries} onRetry={() => { setTries((n) => n + 1); retry(); }} />;
   if (!user && error) {
     return (
-      <div className="flex h-screen items-center justify-center" style={{ background: "var(--m-canvas)" }}>
+      <div className="flex h-screen items-center justify-center [background:var(--m-canvas)]">
         <ErrorState title="Could not check your session." message={error} onRetry={retry} />
       </div>
     );

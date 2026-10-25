@@ -243,7 +243,7 @@ function RulesSection({ write }: { write: boolean }) {
   };
 
   const ruleCols: ColumnDef<AssignmentRule, unknown>[] = [
-    { id: "n", header: "#", cell: ({ row }) => <span className="font-mono m-text-meta">{row.index + 1}</span> },
+    { id: "n", header: "#", cell: ({ row }) => <span className="m-numeric m-text-meta">{row.index + 1}</span> },
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
     { id: "match", header: "Matches", cell: ({ row }) => <span className="m-ink-3">{matchText(row.original.match)}</span> },
     { id: "to", header: "Assigns to", cell: ({ row }) => target(row.original) },

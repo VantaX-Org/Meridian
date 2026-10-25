@@ -84,7 +84,7 @@ export default function AdminLicencePage() {
 
           <SettingsSection title="Modules" meta={all ? "Every SAP module" : `${modules.length} enabled`}>
             <div className="flex gap-2 flex-wrap">
-              {all ? <Pill tone="go">All modules</Pill> : modules.map((m) => <Pill key={m} tone="go">{formatModuleName(m)}</Pill>)}
+              {all ? <Pill tone="neutral">All modules</Pill> : modules.map((m) => <Pill key={m} tone="neutral">{formatModuleName(m)}</Pill>)}
               {!all && !modules.length ? (
                 <p className="m-text-body m-ink-3">
                   {l.valid === null ? "Modules follow the licence once Meridian HQ has validated it." : "No modules enabled on this licence"}
@@ -125,7 +125,7 @@ function PlatformVersion() {
       ) : (
         <div className="flex flex-col gap-2">
           <dl className="grid grid-cols-[160px_1fr] gap-y-1 m-text-body">
-            <dt className="m-ink-3">Running</dt><dd className="font-mono">{s.current_version}</dd>
+            <dt className="m-ink-3">Running</dt><dd className="m-numeric">{s.current_version}</dd>
           </dl>
           {s.update_available && s.updater_configured ? (
             <div><Button onClick={open}>View update {s.latest_version}</Button></div>

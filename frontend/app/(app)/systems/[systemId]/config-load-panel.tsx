@@ -10,29 +10,15 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Button, Card, ConfirmDialog, DrillLink, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, type PillTone, ProgressFill, toast } from "@/design";
+import { Button, Card, ConfirmDialog, DrillLink, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, ProgressFill, Status, toast } from "@/design";
 import { environmentLabel } from "@/components/systems/connect-system-dialog";
-import { getConfigLoad, startConfigLoad, type AreaObject, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
+import { getConfigLoad, startConfigLoad, type AreaObject, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemType } from "@/types/api";
 
-const AREA_TONE: Record<AreaStatus, PillTone> = {
-  waiting: "neutral",
-  running: "neutral",
-  loaded: "go",
-  failed: "no-go",
-  not_available: "neutral",
-};
-const AREA_LABEL: Record<AreaStatus, string> = {
-  waiting: "Waiting",
-  running: "Reading",
-  loaded: "Loaded",
-  failed: "Failed",
-  not_available: "Not available",
-};
 
 const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 
@@ -71,7 +57,7 @@ function AreaRows({ systemId, areas }: { systemId: string; areas: LoadArea[] }) 
               )}
               <div className="flex items-center gap-2">
                 <span className="m-text-body m-ink-2">{a.tables_done} of {a.tables_total}</span>
-                <Pill tone={AREA_TONE[a.status]}>{AREA_LABEL[a.status]}</Pill>
+                <Status kind="lifecycle" value={a.status} />
               </div>
             </div>
             {a.status === "running" || a.status === "waiting" ? (
