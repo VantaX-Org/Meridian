@@ -32,9 +32,16 @@ def upgrade() -> None:
                "ON record_issues (tenant_id, resolved_at) WHERE resolved_at IS NOT NULL")
     op.execute("CREATE INDEX IF NOT EXISTS ix_remediation_events_tenant_action "
                "ON remediation_events (tenant_id, action, created_at)")
+    # The record panel counts a record's open duplicate candidates (api/routes/work.py record()).
+    op.execute("CREATE INDEX IF NOT EXISTS ix_dedup_candidates_key_a "
+               "ON dedup_candidates (tenant_id, object_type, record_key_a)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_dedup_candidates_key_b "
+               "ON dedup_candidates (tenant_id, object_type, record_key_b)")
 
 
 def downgrade() -> None:
+    op.execute("DROP INDEX IF EXISTS ix_dedup_candidates_key_b")
+    op.execute("DROP INDEX IF EXISTS ix_dedup_candidates_key_a")
     op.execute("DROP INDEX IF EXISTS ix_remediation_events_tenant_action")
     op.execute("DROP INDEX IF EXISTS ix_record_issues_resolved")
     op.execute("DROP INDEX IF EXISTS ix_record_issue_events_tenant_action")

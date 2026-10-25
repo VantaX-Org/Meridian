@@ -67,7 +67,34 @@ export interface WorkSuggestion {
   why: string | null;
 }
 
+/** The rule behind an issue: its library row (opens /rules/<id>), name, dimension, authority and money at risk. */
+export interface WorkIssueRule {
+  id: string | null;
+  name: string | null;
+  dimension: string | null;
+  authority: string | null;
+  cost_at_risk: number | null;
+  cost_per_record: number | null;
+}
+
+export interface WorkAllowedValue {
+  value: string;
+  label: string | null;
+}
+
+/** The detail fields (rule to allowed_values) are optional: a server from before them leaves them out. */
 export interface WorkIssue {
+  rule?: WorkIssueRule;
+  /** Records failing this check in the run, this one included. */
+  failing?: number;
+  /** Other records failing the same check in the run. */
+  others_failing?: number;
+  /** Records the check read in the run. */
+  population?: number | null;
+  /** Percent of the population that passes, 0 to 100. */
+  pass_rate?: number | null;
+  /** The values the rule accepts, when it lists them. */
+  allowed_values?: WorkAllowedValue[] | null;
   check_id: string;
   severity: WorkSeverity;
   dimension: string | null;
@@ -117,7 +144,27 @@ export interface WorkRecordDetail {
   values: Record<string, string | null>;
   issues: WorkIssue[];
   events: WorkEvent[];
+  /** The record in the system's previous kept run; null when there is none. */
+  other_runs?: WorkPreviousRun | null;
+  /** The golden record keyed by this record, when MDM holds one. */
+  golden_record?: { id: string; status: string; key: string; href: string } | null;
+  /** Open duplicate candidates naming this record; null when they could not be counted. */
+  duplicates?: { open: number; href: string } | null;
+  /** The currency rule.cost_at_risk is priced in; null when no issue carries a cost. */
+  currency?: string | null;
   can: { fix: boolean; sign_off: boolean; assign: boolean; comment: boolean };
+}
+
+export interface WorkPreviousRun {
+  version_id: string;
+  run_at: string | null;
+  /** False: the record was not on that run's work list (it passed). */
+  on_list: boolean;
+  issues: number;
+  status: WorkStatus | null;
+  checks: string[];
+  fixed_since: string[];
+  new_since: string[];
 }
 
 export interface RecordFilter {

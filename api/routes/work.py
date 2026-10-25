@@ -296,6 +296,10 @@ async def record(
                  WHERE e->>'record_key' = fr.record_key LIMIT 1) AS record_fix,
                ri.id AS issue_id, ri.status AS issue_status, ri.resolution, ri.steward_verdict, ri.first_seen_at,
                ri.reopened_count, ri.due_at, ri.sla_state,
+               f.affected_count, f.total_count, f.pass_rate, f.cost_at_risk, f.module AS rule_module,
+               f.rule_context->'valid_values_with_labels' AS valid_values, f.rule_context->>'rule_authority' AS authority,
+               (SELECT g.records FROM work_groups g WHERE g.version_id = fr.version_id AND g.check_id = fr.check_id)
+                 AS group_records,
                rem.batch_id, rem.batch_status, rem.batch_name, rem.proposed_value AS decided_value,
                rem.proposal_source AS decided_source, rem.updated_at AS decided_at, rem.recon_status
           FROM finding_records fr
@@ -320,6 +324,7 @@ async def record(
            AND record_data_after IS NOT NULL AND record_data_after <> '{}'::jsonb
          ORDER BY detected_at DESC LIMIT 5"""), p)).mappings().all()
 
+    rule_rows = await _tenant_rules(db, tenant, module, sorted({r["check_id"] for r in rows}))
     values: dict = {}
     issues = []
     for r in rows:
@@ -352,7 +357,14 @@ async def record(
                   else "to_fix" if r["recon_status"] == "still_failing"
                   else "sent" if r["batch_status"] == "exported" else "approved" if r["batch_status"] == "approved"
                   else "proposed" if r["batch_status"] == "draft" and r["decided_value"] is not None else "to_fix")
+        failing = r["group_records"] if r["group_records"] is not None else (r["affected_count"] or 0)
+        population = r["total_count"] or None
         issues.append({
+            "rule": _rule_meta(r, rule_rows.get(r["check_id"])),
+            "others_failing": max(int(failing) - 1, 0),
+            "failing": int(failing), "population": population,
+            "pass_rate": _pass_rate(r["pass_rate"], failing, population),
+            "allowed_values": _allowed_values(r["valid_values"], r["rule_module"], r["check_id"]),
             "check_id": r["check_id"], "severity": r["severity"], "dimension": r["dimension"],
             "message": r["message"] or r["check_id"], "field": field, "current_value": current,
             "instruction": rf.get("fix_instruction") or (vf or {}).get("fix_instruction") or r["remediation_text"],
@@ -385,9 +397,142 @@ async def record(
         "assignee_email": head.assignee_email if head else None,
         "values": {k: (None if v is None else str(v)) for k, v in values.items()},
         "issues": issues, "events": events,
+        "other_runs": await _previous_run(db, tenant, vid, scope, module, record_key, [i["check_id"] for i in issues]),
+        **(await _mdm_links(db, tenant, module, record_key)),
+        "currency": await _currency(db, tenant) if any(i["rule"]["cost_at_risk"] is not None for i in issues) else None,
         "can": {"fix": has_permission(role, "apply"), "sign_off": has_permission(role, "approve"),
                 "assign": has_permission(role, "assign"), "comment": has_permission(role, "analyse")},
     }
+
+
+MAX_ALLOWED = 60
+
+
+def _pass_rate(stored, failing, population) -> Optional[float]:
+    """The check's pass rate in the run, in percent (0 to 100): from the counts, else the stored one."""
+    if population:
+        return round(max(population - failing, 0) * 100 / population, 1)
+    return None if stored is None else round(float(stored), 1)
+
+
+async def _tenant_rules(db: AsyncSession, tenant: Tenant, module: str, checks: list[str]) -> dict[str, dict]:
+    """check id -> the tenant's rules row (id, name) for it: the rule library page opens /rules/<id>."""
+    if not checks:
+        return {}
+    rows = (await db.execute(text("""
+        SELECT DISTINCT ON (split_part(name, ':', 1)) split_part(name, ':', 1) AS check_id, id, name FROM rules
+         WHERE tenant_id = :t AND module = :m AND split_part(name, ':', 1) = ANY(:c)
+         ORDER BY split_part(name, ':', 1), updated_at DESC NULLS LAST"""),
+        {"t": str(tenant.id), "m": module, "c": checks})).mappings().all()
+    return {r["check_id"]: {"id": str(r["id"]), "name": r["name"]} for r in rows}
+
+
+def _shipped_rule(module: Optional[str], check_id: str) -> dict:
+    from api.services.rule_coverage import shipped
+    return shipped().get((check_id, module or ""), {}) or {}
+
+
+def _rule_meta(r, row: Optional[dict]) -> dict:
+    """The rule behind an issue: its library id and name, dimension, authority and the money it puts at risk."""
+    y = _shipped_rule(r["rule_module"], r["check_id"])
+    name = row["name"].split(":", 1)[1].strip() if row and ":" in row["name"] else (row or {}).get("name")
+    failing = r["group_records"] if r["group_records"] is not None else (r["affected_count"] or 0)
+    cost = float(r["cost_at_risk"]) if r["cost_at_risk"] is not None else None
+    return {
+        "id": row["id"] if row else None,
+        "name": name or y.get("label") or y.get("message"),
+        "dimension": r["dimension"] or y.get("dimension"),
+        "authority": r["authority"] or y.get("rule_authority"),
+        "cost_at_risk": cost,
+        "cost_per_record": round(cost / failing, 2) if cost is not None and failing else None,
+    }
+
+
+def _allowed_values(stored, module: Optional[str], check_id: str) -> Optional[list[dict]]:
+    """The values the rule accepts, with their meaning where the rule gives one; None for a rule without a list."""
+    src = stored if isinstance(stored, dict) and stored else None
+    if src is None:
+        y = _shipped_rule(module, check_id)
+        src = y.get("valid_values_with_labels") or y.get("allowed_values") or y.get("domain_values")
+    if isinstance(src, dict):
+        out = [{"value": str(k), "label": None if v is None else str(v)} for k, v in src.items()]
+    elif isinstance(src, (list, tuple)):
+        out = [{"value": "" if v is None else str(v), "label": None} for v in src]
+    else:
+        return None
+    return out[:MAX_ALLOWED] or None
+
+
+async def _previous_run(db: AsyncSession, tenant: Tenant, vid: str, scope: str, module: str, record_key: str,
+                        checks_now: list[str]) -> Optional[dict]:
+    """The record in the system's previous kept run (one with a work list): its issues then against now."""
+    prev = (await db.execute(text("""
+        SELECT av.id::text AS version_id, av.run_at FROM analysis_versions av
+         WHERE av.tenant_id = :t AND av.id <> CAST(:v AS uuid)
+           AND av.run_at < (SELECT run_at FROM analysis_versions WHERE id = CAST(:v AS uuid))
+           AND EXISTS (SELECT 1 FROM work_records w WHERE w.tenant_id = :t AND w.version_id = av.id AND w.scope = :scope)
+         ORDER BY av.run_at DESC LIMIT 1"""), {"t": str(tenant.id), "v": vid, "scope": scope})).mappings().first()
+    if not prev:
+        return None
+    then = (await db.execute(text("""
+        SELECT issues, checks, status FROM work_records
+         WHERE tenant_id = :t AND version_id = CAST(:v AS uuid) AND module = :m AND record_key = :k"""),
+        {"t": str(tenant.id), "v": prev["version_id"], "m": module, "k": record_key})).mappings().first()
+    before = list(then["checks"]) if then else []
+    return {
+        "version_id": prev["version_id"], "run_at": prev["run_at"].isoformat() if prev["run_at"] else None,
+        "on_list": then is not None, "issues": then["issues"] if then else 0, "status": then["status"] if then else None,
+        "checks": before, "fixed_since": [c for c in before if c not in checks_now],
+        "new_since": [c for c in checks_now if c not in before],
+    }
+
+
+async def _currency(db: AsyncSession, tenant: Tenant) -> str:
+    """The currency findings.cost_at_risk is priced in (checks/cost.py: the tenant's cost model, else the default)."""
+    from checks.cost import effective
+    model = (await db.execute(text("SELECT cost_model FROM tenants WHERE id = :t"), {"t": str(tenant.id)})).scalar()
+    return str(effective(model if isinstance(model, dict) else None)["currency"])
+
+
+def _key_candidates(record_key: str) -> list[str]:
+    """The record key as the MDM tables may hold it: whole, and the bare value of its first part (MATNR=1 -> 1)."""
+    out = [record_key]
+    first = record_key.split("|", 1)[0]
+    if "=" in first:
+        bare = first.split("=", 1)[1]
+        if bare and bare not in out:
+            out.append(bare)
+    return out
+
+
+async def _mdm_links(db: AsyncSession, tenant: Tenant, module: str, record_key: str) -> dict:
+    """The golden record that keys this record and its open duplicate candidates. Best effort under a short
+    statement timeout: a slow MDM table never holds the panel up (the fields are None then)."""
+    import logging
+
+    from sqlalchemy.exc import SQLAlchemyError
+
+    out: dict = {"golden_record": None, "duplicates": None}
+    p = {"t": str(tenant.id), "m": module, "keys": _key_candidates(record_key)}
+    try:
+        async with db.begin_nested():
+            await db.execute(text("SET LOCAL statement_timeout = '1500ms'"))
+            g = (await db.execute(text("""
+                SELECT id::text AS id, status, sap_object_key FROM master_records
+                 WHERE tenant_id = :t AND domain = :m AND sap_object_key = ANY(:keys) AND merged_into IS NULL
+                 ORDER BY (status = 'golden') DESC, updated_at DESC LIMIT 1"""), p)).mappings().first()
+            if g:
+                out["golden_record"] = {"id": g["id"], "status": g["status"], "key": g["sap_object_key"],
+                                        "href": f"/mdm/golden/{g['id']}"}
+            n = (await db.execute(text("""
+                SELECT count(*) FROM dedup_candidates
+                 WHERE tenant_id = :t AND object_type = :m AND status = 'pending'
+                   AND (record_key_a = ANY(:keys) OR record_key_b = ANY(:keys))"""), p)).scalar() or 0
+            out["duplicates"] = {"open": int(n), "href": "/fix?tab=dedup"}
+            await db.execute(text("SET LOCAL statement_timeout = DEFAULT"))
+    except SQLAlchemyError as e:  # a timeout or a missing MDM table: the panel shows the record without these links
+        logging.getLogger(__name__).info("work record: MDM links skipped for %s: %s", module, type(e).__name__)
+    return out
 
 
 class Decision(BaseModel):

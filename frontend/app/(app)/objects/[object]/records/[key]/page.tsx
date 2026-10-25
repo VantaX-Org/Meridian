@@ -5,7 +5,7 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, Status, domainOf, type RecordStatus } from "@/design";
+import { Button, Card, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, Status, domainOf, type RecordStatus } from "@/design";
 import { getObjectRecord, getObjectRecordFindings } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -18,6 +18,7 @@ import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
 import { RecordPanel, workRecordKey } from "@/components/work/record-panel";
 import { getWorkRecord } from "@/lib/api/work";
+import { FieldSheet, sheetFields } from "./_field-sheet";
 
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
@@ -126,6 +127,9 @@ export default function RecordFixSheetPage() {
   const failing = isMaterial ? hasMissing : failingRules.length > 0;
   const status: RecordStatus = failing ? { label: "failing", tone: "no-go" } : { label: "passing", tone: "go" };
   const fieldRows = Object.entries(material.mara ?? {}).filter(([, v]) => v != null && String(v).trim() !== "");
+  // Every field of the sheet plus the fields the checks read, grouped by table, the failing ones highlighted.
+  const sheetTable = material.labels.Table ?? (isMaterial ? "MARA" : "Record");
+  const sheet = sheetFields(material.mara ?? {}, workQuery.data?.values ?? {}, workQuery.data?.issues ?? [], sheetTable);
 
   const findings = findingsQuery.data;
   const supersession = supersessionQuery.data;
@@ -219,19 +223,7 @@ export default function RecordFixSheetPage() {
         </Card>
       )}
 
-      {generic && (
-        <Card title="Fields">
-          <DataTable
-            columns={[
-              { id: "field", header: "Field", accessorFn: (r: [string, string | null]) => r[0], cell: ({ row }) => <Mono>{row.original[0]}</Mono> },
-              { id: "value", header: "Value", accessorFn: (r: [string, string | null]) => r[1] ?? "", cell: ({ row }) => <Mono>{row.original[1]}</Mono> },
-            ]}
-            data={fieldRows}
-            getRowId={(r) => r[0]}
-            maxHeight={420}
-          />
-        </Card>
-      )}
+      <FieldSheet fields={sheet} />
 
       {isMaterial && (
         <Card title="Findings">

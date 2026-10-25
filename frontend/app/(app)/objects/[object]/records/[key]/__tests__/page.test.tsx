@@ -1,5 +1,5 @@
 // frontend/app/(app)/objects/[object]/records/[key]/__tests__/page.test.tsx
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
@@ -71,9 +71,11 @@ describe("RecordFixSheetPage", () => {
     expect(record).toHaveBeenCalledWith("accounts_payable", "LIFNR=V9|BUKRS=2000", expect.anything());
     expect(findings).toHaveBeenCalledWith("accounts_payable", "LIFNR=V9|BUKRS=2000", { version_id: "v1" });
     expect(screen.getByRole("link", { name: "AP012" })).toHaveAttribute("href", expect.stringContaining("/objects/accounts_payable/rules/AP012"));
-    // Field values with a value; the blank AKONT is left out.
-    expect(screen.getByText("NAME1")).toBeInTheDocument();
-    expect(screen.queryByText("AKONT")).not.toBeInTheDocument();
+    // Every field, grouped by the sheet's table: the filled ones listed, the blank AKONT folded under "1 blank field".
+    const sheet = screen.getByTestId("field-sheet");
+    const lfb1 = within(sheet).getByRole("region", { name: "Table LFB1" });
+    expect(within(lfb1).getByText("NAME1")).toBeInTheDocument();
+    expect(within(lfb1).getByText("1 blank field").closest("details")).toHaveTextContent("AKONT");
     expect(screen.queryByText(/view completeness/i)).not.toBeInTheDocument();
     routeParams = { object: "material_master", key: "100001" };
   });
@@ -100,7 +102,10 @@ describe("RecordFixSheetPage", () => {
     const work = vi.spyOn(workApi, "getWorkRecord").mockResolvedValue({
       version_id: "v1", module: "accounts_payable", record_key: "LIFNR=V9|BUKRS=2000", name: "Acme Ltd", status: "to_fix",
       assigned_to: null, assignee_email: null, values: {}, events: [], can: { fix: true, sign_off: true, assign: true, comment: true },
+      other_runs: null, golden_record: null, duplicates: { open: 0, href: "/fix?tab=dedup" }, currency: null,
       issues: [{
+        rule: { id: null, name: "Reconciliation account is missing", dimension: "completeness", authority: null, cost_at_risk: null, cost_per_record: null },
+        failing: 3, others_failing: 2, population: 40, pass_rate: 92.5, allowed_values: null,
         check_id: "AP012", severity: "critical", dimension: "completeness", message: "Reconciliation account is missing", field: "LFB1.AKONT",
         current_value: "", instruction: null, why_it_matters: null, sap_impact: null, suggestion: { value: "160000", source: "rule", confidence: "high", why: null },
         status: "to_fix", issue_id: "i1", resolution: null, first_seen_at: null, reopened_count: 0, due_at: null, sla_state: null, decision: null,
@@ -110,6 +115,46 @@ describe("RecordFixSheetPage", () => {
     expect(await screen.findByTestId("record-panel")).toBeInTheDocument();
     expect(work).toHaveBeenCalledWith("accounts_payable", "LIFNR=V9|BUKRS=2000", "v1");
     expect(screen.getByRole("button", { name: 'Accept "160000"' })).toBeInTheDocument();
+    expect(screen.getByText(/Fails in 3 of 40 records \(92\.5% pass\)/)).toBeInTheDocument();
+    routeParams = { object: "material_master", key: "100001" };
+  });
+
+  it("highlights the fields a check fails, in the severity's tint, with a link down to the issue", async () => {
+    routeParams = { object: "accounts_payable", key: encodeURIComponent("LIFNR=V9|BUKRS=2000") };
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({
+      ...material, matnr: "LIFNR=V9|BUKRS=2000", views: [], mara: { LIFNR: "V9", AKONT: "", ZTERM: "Z030" },
+      labels: { Table: "LFB1", LIFNR: "V9" },
+    });
+    vi.spyOn(objectsApi, "getObjectRecordFindings").mockResolvedValue({ version_id: "v1", failing: [] });
+    const issue = (check_id: string, severity: "critical" | "high", field: string, current_value: string | null) => ({
+      check_id, severity, dimension: "completeness", message: `${field} is wrong`, field, current_value, instruction: null,
+      why_it_matters: null, sap_impact: null, suggestion: null, status: "to_fix" as const, issue_id: null, resolution: null,
+      first_seen_at: null, reopened_count: 0, due_at: null, sla_state: null, decision: null,
+    });
+    vi.spyOn(workApi, "getWorkRecord").mockResolvedValue({
+      version_id: "v1", module: "accounts_payable", record_key: "LIFNR=V9|BUKRS=2000", name: "Acme Ltd", status: "to_fix",
+      assigned_to: null, assignee_email: null, events: [], can: { fix: true, sign_off: true, assign: true, comment: true },
+      values: { "LFB1.AKONT": "", "LFA1.STCD1": null },
+      issues: [issue("AP012", "critical", "LFB1.AKONT", ""), issue("AP020", "high", "LFA1.STCD1", null)],
+    });
+    renderWithQuery(<RecordFixSheetPage />);
+    const sheet = await screen.findByTestId("field-sheet");
+    await waitFor(() => expect(within(sheet).getAllByTestId("failing-field")).toHaveLength(2));
+    // Failing tables first: LFA1 (the check's own table) and LFB1, the sheet's.
+    const tables = within(sheet).getAllByRole("region").map((r) => r.getAttribute("aria-label"));
+    expect(tables).toEqual(["Table LFA1", "Table LFB1"]);
+    const [stcd1, akont] = within(sheet).getAllByTestId("failing-field");
+    expect(akont).toHaveTextContent("AKONT");
+    expect(akont.className).toContain("var(--m-critical-soft)");
+    expect(stcd1).toHaveTextContent("STCD1");
+    expect(stcd1.className).toContain("var(--m-high-soft)");
+    const jumps = within(sheet).getAllByRole("link", { name: "Jump to issue" });
+    expect(jumps.map((a) => a.getAttribute("href"))).toEqual(["#issue-AP020", "#issue-AP012"]);
+    // The anchors exist on the fix panel above.
+    expect(document.getElementById("issue-AP012")).not.toBeNull();
+    // AKONT is failing, so it is not folded away with the blank fields; ZTERM is listed with its value.
+    expect(within(sheet).queryByText(/blank field/)).toBeNull();
+    expect(within(sheet).getByText("Z030")).toBeInTheDocument();
     routeParams = { object: "material_master", key: "100001" };
   });
 

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Card, ErrorState, Input, Mono, Notice, Pill, SeverityDot, Skeleton, Textarea, isSeverity } from "@/design";
-import { decide, getWorkRecord, type Decision, type WorkIssue, type WorkRecordDetail } from "@/lib/api/work";
+import { decide, getWorkRecord, type Decision, type WorkAllowedValue, type WorkIssue, type WorkRecordDetail } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName, formatMoney, formatNumber, plural } from "@/lib/format";
 import { SOURCE, STATUS, dueLabel } from "./status";
 
 export const workRecordKey = (module: string, key: string, run?: string) => ["work", "record", module, key, run ?? "latest"];
@@ -17,6 +17,131 @@ export function Value({ v }: { v: string | null | undefined }) {
   if (v === null || v === undefined) return <span className="m-ink-3 italic">missing</span>;
   if (v.trim() === "") return <span className="m-ink-3 italic">blank</span>;
   return <Mono inline>{v}</Mono>;
+}
+
+/** The anchor of an issue on the panel: the full record page's fields jump to it. */
+export const issueAnchor = (checkId: string) => `issue-${checkId.replace(/[^A-Za-z0-9_-]/g, "_")}`;
+
+/** The rule's page: the tenant's rule library row when there is one, else the rule on the object for the run. */
+export function ruleHref(issue: WorkIssue, module: string, run: string | undefined): string {
+  if (issue.rule?.id) return `/rules/${encodeURIComponent(issue.rule.id)}`;
+  return `/objects/${encodeURIComponent(module)}/rules/${encodeURIComponent(issue.check_id)}${run ? `?run=${encodeURIComponent(run)}` : ""}`;
+}
+
+/** Fix work filtered to every record that fails the same check. */
+export function sameIssueHref(checkId: string, module: string, run: string | undefined): string {
+  const q = new URLSearchParams({ check: checkId, module });
+  if (run) q.set("run", run);
+  return `/fix?${q.toString()}`;
+}
+
+const LINK = "m-ink-accent underline underline-offset-2";
+const TIMES = (n: number) => (n === 1 ? "once" : n === 2 ? "twice" : `${formatNumber(n)} times`);
+const SLA: Record<string, string> = { on_track: "on track", at_risk: "at risk", breached: "past its SLA", paused: "SLA paused" };
+const pct = (n: number) => formatNumber(n, { maximumFractionDigits: 1 });
+
+/** "Fails in 1,204 of 25,000 records (95.2% pass)", or without a population "Fails in 1,204 records". */
+export function populationLine(issue: Pick<WorkIssue, "failing" | "population" | "pass_rate">): string | null {
+  if (issue.failing === undefined) return null;
+  if (!issue.population) return `Fails in ${plural(issue.failing, "record")}`;
+  const pass = issue.pass_rate === null || issue.pass_rate === undefined ? "" : ` (${pct(issue.pass_rate)}% pass)`;
+  return `Fails in ${formatNumber(issue.failing)} of ${plural(issue.population, "record")}${pass}`;
+}
+
+/** "First seen 12 Oct 2026, reopened twice", "Due 1 Nov 2026, on track"; null when there is nothing to say. */
+export function historyLine(issue: Pick<WorkIssue, "first_seen_at" | "reopened_count" | "due_at" | "sla_state">): string | null {
+  const parts: string[] = [];
+  if (issue.first_seen_at) parts.push(`First seen ${formatDate(issue.first_seen_at)}`);
+  if (issue.reopened_count > 0) parts.push(parts.length ? `reopened ${TIMES(issue.reopened_count)}` : `Reopened ${TIMES(issue.reopened_count)}`);
+  const head = parts.join(", ");
+  const due = issue.due_at ? `Due ${formatDate(issue.due_at)}${issue.sla_state && SLA[issue.sla_state] ? `, ${SLA[issue.sla_state]}` : ""}` : null;
+  return [head, due].filter(Boolean).join(". ") || null;
+}
+
+/** "Last run: 3 issues, now 2", with what was fixed and what is new since. */
+export function lastRunLine(rec: Pick<WorkRecordDetail, "other_runs" | "issues">): string | null {
+  const o = rec.other_runs;
+  if (!o) return null;
+  const now = rec.issues.length;
+  const head = o.on_list ? `Last run: ${plural(o.issues, "issue")}, now ${formatNumber(now)}` : `Last run: passing, now ${plural(now, "issue")}`;
+  const since = [o.on_list && o.fixed_since.length ? `${formatNumber(o.fixed_since.length)} fixed since` : "",
+    o.on_list && o.new_since.length ? `${formatNumber(o.new_since.length)} new` : ""].filter(Boolean).join(", ");
+  return since ? `${head} (${since})` : head;
+}
+
+const INLINE_VALUES = 8;
+
+function AllowedValues({ values, onUse, field }: { values: WorkAllowedValue[]; onUse?: (v: string) => void; field: string }) {
+  const chips = (list: WorkAllowedValue[]) => (
+    <ul className="flex flex-wrap gap-1.5" aria-label={`Allowed values for ${field}`}>
+      {list.map((v) => (
+        <li key={v.value} className="inline-flex max-w-full items-center gap-1.5 rounded-[var(--m-radius-pill)] border border-[var(--m-line)] bg-[var(--m-sheet-raised)] py-0.5 pl-2 pr-1 m-text-meta">
+          <Value v={v.value} />
+          {v.label ? <span className="truncate m-ink-3">{v.label}</span> : null}
+          {onUse ? (
+            <button type="button" onClick={() => onUse(v.value)} aria-label={`Use ${v.value.trim() ? v.value : "blank"}`}
+              className="rounded-[var(--m-radius-pill)] px-1.5 m-ink-accent hover:[background:var(--m-accent-soft)] focus-visible:[box-shadow:var(--m-elev-focus)]">Use</button>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+  if (values.length <= INLINE_VALUES) {
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="m-text-meta m-ink-3">Allowed values</span>
+        {chips(values)}
+      </div>
+    );
+  }
+  return (
+    <details className="m-text-body">
+      <summary className="cursor-pointer m-ink-accent">Allowed values ({formatNumber(values.length)})</summary>
+      <div className="mt-2">{chips(values)}</div>
+    </details>
+  );
+}
+
+function IssueFacts({ issue, rec, run }: { issue: WorkIssue; rec: WorkRecordDetail; run: string | undefined }) {
+  const history = historyLine(issue);
+  const population = populationLine(issue);
+  const rule = issue.rule;
+  const cost = rule?.cost_per_record ?? null;
+  const total = rule?.cost_at_risk ?? null;
+  const dimension = rule?.dimension ?? issue.dimension;
+  const sameIssue = <Link href={sameIssueHref(issue.check_id, rec.module, run)} className={LINK}>Every record with this issue</Link>;
+  return (
+    <div className="flex flex-col gap-0.5 m-text-meta m-ink-3" data-testid="issue-facts">
+      <p>
+        Rule <Link href={ruleHref(issue, rec.module, run)} className={LINK}>{rule?.name ?? issue.check_id}</Link>
+        {dimension ? <>, {dimension}</> : null}
+      </p>
+      <p>
+        {population ? <>{population}. </> : null}
+        {issue.others_failing === 0 ? "No other record fails it" : sameIssue}
+      </p>
+      {history ? <p>{history}</p> : null}
+      {cost !== null ? (
+        <p>{formatMoney(cost, rec.currency)} at risk on this record{total !== null ? `, ${formatMoney(total, rec.currency)} across the rule` : ""}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** The record beyond this run: the previous run, its golden record and its open duplicate candidates. */
+function RecordContext({ rec }: { rec: WorkRecordDetail }) {
+  const last = lastRunLine(rec);
+  const dup = rec.duplicates && rec.duplicates.open > 0 ? rec.duplicates : null;
+  if (!last && !rec.golden_record && !dup) return null;
+  return (
+    <ul className="flex flex-col gap-1 m-text-body m-ink-2 sm:flex-row sm:flex-wrap sm:gap-x-4" data-testid="record-context">
+      {last ? <li>{last}{rec.other_runs?.run_at ? <span className="m-text-meta m-ink-3">, run of {formatDate(rec.other_runs.run_at)}</span> : null}</li> : null}
+      {rec.golden_record ? (
+        <li><Link href={rec.golden_record.href} className={LINK}>Golden record</Link>{rec.golden_record.status !== "golden" ? <span className="m-ink-3"> ({rec.golden_record.status.replace(/_/g, " ")})</span> : null}</li>
+      ) : null}
+      {dup ? <li><Link href={dup.href} className={LINK}>{plural(dup.open, "open duplicate candidate")}</Link></li> : null}
+    </ul>
+  );
 }
 
 function useDecide(module: string, recordKey: string, run: string | undefined, onDone?: () => void) {
@@ -49,8 +174,9 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
   const decided = issue.decision && issue.status !== "fixed" && issue.status !== "not_an_issue";
   const due = open ? dueLabel(issue.due_at) : null;
   const sev = isSeverity(issue.severity) ? issue.severity : "low";
+  const canEdit = rec.can.fix && (open || issue.status === "proposed");
   return (
-    <section aria-label={issue.message} className="flex flex-col gap-3 border-b border-[var(--m-line)] pb-4 last:border-b-0 last:pb-0" data-testid="work-issue">
+    <section id={issueAnchor(issue.check_id)} aria-label={issue.message} className="flex scroll-mt-24 flex-col gap-3 border-b border-[var(--m-line)] pb-4 last:border-b-0 last:pb-0" data-testid="work-issue">
       <header className="flex flex-wrap items-start gap-2">
         <SeverityDot severity={sev} />
         <div className="min-w-0 flex-1">
@@ -60,6 +186,7 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
         <Pill tone={STATUS[issue.status].tone}>{STATUS[issue.status].label}</Pill>
         {due ? <Pill tone={due.tone}>{due.label}</Pill> : null}
       </header>
+      <IssueFacts issue={issue} rec={rec} run={run} />
 
       <dl className="grid grid-cols-[minmax(96px,max-content)_1fr] gap-x-3 gap-y-1 m-text-body">
         <dt className="m-ink-3">Now</dt>
@@ -87,6 +214,10 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
         <Notice tone="warning">This value was sent to SAP, but the latest run still finds the record failing. Check the load, or propose another value.</Notice>
       ) : null}
       {issue.instruction ? <p className="m-text-body m-ink-2">{issue.instruction}</p> : null}
+      {issue.allowed_values?.length ? (
+        <AllowedValues values={issue.allowed_values} field={issue.field ?? issue.check_id}
+          onUse={canEdit ? (v) => { setSignOff(null); setValue(v); setEditing(true); } : undefined} />
+      ) : null}
       {issue.why_it_matters || issue.sap_impact ? (
         <details className="m-text-body m-ink-2">
           <summary className="cursor-pointer m-ink-accent">Why it matters</summary>
@@ -95,7 +226,7 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
         </details>
       ) : null}
 
-      {rec.can.fix && (open || issue.status === "proposed") ? (
+      {canEdit ? (
         editing ? (
           <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (value.trim()) m.mutate([{ ...base, action: "edit", value }]); }}>
             <Input aria-label={`New value for ${issue.field ?? issue.check_id}`} value={value} onChange={(e) => setValue(e.target.value)} autoFocus className="m-input min-w-[200px] flex-1" />
@@ -177,6 +308,7 @@ export function RecordPanel({ module, recordKey, run, onDecided, footer, fullRec
     >
       <div className="flex flex-col gap-4" data-testid="record-panel">
         {!rec.can.fix ? <Notice tone="info">Your role can view this record. Fixing it needs the apply permission.</Notice> : null}
+        <RecordContext rec={rec} />
         {rec.can.fix && acceptable.length > 1 ? (
           <div className="flex flex-wrap items-center gap-2 rounded-[var(--m-radius-control)] bg-[var(--m-sheet-raised)] p-3">
             <span className="m-text-body m-ink-2 flex-1">{acceptable.length} suggested values for this record.</span>

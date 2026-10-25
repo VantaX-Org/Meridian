@@ -38,7 +38,7 @@ export function PilotTab({ id }: { id: string }) {
   const ruleCols = useMemo<ColumnDef<RuleScore, unknown>[]>(() => [
     { id: "rule", header: "Rule", cell: ({ row }) => (
       <span className="flex flex-col">
-        <Link href={`/rules/${encodeURIComponent(row.original.check_id)}`} className="m-ink-accent"><Mono>{row.original.check_id}</Mono></Link>
+        <Link href={`/objects/${encodeURIComponent(row.original.module)}/rules/${encodeURIComponent(row.original.check_id)}`} className="m-ink-accent"><Mono>{row.original.check_id}</Mono></Link>
         <span className="m-text-meta m-ink-3">{formatModuleName(row.original.module)}{row.original.message ? `. ${row.original.message}` : ""}</span>
       </span>) },
     { id: "flagged", header: "Flagged", cell: ({ row }) => n(row.original.flagged) },
@@ -50,7 +50,7 @@ export function PilotTab({ id }: { id: string }) {
       ? <Pill tone="at-risk">Needs tuning</Pill>
       : row.original.rated ? <Pill tone="go">On target</Pill> : <Pill>Too few reviews</Pill> },
     { id: "open", header: "", size: 80, cell: ({ row }) => (
-      <Link href={`/rules/${encodeURIComponent(row.original.check_id)}`} className="m-ink-accent-ink underline">Open</Link>
+      <Link href={`/objects/${encodeURIComponent(row.original.module)}/rules/${encodeURIComponent(row.original.check_id)}`} className="m-ink-accent-ink underline">Open</Link>
     ) },
   ], []);
 
