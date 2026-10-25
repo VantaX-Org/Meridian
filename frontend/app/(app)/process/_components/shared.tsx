@@ -19,6 +19,7 @@ import { ACTIVE_RUN, type CatalogueRow, type DiscoveryRun } from "@/lib/api/proc
 import { formatDuration } from "@/lib/job-timing";
 import { relativeTime } from "@/lib/format";
 import { useSystemScope } from "@/lib/permissions";
+import { readinessHref } from "@/components/process/shared";
 import { queryKeys } from "@/lib/query-keys";
 import type { Job } from "@/types/jobs";
 import { CoveragePill, RunStatusPill } from "./coverage-pill";
@@ -29,11 +30,16 @@ export const fmtFitness = (f: number | null | undefined) => (f == null ? "—" :
 export const fmtSeconds = (s: number | null | undefined) => (s == null ? "—" : formatDuration(s));
 export const fmtCount = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString());
 
-/** Failing findings of the system's DQ run on the modules a process or step touches, linked to that run's failing
- *  objects; "—" when unmapped or no DQ run. */
-export function DqDefects({ n, versionId }: { n: number | null | undefined; versionId: string | null | undefined }) {
-  return n == null || versionId == null ? "—"
-    : <DrillLink href={`/objects?run=${encodeURIComponent(versionId)}&readiness=fail`}>{n.toLocaleString()}</DrillLink>;
+/**
+ * Failing findings of the system's DQ run on the modules a process or step touches; "—" when unmapped or no DQ run.
+ * The count covers this process's objects only, so it opens that L1's readiness in that run (never every no-go
+ * object of the run); an L1 without a readiness definition has no page that lists just its objects, so its count
+ * is plain text.
+ */
+export function DqDefects({ n, versionId, l1 }: { n: number | null | undefined; versionId: string | null | undefined; l1: string | undefined }) {
+  if (n == null || versionId == null) return "—";
+  const href = l1 ? readinessHref({ l1, run: versionId }) : undefined;
+  return href ? <DrillLink href={href}>{n.toLocaleString()}</DrillLink> : n.toLocaleString();
 }
 
 /** The job's current stage label, else the run status. */
@@ -141,7 +147,7 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
     { id: "variants", header: "Variants", meta: { numeric: true }, accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
     { id: "cases", header: "Cases", meta: { numeric: true }, accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
     { id: "median", header: "Median duration", meta: { numeric: true }, accessorFn: (r) => r.last_run?.median_seconds ?? -1, cell: ({ row: { original: r } }) => fmtSeconds(r.last_run?.median_seconds) },
-    { id: "dq_defects", header: "DQ defects", meta: { numeric: true }, accessorFn: (r) => r.dq_defects ?? -1, cell: ({ row: { original: r } }) => <DqDefects n={r.dq_defects} versionId={r.dq_version_id} /> },
+    { id: "dq_defects", header: "DQ defects", meta: { numeric: true }, accessorFn: (r) => r.dq_defects ?? -1, cell: ({ row: { original: r } }) => <DqDefects n={r.dq_defects} versionId={r.dq_version_id} l1={r.l1} /> },
     { id: "finished", header: "Last run", accessorFn: (r) => r.last_run?.finished_at ?? "", cell: ({ row: { original: r } }) => (
         r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Not run yet") },
     { id: "open", header: "", size: 80, enableSorting: false, cell: ({ row: { original: r } }) => (

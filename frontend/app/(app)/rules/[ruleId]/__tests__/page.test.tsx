@@ -83,7 +83,9 @@ describe("rule detail page", () => {
     vi.spyOn(designerApi, "getReference").mockResolvedValue(REF);
     renderWithQuery(<RulePage />);
     const link = await screen.findByRole("link", { name: "Procure to pay: Create vendor" });
-    expect(link.getAttribute("href")).toBe("/insights/process?l1=PTP");
+    // The rule's object is not a PTP object, so the link opens PTP over its first object, never another L1.
+    expect(link.getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable");
+    expect(link.className).toContain("underline");
     expect(screen.getByText("Process steps it gates")).toBeInTheDocument();
   });
 
@@ -161,6 +163,43 @@ describe("rule detail page", () => {
     expect(screen.getByText("Payment run skips the vendor")).toBeInTheDocument();
     expect(await screen.findByText("12")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fix them on the object" })).toHaveAttribute("href", "/objects/business_partner?tab=records&check_id=AP001");
+  });
+
+  it("opens a gated PTP step on the rule's own object in the newest run that evaluated it; another L1 opens its reference step", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue({ ...RULE, module: "accounts_payable" });
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    const run = (version_id: string, pass_rate: number | null) => ({ version_id, run_at: "2026-01-01T00:00:00Z", module: "accounts_payable",
+      severity: "high", affected_count: 1, total_count: 10, pass_rate, suppressed: false, hit_rate: null });
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [run("v-new", null), run("v-old", 0.9)] });
+    const step = (l1: string, l4: string) => ({ id: l1, name: `${l1} process`, description: "", order: 1, modules: [],
+      l2: [{ id: `${l1}-A`, name: "Area", description: "", order: 1, l3: [{ id: `${l1}-A-1`, name: "Step", description: "", order: 1,
+        l4: [{ id: l4, name: `${l1} step`, description: "", order: 1, tcode: null, config_dependency: null, variants: [], diagram: { nodes: [], flows: [] },
+          activities: [{ id: `${l4}-1`, name: "Do", description: "", order: 1, tcode: null, check_ids: ["AP001"], sap_tables: [], fields: [] }] }] }] }] });
+    vi.spyOn(designerApi, "getReference").mockResolvedValue({ schema_version: 1, l1: [step("PTP", "PTP-A-1-1"), step("R2R", "R2R-A-1-1")] } as unknown as ProcessModelDocument);
+    renderWithQuery(<RulePage />);
+    const ptp = await screen.findByRole("link", { name: "PTP process: PTP step" });
+    await waitFor(() => expect(ptp.getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable&run=v-old"));
+    expect(screen.getByRole("link", { name: "R2R process: R2R step" }).getAttribute("href")).toBe("/process/R2R?tab=reference&node=R2R-A-1-1");
+  });
+
+  it("leaves runs that did not evaluate the rule off the history line and says so", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    const run = (version_id: string, pass_rate: number | null) => ({ version_id, run_at: "2026-01-01T00:00:00Z", module: "business_partner",
+      severity: "high", affected_count: 1, total_count: 10, pass_rate, suppressed: false, hit_rate: null });
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [run("v3", 0.8), run("v2", null), run("v1", 0.9)] });
+    renderWithQuery(<RulePage />);
+    expect(await screen.findByText(/1 run did not evaluate this rule and is left off the line\./)).toBeInTheDocument();
+  });
+
+  it("draws no line when no run evaluated the rule", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    const run = (version_id: string) => ({ version_id, run_at: "2026-01-01T00:00:00Z", module: "business_partner",
+      severity: "high", affected_count: 0, total_count: 0, pass_rate: null, suppressed: false, hit_rate: null });
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [run("v2"), run("v1")] });
+    renderWithQuery(<RulePage />);
+    expect(await screen.findByText("No run has evaluated this rule yet (2 runs so far), so there is no line to draw.")).toBeInTheDocument();
   });
 
   it("shows the not-run-yet empty state when there is no history", async () => {

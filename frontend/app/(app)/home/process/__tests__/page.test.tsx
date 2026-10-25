@@ -43,7 +43,7 @@ beforeEach(() => {
   vi.spyOn(pdApi, "listRuns").mockResolvedValue([]);
   vi.spyOn(jobsHook, "useJobs").mockReturnValue({ jobs: [], active: [] } as unknown as ReturnType<typeof jobsHook.useJobs>);
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
-    { id: "v1", label: "ap_1k", status: "complete", run_at: "2026-10-09T00:00:00Z", dqs_summary: { accounts_payable: 80 } } as never,
+    { id: "v1", label: "ap_1k", status: "complete", run_at: "2026-10-09T00:00:00Z", dqs_summary: { accounts_payable: 80 }, metadata: { system_id: "sys-1" } } as never,
   ] });
 });
 
@@ -56,11 +56,34 @@ describe("process home", () => {
     expect(await screen.findByText("No-go")).toBeInTheDocument();
     expect(screen.getByText("AP001")).toBeInTheDocument();
     expect(screen.getByText("1,234")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Can it run" }).getAttribute("href")).toBe("/insights/process?l1=PTP");
-    expect(screen.getByText("1 of 1 scored processes no-go")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Can it run" }).getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable&run=v1");
+    expect(screen.getByText(/^1 of 1 scored processes no-go, from ap_1k, .* on KSA PRD$/)).toBeInTheDocument();
     const runs = screen.getAllByRole("link", { name: "Run discovery" }).map((a) => a.getAttribute("href"));
     expect(runs).toContain("/process/runs?system=sys-1&new=1&l1=PTP");
     expect(runs).toContain("/process/runs?system=sys-1&new=1&l1=R2R");
+  });
+
+  it("scores readiness from the selected system's newest run, never a newer run of another system", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+      { id: "v-other", label: "other_sys", status: "complete", run_at: "2026-10-12T00:00:00Z", dqs_summary: { accounts_payable: 10 }, metadata: { system_id: "sys-2" } } as never,
+      { id: "v1", label: "ap_1k", status: "complete", run_at: "2026-10-09T00:00:00Z", dqs_summary: { accounts_payable: 80 }, metadata: { system_id: "sys-1" } } as never,
+    ] });
+    const bp = vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([l1("PTP", "Procure to pay", [field({})])]);
+    renderWithQuery(<ProcessHomePage />);
+    expect(await screen.findByText(/from ap_1k, .* on KSA PRD$/)).toBeInTheDocument();
+    expect(bp.mock.calls.map((c) => c[0])).toEqual(["v1"]);
+    expect(screen.getByRole("link", { name: "Can it run" }).getAttribute("href")).toContain("run=v1");
+  });
+
+  it("says when the selected system has no finished analysis, rather than borrowing another system's", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+      { id: "v-other", label: "other_sys", status: "complete", run_at: "2026-10-12T00:00:00Z", dqs_summary: { accounts_payable: 10 }, metadata: { system_id: "sys-2" } } as never,
+    ] });
+    const bp = vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([]);
+    renderWithQuery(<ProcessHomePage />);
+    expect(await screen.findByText("No finished analysis of KSA PRD to score readiness from")).toBeInTheDocument();
+    expect(bp).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "Can it run" })).toBeNull();
   });
 
   it("reads go when every mapped field passes", async () => {

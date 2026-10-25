@@ -97,12 +97,22 @@ describe("process catalogue", () => {
     expect(await screen.findByText("Mining")).toBeTruthy();
   });
 
-  it("links an L1's DQ defects to the failing objects and dashes an unmapped L1", async () => {
+  it("links an L1's DQ defects to that L1's readiness in that run, not every no-go object, and dashes an unmapped L1", async () => {
     vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
       { ...reference("PTP"), coverage: "discovered", last_run: lastRun({}), dq_defects: 7, dq_version_id: "v-7" },
       { ...reference("OTC"), dq_defects: null }]);
     renderWithQuery(<ProcessCataloguePage />);
-    expect((await screen.findByRole("link", { name: "7" })).getAttribute("href")).toBe("/objects?run=v-7&readiness=fail");
+    expect((await screen.findByRole("link", { name: "7" })).getAttribute("href"))
+      .toBe("/insights/process?l1=PTP&object=accounts_payable&run=v-7");
+  });
+
+  it("prints an L1's DQ defects as plain text when the L1 has no readiness page of its own", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
+      { ...reference("R2R"), coverage: "discovered", last_run: lastRun({}), dq_defects: 9, dq_version_id: "v-9" },
+      { ...reference("OTC"), dq_defects: null }]);
+    renderWithQuery(<ProcessCataloguePage />);
+    expect(await screen.findByText("9")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "9" })).toBeNull();
   });
 
   it("shows a dash, not a link, when a count has no DQ run behind it (null dq_version_id)", async () => {

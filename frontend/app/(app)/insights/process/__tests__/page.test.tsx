@@ -1,16 +1,18 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as miningApi from "@/lib/api/process-mining";
 import * as versionsApi from "@/lib/api/versions";
 import ProcessInsightsPage from "../page";
 
+const nav = vi.hoisted(() => ({ qs: "" }));
+
 // The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(""),
+  useSearchParams: () => new URLSearchParams(nav.qs),
   useRouter: () => ({ replace: vi.fn() }),
   usePathname: () => "/insights/process",
 }));
@@ -109,5 +111,44 @@ describe("ProcessInsightsPage without a process definition", () => {
     expect(await screen.findByRole("option", { name: /accounts_payable_1k, Accounts payable/ })).toBeInTheDocument();
     // The four sentences come from the frame, once, with the shared action bar beside the title.
     expect(screen.getByText("Business partner has no L1 to L5 process definition.")).toBeInTheDocument();
+  });
+});
+
+describe("ProcessInsightsPage named L1", () => {
+  const bp = (id: string, name: string) => ({
+    l1_id: id, l1_name: name, l1_description: "", system: "ecc",
+    l2_groups: [{ l2_id: `${id}-2`, l2_name: "Area", l3_processes: [{
+      l3_id: `${id}-3`, l3_name: `${name} step`, description: "", overall_readiness: "green" as const,
+      l4_subprocesses: [{ l4_id: `${id}-4`, l4_name: "Sub", tcode: "VA01", description: "", config_dependency: null, step_status: "green" as const,
+        activities: [{ l5_id: `${id}-5`, l5_name: "Enter", description: "", tcode: "VA01", fields: [], check_ids: [], activity_status: "green" as const }] }],
+    }] }],
+  });
+  const setup = (run: Record<string, unknown>, processes: ReturnType<typeof bp>[]) => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [run as never] });
+    const read = vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue(processes);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    return read;
+  };
+  afterEach(() => { nav.qs = ""; vi.restoreAllMocks(); });
+
+  it("reads an object of the named L1, not the object in the link when it belongs to another L1", async () => {
+    nav.qs = "l1=OTC&object=accounts_payable&run=v2";
+    const read = setup({ id: "v2", label: "Run 2", status: "complete", run_at: "2026-01-02T00:00:00Z",
+      dqs_summary: { accounts_payable: 80, sd_customer_master: 70 } }, [bp("OTC", "Order to cash")]);
+    renderWithQuery(<ProcessInsightsPage />);
+    expect(await screen.findByText("Order to cash step")).toBeInTheDocument();
+    expect(read).toHaveBeenCalledWith("v2", "sd_customer_master");
+    expect(read).not.toHaveBeenCalledWith("v2", "accounts_payable");
+  });
+
+  it("says the run has no object of the named L1 instead of showing another L1", async () => {
+    nav.qs = "l1=OTC&run=v3";
+    setup({ id: "v3", label: "Run 3", status: "complete", run_at: "2026-01-03T00:00:00Z", dqs_summary: { accounts_payable: 80 } },
+      [bp("PTP", "Procure to pay")]);
+    renderWithQuery(<ProcessInsightsPage />);
+    expect(await screen.findByText("No OTC object in this run")).toBeInTheDocument();
+    expect(screen.queryByText("Procure to pay step")).toBeNull();
+    expect(screen.getByRole("button", { name: "Show Procure to pay" })).toBeInTheDocument();
   });
 });

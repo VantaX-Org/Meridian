@@ -9,13 +9,13 @@ import { Button, Card, DataTable, DrillLink, ErrorState, Mono, PageHeader, Selec
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
-import { useProcessReadiness, type L1Readiness } from "@/components/process/shared";
+import { readinessHref, useProcessReadiness, type L1Readiness } from "@/components/process/shared";
 import { getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
 import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
-import { hrefWithRun } from "@/lib/run-scope";
+import { hrefWithRun, runScopeLabel } from "@/lib/run-scope";
 import {
   NoSystem, RunsTable, SystemSelect, fitnessTone, fmtFitness, l1Href, headline, useProcessSystem,
 } from "../../process/_components/shared";
@@ -23,7 +23,7 @@ import { CoveragePill } from "../../process/_components/coverage-pill";
 
 type Row = CatalogueRow & { readiness: L1Readiness | undefined };
 
-const columns = (systemId: string, canRun: boolean): ColumnDef<Row>[] => [
+const columns = (systemId: string, canRun: boolean, versionId: string | undefined): ColumnDef<Row>[] => [
   { id: "process", header: "Process", accessorFn: (r) => r.name, cell: ({ row: { original: r } }) => (
       <span className="flex items-baseline gap-2"><DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink><Mono>{r.l1}</Mono></span>) },
   { id: "verdict", header: "Verdict", accessorFn: (r) => r.readiness?.verdict ?? "",
@@ -40,13 +40,17 @@ const columns = (systemId: string, canRun: boolean): ColumnDef<Row>[] => [
   { id: "last", header: "Last run", cell: ({ row: { original: r } }) => (r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Never") },
   {
     id: "actions", header: "", enableSorting: false,
-    cell: ({ row: { original: r } }) => (
-      <span className="flex items-center gap-1">
-        {r.readiness && <Button variant="ghost" render={<Link href={`/insights/process?l1=${encodeURIComponent(r.l1)}`}>Can it run</Link>} />}
-        {canRun && r.coverage !== "reference" && !r.in_progress
-          && <Button variant="ghost" render={<Link href={`/process/runs?system=${systemId}&new=1&l1=${r.l1}`}>Run discovery</Link>} />}
-      </span>
-    ),
+    cell: ({ row: { original: r } }) => {
+      // The object that scored this L1, in the run that scored it: the readiness page reads one object per run.
+      const ready = r.readiness && readinessHref({ l1: r.l1, object: r.readiness.module, run: versionId });
+      return (
+        <span className="flex items-center gap-1">
+          {ready && <Button variant="ghost" render={<Link href={ready}>Can it run</Link>} />}
+          {canRun && r.coverage !== "reference" && !r.in_progress
+            && <Button variant="ghost" render={<Link href={`/process/runs?system=${systemId}&new=1&l1=${r.l1}`}>Run discovery</Link>} />}
+        </span>
+      );
+    },
   },
 ];
 
@@ -56,7 +60,8 @@ export default function ProcessHomePage() {
   const search = useSearchParams();
   const { systems, list, system, setSystem } = useProcessSystem();
   const { jobs } = useJobs();
-  const readiness = useProcessReadiness();
+  // Readiness follows the System picker: the newest finished run of that system, never another system's.
+  const readiness = useProcessReadiness(systems.isSuccess ? system?.id ?? null : null);
   const catalogue = useQuery({
     queryKey: queryKeys.processCatalogue(system?.id ?? ""),
     queryFn: () => getCatalogue(system!.id),
@@ -101,8 +106,10 @@ export default function ProcessHomePage() {
         />
       </>} />
       <Card title="Can each process run" padding="sm"
-        meta={readiness.latest ? `${noGo} of ${readiness.byL1.size} scored processes no-go` : "No finished analysis to score readiness from"}>
-        <DataTable columns={columns(system.id, can("run_process_discovery"))} data={ledger} getRowId={(r) => r.l1} height="auto" dense hideToolbar tableId="home-processes" />
+        meta={readiness.latest
+          ? `${noGo} of ${readiness.byL1.size} scored processes no-go, from ${runScopeLabel(readiness.latest)} on ${system.name}`
+          : `No finished analysis of ${system.name} to score readiness from`}>
+        <DataTable columns={columns(system.id, can("run_process_discovery"), readiness.latest?.id)} data={ledger} getRowId={(r) => r.l1} height="auto" dense hideToolbar tableId="home-processes" />
       </Card>
       <div className="grid grid-cols-2 gap-4">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />

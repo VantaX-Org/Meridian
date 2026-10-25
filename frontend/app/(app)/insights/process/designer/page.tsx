@@ -115,9 +115,11 @@ function Editor(p: EditorProps) {
   const [fail, setFail] = useState<SaveFailure | null>(null);
   const [prompt, setPrompt] = useState(false);
   const [naming, setNaming] = useState<string | null>(null);
-  // A model picked while there are unsaved edits waits here for "Discard and switch".
-  const [switching, setSwitching] = useState<string | null>(null);
+  // A model or version picked while there are unsaved edits waits here for "Discard unsaved changes?".
+  const [leaving, setLeaving] = useState<{ body: string; confirmLabel: string; run: () => void } | null>(null);
   const dirty = doc !== initial;
+  /** Runs `run` now, or after the discard confirm when there are unsaved edits. */
+  const guard = (body: string, confirmLabel: string, run: () => void) => { if (dirty) setLeaving({ body, confirmLabel, run }); else run(); };
 
   const go = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(sp.toString());
@@ -131,7 +133,13 @@ function Editor(p: EditorProps) {
   };
 
   const create = useMutation({
-    mutationFn: (a: { name: string; from: string }) => createModel(a.name, a.from),
+    // "Create from this model" copies what is on screen: with unsaved edits, the draft is saved as the new model's
+    // first version, so nothing is dropped by the switch to it.
+    mutationFn: async (a: { name: string; from: string; draft?: ProcessModelDocument }) => {
+      const r = await createModel(a.name, a.from);
+      if (a.draft) await saveModel(r.model.id, { document: a.draft, note: note || "Copied with unsaved edits", base_version: r.version_no });
+      return r;
+    },
     onSuccess: (r) => { void qc.invalidateQueries({ queryKey: queryKeys.processModels() }); setNaming(null); setPrompt(false); go({ model: r.model.id, v: null, attr: null }); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
@@ -232,22 +240,28 @@ function Editor(p: EditorProps) {
             label="Process model"
             value={model}
             options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
-            onValueChange={(m) => { if (m === model) return; if (dirty) setSwitching(m); else switchTo(m); }} />
-          {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
+            onValueChange={(m) => { if (m !== model) guard("Switching models drops the edits you have not saved to this one.", "Discard and switch", () => switchTo(m)); }} />
+          {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null}
+            onPick={(no) => guard("Opening another version drops the edits you have not saved.", "Discard and open", () => go({ v: no ? String(no) : null }))} /> : null}
           {canDesign ? <Button variant={reference ? "primary" : "secondary"} onClick={() => setNaming(naming === null ? "" : null)}>{reference ? "Create a model to edit" : "New model"}</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} pending={exportZip.isPending} onClick={() => exportZip.mutate()}>Export to Signavio</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} pending={exportPptx.isPending} onClick={() => exportPptx.mutate()}>Export to PowerPoint</Button> : null}
         </>} />
 
-      <ConfirmDialog open={switching !== null} onOpenChange={(o) => { if (!o) setSwitching(null); }}
-        title="Discard unsaved changes?" body="Switching models drops the edits you have not saved to this one."
-        confirmLabel="Discard and switch" cancelLabel="Keep editing" tone="danger"
-        onConfirm={() => { const m = switching; setSwitching(null); setDoc(initial); if (m) switchTo(m); }} />
+      <ConfirmDialog open={leaving !== null} onOpenChange={(o) => { if (!o) setLeaving(null); }}
+        title="Discard unsaved changes?" body={leaving?.body ?? ""}
+        confirmLabel={leaving?.confirmLabel ?? "Discard"} cancelLabel="Keep editing" tone="danger"
+        onConfirm={() => { const l = leaving; setLeaving(null); setDoc(initial); l?.run(); }} />
 
       {naming !== null ? (
-        <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (naming.trim()) create.mutate({ name: naming.trim(), from: model }); }}>
+        <form className="flex items-center gap-2" onSubmit={(e) => {
+          e.preventDefault();
+          if (naming.trim()) create.mutate({ name: naming.trim(), from: model, draft: dirty && !reference ? doc : undefined });
+        }}>
           <Input aria-label="Model name" autoFocus value={naming} onChange={(e) => setNaming(e.target.value)} />
-          <Button variant="primary" type="submit" disabled={!naming.trim() || create.isPending}>Create from {reference ? "reference" : "this model"}</Button>
+          <Button variant="primary" type="submit" disabled={!naming.trim() || create.isPending}>
+            {reference ? "Create from reference" : dirty ? "Create from this model, with your unsaved edits" : "Create from this model"}
+          </Button>
           <Button variant="ghost" onClick={() => setNaming(null)}>Close</Button>
         </form>
       ) : null}

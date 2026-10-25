@@ -9,12 +9,13 @@ import { isAxiosError } from "axios";
 import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status, useBreadcrumbTitle } from "@/design";
 import { exportRuleHistory, getRule, getRuleByCode, getRuleHistory, updateRule, type Rule, type RuleHistoryRun } from "@/lib/api/rules";
 import { getReference } from "@/lib/api/process-designer";
+import { processStepHref } from "@/components/process/shared";
 import { useRole } from "@/hooks/use-role";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
 import { getRuleLineage } from "@/lib/api/lineage";
 import { apiErrorState } from "@/lib/error";
-import { checkClassLabel, formatDate, formatModuleName, formatPct, labelOf } from "@/lib/format";
+import { checkClassLabel, formatDate, formatModuleName, formatPct, labelOf, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { ConditionList, ThresholdTable } from "../rule-ui";
@@ -105,7 +106,7 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
 }
 
 /** The reference model's L4 steps whose activities carry this check (sap/process_definitions.py), with their L1. */
-function ProcessStepsRow({ checkId }: { checkId: string }) {
+function ProcessStepsRow({ checkId, module, run }: { checkId: string; module: string; run: string | undefined }) {
   const q = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference, retry: false, meta: { ignoreError: true } });
   const steps = (q.data?.l1 ?? []).flatMap((l1) => l1.l2.flatMap((l2) => l2.l3.flatMap((l3) => l3.l4
     .filter((l4) => l4.activities.some((a) => a.check_ids.includes(checkId) || a.fields.some((f) => f.check_id === checkId)))
@@ -117,7 +118,7 @@ function ProcessStepsRow({ checkId }: { checkId: string }) {
         {steps.map(({ l1, l4 }, i) => (
           <span key={l4.id}>
             {i ? ", " : ""}
-            <Link href={`/insights/process?l1=${encodeURIComponent(l1.id)}`}>{l1.name}: {l4.name}</Link>
+            <Link className="underline underline-offset-2" href={processStepHref({ l1: l1.id, l4: l4.id, module, run })}>{l1.name}: {l4.name}</Link>
             {l4.tcode ? <> (<Mono>{l4.tcode}</Mono>)</> : null}
           </span>
         ))}
@@ -371,7 +372,8 @@ export default function RulePage() {
         <div className="flex justify-between"><dt className="m-ink-3">Object</dt><dd>{formatModuleName(data.module)}</dd></div>
         <div className="flex justify-between"><dt className="m-ink-3">System</dt><dd>{labelOf(data.category)}</dd></div>
         <div className="flex justify-between"><dt className="m-ink-3">Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? <>, <Mono>{data.source_yaml}</Mono></> : null}</dd></div>
-        <ProcessStepsRow checkId={checkId} />
+        <ProcessStepsRow checkId={checkId} module={data.module}
+          run={history.data?.runs.find((r) => r.module === data.module && r.pass_rate != null)?.version_id} />
       </dl>
 
       {data.tags?.length ? <div className="flex flex-wrap gap-1">{data.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}
@@ -387,18 +389,29 @@ export default function RulePage() {
           <Skeleton height={120} />
         ) : !history.data || history.data.runs.length === 0 ? (
           <EmptyState title="Not run yet" detail="Pass rates appear after the first analysis" action={<Button variant="secondary" render={<Link href="/runs">View runs</Link>} />} />
-        ) : (
-          <Line
-            data={[...history.data.runs].reverse().map((r) => ({
-              x: formatDate(r.run_at, "date"),
-              y: r.pass_rate != null ? r.pass_rate * (r.pass_rate <= 1 ? 100 : 1) : 0,
-              object: r.module,
-              ruleId: checkId,
-              runId: r.version_id,
-            }))}
-            onPointClick={(p) => router.push(buildDrillHref({ object: p.object ?? data.module, ruleId: checkId, run: p.runId ?? "" }))}
-          />
-        )}
+        ) : (() => {
+          // A run that did not evaluate the rule has no pass rate: it is left off the line, never drawn as 0%.
+          const evaluated = history.data.runs.filter((r): r is RuleHistoryRun & { pass_rate: number } => r.pass_rate != null);
+          const skipped = history.data.runs.length - evaluated.length;
+          const note = skipped
+            ? `${skipped.toLocaleString()} ${skipped === 1 ? "run" : "runs"} did not evaluate this rule and ${skipped === 1 ? "is" : "are"} left off the line.`
+            : null;
+          if (!evaluated.length) return <p className="m-text-body m-ink-2">{`No run has evaluated this rule yet (${plural(skipped, "run")} so far), so there is no line to draw.`}</p>;
+          return (<>
+            <p className="m-text-meta m-ink-3">{`Pass rate of each run that evaluated this rule, oldest first.${note ? ` ${note}` : ""}`}</p>
+            <Line
+              label="Pass rate over runs"
+              data={[...evaluated].reverse().map((r) => ({
+                x: formatDate(r.run_at, "date"),
+                y: r.pass_rate * (r.pass_rate <= 1 ? 100 : 1),
+                object: r.module,
+                ruleId: checkId,
+                runId: r.version_id,
+              }))}
+              onPointClick={(p) => router.push(buildDrillHref({ object: p.object ?? data.module, ruleId: checkId, run: p.runId ?? "" }))}
+            />
+          </>);
+        })()}
       </div></Card>
 
       {conditionList(data.conditions).length ? <Card title="Conditions"><ConditionList conditions={conditionList(data.conditions)} /></Card> : null}

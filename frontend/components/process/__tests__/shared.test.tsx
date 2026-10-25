@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as findingsApi from "@/lib/api/findings";
-import { useFindingHref } from "../shared";
+import { readinessHref, useFindingHref } from "../shared";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -28,5 +28,15 @@ describe("useFindingHref", () => {
     expect(q.get("check_id")).toBe("MM045");
     // A check that did not fail on that object gives no link, so a caller can try the next object.
     expect(result.current("fi_gl", "MM045")).toBeUndefined();
+  });
+});
+
+describe("readinessHref", () => {
+  it("names the L1, an object of that L1 and the run, so the readiness page never opens another L1", () => {
+    expect(readinessHref({ l1: "OTC", object: "sd_sales_orders", run: "v1" })).toBe("/insights/process?l1=OTC&object=sd_sales_orders&run=v1");
+    // An object of another L1 is replaced by the L1's first object.
+    expect(readinessHref({ l1: "OTC", object: "accounts_payable" })).toBe("/insights/process?l1=OTC&object=accounts_receivable");
+    // An L1 with no readiness definition has no readiness page.
+    expect(readinessHref({ l1: "R2R", run: "v1" })).toBeUndefined();
   });
 });
