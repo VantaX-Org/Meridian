@@ -147,7 +147,8 @@ function RunOverview() {
                 {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : "Not scored yet"}
               </span>
               <span className="m-text-body m-ink-2">
-                {criticalHigh != null ? plural(criticalHigh, "critical and high finding") : " "}
+                {/* A comparison, not the Critical and high tile again: the score against the run before. */}
+                {o ? (o.dqs.previous != null ? `Was ${o.dqs.previous.toFixed(1)} in the previous run` : "First scored run") : " "}
               </span>
             </div>
             )}
@@ -158,7 +159,7 @@ function RunOverview() {
           { label: "Critical and high findings", value: criticalHigh ?? "—", hint: criticalHigh ? "failing rules" : criticalHigh === 0 ? "none" : undefined, tone: criticalHigh == null ? undefined : criticalHigh ? "no-go" : "go", to: run ? criticalHighHref([{ id: run }], module) : undefined, versionId: run },
           // Blocking findings (critical, or blocking an S/4 load) are their own set, opened on the readiness view.
           { label: "Blocking findings", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
-          { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ run, module, sugg: true }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
+          { label: "Records with a suggested value", value: o?.auto_fixable.records ?? "—", to: fixHref({ run, module, sugg: true }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
             label: o?.value_at_risk.worst_l1 ? `Most at risk: ${l1Label(o.value_at_risk.worst_l1)}` : "Most at risk",
             value: o?.value_at_risk.worst_l1 ? formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency) : "—",

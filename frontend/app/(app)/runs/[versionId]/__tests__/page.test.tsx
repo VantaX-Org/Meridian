@@ -91,6 +91,25 @@ describe("RunDetailPage", () => {
       expect(await screen.findByText("No next actions for this run")).toBeInTheDocument();
       expect(screen.getByTestId("next-actions-slot")).toBeInTheDocument();
     });
+
+    it("opens a cleaning action on the object's cleaning tab and explains it in plain words", async () => {
+      vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+      vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+        ...EMPTY_AGGREGATE, total: 1,
+        by_module: [{ module: "material_master", findings: 1, affected: 120, critical: 1, high: 0, medium: 0, low: 0, avg_pass_rate: null }],
+      });
+      vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
+        actions: [{ type: "cleaning", id: "c1", title: "Fill base units", severity: "critical", affected_count: 120, total_count: 500,
+          effort_hours: 3.6, impact_points: 480, value_per_hour: 133.3, priority_score: 1, estimated_cost: null, currency: "ZAR",
+          recommended_steward: null, module: "material_master" }],
+        sprints: [], basis: { version_id: "v2", findings: 1, cleaning_items: 1, exceptions: 0 },
+      } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+      renderWithQuery(<RunDetailPage />);
+      expect(await screen.findByRole("link", { name: "Open cleaning" })).toHaveAttribute("href", "/fix?tab=cleaning&module=material_master");
+      fireEvent.click(screen.getByText("Why?"));
+      expect(await screen.findByText("120 records, 120 critical; about 4 hours.")).toBeInTheDocument();
+      expect(screen.queryByText(/impact points per hour/)).toBeNull();
+    });
   });
 
   it("asks for next actions scoped to this run", async () => {

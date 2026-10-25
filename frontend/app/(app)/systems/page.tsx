@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, FilterChip, Mono, PageHeader, Score, Skeleton, Stat, Status, emptyExportOptions } from "@/design";
+import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, FilterChip, Mono, PageHeader, Pill, Score, Skeleton, Stat, Status, emptyExportOptions } from "@/design";
 import { HEALTH_LABEL, HEALTH_VERDICT, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { usePermissions, useSystemScope } from "@/lib/permissions";
@@ -132,9 +132,11 @@ export default function SystemsPage() {
       cell: ({ row }) => {
         const h = row.original.health_status;
         const verdict = HEALTH_VERDICT[h];
+        // Connection health in its own words (Healthy, Degraded, Unreachable), toned by the verdict it maps to;
+        // Go and No-go are the data's verdicts, not a connection's.
         return (
           <span className="inline-flex flex-col items-start">
-            {verdict ? <Status kind="verdict" value={verdict} /> : <span className="m-ink-3">{HEALTH_LABEL.unknown}</span>}
+            {verdict ? <Pill tone={verdict}>{HEALTH_LABEL[h]}</Pill> : <span className="m-ink-3">{HEALTH_LABEL.unknown}</span>}
             <span className="m-text-meta m-ink-3">
               {row.original.last_health_check
                 ? `${verdict && verdict !== "go" ? `${HEALTH_LABEL[h]}, checked` : "Checked"} ${relativeTime(row.original.last_health_check)}`

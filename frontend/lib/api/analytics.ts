@@ -110,10 +110,13 @@ export interface ImpactBucket {
 }
 
 export interface RoiSummary {
-  subscription_annual: number;
+  /** Null when no subscription is configured: there is no setting for it, so no fee is invented. */
+  subscription_annual: number | null;
   risk_mitigated: number;
-  roi_multiple: number;
-  payback_months: number;
+  /** Null without a configured subscription (nothing to divide by). */
+  roi_multiple: number | null;
+  /** Null without a configured subscription, or before any cost is avoided. */
+  payback_months: number | null;
   /** The currency of the amounts ("ZAR": a fixed rand subscription and rand risk constants, not the cost model). */
   currency: string;
 }

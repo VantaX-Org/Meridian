@@ -16,6 +16,9 @@ import {
 } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
+import { getVersion } from "@/lib/api/versions";
+import { queryKeys } from "@/lib/query-keys";
+import { RunScope } from "@/components/run-scope";
 import { keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { RecordPanel, invalidateAfterDecision, toastDraftBatch } from "./record-panel";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
@@ -179,6 +182,9 @@ export function FixWork() {
   const [q, setQ] = useState(filter.q ?? "");
 
   const summary = useQuery({ queryKey: ["work", "summary", run ?? "latest"], queryFn: () => getWorkSummary(run), retry: false });
+  // The run the counts belong to, named above them (the summary resolves "latest" to its id).
+  const shownRunId = summary.data?.version_id;
+  const shownRun = useQuery({ queryKey: queryKeys.run(shownRunId ?? ""), queryFn: () => getVersion(shownRunId ?? ""), enabled: !!shownRunId, meta: { ignoreError: true } });
   const groups = useQuery({
     queryKey: ["work", "groups", run ?? "latest", filter.module ?? "", filter.severity ?? ""],
     queryFn: () => getWorkGroups({ version_id: run, module: filter.module, severity: filter.severity }),
@@ -288,9 +294,14 @@ export function FixWork() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="fix-work">
+      {shownRun.data ? (
+        <p className="m-text-body m-ink-2">
+          <RunScope scope={{ run: shownRun.data, latestId: undefined, pinned: false, choices: [] }} hrefFor={(id) => (id ? `/fix?${new URLSearchParams({ run: id })}` : "/fix")} />
+        </p>
+      ) : null}
       <div className="m-stat-grid @5xl:[grid-template-columns:repeat(4,minmax(0,1fr))]">
         <Stat label="Records to fix" value={t.open.toLocaleString()} hint={`${plural(t.issues, "issue")} across ${plural(s.objects.length, "object")}`} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
-        <Stat label="Critical" value={t.critical.toLocaleString()} tone={t.critical ? "no-go" : "go"} hint="block SAP processes" onClick={() => set({ sev: "critical" })} />
+        <Stat label="Critical" value={t.critical.toLocaleString()} tone={t.critical ? "no-go" : "go"} hint="critical severity" onClick={() => set({ sev: "critical" })} />
         <Stat label="With a suggested value" value={t.proposed.toLocaleString()} hint="accept in one step" onClick={() => set({ sugg: "1" })} />
         <Stat label="Overdue" value={t.overdue.toLocaleString()} tone={t.overdue ? "at-risk" : undefined} hint="past their due date" onClick={() => set({ due: "overdue" })} />
       </div>

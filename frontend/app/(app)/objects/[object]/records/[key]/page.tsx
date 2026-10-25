@@ -150,14 +150,15 @@ export default function RecordFixSheetPage() {
   const supersession = supersessionQuery.data;
   const duplicates = duplicatesQuery.data;
 
-  const exportOptions = [
+  // The record sheet PDF reads a material (MARA/MATNR, api/services/pdf_reports.py:load_record): only a material offers it.
+  const exportOptions = isMaterial ? [
     {
       format: "pdf" as const,
       label: "Record sheet (PDF)",
       run: () =>
         downloadAuthenticated(getRecordReportUrl(run, material.matnr), `meridian-fix-sheet-${material.matnr}.pdf`),
     },
-  ];
+  ] : [];
 
   return (
     <RecordPage
@@ -165,7 +166,7 @@ export default function RecordFixSheetPage() {
       object={object}
       status={status}
       meta={<RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}/records/${encodeURIComponent(key)}`, search, id)} />}
-      actions={<ExportMenu options={exportOptions} />}
+      actions={exportOptions.length > 0 ? <ExportMenu options={exportOptions} /> : undefined}
       stats={isMaterial ? [
         verdictQuery.isSuccess
           ? { label: "Failing rules", value: materialRules.size, tone: materialRules.size ? "no-go" : "go" }
@@ -202,8 +203,12 @@ export default function RecordFixSheetPage() {
               </Fragment>
             ))
           )}
-          <dt className="m-ink-3">Levels</dt>
-          <dd>{material.levels_total}</dd>
+          {isMaterial ? (
+            <>
+              <dt className="m-ink-3">Organisational levels</dt>
+              <dd>{material.levels_total}</dd>
+            </>
+          ) : null}
         </dl>
       </Card>
 

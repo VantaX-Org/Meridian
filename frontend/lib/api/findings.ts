@@ -111,7 +111,10 @@ export interface ScoreHistoryEntry {
 /** One run's composite score for a single module, part of the per-module series below. */
 export interface ModuleScoreHistoryEntry {
   version_id: string;
+  /** Re-weighted under the tenant's current scoring config. */
   composite: number;
+  /** The module's score as stored when the run was scored. */
+  at_the_time?: number | null;
 }
 
 /** GET /api/v1/scores/history — composite DQS across runs, as scored at the time and under today's weights. */

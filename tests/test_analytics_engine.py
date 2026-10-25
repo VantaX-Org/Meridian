@@ -100,3 +100,28 @@ def test_impact_and_roi_amounts_say_they_are_rand() -> None:
     assert impacts and all(i["currency"] == "ZAR" for i in impacts)
     assert bia.calculate_roi(impacts, 15000.0)["currency"] == "ZAR"
     assert bia.calculate_roi(impacts, 0.0)["currency"] == "ZAR"
+
+
+
+def test_roi_without_a_subscription_states_no_multiple_payback_or_fee() -> None:
+    """No tenant setting records a subscription, so ROI multiple, payback and the annual subscription are None
+    (never computed from an invented fee); the cost avoided is still stated."""
+    import inspect
+
+    from api.routes import analytics as analytics_routes
+    from api.services.analytics_engine import BusinessImpactAnalytics
+
+    bia = BusinessImpactAnalytics()
+    impacts = [{"mitigated_zar": 540000.0}]
+    for sub in (None, 0.0):
+        roi = bia.calculate_roi(impacts, sub)
+        assert roi["subscription_annual"] is None
+        assert roi["roi_multiple"] is None
+        assert roi["payback_months"] is None
+        assert roi["risk_mitigated"] == 540000.0
+    # A real subscription still yields the multiple and payback.
+    real = bia.calculate_roi(impacts, 15000.0)
+    assert real["subscription_annual"] == 180000.0 and real["roi_multiple"] == 3.0 and real["payback_months"] == 4.0
+    # The routes use no hard-coded fee.
+    assert analytics_routes._monthly_subscription(object()) is None  # type: ignore[arg-type]
+    assert "15000" not in inspect.getsource(analytics_routes)

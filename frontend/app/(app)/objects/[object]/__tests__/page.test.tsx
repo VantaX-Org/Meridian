@@ -9,6 +9,8 @@ import * as fieldProfileApi from "@/lib/api/field-profile";
 import * as insightsApi from "@/lib/api/insights";
 import * as remediationApi from "@/lib/api/remediation";
 import * as workApi from "@/lib/api/work";
+import * as findingsApi from "@/lib/api/findings";
+import * as settingsApi from "@/lib/api/settings";
 import type { Version } from "@/types/api";
 import ObjectDetailPage from "../page";
 
@@ -499,8 +501,41 @@ describe("ObjectDetailPage keyboard and gating", () => {
     expect(await screen.findByText("Records affected")).toBeInTheDocument();
     expect(screen.getAllByText("120").length).toBeGreaterThan(0);
     // Each header count opens what it counts.
-    expect((await screen.findByText("1 failing rules")).closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
-    expect(screen.getByText("120 affected records").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fix");
+    // One rule, singular; the summed affected count is rule failures, not records.
+    expect((await screen.findByText("1 failing rule")).closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
+    expect(screen.getByText("120 rule failures").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fix");
+    expect(screen.queryByText(/affected records/)).toBeNull();
+  });
+
+  it("opens the score explainer with the cap, its reason and this run's history", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue({ dqs_weights: { completeness: 0.5, accuracy: 0.5 } } as never);
+    vi.spyOn(objectsApi, "getObject").mockResolvedValue({ ...OBJECT, composite_score: 70, raw_score: 82.4, capped: true, cap_reason: "MM001: material type missing — score capped at 70" });
+    searchParams = new URLSearchParams("run=v1&tab=overview");
+    renderWithQuery(<ObjectDetailPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Explain score 82/ }));
+    expect((await screen.findAllByText(/Capped at 70/)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/MM001/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Score history/i })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=history");
+  });
+
+  it("plots this system's runs only, each as scored at the time", async () => {
+    vi.spyOn(findingsApi, "getScoreHistory").mockResolvedValue({
+      history: [
+        { version_id: "v1", run_at: "2026-10-08T00:00:00Z", system_id: "sys-1", scoring_recorded: true, at_the_time: { composite: 70, tier: "warn", scoring: null }, under_current: { composite: 75, tier: "warn", modules: {} } },
+        { version_id: "other", run_at: "2026-10-07T00:00:00Z", system_id: "sys-2", scoring_recorded: true, at_the_time: { composite: 10, tier: "fail", scoring: null }, under_current: { composite: 10, tier: "fail", modules: {} } },
+        { version_id: "v0", run_at: "2026-10-01T00:00:00Z", system_id: "sys-1", scoring_recorded: true, at_the_time: { composite: 60, tier: "fail", scoring: null }, under_current: { composite: 65, tier: "fail", modules: {} } },
+      ],
+      modules: { material_master: [
+        { version_id: "v1", composite: 77.7, at_the_time: 72.5 },
+        { version_id: "other", composite: 11.1, at_the_time: 11.1 },
+        { version_id: "v0", composite: 66.6, at_the_time: 61.5 },
+      ] },
+    });
+    searchParams = new URLSearchParams("run=v1&tab=history");
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("2 runs, 61.5 to 72.5")).toBeInTheDocument();
+    expect(screen.queryByText("11.1")).toBeNull();
+    expect(screen.queryByText("77.7")).toBeNull();
   });
 
   it("does not throw when composite_score is null and dimension_scores is empty", async () => {

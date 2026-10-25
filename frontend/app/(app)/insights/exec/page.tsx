@@ -295,20 +295,22 @@ export default function ExecPage() {
                   <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
                   <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
                 </div>
-              ) : roi.data && !roi.data.roi.subscription_annual ? (
-                <EmptyState variant="inline" title="No return on investment yet" detail="It appears once the subscription and cost per record are set" action={<Link href="/admin/settings" className="underline-offset-2 hover:underline">Open settings</Link>} />
               ) : roi.data && !roi.data.roi.risk_mitigated ? (
                 // No multiple or payback can be stated before any cost is avoided; "0x" and "0 months" would read as a verdict.
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <Stat label="Cost avoided" value="No cost avoided yet" hint="Appears once approved fixes are applied" href={withScope("/fix", { run })} />
-                  <Stat label="Annual subscription" value={formatMoney(roi.data.roi.subscription_annual, roi.data.roi.currency)} />
+                </div>
+              ) : roi.data && roi.data.roi.subscription_annual == null ? (
+                // No subscription is configured anywhere, so the multiple, payback and fee are not stated: only the cost avoided.
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <Stat label="Cost avoided" value={formatMoney(roi.data.roi.risk_mitigated, roi.data.roi.currency)} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data ? `${roi.data.roi.roi_multiple}x` : "—"} />
-                  <Stat label="Payback" loading={roi.isLoading} value={roi.data ? `${plural(roi.data.roi.payback_months, "month")}` : "—"} />
-                  <Stat label="Risk mitigated" loading={roi.isLoading} value={roi.data ? formatMoney(roi.data.roi.risk_mitigated, roi.data.roi.currency) : "—"} />
-                  <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data ? formatMoney(roi.data.roi.subscription_annual, roi.data.roi.currency) : "—"} />
+                  <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data?.roi.roi_multiple != null ? `${roi.data.roi.roi_multiple}x` : "—"} />
+                  <Stat label="Payback" loading={roi.isLoading} value={roi.data?.roi.payback_months != null ? plural(roi.data.roi.payback_months, "month") : "—"} />
+                  <Stat label="Cost avoided" loading={roi.isLoading} value={roi.data ? formatMoney(roi.data.roi.risk_mitigated, roi.data.roi.currency) : "—"} />
+                  <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data?.roi.subscription_annual != null ? formatMoney(roi.data.roi.subscription_annual, roi.data.roi.currency) : "—"} />
                 </div>
               )}
           </Card>

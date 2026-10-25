@@ -106,7 +106,7 @@ describe("ExecPage", () => {
       value_at_risk: { worst_l1: null, worst_l1_amount: 0, currency: "ZAR", features_blocked: 0 }, narrative: [],
     });
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
-    vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: 120000, risk_mitigated: 0, roi_multiple: 0, payback_months: 0, currency: "ZAR" }, cost_avoidance_history: [] });
+    vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: null, risk_mitigated: 0, roi_multiple: null, payback_months: null, currency: "ZAR" }, cost_avoidance_history: [] });
     renderWithQuery(<ExecPage />);
     // Not the page-level empty state: the hero carries the score and the first-run sentence.
     expect(await screen.findByText("First scored run")).toBeInTheDocument();
@@ -119,8 +119,8 @@ describe("ExecPage", () => {
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);
     fireEvent.click(screen.getByRole("button", { name: "Download board pack" }));
     expect(dl).toHaveBeenCalledWith(expect.stringContaining("v1"), `Meridian board pack – ${TODAY}.pdf`);
-    // The subscription is a rand amount and says so.
-    expect(await screen.findByText(/ZAR\s120,000/)).toBeInTheDocument();
+    // No subscription is configured, so no fee is printed.
+    expect(screen.queryByText("Annual subscription")).toBeNull();
     // ROI without any cost avoided says so instead of "0x" and "0 months".
     expect(await screen.findByText("No cost avoided yet")).toBeInTheDocument();
     expect(screen.queryByText("0x")).toBeNull();
@@ -233,6 +233,19 @@ describe("ExecPage", () => {
     expect(await screen.findByText(/ZAR\s540,000/)).toBeInTheDocument();
     expect(screen.getByText(/ZAR\s180,000/)).toBeInTheDocument();
     expect(screen.queryByText(/EUR\s540,000/)).toBeNull();
+  });
+
+  it("states only the cost avoided when no subscription is configured", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [] });
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
+    vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "ZAR" } as never);
+    vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: null, risk_mitigated: 540000, roi_multiple: null, payback_months: null, currency: "ZAR" }, cost_avoidance_history: [] });
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText(/ZAR\s540,000/)).toBeInTheDocument();
+    expect(screen.getByText("Cost avoided")).toBeInTheDocument();
+    expect(screen.queryByText("ROI multiple")).toBeNull();
+    expect(screen.queryByText("Payback")).toBeNull();
+    expect(screen.queryByText("Annual subscription")).toBeNull();
   });
 
   it("names waterfall steps by feature and captions the total and the top feature", async () => {

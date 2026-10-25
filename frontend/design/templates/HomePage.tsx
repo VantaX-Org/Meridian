@@ -176,7 +176,8 @@ export function HomePage({
               {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
               {verdict.action && (
                 <div className="pt-2">
-                  <Button variant="secondary" render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />
+                  {/* The verdict's next step is the home's one primary action; Run analysis in the header is secondary. */}
+                  <Button render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />
                 </div>
               )}
             </div>

@@ -139,12 +139,14 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
 
   // Held until the cost model names the currency, so the sentence never reads as a bare number.
   const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` About ${formatMoney(Math.round(f.costAtRisk), f.currency)} is at risk.` : "";
+  // On the homes the verdict's action is the one next step (it picks the lowest-scoring object, this cell the most
+  // findings), so this cell links its object but offers no second button.
   const next =
     worst && f.total > 0
       ? {
           sentence: `${worst.label} needs the most work: ${n(worst.findings)} findings${worst.critical ? `, ${n(worst.critical)} of them critical` : ""}.`,
           href: `/objects/${worst.module}${q(f.runId)}`,
-          action: { label: "Open object", href: `/objects/${worst.module}${q(f.runId)}` },
+          ...(section === "home" ? {} : { action: { label: "Open object", href: `/objects/${worst.module}${q(f.runId)}` } }),
         }
       : { sentence: "Have a look over the objects; nothing stands out.", href: base };
 

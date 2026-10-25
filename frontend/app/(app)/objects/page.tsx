@@ -15,7 +15,7 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { criticalHighHref, stateScopeLine } from "@/lib/current-state";
+import { criticalHighHref, stateObjects, stateScopeLine } from "@/lib/current-state";
 import { fixHref } from "@/lib/drill";
 import { formatModuleName, plural } from "@/lib/format";
 import { DrillCount } from "@/app/(app)/insights/_components/DrillCount";
@@ -113,14 +113,15 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
   {
     id: "affected_records",
     accessorFn: (o) => o.affected_records ?? -1,
-    header: "Records",
+    // Summed over the object's failing rules: a record failing two rules counts twice, so this is rule failures, not
+    // records (the distinct records are the work list's "To fix").
+    header: "Rule failures",
     size: 110,
     meta: { numeric: true } satisfies CellMeta,
-    // The object's failing records in its own list of records to fix.
     cell: ({ row }) => {
       const n = row.original.affected_records;
       if (n == null) return "—";
-      return <DrillCount href={toFixHref(row.original.module, run)} count={n} label={`Open the ${plural(n, "failing record")} of ${row.original.label}`}>{n.toLocaleString()}</DrillCount>;
+      return <DrillCount href={toFixHref(row.original.module, run)} count={n} label={`Open the records behind the ${plural(n, "rule failure")} of ${row.original.label}`}>{n.toLocaleString()}</DrillCount>;
     },
   },
   workColumn("work_open", "To fix", (w) => w.open, run, ["record to fix", "records to fix"]),
@@ -212,6 +213,10 @@ export default function ObjectsPage() {
   const baseRows: ObjectRow[] = current
     ? currentQ.rows
     : (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
+  // Objects the run measured that the user's scope hides: an empty list then means "outside your access", not "none".
+  const outOfScope = !scopeFilter.modules ? 0 : current
+    ? stateObjects(currentQ.runs).filter((o) => !scopeFilter.modules?.has(o.module)).length
+    : (data?.objects ?? []).length - baseRows.length;
   // The work list per run the rows come from (one run with ?run=, each lineage's latest run without it). A run whose
   // work list is not built, or could not be read, leaves its rows without counts.
   const workRuns = current ? [...new Set(baseRows.map((o) => o.run_id).filter((id): id is string => !!id))] : runId ? [runId] : [];
@@ -242,12 +247,18 @@ export default function ObjectsPage() {
   } else if (loaded && objects.length === 0) {
     state = "empty";
     const anyRun = current ? !!newest : !!data?.run_id;
-    emptyProps = {
-      title: anyRun ? (current ? "No objects measured" : "No objects in this run") : "No objects measured yet",
-      detail: anyRun ? "Run an analysis on a connected system." : dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
-      action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
-      ghost: "table",
-    };
+    emptyProps = anyRun && outOfScope > 0
+      ? {
+          title: `${plural(outOfScope, "object")} ${current ? "measured" : "in this run"} ${outOfScope === 1 ? "is" : "are"} outside your access`,
+          detail: "Ask an administrator for access to them.",
+          ghost: "table",
+        }
+      : {
+          title: anyRun ? (current ? "No objects measured" : "No objects in this run") : "No objects measured yet",
+          detail: anyRun ? "Run an analysis on a connected system." : dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
+          action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+          ghost: "table",
+        };
   }
 
   // The export and the report are per run: without ?run= they are the newest finished run's, and say so.
@@ -313,7 +324,7 @@ export default function ObjectsPage() {
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
         <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="across all objects" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
-        {blockingFindings != null ? <Stat label="Critical and high findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="failing rules" href={criticalHighFindingsHref} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" href={fixHref({ run: current ? undefined : run })} />}
+        {blockingFindings != null ? <Stat label="Critical and high findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="failing rules" href={criticalHighFindingsHref} /> : <Stat label="Rule failures" value={recordsAffected.toLocaleString()} hint="records failing a rule, per rule" href={fixHref({ run: current ? undefined : run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />
@@ -330,16 +341,19 @@ export default function ObjectsPage() {
   const columns = makeColumns(current ? undefined : runId, bands, objects, openHref); // React Compiler memoizes on run and thresholds
 
   // The map is drawn from the rows the ledger shows: the same filters, the same objects.
+  // Tiles are sized by distinct failing records when every shown object's work list is built; otherwise by the
+  // summed rule failures, and the map says so.
+  const distinctRecords = shownObjs.length > 0 && shownObjs.every((o) => o.work);
   const mapItems: ObjectMapItem[] = shownObjs.map((o) => ({
     id: o.module,
     label: o.label,
     href: openHref(o),
     score: o.composite_score,
-    records: o.affected_records ?? 0,
+    records: distinctRecords ? o.work?.records ?? 0 : o.affected_records ?? 0,
     verdict: o.readiness ? MAP_VERDICT[o.readiness] : "neutral",
-    meta: o.blocking_rule_id ?? (o.affected_records != null ? `${o.affected_records.toLocaleString()} records` : undefined),
+    meta: o.blocking_rule_id ?? (distinctRecords && o.work ? plural(o.work.records, "record") : o.affected_records != null ? plural(o.affected_records, "rule failure") : undefined),
   }));
-  const map = shownObjs.length > 0 && <ObjectMap items={mapItems} columns={12} rowHeight={44} />;
+  const map = shownObjs.length > 0 && <ObjectMap items={mapItems} columns={12} rowHeight={44} label={distinctRecords ? undefined : "Objects by rule failures and verdict"} />;
 
   return (
     <ExplorerPage

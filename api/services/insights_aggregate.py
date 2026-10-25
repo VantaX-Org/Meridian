@@ -234,7 +234,8 @@ def overview_from(data: dict) -> dict:
         "previous_version_id": str(prev["id"]) if prev else None,
         "dqs": dqs, "blockers": blockers, "auto_fixable": auto,
         "value_at_risk": {"worst_l1": worst, "worst_l1_amount": amount, "currency": data["currency"],
-                          "features_blocked": sum(1 for r in data["impact_rows"] if r["record_count"] > 0)},
+                          "features_blocked": sum(1 for r in data["impact_rows"]
+                                                  if r.get("status") == "blocked" and r["record_count"] > 0)},
         "narrative": narrative(run_id=run_id, dqs=dqs, deltas=deltas, blockers=blockers,
                                conc=concentration(bl), wave_names=wave_names, auto=auto,
                                top_cluster=clusters[0] if clusters else None),

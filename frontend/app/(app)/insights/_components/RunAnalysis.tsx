@@ -11,9 +11,10 @@ import { getSystems } from "@/lib/api/connectivity";
 import { queryKeys } from "@/lib/query-keys";
 import { ScopePicker } from "@/app/(app)/systems/[systemId]/scope-picker";
 
-/** `variant`: primary where starting a run is the page's main step (the homes); secondary in the insight action bar,
- * where the page's own "Do next" action leads. */
-export function RunAnalysis({ variant = "primary" }: { variant?: "primary" | "secondary" } = {}) {
+/** `variant`: secondary by default, on the homes and in the insight action bar, where the page's own next step (the
+ * home's verdict action, the insight's "Do next") is the one primary button; primary only where starting a run is
+ * the page's main step. */
+export function RunAnalysis({ variant = "secondary" }: { variant?: "primary" | "secondary" } = {}) {
   const { can } = useRole();
   const router = useRouter();
   const [open, setOpen] = useState(false);

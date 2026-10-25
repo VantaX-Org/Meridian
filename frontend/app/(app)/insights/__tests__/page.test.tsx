@@ -78,14 +78,16 @@ describe("InsightsOverviewPage", () => {
     expect(screen.getByText("3 features blocked")).toBeInTheDocument();
   });
 
-  it("heads with the run's critical and high findings, as the current state does, and keeps blocking findings in their own tile", async () => {
+  it("counts the run's critical and high findings, as the current state does, and keeps blocking findings in their own tile", async () => {
     mockAll();
     mount();
     // 2 critical + 5 high failing rules of the run, opening exactly those findings on the run's findings tab.
     const tile = (await screen.findByText("Critical and high findings")).closest("a");
     expect(tile).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(await within(tile as HTMLElement).findByText("7")).toBeInTheDocument();
-    expect(within(screen.getByTestId("hero-verdict")).getByText("7 critical and high findings")).toBeInTheDocument();
+    // The hero's sub-line compares with the previous run rather than repeating the tile.
+    expect(within(screen.getByTestId("hero-verdict")).getByText("Was 70.0 in the previous run")).toBeInTheDocument();
+    expect(within(screen.getByTestId("hero-verdict")).queryByText("7 critical and high findings")).toBeNull();
     expect(findingsApi.getFindingsAggregate).toHaveBeenCalledWith({ version_id: "v1", module: undefined });
     // The S/4 and critical set keeps its own name and opens the readiness view.
     expect(screen.getByText("Blocking findings").closest("a")).toHaveAttribute("href", "/insights/readiness?run=v1");
@@ -195,7 +197,7 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     expect(screen.getByRole("group", { name: /Cleansing funnel/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Create remediation batch" })).toHaveAttribute("href", "/fix?sugg=1");
     // auto-fixable records in the hero, value at risk of the worst L1 only
-    expect(screen.getByText("Auto-fixable records")).toBeInTheDocument();
+    expect(screen.getByText("Records with a suggested value")).toBeInTheDocument();
     expect(screen.getByText("50% of failing records")).toBeInTheDocument();
     expect(within(screen.getByTestId("current-value-at-risk")).getByText("Most at risk: Order to cash")).toBeInTheDocument();
     // only the scope=current wrappers are read, never the one-run ones
@@ -259,7 +261,8 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     // run overview's set (critical or S/4-blocking rules, blockers.count).
     const verdict = screen.getByTestId("hero-verdict");
     expect(within(verdict).getByText("At risk")).toBeInTheDocument();
-    expect(within(verdict).getByText("5 critical and high findings in 2 objects")).toBeInTheDocument();
+    // The sub-line compares with the target rather than repeating the Critical and high tile.
+    expect(within(verdict).getByText("1 of 3 objects below target")).toBeInTheDocument();
     expect(screen.queryByText("Blocking findings")).toBeNull();
     // the tile opens the findings behind its count, not the objects below target
     expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/insights?severity=critical,high");

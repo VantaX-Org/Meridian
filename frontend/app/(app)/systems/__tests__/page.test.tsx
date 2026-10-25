@@ -138,7 +138,7 @@ describe("systems list page", () => {
     expect(screen.getByRole("link", { name: "Import file" })).toHaveAttribute("href", "/import");
   });
 
-  it("names the system type as its product and reads connection health as a verdict", async () => {
+  it("names the system type as its product and reads connection health in its own words", async () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
@@ -147,7 +147,8 @@ describe("systems list page", () => {
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("ECC")).toBeInTheDocument());
     const rows = screen.getAllByRole("row");
-    expect(rows.some((r) => within(r).queryByText("Go"))).toBe(true);
+    expect(rows.some((r) => within(r).queryByText("Healthy"))).toBe(true);
+    expect(rows.some((r) => within(r).queryByText("Go"))).toBe(false);
   });
 
   it("shows an up/down trend arrow with an aria-label once the DQS move passes the 0.05 threshold", async () => {
