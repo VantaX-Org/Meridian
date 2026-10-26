@@ -915,8 +915,8 @@ async def bulk_approve(
 
         # Mark resolved
         await db.execute(
-            text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now(), acknowledged_at = COALESCE(acknowledged_at, now()) WHERE id = :id"),
-            {"id": iid},
+            text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now(), acknowledged_at = COALESCE(acknowledged_at, now()) WHERE id = :id AND tenant_id = :tid"),
+            {"id": iid, "tid": str(tenant.id)},
         )
 
     await db.commit()

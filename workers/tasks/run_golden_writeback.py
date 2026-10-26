@@ -92,7 +92,7 @@ def run(session: Any, tenant_id: str, request_id: str, mode: str) -> dict:
         session.execute(text(
             "INSERT INTO master_record_history (id, tenant_id, master_record_id, changed_at, changed_by, change_type, "
             "previous_fields, new_fields, ai_was_involved) VALUES (gen_random_uuid(), :t, :rid, now(), "
-            "(SELECT id FROM users WHERE CAST(id AS text) = :u), 'written_back', CAST(:prev AS jsonb), "
+            "(SELECT id FROM users WHERE CAST(id AS text) = :u AND tenant_id = :t), 'written_back', CAST(:prev AS jsonb), "
             "CAST(:new AS jsonb), false)"),
             {"t": tenant_id, "rid": str(record_id), "u": approved_by or "",
              "prev": json.dumps({x["field"]: x.get("current_value") for tg in result for x in tg["fields"]

@@ -90,26 +90,26 @@ def _catalogue_fingerprint() -> str:
     return h.hexdigest()[:16]
 
 
-def _stored_catalogue(session, snapshot: Optional[str]) -> Optional[tuple]:
+def _stored_catalogue(session, tenant_id: str, snapshot: Optional[str]) -> Optional[tuple]:
     """The catalogue saved against this discovery snapshot, if built from the current inputs."""
     if not snapshot:
         return None
     row = session.execute(text(
-        "SELECT system_info -> :k FROM ddic_snapshots WHERE id = CAST(:s AS uuid)"),
-        {"k": _CATALOGUE_KEY, "s": snapshot}).scalar()
+        "SELECT system_info -> :k FROM ddic_snapshots WHERE id = CAST(:s AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+        {"k": _CATALOGUE_KEY, "s": snapshot, "t": tenant_id}).scalar()
     # A bare list is the pre-fingerprint format: stale by definition.
     if not isinstance(row, dict) or row.get("fingerprint") != _catalogue_fingerprint():
         return None
     return tuple(row.get("objects") or ()) or None
 
 
-def _store_catalogue(session, snapshot: Optional[str], payload: tuple) -> None:
+def _store_catalogue(session, tenant_id: str, snapshot: Optional[str], payload: tuple) -> None:
     if not snapshot:
         return
     session.execute(text(
         "UPDATE ddic_snapshots SET system_info = COALESCE(system_info, '{}'::jsonb) "
-        "|| jsonb_build_object(:k, CAST(:p AS jsonb)) WHERE id = CAST(:s AS uuid)"),
-        {"k": _CATALOGUE_KEY, "s": snapshot,
+        "|| jsonb_build_object(:k, CAST(:p AS jsonb)) WHERE id = CAST(:s AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+        {"k": _CATALOGUE_KEY, "s": snapshot, "t": tenant_id,
          "p": json.dumps({"fingerprint": _catalogue_fingerprint(), "objects": list(payload)})})
     session.commit()
 
@@ -131,7 +131,7 @@ def _catalogue_for(system_id: str, system_type: str, tenant_id: str, snapshot: O
 
     with Session(get_sync_engine()) as s:
         s.execute(text("SET app.tenant_id = :t"), {"t": tenant_id})
-        cached = _stored_catalogue(s, snapshot)
+        cached = _stored_catalogue(s, tenant_id, snapshot)
         if cached:
             return cached
         dictionary = dictionary_for(s, system_id, system_type)
@@ -151,7 +151,7 @@ def _catalogue_for(system_id: str, system_type: str, tenant_id: str, snapshot: O
     built = tuple(out)
     with Session(get_sync_engine()) as s:
         s.execute(text("SET app.tenant_id = :t"), {"t": tenant_id})
-        _store_catalogue(s, snapshot, built)
+        _store_catalogue(s, tenant_id, snapshot, built)
     return built
 
 

@@ -621,6 +621,35 @@ def _check_feature_gate(path: str, licensed_features: list[str]) -> JSONResponse
     return None
 
 
+def feature_licensed(feature: str) -> bool:
+    """Whether the licence entitles ``feature``, for code outside a request (Celery workers).
+
+    Decided as LicenceMiddleware.dispatch decides a gated route: the development bypass, the cached
+    result while fresh, else a revalidation; when HQ is unreachable, the last validated licence inside
+    the degradation window; otherwise closed. Synchronous: never call it from a running event loop."""
+    if not settings.licence_key and settings.env == "development":
+        return True
+    if _cache["response"] and _cache["expires_at"] > time.time():
+        manifest = _cache["response"]
+        if not manifest.get("valid"):
+            return False
+    else:
+        import asyncio
+
+        result, outcome = asyncio.run(revalidate())
+        if result is None:
+            last_known = _cache.get("response")
+            if not (last_known and last_known.get("valid") and not is_cloudflare_unreachable()):
+                return False
+            manifest = last_known
+        elif outcome in ("cutoff", "invalid"):
+            return False
+        else:
+            manifest = _cache["response"] if outcome == "grace" else result
+    features = _features_to_list(manifest.get("features", {}))
+    return "*" in features or feature in features
+
+
 def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
     """Reject any requested SAP module the licence does not entitle.
 

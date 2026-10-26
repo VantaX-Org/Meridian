@@ -631,6 +631,40 @@ async def user_grants(db: AsyncSession, tenant_id: uuid.UUID, user_id: str | Non
     return grants
 
 
+def active_users_holding_sync(session, tenant_id: uuid.UUID | str, user_ids: Iterable[str], action: str) -> set[str]:
+    """The ids among ``user_ids`` of active users of this tenant who hold ``action`` tenant-wide: by users.role
+    or by an unscoped grant (built-in or custom), the same answer require_permission gives a signed-in user.
+
+    Synchronous (a Session or Connection) so a Celery worker can ask; a route calls it through
+    ``AsyncSession.run_sync``. Every query carries tenant_id; RLS is the second line, not the only one."""
+    ids = sorted({str(u) for u in user_ids if u})
+    if not ids:
+        return set()
+    tid = str(tenant_id)
+    users = session.execute(
+        text("SELECT id::text, role FROM users WHERE tenant_id = CAST(:t AS uuid) AND is_active "
+             "AND id = ANY(CAST(:ids AS uuid[]))"), {"t": tid, "ids": ids}).fetchall()
+    grants: dict[str, set[str]] = {}
+    for uid, key in session.execute(
+            text("SELECT user_id::text, role_key FROM user_role_scopes WHERE tenant_id = CAST(:t AS uuid) "
+                 "AND user_id = ANY(CAST(:ids AS uuid[])) AND system_id IS NULL AND module IS NULL"),
+            {"t": tid, "ids": ids}).fetchall():
+        grants.setdefault(uid, set()).add(key)
+    custom: dict[str, set[str]] = {}
+
+    def holds(key: str) -> bool:
+        if not key.startswith("custom:"):
+            return has_permission(key, action)
+        if key not in custom:
+            rows = session.execute(
+                text("SELECT rp.resource, rp.action FROM role_permissions rp JOIN roles r ON r.id = rp.role_id "
+                     "WHERE r.tenant_id = CAST(:t AS uuid) AND r.key = :key"), {"t": tid, "key": key}).fetchall()
+            custom[key] = legacy_actions_for_pairs({(r[0], r[1]) for r in rows})
+        return action in custom[key]
+
+    return {uid for uid, role in users if any(holds(k) for k in {role, *grants.get(uid, set())})}
+
+
 async def effective_actions(db: AsyncSession, tenant_id: uuid.UUID, user_id: str | None,
                             user_role: str, scope: Scope) -> set[str]:
     """Legacy actions a user holds at `scope`: users.role plus every grant covering it."""
