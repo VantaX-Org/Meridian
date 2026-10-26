@@ -15,12 +15,25 @@ export async function acceptInvite(
   return data;
 }
 
+/** localStorage key of the session token (the apiClient interceptor reads it on every request). */
+const TOKEN_KEY = "mn_auth_token";
+
 /**
  * POST /api/v1/auth/change-password: rotate the signed-in user's own password.
  * A wrong current password is a 422 (not a 401), so it never signs the user out.
+ * The change revokes every session issued before it, this one included, so the
+ * response's replacement token is stored in place of the old one and returned.
  */
-export async function changeOwnPassword(currentPassword: string, newPassword: string): Promise<void> {
-  await apiClient.post("/api/v1/auth/change-password", { current_password: currentPassword, new_password: newPassword });
+export async function changeOwnPassword(currentPassword: string, newPassword: string): Promise<string> {
+  const { data } = await apiClient.post<{ ok: true; token: string }>(
+    "/api/v1/auth/change-password",
+    { current_password: currentPassword, new_password: newPassword },
+  );
+  if (typeof data?.token !== "string" || !data.token) {
+    throw new Error("Your password was changed, but no new session came back. Sign in again.");
+  }
+  localStorage.setItem(TOKEN_KEY, data.token);
+  return data.token;
 }
 
 /**

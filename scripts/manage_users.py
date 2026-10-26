@@ -181,7 +181,7 @@ def cmd_reset_password(args):
 
         pw_hash = hash_password(args.password)
         conn.execute(
-            text("UPDATE users SET password_hash = :pw WHERE id = :uid"),
+            text("UPDATE users SET password_hash = :pw, token_version = token_version + 1 WHERE id = :uid"),
             {"pw": pw_hash, "uid": row[0]},
         )
         conn.commit()
@@ -193,7 +193,8 @@ def cmd_deactivate(args):
     with engine.connect() as conn:
         conn.execute(text("SET app.tenant_id = :tid"), {"tid": str(DEV_TENANT_ID)})
         result = conn.execute(
-            text("UPDATE users SET is_active = false WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid RETURNING id"),
+            text("UPDATE users SET is_active = false, token_version = token_version + 1 "
+                 "WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid RETURNING id"),
             {"email": args.email, "tid": DEV_TENANT_ID},
         ).fetchone()
         if not result:

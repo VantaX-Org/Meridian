@@ -158,6 +158,10 @@ async def update_user(
     if body.is_active is not None:
         updates.append("is_active = :is_active")
         params["is_active"] = body.is_active
+        if body.is_active is False:
+            # Deactivation ends every session the user holds: LocalAuthMiddleware rejects tokens
+            # issued below the new users.token_version, so reactivation means signing in again.
+            updates.append("token_version = token_version + 1")
 
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -178,6 +182,10 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     await db.commit()
+    if body.is_active is False:
+        from api.middleware.local_auth import forget_token_version
+
+        forget_token_version(str(user_id))
 
     # Return updated user
     row = await db.execute(

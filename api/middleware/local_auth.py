@@ -6,11 +6,15 @@ signed with the tenant's jwt_secret.
 
 import contextvars
 import logging
+import threading
+import time
+import uuid
 
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from api.services.local_auth import decode_access_token
+from api.services.local_auth import decode_access_token, token_version_claim
 
 logger = logging.getLogger("meridian.local_auth")
 
@@ -62,6 +66,63 @@ def _load_jwt_secret() -> str | None:
         logger.warning(f"Failed to load jwt_secret: {e}")
 
     return None
+
+
+# users.token_version per user id, cached briefly so session revocation costs at most one indexed
+# lookup per user every few seconds rather than one per request. A bump in this process drops the
+# entry at once (forget_token_version); other API processes see it within the TTL.
+_TOKEN_VERSION_TTL_S = 5.0
+_token_version_cache: dict[str, tuple[int | None, float]] = {}
+_token_version_lock = threading.Lock()
+
+
+class TokenVersionUnavailable(Exception):
+    """The users row could not be read (database down, schema not migrated)."""
+
+
+def forget_token_version(user_id: str) -> None:
+    """Drop a cached token version after the column changed in this process."""
+    with _token_version_lock:
+        _token_version_cache.pop(str(user_id), None)
+
+
+def _lookup_token_version(user_id: str, tenant_id: str) -> int | None:
+    """users.token_version for the user, or None when no such user exists."""
+    from sqlalchemy import text
+
+    from api.deps import get_sync_engine_or_create
+
+    try:
+        with get_sync_engine_or_create().begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tenant_id})
+            row = conn.execute(
+                text("SELECT token_version FROM users WHERE id = :uid AND tenant_id = :tid"),
+                {"uid": user_id, "tid": tenant_id},
+            ).fetchone()
+    except Exception as e:
+        raise TokenVersionUnavailable(str(e)) from e
+    return int(row[0]) if row else None
+
+
+def _current_token_version(user_id: str, tenant_id: str) -> int | None:
+    """The user's current token version (cached for _TOKEN_VERSION_TTL_S), or None for no such user."""
+    now = time.monotonic()
+    with _token_version_lock:
+        hit = _token_version_cache.get(user_id)
+    if hit and hit[1] > now:
+        return hit[0]
+    version = _lookup_token_version(user_id, tenant_id)
+    with _token_version_lock:
+        _token_version_cache[user_id] = (version, now + _TOKEN_VERSION_TTL_S)
+    return version
+
+
+def _valid_uuid(value: object) -> bool:
+    try:
+        uuid.UUID(str(value))
+    except ValueError:
+        return False
+    return True
 
 
 # Authenticated user for the current request — lets services attribute
@@ -122,6 +183,24 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Invalid or expired token"},
+            )
+
+        # Session revocation: a password change or reset, or deactivation, bumps users.token_version;
+        # a token issued before that (a lower ``tv``; none counts as 0) is no longer a session.
+        user_id = payload.get("sub")
+        tenant_id = payload.get("tenant_id") or DEV_TENANT_ID
+        if not _valid_uuid(user_id) or not _valid_uuid(tenant_id):
+            return JSONResponse(status_code=401, content={"detail": "Invalid or expired token"})
+        try:
+            current = await run_in_threadpool(_current_token_version, str(user_id), str(tenant_id))
+        except TokenVersionUnavailable as e:
+            # Not a 401: the frontend signs the user out on any 401, and this is the server's fault.
+            logger.warning(f"Could not check session revocation: {e}")
+            return JSONResponse(status_code=503, content={"detail": "Authentication check unavailable"})
+        if current is None or token_version_claim(payload) < current:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Session has been revoked. Sign in again."},
             )
 
         # Set user info on request state for downstream use

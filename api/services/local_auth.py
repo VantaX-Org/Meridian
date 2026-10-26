@@ -41,14 +41,21 @@ def create_access_token(
     email: str,
     role: str,
     secret: str,
+    token_version: int = 0,
 ) -> str:
-    """Create a signed JWT access token."""
+    """Create a signed JWT access token.
+
+    ``tv`` is the user's ``users.token_version`` at issue time. LocalAuthMiddleware rejects a token
+    whose ``tv`` is below the user's current value, so bumping the column (password change or reset,
+    deactivation) revokes every session issued before it.
+    """
     now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "tenant_id": tenant_id,
         "email": email,
         "role": role,
+        "tv": token_version,
         "iat": now,
         "exp": now + timedelta(hours=_JWT_EXPIRY_HOURS),
     }
@@ -61,6 +68,13 @@ def decode_access_token(token: str, secret: str) -> dict | None:
         return jwt.decode(token, secret, algorithms=[_JWT_ALGORITHM])
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         return None
+
+
+def token_version_claim(payload: dict) -> int:
+    """The ``tv`` claim of a decoded access token. Tokens issued before migration 092 carry none and
+    count as version 0, so they stay valid until they expire unless the user's sessions were revoked."""
+    tv = payload.get("tv", 0)
+    return tv if isinstance(tv, int) and not isinstance(tv, bool) else 0
 
 
 def create_invite_token(user_id: str, tenant_id: str, secret: str, ttl_days: int = 7) -> str:
