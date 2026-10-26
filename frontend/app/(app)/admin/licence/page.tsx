@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, ErrorState, Notice, PageHeader, Pill, Skeleton, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { useUpdateModal } from "@/context/update-modal-context";
@@ -32,7 +33,7 @@ export default function AdminLicencePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader
+      <PageHeader tabs={<SettingsTabs />}
         title="Licence"
         meta="What this deployment is licensed for: objects, seats and features. Plan changes and invoices are handled in Meridian HQ"
         status={l?.valid === false ? <Pill tone="no-go">Not valid</Pill> : l?.valid ? <Pill tone="go">Valid</Pill> : undefined}

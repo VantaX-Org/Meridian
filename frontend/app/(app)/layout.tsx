@@ -29,13 +29,13 @@ import { reportClientError } from "@/lib/client-errors";
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
-  const { homeRole: role } = useRole();
+  const { homeRole: role, can } = useRole();
   // A persona home can resolve to another entry (a steward's home is Fix work): each page is listed once,
   // and the dropped entry's key hint (Home's ⌘1) moves onto the one kept.
   const all = groups.flatMap((g) =>
     flattenNav(g.items).map((item) => ({
       label: item.label,
-      href: resolveNavHref(item.href, role),
+      href: resolveNavHref(item.href, role, can),
       group: g.group,
       icon: <item.icon size={16} aria-hidden />,
       shortcut: item.shortcut,

@@ -122,6 +122,25 @@ describe("admin roles page", () => {
     expect(add).not.toHaveBeenCalled();
   });
 
+  it("refetches the users list after a grant changes, so its roles and scope column is current", async () => {
+    tab = "users";
+    const users = vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [{ id: "u1", tenant_id: "t", clerk_user_id: null, email: "a@x.io", name: "Ana", role: "viewer", permissions: null, is_active: true, last_login: null, created_at: "2026-01-01T00:00:00Z" }] });
+    const grant = { id: "g1", role_key: "viewer", system_id: null, module: null, user_id: "u1", granted_by: null, created_at: null };
+    vi.spyOn(rolesApi, "listGrants").mockResolvedValue([grant]);
+    vi.spyOn(rolesApi, "getUserEffective").mockResolvedValue({
+      role: "viewer", roles: [{ key: "viewer", name: "Viewer", system_id: null, module: null }], actions: [],
+      resources: {}, scopes: [], home: "/",
+    });
+    const rem = vi.spyOn(rolesApi, "deleteGrant").mockResolvedValue({ id: "g1", status: "deleted" });
+    renderWithQuery(<AdminRolesPage />);
+    fireEvent.click(await screen.findByText("Ana"));
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Viewer, All systems" }));
+    const before = users.mock.calls.length;
+    fireEvent.click(await screen.findByRole("button", { name: "Remove grant" }));
+    await waitFor(() => expect(rem).toHaveBeenCalledWith("u1", "g1"));
+    await waitFor(() => expect(users.mock.calls.length).toBeGreaterThan(before));
+  });
+
   it("history lists audit rows", async () => {
     tab = "history";
     vi.spyOn(auditApi, "getAuditEntries").mockImplementation(async (p) => ({

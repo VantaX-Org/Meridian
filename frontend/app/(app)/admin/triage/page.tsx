@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Checkbox, ChoiceGroup, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { LedgerHead, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -72,7 +73,7 @@ export default function AdminTriagePage() {
 
   return (
     <div className="flex flex-col gap-4" aria-busy={teams.isLoading || undefined}>
-      <PageHeader title="Triage" meta="Who gets each new issue, how long they have to fix it, and the working days the clock counts. These drive the urgency colours in the inbox" />
+      <PageHeader tabs={<SettingsTabs />} title="Triage" meta="Who gets each new issue, how long they have to fix it, and the working days the clock counts. These drive the urgency colours in the inbox" />
 
       <div className="flex gap-4">
         <Stat label="Rules switched off" value={idle} tone={idle ? "at-risk" : undefined} loading={ruleQ.isLoading} delta={`of ${ruleQ.data?.length ?? 0} assignment rules`} />

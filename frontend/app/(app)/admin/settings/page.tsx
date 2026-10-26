@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getDoctor, type DoctorItem } from "@/lib/api/admin-doctor";
@@ -50,7 +51,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Settings" meta="This deployment at a glance: licence, alert channels, how long data is kept, how defects are priced, and health checks that say what needs fixing" actions={<Button variant="secondary" render={<Link href="/admin/licence">Open licence</Link>} />} />
+      <PageHeader tabs={<SettingsTabs />} title="Settings" meta="This deployment at a glance: licence, alert channels, how long data is kept, how defects are priced, and health checks that say what needs fixing" actions={<Button variant="secondary" render={<Link href="/admin/licence">Open licence</Link>} />} />
 
       {l?.valid === false ? (
         <Notice tone="danger">

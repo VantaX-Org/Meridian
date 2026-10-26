@@ -7,7 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, DataTable, ExplorerPage, PageHeader, Select } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
+import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { getReferenceLists, type ReferenceList } from "@/lib/api/system-objects";
 import { isListFailure } from "@/lib/error";
@@ -28,6 +30,7 @@ const columns: ColumnDef<ReferenceList>[] = [
 
 export default function ReferenceAdminPage() {
   const [picked, setPicked] = useState("");
+  const canConnect = useRole().can("manage_systems");
   const systems = useQuery({ queryKey: ["systems", "reference"], queryFn: getSystems });
   const list = systems.data ?? [];
   const id = picked || list[0]?.id || "";
@@ -36,13 +39,18 @@ export default function ReferenceAdminPage() {
   const failed = isListFailure(systems) ? systems : isListFailure(q) ? q : null;
   return (
     <ExplorerPage
-      header={<PageHeader title="Reference data" meta="Official postal code and bank code lists, per system, that address and bank checks compare against. Upload or replace a list on the system page" />}
+      header={<PageHeader tabs={<SettingsTabs />} title="Reference data" meta="Official postal code and bank code lists, per system, that address and bank checks compare against. Upload or replace a list on the system page" />}
       filterBar={list.length > 0 ? <Select label="System" value={id} onValueChange={setPicked} options={list.map((s) => ({ value: s.id, label: s.name }))} placeholder="System" /> : undefined}
       state={systems.isLoading || (!!id && q.isLoading) ? "loading" : failed ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No reference data loaded",
-        detail: list.length === 0 ? "Reference lists belong to a system. Connect a system first." : "Upload postal codes or a bank code list on the system's Health tab. Until then those checks use format rules only.",
-        action: <Button render={<Link href={list.length === 0 ? "/systems?connect=1" : id ? `/systems/${id}?tab=health` : "/systems"}>{list.length === 0 ? "Connect a system" : "Open the system"}</Link>} />,
+        detail: list.length === 0
+          ? canConnect ? "Reference lists belong to a system. Connect a system first." : "Reference lists belong to a system. Ask an administrator to connect one."
+          : "Upload postal codes or a bank code list on the system's Health tab. Until then those checks use format rules only.",
+        // Only a role that may connect systems is sent to the connect dialog.
+        action: list.length === 0
+          ? canConnect ? <Button render={<Link href="/systems?connect=1">Connect a system</Link>} /> : undefined
+          : <Button render={<Link href={id ? `/systems/${id}?tab=health` : "/systems"}>Open the system</Link>} />,
       }}
       errorProps={{ error: failed?.error, onRetry: () => { void systems.refetch(); void q.refetch(); } }}
       table={<DataTable columns={[...columns, actionColumn<ReferenceList>(() => (id ? <RowLink href={`/systems/${id}?tab=health`}>Open system</RowLink> : null))]} data={rows} getRowId={(r) => r.kind} />}

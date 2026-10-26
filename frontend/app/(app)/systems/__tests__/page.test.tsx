@@ -17,6 +17,15 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(currentSearch),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+/** Whether the viewer holds systems/create (who may connect a system). */
+const grants = vi.hoisted(() => ({ connect: false }));
+vi.mock("@/lib/permissions", async (orig) => {
+  const actual = await orig<typeof import("@/lib/permissions")>();
+  return {
+    ...actual,
+    usePermissions: () => ({ ...actual.usePermissions(), has: (r: string, a: string) => grants.connect && r === "systems" && a === "create" }),
+  };
+});
 
 const SYSTEM: SAPSystemExtended = {
   id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
@@ -139,11 +148,13 @@ describe("systems list page", () => {
 
   it("?connect=1 lands with the connect dialog open", async () => {
     currentSearch = "connect=1";
+    grants.connect = true;
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
     renderWithQuery(<SystemsPage />);
     expect(await screen.findByRole("dialog", { name: "Connect a system" })).toBeInTheDocument();
     currentSearch = "";
+    grants.connect = false;
   });
 
   it("leads the empty state with Connect system, Import file second", async () => {
@@ -221,5 +232,20 @@ describe("systems page health param", () => {
     expect(screen.getByText("BW Down")).toBeInTheDocument();
     expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
     currentSearch = "";
+  });
+
+  it.each([[true, 1], [false, 0]])("?connect=1 opens the connect dialog only for a viewer who may connect (%s)", async (may, dialogs) => {
+    currentSearch = "connect=1";
+    grants.connect = may;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    await waitFor(() => expect(screen.getAllByText("ECC Prod").length).toBeGreaterThan(0));
+    expect(screen.queryAllByRole("dialog", { name: "Connect a system" })).toHaveLength(dialogs);
+    currentSearch = "";
+    grants.connect = false;
   });
 });

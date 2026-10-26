@@ -12,7 +12,7 @@ import { useRole } from "../../hooks/use-role";
 import { personaForRole, type Persona } from "../../lib/persona";
 import { MeridianMark } from "../icons/Mark";
 import { IconChevronDown, IconGrid } from "../icons";
-import { activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
+import { SETTINGS_HREF, activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
 import { Badge } from "../primitives/Badge";
 import { Skeleton } from "../primitives/Skeleton";
 
@@ -30,7 +30,7 @@ import { Skeleton } from "../primitives/Skeleton";
 /** The pill label where the nav label is too long for the strip. */
 const PILL_LABEL: Record<string, string> = { "/process": "Processes" };
 /** Items whose children are tabs of the item's own page, so the More panel lists the item once and not its tabs. */
-const FOLDED = new Set(["/admin/settings"]);
+const FOLDED = new Set([SETTINGS_HREF]);
 const MORE_PANEL_ID = "topnav-more";
 const ICON_SIZE = 16;
 
@@ -93,7 +93,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
   const searchParams = useSearchParams();
   const groups = useVisibleNav();
   const navLoading = useNavLoading();
-  const { homeRole: role } = useRole();
+  const { homeRole: role, can } = useRole();
   const moreRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -117,10 +117,13 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
   );
 
   const { main: primaryItems, more } = useMemo(
-    () => railSplit(groups, personaForRole(role), (href) => resolveNavHref(href, role)),
-    [groups, role],
+    () => railSplit(groups, personaForRole(role), (href) => resolveNavHref(href, role, can)),
+    [groups, role, can],
   );
-  const moreActive = more.some((g) => g.items.some((i) => i.href === activeItemHref));
+  const isActive = (item: NavItem) => item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref);
+  // A More entry is current on its own page, and a folded one (Settings) also on its tabs, which the panel does not list.
+  const isMoreItemActive = (item: NavItem) => item.href === activeItemHref || (FOLDED.has(item.href) && isActive(item));
+  const moreActive = more.some((g) => g.items.some(isMoreItemActive));
 
   // The panel closes on Escape, on a click outside it and when focus leaves it.
   useEffect(() => {
@@ -162,7 +165,6 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
     scroller.scrollLeft += at.left - box.left - (box.width - at.width) / 2;
   }, [activeItemHref, navLoading]);
 
-  const isActive = (item: NavItem) => item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref);
 
   const hasPip = (item: NavItem) => item.href === "/systems" && healthTone !== null;
   const renderIcon = (item: NavItem) => (
@@ -189,7 +191,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
     return (
       <li key={item.href}>
         <Link
-          href={cleaning ? "/fix?tab=cleaning" : resolveNavHref(item.href, role)}
+          href={cleaning ? "/fix?tab=cleaning" : resolveNavHref(item.href, role, can)}
           aria-current={active ? "page" : undefined}
           // With a health pip the name starts with the visible pill text and keeps the badge count, then the health.
           aria-label={showPip && healthLabel ? `${PILL_LABEL[item.href] ?? item.label}${count > 0 ? ` ${count > 99 ? "99+" : count}` : ""}, ${healthLabel}` : undefined}
@@ -210,7 +212,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
 
   return (
     <header className="m-topnav m-print-hide" data-tour="rail">
-      <Link href={resolveNavHref("/home/lead", role)} aria-label="Meridian" className="m-topnav-brand">
+      <Link href={resolveNavHref("/home/lead", role, can)} aria-label="Meridian" className="m-topnav-brand">
         <MeridianMark size={24} variant="two-tone" aria-hidden />
         <span className="hidden sm:inline">Meridian</span>
       </Link>
@@ -277,8 +279,8 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
               {g.items.map((item) => (
                 <Link
                   key={item.href}
-                  href={resolveNavHref(item.href, role)}
-                  aria-current={item.href === activeItemHref ? "page" : undefined}
+                  href={resolveNavHref(item.href, role, can)}
+                  aria-current={isMoreItemActive(item) ? "page" : undefined}
                   aria-label={hasPip(item) && healthLabel ? `${item.label}, ${healthLabel}` : undefined}
                   className="m-topnav-item"
                   onClick={() => setMoreOpen(false)}

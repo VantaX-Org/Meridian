@@ -17,6 +17,8 @@ const role = vi.hoisted(() => ({ denied: new Set<string>() }));
 vi.mock("@/hooks/use-role", () => ({
   useRole: () => ({ can: (p: string) => !role.denied.has(p) }),
 }));
+// The write-back panel compares the signed-in user with the request's requester.
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1", email: "u1@x.com", name: "U1", role: "admin" } }) }));
 
 const record: MasterRecordDetail = {
   id: "m1",

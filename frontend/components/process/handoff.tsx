@@ -27,10 +27,12 @@ export interface HandoffTarget {
   field?: string;
 }
 
-/** yyyy-mm-dd of today plus `days`, in local time (what a date input shows). */
+/**
+ * yyyy-mm-dd of today plus `days`, by the UTC calendar: the API refuses a due date before today's UTC date
+ * (api/routes/stewardship.py), so west of UTC in the evening the local date would be refused as past.
+ */
 export function dateInDays(days: number, from: Date = new Date()): string {
-  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() + days)).toISOString().slice(0, 10);
 }
 
 const personLabel = (s: HandoffSteward) => `${s.name || s.email}, ${roleLabel(s.role)}`;
