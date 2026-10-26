@@ -251,3 +251,80 @@ def test_process_owner_raises_exceptions_and_comments_on_issues(engines, monkeyp
         asyncio.run(scenario())
     finally:
         asyncio.run(aeng.dispose())
+
+
+def test_handoff_targets_resolve_role_grants_and_assign_checks_the_user(engines, monkeypatch):
+    """Scoped and custom-role grants that hold `apply` make a user a hand-off target (users.role alone does
+    not decide); assigning a task to an unknown or inactive user is a 422."""
+    import asyncio
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.stewardship import router as stewardship_router
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    owner, app_eng = engines
+    tid, vid, _fid, users = _seed(owner)
+    extra = {k: str(uuid.uuid4()) for k in ("scoped", "other_module", "custom", "inactive")}
+    with owner.begin() as c:
+        for k, uid in extra.items():
+            c.execute(text("INSERT INTO users (id, tenant_id, email, name, role, is_active) "
+                           "VALUES (:i, :t, :e, :n, 'viewer', :a)"),
+                      {"i": uid, "t": tid, "e": f"{k}-{uid[:8]}@example.test", "n": k, "a": k != "inactive"})
+        c.execute(text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key, module) VALUES "
+                       "(:t, :s, 'data_steward', 'mm_purchasing'), (:t, :o, 'data_steward', 'fi_gl')"),
+                  {"t": tid, "s": extra["scoped"], "o": extra["other_module"]})
+        rid = c.execute(text("INSERT INTO roles (tenant_id, key, name) VALUES (:t, 'custom:fixer', 'Fixer') "
+                             "RETURNING id"), {"t": tid}).scalar()
+        c.execute(text("INSERT INTO role_permissions (role_id, resource, action) VALUES (:r, 'fixes', 'run')"),
+                  {"r": rid})
+        c.execute(text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key) VALUES (:t, :u, 'custom:fixer')"),
+                  {"t": tid, "u": extra["custom"]})
+        task = str(c.execute(text("INSERT INTO stewardship_queue (tenant_id, item_type, source_id, domain, priority, "
+                                  "status) VALUES (:t, 'exception', gen_random_uuid(), 'mm_purchasing', 2, 'open') "
+                                  "RETURNING id"), {"t": tid}).scalar())
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(stewardship_router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "Handoff", [])
+    due = (date.today() + timedelta(days=7)).isoformat()
+    body = {"check_id": "PO-12", "module": "mm_purchasing", "note": "Vendor blank", "due_date": due,
+            "version_id": vid}
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            pa, steward = {"X-User-Role": "process_analyst"}, {"X-User-Role": "data_steward"}
+            r = await c.get("/api/v1/stewardship/handoff/stewards", headers=pa)
+            assert r.status_code == 200
+            assert {u["id"] for u in r.json()} == {users["data_steward"], extra["scoped"], extra["other_module"],
+                                                   extra["custom"]}
+            for k in ("scoped", "custom"):
+                r = await c.post("/api/v1/stewardship/handoff", headers=pa, json={**body, "assignee_id": extra[k]})
+                assert r.status_code == 201, (k, r.text)
+            # a grant scoped to another object does not cover this rule
+            r = await c.post("/api/v1/stewardship/handoff", headers=pa,
+                             json={**body, "assignee_id": extra["other_module"]})
+            assert r.status_code == 422
+
+            assign = f"/api/v1/stewardship/{task}/assign"
+            for bad in (str(uuid.uuid4()), extra["inactive"], "not-a-uuid"):
+                assert (await c.put(assign, headers=steward, json={"user_id": bad})).status_code == 422, bad
+            r = await c.put(assign, headers=steward, json={"user_id": extra["custom"]})
+            assert r.status_code == 200, r.text
+            assert r.json()["assigned_to"] == extra["custom"]
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        asyncio.run(aeng.dispose())

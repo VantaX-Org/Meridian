@@ -22,8 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.notifications import create_notification
-from api.services.rbac import (current_user_id, current_user_label, dev_role_override, has_permission,
-                               require_permission, scope_from_path)
+from api.services.rbac import (actions_for, current_user_id, current_user_label, dev_role_override,
+                               has_permission, require_permission, scope_from_path, user_grants)
 
 
 def sees_steward_breakdown(role: str) -> bool:
@@ -425,6 +425,21 @@ def can_fix(role: str) -> bool:
     return has_permission(role, "apply")
 
 
+async def user_can_fix(db: AsyncSession, tenant_id: uuid_mod.UUID, user_id: str, role: str,
+                       module: Optional[str] = None) -> bool:
+    """A hand-off target: users.role or any role grant (built-in or custom, scoped or not) holds `apply`.
+
+    With ``module`` only grants covering that module count; the system is not known at hand-off,
+    so a grant scoped to one system still counts.
+    """
+    for key, scope in await user_grants(db, tenant_id, user_id, role):
+        if module is not None and scope.module is not None and scope.module != module:
+            continue
+        if "apply" in await actions_for(key, tenant_id, db):
+            return True
+    return False
+
+
 class HandoffBody(BaseModel):
     check_id: str = Field(..., min_length=1, max_length=128)
     module: str = Field(..., min_length=1, max_length=64, description="the object (module) the rule runs on")
@@ -462,7 +477,8 @@ async def handoff_stewards(
     await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
     rows = await db.execute(text("SELECT id, name, email, role FROM users WHERE tenant_id = :tid AND is_active "
                                  "ORDER BY name, email"), {"tid": str(tenant.id)})
-    return [StewardOut(id=str(r[0]), name=r[1], email=r[2], role=r[3]) for r in rows.fetchall() if can_fix(r[3])]
+    return [StewardOut(id=str(r[0]), name=r[1], email=r[2], role=r[3]) for r in rows.fetchall()
+            if await user_can_fix(db, tenant.id, str(r[0]), r[3])]
 
 
 @router.post("/stewardship/handoff", response_model=HandoffOut, status_code=201)
@@ -479,7 +495,7 @@ async def handoff_rule(
         raise HTTPException(status_code=422, detail="The due date is in the past")
     who = (await db.execute(text("SELECT role, is_active FROM users WHERE id = :u AND tenant_id = :tid"),
                             {"u": str(body.assignee_id), "tid": tid})).fetchone()
-    if not who or not who[1] or not can_fix(who[0]):
+    if not who or not who[1] or not await user_can_fix(db, tenant.id, str(body.assignee_id), who[0], body.module):
         raise HTTPException(status_code=422, detail="Hand the rule to an active user who can fix data")
 
     # The finding the task tracks: the one named, else the rule's finding on that object in that run.
@@ -544,6 +560,14 @@ async def assign_queue_item(
 
     if body.user_id is None:
         return await _release_queue_item(db, str(tenant.id), item_id)
+
+    try:
+        assignee = str(uuid_mod.UUID(body.user_id))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Assign the task to an active user of this tenant")
+    if not (await db.execute(text("SELECT 1 FROM users WHERE id = :u AND tenant_id = :t AND is_active"),
+                             {"u": assignee, "t": str(tenant.id)})).scalar():
+        raise HTTPException(status_code=422, detail="Assign the task to an active user of this tenant")
 
     result = await db.execute(
         text("UPDATE stewardship_queue SET assigned_to = :uid, status = 'in_progress', updated_at = now(), assigned_at = now(), assigned_team_id = NULL, assigned_by_rule = NULL WHERE id = :id AND tenant_id = :tid RETURNING id"),

@@ -54,13 +54,18 @@ def run(session: Any, tenant_id: str, request_id: str, mode: str) -> dict:
     try:
         result = gw.execute_targets(targets or [], domain, obj_key, apply,
                                     lambda sid: gw.connect_system(session, tenant_id, sid))
-    except SoftTimeLimitExceeded:
+    except Exception as e:  # noqa: BLE001 - any failure must release the claim, then re-raise
+        # Not only connector errors: a credential that fails to decrypt or a malformed target would
+        # otherwise leave the request 'applying'/'simulating', holding the record's one open slot forever.
         session.rollback()
+        error = "Timed out" if isinstance(e, SoftTimeLimitExceeded) else f"Write-back failed ({type(e).__name__})"
         session.execute(text(
-            "UPDATE golden_writeback_requests SET status = :st, error = 'Timed out', updated_at = now() "
-            "WHERE id = :id AND tenant_id = :t"),
-            {"id": request_id, "t": tenant_id, "st": "failed" if apply else "simulation_failed"})
+            "UPDATE golden_writeback_requests SET status = :st, error = :err, updated_at = now() "
+            "WHERE id = :id AND tenant_id = :t AND status = :claimed"),
+            {"id": request_id, "t": tenant_id, "st": "failed" if apply else "simulation_failed", "err": error,
+             "claimed": claim_to})
         session.commit()
+        logger.exception("golden write-back %s %s failed", mode, request_id)
         raise
 
     counts = gw.summarise(result)
@@ -71,10 +76,17 @@ def run(session: Any, tenant_id: str, request_id: str, mode: str) -> dict:
         status = "simulated" if not counts.get("error") or counts.get("would_change") or counts.get("unchanged") \
             else "simulation_failed"
     stamp = "applied_at" if apply else "simulated_at"
-    session.execute(text(
+    # Only the run that still holds the claim records its outcome: a simulation cancelled meanwhile
+    # (superseded by a newer one) stays cancelled instead of coming back as simulated.
+    done = session.execute(text(
         f"UPDATE golden_writeback_requests SET status = :st, targets = CAST(:tg AS jsonb), {stamp} = now(), "
-        "updated_at = now() WHERE id = :id AND tenant_id = :t"),
-        {"st": status, "tg": json.dumps(result, default=str), "id": request_id, "t": tenant_id})
+        "updated_at = now() WHERE id = :id AND tenant_id = :t AND status = :claimed RETURNING id"),
+        {"st": status, "tg": json.dumps(result, default=str), "id": request_id, "t": tenant_id,
+         "claimed": claim_to}).fetchone()
+    if done is None:
+        session.commit()
+        logger.info("golden write-back %s %s: no longer %s, result dropped", mode, request_id, claim_to)
+        return {"skipped": True, "reason": f"request is no longer {claim_to}"}
     if apply:
         written = {x["field"]: x["golden_value"] for tg in result for x in tg["fields"] if x.get("result") == "written"}
         session.execute(text(

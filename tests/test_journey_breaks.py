@@ -45,7 +45,8 @@ def test_mark_resolved_closes_writeback_once_cleaning_row_left_approved() -> Non
     stmts = [_norm(q) for q, _ in s.sql]
     wb = next(q for q in stmts if "item_type = 'writeback_approval'" in q)
     assert "NOT EXISTS" in wb and "cq.status = 'approved'" in wb and "cq.tenant_id = :tid" in wb
-    assert "sq.status IN ('open', 'in_progress')" in wb  # idempotent: resolved rows are left alone
+    # idempotent: resolved rows are left alone; escalated ones close too
+    assert "sq.status IN ('open', 'in_progress', 'escalated')" in wb
     cb = next(q for q in stmts if "item_type = 'contract_breach'" in q)
     assert "c.status = 'active'" in cb and "ORDER BY cch.recorded_at DESC LIMIT 1" in cb and "IS NOT TRUE" in cb
     assert all(p == {"tid": "t1"} for _, p in s.sql)
@@ -111,4 +112,4 @@ def test_merge_accept_resolves_the_merge_decision_task(monkeypatch: pytest.Monke
     sql, params = _last(db)
     assert sql.startswith("UPDATE stewardship_queue SET status = 'resolved'")
     assert "item_type = 'merge_decision'" in sql and "source_id = :id" in sql and "tenant_id = :tid" in sql
-    assert "status IN ('open', 'in_progress')" in sql and params == {"tid": "t1", "id": "ms1"}
+    assert "status IN ('open', 'in_progress', 'escalated')" in sql and params == {"tid": "t1", "id": "ms1"}

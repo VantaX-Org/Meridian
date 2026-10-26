@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -29,7 +31,16 @@ router = APIRouter(prefix="/api/v1", tags=["master-records"])
 logger = logging.getLogger("meridian.golden_writeback")
 
 
+def _uuid_or_404(value: str, what: str) -> str:
+    """A malformed id names nothing: 404, not a 500 from the uuid cast in Postgres."""
+    try:
+        return str(uuid.UUID(str(value)))
+    except ValueError:
+        raise HTTPException(status_code=404, detail=f"{what} not found") from None
+
+
 async def _record(db: AsyncSession, tenant_id: str, record_id: str) -> dict:
+    record_id = _uuid_or_404(record_id, "Master record")
     await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": tenant_id})
     row = (await db.execute(text(
         "SELECT id, domain, sap_object_key, golden_fields, source_contributions, status "
@@ -119,6 +130,7 @@ async def submit_writeback_request(
     tid = str(tenant.id)
     user = _require_user(request)
     rec = await _record(db, tid, record_id)
+    request_id = _uuid_or_404(request_id, "Write-back request")
     row = (await db.execute(text(
         f"SELECT {gw.REQUEST_COLUMNS} FROM golden_writeback_requests WHERE id = :id AND tenant_id = :t "
         "AND master_record_id = :r FOR UPDATE"), {"id": request_id, "t": tid, "r": record_id})).fetchone()
@@ -130,9 +142,20 @@ async def submit_writeback_request(
         raise HTTPException(status_code=403, detail="Only the user who simulated this write-back can submit it")
     if not gw.summarise(row[6] or []).get("would_change"):
         raise HTTPException(status_code=409, detail="The simulation found nothing to change in SAP.")
-    await db.execute(text(
-        "UPDATE golden_writeback_requests SET status = 'pending_approval', updated_at = now() "
-        "WHERE id = :id AND tenant_id = :t AND status = 'simulated'"), {"id": request_id, "t": tid})
+    busy = (await db.execute(text(
+        "SELECT status FROM golden_writeback_requests WHERE tenant_id = :t AND master_record_id = :r AND id <> :id "
+        "AND status IN ('pending_approval', 'approved', 'applying') LIMIT 1"),
+        {"t": tid, "r": record_id, "id": request_id})).scalar()
+    if busy:
+        raise HTTPException(status_code=409, detail=f"A write-back of this record is already {busy.replace('_', ' ')}.")
+    try:
+        await db.execute(text(
+            "UPDATE golden_writeback_requests SET status = 'pending_approval', updated_at = now() "
+            "WHERE id = :id AND tenant_id = :t AND status = 'simulated'"), {"id": request_id, "t": tid})
+    except IntegrityError:  # a concurrent submit won the one open slot (uq_golden_writeback_open)
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="A write-back of this record is already waiting or running.") \
+            from None
     await db.execute(text(
         "INSERT INTO stewardship_queue (id, tenant_id, item_type, source_id, domain, priority, status, sla_hours, due_at) "
         "VALUES (gen_random_uuid(), :t, 'golden_writeback', :r, :d, 2, 'open', 24, now() + interval '24 hours')"),

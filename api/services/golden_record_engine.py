@@ -166,11 +166,13 @@ async def _get_or_create_master_record(
     """Find existing master record or prepare for creation.
 
     Returns: (record_id, golden_fields, source_contributions, is_new). For a record in a merge
-    cluster the contributions are its own pre-merge ones (own_contributions, migration 090).
+    cluster the fields and contributions are its own pre-merge ones (own_fields /
+    own_contributions, migration 090), so the fused values of merged members never leak into
+    the record's own_fields on the next sync.
     """
     result = await db.execute(
         text("""
-            SELECT id, golden_fields,
+            SELECT id, COALESCE(own_fields, golden_fields),
                    CASE WHEN own_fields IS NULL THEN source_contributions
                         ELSE COALESCE(own_contributions, source_contributions) END
             FROM master_records

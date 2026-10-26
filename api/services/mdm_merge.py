@@ -279,6 +279,7 @@ async def unmerge(db: AsyncSession, tenant_id: str, golden_id: str, split_keys: 
         await db.execute(text("""
             UPDATE master_records SET merged_into = NULL, status = 'candidate', golden_fields = CAST(:f AS jsonb),
                    source_contributions = COALESCE(own_contributions, source_contributions),
+                   own_fields = NULL, own_contributions = NULL,
                    survivorship_explanation = NULL, steward_overrides = '{}'::jsonb, updated_at = now()
              WHERE tenant_id = :tid AND id = :id
         """), {"tid": tenant_id, "id": str(r.id), "f": json.dumps(_own(r), default=str)})
@@ -288,6 +289,10 @@ async def unmerge(db: AsyncSession, tenant_id: str, golden_id: str, split_keys: 
     remaining = [r for r in members if r.sap_object_key not in split]
     new_ov = dict(restore_overrides) if restore_overrides is not None else ov
     golden = await _recompute(db, tenant_id, head, remaining, new_ov)
+    if not remaining:
+        # A head left with no members is standalone again: sync updates its golden values directly.
+        await db.execute(text("UPDATE master_records SET own_fields = NULL, own_contributions = NULL "
+                              "WHERE tenant_id = :tid AND id = :id"), {"tid": tenant_id, "id": str(head.id)})
     await db.execute(_HIST, {"tid": tenant_id, "mid": head.id, "uid": user_id, "ct": "unmerged",
                              "prev": json.dumps(head.golden_fields or {}, default=str),
                              "new": json.dumps(golden, default=str)})

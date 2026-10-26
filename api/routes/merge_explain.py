@@ -595,7 +595,7 @@ async def _accept(db: AsyncSession, tid: str, score_id: str, reason: Optional[st
     # The Inbox's merge_decision task for this pair is done now, not at the next 15 min queue sweep.
     await db.execute(text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now() "
                           "WHERE tenant_id = :tid AND item_type = 'merge_decision' AND source_id = :id "
-                          "AND status IN ('open', 'in_progress')"),
+                          "AND status IN ('open', 'in_progress', 'escalated')"),
                      {"tid": tid, "id": score_id})
 
 

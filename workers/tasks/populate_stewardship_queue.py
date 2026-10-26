@@ -145,6 +145,7 @@ def _populate_writeback_approvals(session: Session, tid: str) -> int:
               AND NOT EXISTS (
                   SELECT 1 FROM stewardship_queue sq
                   WHERE sq.source_id = cq.id AND sq.item_type = 'writeback_approval' AND sq.tenant_id = :tid
+                    AND sq.status <> 'resolved'  -- a resolved task does not stop a re-approval's new one
               )
         """),
         {"tid": tid},
@@ -174,6 +175,10 @@ def _populate_contract_breaches(session: Session, tid: str) -> int:
               AND NOT EXISTS (
                   SELECT 1 FROM stewardship_queue sq
                   WHERE sq.source_id = c.id AND sq.item_type = 'contract_breach' AND sq.tenant_id = :tid
+                    -- a task resolved before the latest failure does not hide that re-breach
+                    AND (sq.status <> 'resolved' OR COALESCE(sq.resolved_at, sq.updated_at) >= (
+                        SELECT max(cch.recorded_at) FROM contract_compliance_history cch
+                        WHERE cch.contract_id = c.id AND cch.overall_compliant = false))
               )
         """),
         {"tid": tid},
@@ -216,7 +221,7 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
             SET status = 'resolved', updated_at = now(), resolved_at = now()
             WHERE sq.tenant_id = :tid
               AND sq.item_type = 'merge_decision'
-              AND sq.status IN ('open', 'in_progress')
+              AND sq.status IN ('open', 'in_progress', 'escalated')
               AND EXISTS (
                   SELECT 1 FROM match_scores ms
                   WHERE ms.id = sq.source_id AND ms.reviewed_by IS NOT NULL
@@ -233,7 +238,7 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
             SET status = 'resolved', updated_at = now(), resolved_at = now()
             WHERE sq.tenant_id = :tid
               AND sq.item_type = 'golden_record_review'
-              AND sq.status IN ('open', 'in_progress')
+              AND sq.status IN ('open', 'in_progress', 'escalated')
               AND EXISTS (
                   SELECT 1 FROM master_records mr
                   WHERE mr.id = sq.source_id AND mr.status IN ('golden', 'promoted')
@@ -250,7 +255,7 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
             SET status = 'resolved', updated_at = now(), resolved_at = now()
             WHERE sq.tenant_id = :tid
               AND sq.item_type = 'exception'
-              AND sq.status IN ('open', 'in_progress')
+              AND sq.status IN ('open', 'in_progress', 'escalated')
               AND EXISTS (
                   SELECT 1 FROM exceptions e
                   WHERE e.id = sq.source_id AND e.status IN ('resolved', 'closed')
@@ -268,7 +273,7 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
             SET status = 'resolved', updated_at = now(), resolved_at = now()
             WHERE sq.tenant_id = :tid
               AND sq.item_type = 'writeback_approval'
-              AND sq.status IN ('open', 'in_progress')
+              AND sq.status IN ('open', 'in_progress', 'escalated')
               AND NOT EXISTS (
                   SELECT 1 FROM cleaning_queue cq
                   WHERE cq.id = sq.source_id AND cq.tenant_id = :tid AND cq.status = 'approved'
@@ -286,7 +291,7 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
             SET status = 'resolved', updated_at = now(), resolved_at = now()
             WHERE sq.tenant_id = :tid
               AND sq.item_type = 'contract_breach'
-              AND sq.status IN ('open', 'in_progress')
+              AND sq.status IN ('open', 'in_progress', 'escalated')
               AND NOT EXISTS (
                   SELECT 1 FROM contracts c
                   WHERE c.id = sq.source_id AND c.tenant_id = :tid AND c.status = 'active'

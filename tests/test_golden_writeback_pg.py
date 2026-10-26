@@ -244,3 +244,144 @@ def test_golden_writeback_round_trip(app_engine, monkeypatch):  # noqa: F811
             await aeng.dispose()
 
     asyncio.run(main())
+
+
+def test_golden_writeback_races_and_malformed_ids(app_engine, monkeypatch):  # noqa: F811
+    """A simulation cancelled while the worker runs stays cancelled; submitting while another request holds
+    the record's one open slot is a 409, not a unique-index 500; malformed ids are 404s."""
+    from fastapi import FastAPI, Request
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes import golden_writeback as routes
+    from api.services import golden_writeback as gw
+    from workers.db import tenant_session
+    from workers.tasks import run_golden_writeback as worker
+
+    owner, app_eng = app_engine
+    tid = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'G3')"), {"a": tid})
+    rec = _seed(owner, tid, "s4hana_cloud", "1000", GOLDEN)
+    sap = FakeOData()
+    monkeypatch.setattr(gw, "connect_system", lambda session, t, sid: sap)
+    queued: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(gw, "enqueue", lambda rid, t, mode: queued.append((rid, t, mode)))
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+
+    def status(rid: str) -> str:
+        with owner.begin() as c:
+            return c.execute(text("SELECT status FROM golden_writeback_requests WHERE id = :i"), {"i": rid}).scalar()
+
+    def run(rid: str, mode: str) -> dict:
+        s = tenant_session(app_eng, tid)
+        try:
+            return worker.run(s, tid, rid, mode)
+        finally:
+            s.close()
+
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(routes.router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "G", [])
+
+    @api.middleware("http")
+    async def _as_user(request: Request, call_next):
+        request.state.local_user_id = "alice"
+        return await call_next(request)
+
+    h = {"X-User-Role": "admin"}
+    base = f"/api/v1/master-records/{rec}/writeback"
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            assert (await c.get("/api/v1/master-records/not-a-uuid/writeback/preview", headers=h)).status_code == 404
+            assert (await c.get("/api/v1/master-records/not-a-uuid/writeback/requests", headers=h)).status_code == 404
+            assert (await c.post(f"{base}/requests/not-a-uuid/submit", headers=h)).status_code == 404
+
+            # cancelled (superseded) while the worker simulates: the result is dropped
+            first = (await c.post(f"{base}/requests", headers=h)).json()["id"]
+            real = gw.execute_targets
+
+            def cancel_midway(*a, **k):
+                with owner.begin() as conn:
+                    conn.execute(text("UPDATE golden_writeback_requests SET status = 'cancelled' WHERE id = :i"),
+                                 {"i": first})
+                return real(*a, **k)
+
+            monkeypatch.setattr(gw, "execute_targets", cancel_midway)
+            assert run(first, "simulate")["skipped"] is True
+            assert status(first) == "cancelled"
+            monkeypatch.setattr(gw, "execute_targets", real)
+
+            # a simulated request cannot be submitted while another holds the open slot
+            second = (await c.post(f"{base}/requests", headers=h)).json()["id"]
+            assert run(second, "simulate")["status"] == "simulated"
+            with owner.begin() as conn:
+                conn.execute(text("INSERT INTO golden_writeback_requests (tenant_id, master_record_id, status, "
+                                  "requested_by) VALUES (:t, :r, 'pending_approval', 'carol')"), {"t": tid, "r": rec})
+            r = await c.post(f"{base}/requests/{second}/submit", headers=h)
+            assert r.status_code == 409 and "pending approval" in r.json()["detail"], r.text
+            assert status(second) == "simulated"
+
+    async def main():
+        try:
+            await scenario()
+        finally:
+            await aeng.dispose()
+
+    asyncio.run(main())
+
+
+@pytest.mark.parametrize("mode", ["apply", "simulate"])
+def test_worker_error_releases_the_claim(app_engine, monkeypatch, mode):  # noqa: F811
+    """Any error (not only a connector error), e.g. a credential that fails to decrypt, fails the request
+    instead of leaving it applying/simulating and holding the record's one open slot."""
+    from sqlalchemy import text
+
+    from api.services import golden_writeback as gw
+    from workers.db import tenant_session
+    from workers.tasks import run_golden_writeback as worker
+
+    owner, app_eng = app_engine
+    tid = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'GE')"), {"a": tid})
+    rec = _seed(owner, tid, "s4hana_cloud", "1000", GOLDEN)
+    targets = [{"system_id": str(uuid.uuid4()), "system_name": "x", "system_type": "s4hana_cloud", "supported": True,
+                "fields": [{"field": "BUT000.NAME_ORG1", "supported": True, "result": "would_change",
+                            "golden_value": "A", "target": "OrganizationBPName1"}]}]
+    with owner.begin() as c:
+        req = str(c.execute(text(
+            "INSERT INTO golden_writeback_requests (tenant_id, master_record_id, status, requested_by, targets) "
+            "VALUES (:t, :r, :s, 'u1', CAST(:tg AS jsonb)) RETURNING id"),
+            {"t": tid, "r": rec, "s": "approved" if mode == "apply" else "simulating",
+             "tg": json.dumps(targets)}).scalar())
+
+    class InvalidTag(Exception):
+        pass
+
+    def boom(session, t, sid):
+        raise InvalidTag()
+
+    monkeypatch.setattr(gw, "connect_system", boom)
+    s = tenant_session(app_eng, tid)
+    try:
+        with pytest.raises(InvalidTag):
+            worker.run(s, tid, req, mode)
+    finally:
+        s.close()
+    with owner.begin() as c:
+        st, err = c.execute(text("SELECT status, error FROM golden_writeback_requests WHERE id = :i"),
+                            {"i": req}).one()
+    assert st == ("failed" if mode == "apply" else "simulation_failed")
+    assert err == "Write-back failed (InvalidTag)"
