@@ -212,7 +212,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                   <ul className="flex flex-col gap-1 m-text-body">
                     {impactQuery.data.impacts.map((bucket) => (
                       <li key={bucket.category}>
-                        {labelOf(bucket.category)} puts {formatMoney(bucket.annual_risk_zar, bucket.currency)} a year at risk across {bucket.finding_count.toLocaleString()} finding{bucket.finding_count === 1 ? "" : "s"}.
+                        {labelOf(bucket.category)} puts {formatMoney(bucket.annual_risk, bucket.currency)} a year at risk across {bucket.finding_count.toLocaleString()} finding{bucket.finding_count === 1 ? "" : "s"}.
                       </li>
                     ))}
                   </ul>

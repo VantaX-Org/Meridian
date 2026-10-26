@@ -103,26 +103,28 @@ export interface PrescriptiveResponse {
 
 export interface ImpactBucket {
   category: string;
-  annual_risk_zar: number;
-  mitigated_zar: number;
+  /** A year's risk, priced from the tenant cost model's unit cost for this defect type. */
+  annual_risk: number;
+  /** The share of `annual_risk` the cost model says is mitigated. */
+  mitigated: number;
+  /** Historical names of the same amounts (the impact_records columns); not rand despite the suffix. */
+  annual_risk_zar?: number;
+  mitigated_zar?: number;
   finding_count: number;
   calculation_method: string;
-  /**
-   * The currency of the amounts: the buckets are priced with fixed rand constants, not the tenant cost model, so the
-   * API says "ZAR" (api/services/analytics_engine.py:RISK_CURRENCY). Print with this, never the tenant currency.
-   */
+  /** The currency of the amounts: the tenant cost model's (api/services/analytics_engine.py). Print with this. */
   currency: string;
 }
 
 export interface RoiSummary {
-  /** Null when no subscription is configured: there is no setting for it, so no fee is invented. */
+  /** Null until the cost model states a monthly subscription (Admin, Settings): no fee is invented. */
   subscription_annual: number | null;
   risk_mitigated: number;
   /** Null without a configured subscription (nothing to divide by). */
   roi_multiple: number | null;
   /** Null without a configured subscription, or before any cost is avoided. */
   payback_months: number | null;
-  /** The currency of the amounts ("ZAR": a fixed rand subscription and rand risk constants, not the cost model). */
+  /** The currency of the amounts: the tenant cost model's. */
   currency: string;
 }
 

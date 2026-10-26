@@ -131,7 +131,7 @@ async def get_impact(
             return {"version_id": None, "rows": []}
         version_id = resolved
 
-    # features_value: tenant's own CostModel.features (api/routes/settings.py), ZAR per
+    # features_value: tenant's own CostModel.features (api/routes/settings.py), tenant currency per
     # blocked record. No numeric default exists in db/seeds/config_impact_rules.yaml, so a
     # feature the tenant hasn't priced is skipped rather than guessing a cost (deviation
     # from the brief's Step 3 "seeded default" — that field does not exist in the YAML).
