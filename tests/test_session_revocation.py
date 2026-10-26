@@ -179,7 +179,7 @@ def test_change_password_returns_token_at_new_version(monkeypatch: pytest.Monkey
             if "jwt_secret" in sql:
                 return _Row((SECRET,))
             if "password_hash, is_active" in sql:
-                return _Row((UID, hash_password("the-old-password"), True, "u@example.test", "viewer", False))
+                return _Row((UID, hash_password("the-old-password"), True, "u@example.test", "viewer"))
             if sql.startswith("UPDATE users"):
                 return _Row((4,))
             return _Row(None)

@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { isAxiosError } from "axios";
 import apiClient from "@/lib/api/client";
-import { changeOwnPassword, verifyLoginCode, type LoginApiResponse } from "@/lib/api/auth";
+import { changeOwnPassword } from "@/lib/api/auth";
 import { clearLocalPreferences } from "@/lib/preferences";
 
 export interface AuthUser {
@@ -27,24 +27,12 @@ interface AuthContextValue {
   error: string | null;
   /** Re-checks the stored session after an `error`. */
   retry: () => void;
-  /**
-   * The organisation requires two-factor sign-in and this user has none: the session reaches only the set-up
-   * routes until it is confirmed (api/middleware/local_auth.py), so the guard shows the set-up screen.
-   */
-  mustEnrolTwoFactor: boolean;
-  /** Email and password. A user with two-factor sign-in gets `mfa_required` and no session yet. */
-  login: (email: string, password: string) => Promise<LoginResult>;
-  /** The second sign-in step: the pending token from `login` and a code from the app or a recovery code. */
-  verifyCode: (mfaToken: string, code: string) => Promise<AuthUser>;
-  /** Set-up confirmed: store the full session that replaces the set-up-only one. */
-  completeTwoFactorEnrolment: (token: string) => void;
+  login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
   /** Rotate the signed-in user's password and clear the
    * `must_change_password` flag. Throws on failure. */
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
-
-export type LoginResult = { status: "signed_in"; user: AuthUser } | { status: "mfa_required"; mfaToken: string };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -78,7 +66,6 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [mustEnrolTwoFactor, setMustEnrolTwoFactor] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -95,7 +82,6 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
             setToken(stored);
             setUser(res.data.user);
             setMustChangePassword(Boolean(res.data.must_change_password));
-            setMustEnrolTwoFactor(Boolean(res.data.must_enrol_2fa));
           })
           .catch((e: unknown) => {
             if (cancelled) return;
@@ -119,41 +105,16 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
     setAttempt((n) => n + 1);
   }, []);
 
-  /** Store the session a sign-in step returned. */
-  const startSession = useCallback((body: LoginApiResponse): AuthUser => {
-    const { token: newToken, user: newUser } = body;
-    if (typeof newToken !== "string" || !newToken || !isAuthUser(newUser)) {
-      throw new Error("Login response did not include a valid user.");
-    }
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await apiClient.post("/api/v1/auth/login", { email, password });
+    const { token: newToken, user: newUser, must_change_password } = res.data;
+    if (!isAuthUser(newUser)) throw new Error("Login response did not include a valid user.");
     localStorage.setItem(TOKEN_KEY, newToken);
     setSessionCookie(true);
     setToken(newToken);
     setUser(newUser);
-    setMustChangePassword(Boolean(body.must_change_password));
-    setMustEnrolTwoFactor(Boolean(body.must_enrol_2fa));
+    setMustChangePassword(Boolean(must_change_password));
     return newUser;
-  }, []);
-
-  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
-    const res = await apiClient.post<LoginApiResponse>("/api/v1/auth/login", { email, password });
-    if (res.data.mfa_required) {
-      if (typeof res.data.mfa_token !== "string" || !res.data.mfa_token) {
-        throw new Error("Login response asked for a code but did not include a sign-in token.");
-      }
-      return { status: "mfa_required", mfaToken: res.data.mfa_token };
-    }
-    return { status: "signed_in", user: startSession(res.data) };
-  }, [startSession]);
-
-  const verifyCode = useCallback(
-    async (mfaToken: string, code: string) => startSession(await verifyLoginCode(mfaToken, code)),
-    [startSession],
-  );
-
-  const completeTwoFactorEnrolment = useCallback((newToken: string) => {
-    localStorage.setItem(TOKEN_KEY, newToken);
-    setToken(newToken);
-    setMustEnrolTwoFactor(false);
   }, []);
 
   const logout = useCallback(() => {
@@ -163,7 +124,6 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
     setMustChangePassword(false);
-    setMustEnrolTwoFactor(false);
   }, []);
 
   const changePassword = useCallback(
@@ -177,10 +137,7 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{
-        user, token, isLoading, mustChangePassword, mustEnrolTwoFactor, error, retry,
-        login, verifyCode, completeTwoFactorEnrolment, logout, changePassword,
-      }}
+      value={{ user, token, isLoading, mustChangePassword, error, retry, login, logout, changePassword }}
     >
       {children}
     </AuthContext.Provider>

@@ -22,8 +22,6 @@ DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 
 _EXCLUDED_PATHS = {
     "/api/v1/auth/login",
-    # The second sign-in step: its body carries the pending token from /login, never a session.
-    "/api/v1/auth/login/2fa",
     "/api/v1/auth/accept-invite",
     "/api/v1/auth/forgot-password",
     "/api/v1/auth/reset-password",
@@ -31,17 +29,6 @@ _EXCLUDED_PATHS = {
     "/api/v1/licence",
     "/health",
 }
-
-# What a session marked ``mfa_enrol`` may reach (the tenant requires two-factor sign-in and the user has
-# none yet): who they are, setting it up, and the forced password change that may come first.
-MFA_ENROL_PATHS = frozenset({
-    "/api/v1/auth/me",
-    "/api/v1/auth/2fa",
-    "/api/v1/auth/2fa/setup",
-    "/api/v1/auth/2fa/confirm",
-    "/api/v1/auth/change-password",
-})
-MFA_ENROL_DETAIL = "Set up two-factor sign-in to continue."
 
 # Cache jwt_secret in memory to avoid DB hit on every request
 _jwt_secret_cache: dict[str, str] = {}
@@ -215,10 +202,6 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
                 status_code=401,
                 content={"detail": "Session has been revoked. Sign in again."},
             )
-
-        # A session that may only set up two-factor sign-in reaches nothing else until it has.
-        if payload.get("mfa_enrol") and path not in MFA_ENROL_PATHS:
-            return JSONResponse(status_code=403, content={"detail": MFA_ENROL_DETAIL, "error": "mfa_enrol_required"})
 
         # Set user info on request state for downstream use
         request.state.local_user_id = payload.get("sub")

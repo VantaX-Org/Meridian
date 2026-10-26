@@ -11,8 +11,6 @@ ROOT = Path(__file__).resolve().parent.parent
 _UNGUARDED_OK = {
     ("auth.py", "/login"), ("auth.py", "/change-password"), ("auth.py", "/accept-invite"),
     ("auth.py", "/forgot-password"), ("auth.py", "/reset-password"), ("auth.py", "/invite/preview"),
-    # Two-factor sign-in: the second sign-in step (no session yet) and the caller's own set-up and turn-off.
-    ("auth.py", "/login/2fa"), ("auth.py", "/2fa/setup"), ("auth.py", "/2fa/confirm"), ("auth.py", "/2fa/disable"),
     ("notifications.py", "/notifications/{notification_id}/read"),
     ("notifications.py", "/notifications/read-all"),
     ("preferences.py", "/me/preferences"),

@@ -4,9 +4,9 @@ import json
 import math
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
-from api.services.rbac import current_user_id, require_permission, write_audit
+from api.services.rbac import require_permission
 from pydantic import AliasChoices, BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -344,42 +344,3 @@ async def put_cost_model(body: CostModel, db: AsyncSession = Depends(get_db),
                      {"m": json.dumps(body.model_dump(exclude_none=True)), "tid": str(tenant.id)})
     await db.commit()
     return {"status": "ok", "effective": cost.effective(body.model_dump(exclude_none=True))}
-
-
-# ─── GET/PUT /settings/security ─────────────────────────────────────
-
-class SecuritySettings(BaseModel):
-    # Every user signs in with an authenticator code after the password (migration 094).
-    require_2fa: bool
-
-
-@router.get("/security", response_model=SecuritySettings, dependencies=[Depends(require_permission("manage_users"))])
-async def get_security_settings(db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)):
-    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
-    value = (await db.execute(text("SELECT require_2fa FROM tenants WHERE id = :tid"), {"tid": str(tenant.id)})).scalar()
-    return SecuritySettings(require_2fa=bool(value))
-
-
-@router.put("/security", response_model=SecuritySettings, dependencies=[Depends(require_permission("manage_users"))])
-async def update_security_settings(
-    body: SecuritySettings, request: Request,
-    db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant),
-):
-    """Require two-factor sign-in for the tenant, or stop requiring it. Users without it are made to set
-    it up at their next sign-in (and on their next page load). The admin turning it on must have it
-    already, so the requirement never starts with the person who set it. Writes ``tenant.require_2fa``."""
-    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
-    before = bool((await db.execute(text("SELECT require_2fa FROM tenants WHERE id = :tid"),
-                                    {"tid": str(tenant.id)})).scalar())
-    if body.require_2fa and not before:
-        uid = current_user_id(request)
-        own = (await db.execute(text("SELECT totp_enabled FROM users WHERE id = :uid AND tenant_id = :tid"),
-                                {"uid": uid, "tid": str(tenant.id)})).scalar() if uid else None
-        if not own:
-            raise HTTPException(status_code=409, detail="Set up two-factor sign-in for your own account first, under Preferences.")
-    await db.execute(text("UPDATE tenants SET require_2fa = :v WHERE id = :tid"),
-                     {"v": body.require_2fa, "tid": str(tenant.id)})
-    await write_audit(db, tenant.id, request, "tenant.require_2fa", "tenant", str(tenant.id),
-                      {"require_2fa": before}, {"require_2fa": body.require_2fa})
-    await db.commit()
-    return body

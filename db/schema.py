@@ -65,8 +65,6 @@ class Tenant(Base):
     jwt_secret = Column(Text, nullable=True)
     default_role = Column(Text, nullable=True, server_default="analyst")
     llm_config = Column(JSONB, nullable=True)
-    # Two-factor sign-in for every user (migration 094): users without it set it up after the password.
-    require_2fa = Column(Boolean, nullable=False, server_default="false")
 
     versions = relationship("AnalysisVersion", back_populates="tenant")
     findings = relationship("Finding", back_populates="tenant")
@@ -605,11 +603,6 @@ class User(Base):
     # Session revocation (migration 092): access tokens carry it as the `tv` claim and
     # LocalAuthMiddleware rejects a lower one. Password change/reset and deactivation add one.
     token_version = Column(Integer, nullable=False, server_default="0")
-    # Two-factor sign-in (migration 094, api/services/totp.py): the authenticator secret, encrypted with
-    # credential_store; enabled once a code confirmed it; the step of the last code accepted (no replay).
-    totp_secret = Column(Text, nullable=True)
-    totp_enabled = Column(Boolean, nullable=False, server_default="false")
-    totp_last_step = Column(BigInteger, nullable=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
     # Validated by api/routes/preferences.py (theme, density, locale, saved views, ...).
     preferences = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
@@ -621,20 +614,6 @@ class User(Base):
 
     tenant = relationship("Tenant", back_populates="users")
     notifications = relationship("Notification", back_populates="user")
-
-
-class UserRecoveryCode(Base):
-    """A single-use two-factor recovery code (migration 094): SHA-256 of the code, used_at once spent."""
-    __tablename__ = "user_recovery_codes"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    code_hash = Column(Text, nullable=False)
-    used_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-
-    __table_args__ = (Index("uq_user_recovery_codes_user_hash", "user_id", "code_hash", unique=True),)
 
 
 class Notification(Base):

@@ -605,8 +605,6 @@ export interface User {
   created_at: string;
   /** The user's grants (GET /users only). */
   grants?: UserGrant[];
-  /** Signs in with an authenticator code after the password (GET /users only). */
-  totp_enabled?: boolean;
 }
 
 export interface UserListResponse {

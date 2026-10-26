@@ -12,8 +12,7 @@ import { downloadCsv } from "@/lib/actions";
 import { getSystems } from "@/lib/api/connectivity";
 import { listGrants, listRoles } from "@/lib/api/roles";
 import { apiErrorDetail, apiErrorMessage } from "@/lib/error";
-import { deleteUser, getAssignableUsers, getUsers, resetUserTwoFactor, updateUser } from "@/lib/api/users";
-import { SignInSecurity } from "./sign-in-security";
+import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
 import { InviteForm } from "@/components/admin/invite-form";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -73,7 +72,6 @@ export default function AdminUsersPage() {
       <p className="m-text-body m-ink-3">
         Roles are given and taken back as grants, for every system or for one system or object, under <Link href="/admin/roles" className="m-ink-accent underline underline-offset-2">Roles and access</Link>.
       </p>
-      <SignInSecurity users={usersQ.data?.users} />
       <UsersView invite={invite} setInvite={setInvite} />
     </div>
   );
@@ -118,7 +116,6 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
     },
     { id: "role", header: "Roles", cell: ({ row }) => <span>{grantNames(row.original)}</span> },
     { id: "active", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
-    { id: "two_factor", header: "Two-factor", cell: ({ row }) => <Pill tone={row.original.totp_enabled ? "go" : "neutral"}>{row.original.totp_enabled ? "On" : "Off"}</Pill> },
     { id: "login", header: "Last sign-in", cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
     { id: "since", header: "Member since", meta: { priority: "low" } satisfies CellMeta, cell: ({ row }) => relativeTime(row.original.created_at) },
     {
@@ -146,7 +143,7 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
           exportOptions={[{
             format: "csv",
             label: "Export users",
-            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, roles: grantNames(u), active: u.is_active, two_factor: Boolean(u.totp_enabled), last_login: u.last_login ?? "" }))),
+            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, roles: grantNames(u), active: u.is_active, last_login: u.last_login ?? "" }))),
           }]}
         />
       ) : (
@@ -194,43 +191,6 @@ function UserGrants({ userId }: { userId: string }) {
   );
 }
 
-/** The user's two-factor sign-in, and the reset for a lost phone: clears it and ends their sessions. */
-function TwoFactorReset({ user, self, onReset }: { user: User; self: boolean; onReset: () => void }) {
-  const [confirming, setConfirming] = useState(false);
-  const reset = useMutation({
-    mutationFn: () => resetUserTwoFactor(user.id),
-    onSuccess: () => { toast.success(`Two-factor sign-in reset for ${user.name}`); setConfirming(false); onReset(); },
-    onError: (e) => { setConfirming(false); toast.error(`Not reset. ${apiErrorMessage(e)}`); },
-  });
-  const reason = "Turn your own off under Preferences";
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="m-text-label m-ink-3">Two-factor sign-in</span>
-      <div className="flex flex-wrap items-center gap-3">
-        <Pill tone={user.totp_enabled ? "go" : "neutral"}>{user.totp_enabled ? "On" : "Off"}</Pill>
-        {!user.totp_enabled ? null : self ? (
-          <Tooltip label={reason} render={<Button type="button" variant="secondary" size="sm" disabled aria-disabled="true" aria-label={`Reset two-factor sign-in. ${reason}`} />}>
-            Reset two-factor sign-in
-          </Tooltip>
-        ) : (
-          <Button type="button" variant="secondary" size="sm" onClick={() => setConfirming(true)}>Reset two-factor sign-in</Button>
-        )}
-      </div>
-      <ConfirmDialog
-        open={confirming}
-        onOpenChange={setConfirming}
-        title={`Reset two-factor sign-in for ${user.name}`}
-        body={`For a lost or replaced phone. ${user.name} is signed out everywhere, their recovery codes stop working, and they sign in with their password alone until they set it up again. If two-factor sign-in is required, they are asked to set it up at once.`}
-        confirmLabel="Reset"
-        cancelLabel="Keep as is"
-        tone="danger"
-        pending={reset.isPending}
-        onConfirm={() => reset.mutate()}
-      />
-    </div>
-  );
-}
-
 function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: () => void; onRemove: () => void; removing: boolean }) {
   const [isActive, setActive] = useState(user.is_active);
   const [confirmSave, setConfirmSave] = useState(false);
@@ -256,7 +216,6 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
       <div>
         <Button type="button" variant="secondary" render={<Link href={manageHref(user.id)}>Manage roles</Link>} />
       </div>
-      <TwoFactorReset user={user} self={self} onReset={onDone} />
       <label className="flex items-center gap-2 m-text-body">
         <Checkbox aria-label="Active" checked={isActive} disabled={self} title={self ? SELF_ACCESS_REASON : undefined} onChange={(e) => setActive(e.target.checked)} />
         <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>

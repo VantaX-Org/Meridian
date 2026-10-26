@@ -63,11 +63,7 @@ export const queryKeys = {
   notifications: (filters: Record<string, unknown>) => ["inbox", "notifications", normalizeFilters(filters)] as const,
   preferences: (userId?: string) => ["preferences", userId] as const,
   users: () => ["users"] as const,
-  /** The signed-in user's two-factor sign-in (GET /auth/2fa). */
-  twoFactor: () => ["two-factor"] as const,
-  /** The tenant's sign-in requirements (GET /settings/security). */
-  securitySettings: () => ["security-settings"] as const,
-  glossary:(scope: string, filters: Record<string, unknown>) =>
+  glossary: (scope: string, filters: Record<string, unknown>) =>
     ["glossary", scope, normalizeFilters(filters)] as const,
   glossaryTerm: (id: string) => ["glossary", id] as const,
   masterRecords: (filters: Record<string, unknown>) =>
