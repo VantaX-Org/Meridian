@@ -223,7 +223,7 @@ export default function ExecPage() {
   // The sections with nothing in them yet: named in one line under the rest, each with where to start it.
   const notYet = [
     ...(data && cells.length === 0 ? [{ what: "no migration wave", link: "Open migration cockpit", href: "/migration" }] : []),
-    ...(data && ownerRows.length === 0 ? [{ what: "no owner scored", link: "Assign records in Fix work", href: withScope("/fix", { run }) }] : []),
+    ...(data && ownerRows.length === 0 ? [{ what: "no owner scored", link: "Owners in Fix work", href: withScope("/fix", { run }) }] : []),
     ...(noCostAvoided ? [{ what: "no cost avoided", link: "Review fixes", href: withScope("/fix", { run }) }] : []),
   ];
 
