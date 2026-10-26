@@ -5,12 +5,14 @@ GET  /api/v1/stewardship/{id}           — single queue item with source contex
 PUT  /api/v1/stewardship/{id}/assign    — assign to a steward (user_id null releases it)
 PUT  /api/v1/stewardship/{id}/resolve   — resolve (approve/reject) an item
 PUT  /api/v1/stewardship/{id}/escalate  — escalate an item
+POST /api/v1/stewardship/handoff        — hand one blocking rule to a steward (handoff_rule)
+GET  /api/v1/stewardship/handoff/stewards — who a rule can be handed to (users who can fix)
 POST /api/v1/stewardship/bulk-approve   — bulk approve high-confidence items
 GET  /api/v1/stewardship/metrics        — steward productivity metrics
 """
 
 import uuid as uuid_mod
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
@@ -20,7 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.notifications import create_notification
-from api.services.rbac import current_user_id, dev_role_override, has_permission, require_permission, scope_from_path
+from api.services.rbac import (current_user_id, current_user_label, dev_role_override, has_permission,
+                               require_permission, scope_from_path)
 
 
 def sees_steward_breakdown(role: str) -> bool:
@@ -405,6 +408,124 @@ async def get_queue_item(
         raise HTTPException(status_code=404, detail="Queue item not found")
 
     return _row_to_item(row)
+
+
+# ── Rule hand-off (process owner -> steward) ─────────────────────────────────
+#
+# A process analyst can see a rule blocking a process but not fix it, and holds no `assign` over the inbox.
+# handoff_rule lets them create exactly one task: an exception tracking the rule, assigned to a user who can fix
+# (holds `apply`), with their note as its first comment and their due date as its deadline. Every `assign`
+# holder (leads, stewards, admins) holds handoff_rule too.
+
+_SEV_PRIORITY = {"critical": 1, "high": 2, "medium": 3, "low": 4}
+
+
+def can_fix(role: str) -> bool:
+    """A hand-off target: a user whose role may apply fixes."""
+    return has_permission(role, "apply")
+
+
+class HandoffBody(BaseModel):
+    check_id: str = Field(..., min_length=1, max_length=128)
+    module: str = Field(..., min_length=1, max_length=64, description="the object (module) the rule runs on")
+    assignee_id: uuid_mod.UUID
+    note: str = Field(..., min_length=1, max_length=2000)
+    due_date: date
+    version_id: Optional[uuid_mod.UUID] = None
+    finding_id: Optional[uuid_mod.UUID] = None
+    #: where the rule blocks, for the task title: an L1 process name or a step
+    process: Optional[str] = Field(None, max_length=200)
+    field: Optional[str] = Field(None, max_length=128)
+
+
+class HandoffOut(BaseModel):
+    task_id: str
+    exception_id: str
+    assigned_to: str
+    due_at: str
+
+
+class StewardOut(BaseModel):
+    id: str
+    name: Optional[str] = None
+    email: str
+    role: str
+
+
+@router.get("/stewardship/handoff/stewards", response_model=list[StewardOut])
+async def handoff_stewards(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("handoff_rule")),
+) -> list[StewardOut]:
+    """Active users a blocking rule can be handed to: those who can fix (no admin rights needed to list them)."""
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    rows = await db.execute(text("SELECT id, name, email, role FROM users WHERE tenant_id = :tid AND is_active "
+                                 "ORDER BY name, email"), {"tid": str(tenant.id)})
+    return [StewardOut(id=str(r[0]), name=r[1], email=r[2], role=r[3]) for r in rows.fetchall() if can_fix(r[3])]
+
+
+@router.post("/stewardship/handoff", response_model=HandoffOut, status_code=201)
+async def handoff_rule(
+    body: HandoffBody,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("handoff_rule")),
+) -> HandoffOut:
+    """Hand one blocking rule to a steward: an exception on the rule plus its inbox task, both assigned."""
+    tid = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = '{tid}'"))
+    if body.due_date < datetime.now(timezone.utc).date():
+        raise HTTPException(status_code=422, detail="The due date is in the past")
+    who = (await db.execute(text("SELECT role, is_active FROM users WHERE id = :u AND tenant_id = :tid"),
+                            {"u": str(body.assignee_id), "tid": tid})).fetchone()
+    if not who or not who[1] or not can_fix(who[0]):
+        raise HTTPException(status_code=422, detail="Hand the rule to an active user who can fix data")
+
+    # The finding the task tracks: the one named, else the rule's finding on that object in that run.
+    finding = None
+    if body.finding_id or body.version_id:
+        sql = ("SELECT id, severity FROM findings WHERE tenant_id = :tid AND "
+               + ("id = :f" if body.finding_id else "version_id = :v AND check_id = :c AND module = :m")
+               + " LIMIT 1")
+        finding = (await db.execute(text(sql), {"tid": tid, "f": str(body.finding_id), "v": str(body.version_id),
+                                                "c": body.check_id, "m": body.module})).fetchone()
+        if body.finding_id and not finding:
+            raise HTTPException(status_code=404, detail="Finding not found")
+    severity = finding[1] if finding and finding[1] in _SEV_PRIORITY else "high"
+    due_at = datetime.combine(body.due_date, time(23, 59, 59), tzinfo=timezone.utc)
+    where = f" blocks {body.process}" if body.process else f" fails on {body.module}"
+    title = f"Hand-off: {body.check_id}{where}"
+    author = current_user_label()
+    exc_id, task_id = str(uuid_mod.uuid4()), str(uuid_mod.uuid4())
+
+    await db.execute(text("""
+        INSERT INTO exceptions (id, tenant_id, type, category, severity, status, title, description,
+            assigned_to, escalation_tier, sla_deadline, created_at, linked_finding_id, source_reference)
+        VALUES (:id, :tid, 'dq_rule', :module, :sev, 'investigating', :title, :note,
+            CAST(:assignee AS uuid), 1, :due, now(), CAST(:finding AS uuid), :ref)
+    """), {"id": exc_id, "tid": tid, "module": body.module, "sev": severity, "title": title, "note": body.note,
+           "assignee": str(body.assignee_id), "due": due_at, "finding": str(finding[0]) if finding else None,
+           "ref": f"{body.version_id}:{body.check_id}" if body.version_id else body.check_id})
+    await db.execute(text("""
+        INSERT INTO exception_comments (id, exception_id, tenant_id, user_name, text, created_at)
+        VALUES (gen_random_uuid(), :eid, :tid, :who, :txt, now())
+    """), {"eid": exc_id, "tid": tid, "who": author,
+           "txt": f"Handed over by {author}" + (f" ({body.field})" if body.field else "") + f": {body.note}"})
+    # The task carries the chosen due date as its clock: sla_started_at is set so apply_sla leaves it alone.
+    await db.execute(text("""
+        INSERT INTO stewardship_queue (id, tenant_id, item_type, source_id, domain, priority, due_at, assigned_to,
+            status, assigned_at, sla_started_at, sla_state)
+        VALUES (:id, :tid, 'exception', :src, :module, :prio, :due, CAST(:assignee AS uuid), 'in_progress',
+            now(), now(), 'on_track')
+        ON CONFLICT DO NOTHING
+    """), {"id": task_id, "tid": tid, "src": exc_id, "module": body.module, "prio": _SEV_PRIORITY[severity],
+           "due": due_at, "assignee": str(body.assignee_id)})
+    await create_notification(tid, str(body.assignee_id), "assignment", f"Handed to you: {body.check_id}",
+                              body.note[:200], f"/inbox?focus={task_id}", db)
+    await db.commit()
+    return HandoffOut(task_id=task_id, exception_id=exc_id, assigned_to=str(body.assignee_id),
+                      due_at=due_at.isoformat())
 
 
 # ── PUT /stewardship/{id}/assign ─────────────────────────────────────────────

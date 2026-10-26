@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.exception_engine import ExceptionBillingCalculator
 from api.services.notifications import create_notification
-from api.services.rbac import has_permission, require_permission
+from api.services.rbac import has_permission, require_any_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["exceptions"])
 
@@ -249,7 +249,8 @@ async def get_exception(
 # ── 3. POST /api/v1/exceptions — create manually ────────────────────────────
 
 
-@router.post("/exceptions", status_code=201, dependencies=[Depends(require_permission("analyse"))])
+# Process owners (run_process_discovery) raise exceptions on what blocks their process too.
+@router.post("/exceptions", status_code=201, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def create_exception(
     body: CreateExceptionBody,
     db: AsyncSession = Depends(get_db),

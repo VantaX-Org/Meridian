@@ -56,6 +56,7 @@ export const queryKeys = {
   mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
   triageMetrics: (weeks: number) => ["inbox", "triage-metrics", weeks] as const,
   stewardshipMetrics: () => ["inbox", "stewardship-metrics"] as const,
+  handoffStewards: () => ["inbox", "handoff-stewards"] as const,
   exceptionMetrics: () => ["inbox", "exception-metrics"] as const,
   exceptionRules: () => ["inbox", "exception-rules"] as const,
   unreadNotifications: () => ["inbox", "unread-notifications"] as const,

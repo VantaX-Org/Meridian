@@ -103,11 +103,12 @@ function Editor(p: EditorProps) {
   const attr = sp.get("attr");
   const node = sp.get("node");
   const reference = model === "reference";
-  // Wave 16: every designer write needs `analyse`, the export needs `export`. Without them the
-  // controls are not rendered and the reference prompt never opens.
+  // Wave 16: every designer write needs `analyse` (or run_process_discovery, the process owner's right), the
+  // export needs `export` (or export_process). Without them the controls are not rendered and the reference
+  // prompt never opens. Mirrors api/routes/process_designer.py and process_export.py.
   const role = useRole();
-  const canDesign = role.can("analyse");
-  const canExport = role.can("export");
+  const canDesign = role.can("analyse") || role.can("run_process_discovery");
+  const canExport = role.can("export") || role.can("export_process");
   const editable = canDesign && !reference && !viewingOld;
 
   const [doc, setDoc] = useState(initial);

@@ -289,8 +289,8 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             tail = (await c.get(f"{BASE}/runs/{rid}/variants", headers=viewer, params={"limit": 500})).json()["items"][-1]
             assert tail["hash"] == "0" * 32 and tail["activities"] == ["__OTHER__"]
 
-            # case explorer and export need export_process
-            assert (await c.get(f"{BASE}/runs/{rid}/cases", headers=viewer)).status_code == 403
+            # the case explorer is viewing (every role that runs discovery opens Cases); export needs export_process (below)
+            assert (await c.get(f"{BASE}/runs/{rid}/cases", headers=viewer)).status_code == 200
             cases = (await c.get(f"{BASE}/runs/{rid}/cases", headers=h)).json()
             assert cases["total"] == 2
             one = cases["items"][0]
@@ -436,10 +436,10 @@ def test_system_scoped_process_analyst_grant(app_engine, monkeypatch):  # noqa: 
             assert (await c.get(f"{BASE}/systems/{mine}/catalogue")).status_code == 200
             assert (await c.post(f"{BASE}/systems/{mine}/runs", **start)).status_code == 200
             assert (await c.get(f"{BASE}/runs/{runs[mine]}")).status_code == 200
-            assert (await c.get(f"{BASE}/runs/{runs[mine]}/cases")).status_code == 200  # export_process
+            assert (await c.get(f"{BASE}/runs/{runs[mine]}/cases")).status_code == 200  # view
             assert (await c.get(f"{BASE}/systems/{other}/catalogue")).status_code == 200  # users.role viewer sees all
             assert (await c.post(f"{BASE}/systems/{other}/runs", **start)).status_code == 403
-            assert (await c.get(f"{BASE}/runs/{runs[other]}/cases")).status_code == 403
+            assert (await c.get(f"{BASE}/runs/{runs[other]}/cases")).status_code == 200  # users.role viewer: view
             assert (await c.get(f"{BASE}/runs/{runs[other]}/export/signavio")).status_code == 403
 
     asyncio.run(scenario())

@@ -18,7 +18,7 @@ export const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   analyst: { label: "Analyst", desc: "Upload, sync and run analysis; export results. No approvals." },
   viewer: { label: "Viewer", desc: "Read-only access to dashboards and findings." },
   auditor: { label: "Auditor", desc: "Read-only access including the audit log." },
-  process_analyst: { label: "Process analyst", desc: "Read everything, run process discovery and export as-is process models." },
+  process_analyst: { label: "Process analyst", desc: "Read everything, run discovery, model and export processes, and hand a blocking rule to a steward." },
   // Persona keys (rbac.py PERSONA_ROLES): each carries the actions of the legacy role it replaces.
   programme_lead: { label: "Programme lead / CIO", desc: "Same access as Manager. Lands on the lead home." },
   data_steward: { label: "Data steward", desc: "Same access as Steward. Lands on the steward home." },

@@ -22,6 +22,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Notice, Pill, Select, Skeleton, RowAction, RowActionButton, Stat, actionColumn, type InsightHeaderProps, Status } from "@/design";
 import { LedgerHead } from "@/components/mdm/ledger";
+import { HandToSteward, type HandoffTarget } from "@/components/process/handoff";
 import { apiErrorState } from "@/lib/error";
 import { PROCESS_MODULES, asIsHref, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -211,14 +212,21 @@ function RulesBlock({ title, t, findingHref, configuredIn, run }: {
   );
 }
 
-interface BlockingRow { id: string; severity: ReturnType<typeof sev>; checkId: string | null; field: string; title: string; gate: string; affected: number; href: string }
+interface BlockingRow { id: string; severity: ReturnType<typeof sev>; checkId: string | null; field: string; title: string; gate: string; affected: number; href: string;
+  /** The rule as a hand-off to a steward (process owners hold handoff_rule, not apply); none for a field with no rule. */
+  handoff: HandoffTarget | null }
 const blockingColumns: ColumnDef<BlockingRow>[] = [
   { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
   { id: "rule", header: "Rule", accessorFn: (b) => b.checkId ?? "", cell: ({ row }) => <Mono>{row.original.checkId ?? row.original.field}</Mono> },
   { id: "finding", header: "Finding", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.title}>{row.original.title}</span> },
   { id: "gate", header: "Process step", accessorFn: (b) => b.gate },
   { accessorKey: "affected", header: "Records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
-  actionColumn<BlockingRow>((b) => (b.href ? <RowAction href={b.href} label={`Fix ${b.checkId ?? b.field}`}>Fix</RowAction> : null), ""),
+  actionColumn<BlockingRow>((b) => (
+    <span className="flex items-center gap-1">
+      {b.href ? <RowAction href={b.href} label={`Fix ${b.checkId ?? b.field}`}>Fix</RowAction> : null}
+      {b.handoff ? <HandToSteward target={b.handoff} /> : null}
+    </span>
+  ), ""),
 ];
 
 function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
@@ -302,6 +310,7 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
       id: `${l3.l3_id}-${l4.l4_id}-${f.field}`, severity: sev(f), checkId: f.check_id, field: f.field,
       title: f.finding_message || f.description, gate: l3.l3_name, affected: f.affected_count,
       href: f.check_id ? findingHref(object, f.check_id) ?? buildDrillHref({ object, ruleId: f.check_id, run: latest?.id }) : rulesHref,
+      handoff: f.check_id ? { checkId: f.check_id, module: object, versionId: latest?.id, process: l1.l1_name, field: f.field } : null,
     }))))).sort((a, b) => b.affected - a.affected) : []), [l1, object, findingHref, latest?.id, rulesHref]);
   const failing = blockingFindings.reduce((a, b) => a + b.affected, 0);
   const firstHref = blockingFindings[0]?.href ?? rulesHref;

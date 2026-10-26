@@ -19,9 +19,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.models.process_model import ProcessModelDocument, VariantRef
 from api.services.process_model_validator import Issue, validate_document
-from api.services.rbac import current_user_label, require_permission
+from api.services.rbac import current_user_label, require_any_permission, require_permission
 from sap.process_definitions import reference_document
 
+# Writes (modelling) take `analyse` or run_process_discovery: process owners model without `analyse`.
 router = APIRouter(prefix="/api/v1/process-designer", tags=["process-designer"])
 
 _VARIANT_COLS = ("id::text AS id, version_id::text AS version_id, process_id, l4_id, sap_table, sap_field, value, "
@@ -140,7 +141,7 @@ async def list_models(db: AsyncSession = Depends(get_db), tenant: Tenant = Depen
     return [_model_row(r) for r in rows.fetchall()]
 
 
-@router.post("/models", status_code=201, dependencies=[Depends(require_permission("analyse"))])
+@router.post("/models", status_code=201, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def create_model(body: ModelCreate, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     name = body.name.strip()
     if not name:
@@ -176,7 +177,7 @@ async def get_model(model_id: uuid.UUID, version: Optional[int] = Query(None, ge
     return {"model": model, "version_no": vno, "document": await _document(db, tenant, model_id, vno)}
 
 
-@router.put("/models/{model_id}", dependencies=[Depends(require_permission("analyse"))])
+@router.put("/models/{model_id}", dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def save_model(model_id: uuid.UUID, body: ModelSave, db: AsyncSession = Depends(get_db),
                      tenant: Tenant = Depends(get_tenant)):
     """New version. 409 when ``base_version`` is stale, 422 with ``errors[{path,message}]`` when invalid."""
@@ -194,7 +195,7 @@ async def save_model(model_id: uuid.UUID, body: ModelSave, db: AsyncSession = De
             "warnings": [w.model_dump() for w in result.warnings]}
 
 
-@router.patch("/models/{model_id}", dependencies=[Depends(require_permission("analyse"))])
+@router.patch("/models/{model_id}", dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def patch_model(model_id: uuid.UUID, body: ModelPatch, db: AsyncSession = Depends(get_db),
                       tenant: Tenant = Depends(get_tenant)):
     await _model(db, tenant, model_id)
@@ -213,7 +214,7 @@ async def patch_model(model_id: uuid.UUID, body: ModelPatch, db: AsyncSession = 
     return await _model(db, tenant, model_id)
 
 
-@router.delete("/models/{model_id}", status_code=204, dependencies=[Depends(require_permission("analyse"))])
+@router.delete("/models/{model_id}", status_code=204, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def delete_model(model_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _model(db, tenant, model_id)
     await db.execute(text("DELETE FROM process_models WHERE id = :id AND tenant_id = :tid"),
@@ -288,7 +289,7 @@ async def overlay(model_id: uuid.UUID, version_id: str, db: AsyncSession = Depen
     return {"activities": activities, "l4": l4, "variants": variants}
 
 
-@router.post("/models/{model_id}/adopt-variant", dependencies=[Depends(require_permission("analyse"))])
+@router.post("/models/{model_id}/adopt-variant", dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def adopt_variant(model_id: uuid.UUID, body: AdoptVariant, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)):
     """Attach a discovered variant to an L4 as a new model version and record the mapping on the variant."""

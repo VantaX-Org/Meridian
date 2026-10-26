@@ -11,15 +11,15 @@ const READ = ["view", "mdm.read", "view_ai_confidence"];
 
 export const LEGACY_PERMISSIONS = {
   admin: [...READ,
-    "upload", "analyse", "approve", "apply", "export", "assign",
+    "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
     "manage_users", "manage_rules", "manage_field_mappings", "manage_llm",
     "manage_system", "manage_systems", "manage_settings", "view_audit",
     "ai_feedback", "review_ai_rules", "trigger_ai", "trigger_sync", "mdm.write", "run_process_discovery", "export_process"],
   manager: [...READ,
-    "upload", "analyse", "approve", "apply", "export", "assign",
+    "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
     "manage_systems", "view_audit", "ai_feedback", "trigger_ai", "trigger_sync", "mdm.write", "export_process"],
   steward: [...READ,
-    "upload", "analyse", "approve", "apply", "export", "assign",
+    "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
     "manage_rules", "ai_feedback", "review_ai_rules", "trigger_ai", "trigger_sync", "mdm.write"],
   analyst: [...READ, "upload", "analyse", "export", "trigger_ai", "trigger_sync"],
   approver: [...READ, "approve", "export"],
