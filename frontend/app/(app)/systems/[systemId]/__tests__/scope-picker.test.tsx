@@ -57,6 +57,22 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
   });
 });
 
+describe("ScopePicker preview sources", () => {
+  it("lists an unverified source beside the tables with a Preview badge and its tooltip", async () => {
+    vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "successfactors", objects: [
+      object(),
+      object({ object: "payroll_integration", tables: [], preview_sources: [{ source: "EmpPayrollRunResults", reason: "not in canonical/successfactors.yaml" }] }),
+    ] });
+    renderWithQuery(<ScopePicker id="sys1" onDownloaded={vi.fn()} />);
+    expect(await screen.findByText("EmpPayrollRunResults")).toBeInTheDocument();
+    const badges = screen.getAllByLabelText("Preview: EmpPayrollRunResults. Source name not yet verified against SAP; extraction may fail");
+    expect(badges.length).toBeGreaterThan(0);
+    // Material master's sources are all verified: no badge on its row.
+    const mm = screen.getByText("Material master").closest("tr") as HTMLElement;
+    expect(mm.textContent).not.toContain("Preview");
+  });
+});
+
 describe("ScopePicker", () => {
   it("opens with the requested objects picked and extracts only the ones the system has", async () => {
     vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [object(), object({ object: "production_planning", tables: ["AFKO"] })] });

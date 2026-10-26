@@ -42,6 +42,21 @@ class ExtractionTarget:
     is_config: bool = False
     rename_map: dict = field(default_factory=dict)
     from_date: Optional[str] = None  # OData fromDate for effective-dated entities (cloud SAP only). None = current record only.
+    # "verified": the source name is backed by a dictionary in this repo (sap/dictionaries DDIC files,
+    # canonical/*.yaml). "preview": it is not, so the name may be wrong on a real system. The API
+    # lists it with a Preview badge and extraction reports it as preview, never as a verified read.
+    status: str = "verified"
+    status_reason: str = ""  # one line: why a preview source is not verified
+
+    @property
+    def verified(self) -> bool:
+        return self.status != PREVIEW
+
+
+PREVIEW = "preview"
+_NO_SF_BACKING = "is not in canonical/successfactors.yaml or any SF entity this repo reads"
+_NO_DDIC_BACKING = "is not in the ECC/EWM DDIC dictionaries"
+_NO_REST_BACKING = "no SAP API in this repo documents this REST path"
 
 
 # ============================================================================
@@ -1119,6 +1134,8 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     "payroll_integration": [
         ExtractionTarget(
             source="EmpPayrollRunResults",
+            status=PREVIEW,
+            status_reason="EmpPayrollRunResults " + _NO_SF_BACKING,
             fields=[
                 "userId", "payPeriod", "payDate", "grossPay",
                 "netPay", "currency", "status",
@@ -1153,6 +1170,8 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     "succession_planning": [
         ExtractionTarget(
             source="SuccessionNominee",
+            status=PREVIEW,
+            status_reason="SuccessionNominee " + _NO_SF_BACKING,
             fields=[
                 "nomineeId", "positionId", "readinessRating",
                 "rankOrder", "status", "nominatorId",
@@ -1189,6 +1208,8 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     "learning_management": [
         ExtractionTarget(
             source="LearningHistoryV1",
+            status=PREVIEW,
+            status_reason="LearningHistoryV1 " + _NO_SF_BACKING,
             fields=[
                 "userId", "courseId", "courseName", "completionDate",
                 "status", "score", "creditHours",
@@ -1437,6 +1458,8 @@ EWMS_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     "grc_compliance": [
         ExtractionTarget(
             source="/api/v1/grc/risks",
+            status=PREVIEW,
+            status_reason="/api/v1/grc/risks: " + _NO_REST_BACKING,
             fields=[
                 "riskId", "riskName", "riskLevel", "controlId",
                 "businessProcess", "owner", "status", "lastAssessmentDate",
@@ -1448,6 +1471,8 @@ EWMS_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     "fleet_management": [
         ExtractionTarget(
             source="VLCVEHICLE",
+            status=PREVIEW,
+            status_reason="VLCVEHICLE " + _NO_DDIC_BACKING,
             fields=[
                 "VGUID", "LICENSENO", "VEHICLETYPE", "MAKE",
                 "MODEL", "YEAR", "STATUS", "ASSIGNEDDRIVER",
@@ -1459,6 +1484,8 @@ EWMS_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     "transport_management": [
         ExtractionTarget(
             source="/api/v1/tm/freightorders",
+            status=PREVIEW,
+            status_reason="/api/v1/tm/freightorders: " + _NO_REST_BACKING,
             fields=[
                 "freightOrderId", "carrier", "origin", "destination",
                 "shipmentDate", "deliveryDate", "status", "totalWeight",
@@ -1471,6 +1498,8 @@ EWMS_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     "mdg_master_data": [
         ExtractionTarget(
             source="MDGMATERIAL",
+            status=PREVIEW,
+            status_reason="MDGMATERIAL " + _NO_DDIC_BACKING,
             fields=[
                 "ENTITY_ID", "MATNR", "CHANGE_REQUEST", "CR_STATUS",
                 "CREATED_BY", "CREATED_AT", "CHANGED_BY", "CHANGED_AT",
@@ -1639,6 +1668,18 @@ def get_extraction_targets(
     if not include_config:
         targets = [t for t in targets if not t.is_config]
     return targets
+
+
+def preview_sources(system_type: str, module: Optional[str] = None) -> list[dict]:
+    """The unverified (``status="preview"``) sources of a system type, optionally of one module.
+
+    Each entry is ``{"module", "source", "reason"}`` in registry order. The module/object listings
+    show them with a Preview badge; extraction logs and reports them as ``preview``.
+    """
+    extractions = SYSTEM_EXTRACTIONS.get(system_type, {})
+    modules = [module] if module is not None else list(extractions)
+    return [{"module": m, "source": t.source, "reason": t.status_reason}
+            for m in modules for t in extractions.get(m, []) if not t.verified]
 
 
 def get_available_modules(system_type: str) -> list[str]:

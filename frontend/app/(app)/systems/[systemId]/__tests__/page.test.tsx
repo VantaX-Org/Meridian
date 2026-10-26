@@ -341,6 +341,20 @@ describe("system detail page", () => {
     expect(analyseBtn).toBeDisabled();
   });
 
+  it("on the Objects tab, badges an object whose extraction source is unverified as Preview", async () => {
+    tab = "objects";
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([
+      { module: "fi_gl", system_type: "successfactors", enabled: true, last_synced_at: null, last_sync_status: null, row_count: 10, config_synced: false, preview_sources: [] },
+      { module: "learning_management", system_type: "successfactors", enabled: true, last_synced_at: null, last_sync_status: null, row_count: 5, config_synced: false,
+        preview_sources: [{ source: "LearningHistoryV1", reason: "not in canonical/successfactors.yaml" }] },
+    ] as never);
+    renderWithQuery(<SystemPage />);
+    const badge = await screen.findByLabelText("Preview: LearningHistoryV1. Source name not yet verified against SAP; extraction may fail");
+    expect(badge).toHaveTextContent("Preview");
+    expect(screen.getAllByText("Preview")).toHaveLength(1); // only the unverified object
+  });
+
   it("shows the system role in the header", async () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);

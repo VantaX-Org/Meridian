@@ -143,9 +143,8 @@ function AuditTable({ params, empty, summary = false }: { params: AuditListParam
         </div>
       }
       toolbarEnd={
-        params.path_contains ? undefined : (
-          <ExportMenu options={[{ format: "xlsx", run: () => exportAuditEntries("xlsx", filters) }, { format: "csv", run: () => exportAuditEntries("csv", filters) }]} />
-        )
+        // Exports what the table shows: this tab's scope, who, the from/to window and the picked kind.
+        <ExportMenu options={[{ format: "csv", run: () => exportAuditEntries("csv", { ...params, ...filters }) }, { format: "xlsx", run: () => exportAuditEntries("xlsx", { ...params, ...filters }) }]} />
       }
       state={asyncStateOf(q, () => entries.length === 0, true)}
       emptyProps={filtered

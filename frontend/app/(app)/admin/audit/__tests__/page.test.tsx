@@ -86,6 +86,32 @@ describe("admin audit page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(get).toHaveBeenLastCalledWith({ limit: 100, offset: 100 }));
   });
+
+  it("exports the log as CSV with the page's filters and from/to window", async () => {
+    vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [ENTRY], total: 1, limit: 100, offset: 0 });
+    const exp = vi.spyOn(auditApi, "exportAuditEntries").mockResolvedValue(undefined);
+    renderWithQuery(<AdminAuditPage />);
+    await screen.findByText("3 Jan 2026, 00:00 GMT+2");
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-01-31" } });
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "CSV" }));
+    await waitFor(() => expect(exp).toHaveBeenCalledWith("csv", expect.objectContaining({ since: expect.any(String), until: expect.any(String) })));
+    const params = exp.mock.calls[0][1];
+    expect(params?.limit).toBeUndefined();
+    expect(params?.offset).toBeUndefined();
+  });
+
+  it("exports user changes scoped to the tab", async () => {
+    tab = "roles";
+    vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [ENTRY], total: 1, limit: 100, offset: 0 });
+    const exp = vi.spyOn(auditApi, "exportAuditEntries").mockResolvedValue(undefined);
+    renderWithQuery(<AdminAuditPage />);
+    await screen.findByText("3 Jan 2026, 00:00 GMT+2");
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "CSV" }));
+    await waitFor(() => expect(exp).toHaveBeenCalledWith("csv", expect.objectContaining({ path_contains: "/users" })));
+  });
 });
 
 describe("admin audit page for an auditor", () => {

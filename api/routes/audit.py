@@ -8,9 +8,12 @@ import csv
 import io
 import json
 import uuid
+from collections.abc import AsyncIterator
+from datetime import datetime
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +39,18 @@ async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
 _COLUMNS = ("id, actor_user_id, actor_email, action, entity_type, entity_id, method, path, "
             "status_code, ip, user_agent, before_json, after_json, created_at")
 _EXPORT_MAX = 100_000
+# Rows fetched per round trip while streaming the CSV export (keyset paged on created_at, id).
+_EXPORT_BATCH = 2_000
+
+
+def _instant(value: Optional[str], name: str) -> Optional[datetime]:
+    """An ISO-8601 since/until bound as a datetime, so the driver binds a timestamp, not text."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"{name} must be an ISO-8601 timestamp") from None
 
 
 def _filters(
@@ -57,8 +72,8 @@ def _filters(
         (entity_id, "entity_id = :eid", "eid"),
         (action, "action = :action", "action"),
         (method.upper() if method else None, "method = :method", "method"),
-        (since, "created_at >= :since", "since"),
-        (until, "created_at <= :until", "until"),
+        (_instant(since, "since"), "created_at >= :since", "since"),
+        (_instant(until, "until"), "created_at <= :until", "until"),
     ):
         if value:
             conditions.append(clause)
@@ -140,6 +155,42 @@ def _csv_cell(value) -> str:
     return guard_formula_cell(s)  # spreadsheet formula injection
 
 
+def _csv_line(values: list) -> str:
+    buf = io.StringIO()
+    csv.writer(buf).writerow(values)
+    return buf.getvalue()
+
+
+async def _stream_csv(db: AsyncSession, where_clause: str, params: dict, cols: list[str]) -> AsyncIterator[str]:
+    """The CSV a batch at a time: header, then rows oldest first, keyset paged on (created_at, id)
+    so a 100,000-row export never sits in memory at once. Every cell goes through the formula guard."""
+    yield _csv_line(cols)
+    sent = 0
+    after: Optional[tuple] = None
+    while sent < _EXPORT_MAX:
+        batch_params = {**params, "limit": min(_EXPORT_BATCH, _EXPORT_MAX - sent)}
+        keyset = ""
+        if after is not None:
+            keyset = " AND (created_at, id) > (:after_ts, :after_id)"
+            batch_params["after_ts"], batch_params["after_id"] = after
+        result = await db.execute(
+            text(f"SELECT {_COLUMNS} FROM audit_log WHERE {where_clause}{keyset} "
+                 "ORDER BY created_at, id LIMIT :limit"),
+            batch_params,
+        )
+        rows = result.fetchall()
+        if not rows:
+            return
+        for row in rows:
+            d = _entry(row)
+            yield _csv_line([_csv_cell(d.get(c)) for c in cols])
+        sent += len(rows)
+        last = rows[-1]._mapping
+        after = (last["created_at"], last["id"])
+        if len(rows) < batch_params["limit"]:
+            return
+
+
 @router.get("/audit/export")
 async def export_audit_entries(
     actor_user_id: Optional[str] = Query(None),
@@ -147,50 +198,49 @@ async def export_audit_entries(
     entity_id: Optional[str] = Query(None),
     action: Optional[str] = Query(None),
     method: Optional[str] = Query(None),
-    since: Optional[str] = Query(None),
-    until: Optional[str] = Query(None),
+    since: Optional[str] = Query(None, description="ISO-8601 timestamp — from (inclusive)"),
+    until: Optional[str] = Query(None, description="ISO-8601 timestamp — to (inclusive)"),
+    path_contains: Optional[str] = Query(
+        None, max_length=200, description="Substring of the request path (case-insensitive)"
+    ),
     format: Literal["csv", "xlsx"] = Query("csv"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_any_permission("view_audit", "manage_users")),
 ):
-    """Audit log as CSV or XLSX for auditors and SIEM import, oldest first, same filters as /audit.
-    Capped at 100,000 rows; narrow with since/until for longer histories."""
+    """Audit log as CSV or XLSX for auditors and SIEM import, oldest first, same filters as /audit
+    (including the from/to window as since/until). CSV streams in batches; both formats are capped
+    at 100,000 rows, so narrow with since/until for longer histories."""
     await _set_rls(db, tenant.id)
-    where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until)
+    where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until, path_contains)
+    cols = [c.strip() for c in _COLUMNS.split(",")]
+
+    if format == "csv":
+        return StreamingResponse(
+            _stream_csv(db, where_clause, params, cols),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="audit_log.csv"'},
+        )
+
     params["limit"] = _EXPORT_MAX
     result = await db.execute(
-        text(f"SELECT {_COLUMNS} FROM audit_log WHERE {where_clause} ORDER BY created_at LIMIT :limit"),
+        text(f"SELECT {_COLUMNS} FROM audit_log WHERE {where_clause} ORDER BY created_at, id LIMIT :limit"),
         params,
     )
-    cols = [c.strip() for c in _COLUMNS.split(",")]
     entries = [_entry(row) for row in result.fetchall()]
-
-    if format == "xlsx":
-        sheet = SheetSpec(
-            title="Audit log",
-            columns=[ColumnSpec(key=c, header=c, kind="mono" if c.endswith("_id") or c == "id" else "text") for c in cols],
-            rows=entries,
-        )
-        data = build_workbook(
-            tenant_name=tenant.name,
-            run_label=None,
-            run_id=None,
-            title="Audit log export",
-            sheets=[sheet],
-        )
-        return xlsx_response(data, xlsx_filename("audit-log", None))
-
-    buf = io.StringIO()
-    out = csv.writer(buf)
-    out.writerow(cols)
-    for d in entries:
-        out.writerow([_csv_cell(d.get(c)) for c in cols])
-    return Response(
-        buf.getvalue(),
-        media_type="text/csv",
-        headers={"Content-Disposition": 'attachment; filename="audit_log.csv"'},
+    sheet = SheetSpec(
+        title="Audit log",
+        columns=[ColumnSpec(key=c, header=c, kind="mono" if c.endswith("_id") or c == "id" else "text") for c in cols],
+        rows=entries,
     )
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=None,
+        run_id=None,
+        title="Audit log export",
+        sheets=[sheet],
+    )
+    return xlsx_response(data, xlsx_filename("audit-log", None))
 
 
 @router.get("/audit/summary")
