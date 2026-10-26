@@ -74,6 +74,58 @@ export const MODULE_LABELS: Record<string, string> = {
   pii: "PII",
 };
 
+/** What each object holds and what it drives, in one or two sentences. Written from the tables Meridian reads for it
+ * (sap/extraction_registry.py); an id with no entry has no description. */
+export const MODULE_DESCRIPTIONS: Record<string, string> = {
+  accounts_payable: "Supplier master data at general and company code level, with account groups, payment terms and payment methods. It determines how and when suppliers are paid.",
+  accounts_receivable: "Customer master data at general and company code level, with account groups. It underpins invoicing, credit control and cash collection.",
+  asset_accounting: "Fixed asset master records and their depreciation areas. They drive asset valuation and period-end depreciation.",
+  business_partner: "The single record for customers, suppliers and contacts: general data, roles, addresses, e-mail and groupings, and on SAP BTP also tax numbers and bank details. It is the foundation of customer-vendor integration in S/4HANA.",
+  employee_central: "Core employee data: employment and actions, organisational assignment, personal and contact details, positions, and the picklists they reference. It is the system of record for every downstream HR and payroll process.",
+  fi_gl: "The chart of accounts and general ledger accounts at chart and company code level, with document types. It governs how every financial posting is recorded and reported.",
+  hcm: "On-premise personnel administration: employee infotypes for actions, assignment, personal data, pay, bank details, addresses and working time, with the organisational structure and its configuration. It feeds payroll, time management and reporting.",
+  interface_health: "Ninety days of IDoc and qRFC/tRFC traffic. It shows interface messages that failed, stalled or are still queued before they become missing transactions.",
+  material_master: "Materials across their general, plant and valuation views, with descriptions, material types, groups and units of measure. It drives purchasing, inventory, production and product costing.",
+  mm_purchasing: "Purchasing documents at header, item and history level, with their document types. They trace each purchase from order to goods receipt and invoice.",
+  payroll_integration: "The data that feeds payroll: basic pay, payroll results and wage-type totals, and payroll run results from SuccessFactors. It confirms that what employees are paid matches their records.",
+  plant_maintenance: "Equipment and functional locations: the technical objects that maintenance is planned, executed and costed against.",
+  process_discovery: "Sales, delivery, billing, goods movement, invoice receipt and requisition documents, with the flow configuration behind them. Meridian uses them to reconstruct how processes actually run, from level 1 to level 5.",
+  production_planning: "Manufacturing master data: routings, bills of material and work centres. Together they determine what is produced, how and where.",
+  project_system: "Project definitions, WBS elements, orders and settlement rules, with the controlling and organisational structures they settle to. They govern how project costs are planned, collected and settled.",
+  proven_cost: "Schedule lines, info records, unit conversions, invoice items, sales order status and cleared supplier items. Meridian uses them to put a monetary value on the cost of data defects.",
+  quality_management: "Inspection setup, task lists and characteristics, inspection lots and quality notifications. They control how materials are inspected and how defects are recorded.",
+  s4_load_sim: "Customer-vendor links, credit control, storage locations, pricing conditions and output status. Meridian uses them to rehearse S/4HANA migration loads before cut-over.",
+  sd_customer_master: "Customers at general and sales area level. These records determine how orders are priced, shipped and billed.",
+  sd_sales_orders: "Sales orders at header and item level: the source of every delivery, invoice and revenue posting.",
+  benefits: "Employee benefit enrolments, the basis for benefit deductions and provider files.",
+  compensation: "Compensation records with recurring and one-time pay components. They define what each employee is paid and are passed to payroll.",
+  learning_management: "Each employee's learning history, the evidence for mandatory training and certification compliance.",
+  performance_goals: "Goal plan templates and the individual goals set against them, the basis of performance reviews.",
+  recruiting_onboarding: "Job requisitions and the applications received against them, from opening a role to hiring.",
+  succession_planning: "Successor nominations for key roles, the basis of talent and continuity planning.",
+  time_attendance: "Employee time records, with time type and time account configuration. They drive absence balances and time-based pay.",
+  concur_expense: "Expense reports and their entries, with the expense group configuration that governs them. They determine what is reimbursed and how it is posted.",
+  concur_travel: "Travel requests raised and approved before a trip.",
+  concur_users: "Concur user profiles, which control who can submit and approve expenses and travel.",
+  ariba_contracts: "Supplier contracts managed in SAP Ariba, which set the agreed terms for purchasing.",
+  ariba_procurement: "Purchase orders and supplier invoices processed in SAP Ariba, from order to payment.",
+  ariba_spend: "Spend analysis records that classify what the organisation buys and from whom.",
+  ariba_supplier: "Supplier master records managed in SAP Ariba, used for sourcing, ordering and payment.",
+  batch_management: "Batch master records for batch-managed materials, the basis of traceability and shelf-life control.",
+  ewms_stock: "Warehouse stock by quant, storage bin and handling unit, with warehouse and storage type configuration. It is the physical view of inventory.",
+  ewms_transfer_orders: "Open and confirmed warehouse tasks and warehouse orders by storage type: the movements that put away, pick and replenish stock.",
+  fleet_management: "Vehicle master records for the fleet, used to plan, maintain and cost vehicles.",
+  grc_compliance: "Risk items recorded in SAP GRC, the register behind access control and compliance reporting.",
+  mdg_master_data: "Master Data Governance change requests for materials: proposed changes and their approval status.",
+  transport_management: "Freight orders planned and executed in transport management.",
+  wm_interface: "Transfer requirements raised by inventory management for warehouse management to fulfil.",
+};
+
+/** The object's description from `MODULE_DESCRIPTIONS`, or undefined. */
+export function moduleDescription(id: string): string | undefined {
+  return Object.hasOwn(MODULE_DESCRIPTIONS, id) ? MODULE_DESCRIPTIONS[id] : undefined;
+}
+
 /**
  * "fi_gl" -> "FI general ledger": the module's name from `MODULE_LABELS`. An id missing there is sentence-cased
  * ("new_module" -> "New module"), which also names dimensions ("completeness" -> "Completeness").

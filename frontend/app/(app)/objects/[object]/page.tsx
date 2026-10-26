@@ -29,7 +29,7 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
-import { DIMENSIONS, formatDate, formatModuleName, plural, shortCapReason } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, plural, shortCapReason } from "@/lib/format";
 
 const RULE_HISTORY_RUNS = 8;
 const TAB_KEYS = ["fix", "overview", "rules", "fields", "records"] as const;
@@ -478,8 +478,10 @@ export default function ObjectDetailPage() {
   // The header's counts open what they count: the failing rules on the Rules tab, the records on Records to fix.
   const tabHref = (t: string) => `/objects/${object}?${new URLSearchParams({ run, tab: t })}`;
   const name = summary?.label ?? formatModuleName(object);
+  const description = moduleDescription(object);
   const meta = (
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      {description && <span className="block w-full max-w-[72ch] m-ink-2">{description}</span>}
       <RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}`, search, id)} />
       {summary && (
         <span>
