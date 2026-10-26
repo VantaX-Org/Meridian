@@ -75,10 +75,15 @@ export default function LearnedRulesPage() {
     onError: (e) => toast.error(errorText(e)),
   });
 
-  const versions = useQuery({ queryKey: ["versions-list", { for: "mine" }], queryFn: () => getVersions({ limit: 20 }), staleTime: 60_000 });
+  // A ?run= older than the window used to be replaced by the newest run without a word, so "Mine now"
+  // mined a different run than the one the URL named. Ask for enough to contain it, and say when it
+  // is missing rather than switching silently.
   const fromUrl = useSearchParams().get("run");
+  const versions = useQuery({ queryKey: ["versions-list", { for: "mine", fromUrl }], queryFn: () => getVersions({ limit: 100 }), staleTime: 60_000 });
   const finished = (versions.data?.versions ?? []).filter((v) => v.status !== "pending" && v.status !== "running" && v.status !== "failed");
-  const latestRun = finished.find((v) => v.id === fromUrl) ?? finished[0];
+  const urlRun = fromUrl ? finished.find((v) => v.id === fromUrl) : undefined;
+  const missingUrlRun = Boolean(fromUrl) && !versions.isLoading && !urlRun;
+  const latestRun = urlRun ?? finished[0];
   const mine = useMutation({
     mutationFn: () => mineLearnedRules((latestRun as { id: string }).id),
     onSuccess: () => { toast.success("Mining queued. New proposals appear here when it finishes"); refresh(); },
@@ -111,11 +116,18 @@ export default function LearnedRulesPage() {
   return (
     <ExplorerPage
       header={
-        <PageHeader
-          title="Learned rules"
-          meta="Patterns your own data follows for at least 95% of records. Approve one to make it a rule; the records that break it then show as findings."
-          actions={can("manage_rules") ? <Button onClick={() => mine.mutate()} pending={mine.isPending} disabled={!latestRun}>Mine now</Button> : undefined}
-        />
+        <>
+          <PageHeader
+            title="Learned rules"
+            meta="Patterns your own data follows for at least 95% of records. Approve one to make it a rule; the records that break it then show as findings."
+            actions={can("manage_rules") ? <Button onClick={() => mine.mutate()} pending={mine.isPending} disabled={!latestRun}>Mine now</Button> : undefined}
+          />
+          {missingUrlRun ? (
+            <span className="m-text-meta m-ink-3" role="status">
+              That run is not among the latest {finished.length} finished runs; mining uses the newest instead.
+            </span>
+          ) : null}
+        </>
       }
       filterBar={
         <div className="flex items-end gap-3">

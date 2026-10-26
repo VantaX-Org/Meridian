@@ -73,8 +73,18 @@ function matchesScoped(pathname: string, entries: readonly string[]): boolean {
 }
 
 /** True on a screen whose content follows the scope bar's `?run=` (see `RUN_SCOPED`). */
+/**
+ * Screens that sit under a scoped parent but read no run: their endpoints are tenant-wide, so a run
+ * picker there changed nothing. Offering one read as a broken control, so they are opted out here.
+ */
+export const RUN_BLIND: readonly string[] = [
+  "/insights/owners",
+  "/insights/forecast",
+  "/insights/operations",
+];
+
 export function isRunScoped(pathname: string): boolean {
-  return matchesScoped(pathname, RUN_SCOPED);
+  return matchesScoped(pathname, RUN_SCOPED) && !matchesScoped(pathname, RUN_BLIND);
 }
 
 /** True on a screen whose content follows the scope bar's `?module=` (see `MODULE_SCOPED`). */

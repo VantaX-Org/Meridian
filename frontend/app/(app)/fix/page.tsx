@@ -18,6 +18,7 @@ import { MonitorTab } from "./monitor-tab";
 import { FixWork } from "@/components/work/fix-work";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { useRole } from "@/hooks/use-role";
+import { approvesOnly } from "@/lib/persona";
 import { personaForRole } from "@/lib/persona";
 
 const runLabel = (g: CleaningGroup) => (g.version_id ? g.run_label ?? (g.run_at ? formatDate(g.run_at, "datetime") : "Run") : "Matching");
@@ -102,10 +103,13 @@ function CleaningQueueTab() {
 }
 
 export default function FixPage() {
-  const [tabRaw, setTab] = useUrlState("tab", "work");
+  // An approver who may not apply has every control disabled on "Records to fix", so the nav entry
+  // used to drop them on a dead screen. Land them where their work is, unless the URL says otherwise.
+  const { can, homeRole } = useRole();
+  const approverOnly = approvesOnly(can);
+  const [tabRaw, setTab] = useUrlState("tab", approverOnly ? "batches" : "work");
   const tab = oneOf(tabRaw, ["work", "cleaning", "batches", "monitor", "dedup"], "work");
   // Stewards land here rather than on a persona home (lib/persona.ts homeHrefForRole), so the first-run offer is here too.
-  const { homeRole } = useRole();
   const steward = !!homeRole && personaForRole(homeRole) === "steward";
 
   return (

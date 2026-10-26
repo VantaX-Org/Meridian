@@ -7,7 +7,7 @@ describe("isRunScoped", () => {
     "is true on %s, which reads ?run=",
     (path) => expect(isRunScoped(path)).toBe(true),
   );
-  it.each(["/home", "/home/steward", "/runs", "/runs/r1", "/process", "/process/ptp", "/admin/users", "/mdm", "/inbox", "/systems", "/rules", "/fix/proposals/r1", "/insights/lineage", "/insights/process/designer", "/objectsx"])(
+  it.each(["/home", "/home/steward", "/runs", "/runs/r1", "/process", "/process/ptp", "/admin/users", "/mdm", "/inbox", "/systems", "/rules", "/fix/proposals/r1", "/insights/lineage", "/insights/process/designer", "/objectsx", "/insights/owners", "/insights/forecast", "/insights/operations"])(
     "is false on %s, which ignores or owns ?run=",
     (path) => expect(isRunScoped(path)).toBe(false),
   );

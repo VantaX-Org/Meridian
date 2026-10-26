@@ -29,7 +29,9 @@ describe("SchedulesPanel", () => {
     renderWithQuery(<SchedulesPanel id="s1" canManage={false} />);
     const link = await screen.findByRole("link", { name: "Africa/Johannesburg" });
     expect(link).toHaveAttribute("href", "/admin/triage#calendar");
+    // The zone beside each schedule and its next run only exist once the profiles have loaded; the
+    // link above renders before them, so waiting on the link alone counted one occurrence.
+    expect(await screen.findByText("2 Jan 2026, 02:00 GMT+2")).toBeInTheDocument();
     expect(screen.getAllByText("Africa/Johannesburg").length).toBeGreaterThan(1);
-    expect(screen.getByText("2 Jan 2026, 02:00 GMT+2")).toBeInTheDocument();
   });
 });
