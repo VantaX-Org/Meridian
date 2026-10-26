@@ -128,8 +128,8 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
 
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string) => {
-      await changeOwnPassword(currentPassword, newPassword);
-      // Success — clear the gate. Existing token still valid.
+      // The change revokes the old token; changeOwnPassword has already stored its replacement.
+      setToken(await changeOwnPassword(currentPassword, newPassword));
       setMustChangePassword(false);
     },
     [],

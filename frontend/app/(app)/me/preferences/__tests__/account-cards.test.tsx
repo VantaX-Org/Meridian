@@ -19,7 +19,7 @@ function fill(current: string, next: string, confirm: string) {
 
 describe("PasswordCard", () => {
   it("refuses a short or mismatched password without calling the API", () => {
-    const spy = vi.spyOn(auth, "changeOwnPassword").mockResolvedValue();
+    const spy = vi.spyOn(auth, "changeOwnPassword").mockResolvedValue("new-token");
     renderWithQuery(<PasswordCard />);
     fill("old-password-1", "short", "short");
     expect(screen.getByText("The new password needs at least 12 characters.")).toBeInTheDocument();
@@ -29,7 +29,7 @@ describe("PasswordCard", () => {
   });
 
   it("sends the current and new password and clears the form", async () => {
-    const spy = vi.spyOn(auth, "changeOwnPassword").mockResolvedValue();
+    const spy = vi.spyOn(auth, "changeOwnPassword").mockResolvedValue("new-token");
     renderWithQuery(<PasswordCard />);
     fill("old-password-1", "a-long-new-password", "a-long-new-password");
     await waitFor(() => expect(spy).toHaveBeenCalledWith("old-password-1", "a-long-new-password"));
