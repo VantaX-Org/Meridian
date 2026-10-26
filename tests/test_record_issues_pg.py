@@ -726,3 +726,30 @@ def test_baseline_monitor_drafts_regressions(app_engine, monkeypatch):
 
     monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
     asyncio.run(scenario())
+
+
+def test_reconcile_reads_present_keys_after_track(app_engine):
+    """run_checks calls remediation.reconcile right after track in one transaction; track's batches
+    commit (dropping their tmp_present), so it must leave tmp_present in place for reconcile."""
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+
+    from api.services.record_issues import track
+    from api.services.remediation import reconcile
+
+    owner, app = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'TR')"), {"a": tid})
+    _run(app, tid, sid, [_result("CHK-R", ["1", "2"])], ["1", "2"])
+    vid = str(uuid.uuid4())
+    with Session(app) as s:
+        s.execute(text("SET app.tenant_id = :t"), {"t": tid})
+        s.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                       "VALUES (:v, :t, 'complete', CAST(:m AS jsonb))"),
+                  {"v": vid, "t": tid, "m": json.dumps({"system_id": sid})})
+        with s.begin_nested():
+            track(s, tid, vid, sid, [_result("CHK-R", ["1"])], _frames(["1", "2"]))
+        with s.begin_nested():
+            assert reconcile(s, tid, vid, sid) == 0
+        s.commit()
