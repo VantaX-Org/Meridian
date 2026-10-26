@@ -135,18 +135,22 @@ class SAPTransactionMonitor:
         now = datetime.now(timezone.utc)
         exceptions: list[dict] = []
 
-        # Build a set of all field names referenced across findings
-        finding_fields: set[str] = set()
+        # Every field name referenced across findings, with the objects (finding modules) that referenced it
+        finding_fields: dict[str, set[str]] = {}
         for f in findings:
             # Check check_id, details.field_checked, and details.message for field refs
             details = f.get("details") or {}
+            refs: set[str] = set()
             field_checked = details.get("field_checked", "")
             if field_checked:
-                finding_fields.add(field_checked.upper())
+                refs.add(field_checked.upper())
             message = details.get("message", "")
             # Extract TABLE.FIELD patterns from message
-            for match in re.findall(r"[A-Z0-9_/]+\.[A-Z0-9_]+", message.upper()):
-                finding_fields.add(match)
+            refs.update(re.findall(r"[A-Z0-9_/]+\.[A-Z0-9_]+", message.upper()))
+            for ref in refs:
+                mods = finding_fields.setdefault(ref, set())
+                if f.get("module"):
+                    mods.add(f["module"])
 
         for monitor in SAP_MONITORS:
             # Check if any detection field appears in the findings field set
@@ -169,7 +173,11 @@ class SAPTransactionMonitor:
                 "description": monitor["description"],
                 "source_system": f"SAP {monitor['sap_area']}",
                 "source_reference": monitor["name"],
-                "affected_records": {"matched_fields": matched_fields},
+                # The objects whose findings raised it: the SAP monitor's Re-extract opens the system's Extract with them.
+                "affected_records": {
+                    "matched_fields": matched_fields,
+                    "modules": sorted({m for df in matched_fields for m in finding_fields[df.upper()]}),
+                },
                 "escalation_tier": 1,
                 "sla_deadline": (now + timedelta(hours=sla_hours)).isoformat(),
                 "created_at": now.isoformat(),

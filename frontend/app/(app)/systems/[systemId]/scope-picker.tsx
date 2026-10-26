@@ -22,15 +22,17 @@ const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()
 const note = "m-text-body";
 
 /** Choose objects and scope, confirm inline, then extract into a new run. The one Extract drawer's body. */
-export function ScopePicker({ id, system, onDownloaded }: {
+export function ScopePicker({ id, system, onDownloaded, initialObjects = [] }: {
   id: string;
   /** Named in the confirmation: which system and environment is about to be read. */
   system?: { name: string; environment: string };
   onDownloaded: (jobId: string) => void;
+  /** Objects picked on open (`?object=` on the system page, e.g. the SAP monitor's Re-extract); unknown ones are ignored. */
+  initialObjects?: readonly string[];
 }) {
   const qc = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
-  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(initialObjects));
   const [scopeText, setScopeText] = useState<Partial<Record<ScopeKey, string>>>({});
   const [dates, setDates] = useState<{ date_from?: string; date_to?: string }>({});
   const [excludeDeleted, setExcludeDeleted] = useState(false);
@@ -53,7 +55,7 @@ export function ScopePicker({ id, system, onDownloaded }: {
     return s;
   };
   const download = useMutation({
-    mutationFn: (analyse: boolean) => startDownload(id, { objects: Array.from(picked), scope: scope(), label: label || undefined, analyse }),
+    mutationFn: (analyse: boolean) => startDownload(id, { objects: chosen.map((o) => o.object), scope: scope(), label: label || undefined, analyse }),
     onSuccess: (job, analyse) => {
       toast.success(analyse ? "Extraction started. Analysis follows." : "Extraction started. A new run appears under Runs.");
       setPicked(new Set()); setConfirm(null);

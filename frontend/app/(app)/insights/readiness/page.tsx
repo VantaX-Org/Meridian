@@ -14,6 +14,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName, plural } from "@/lib/format";
 import { previousInLineage } from "@/lib/runs";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { useRole } from "@/hooks/use-role";
 import { DrillCount } from "../_components/DrillCount";
 import { migrationGapColumns, useWaveIds } from "../_components/migrationGaps";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -58,6 +59,9 @@ const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
 
 export default function ReadinessPage() {
   const router = useRouter();
+  // Waves are created in the migration cockpit with `analyse`; without it the page opens the cockpit to read.
+  const { can } = useRole();
+  const canCreateWave = can("analyse");
   const { run, runs, versions, error: listError, refetch: refetchList } = useInsightScope();
   const dayOne = useDayOne();
   // No run because the run list (or the day-one sources) failed: an error, never "No readiness data yet".
@@ -134,7 +138,7 @@ export default function ReadinessPage() {
     <EmptyState
       title="No waves yet"
       detail="A wave is the set of objects you move together. Create one in the migration cockpit and every object in it gets a go or no-go here."
-      action={<Button render={<Link href="/migration">Create wave</Link>} />}
+      action={<Button render={<Link href="/migration">{canCreateWave ? "Create wave" : "Open migration cockpit"}</Link>} />}
       ghost="grid"
     />
   );
@@ -158,7 +162,9 @@ export default function ReadinessPage() {
           ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: withScope(`/objects/${worst.module}`, { run, tab: "rules", blocking: "true" }) } }
           : cells.length
             ? { sentence: "Nothing blocks loading", action: { label: "Open objects", href: withScope("/objects", { run }) } }
-            : { sentence: "Create the first wave in the migration cockpit", action: { label: "Create wave", href: "/migration" } },
+            : canCreateWave
+              ? { sentence: "Create the first wave in the migration cockpit", action: { label: "Create wave", href: "/migration" } }
+              : { sentence: "No wave is set up yet; a data lead creates one in the migration cockpit", action: { label: "Open migration cockpit", href: "/migration" } },
       }}
       state={state}
       skeleton={

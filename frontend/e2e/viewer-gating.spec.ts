@@ -24,16 +24,11 @@ const MUTATING = /^(approve|reject|write ?back|sign off|extract( now)?|apply|acc
 const PRIMARY = /^(approve|write back|sign off|extract( now)?)\b/i;
 
 /**
- * Routes where a viewer still sees a control whose label starts with a mutating verb on the
- * recording (release 0.0.449). Each is a navigation link or an onboarding item, not a write,
- * but the brief allows none; they are reported as gating gaps and expected to fail here until
- * the pages hide them for viewers (the test then flips to an unexpected pass).
+ * Routes where a viewer still sees a control whose label starts with a mutating verb, each expected to fail here
+ * until the page hides it for viewers. Empty: the /insights "Create remediation batch" (apply), /insights/readiness
+ * "Create wave" (analyse) and the single-run "Import file" (upload) gaps are gated now.
  */
-const KNOWN_GAPS: Record<string, string> = {
-  "/insights": "the current-state overview's \"Cleansing opportunity\" funnel shows its \"Create remediation batch\" link (to /fix) for a viewer",
-  "/insights/readiness": "\"Create wave\" link shows for a viewer",
-  [`/runs/${RECORDED.businessPartnerRunId}`]: "\"Import file\" action in the single-run empty state shows for a viewer",
-};
+const KNOWN_GAPS: Record<string, string> = {};
 
 test.describe("viewer gating", () => {
   test.beforeEach(async ({ app }) => {

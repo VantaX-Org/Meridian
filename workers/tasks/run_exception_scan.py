@@ -37,6 +37,12 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
                 {"vid": version_id, "tid": tenant_id},
             )
             rows = result.fetchall()
+            # The SAP system the run read (NULL for uploads): an SAP monitor signal names it so it can be re-extracted.
+            system_id = session.execute(
+                text("SELECT metadata->>'system_id' FROM analysis_versions "
+                     "WHERE id = CAST(:vid AS uuid) AND tenant_id = CAST(:tid AS uuid)"),
+                {"vid": version_id, "tid": tenant_id},
+            ).scalar()
 
             # Only the tenant's enabled rules; disabled rules never fire.
             rules = [dict(r._mapping) for r in session.execute(
@@ -75,6 +81,9 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
         from api.services.exception_engine import CustomRuleEvaluator, SAPTransactionMonitor
 
         exceptions = SAPTransactionMonitor().evaluate_monitors(findings, tenant_id)
+        for e in exceptions:
+            e["affected_records"] = {**e.get("affected_records", {}), "version_id": version_id,
+                                     **({"system_id": system_id} if system_id else {})}
         exceptions += CustomRuleEvaluator().evaluate_rules(findings, rules, tenant_id)
 
         if not exceptions:

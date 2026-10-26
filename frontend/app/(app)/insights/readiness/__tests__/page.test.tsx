@@ -5,7 +5,8 @@ import * as insightsApi from "@/lib/api/insights";
 import * as migrationApi from "@/lib/api/migration";
 import ReadinessPage from "../page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const perms = vi.hoisted(() => ({ can: (() => true) as (action: string) => boolean }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.can(a) }) }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/insights",
   useRouter: () => ({ push: vi.fn() }),
@@ -64,6 +65,23 @@ describe("ReadinessPage", () => {
     vi.spyOn(insightsApi, "getReadiness").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<ReadinessPage />);
     expect(container.querySelector("table")).not.toBeInTheDocument();
+  });
+
+  it("offers a viewer the migration cockpit to read, never Create wave", async () => {
+    perms.can = (a) => a === "view";
+    try {
+      vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 70, cells: [], configured: true });
+      vi.spyOn(migrationApi, "getS4Readiness").mockResolvedValue({
+        version_id: "v1", status: "ok", ready: true, rules: 0, evaluated: 0, failing: 0, failing_records: 0, blocking_failing: 0, warning_failing: 0, areas: [],
+      });
+      renderWithQuery(<ReadinessPage />);
+      expect(await screen.findByText("No waves yet")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Create wave" })).toBeNull();
+      const links = screen.getAllByRole("link", { name: "Open migration cockpit" });
+      for (const l of links) expect(l).toHaveAttribute("href", "/migration");
+    } finally {
+      perms.can = () => true;
+    }
   });
 
   it("with a run but no wave, the grid offers Create wave into the migration cockpit and the S/4 strip still renders", async () => {

@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, buildDrillHref, Card, DataTable, DrillLink, ErrorState, Mono, PageHeader, Select, Skeleton, StatSkeleton, Stat, Status, type StatTone, PageFrame } from "@/design";
+import { Button, buildDrillHref, Card, DataTable, DrillLink, ErrorState, ExportMenu, InsightHeader, Mono, PageHeader, Select, Skeleton, StatSkeleton, Stat, Status, type ExportOption, type StatTone, PageFrame, runExportOption } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { readinessHref, useProcessReadiness, type L1Readiness } from "@/components/process/shared";
 import { HandToSteward } from "@/components/process/handoff";
-import { getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
+import { exportRun, getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
+import { downloadCsv } from "@/lib/actions";
 import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -22,8 +23,9 @@ import {
 } from "../../process/_components/shared";
 import { CoveragePill } from "../../process/_components/coverage-pill";
 import { DiscoveryStart, canMine, isDayOne } from "../../process/_components/discovery-start";
+import { processHomeInsight, readinessExportRows, worstNoGo, type ProcessHomeRow } from "./insight";
 
-type Row = CatalogueRow & { readiness: L1Readiness | undefined };
+type Row = ProcessHomeRow;
 
 const columns = (systemId: string, canRun: boolean, versionId: string | undefined): ColumnDef<Row>[] => [
   { id: "process", header: "Process", accessorFn: (r) => r.name, cell: ({ row: { original: r } }) => (
@@ -104,6 +106,22 @@ export default function ProcessHomePage() {
   const noGo = ledger.filter((r) => r.readiness?.verdict === "no-go").length;
   // The catalogue ranks lowest fitness first, so the tile lands on the ranked list.
   const catalogueHref = `/process?system=${system.id}`;
+  const starting = isDayOne(rows) || !canMine(rows);
+  // The as-is model to export: the worst no-go process's, else the first discovered one's (export_process).
+  const worst = worstNoGo(ledger);
+  const modelRow = worst?.last_run ? worst : ledger.find((r) => r.last_run);
+  const modelRun = modelRow?.last_run;
+  const modelExport: ExportOption | undefined = can("export_process") && modelRow && modelRun
+    ? { format: "json", label: `${modelRow.name} as-is model (Signavio)`, run: () => exportRun(modelRun.id, modelRow.l1, {}) }
+    : undefined;
+  const readinessExport: ExportOption = {
+    format: "csv", label: "Process readiness (CSV)",
+    run: async () => downloadCsv(`process-readiness-${system.name}.csv`, readinessExportRows(ledger)),
+  };
+  // ExportMenu shows only to `export`; a process analyst holds export_process alone and gets the model as one button.
+  const exportAction = can("export")
+    ? <ExportMenu options={[readinessExport, ...(modelExport ? [modelExport] : [])]} />
+    : modelExport ? <Button variant="secondary" onClick={() => void runExportOption(modelExport)}>Export</Button> : null;
   return (
     <PageFrame>
       <PageHeader title="Home" meta={`${system.name}, ${rows.length} processes`} actions={<>
@@ -114,8 +132,11 @@ export default function ProcessHomePage() {
           onValueChange={(r) => router.push(hrefWithRun(`/home/${r}`, search, search.get("run")))}
           options={PERSONA_OPTIONS}
         />
+        {exportAction}
       </>} />
-      {(isDayOne(rows) || !canMine(rows)) && <DiscoveryStart system={system} rows={rows} />}
+      {starting && <DiscoveryStart system={system} rows={rows} />}
+      {/* After day one (or once an analysis scores the processes) the page leads with its verdict and next step. */}
+      {(!starting || readiness.byL1.size > 0) && <InsightHeader {...processHomeInsight(ledger, system, readiness.latest)} />}
       <Card title="Can each process run" padding="sm"
         meta={readiness.latest
           ? `${noGo} of ${readiness.byL1.size} scored processes no-go, from ${runScopeLabel(readiness.latest)} on ${system.name}`
