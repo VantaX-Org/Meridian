@@ -98,11 +98,11 @@ describe("Score explain", () => {
         }}
       />,
     );
-    fireEvent.click(screen.getByLabelText("Explain score 92"));
+    fireEvent.click(screen.getByLabelText("Explain score 92.0"));
     // The popover names the band and cap; the score itself is drawn once, by the ring.
     expect(screen.getAllByLabelText(/^Score 85/)).toHaveLength(1);
     expect(screen.getByText("20.0")).toBeTruthy();
-    expect(screen.getByText(/Capped at 85: one critical failure/)).toBeTruthy();
+    expect(screen.getByText(/Capped at 85.0: one critical failure/)).toBeTruthy();
     const ids = screen.getAllByText(/MM-00/).map((n) => n.textContent);
     expect(ids).toEqual(["MM-002", "MM-001"]);
   });

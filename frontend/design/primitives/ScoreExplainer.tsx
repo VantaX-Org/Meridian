@@ -4,7 +4,8 @@
 import Link from "next/link";
 import { Popover } from "@base-ui/react/popover";
 import { Pill, type PillTone } from "./Pill";
-import { ScoreRing } from "./ScoreRing";
+import { ScoreRing, formatScore } from "./ScoreRing";
+import { IconInfo } from "../icons";
 import { Mono } from "./Mono";
 import { HelpHint } from "./HelpHint";
 import { buildDrillHref } from "../shell/DrillLink";
@@ -33,19 +34,40 @@ export interface ScoreExplanation {
   run?: string;
 }
 
-/** Internal to `Score`: the md ring as a popover trigger. The popover names the band and the cap; it does not draw the score again. */
-export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules, historyHref, run }: ScoreExplanation & { score: number; cap?: number }) {
+/**
+ * Internal to `Score`: the breakdown popover. At md its trigger is the ring; at hero size (`label`) it is the score's
+ * label and its info glyph, so the number is drawn once. The popover names the band and the cap; it does not draw the
+ * score again.
+ */
+export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules, historyHref, run, label }: ScoreExplanation & {
+  score: number;
+  cap?: number;
+  /** Hero: the label the trigger reads as ("Data quality score"), with the info glyph after it. */
+  label?: string;
+}) {
   const top = [...rules].sort((a, b) => b.recordsFailed * b.weight - a.recordsFailed * a.weight).slice(0, 5);
   return (
     <Popover.Root>
-      <Popover.Trigger className="inline-flex items-center gap-2 rounded" aria-label={`Explain score ${Math.round(score)}`}>
-        <ScoreRing score={score} size={48} cap={cap} />
-      </Popover.Trigger>
+      {label ? (
+        <Popover.Trigger
+          className="m-motion-colors inline-flex max-w-full items-center gap-1 rounded m-text-meta [color:var(--m-hero-ink-2)] hover:[color:var(--m-accent)]"
+          aria-label={`${label} ${formatScore(score)}: how it is scored`}
+          data-testid="score-explain"
+        >
+          {/* The hero tile prints the label beneath this trigger; this copy only holds its width, so the glyph follows it. */}
+          <span aria-hidden className="truncate [color:transparent]">{label}</span>
+          <IconInfo size={14} aria-hidden />
+        </Popover.Trigger>
+      ) : (
+        <Popover.Trigger className="inline-flex items-center gap-2 rounded" aria-label={`Explain score ${formatScore(score)}`}>
+          <ScoreRing score={score} size={48} cap={cap} />
+        </Popover.Trigger>
+      )}
       <Popover.Portal>
         <Popover.Positioner sideOffset={8} className="z-50">
           <Popover.Popup
             className="m-motion-scale-in rounded p-4 m-text-body"
-            style={{ background: "var(--m-sheet)", color: "var(--m-ink)", boxShadow: "var(--m-elev-2)", width: 360 }}
+            style={{ background: "var(--m-sheet)", color: "var(--m-ink)", boxShadow: "var(--m-elev-2)", width: 360, maxWidth: "calc(100vw - 32px)" }}
           >
             <div className="flex items-center gap-3">
               <span className="m-text-h font-semibold">Score breakdown</span>
@@ -60,13 +82,13 @@ export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules,
                   <tr key={d.name}>
                     <td>{d.name}</td>
                     <td>{Math.round(d.weight * 100)}%</td>
-                    <td>{Math.round(d.score)}</td>
+                    <td>{formatScore(d.score)}</td>
                     <td>{(d.weight * d.score).toFixed(1)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {cap != null && score > cap && <p className="mt-2 flex items-center gap-1" style={{ color: "var(--m-ink-2)" }}>Capped at {cap}{capReason ? `: ${capReason}` : ""}<HelpHint term="cap" /></p>}
+            {cap != null && score > cap && <p className="mt-2 flex items-center gap-1" style={{ color: "var(--m-ink-2)" }}>Capped at {formatScore(cap)}{capReason ? `: ${capReason}` : ""}<HelpHint term="cap" /></p>}
             {top.length > 0 && (
               <>
                 <p className="mt-3" style={{ color: "var(--m-ink-3)" }}>Rules costing the most</p>

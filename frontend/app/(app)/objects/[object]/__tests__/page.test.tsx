@@ -76,7 +76,7 @@ describe("ObjectDetailPage", () => {
     ], total: 4 });
     const getObject = vi.spyOn(objectsApi, "getObject").mockResolvedValue(OBJECT);
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Score 72.5" })).toBeInTheDocument();
     expect(getObject).toHaveBeenCalledWith("material_master", "mm-latest");
     expect(getObject).not.toHaveBeenCalledWith("material_master", "bp-new");
     // The header names the run (the scope bar picks it), and nothing is pinned, so there is no "Back to latest".
@@ -130,7 +130,7 @@ describe("ObjectDetailPage", () => {
   it("renders the overview workbench: the score, the stats, the failing rules ranked by records and the dimension bars", async () => {
     searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Score 72.5" })).toBeInTheDocument();
     expect(screen.getByText("Material master")).toBeInTheDocument();
     for (const label of ["Failing rules", "Critical and high", "Rule failures", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
     const rules = await screen.findAllByTestId("workbench-rule-row");

@@ -6,9 +6,8 @@
 // run and a needle, the target as a tick, and the cap (when a critical finding holds the score down) as a
 // second tick. The same geometry at three sizes, so a reader learns it once: hero (the score sheet), row (a
 // table cell beside the numeral) and inline (a sparkline-sized mark in a sentence).
-import type { CSSProperties } from "react";
-import { dqsBand } from "../tokens";
-import { DEFAULT_SCORE_BANDS, type ScoreBands } from "./ScoreRing";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { DEFAULT_SCORE_BANDS, scoreHue, type ScoreBands } from "./ScoreRing";
 
 export type RuleSize = "hero" | "row" | "inline";
 
@@ -40,17 +39,64 @@ const GEOMETRY: Record<RuleSize, { h: number; track: number; trackY: number; nee
 const clamp = (n: number) => Math.min(100, Math.max(0, n));
 const pct = (n: number) => `${clamp(n)}%`;
 
+/** Width of an 11px label in Manrope, about 6.2px a glyph; generous so a near miss counts as a collision. */
+const labelWidth = (text: string) => text.length * 6.2;
+
+/** A label's horizontal extent in px on a ruler `w` wide: anchored at its end near the right edge, else centred. */
+function extent(at: number, text: string, w: number): [number, number] {
+  const x = (clamp(at) / 100) * w;
+  const lw = labelWidth(text);
+  return at > 82 ? [x - lw, x] : [Math.max(0, x - lw / 2), x + lw / 2];
+}
+
+const GAP = 6;
+const overlaps = (a: [number, number], b: [number, number]) => a[0] < b[1] + GAP && b[0] < a[1] + GAP;
+
+/**
+ * Which of the hero's labels fit on a ruler `w` px wide. The target label always shows; the cap label yields when it
+ * would touch the target's (the hint under the ruler says "Capped at" in words); "100" yields to either. Without a
+ * measured width (the first render, tests) it falls back to the distance in percent.
+ */
+export function heroLabels(t: number, cap: number | undefined, w: number | null): { cap: boolean; end: boolean } {
+  if (w == null || w <= 0) {
+    return { cap: cap != null && Math.abs(cap - t) >= 14, end: t <= 82 && (cap == null || cap <= 82) };
+  }
+  const target = extent(t, `Target ${t}`, w);
+  const capBox = cap != null ? extent(cap, `Cap ${cap}`, w) : null;
+  const showCap = capBox != null && !overlaps(capBox, target);
+  const end: [number, number] = [w - labelWidth("100"), w];
+  return { cap: showCap, end: !overlaps(end, target) && !(showCap && capBox && overlaps(end, capBox)) };
+}
+
+/** The rendered width of the hero ruler, followed with a ResizeObserver. */
+function useWidth(on: boolean) {
+  const ref = useRef<SVGSVGElement>(null);
+  const [w, setW] = useState<number | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!on || !el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([entry]) => setW(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [on]);
+  return [ref, w] as const;
+}
+
 export function Rule({ value, target, cap, bands = DEFAULT_SCORE_BANDS, size = "row", tone, label, width, className, style }: RuleProps) {
   const g = GEOMETRY[size];
+  const [ref, measuredWidth] = useWidth(g.labels);
   const t = target ?? bands.target;
   const v = value == null ? null : clamp(value);
   const capped = v != null && cap != null && v > cap;
   const shown = capped ? cap! : v;
-  const hue = `var(--m-${tone ?? (shown == null ? "low" : dqsBand(shown, bands))}-fill)`;
+  // The band's verdict hue (warning and below share the at-risk fill the dimension bars use).
+  const hue = `var(--m-${tone ?? (shown == null ? "low" : scoreHue(shown, bands))}-fill)`;
+  const fits = heroLabels(t, cap, measuredWidth);
   const name = `${label ?? "Score"} ${v == null ? "not measured" : Math.round(v * 10) / 10}${capped ? `, capped at ${cap}` : ""}, target ${t}`;
   const mid = g.trackY + g.track / 2;
   return (
     <svg
+      ref={ref}
       role="img"
       aria-label={name}
       data-rule={size}
@@ -82,8 +128,8 @@ export function Rule({ value, target, cap, bands = DEFAULT_SCORE_BANDS, size = "
         <g aria-hidden fill="var(--m-ink-3)" fontSize={11} fontFamily="var(--m-font-ui)">
           <text x={0} y={g.h - 4}>0</text>
           <text x={pct(t)} y={g.h - 4} textAnchor={t > 82 ? "end" : "middle"}>Target {t}</text>
-          {cap != null && <text x={pct(cap)} y={g.h - 4} textAnchor={cap > 82 ? "end" : "middle"} fill="var(--m-critical)" dy={Math.abs(cap - t) < 14 ? -(g.h - 8) : 0}>Cap {cap}</text>}
-          {t <= 82 && (cap == null || cap <= 82) && <text x="100%" y={g.h - 4} textAnchor="end">100</text>}
+          {cap != null && fits.cap && <text x={pct(cap)} y={g.h - 4} textAnchor={cap > 82 ? "end" : "middle"} fill="var(--m-critical)">Cap {cap}</text>}
+          {fits.end && <text x="100%" y={g.h - 4} textAnchor="end">100</text>}
         </g>
       )}
     </svg>

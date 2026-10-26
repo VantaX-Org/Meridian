@@ -137,7 +137,7 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
       const score = row.original.composite_score;
       if (score == null) return "—";
       return (
-        <Score size="sm" value={score} bands={bands}>{drill(row.original, run, score)}</Score>
+        <Score size="sm" value={score} bands={bands}>{drill(row.original, run, score.toFixed(1))}</Score>
       );
     },
   },

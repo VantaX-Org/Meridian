@@ -24,7 +24,7 @@ export function Sparkline({
     <div aria-hidden="true">
     <ResponsiveContainer width={width} height={height}>
       <LineChart data={data} accessibilityLayer={false}>
-        <RLine type="monotone" dataKey="y" stroke={color} strokeWidth={1.25} dot={(d: DotItemDotProps) => (d.index === data.length - 1 ? <circle key={d.index} cx={d.cx ?? 0} cy={d.cy ?? 0} r={2} fill={color} /> : <g key={d.index} />)} />
+        <RLine type="linear" dataKey="y" stroke={color} strokeWidth={1.25} dot={(d: DotItemDotProps) => (d.index === data.length - 1 ? <circle key={d.index} cx={d.cx ?? 0} cy={d.cy ?? 0} r={2} fill={color} /> : <g key={d.index} />)} />
       </LineChart>
     </ResponsiveContainer>
     </div>

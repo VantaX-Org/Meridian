@@ -69,7 +69,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     expect(bodyRows()).toHaveLength(3);
     // one list per lineage, never the superseded controlling upload and never run=latest
     expect(getObjects.mock.calls.map((c) => c[0]).sort()).toEqual(["co2", "mm", "sys"]);
-    expect(cellLink("60")).toHaveAttribute("href", "/objects/controlling?tab=rules");
+    expect(cellLink("60.0")).toHaveAttribute("href", "/objects/controlling?tab=rules");
     expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?tab=fix");
     expect(screen.getByTestId("run-scope")).toHaveTextContent("Current state of 3 objects, latest run 16 Oct 2026");
     expect(screen.queryByText("Back to latest")).toBeNull();

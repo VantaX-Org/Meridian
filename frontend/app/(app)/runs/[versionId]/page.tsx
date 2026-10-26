@@ -20,7 +20,7 @@ import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
 import { getCostModel } from "@/lib/api/settings";
 import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/api/versions";
-import { DqsScore } from "@/components/insight/dqs-score";
+import { useDqsExplanation } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
@@ -239,6 +239,8 @@ function SummaryTab({
   const cost = aggregate.data?.cost_at_risk;
   // The tenant currency names the cost; until it is known the figure prints as plain digits.
   const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: cost != null, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
+  // The breakdown behind the hero's number, opened from its label: formula, weights, cap and costliest rules.
+  const explained = useDqsExplanation({ agg: aggregate.data, versionId });
 
   if (aggregate.isLoading) {
     return (
@@ -315,6 +317,7 @@ function SummaryTab({
               cap={capped ? composite ?? undefined : undefined}
               criticals={a.severity.critical}
               versionId={versionId}
+              explain={explained?.explain}
               delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
               hint={clean ? "Nothing failed in this run" : undefined}
               href={`/runs/${versionId}?tab=findings`}
@@ -674,8 +677,6 @@ export default function RunDetailPage() {
         <>
           <Status kind="lifecycle" value={v.status} />
           {isBaseline ? <Pill>Baseline</Pill> : null}
-          {/* The score explainer: formula, weights, cap and costliest rules behind this run's number. */}
-          {aggregate.data && aggregate.data.dqs.composite != null ? <DqsScore agg={aggregate.data} versionId={versionId} /> : null}
         </>
       }
       actions={

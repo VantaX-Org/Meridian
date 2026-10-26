@@ -24,7 +24,7 @@ import { getQueueItems } from "@/lib/api/stewardship";
 import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { RouteInsight } from "@/components/insight/route-insight";
-import { DqsScore } from "@/components/insight/dqs-score";
+import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
   runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
@@ -114,6 +114,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     queryFn: () => getFindingsAggregate(pinned?.id),
     enabled: wantsFindings && !!newest,
   });
+  // The weights and costliest rules the hero's "Data quality score ⓘ" breakdown reads (components/insight/dqs-score.tsx).
+  const dqsInputs = useDqsInputs(pinned?.id, !!aggregateQ.data);
 
   // Seed the run-keyed objects list so opening an object from home needs no second fetch.
   const runId = objectsQ.data?.run_id;
@@ -469,7 +471,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       persona={role}
       state="ready"
       workFirst={role === "steward"}
-      explain={aggregateQ.data ? <DqsScore agg={aggregateQ.data} versionId={pinned?.id} cap={cap?.cap} capReason={capReason} /> : undefined}
+      explain={dqsExplanation({ agg: aggregateQ.data, versionId: pinned?.id, cap: cap?.cap, capReason }, dqsInputs)?.explain}
       verdict={{
         dqs,
         cap: cap?.cap,

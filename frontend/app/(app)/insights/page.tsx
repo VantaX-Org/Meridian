@@ -34,8 +34,6 @@ import { useInsightScope, withScope } from "./_components/useInsightScope";
 import { CurrentOverview } from "./_components/CurrentOverview";
 import { CleansingFunnel, RootCauseList, S4Chart, s4Totals } from "./_components/RunAnalyses";
 
-const VERDICT_SENTENCE: Record<string, string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
-
 
 const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));
 
@@ -135,7 +133,6 @@ function RunOverview() {
                 value={o?.dqs.composite}
                 versionId={run}
                 href={withScope("/insights/trends", { run })}
-                tone={o?.dqs.tier === "go" ? "go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "no_go" ? "no-go" : undefined}
                 hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
                 delta={o?.dqs.delta != null ? <Delta value={o.dqs.delta} /> : undefined}
               />
@@ -147,7 +144,7 @@ function RunOverview() {
             ) : (
             <div className="m-hero-verdict" data-testid="hero-verdict">
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
-                {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : "Not scored yet"}
+                {o?.dqs.tier ? statusLabel("verdict", o.dqs.tier) : "Not scored yet"}
               </span>
               <span className="m-text-body m-ink-2">
                 {/* A comparison, not the Critical and high tile again: the score against the run before. */}
