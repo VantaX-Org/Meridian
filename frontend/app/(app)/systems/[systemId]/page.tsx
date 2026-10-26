@@ -6,7 +6,7 @@
  * Edit via a Drawer. `?extract=1` lands with the Extract drawer open, with each `?object=` picked.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -600,21 +600,16 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const rankedModules = useMemo(() => [...modules].sort((a, b) => b.row_count - a.row_count || a.module.localeCompare(b.module)), [modules]);
-  // The object page must open on the run this page is describing, not on its own latest.
-  const objectHref = useCallback(
-    (module: string) => `/objects/${module}${latest?.id ? `?run=${latest.id}` : ""}`,
-    [latest?.id],
-  );
   const columns = useMemo<ColumnDef<SystemModule>[]>(() => [
     {
       id: "module",
       header: "Object",
       // Carry the run whose score this page shows. Without it the object page resolves its own
       // newest run - possibly another system's - so the same row opened on two tabs showed two runs.
-      cell: ({ row }) => <Link href={objectHref(row.original.module)} className="underline">{formatModuleName(row.original.module)}</Link>,
+      cell: ({ row }) => <Link href={`/objects/${row.original.module}${latest?.id ? `?run=${latest.id}` : ""}`} className="underline">{formatModuleName(row.original.module)}</Link>,
     },
     { id: "enabled", header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
-    { id: "rows", header: "Records", cell: ({ row }) => <DrillLink href={objectHref(row.original.module)}>{row.original.row_count.toLocaleString()}</DrillLink> },
+    { id: "rows", header: "Records", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}${latest?.id ? `?run=${latest.id}` : ""}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
     { id: "synced", header: "Last extracted", cell: ({ row }) => when(row.original.last_synced_at) },
     {
       id: "dqs",
