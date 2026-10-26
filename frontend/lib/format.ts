@@ -159,6 +159,15 @@ export function formatMoney(n: number, currency?: string | null): string {
   }
 }
 
+/** "ZAR 4.84 bn", "ZAR 12.5 m", "ZAR 830 k": a large amount in three significant figures, for a sentence or a tile. */
+export function formatMoneyShort(n: number, currency?: string | null): string {
+  const abs = Math.abs(n);
+  const [div, unit] = abs >= 1e9 ? [1e9, "bn"] : abs >= 1e6 ? [1e6, "m"] : abs >= 1e3 ? [1e3, "k"] : [1, ""];
+  if (!unit) return formatMoney(n, currency);
+  const num = new Intl.NumberFormat(formatPrefs.locale, { maximumSignificantDigits: 3 }).format(n / div);
+  return `${currency ? `${currency} ` : ""}${num} ${unit}`;
+}
+
 const SYSTEM_TYPE_LABELS: Record<string, string> = {
   ecc: "ECC",
   s4hana_onprem: "S/4HANA on premise",

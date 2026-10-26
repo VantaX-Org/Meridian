@@ -32,7 +32,7 @@ describe("RunCarrier", () => {
     expect(window.localStorage.getItem(RUN_KEY)).toBeNull();
   });
 
-  it.each(["/home", "/home/lead", "/insights", "/insights/exec"])("never carries a run or an object onto the current-state view %s", (path) => {
+  it.each(["/home", "/home/lead", "/insights", "/insights/exec", "/insights/progress", "/insights/impact", "/insights/process"])("never carries a run or an object onto the current-state view %s", (path) => {
     window.sessionStorage.setItem(RUN_KEY, "r1");
     window.sessionStorage.setItem(OBJECT_KEY, "material_master");
     at(path);
@@ -87,9 +87,9 @@ describe("RunCarrier", () => {
   it("carries the chosen object along with the run", () => {
     window.sessionStorage.setItem(RUN_KEY, "r1");
     window.sessionStorage.setItem(OBJECT_KEY, "material_master");
-    at("/insights/progress");
+    at("/insights/rules");
     render(<RunCarrier />);
-    expect(replace).toHaveBeenCalledWith("/insights/progress?run=r1&module=material_master", { scroll: false });
+    expect(replace).toHaveBeenCalledWith("/insights/rules?run=r1&module=material_master", { scroll: false });
   });
 
   it("makes an object page's object the choice, without adding it to the URL", () => {
@@ -140,7 +140,7 @@ describe("RunCarrier", () => {
 
 describe("GlobalRunPicker", () => {
   it("is hidden on the current-state views, whose header picker names the scope \"Current state\"", () => {
-    for (const path of ["/home/lead", "/insights", "/insights/exec"]) {
+    for (const path of ["/home/lead", "/insights", "/insights/exec", "/insights/progress", "/insights/impact", "/insights/process"]) {
       at(path);
       const { queryByTestId, unmount } = render(<GlobalRunPicker />);
       expect(queryByTestId("global-run")).toBeNull();
@@ -152,6 +152,19 @@ describe("GlobalRunPicker", () => {
     at("/objects");
     const { getByTestId } = render(<GlobalRunPicker />);
     expect(getByTestId("global-run")).toBeInTheDocument();
+  });
+
+  it.each(["/fix", "/objects", "/objects/material_master"])("names the default of %s \"Current state\", the scope it opens on", (path) => {
+    at(path);
+    const { getByTestId } = render(<GlobalRunPicker />);
+    expect(getByTestId("global-run")).toHaveTextContent("Current state");
+    expect(getByTestId("global-run")).not.toHaveTextContent("Latest run");
+  });
+
+  it("names the default \"Latest run\" where a screen still opens on the newest run", () => {
+    at("/insights/rules");
+    const { getByTestId } = render(<GlobalRunPicker />);
+    expect(getByTestId("global-run")).toHaveTextContent("Latest run");
   });
 });
 

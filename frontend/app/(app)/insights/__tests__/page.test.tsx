@@ -209,26 +209,23 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     expect(within(screen.getByTestId("per-run-list")).getAllByRole("link").length).toBe(3);
   });
 
-  it("never opens one run's impact from a value at risk that spans several runs", async () => {
+  it("opens Value at risk on the same current state from its tiles, and says how many runs the figure spans", async () => {
     query = "";
     mockCurrent();
     mount();
     const tiles = await screen.findByTestId("current-value-at-risk");
-    expect(within(tiles).getByText("Most at risk: Order to cash").closest("a")).toBeNull();
+    // Value at risk opens on the current state too, so the figure links to the page that shows it whole.
+    expect(within(tiles).getByText("Most at risk: Order to cash").closest("a")).toHaveAttribute("href", "/insights/impact");
     expect(within(tiles).getAllByText("Across 3 runs").length).toBe(2);
-    // each run's own value at risk is one link away
-    const perRun = within(screen.getByTestId("value-at-risk-runs")).getAllByRole("link");
-    expect(perRun.map((a) => a.getAttribute("href"))).toEqual(expect.arrayContaining(["/insights/impact?run=co2", "/insights/impact?run=mm1", "/insights/impact?run=ap1"]));
+    expect(screen.queryByTestId("value-at-risk-runs")).toBeNull();
   });
 
-  it("opens the one run behind the state from value at risk, and names it", async () => {
+  it("names the one Do next: the lowest-scoring object of the current state, never the newest run's", async () => {
     query = "";
     mockCurrent();
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [currentVersions[3]] } as never);
     mount();
-    const tiles = await screen.findByTestId("current-value-at-risk");
-    expect(within(tiles).getByText("Most at risk: Order to cash").closest("a")).toHaveAttribute("href", "/insights/impact?run=ap1");
-    expect(screen.queryByTestId("value-at-risk-runs")).toBeNull();
+    // controlling (50.0) is the lowest of 50, 80 and 95: the same step Home's sentences and the summary name.
+    expect(await screen.findByText("Start with Controlling, the lowest score at 50.0")).toBeInTheDocument();
   });
 
   it("shows an honest error in each current-state card when its endpoint fails, and keeps the page", async () => {

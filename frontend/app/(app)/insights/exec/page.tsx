@@ -10,7 +10,9 @@ import { Button, buildDrillHref, Card, DataTable, DrillLink, Delta, EmptyState, 
 import { getRoi } from "@/lib/api/analytics";
 import { getFindings } from "@/lib/api/findings";
 import { getObjects } from "@/lib/api/v1/objects";
-import { stateDelta, stateDqs, stateSummary, tierOf } from "@/lib/current-state";
+import { stateDelta, stateDqs, stateObjects, stateSummary, tierOf } from "@/lib/current-state";
+import { doNext } from "@/lib/do-next";
+import { COST_AT_RISK, useCostAtRisk } from "@/hooks/use-cost-at-risk";
 import { cappedReason, runCap } from "@/lib/home-metrics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCurrentOverview, getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
@@ -95,7 +97,14 @@ export default function ExecPage() {
     enabled: !!run,
   });
 
-  const cost = useQuery({ queryKey: queryKeys.insights("proven-cost", run), queryFn: () => getProvenCost({ version_id: run }), enabled: !!run });
+  const cost = useQuery({
+    queryKey: queryKeys.insights("proven-cost", isCurrent ? "current" : run),
+    queryFn: () => getProvenCost(isCurrent ? { scope: "current" } : { version_id: run }),
+    enabled: !!run,
+  });
+  // Cost at risk (failing records times their cost), the figure Home's sentences name: shown where no SAP feature is
+  // priced, so the summary never says "nothing at risk" while Home prints an amount.
+  const costAtRisk = useCostAtRisk(isCurrent ? undefined : run, !!run);
   // The tier and cap reason of what the hero shows: the current state in current mode, the run otherwise.
   const overview = useQuery({
     // Its own key: the cache holds the dqs block only, not the overview other pages read under the plain key.
@@ -118,7 +127,7 @@ export default function ExecPage() {
   const capReason = isCurrent ? cappedReason(stateSummaryOf) : exec?.cap_reason ?? dqs?.cap_reason ?? null;
   const capped = cap != null || (isCurrent ? capReason != null : !!dqs?.capped);
   const tier = isCurrent ? tierOf(stateScore, bandsQ.data?.thresholds) : dqs?.tier;
-  const capRule = capRuleIds(capReason)[0];
+  const step = doNext(isCurrent ? current.objects : stateObjects(runs.filter((r) => r.id === run), current.modules), { pinned: !isCurrent });
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   // The run the summary describes (null in current mode, which spans runs) and the run its exports are built from:
@@ -198,7 +207,9 @@ export default function ExecPage() {
         ) : undefined,
         stats: data ? [
           { label: "Objects blocked in a wave", value: noGo, hint: cells.length ? `of ${pairs(cells.length)}` : "No wave set up", tone: noGo ? "no-go" : "go", to: withScope("/insights/readiness", { run: vid }) },
-          { label: topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", hint: topRisk ? undefined : "Nothing priced yet", to: withScope("/insights/impact", { run: vid }) },
+          topRisk || !costAtRisk.text
+            ? { label: topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", hint: topRisk ? undefined : "No SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) }
+            : { label: COST_AT_RISK, value: costAtRisk.text, hint: "Failing records; no SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) },
           { label: "Owners improved", value: up, to: withScope("/insights/owners", { run: vid }) },
           { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: withScope("/insights/owners", { run: vid }) },
         ] : undefined,
@@ -207,10 +218,19 @@ export default function ExecPage() {
           tone: cells.length === 0 ? "neutral" : noGo ? "no-go" : "go",
         },
         changed: { sentence: owners.length === 0 ? "Nobody owns an issue yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
-        why: { sentence: topRisk ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}` : "Nothing is priced at risk yet", href: withScope("/insights/impact", { run: vid }) },
-        // The next step follows the verdict: lift a cap first, then the objects that cannot load, then share.
-        next: capped
-          ? { sentence: `Lift the cap: fix ${capRule ?? "the critical rules"}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run, severity: "critical" }) } }
+        why: {
+          sentence: topRisk
+            ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}`
+            : costAtRisk.text ? `No SAP feature is priced yet; the failing records carry ${costAtRisk.text} cost at risk` : "Nothing is priced at risk yet",
+          href: withScope("/insights/impact", { run: vid }),
+        },
+        // The next step is the scope's one step (lib/do-next.ts: the lowest-scoring object and the rule that caps
+        // it), as on Home and the overview; with nothing scored, the objects that cannot load, then share.
+        next: step
+          ? { sentence: step.sentence, action: step.action }
+          // The run's scores are not in the run list (an old run read by id): the cap the API names.
+          : capped
+            ? { sentence: `Lift the cap: fix ${capRuleIds(capReason)[0] ?? "the critical rules"}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run, severity: "critical" }) } }
           : noGo
             ? { sentence: "Clear what blocks the objects that cannot load", action: { label: "Open waves", href: withScope("/insights/readiness", { run }) } }
             : boardPack

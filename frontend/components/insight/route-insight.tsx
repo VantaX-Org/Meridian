@@ -9,8 +9,9 @@ import { getLlmHealth } from "@/lib/api/analytics";
 import { getSystems } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getExec, submitInsightFeedback } from "@/lib/api/insights";
-import { getCostModel } from "@/lib/api/settings";
 import { compareVersions } from "@/lib/api/versions";
+import { useCostAtRisk } from "@/hooks/use-cost-at-risk";
+import { doNext } from "@/lib/do-next";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { formatModuleName } from "@/lib/format";
 import { isFinished, lineageOf, overallDqs } from "@/lib/runs";
@@ -35,7 +36,8 @@ export function RouteInsight() {
   // the "changed" cell is the newest run's change. ?run= pins one run.
   const stateRuns = run ? [] : latestPerLineage(allVersions);
   const runId = run ?? stateRuns[0]?.id ?? allVersions.find(isFinished)?.id;
-  const aggQ = useQuery({ queryKey: ["insight", "aggregate", run ?? "current"], queryFn: () => getFindingsAggregate(run), enabled: !!section && hasRun && !!runId });
+  // The same cache entry Home's hero and useCostAtRisk read: one aggregate, one cost at risk.
+  const aggQ = useQuery({ queryKey: queryKeys.findingsAggregate(run ?? "current"), queryFn: () => getFindingsAggregate(run), enabled: !!section && hasRun && !!runId });
   const finished = allVersions.filter(isFinished);
   // Changed cell: per-object movement between this run and the finished run before it in the same lineage
   // (same system, or the same uploaded objects; the list is newest first). Another object's run is never "previous".
@@ -57,8 +59,7 @@ export function RouteInsight() {
   // run, or a current state made of one run; several lineages have no narrative that covers them all.
   const sameScope = !!run || stateRuns.length <= 1;
   const execQ = useQuery({ queryKey: queryKeys.insights("exec", runId), queryFn: () => getExec({ version_id: runId }), enabled: !!section && hasRun && !!runId && llmOn && sameScope });
-  const costAtRisk = aggQ.data?.cost_at_risk;
-  const costModelQ = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: !!section && costAtRisk != null && costAtRisk > 0, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
+  const cost = useCostAtRisk(run, !!section && hasRun && !!runId);
 
   if (!section) return null;
 
@@ -74,6 +75,8 @@ export function RouteInsight() {
   // The current state's score as the home's hero computes it, and the same state with the newest run swapped for
   // the one before it in its lineage.
   const state = stateRuns.length ? stateObjects(stateRuns, scopeFilter.modules) : null;
+  // Do next: the one step of this scope (lib/do-next.ts), the same the Insights overview and the summary name.
+  const next = doNext(state ?? stateObjects(current ? [current] : [], scopeFilter.modules), { pinned: !!run });
   const facts: InsightFacts = {
     hasRun,
     // Links follow the scope: a pinned run, or (current state) none.
@@ -84,11 +87,12 @@ export function RouteInsight() {
       : state ? (prev ? stateDqs(stateObjects(stateRuns.map((r) => (r.id === runId ? prev : r)), scopeFilter.modules)) : null)
       : prev ? overallDqs(prev) ?? agg?.previous_dqs ?? null : agg?.previous_dqs ?? null,
     firstRun,
-    currency: costModelQ.data?.currency,
+    currency: cost.currency,
     critical: agg?.severity.critical ?? 0,
     total: agg?.total ?? 0,
     affected: agg?.affected_records ?? 0,
-    costAtRisk: agg?.cost_at_risk,
+    costAtRisk: cost.amount ?? undefined,
+    doNext: next ? { sentence: next.sentence, href: next.action.href, label: next.action.label } : undefined,
     moved: cmp
       ? {
           count: movers.length,

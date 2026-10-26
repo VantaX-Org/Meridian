@@ -17,12 +17,28 @@ import { runDqs, type TrendPoint } from "@/lib/home-metrics";
  */
 
 /**
- * Screens that describe the current state when no `?run=` pins one: every home (`/home`, `/home/<persona>`), the
- * Insights overview and the executive summary (`insights/_components/scopeMode.ts` CURRENT_STATE_VIEWS). A chosen
- * run is never carried onto them (components/global-run.tsx), and they name their scope "Current state".
+ * The insight views that describe the current state when no `?run=` pins one: the overview, the executive summary,
+ * Progress, Value at risk and Process data readiness (`insights/_components/scopeMode.ts` reads this list). Their
+ * own header picker names the scope "Current state" and offers one run instead.
+ */
+export const CURRENT_STATE_INSIGHTS: readonly string[] = ["/insights", "/insights/exec", "/insights/progress", "/insights/impact", "/insights/process"];
+
+/**
+ * Screens that describe the current state when no `?run=` pins one: every home (`/home`, `/home/<persona>`) and the
+ * insight views in `CURRENT_STATE_INSIGHTS`. A chosen run is never carried onto them (components/global-run.tsx), and
+ * they name their scope "Current state".
  */
 export function isCurrentStateView(pathname: string): boolean {
-  return pathname === "/home" || pathname.startsWith("/home/") || pathname === "/insights" || pathname === "/insights/exec";
+  return pathname === "/home" || pathname.startsWith("/home/") || CURRENT_STATE_INSIGHTS.includes(pathname);
+}
+
+/**
+ * Screens whose default (no `?run=`) is the current state: the current-state views, the objects list and an object
+ * (its own latest run) and Fix work. The scope bar's run picker names that default "Current state", never
+ * "Latest run": every cross-object screen opens on the same scope as Home.
+ */
+export function opensOnCurrentState(pathname: string): boolean {
+  return isCurrentStateView(pathname) || pathname === "/objects" || pathname.startsWith("/objects/") || pathname === "/fix";
 }
 
 /** The insight pages that take their scope from `useInsightScope` (`?run=` and `?module=`); not lineage nor the process designer. */

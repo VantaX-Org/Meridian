@@ -23,6 +23,8 @@ import { runScopeLabel } from "@/lib/run-scope";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { COST_AT_RISK, useCostAtRisk } from "@/hooks/use-cost-at-risk";
+import { doNext } from "@/lib/do-next";
 import type { Finding } from "@/types/api";
 import { DrillCount } from "./DrillCount";
 import { InsightFrame, formatMoney } from "./InsightFrame";
@@ -180,9 +182,12 @@ export function CurrentOverview() {
   const verdict = tier ? VERDICT[tier] : loading ? "Scoring" : "Not scored yet";
   const tone = tier ? TONE[tier] : undefined;
   const hint = cap ? `Capped at ${cap.cap}` : capped ? `${capped} of ${plural(measured, "object")} capped` : undefined;
-  // The impact page reads one run: with one run behind the state its value at risk opens that run, labelled with it.
-  const impactHref = runs.length === 1 ? withScope("/insights/impact", { run: runs[0].id }) : undefined;
-  const impactScopeHint = runs.length === 1 ? runScopeLabel(runs[0]) : runs.length > 1 ? `Across ${plural(runs.length, "run")}` : undefined;
+  // Value at risk opens on the current state too, so the tiles open it as they read.
+  const impactHref = "/insights/impact";
+  const impactScopeHint = runs.length > 1 ? `Across ${plural(runs.length, "run")}` : runs.length === 1 ? runScopeLabel(runs[0]) : undefined;
+  // Do next: the one step of the current state (lib/do-next.ts), the same Home and the summary name.
+  const step = doNext(objects);
+  const cost = useCostAtRisk(undefined, !!newest);
   // The hero's sub-line compares against the target rather than repeating the Critical and high tile.
   const belowTargetLine = `${belowTarget.length} of ${plural(rows.length, "object")} below target`;
 
@@ -230,10 +235,9 @@ export function CurrentOverview() {
         },
         changed: { sentence: delta != null ? deltaSentence(delta, "with the latest run") : newest ? `First run of ${runObjectsName(newest)}` : "—" },
         why: { sentence: newest ? verdictSentence(rows) : "—", href: objectsHref({ readiness: "fail" }) },
-        next: {
-          sentence: worst ? `Start with ${worst.label}` : "Open the objects list",
-          action: { label: worst ? "Open worst object" : "Open objects", href: worstHref },
-        },
+        next: step
+          ? { sentence: step.sentence, action: step.action }
+          : { sentence: "Open the objects list", action: { label: "Open objects", href: worstHref } },
       }}
       state={state}
       emptyProps={{
@@ -303,8 +307,6 @@ export function CurrentOverview() {
             <Section title="Value at risk" height={120} query={ovQ} meta="The end-to-end process with the most at risk; processes are never added together">
               {ov?.value_at_risk.worst_l1 ? (
                 <>
-                  {/* The impact page reads one run. One run behind the state: the tiles open it and say so. Several
-                      runs: the figures span them, so the tiles open nothing and each run's impact is listed below. */}
                   <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
                     <Stat
                       label={`Most at risk: ${l1Label(ov.value_at_risk.worst_l1)}`}
@@ -314,20 +316,12 @@ export function CurrentOverview() {
                     />
                     <Stat label="SAP features blocked" value={ov.value_at_risk.features_blocked} hint={impactScopeHint} href={impactHref} />
                   </div>
-                  {runs.length > 1 && (
-                    <p className="mt-2 m-text-meta m-ink-3" data-testid="value-at-risk-runs">
-                      {"Value at risk per run: "}
-                      {runs.map((r, i) => (
-                        <span key={r.id}>
-                          {i > 0 ? ", " : null}
-                          <Link href={withScope("/insights/impact", { run: r.id })} aria-label={`Value at risk of ${runScopeLabel(r)}`} className="m-ink-accent underline underline-offset-2">{runScopeLabel(r)}</Link>
-                        </span>
-                      ))}
-                    </p>
-                  )}
                 </>
               ) : (
-                <p className="m-text-body m-ink-3">No priced SAP feature is blocked. <Link href="/insights/impact" className="m-ink-accent underline underline-offset-2">Open value at risk</Link></p>
+                <p className="m-text-body m-ink-3">
+                  No priced SAP feature is blocked.{cost.text ? ` ${COST_AT_RISK} of the failing records: ${cost.text}.` : ""}{" "}
+                  <Link href="/insights/impact" className="m-ink-accent underline underline-offset-2">Open value at risk</Link>
+                </p>
               )}
             </Section>
           </div>

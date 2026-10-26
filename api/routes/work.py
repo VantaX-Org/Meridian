@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services import work_analytics, worklist
+from api.services.current_state import current_pairs, pairs_clause, run_ids
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
                                dev_role_override, grants_for, has_permission, require_permission)
 from api.services.record_issues import scope_of
@@ -58,6 +59,63 @@ async def _built(db: AsyncSession, vid: str) -> bool:
                                        "WHERE id = CAST(:v AS uuid)"), {"v": vid})).scalar())
 
 
+WorkScope = Literal["run", "current"]
+_SCOPE = Query("run", description="current: every object at the latest complete run of its lineage (Home's scope), "
+                                  "each read from its own run; exclusive with version_id")
+
+
+class _Rows:
+    """Which work rows a read covers: one run (``vid``), or the current state (``pairs``: each object once, with the
+    run it is read from; api/services/current_state.py)."""
+
+    def __init__(self, vid: Optional[str], scope: Optional[str], pairs: Optional[list[dict]]):
+        self.vid, self.scope, self.pairs = vid, scope, pairs
+
+    @property
+    def current(self) -> bool:
+        return self.pairs is not None
+
+    def where(self, alias: str, p: dict) -> str:
+        if self.pairs is not None:
+            return pairs_clause(alias, self.pairs, p)
+        p["v"] = self.vid
+        return f"{alias}.version_id = CAST(:v AS uuid)"
+
+    def version_of(self, module: str) -> Optional[str]:
+        """The run a module is read from (the run itself for one run)."""
+        if self.pairs is None:
+            return self.vid
+        return next((x["version_id"] for x in self.pairs if x["module"] == module), None)
+
+
+async def _rows(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID], scope: str) -> _Rows:
+    """One run (the requested one, else the latest), or with ``scope=current`` the current state; 404 when the
+    tenant has no finished run."""
+    if scope == "current":
+        if version_id is not None:
+            raise HTTPException(status_code=422, detail="version_id and scope=current are exclusive")
+        pairs = await current_pairs(db, tenant.id)
+        if not pairs:
+            raise HTTPException(status_code=404, detail="No finished run yet.")
+        return _Rows(None, None, pairs)
+    vid, rscope = await _run(db, tenant, version_id)
+    return _Rows(vid, rscope, None)
+
+
+def _auto_runs(sel: _Rows) -> str:
+    """Findings of the runs ``sel`` reads (bound by ``sel.where``): the proposed values of a fix sheet."""
+    return "f.version_id = ANY(CAST(:cv AS uuid[]))" if sel.current else "f.version_id = CAST(:v AS uuid)"
+
+
+async def _unbuilt(db: AsyncSession, tenant: Tenant, rows: _Rows) -> list[str]:
+    """The runs of ``rows`` whose work list is not built yet, newest first."""
+    ids = run_ids(rows.pairs) if rows.pairs is not None else [rows.vid]
+    return list((await db.execute(text(
+        "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) "
+        "AND NOT (COALESCE(metadata, '{}'::jsonb) ? 'worklist_built_at') ORDER BY run_at DESC"),
+        {"t": str(tenant.id), "ids": ids})).scalars().all())
+
+
 def _cursor(row) -> str:
     return base64.urlsafe_b64encode(json.dumps([row.sev_rank, row.module, row.record_key]).encode()).decode()
 
@@ -73,23 +131,27 @@ def _uncursor(c: str) -> tuple[int, str, str]:
 @router.get("/summary")
 async def summary(
     version_id: Optional[uuid.UUID] = None,
+    scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
-    """Per object of the run: records and issues to fix, by work status, and its groups' size."""
+    """Per object of the run (or, ``scope=current``, of the current state, each object from its own run): records
+    and issues to fix, by work status, and its groups' size. ``unbuilt`` lists the runs whose work list is missing;
+    ``built`` is false when no run read has one."""
     await _rls(db, tenant)
-    vid, scope = await _run(db, tenant, version_id)
-    rows = (await db.execute(text("""
-        SELECT module, status, count(*) AS records, sum(issues) AS issues,
-               count(*) FILTER (WHERE sev_rank = 0) AS critical, count(*) FILTER (WHERE proposed > 0) AS proposed,
-               count(*) FILTER (WHERE due_at < now()) AS overdue
-          FROM work_records WHERE tenant_id = :t AND version_id = CAST(:v AS uuid)
-         GROUP BY module, status"""), {"t": str(tenant.id), "v": vid})).fetchall()
+    sel = await _rows(db, tenant, version_id, scope)
+    p: dict = {"t": str(tenant.id)}
+    rows = (await db.execute(text(f"""
+        SELECT w.module, w.version_id::text AS version_id, w.status, count(*) AS records, sum(w.issues) AS issues,
+               count(*) FILTER (WHERE w.sev_rank = 0) AS critical, count(*) FILTER (WHERE w.proposed > 0) AS proposed,
+               count(*) FILTER (WHERE w.due_at < now()) AS overdue
+          FROM work_records w WHERE w.tenant_id = :t AND {sel.where("w", p)}
+         GROUP BY w.module, w.version_id, w.status"""), p)).fetchall()
     objects: dict[str, dict] = {}
     for r in rows:
-        o = objects.setdefault(r.module, {"module": r.module, "records": 0, "open": 0, "issues": 0, "critical": 0,
-                                          "proposed": 0, "overdue": 0, "statuses": {}})
+        o = objects.setdefault(r.module, {"module": r.module, "version_id": r.version_id, "records": 0, "open": 0,
+                                          "issues": 0, "critical": 0, "proposed": 0, "overdue": 0, "statuses": {}})
         o["records"] += r.records
         o["statuses"][r.status] = r.records
         if r.status in OPEN:
@@ -99,7 +161,10 @@ async def summary(
             o["proposed"] += r.proposed
             o["overdue"] += r.overdue
     out = sorted(objects.values(), key=lambda o: (-o["critical"], -o["open"], o["module"]))
-    return {"version_id": vid, "scope": scope, "built": await _built(db, vid), "objects": out,
+    unbuilt = await _unbuilt(db, tenant, sel)
+    ids = run_ids(sel.pairs) if sel.pairs is not None else [sel.vid]
+    return {"version_id": sel.vid, "scope": sel.scope, "mode": "current" if sel.current else "run",
+            "version_ids": ids, "unbuilt": unbuilt, "built": len(unbuilt) < len(ids), "objects": out,
             "totals": {k: sum(o[k] for o in out) for k in ("records", "open", "issues", "critical", "proposed", "overdue")}}
 
 
@@ -111,14 +176,17 @@ async def groups(
     proposed: Optional[bool] = Query(None, description="only groups with machine-proposed values"),
     q: Optional[str] = Query(None, max_length=200),
     limit: int = Query(200, ge=1, le=1000),
+    scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
-    """What fails in the run, worst first: one row per check, with its records by work status."""
+    """What fails in the run (or the current state), worst first: one row per check, with its records by work
+    status and the run it was found in."""
     await _rls(db, tenant)
-    vid, _ = await _run(db, tenant, version_id)
-    where, p = ["tenant_id = :t", "version_id = CAST(:v AS uuid)"], {"t": str(tenant.id), "v": vid, "limit": limit}
+    sel = await _rows(db, tenant, version_id, scope)
+    p: dict = {"t": str(tenant.id), "limit": limit}
+    where = ["work_groups.tenant_id = :t", sel.where("work_groups", p)]
     if module:
         where.append("module = :m")
         p["m"] = module
@@ -133,17 +201,23 @@ async def groups(
         where.append("(check_id ILIKE :q OR message ILIKE :q OR field ILIKE :q)")
         p["q"] = f"%{q}%"
     rows = (await db.execute(text(f"""
-        SELECT check_id, module, severity, dimension, message, field, records, population, proposed, truncated, statuses
+        SELECT check_id, module, version_id::text AS version_id, severity, dimension, message, field, records,
+               population, proposed, truncated, statuses
           FROM work_groups WHERE {' AND '.join(where)}
          ORDER BY sev_rank, records DESC, check_id LIMIT :limit"""), p)).mappings().all()
     total = (await db.execute(text(f"SELECT count(*) FROM work_groups WHERE {' AND '.join(where)}"), p)).scalar()
-    return {"version_id": vid, "built": await _built(db, vid), "total": int(total or 0),
+    built = sel.current or await _built(db, sel.vid)
+    return {"version_id": sel.vid, "built": built, "total": int(total or 0),
             "groups": [{**dict(r), "open": sum(int((r["statuses"] or {}).get(s, 0)) for s in OPEN)} for r in rows]}
 
 
-def _records_where(tenant: Tenant, vid: str, request: Request, module, check_id, severity, status, assigned,
+def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module, check_id, severity, status, assigned,
                    proposed, q, due=None, part=None, system=None) -> tuple[list[str], dict]:
-    where, p = ["w.tenant_id = :t", "w.version_id = CAST(:v AS uuid)"], {"t": str(tenant.id), "v": vid}
+    """``sel``: the rows read (one run or the current state), or one run's id."""
+    if isinstance(sel, str):
+        sel = _Rows(sel, None, None)
+    p: dict = {"t": str(tenant.id)}
+    where = ["w.tenant_id = :t", sel.where("w", p)]
     if module:
         where.append("w.module = :m")
         p["m"] = module
@@ -214,14 +288,16 @@ async def records(
     q: Optional[str] = Query(None, max_length=200),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
+    scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
-    """Failing records of the run, worst first, a page at a time (keyset: no deep OFFSET at millions)."""
+    """Failing records of the run (or the current state), worst first, a page at a time (keyset: no deep OFFSET at
+    millions). Each record names the run it was found in (``version_id``): the run its decisions go to."""
     await _rls(db, tenant)
-    vid, _ = await _run(db, tenant, version_id)
-    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due, part,
+    sel = await _rows(db, tenant, version_id, scope)
+    where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
                               system)
     page_where = list(where)
     if after:
@@ -229,8 +305,8 @@ async def records(
         page_where.append("(w.sev_rank, w.module, w.record_key) > (:ar, :am, :ak)")
         p.update(ar=rank, am=mod, ak=key)
     rows = (await db.execute(text(f"""
-        SELECT w.module, w.record_key, w.name, w.issues, w.sev_rank, w.checks, w.proposed, w.status,
-               w.due_at, w.assigned_to, u.email AS assignee_email, g.message AS top_message, g.field AS top_field
+        SELECT w.module, w.version_id::text AS version_id, w.record_key, w.name, w.issues, w.sev_rank, w.checks,
+               w.proposed, w.status, w.due_at, w.assigned_to, u.email AS assignee_email, g.message AS top_message, g.field AS top_field
           FROM work_records w
           LEFT JOIN users u ON u.id = w.assigned_to
           LEFT JOIN work_groups g ON g.version_id = w.version_id AND g.check_id = w.checks[1]
@@ -241,9 +317,9 @@ async def records(
     total = (await db.execute(text(f"SELECT count(*) FROM (SELECT 1 FROM work_records w WHERE {' AND '.join(where)} "
                                    f"LIMIT {COUNT_CAP + 1}) x"), p)).scalar() or 0
     return {
-        "version_id": vid, "total": min(total, COUNT_CAP), "total_capped": total > COUNT_CAP,
+        "version_id": sel.vid, "total": min(total, COUNT_CAP), "total_capped": total > COUNT_CAP,
         "next": _cursor(rows[-1]) if more and rows else None,
-        "items": [{"module": r.module, "record_key": r.record_key, "name": r.name, "issues": r.issues,
+        "items": [{"module": r.module, "version_id": r.version_id, "record_key": r.record_key, "name": r.name, "issues": r.issues,
                    "severity": SEVERITIES[r.sev_rank] if r.sev_rank < 4 else "info", "checks": list(r.checks),
                    "proposed": r.proposed, "status": r.status,
                    "due_at": r.due_at.isoformat() if r.due_at else None,
@@ -257,18 +333,21 @@ async def search(
     request: Request,
     q: str = Query(..., min_length=1, max_length=200),
     version_id: Optional[uuid.UUID] = None,
+    scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
-    """A failing record by key or name across every object of the run (the top bar's search)."""
+    """A failing record by key or name across every object of the run or the current state (the top bar's search)."""
     await _rls(db, tenant)
-    vid, _ = await _run(db, tenant, version_id)
-    where, p = _records_where(tenant, vid, request, None, None, None, None, None, None, q)
+    sel = await _rows(db, tenant, version_id, scope)
+    where, p = _records_where(tenant, sel, request, None, None, None, None, None, None, q)
     rows = (await db.execute(text(f"""
-        SELECT w.module, w.record_key, w.name, w.issues, w.sev_rank, w.status FROM work_records w
+        SELECT w.module, w.version_id::text AS version_id, w.record_key, w.name, w.issues, w.sev_rank, w.status
+          FROM work_records w
          WHERE {' AND '.join(where)} ORDER BY w.sev_rank, w.module, w.record_key LIMIT 20"""), p)).fetchall()
-    return {"version_id": vid, "items": [{"module": r.module, "record_key": r.record_key, "name": r.name,
+    return {"version_id": sel.vid, "items": [{"module": r.module, "version_id": r.version_id,
+                                              "record_key": r.record_key, "name": r.name,
                                           "issues": r.issues, "status": r.status,
                                           "severity": SEVERITIES[r.sev_rank] if r.sev_rank < 4 else "info"}
                                          for r in rows]}
@@ -905,25 +984,27 @@ async def export_sheet(
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
+    scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("export")),
 ):
-    """The filtered work list as a fix sheet: one row per record and failing check, with its current and
+    """The filtered work list (one run, or ``scope=current``) as a fix sheet: one row per record and failing check, with its current and
     suggested value and blank New value / Decision / Reason columns to fill in and import back."""
     from api.services.branded_xlsx import ROW_CAP, ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
 
     await _rls(db, tenant)
-    vid, _ = await _run(db, tenant, version_id)
-    where, p = _records_where(tenant, vid, request, module, check_id, severity, status, assigned, proposed, q, due, part,
+    sel = await _rows(db, tenant, version_id, scope)
+    vid = sel.vid or "current"
+    where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
                               system)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
         WITH auto AS (
-            SELECT f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
+            SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
               FROM findings f, jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array'
                                                          THEN f.record_fixes ELSE '[]'::jsonb END) e
-             WHERE f.version_id = CAST(:v AS uuid) AND e->>'proposed_value' IS NOT NULL)
+             WHERE {_auto_runs(sel)} AND e->>'proposed_value' IS NOT NULL)
         SELECT w.module, w.record_key, w.name, fr.check_id, f.severity, f.details->>'message' AS message,
                f.details->>'field_checked' AS field,
                fr.field_values ->> (f.details->>'field_checked') AS current_value,
@@ -933,7 +1014,7 @@ async def export_sheet(
           FROM work_records w
           JOIN finding_records fr ON fr.version_id = w.version_id AND fr.module = w.module AND fr.record_key = w.record_key
           JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
-          LEFT JOIN auto a ON a.check_id = fr.check_id AND a.record_key = fr.record_key
+          LEFT JOIN auto a ON a.version_id = fr.version_id AND a.check_id = fr.check_id AND a.record_key = fr.record_key
          WHERE {' AND '.join(where)} {check_filter}
          ORDER BY w.sev_rank, w.module, w.record_key, fr.check_id
          LIMIT :lim"""), {**p, "lim": ROW_CAP + 1})).mappings().all()
@@ -969,6 +1050,7 @@ async def export_per_object(
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
+    scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("export")),
@@ -986,16 +1068,17 @@ async def export_per_object(
     from api.services.branded_xlsx import ROW_CAP, ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
 
     await _rls(db, tenant)
-    vid, _ = await _run(db, tenant, version_id)
-    where, p = _records_where(tenant, vid, request, None, check_id, severity, status, assigned, proposed, q, due, part,
+    sel = await _rows(db, tenant, version_id, scope)
+    vid = sel.vid or "current"
+    where, p = _records_where(tenant, sel, request, None, check_id, severity, status, assigned, proposed, q, due, part,
                               system)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
         WITH auto AS (
-            SELECT f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
+            SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
               FROM findings f, jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array'
                                                          THEN f.record_fixes ELSE '[]'::jsonb END) e
-             WHERE f.version_id = CAST(:v AS uuid) AND e->>'proposed_value' IS NOT NULL)
+             WHERE {_auto_runs(sel)} AND e->>'proposed_value' IS NOT NULL)
         SELECT w.module, w.record_key, w.name, fr.check_id, f.severity, f.details->>'message' AS message,
                f.details->>'field_checked' AS field,
                fr.field_values ->> (f.details->>'field_checked') AS current_value,
@@ -1008,7 +1091,7 @@ async def export_per_object(
           FROM work_records w
           JOIN finding_records fr ON fr.version_id = w.version_id AND fr.module = w.module AND fr.record_key = w.record_key
           JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
-          LEFT JOIN auto a ON a.check_id = fr.check_id AND a.record_key = fr.record_key
+          LEFT JOIN auto a ON a.version_id = fr.version_id AND a.check_id = fr.check_id AND a.record_key = fr.record_key
          WHERE {' AND '.join(where)} {check_filter}
          ORDER BY w.module, w.sev_rank, w.record_key, fr.check_id
          LIMIT :lim"""), {**p, "lim": ROW_CAP + 1})).mappings().all()
@@ -1049,12 +1132,14 @@ async def export_per_object(
 async def import_sheet(
     request: Request,
     version_id: Optional[uuid.UUID] = None,
+    scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("apply")),
 ):
     """Read a filled-in fix sheet (from /work/export) back as decisions: a New value is an edit, a Decision of
-    fix accepts the suggested value, not an issue / accept risk sign the issue off with the Reason."""
+    fix accepts the suggested value, not an issue / accept risk sign the issue off with the Reason. With
+    ``scope=current`` each row goes to the run its object is read from in the current state."""
     import io
 
     from openpyxl import load_workbook
@@ -1109,18 +1194,29 @@ async def import_sheet(
     if len(items) > MAX_IMPORT:
         raise HTTPException(status_code=400, detail=f"More than {MAX_IMPORT} decisions in one file; split it.")
     await _rls(db, tenant)
-    vid, _ = await _run(db, tenant, version_id)
-    failing = set((await db.execute(text("""
-        SELECT fr.module, fr.record_key, fr.check_id FROM finding_records fr
-          JOIN unnest(CAST(:m AS text[]), CAST(:k AS text[]), CAST(:c AS text[])) AS x(module, record_key, check_id)
-            ON fr.module = x.module AND fr.record_key = x.record_key AND fr.check_id = x.check_id
-         WHERE fr.version_id = CAST(:v AS uuid)"""),
-        {"v": vid, "m": [i.module for i in items], "k": [i.record_key for i in items],
-         "c": [i.check_id or "" for i in items]})).fetchall())
-    kept = [i for i in items if (i.module, i.record_key, i.check_id) in failing]
-    skipped += [f"{i.record_key} {i.check_id}: does not fail this check in the run" for i in items if i not in kept]
-    if not kept:
-        return {"updated": 0, "rows": 0, "skipped": skipped[:50]}
-    items = kept
-    out = await decide(DecideBody(version_id=version_id, items=items), request, db, tenant, role)
-    return {**out, "rows": len(items), "skipped": skipped[:50]}
+    sel = await _rows(db, tenant, version_id, scope)
+    by_run: dict[str, list[Decision]] = {}
+    for i in items:
+        run = sel.version_of(i.module)
+        if run is None:
+            skipped.append(f"{i.record_key} {i.check_id}: {i.module} is not in the current state")
+            continue
+        by_run.setdefault(run, []).append(i)
+    updated, rows_n, draft = 0, 0, None
+    for run, group in by_run.items():
+        failing = set((await db.execute(text("""
+            SELECT fr.module, fr.record_key, fr.check_id FROM finding_records fr
+              JOIN unnest(CAST(:m AS text[]), CAST(:k AS text[]), CAST(:c AS text[])) AS x(module, record_key, check_id)
+                ON fr.module = x.module AND fr.record_key = x.record_key AND fr.check_id = x.check_id
+             WHERE fr.version_id = CAST(:v AS uuid)"""),
+            {"v": run, "m": [i.module for i in group], "k": [i.record_key for i in group],
+             "c": [i.check_id or "" for i in group]})).fetchall())
+        kept = [i for i in group if (i.module, i.record_key, i.check_id) in failing]
+        skipped += [f"{i.record_key} {i.check_id}: does not fail this check in the run" for i in group if i not in kept]
+        if not kept:
+            continue
+        out = await decide(DecideBody(version_id=uuid.UUID(run), items=kept), request, db, tenant, role)
+        updated += out["updated"]
+        rows_n += len(kept)
+        draft = out["draft_batch_id"] or draft
+    return {"updated": updated, "draft_batch_id": draft, "rows": rows_n, "skipped": skipped[:50]}

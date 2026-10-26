@@ -8,10 +8,11 @@ import type { Burndown } from "@/lib/api/work-analytics";
 import type { Version } from "@/types/api";
 import ProgressPage from "../page";
 
+const nav = vi.hoisted(() => ({ qs: "run=bp2" }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/insights/progress",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
-  useSearchParams: () => new URLSearchParams("run=bp2"),
+  useSearchParams: () => new URLSearchParams(nav.qs),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
@@ -86,7 +87,30 @@ function mount() {
   return render(<QueryClientProvider client={qc}><ProgressPage /></QueryClientProvider>);
 }
 
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => { nav.qs = "run=bp2"; vi.restoreAllMocks(); });
+
+describe("ProgressPage without ?run=: the current state", () => {
+  it("reads every object at its own latest run, drills into Fix work in the same scope and pins no baseline", async () => {
+    nav.qs = "";
+    const { burndown, change } = mockAll({ assignee: true });
+    change.mockResolvedValue({
+      version_id: null, previous: null,
+      compared: [{ version_id: "bp2", previous: { version_id: "bp1", label: "material_master_1k", run_at: "2026-10-02T05:00:00Z" } }],
+      objects: [{ module: "material_master", new: 1, fixed: 2, still_failing: 1, not_comparable_checks: 0 }],
+      totals: { new: 1, fixed: 2, still_failing: 1 }, not_comparable_checks: 0,
+    });
+    burndown.mockResolvedValue({ ...BURN, version_id: null, runs: [] });
+    mount();
+    expect(await screen.findByText("Records to fix")).toBeInTheDocument();
+    expect(burndown).toHaveBeenCalledWith({ versionId: undefined, module: undefined });
+    expect(change).toHaveBeenCalledWith({ versionId: undefined, module: undefined });
+    // Every drill opens Fix work on the same current state: no ?run= of the newest run.
+    expect(screen.getByText("Records to fix").closest("a")?.getAttribute("href")).toBe("/fix");
+    expect(screen.getByRole("link", { name: "Open the records assigned to Bea" }).getAttribute("href")).toBe("/fix?assignee=u-7");
+    expect(screen.queryByTestId("baseline-line")).toBeNull();
+    expect(await screen.findByText(/Each object compared with the run before its own latest run \(1 run\): 2 fixed, 1 new, 1 still failing/)).toBeInTheDocument();
+  });
+});
 
 describe("ProgressPage", () => {
   it("says what the page is for and shows the lead's four numbers for the scoped run", async () => {

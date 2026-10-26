@@ -34,7 +34,7 @@ vi.mock("@/lib/api/work", async () => {
 
 const summary = (over: Partial<work.WorkSummary> = {}): work.WorkSummary => ({
   version_id: "R1", scope: "S1", built: true,
-  objects: [{ module: "material_master", records: 2, open: 2, issues: 3, critical: 2, proposed: 1, overdue: 1, statuses: { to_fix: 2 } }],
+  objects: [{ module: "material_master", version_id: "R1", records: 2, open: 2, issues: 3, critical: 2, proposed: 1, overdue: 1, statuses: { to_fix: 2 } }],
   totals: { records: 2, open: 2, issues: 3, critical: 2, proposed: 1, overdue: 1 }, ...over,
 });
 const rec = (key: string, over: Partial<work.WorkRecord> = {}): work.WorkRecord => ({
@@ -72,7 +72,8 @@ beforeEach(() => {
 });
 
 describe("FixWork", () => {
-  it("names the run its counts belong to, and calls critical what it is", async () => {
+  it("names the run its counts belong to when ?run= pins one, and calls critical what it is", async () => {
+    search = new URLSearchParams("run=R1");
     const getVersion = vi.spyOn(versions, "getVersion").mockResolvedValue({ id: "R1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: null, metadata: {} });
     renderWithQuery(<FixWork />);
     expect(await screen.findByText("As of material_master_25k, 16 Oct 2026")).toBeInTheDocument();
@@ -89,7 +90,8 @@ describe("FixWork", () => {
     expect(rows.map((r) => within(r).getAllByText(/Bolt|Nut/)[0].textContent)).toEqual(["Bolt", "Nut"]);
     expect(rows[1]).toHaveTextContent("and 1 more issue");
     expect(await screen.findByTestId("record-panel")).toBeInTheDocument();
-    expect(work.getWorkRecord).toHaveBeenCalledWith("material_master", "MATNR=1", undefined);
+    // The record opens in the run it was found in (the current state names each object's run).
+    expect(work.getWorkRecord).toHaveBeenCalledWith("material_master", "MATNR=1", "R1");
   });
 
   it("filters by an issue through the URL and offers the group's mass actions", async () => {
@@ -107,7 +109,7 @@ describe("FixWork", () => {
     fireEvent.keyDown(window, { key: "j" });
     expect(replace).toHaveBeenCalledWith("/fix?record=material_master%7CMATNR%3D2", { scroll: false });
     fireEvent.keyDown(window, { key: "a" });
-    await waitFor(() => expect(work.decide).toHaveBeenCalledWith([{ module: "material_master", record_key: "MATNR=1", action: "accept" }], undefined));
+    await waitFor(() => expect(work.decide).toHaveBeenCalledWith([{ module: "material_master", record_key: "MATNR=1", action: "accept" }], "R1"));
   });
 
   it("opens the record from Enter on a row or the page, never from Enter on another button", async () => {
@@ -119,18 +121,65 @@ describe("FixWork", () => {
     expect(fireEvent.keyDown(other!, { key: "Enter" })).toBe(true);
     expect(push).not.toHaveBeenCalled();
     fireEvent.keyDown(within(rows[0]).getAllByRole("button")[0], { key: "Enter" });
-    expect(push).toHaveBeenCalledWith("/objects/material_master/records/MATNR%3D1");
+    expect(push).toHaveBeenCalledWith("/objects/material_master/records/MATNR%3D1?run=R1");
     push.mockClear();
     fireEvent.keyDown(document.body, { key: "Enter" });
     expect(push).toHaveBeenCalledTimes(1);
   });
 
   it("says when the run's work list is not built, and lets an analyst build it", async () => {
-    vi.mocked(work.getWorkSummary).mockResolvedValue(summary({ built: false }));
+    search = new URLSearchParams("run=R1");
+    vi.mocked(work.getWorkSummary).mockResolvedValue(summary({ built: false, unbuilt: ["R1"] }));
     vi.mocked(work.buildWorklist).mockResolvedValue({ version_id: "R1", queued: true });
     renderWithQuery(<FixWork />);
     await userEvent.click(await screen.findByRole("button", { name: "Build the work list" }));
-    expect(work.buildWorklist).toHaveBeenCalled();
+    expect(work.buildWorklist).toHaveBeenCalledWith("R1");
+  });
+
+  describe("without ?run=: the current state, every object at its own latest run", () => {
+    const current = () => summary({
+      version_id: null, scope: null, mode: "current", version_ids: ["RM", "RA"], unbuilt: [],
+      objects: [
+        { module: "material_master", version_id: "RM", records: 1, open: 1, issues: 1, critical: 1, proposed: 0, overdue: 0, statuses: { to_fix: 1 } },
+        { module: "accounts_payable", version_id: "RA", records: 1, open: 1, issues: 1, critical: 1, proposed: 0, overdue: 0, statuses: { to_fix: 1 } },
+      ],
+      totals: { records: 2, open: 2, issues: 2, critical: 2, proposed: 0, overdue: 0 },
+    });
+    beforeEach(() => {
+      vi.mocked(work.getWorkSummary).mockResolvedValue(current());
+      vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: null, total: 2, total_capped: false, next: null, items: [
+        rec("MATNR=1", { name: "Bolt", version_id: "RM" }),
+        rec("LIFNR=7", { module: "accounts_payable", name: "Acme", version_id: "RA", checks: ["AP001"] }),
+      ] });
+    });
+
+    it("counts every object, says so, and reads no run", async () => {
+      renderWithQuery(<FixWork />);
+      expect(await screen.findByTestId("fix-scope")).toHaveTextContent("each object at its own latest run");
+      expect(screen.getByText("2 issues across 2 objects")).toBeInTheDocument();
+      expect(work.getWorkSummary).toHaveBeenCalledWith(undefined);
+      expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ version_id: undefined }));
+    });
+
+    it("opens a record in the run it was found in, and decides each record in its own run", async () => {
+      renderWithQuery(<FixWork />);
+      const rows = await screen.findAllByTestId("work-record");
+      await waitFor(() => expect(work.getWorkRecord).toHaveBeenCalledWith("material_master", "MATNR=1", "RM"));
+      for (const r of rows) await userEvent.click(within(r).getByRole("checkbox"));
+      await userEvent.click(screen.getByRole("button", { name: "Accept suggestions" }));
+      await waitFor(() => expect(work.decide).toHaveBeenCalledTimes(2));
+      expect(work.decide).toHaveBeenCalledWith([{ module: "material_master", record_key: "MATNR=1", action: "accept" }], "RM");
+      expect(work.decide).toHaveBeenCalledWith([{ module: "accounts_payable", record_key: "LIFNR=7", action: "accept" }], "RA");
+    });
+
+    it("lists what it can and offers to build the runs that have no work list", async () => {
+      vi.mocked(work.getWorkSummary).mockResolvedValue({ ...current(), unbuilt: ["RX"] });
+      vi.mocked(work.buildWorklist).mockResolvedValue({ version_id: "RX", queued: true });
+      renderWithQuery(<FixWork />);
+      expect(await screen.findAllByTestId("work-record")).toHaveLength(2);
+      await userEvent.click(screen.getByRole("button", { name: "Build the work list" }));
+      await waitFor(() => expect(work.buildWorklist).toHaveBeenCalledWith("RX"));
+    });
   });
 
   it("explains an empty tenant instead of an error", async () => {

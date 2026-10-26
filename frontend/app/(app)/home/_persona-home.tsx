@@ -47,6 +47,7 @@ import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
 import { homeActionFor } from "@/lib/home-action";
+import { doNext } from "@/lib/do-next";
 import type { Version } from "@/types/api";
 
 /** The ledger shows this many objects, then a link to all of them; the heatmap draws the same rows. */
@@ -199,6 +200,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   // Pinned: the run's lineage. Current state: every object at its latest run as of each run, so the last step is the delta.
   const trendPoints = pinned ? trend(finished, pinned) : stateSeries(finished, scopeFilter.modules);
   const cap = runCap(merged);
+  const step = doNext(state, { pinned: !!pinned });
   const findings = (findingsQ.data?.findings ?? []).filter((f) => (!scopeFilter.modules || scopeFilter.modules.has(f.module)) && f.version_id === runOf.get(f.module)?.id);
   const scored = worstObjectsFirst(objects);
   const worst = scored[0];
@@ -521,7 +523,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       lists={lists}
       onboarding={<HomeOnboarding />}
       cells={<RouteInsight />}
-      nextAction={<NextBestActionCard run={pinned?.id ?? newest.id} />}
+      // The planner's action for the same step the four sentences name (lib/do-next.ts): in the current state, its
+      // object at the run it is read from, never the newest run's object.
+      nextAction={pinned || !step ? <NextBestActionCard run={pinned?.id ?? newest.id} /> : <NextBestActionCard run={step.runId} module={step.module} />}
       headerActions={<>
         <RunAnalysis variant="secondary" />
         <Select

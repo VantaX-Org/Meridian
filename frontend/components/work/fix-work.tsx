@@ -19,6 +19,8 @@ import { formatModuleName, plural } from "@/lib/format";
 import { getVersion } from "@/lib/api/versions";
 import { queryKeys } from "@/lib/query-keys";
 import { RunScope } from "@/components/run-scope";
+import { useRunList } from "@/hooks/use-run-list";
+import { stateScopeLine } from "@/lib/current-state";
 import { keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { RecordPanel, invalidateAfterDecision, toastDraftBatch } from "./record-panel";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
@@ -164,7 +166,25 @@ function SetValueDialog({ group, open, onOpenChange, run }: { group: WorkGroup; 
 }
 
 /**
- * Fix work: every record that fails a check in the chosen run, worst first, with what is wrong and what the value
+ * Decisions on records of several runs (the current state): one request per run, each decision to the run its
+ * record was found in. Counts add up; the draft batch is the user's one draft.
+ */
+export async function decideInRuns(items: Decision[], runOf: (module: string) => string | undefined): Promise<{ updated: number; draft_batch_id: string | null }> {
+  const byRun = new Map<string | undefined, Decision[]>();
+  for (const d of items) byRun.set(runOf(d.module), [...(byRun.get(runOf(d.module)) ?? []), d]);
+  let updated = 0;
+  let draft: string | null = null;
+  for (const [run, ds] of byRun) {
+    const out = await decide(ds, run);
+    updated += out.updated;
+    draft = out.draft_batch_id ?? draft;
+  }
+  return { updated, draft_batch_id: draft };
+}
+
+/**
+ * Fix work: every record that fails a check, worst first: without `?run=` the current state (every object at its
+ * own latest run, as Home counts them), with `?run=` that run alone, with what is wrong and what the value
  * should be. Pick an issue on the left (or every issue), a record in the middle, decide on the right; the next
  * record comes up by itself. Keyboard: j / k move, a accepts the suggested values, t takes the record, u undoes.
  */
@@ -195,12 +215,15 @@ export function FixWork() {
   const [setValueOpen, setSetValueOpen] = useState(false);
   const [q, setQ] = useState(filter.q ?? "");
 
-  const summary = useQuery({ queryKey: ["work", "summary", run ?? "latest"], queryFn: () => getWorkSummary(run), retry: false });
-  // The run the counts belong to, named above them (the summary resolves "latest" to its id).
-  const shownRunId = summary.data?.version_id;
+  const summary = useQuery({ queryKey: ["work", "summary", run ?? "current"], queryFn: () => getWorkSummary(run), retry: false });
+  // The run the counts belong to, named above them; the current state names its objects and newest run instead.
+  const shownRunId = summary.data?.version_id ?? undefined;
   const shownRun = useQuery({ queryKey: queryKeys.run(shownRunId ?? ""), queryFn: () => getVersion(shownRunId ?? ""), enabled: !!shownRunId, meta: { ignoreError: true } });
+  const runList = useRunList();
+  const stateIds = new Set(run ? [] : summary.data?.version_ids ?? []);
+  const newestOfState = (runList.data?.versions ?? []).filter((v) => stateIds.has(v.id)).sort((a, b) => (a.run_at < b.run_at ? 1 : -1))[0];
   const groups = useQuery({
-    queryKey: ["work", "groups", run ?? "latest", filter.module ?? "", filter.severity ?? ""],
+    queryKey: ["work", "groups", run ?? "current", filter.module ?? "", filter.severity ?? ""],
     queryFn: () => getWorkGroups({ version_id: run, module: filter.module, severity: filter.severity }),
     enabled: summary.isSuccess,
   });
@@ -229,18 +252,23 @@ export function FixWork() {
     else if (records.hasNextPage) void records.fetchNextPage();
   }, [items, index, pick, records]);
 
+  // The run a record's decisions go to: the pinned run, else the run its object is read from in the current state.
+  const versionOf = useCallback((module: string): string | undefined =>
+    run ?? summary.data?.objects.find((o) => o.module === module)?.version_id ?? items.find((r) => r.module === module)?.version_id,
+  [run, summary.data, items]);
   const bulk = useMutation({
-    mutationFn: (d: Decision[]) => decide(d, run),
+    mutationFn: (d: Decision[]) => decideInRuns(d, versionOf),
     onSuccess: (r) => { toast.success(`${plural(r.updated, "change")} saved`); setChecked(new Set()); setSignOff(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const groupAccept = useMutation({
-    mutationFn: (check: string) => acceptAllInGroup(check, run),
+    mutationFn: (check: string) => acceptAllInGroup(check, run ?? groups.data?.groups.find((g) => g.check_id === check)?.version_id),
     onSuccess: (r) => { toastDraftBatch(`${plural(r.accepted, "suggested value")} accepted: they wait in your draft batch for approval`); setAcceptAll(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const build = useMutation({
-    mutationFn: () => buildWorklist(run),
+    // One run, or each run of the current state whose work list is missing.
+    mutationFn: async () => { for (const v of run ? [run] : summary.data?.unbuilt ?? []) await buildWorklist(v); },
     onSuccess: () => toast.success("Building the work list. It appears here in a few minutes."),
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
@@ -269,12 +297,12 @@ export function FixWork() {
       else if (e.key === "a" && canFix) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "accept" }], { onSuccess: next });
       else if (e.key === "t" && can("assign")) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "assign", assignee: "me" }]);
       else if (e.key === "u" && canFix) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "undo" }]);
-      else if (e.key === "Enter") { e.preventDefault(); router.push(`/objects/${current.module}/records/${encodeURIComponent(current.record_key)}${run ? `?run=${run}` : ""}`); }
+      else if (e.key === "Enter") { e.preventDefault(); const v = versionOf(current.module); router.push(`/objects/${current.module}/records/${encodeURIComponent(current.record_key)}${v ? `?run=${v}` : ""}`); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `current` is derived from currentKey
-  }, [items, index, currentKey, next, pick, bulk, canFix, can, run, router]);
+  }, [items, index, currentKey, next, pick, bulk, canFix, can, versionOf, router]);
 
   if (summary.isLoading) return <Skeleton height={480} />;
   if (summary.isError) {
@@ -285,14 +313,14 @@ export function FixWork() {
     return <ErrorState {...apiErrorState(summary.error)} onRetry={() => summary.refetch()} />;
   }
   const s = summary.data!;
-  if (!s.built) {
-    return (
-      <Notice tone="warning" title="This run's work list is not built yet"
-        action={can("analyse") ? <Button pending={build.isPending} onClick={() => build.mutate()}>Build the work list</Button> : undefined}>
-        Runs from before this version have no work list. {can("analyse") ? "Build it once; it takes a few minutes for a large run." : "Ask an analyst to build it."}
-      </Notice>
-    );
-  }
+  const isCurrent = !run;
+  const buildNotice = (
+    <Notice tone="warning" title={isCurrent ? `${plural(s.unbuilt?.length ?? 0, "run")} of the current state ${s.unbuilt?.length === 1 ? "has" : "have"} no work list yet` : "This run's work list is not built yet"}
+      action={can("analyse") ? <Button pending={build.isPending} onClick={() => build.mutate()}>Build the work list</Button> : undefined}>
+      Runs from before this version have no work list{isCurrent ? ", so their objects are not listed here" : ""}. {can("analyse") ? "Build it once; it takes a few minutes for a large run." : "Ask an analyst to build it."}
+    </Notice>
+  );
+  if (!s.built) return buildNotice;
   const t = s.totals;
   const chips: { label: string; value: string; key: string }[] = [
     filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "module" } : null,
@@ -308,11 +336,16 @@ export function FixWork() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="fix-work">
-      {shownRun.data ? (
+      {isCurrent ? (
+        <p className="m-text-body m-ink-2" data-testid="fix-scope">
+          {newestOfState ? stateScopeLine(s.objects.length, newestOfState.run_at) : `Current state of ${plural(s.objects.length, "object")}`}, each object at its own latest run
+        </p>
+      ) : shownRun.data ? (
         <p className="m-text-body m-ink-2">
           <RunScope scope={{ run: shownRun.data, latestId: undefined, pinned: false, choices: [] }} hrefFor={(id) => (id ? `/fix?${new URLSearchParams({ run: id })}` : "/fix")} />
         </p>
       ) : null}
+      {isCurrent && s.unbuilt?.length ? buildNotice : null}
       <div className="m-stat-grid @5xl:[grid-template-columns:repeat(4,minmax(0,1fr))]">
         <Stat label="Records to fix" value={t.open.toLocaleString()} hint={`${plural(t.issues, "issue")} across ${plural(s.objects.length, "object")}`} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
         <Stat label="Critical" value={t.critical.toLocaleString()} tone={t.critical ? "no-go" : "go"} hint="critical severity" onClick={() => set({ sev: "critical" })} />
@@ -357,7 +390,7 @@ export function FixWork() {
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)_minmax(0,440px)] 2xl:grid-cols-[400px_minmax(0,1fr)_minmax(0,480px)]">
-        <Card title="Issues" meta={groups.data ? `${groups.data.total.toLocaleString()} in this run` : undefined} padding="sm">
+        <Card title="Issues" meta={groups.data ? `${groups.data.total.toLocaleString()} ${isCurrent ? `across ${plural(s.objects.length, "object")}` : "in this run"}` : undefined} padding="sm">
           {groups.isLoading ? <Skeleton height={240} /> : groups.isError ? <ErrorState {...apiErrorState(groups.error)} onRetry={() => groups.refetch()} />
             : groups.data && groups.data.groups.length ? (
               <div className="max-h-[70vh] overflow-auto"><GroupList groups={groups.data.groups} active={filter.check_id} onPick={(c) => set({ check: c, record: null })} /></div>
@@ -379,7 +412,7 @@ export function FixWork() {
           {records.isLoading ? <Skeleton height={360} /> : records.isError ? <ErrorState {...apiErrorState(records.error)} onRetry={() => records.refetch()} />
             : items.length === 0 ? (
               <EmptyState variant="inline" title={chips.length || filter.status !== "open" ? "No records match these filters" : "Nothing left to fix"}
-                detail={chips.length ? "Clear a filter to see more." : "Every failing record in this run has a decision."}
+                detail={chips.length ? "Clear a filter to see more." : `Every failing record ${isCurrent ? "of every object" : "in this run"} has a decision.`}
                 action={chips.length ? <Button variant="secondary" onClick={() => set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, system: null, part: null, sugg: null, due: null, q: null })}>Clear filters</Button> : undefined} />
             ) : (
               <>
@@ -407,7 +440,7 @@ export function FixWork() {
         </Card>
 
         <div className="lg:sticky lg:top-4 lg:self-start">
-          {current ? <RecordPanel module={current.module} recordKey={current.record_key} run={run} onDecided={next} />
+          {current ? <RecordPanel module={current.module} recordKey={current.record_key} run={versionOf(current.module)} onDecided={next} />
             : <Card><p className="m-text-body m-ink-3">Pick a record to see what is wrong with it.</p></Card>}
         </div>
       </div>
@@ -419,7 +452,7 @@ export function FixWork() {
           <ConfirmDialog open={acceptAll} onOpenChange={setAcceptAll} title={`Accept ${activeGroup.proposed.toLocaleString()} suggested values`}
             body={<>Every open record of &ldquo;{activeGroup.message}&rdquo; with a suggested value gets it, in your draft batch. A second person approves the batch before anything goes to SAP, and you can undo any record.</>}
             confirmLabel="Accept them" pending={groupAccept.isPending} onConfirm={() => groupAccept.mutate(activeGroup.check_id)} />
-          <SetValueDialog group={activeGroup} open={setValueOpen} onOpenChange={setSetValueOpen} run={run} />
+          <SetValueDialog group={activeGroup} open={setValueOpen} onOpenChange={setSetValueOpen} run={run ?? activeGroup.version_id} />
         </>
       ) : null}
     </div>

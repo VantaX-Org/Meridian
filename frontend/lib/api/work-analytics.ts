@@ -3,11 +3,17 @@
 import apiClient from "./client";
 
 export interface AnalyticsScope {
-  /** The run (a version id); the API takes the latest finished run when it is left out. */
+  /**
+   * The run (a version id). Left out, the run-bound reads (burn-down, root causes, change since the previous run)
+   * read the current state (`scope=current`): every object at its own latest run, the scope Home shows.
+   */
   versionId?: string;
   /** One object (module id) only. */
   module?: string;
 }
+
+/** A run-bound read: the run, or the current state. */
+const runBound = (scope?: AnalyticsScope): Record<string, string> => (scope?.versionId ? {} : { scope: "current" });
 
 const params = ({ versionId, module }: AnalyticsScope = {}, extra: Record<string, string | number> = {}) => ({
   ...(versionId ? { version_id: versionId } : {}),
@@ -154,7 +160,10 @@ export interface RunChangeObject {
 
 export interface RunChange {
   version_id: string | null;
+  /** The run compared with; under the current state, set only when one object's run was compared. */
   previous: { version_id: string; label: string | null; run_at: string | null } | null;
+  /** The current state: each run compared with the run before it in its lineage. */
+  compared?: { version_id: string; previous: { version_id: string; label: string | null; run_at: string | null } }[];
   objects: RunChangeObject[];
   totals: { new: number; fixed: number; still_failing: number };
   not_comparable_checks: number;
@@ -163,7 +172,7 @@ export interface RunChange {
 const base = "/api/v1/work/analytics";
 
 export async function getBurndown(scope?: AnalyticsScope): Promise<Burndown> {
-  return (await apiClient.get<Burndown>(`${base}/burndown`, { params: params(scope) })).data;
+  return (await apiClient.get<Burndown>(`${base}/burndown`, { params: params(scope, runBound(scope)) })).data;
 }
 
 export async function getTimeToFix(scope?: AnalyticsScope, days = 180): Promise<TimeToFix> {
@@ -179,7 +188,7 @@ export async function getRecurrence(scope?: AnalyticsScope): Promise<Recurrence>
 }
 
 export async function getRootCauses(scope?: AnalyticsScope): Promise<RootCauses> {
-  return (await apiClient.get<RootCauses>(`${base}/root-causes`, { params: params(scope) })).data;
+  return (await apiClient.get<RootCauses>(`${base}/root-causes`, { params: params(scope, runBound(scope)) })).data;
 }
 
 export async function getProposalQuality(scope?: AnalyticsScope): Promise<ProposalQuality> {
@@ -187,5 +196,5 @@ export async function getProposalQuality(scope?: AnalyticsScope): Promise<Propos
 }
 
 export async function getRunChange(scope?: AnalyticsScope): Promise<RunChange> {
-  return (await apiClient.get<RunChange>(`${base}/run-change`, { params: params(scope) })).data;
+  return (await apiClient.get<RunChange>(`${base}/run-change`, { params: params(scope, runBound(scope)) })).data;
 }

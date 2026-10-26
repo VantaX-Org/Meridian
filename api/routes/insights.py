@@ -15,6 +15,7 @@ from api.routes.findings import _latest_version_ids
 from api.routes.merge_explain import AUTO_MERGE, REVIEW_FLOOR, build_cluster_graph
 from api.routes.record_issues import _rls
 from api.services import insights_aggregate as agg
+from api.services.current_state import current_pairs, run_ids
 from api.services.insights_impact import by_l1, feature_l1, tenant_currency, value_at_risk, worst_l1
 from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
 from api.services.insights_readiness import build_wave_cells
@@ -23,6 +24,23 @@ from api.services.run_context import latest_run
 from api.services.scoring import scoring_config
 
 router = APIRouter(prefix="/api/v1/insights", tags=["insights"])
+
+Scope = Literal["run", "current"]
+_SCOPE = Query("run", description="run: one run (version_id, default the latest complete run). current: every "
+                                  "object at the latest complete run of its lineage; no version_id.")
+
+
+async def _current_run_ids(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID]) -> list[str]:
+    """``scope=current``: the runs that supply an object of the current state (api/services/current_state.py),
+    newest first, so a per-run figure read from several of them is taken from the newest run that has it."""
+    if version_id is not None:
+        raise HTTPException(422, "version_id and scope=current are exclusive")
+    ids = run_ids(await current_pairs(db, tenant.id))
+    if not ids:
+        return []
+    return list((await db.execute(text(
+        "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) "
+        "ORDER BY run_at DESC, id DESC"), {"t": str(tenant.id), "ids": ids})).scalars().all())
 
 _METRIC_LABEL = {
     "late_po": "Late POs (lead-time / info-record defects)",
@@ -110,8 +128,20 @@ async def get_impact(
     version_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
+    scope: Scope = _SCOPE,
 ):
+    """Priced SAP features a run blocks or degrades: blocked records times the tenant's value per record.
+    ``scope=current``: over the current state, each feature from the newest current run that computed it (the
+    rule the overview's value at risk uses, insights_aggregate._current_impact_rows)."""
     await _rls(db, tenant)
+    if scope == "current":
+        ids = await _current_run_ids(db, tenant, version_id)
+        rows: dict[str, dict] = {}
+        for rid in ids:  # newest first: a feature is taken from the newest run that computed it
+            for r in (await get_impact(uuid.UUID(rid), db, tenant))["rows"]:
+                rows.setdefault(r["feature"], r)
+        return {"version_id": None, "scope": "current", "version_ids": ids,
+                "rows": sorted(rows.values(), key=lambda r: r["feature"])}
 
     # No explicit version — use this tenant's most recent analysis version that
     # actually has config_impact_results rows (same "latest" idea as readiness).
@@ -167,8 +197,28 @@ async def get_proven_cost(
     version_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
+    scope: Scope = _SCOPE,
 ):
+    """Money already lost in posted documents that break a rule, per metric and L1, and value at risk per L1.
+    ``scope=current``: each metric from the newest current run that has it; value at risk over the current state."""
     await _rls(db, tenant)
+    if scope == "current":
+        ids = await _current_run_ids(db, tenant, version_id)
+        per_run = [await get_proven_cost(uuid.UUID(rid), db, tenant) for rid in ids]
+        rows: dict[str, dict] = {}
+        for out in per_run:  # newest first
+            for r in out["rows"]:
+                rows.setdefault(r["metric"], r)
+        currency = per_run[0]["currency"] if per_run else tenant_currency(
+            (await db.execute(text("SELECT cost_model FROM tenants WHERE id = :t"), {"t": str(tenant.id)})).scalar() or {})
+        cost_by_l1: dict[str, float] = {}
+        for r in rows.values():
+            cost_by_l1[r["l1"]] = round(cost_by_l1.get(r["l1"], 0.0) + float((r["by_currency"] or {}).get(currency, 0.0)), 2)
+        impact = await get_impact(None, db, tenant, "current")
+        return {"version_id": None, "scope": "current", "version_ids": ids, "currency": currency,
+                "rows": [rows[m] for m in _METRIC_LABEL if m in rows],
+                "cost_by_l1": [{"l1": k, "amount": v} for k, v in sorted(cost_by_l1.items())],
+                "value_at_risk_by_l1": [{"l1": k, "value_at_risk": v} for k, v in sorted(by_l1(impact["rows"]).items())]}
 
     # Resolved before the version lookup so the empty ("no rows yet") response still
     # carries the tenant's real currency instead of None.
@@ -339,10 +389,6 @@ def exec_narrative(no_go: int, cells: int, priced: int, worst_name: Optional[str
     return " ".join(out)
 
 
-Scope = Literal["run", "current"]
-_SCOPE = Query("run", description="run: one run (version_id, default the latest complete run). current: every "
-                                  "object at the latest complete run of its lineage; no version_id.")
-
 
 def _exec_dqs(s, tid: str, vid: str) -> dict:
     """The DQS block of one run (composite, capped, cap_reason), the same numbers /overview shows for it."""
@@ -375,8 +421,9 @@ async def get_exec(
 
     ``scope=current`` (the scope of Home): the composite, cap and cap_reason come from the current state, every
     object at the latest complete run of its lineage (``_latest_version_ids``, as /overview?scope=current). The
-    readiness cells, impact rows and proven cost are per run, so they come from the newest of those runs, whose id
-    is ``latest_version_id`` (``version_id`` stays null: the summary is not one run's)."""
+    impact rows and proven cost are the current state's (/impact?scope=current, /proven-cost?scope=current); the
+    readiness cells are per run, so they come from the newest of those runs, whose id is ``latest_version_id``
+    (``version_id`` stays null: the summary is not one run's)."""
     await _rls(db, tenant)
     current: Optional[dict] = None
     if scope == "current":
@@ -408,9 +455,12 @@ async def get_exec(
     # {"cells": [], "configured": False} instead), so no HTTPException catch
     # is needed here any more.
     readiness = await get_readiness(version_id, db, tenant)
-    impact = await get_impact(version_id, db, tenant)
+    # The current state's value at risk and proven cost are read the way /impact?scope=current reads them, so the
+    # summary and the Value at risk page answer with one figure.
+    impact = await get_impact(None, db, tenant, "current") if current else await get_impact(version_id, db, tenant)
     owners = await get_owners(db, tenant)
-    proven_cost = await get_proven_cost(version_id, db, tenant)
+    proven_cost = (await get_proven_cost(None, db, tenant, "current") if current
+                   else await get_proven_cost(version_id, db, tenant))
 
     cells = readiness["cells"]
     rows = impact["rows"]

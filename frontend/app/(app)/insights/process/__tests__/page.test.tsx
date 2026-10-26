@@ -148,7 +148,23 @@ describe("ProcessInsightsPage blocking ledger", () => {
 });
 
 describe("ProcessInsightsPage without a process definition", () => {
+  afterEach(() => { nav.qs = ""; vi.restoreAllMocks(); });
+
+  it("opens on the current state: the process object of an older run, read from its own run", async () => {
+    const bp = { id: "bp", label: "business_partner_1k", status: "complete", run_at: "2026-10-02T00:00:00Z", dqs_summary: { business_partner: 90 } };
+    const ap = { id: "ap", label: "accounts_payable_1k", status: "complete", run_at: "2026-10-01T00:00:00Z", dqs_summary: { accounts_payable: 80 } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [bp as never, ap as never] });
+    const read = vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    // The newest run (business partner) carries no process; the current state still offers accounts payable.
+    await waitFor(() => expect(read).toHaveBeenCalledWith("ap", "accounts_payable"));
+    expect(read).not.toHaveBeenCalledWith("bp", expect.anything());
+  });
+
   it("offers the finished runs that cover a process object instead of a dead end, with the header and actions at page level", async () => {
+    nav.qs = "run=bp";
     const bp = { id: "bp", label: "business_partner_1k", status: "complete", run_at: "2026-10-02T00:00:00Z", dqs_summary: { business_partner: 90 } };
     const ap = { id: "ap", label: "accounts_payable_1k", status: "complete", run_at: "2026-10-01T00:00:00Z", dqs_summary: { accounts_payable: 80 } };
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [bp as never, ap as never] });
