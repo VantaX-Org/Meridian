@@ -3420,6 +3420,16 @@ rules:
   - '41'
   - '42'
   - '43'
+  valid_values_with_labels:
+    '01': Primary costs or cost-reducing revenues
+    '03': Accrual/deferral per surcharge
+    '04': Accrual/deferral per debit equals actual
+    '11': Revenues
+    '12': Sales deduction
+    '22': External settlement
+    '41': Overhead rates
+    '42': Assessment
+    '43': Internal activity allocation
   severity: high
   dimension: validity
   message: 'S/4HANA migration: cost element category is not a valid value'
@@ -3500,6 +3510,10 @@ rules:
   - '1'
   - '2'
   - '3'
+  valid_values_with_labels:
+    '1': Person
+    '2': Organisation
+    '3': Group
   severity: high
   dimension: validity
   message: 'S/4HANA migration: business partner category is not 1, 2 or 3'
