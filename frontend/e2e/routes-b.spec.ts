@@ -6,7 +6,8 @@ import { expect, test } from "./fixtures";
 
 test("/insights renders its heading or fresh-install sentence", async ({ app }) => {
   await app.goto("/insights", { waitUntil: "load" });
-  await expect(app.getByRole("link", { name: /readiness/i }).or(app.getByText(/No insights yet\./)).first()).toBeVisible();
+  const main = app.getByRole("main");
+  await expect(main.getByRole("heading", { name: "Insights", exact: true }).or(main.getByText("No insights yet", { exact: true })).first()).toBeVisible();
 });
 
 test("/design shows notices in both themes", async ({ app }) => {

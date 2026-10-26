@@ -1,10 +1,11 @@
 name: Aurora E2E
 
-# Typecheck + lint, Vitest with a coverage floor, token and contrast gates, then Playwright smoke + a11y + perf on every Aurora
-# workspace route, plus the steward/basis/lead/insights journey specs, signed
-# in against the recorded API (frontend/e2e/fixtures.ts) and served from the
-# production build. There is no visual-regression job: the Aurora shell was
-# retired in Wave 3 and its snapshots deleted with it.
+# Typecheck + lint, Vitest with a coverage floor, token and contrast gates (the `checks` job, once), then
+# Playwright, signed in against the recorded API (frontend/e2e/fixtures.ts) and served from the production
+# build: perf alone on one worker so its budgets measure an idle machine, and every other spec (smoke and a11y
+# on every workspace route, the steward/basis/lead/insights journeys, run scope, persona and viewer gating, the
+# gap routes) sharded across parallel jobs. There is no visual-regression job: the Aurora shell was retired in
+# Wave 3 and its snapshots deleted with it.
 
 on:
   push:
@@ -23,10 +24,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  e2e:
-    name: Aurora E2E (smoke + a11y + perf)
+  checks:
+    name: Aurora checks (types, lint, unit, tokens, contrast)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -56,27 +57,75 @@ jobs:
       - name: Contrast check
         run: npm run check:contrast
 
+  e2e:
+    # One perf job on a single worker, and the rest of the browser suite split into shards of two workers each.
+    name: Aurora E2E (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: perf, specs: "e2e/aurora-perf.spec.ts", shard: "1/1", workers: 1 }
+          - { name: "shard 1 of 6", specs: "", shard: "1/6", workers: 2 }
+          - { name: "shard 2 of 6", specs: "", shard: "2/6", workers: 2 }
+          - { name: "shard 3 of 6", specs: "", shard: "3/6", workers: 2 }
+          - { name: "shard 4 of 6", specs: "", shard: "4/6", workers: 2 }
+          - { name: "shard 5 of 6", specs: "", shard: "5/6", workers: 2 }
+          - { name: "shard 6 of 6", specs: "", shard: "6/6", workers: 2 }
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Every spec but perf. Fully parallel (playwright.config.ts), so shards split by test, not by file.
+      SHARDED_SPECS: >-
+        e2e/aurora-smoke.spec.ts
+        e2e/aurora-a11y.spec.ts
+        e2e/basis-failed-extraction.spec.ts
+        e2e/steward-accept-proposal.spec.ts
+        e2e/lead-failing-record-journey.spec.ts
+        e2e/insights-readiness-drill.spec.ts
+        e2e/run-scope-integrity.spec.ts
+        e2e/persona-gating.spec.ts
+        e2e/routes-18b.spec.ts
+        e2e/routes-b.spec.ts
+        e2e/viewer-gating.spec.ts
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Next's build cache (the web server in playwright.config.ts builds before it serves): restored from the
+      # newest run on the same lockfile, which Next revalidates itself.
+      - name: Cache Next build
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Aurora smoke, a11y, perf, and journey specs
+      - name: Run ${{ matrix.name }}
         run: |
-          npx playwright test \
-            e2e/aurora-smoke.spec.ts \
-            e2e/aurora-a11y.spec.ts \
-            e2e/aurora-perf.spec.ts \
-            e2e/basis-failed-extraction.spec.ts \
-            e2e/steward-accept-proposal.spec.ts \
-            e2e/lead-failing-record-journey.spec.ts \
-            e2e/insights-readiness-drill.spec.ts
-        env:
-          CI: "true"
-          NEXT_TELEMETRY_DISABLED: "1"
+          npx playwright test ${{ matrix.specs || env.SHARDED_SPECS }} \
+            --shard=${{ matrix.shard }} \
+            --workers=${{ matrix.workers }}
 
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ strategy.job-index }}
           path: frontend/playwright-report
           retention-days: 14
