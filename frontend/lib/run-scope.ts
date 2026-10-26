@@ -115,10 +115,10 @@ export function runScopeLabel(v: RunNameInput & Pick<Version, "run_at">): string
   return named ? `${runName(v)}, ${formatDate(v.run_at, "date")}` : formatDate(v.run_at, "date");
 }
 
-/** "Material master · run 2": the run's number within its lineage, when the API sends one. */
+/** "Material master, run 2": the run's number within its lineage, when the API sends one. */
 export function runScopeLabelNumbered(v: RunNameInput & Pick<Version, "run_at"> & { run_number?: number | null }): string {
   const short = runScopeLabel(v);
-  return v.run_number ? `${short} · run ${v.run_number}` : short;
+  return v.run_number ? `${short}, run ${v.run_number}` : short;
 }
 
 /**
@@ -133,6 +133,6 @@ export function runChoiceLabels(runs: readonly Version[]): Map<string, string> {
     const numbered = runScopeLabelNumbered(r);
     const sameDay = (day.get(runScopeLabel(r)) ?? 0) > 1;
     const label = sameDay ? `${runName(r)}, ${formatDate(r.run_at, "datetime")}` : numbered;
-    return [r.id, r.run_number && sameDay ? `${label} · run ${r.run_number}` : label];
+    return [r.id, r.run_number && sameDay ? `${label}, run ${r.run_number}` : label];
   }));
 }
