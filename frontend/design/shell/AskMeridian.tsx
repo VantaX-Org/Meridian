@@ -9,6 +9,7 @@ import { askMeridian, type AskAnswer, type AskFact } from "../../lib/api/assista
 import { getVersion } from "../../lib/api/versions";
 import { queryKeys } from "../../lib/query-keys";
 import { runScopeLabel } from "../../lib/run-scope";
+import { formatModuleName } from "../../lib/format";
 import { useLicence } from "../../hooks/use-licence";
 import { Bar } from "../charts/Bar";
 import { Line } from "../charts/Line";
@@ -157,11 +158,13 @@ export function AskMeridian() {
   const version = useQuery({ queryKey: queryKeys.run(run ?? ""), queryFn: () => getVersion(run as string), enabled: !!run, retry: false, meta: { ignoreError: true } });
   // Without a run the page shows the current state: the score is read across every object at its latest run, the
   // other answers from the newest run.
-  const scope = !run ? "the current state and your latest run" : version.data ? runScopeLabel(version.data) : "the run on this page";
-  // Answers belong to the run they were asked about: a new run on screen starts a new thread.
-  const [threadRun, setThreadRun] = useState(run);
-  if (threadRun !== run) {
-    setThreadRun(run);
+  const runScope = !run ? "the current state and your latest run" : version.data ? runScopeLabel(version.data) : "the run on this page";
+  const scope = objectId ? `${runScope}, for ${formatModuleName(objectId)}` : runScope;
+  // Answers belong to the run and the object they were asked about: a new run or object on screen starts a new thread.
+  const threadKey = `${run ?? ""}|${objectId ?? ""}`;
+  const [thread, setThread] = useState(threadKey);
+  if (thread !== threadKey) {
+    setThread(threadKey);
     setMessages([]);
   }
   const { isMenuItemEnabled, manifest } = useLicence();

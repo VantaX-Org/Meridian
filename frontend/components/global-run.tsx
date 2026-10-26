@@ -9,7 +9,7 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished } from "@/lib/runs";
 import { hrefWithRun, runChoiceLabels } from "@/lib/run-scope";
-import { isCurrentStateView } from "@/lib/current-state";
+import { isCurrentStateView, isModuleScoped, isRunScoped } from "@/lib/current-state";
 
 /**
  * Where the chosen run and object are kept between screens: this tab's session only (sessionStorage), so a run
@@ -50,13 +50,14 @@ export const readSelectedObject = () => read(OBJECT_KEY);
 
 /**
  * A choice the scope bar holds across screens: its URL parameter, where it is kept, screens that own it (never read
- * nor written) and screens it is never carried onto. The current-state views (Home, the Insights overview and the
+ * nor written) and screens it is never carried onto. A screen that does not read the parameter at all (outside
+ * `RUN_SCOPED` / `MODULE_SCOPED` in lib/current-state.ts) is treated as owning it, so nothing is carried onto it. The current-state views (Home, the Insights overview and the
  * executive summary) describe every object at its latest run; a carried `?run=` or `?module=` would silently turn
  * them into one run, so they open as the current state and only an explicit link or their own picker pins a run.
  */
 const CARRIED: { param: string; key: string; owned: (path: string) => boolean; notCarried: (path: string) => boolean }[] = [
-  { param: "run", key: RUN_KEY, owned: (path) => ownsRun(path) || isCurrentStateView(path), notCarried: isCurrentStateView },
-  { param: "module", key: OBJECT_KEY, owned: (path) => ownsRun(path) || !!objectOfPath(path), notCarried: isCurrentStateView },
+  { param: "run", key: RUN_KEY, owned: (path) => ownsRun(path) || isCurrentStateView(path) || !isRunScoped(path), notCarried: isCurrentStateView },
+  { param: "module", key: OBJECT_KEY, owned: (path) => ownsRun(path) || !!objectOfPath(path) || !isModuleScoped(path), notCarried: isCurrentStateView },
 ];
 
 /**
@@ -96,7 +97,7 @@ export function RunCarrier() {
   return null;
 }
 
-/** The scope bar's object picker: every object, or one, held on every screen. */
+/** The scope bar's object picker: every object, or one, held across the screens that read `?module=` (`MODULE_SCOPED`). */
 export function GlobalObjectPicker() {
   const pathname = usePathname();
   const search = useSearchParams();
@@ -104,7 +105,7 @@ export function GlobalObjectPicker() {
   const q = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const objects = q.data?.objects ?? [];
   const fromPath = objectOfPath(pathname);
-  if (!objects.length || ownsRun(pathname)) return null;
+  if (!objects.length || ownsRun(pathname) || !isModuleScoped(pathname)) return null;
   const chosen = fromPath ? decodeURIComponent(fromPath) : search?.get("module") ?? null;
   const value = chosen && objects.some((o) => o.module === chosen) ? chosen : EVERY;
   const pick = (m: string) => {
@@ -132,7 +133,7 @@ export function GlobalObjectPicker() {
   );
 }
 
-/** The scope bar's run picker: the latest run, or any finished run, held on every screen. */
+/** The scope bar's run picker: the latest run, or any finished run, held across the screens that read `?run=` (`RUN_SCOPED`). */
 export function GlobalRunPicker() {
   const pathname = usePathname();
   const search = useSearchParams();
@@ -155,7 +156,7 @@ export function GlobalRunPicker() {
     }
   }, [run, data, pathname, search, router]);
   // A current-state view's own header picker owns its scope ("Current state" or one run): no second run picker.
-  if (!runs.length || ownsRun(pathname) || isCurrentStateView(pathname)) return null;
+  if (!runs.length || ownsRun(pathname) || !isRunScoped(pathname) || isCurrentStateView(pathname)) return null;
   const labels = runChoiceLabels(runs);
   const value = run && runs.some((r) => r.id === run) ? run : LATEST;
   return (

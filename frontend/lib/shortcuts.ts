@@ -2,7 +2,8 @@
  * The one registry of keyboard shortcuts. `ShortcutSheet` (the `?` sheet) and
  * the inbox read from here, so a key is documented in exactly one place.
  * Navigation shortcuts come from the `shortcut` fields in lib/nav.ts and are
- * handled by design/shell/CommandPalette.tsx's global key handler; the rest
+ * handled by design/shell/CommandPalette.tsx while the palette is open (⌘K is
+ * the only global modifier key, so ⌘/Ctrl + digit stays the browser's); the rest
  * are listed below next to the component that handles them.
  */
 import { useSyncExternalStore } from "react";
@@ -75,11 +76,14 @@ export const GLOBAL_SHORTCUTS: readonly Shortcut[] = [
   { group: "Global", keys: "/", description: "Find a record by key or name" },
 ];
 
-/** Navigation shortcuts, derived from `lib/nav.ts` so a new `shortcut` field shows up here with no second edit. */
+/**
+ * Navigation shortcuts, derived from `lib/nav.ts` so a new `shortcut` field shows up here with no second edit.
+ * They work inside the command palette only, and say so.
+ */
 export function navShortcuts(): Shortcut[] {
   return flattenNav(NAV_GROUPS.flatMap((g) => g.items))
     .filter((i): i is typeof i & { shortcut: string } => Boolean(i.shortcut))
-    .map((i) => ({ group: "Navigation" as const, keys: i.shortcut, description: `Go to ${i.label}` }));
+    .map((i) => ({ group: "Navigation" as const, keys: i.shortcut, description: `Go to ${i.label}, with the command palette open` }));
 }
 
 export function shortcutRegistry(): Shortcut[] {

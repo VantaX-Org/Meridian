@@ -137,6 +137,8 @@ export default function ProposalsPage() {
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: queryKeys.batch(segment) });
     void qc.invalidateQueries({ queryKey: ["cleaning", "groups"] });
+    // The Fix work pill counts the proposals waiting; a decision here changes it.
+    void qc.invalidateQueries({ queryKey: queryKeys.shellCounts() });
   };
 
   const [failure, setFailure] = useState<string | null>(null);

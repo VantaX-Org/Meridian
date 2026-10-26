@@ -1,7 +1,7 @@
 // One run for every screen: a ?run= is kept, carried onto the next screen, and cleared by going back to latest.
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GlobalRunPicker, OBJECT_KEY, RUN_KEY, RunCarrier, readSelectedObject, readSelectedRun } from "../global-run";
+import { GlobalObjectPicker, GlobalRunPicker, OBJECT_KEY, RUN_KEY, RunCarrier, readSelectedObject, readSelectedRun } from "../global-run";
 
 const replace = vi.fn();
 let pathname = "/objects";
@@ -10,6 +10,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace, push: vi.fn() }),
   usePathname: () => pathname,
   useSearchParams: () => search,
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: { objects: [{ module: "material_master", label: "Material master" }] } }),
 }));
 
 vi.mock("@/hooks/use-run-list", () => ({
@@ -95,6 +99,36 @@ describe("RunCarrier", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it.each(["/admin/users", "/mdm", "/inbox", "/systems", "/runs", "/fix/proposals/r1"])("never carries a run or an object onto %s, which reads neither", (path) => {
+    window.sessionStorage.setItem(RUN_KEY, "r1");
+    window.sessionStorage.setItem(OBJECT_KEY, "material_master");
+    at(path);
+    render(<RunCarrier />);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("carries only the run onto a screen that reads the run but not the object", () => {
+    window.sessionStorage.setItem(RUN_KEY, "r1");
+    window.sessionStorage.setItem(OBJECT_KEY, "material_master");
+    at("/search", "q=abc");
+    render(<RunCarrier />);
+    expect(replace).toHaveBeenCalledWith("/search?q=abc&run=r1", { scroll: false });
+  });
+
+  it("carries only the object onto a screen that reads the object but not the run", () => {
+    window.sessionStorage.setItem(RUN_KEY, "r1");
+    window.sessionStorage.setItem(OBJECT_KEY, "material_master");
+    at("/rules");
+    render(<RunCarrier />);
+    expect(replace).toHaveBeenCalledWith("/rules?module=material_master", { scroll: false });
+  });
+
+  it("does not let a stray ?run= on a screen that ignores it become the choice", () => {
+    at("/admin/users", "run=r9");
+    render(<RunCarrier />);
+    expect(readSelectedRun()).toBeNull();
+  });
+
   it("clears the object when Every object is chosen on the same screen", () => {
     at("/fix", "module=material_master");
     const { rerender } = render(<RunCarrier />);
@@ -116,6 +150,32 @@ describe("GlobalRunPicker", () => {
 
   it("shows on a one-run screen", () => {
     at("/objects");
+    const { getByTestId } = render(<GlobalRunPicker />);
+    expect(getByTestId("global-run")).toBeInTheDocument();
+  });
+});
+
+describe("scope bar pickers outside the screens that read them", () => {
+  it.each(["/admin/users", "/mdm", "/inbox", "/systems", "/runs", "/home/lead"])("hides the run picker on %s", (path) => {
+    at(path);
+    const { queryByTestId } = render(<GlobalRunPicker />);
+    expect(queryByTestId("global-run")).toBeNull();
+  });
+
+  it.each(["/admin/users", "/mdm", "/inbox", "/objects", "/search", "/home/lead", "/runs/r1"])("hides the object picker on %s", (path) => {
+    at(path);
+    const { queryByTestId } = render(<GlobalObjectPicker />);
+    expect(queryByTestId("global-object")).toBeNull();
+  });
+
+  it.each(["/fix", "/insights/rules", "/rules", "/objects/material_master"])("shows the object picker on %s", (path) => {
+    at(path);
+    const { getByTestId } = render(<GlobalObjectPicker />);
+    expect(getByTestId("global-object")).toBeInTheDocument();
+  });
+
+  it.each(["/fix", "/insights/rules", "/search", "/objects/material_master"])("shows the run picker on %s", (path) => {
+    at(path);
     const { getByTestId } = render(<GlobalRunPicker />);
     expect(getByTestId("global-run")).toBeInTheDocument();
   });

@@ -5,7 +5,7 @@ import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import { DomainChip } from "../primitives/DomainChip";
 import { parsePalette, type GrammarContext } from "@/lib/palette-grammar";
-import { shortcutLabel, useIsMac } from "@/lib/shortcuts";
+import { isTypingTarget, shortcutLabel, useIsMac } from "@/lib/shortcuts";
 import { IconSearch } from "../icons";
 
 const DEFAULT_GROUP = "Pages";
@@ -38,15 +38,24 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
   const itemsRef = useRef(items);
   useEffect(() => { itemsRef.current = items; }, [items]);
 
+  // Read by the key handler, so it subscribes once.
+  const openRef = useRef(open);
+  useEffect(() => { openRef.current = open; }, [open]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      // ⌘K is the one global key: it opens the palette from anywhere, even while typing.
       if (e.key === "k") {
         e.preventDefault();
         setOpen((o) => !o);
         return;
       }
-      // Item key hints such as "⌘1" (lib/nav.ts `shortcut`, href already resolved for the viewer) are live keys.
+      // Item key hints such as "⌘1" (lib/nav.ts `shortcut`, href already resolved for the viewer) are live only while
+      // the palette is open, so ⌘/Ctrl + digit keeps switching browser tabs everywhere else; and never while typing
+      // in a box outside the palette.
+      if (!openRef.current) return;
+      if (isTypingTarget(e.target) && !(e.target instanceof Element && e.target.closest("[cmdk-root]"))) return;
       const hit = itemsRef.current.find((i) => i.shortcut === `⌘${e.key}`);
       if (hit) {
         e.preventDefault();

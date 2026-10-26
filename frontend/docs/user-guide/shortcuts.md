@@ -9,7 +9,7 @@ Press `?` on any page, or choose **Keyboard shortcuts** in the help menu, to see
 - `/`: jump into **Find a record by key or name** in the scope bar.
 - Ctrl K (⌘K): open **Search or jump to...**, for any page, object, rule or record key.
 - `?`: show the keyboard shortcuts.
-- Ctrl 1 (⌘1): go to your Home page.
+- Ctrl 1 (⌘1), with **Search or jump to...** open: go to your Home page. Outside it, Ctrl or ⌘ with a number is left to your browser for switching tabs.
 - `Escape`: close the **More** menu, a dialog, a side panel or a guided tour.
 
 ## Fix work

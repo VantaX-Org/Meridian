@@ -6,7 +6,7 @@ The **Analysis** section of the **More** menu holds the pages for understanding 
 
 **Home** answers how healthy your SAP data is and what to do next. Each role lands on its own version: the data lead page, the Basis page or the process page. Stewards land on Fix work instead, and can still open the steward Home with **View as**, **Steward**. **View as** changes the layout only, never your rights.
 
-The page shows the score on its ruler with the verdict (**Go**, **At risk** or **No-go**) and any cap, the object map, the four sentences (**Situation**, **What changed**, **Why it matters**, **Do next**), the objects holding the score back, and your own work. **Run analysis** opens a panel to extract and analyse a system's objects, for roles that may start extractions. Press Ctrl 1 (⌘1) to go Home from anywhere.
+The page shows the score on its ruler with the verdict (**Go**, **At risk** or **No-go**) and any cap, the object map, the four sentences (**Situation**, **What changed**, **Why it matters**, **Do next**), the objects holding the score back, and your own work. **Run analysis** opens a panel to extract and analyse a system's objects, for roles that may start extractions. From anywhere, press Ctrl K (⌘K) and then Ctrl 1 (⌘1) to go Home.
 
 ## Insights
 

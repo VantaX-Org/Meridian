@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 const push = vi.fn();
@@ -58,18 +58,75 @@ describe("CommandPalette grammar", () => {
 });
 
 describe("CommandPalette item shortcuts", () => {
-  it("goes to the item whose key hint matches, with ⌘ or Ctrl", () => {
+  const openPalette = () => fireEvent.keyDown(document, { key: "k", metaKey: true });
+  class StubResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  const originalRO = globalThis.ResizeObserver;
+  const originalScrollIntoView = HTMLElement.prototype.scrollIntoView as unknown;
+  beforeEach(() => {
+    allowPaletteTitleWarning();
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = StubResizeObserver;
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+  });
+  afterEach(() => {
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = originalRO;
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView as typeof HTMLElement.prototype.scrollIntoView;
+  });
+
+  it("goes to the item whose key hint matches while the palette is open, with ⌘ or Ctrl", () => {
     push.mockClear();
     render(<CommandPalette items={[{ label: "Home", href: "/home/steward", shortcut: "⌘1" }, { label: "Runs", href: "/runs" }]} />);
-    fireEvent.keyDown(document, { key: "1", metaKey: true });
+    openPalette();
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "1", metaKey: true });
     expect(push).toHaveBeenCalledWith("/home/steward");
+    openPalette();
     fireEvent.keyDown(document, { key: "1", ctrlKey: true });
     expect(push).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves ⌘/Ctrl + digit to the browser while the palette is closed", () => {
+    push.mockClear();
+    render(<CommandPalette items={[{ label: "Home", href: "/home/lead", shortcut: "⌘1" }]} />);
+    const meta = new KeyboardEvent("keydown", { key: "1", metaKey: true, bubbles: true, cancelable: true });
+    document.dispatchEvent(meta);
+    const ctrl = new KeyboardEvent("keydown", { key: "1", ctrlKey: true, bubbles: true, cancelable: true });
+    document.dispatchEvent(ctrl);
+    expect(meta.defaultPrevented).toBe(false);
+    expect(ctrl.defaultPrevented).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("keeps ⌘K global, even while typing in a box", () => {
+    render(
+      <>
+        <input aria-label="Elsewhere" />
+        <CommandPalette items={[{ label: "Home", href: "/home/lead", shortcut: "⌘1" }]} />
+      </>,
+    );
+    fireEvent.keyDown(screen.getByLabelText("Elsewhere"), { key: "k", ctrlKey: true });
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+  });
+
+  it("never takes the digit from a box outside the palette", () => {
+    push.mockClear();
+    render(
+      <>
+        <input aria-label="Elsewhere" />
+        <CommandPalette items={[{ label: "Home", href: "/home/lead", shortcut: "⌘1" }]} />
+      </>,
+    );
+    openPalette();
+    fireEvent.keyDown(screen.getByLabelText("Elsewhere"), { key: "1", metaKey: true });
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("ignores the digit without a modifier and keys no item claims", () => {
     push.mockClear();
     render(<CommandPalette items={[{ label: "Home", href: "/home/lead", shortcut: "⌘1" }]} />);
+    openPalette();
     fireEvent.keyDown(document, { key: "1" });
     fireEvent.keyDown(document, { key: "2", metaKey: true });
     fireEvent.keyDown(document, { key: "1", metaKey: true, shiftKey: true });

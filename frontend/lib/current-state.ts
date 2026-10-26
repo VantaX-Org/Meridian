@@ -25,6 +25,63 @@ export function isCurrentStateView(pathname: string): boolean {
   return pathname === "/home" || pathname.startsWith("/home/") || pathname === "/insights" || pathname === "/insights/exec";
 }
 
+/** The insight pages that take their scope from `useInsightScope` (`?run=` and `?module=`); not lineage nor the process designer. */
+const INSIGHT_SCOPED = [
+  "/insights",
+  "/insights/duplicates",
+  "/insights/exec",
+  "/insights/forecast",
+  "/insights/impact",
+  "/insights/mining",
+  "/insights/operations",
+  "/insights/owners",
+  "/insights/process",
+  "/insights/progress",
+  "/insights/readiness",
+  "/insights/reports",
+  "/insights/rules",
+  "/insights/trends",
+] as const;
+
+/**
+ * Screens that read the scope bar's `?run=`: an entry is an exact path, or a prefix ending in `/*` for every path
+ * under it. The run picker shows and a chosen run is carried only here (components/global-run.tsx). Screens that
+ * own their `?run=` (`/process*`, `/runs/<id>`) and the homes, which read it from their own header picker, are not
+ * listed.
+ */
+export const RUN_SCOPED: readonly string[] = [
+  "/objects",
+  "/objects/*",
+  ...INSIGHT_SCOPED,
+  "/fix",
+  "/fix/what-if",
+  "/search",
+  "/rules/learned",
+  "/migration/dry-run",
+];
+
+/** Screens that read the scope bar's `?module=` (object pages name theirs in the path). Same entry grammar as `RUN_SCOPED`. */
+export const MODULE_SCOPED: readonly string[] = [
+  "/objects/*",
+  ...INSIGHT_SCOPED,
+  "/fix",
+  "/rules",
+];
+
+function matchesScoped(pathname: string, entries: readonly string[]): boolean {
+  return entries.some((e) => (e.endsWith("/*") ? pathname.startsWith(e.slice(0, -1)) : pathname === e));
+}
+
+/** True on a screen whose content follows the scope bar's `?run=` (see `RUN_SCOPED`). */
+export function isRunScoped(pathname: string): boolean {
+  return matchesScoped(pathname, RUN_SCOPED);
+}
+
+/** True on a screen whose content follows the scope bar's `?module=` (see `MODULE_SCOPED`). */
+export function isModuleScoped(pathname: string): boolean {
+  return matchesScoped(pathname, MODULE_SCOPED);
+}
+
 /** The one name of the current-state scope, wherever a picker or header shows it. */
 export const CURRENT_STATE_LABEL = "Current state";
 

@@ -226,11 +226,32 @@ describe("the run Ask Meridian answers about", () => {
     api.askMeridian.mockResolvedValue(answer());
     renderAsk();
     fireEvent.click(screen.getByRole("button", { name: "Ask Meridian" }));
-    expect(await screen.findByText("Answers from the figures of the current state and your latest run")).toBeInTheDocument();
+    expect(await screen.findByText("Answers from the figures of the current state and your latest run, for Material master")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: ASK_SUGGESTIONS[0] }));
     await waitFor(() =>
       expect(api.askMeridian).toHaveBeenCalledWith({ question: ASK_SUGGESTIONS[0], version_id: undefined, module: "material_master", scope: "current" }),
     );
+  });
+
+  it("names the object picker's object in the scope line", async () => {
+    nav.pathname = "/insights/rules"; nav.search = "run=run-1&module=fi_gl";
+    renderAsk();
+    fireEvent.click(screen.getByRole("button", { name: "Ask Meridian" }));
+    expect(await screen.findByText(/^Answers from the figures of Run run-1.*, for FI general ledger$/)).toBeInTheDocument();
+  });
+
+  it("starts a new thread when the object on screen changes, even with the same run", async () => {
+    nav.pathname = "/insights/rules"; nav.search = "run=run-1&module=fi_gl";
+    api.askMeridian.mockResolvedValue(answer());
+    const view = renderAsk();
+    fireEvent.click(screen.getByRole("button", { name: "Ask Meridian" }));
+    fireEvent.click(await screen.findByRole("button", { name: ASK_SUGGESTIONS[1] }));
+    expect(await screen.findByText(/The weakest objects are Material master/)).toBeInTheDocument();
+    nav.search = "run=run-1&module=material_master";
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    view.rerender(<QueryClientProvider client={qc}><AskMeridian /></QueryClientProvider>);
+    await waitFor(() => expect(screen.queryByText(/The weakest objects are Material master/)).toBeNull());
+    expect(screen.getByRole("button", { name: ASK_SUGGESTIONS[1] })).toBeInTheDocument();
   });
 
   it("keeps the conversation log mounted before the first answer, so it is announced", async () => {

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import ProposalsPage from "../page";
@@ -90,6 +92,18 @@ describe("ProposalsPage", () => {
     await screen.findByText("100001");
     await userEvent.click(screen.getByRole("button", { name: /^approve$/i }));
     await waitFor(() => expect(approveCleaning).toHaveBeenCalledWith("i1"));
+  });
+
+  it("refreshes the shell's Fix work count after a decision", async () => {
+    queue([item({})]);
+    vi.mocked(approveCleaning).mockResolvedValue({ id: "i1", status: "approved" });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    render(<QueryClientProvider client={qc}><ProposalsPage /></QueryClientProvider>);
+
+    await screen.findByText("100001");
+    await userEvent.click(screen.getByRole("button", { name: /^approve$/i }));
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.shellCounts() }));
   });
 
   it("accepts every waiting proposal of the run and kind at 85% or higher, not just this page", async () => {

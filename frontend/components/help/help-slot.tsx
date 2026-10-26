@@ -11,6 +11,8 @@ import { isFinished } from "@/lib/runs";
 import { getObjects } from "@/lib/api/v1/objects";
 import { resolveTourHref, type TourLinkSources } from "@/lib/help/tour-links";
 import { tourForPath } from "@/lib/help/tours";
+import { useRole } from "@/hooks/use-role";
+import { personaForRole } from "@/lib/persona";
 import { queryKeys } from "@/lib/query-keys";
 import { APP_VERSION } from "@/lib/version";
 
@@ -61,7 +63,9 @@ export function HelpSlot() {
     };
   }, [qc, run]);
 
-  const tour = tourForPath(pathname);
+  // A steward lands on Fix work, so the steward tour is offered there too (to stewards only).
+  const { homeRole } = useRole();
+  const tour = tourForPath(pathname, personaForRole(homeRole));
   const search = searchParams.toString();
   const url = `${typeof window === "undefined" ? "" : window.location.origin}${pathname}${search ? `?${search}` : ""}`;
 

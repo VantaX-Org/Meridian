@@ -16,6 +16,9 @@ import { BatchesTab } from "./batches-tab";
 import { DedupTab } from "./monitor-dedup-tabs";
 import { MonitorTab } from "./monitor-tab";
 import { FixWork } from "@/components/work/fix-work";
+import { HomeOnboarding } from "@/components/help/home-onboarding";
+import { useRole } from "@/hooks/use-role";
+import { personaForRole } from "@/lib/persona";
 
 const runLabel = (g: CleaningGroup) => (g.version_id ? g.run_label ?? (g.run_at ? formatDate(g.run_at, "datetime") : "Run") : "Matching");
 
@@ -101,6 +104,9 @@ function CleaningQueueTab() {
 export default function FixPage() {
   const [tabRaw, setTab] = useUrlState("tab", "work");
   const tab = oneOf(tabRaw, ["work", "cleaning", "batches", "monitor", "dedup"], "work");
+  // Stewards land here rather than on a persona home (lib/persona.ts homeHrefForRole), so the first-run offer is here too.
+  const { homeRole } = useRole();
+  const steward = !!homeRole && personaForRole(homeRole) === "steward";
 
   return (
     <div className="flex flex-col gap-4">
@@ -109,6 +115,7 @@ export default function FixPage() {
       meta="Every record that fails a check, worst first: see what is wrong, set the right value, and send it for approval."
       actions={<Button variant="secondary" render={<Link href="/fix/what-if">What-if</Link>} />}
     />
+    {steward && <HomeOnboarding />}
     <Tabs
       value={tab}
       onValueChange={setTab}
