@@ -204,3 +204,27 @@ describe("menu structure", () => {
     expect(main.map((i) => i.href)).toContain("/objects");
   });
 });
+
+describe("Reports entry", () => {
+  const flat = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
+
+  it("lists the report library once, under Analysis, gated on export", () => {
+    const found = flat.filter((i) => i.href === "/insights/reports");
+    expect(found).toHaveLength(1);
+    expect(found[0].requires).toEqual({ resource: "reports", action: "export" });
+    expect(found[0].anyOf).toEqual(["export"]);
+    expect(NAV_GROUPS.find((g) => flattenNav(g.items).some((i) => i.href === "/insights/reports"))?.group).toBe("Analysis");
+  });
+
+  it("highlights Reports, not Summary, on the reports page", () => {
+    expect(activeHref("/insights/reports", new URLSearchParams(), flat)).toBe("/insights/reports");
+    expect(getPageTitle("/insights/reports")).toBe("Reports");
+  });
+
+  it("shows Reports in More for a user who can export and hides it otherwise", () => {
+    const more = (can: (p: string) => boolean) =>
+      splitNav(visibleNav({ can, isMenuItemEnabled: () => true })).more.flatMap((g) => g.items.map((i) => i.href));
+    expect(more(() => true)).toContain("/insights/reports");
+    expect(more((p) => p !== "export")).not.toContain("/insights/reports");
+  });
+});

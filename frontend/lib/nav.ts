@@ -145,7 +145,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         anyOf: ["view"],
         keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
         children: [
-          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
+          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative" },
+          // The report library has its own entry so every report (board pack, executive, workbook, trend, owners, rule
+          // catalogue, dictionary, record fix sheet) is one click from More, not a tab inside Summary. Gated on export:
+          // the page's downloads need it (api/services/rbac.py maps export to reports/export).
+          { href: "/insights/reports", requires: req("reports", "export"), label: "Reports", icon: IconLog, anyOf: ["export"], keywords: "reports report library pdf board pack executive workbook xlsx json download export trend owners rule catalogue dictionary extraction cleaning record fix sheet comparison" },
           { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: IconCompass, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
           { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers migration cutover process readiness process data readiness", aliases: ["/insights/process"] },
           { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: IconPeople, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
@@ -260,7 +264,6 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/insights/process": "Process data readiness",
   "/insights/owners": "Owners",
   "/insights/operations": "Operations",
-  "/insights/reports": "Reports",
 };
 
 /** Items and their sub-pages (Settings tabs, Insights sections, Inbox exceptions) as one flat list. */
