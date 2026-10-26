@@ -109,8 +109,8 @@ export const json = (body: unknown) => ({ status: 200, contentType: "application
 /**
  * Backend defects on the seeded stack (release 0.0.401), each recorded as a 500 or 404 and
  * reported with the recording. Shimmed here so the specs test the page, not the defect:
- *  - GET /analytics/mdm-health?days=56 → 500: `days` is bound as an integer into
- *    `(:days || ' days')::interval` (api/routes/analytics.py).
+ *  - GET /mdm-metrics/history?days=56 (the /mdm trend) is newer than the recording, which
+ *    holds the /analytics/mdm-health call it replaced (a 500 then); answered empty here.
  *  - GET /stewardship?item_type=merge_decision… answered 500 on the /mdm page in two of six
  *    recording passes (intermittent; the recording holds its 200 and no shim is needed).
  *  - /migration/dry-run, opened with a data quality run's `?run=`, passes it to
@@ -120,7 +120,7 @@ export const json = (body: unknown) => ({ status: 200, contentType: "application
  *    (api/routes/business_process.py); the same for every module outside the registry.
  */
 async function mockDefects(page: Page) {
-  await page.route(/\/api\/v1\/analytics\/mdm-health(\?.*)?$/, (r) => r.fulfill(json({ data: [], days: 56 })));
+  await page.route(/\/api\/v1\/mdm-metrics\/history(\?.*)?$/, (r) => r.fulfill(json({ history: [] })));
   const RUN = RECORDED.latestRunId;
   await page.route(new RegExp(`/api/v1/business-process/${RUN}/controlling$`), (r) => r.fulfill(json({
     version_id: RUN, module: "controlling",

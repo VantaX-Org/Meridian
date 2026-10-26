@@ -1,5 +1,4 @@
 import apiClient from "./client";
-import type { SlaState } from "./issues";
 
 const BASE = "/api/v1/triage";
 
@@ -115,43 +114,6 @@ export interface TriageBulkResult {
   sla: Record<string, number>;
 }
 
-export interface TriageQueueItem {
-  kind: TriageKind;
-  id: string;
-  module: string | null;
-  check_id: string | null;
-  severity: string;
-  status: string;
-  /** Record key (issues) or item type (queue). */
-  ref: string | null;
-  assigned_to: string | null;
-  assigned_team_id: string | null;
-  priority: number | null;
-  sla_state: SlaState | null;
-  due_at: string | null;
-  ack_due_at: string | null;
-  acknowledged_at: string | null;
-  sla_paused_at: string | null;
-  snoozed_until: string | null;
-  snooze_reason: string | null;
-  impact: number;
-  urgency: number;
-  rank_score: number;
-}
-
-export interface TriageBucket {
-  count: number;
-  items: TriageQueueItem[];
-}
-
-export interface TriageQueue {
-  assignee: string;
-  as_of: string;
-  overdue: TriageBucket;
-  due_today: TriageBucket;
-  later: TriageBucket;
-}
-
 export interface BacklogRow {
   open: number;
   breached: number;
@@ -170,15 +132,6 @@ export interface TriageMetrics {
   mttr_hours: number | null;
   breach_count: number;
   weekly: { week: string; opened: number; resolved: number; resolved_in_sla: number; breached: number }[];
-}
-
-/** "me", a user id, "team:<id>", "unassigned" or "all". */
-export async function getTriageQueue(params?: {
-  assignee?: string;
-  include_snoozed?: boolean;
-  limit?: number;
-}): Promise<TriageQueue> {
-  return (await apiClient.get<TriageQueue>(`${BASE}/queue`, { params })).data;
 }
 
 export async function bulkTriage(body: TriageBulkInput): Promise<TriageBulkResult> {
@@ -251,13 +204,4 @@ export async function getTriageSettings(): Promise<TriageSettings> {
 /** Full replace: omitted fields fall back to the defaults. */
 export async function saveTriageSettings(body: TriageSettings): Promise<TriageSettings> {
   return (await apiClient.put<TriageSettings>(`${BASE}/settings`, body)).data;
-}
-
-/** Owners ranked for an OwnerLadder: the unassigned pool first, then each steward by email. */
-export function ownerRungs(m: TriageMetrics | undefined) {
-  if (!m) return [];
-  return [
-    ...(m.unassigned ? [{ label: "Unassigned", open: m.unassigned, breached: 0, href: "/workbench?assignee=unassigned" }] : []),
-    ...m.backlog_by_owner.map((o) => ({ label: o.email, open: o.open, breached: o.breached, href: `/workbench?assignee=${o.user_id}` })),
-  ];
 }

@@ -23,7 +23,7 @@ async def run_agents_endpoint(
     tenant: Tenant = Depends(get_tenant),
 ):
     """Manually trigger the LangGraph agent pipeline for a version."""
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
 
     result = await db.execute(
@@ -42,9 +42,23 @@ async def run_agents_endpoint(
             detail=f"Version status is '{version.status}' — agents can only run after checks complete",
         )
 
+    from api.services import jobs
+    from api.services.task_progress import STEP_AI_INSIGHTS, TOTAL_STEPS, update_task_progress
     from workers.tasks.run_agents import run_agents
 
-    job = run_agents.delay(str(vid), str(tenant.id))
+    # Register the job and seed progress before the worker starts, as POST /versions/{id}/analyse
+    # does, so the run page's progress banner and the jobs tray show it the moment this returns.
+    label = f"AI analysis{f' | {version.label}' if version.label else ''}"
+    jobs.start_job(str(tenant.id), str(vid), "analysis", label, status="queued", progress_key=str(vid),
+                   version_id=str(vid), system_id=(version.metadata_ or {}).get("system_id"))
+    step_num, _ = STEP_AI_INSIGHTS
+    update_task_progress(str(vid), status="queued", current_step="Waiting for worker to start AI insights",
+                         step_number=step_num, total_steps=TOTAL_STEPS,
+                         percent_complete=int(((step_num - 1) / TOTAL_STEPS) * 100))
+
+    # force: a manual re-run repeats the pipeline even on an agents_complete run, which the
+    # worker otherwise skips as a duplicate delivery.
+    job = run_agents.delay(str(vid), str(tenant.id), force=True)
 
     return {
         "version_id": str(vid),

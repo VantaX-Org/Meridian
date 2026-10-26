@@ -25,6 +25,7 @@ beforeEach(() => {
   vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({
     timezone: "Africa/Johannesburg", work_days: [1, 2, 3, 4, 5], work_start: "08:00", work_end: "17:00", holidays: [], fallback_user_id: null,
   });
+  vi.spyOn(auditApi, "getAuditSummary").mockResolvedValue({ summary: [] });
   vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [{ id: "u1", tenant_id: "t", clerk_user_id: null, email: "ana@x.io", name: "Ana", role: "admin", permissions: null, is_active: true, last_login: null, created_at: "2026-01-01T00:00:00Z" }] });
 });
 
@@ -47,6 +48,21 @@ describe("admin audit page", () => {
     await waitFor(() => expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 100, limit: 100 })));
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-01-01" } });
     await waitFor(() => expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 0, since: expect.any(String) })));
+  });
+
+  it("summarises the last 30 days and filters the log by a picked kind", async () => {
+    vi.spyOn(auditApi, "getAuditSummary").mockResolvedValue({ summary: [
+      { action: "create", entity_type: "user", count: 12 },
+      { action: "retry", entity_type: null, count: 3 },
+    ] });
+    const get = vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [ENTRY], total: 1, limit: 100, offset: 0 });
+    renderWithQuery(<AdminAuditPage />);
+    expect(await screen.findByText("Changes, last 30 days")).toBeInTheDocument();
+    expect(await screen.findByText("15")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /Create user/ }));
+    await waitFor(() => expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ action: "create", entity_type: "user", offset: 0 })));
+    fireEvent.click(screen.getByRole("button", { name: "Remove filter Kind" }));
+    await waitFor(() => expect(get.mock.lastCall?.[0]?.action).toBeUndefined());
   });
 
   it("lists every change to users, not only edits", async () => {

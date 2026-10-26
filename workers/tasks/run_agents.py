@@ -33,8 +33,12 @@ def _run_async(coro):
 
 @celery_app.task(bind=True, name="workers.tasks.run_agents.run_agents",
                  soft_time_limit=1800, time_limit=1860, acks_late=True, reject_on_worker_lost=True)
-def run_agents(self, version_id: str, tenant_id: str):
-    """Execute the full LangGraph agent pipeline."""
+def run_agents(self, version_id: str, tenant_id: str, force: bool = False):
+    """Execute the full LangGraph agent pipeline.
+
+    ``force`` (a manual re-run from POST /versions/{id}/run-agents) repeats the pipeline on a
+    run whose agents already completed; without it such a run is skipped as a duplicate delivery.
+    """
     logger.info(f"run_agents started: version_id={version_id}, tenant_id={tenant_id}")
 
     engine = get_sync_engine()
@@ -49,7 +53,7 @@ def run_agents(self, version_id: str, tenant_id: str):
             {"vid": version_id, "tid": tenant_id},
         )
         row = result.fetchone()
-        if row and row[0] == "agents_complete":
+        if row and row[0] == "agents_complete" and not force:
             logger.info(f"Version {version_id} agents already complete, skipping")
             return {"version_id": version_id, "status": "agents_complete"}
 

@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -19,7 +19,7 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
 import { getCostModel } from "@/lib/api/settings";
-import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/api/versions";
+import { AI_RERUN_STATUSES, getVersion, getVersions, patchVersionLabel, pinBaseline, runAgents } from "@/lib/api/versions";
 import { useDqsExplanation } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
@@ -590,6 +590,17 @@ export default function RunDetailPage() {
     },
     onError: (e: Error) => toast.error(errorText(e)),
   });
+  const [aiOpen, setAiOpen] = useState(false);
+  const rerunAi = useMutation({
+    mutationFn: () => runAgents(versionId),
+    onSuccess: () => {
+      setAiOpen(false);
+      toast.success("AI analysis started. Progress shows above.");
+      void qc.invalidateQueries({ queryKey: [...queryKeys.run(versionId), "status"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.run(versionId), exact: true });
+    },
+    onError: (e: Error) => toast.error(errorText(e)),
+  });
   const pin = useMutation({
     mutationFn: () => pinBaseline(versionId, !isBaseline),
     onMutate: async () => {
@@ -709,6 +720,15 @@ export default function RunDetailPage() {
               >
                 Re-run analysis
               </Tooltip>
+              {AI_RERUN_STATUSES.includes(v.status) ? (
+                <Tooltip
+                  label={running ? "Analysis is already running" : "Run the AI pipeline again over this run's findings. Findings and scores stay; summaries, remediation and the narrative report are rewritten."}
+                  maxWidth={280}
+                  render={<Button variant="ghost" onClick={() => setAiOpen(true)} disabled={running} />}
+                >
+                  Re-run AI analysis
+                </Tooltip>
+              ) : null}
             </>
           ) : null}
           {can("export") ? <ExportMenu options={exportOptions} /> : null}
@@ -737,6 +757,15 @@ export default function RunDetailPage() {
             onKeyDown={(e) => { if (e.key === "Enter" && draftLabel.trim() && !rename.isPending) rename.mutate(); }} />
         </Field>
       </Dialog>
+      <ConfirmDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        title="Re-run AI analysis"
+        body={<p className="m-ink-2">The AI pipeline runs again over this run&apos;s aggregated findings. Findings and scores do not change; the summaries, remediation advice and narrative report are replaced when it finishes.</p>}
+        confirmLabel="Re-run AI analysis"
+        pending={rerunAi.isPending}
+        onConfirm={() => rerunAi.mutate()}
+      />
       <div>{header}</div>
       {analysisStatus.data?.status === "queued" || analysisStatus.data?.status === "processing" ? (
         <RunProgressBanner

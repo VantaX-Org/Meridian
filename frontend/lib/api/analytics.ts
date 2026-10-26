@@ -194,7 +194,7 @@ export async function getLlmHealth(): Promise<{ llm_available: boolean; reason?:
   }
 }
 
-/* ─── Operations (api/routes/analytics.py: operational, sprints, bottlenecks, capacity, roi, mdm-health) ─── */
+/* ─── Operations (api/routes/analytics.py: operational, sprints, bottlenecks, capacity, roi) ─── */
 
 export interface OperationalKpis {
   throughput: number;
@@ -261,16 +261,6 @@ export interface RoiResponse {
   cost_avoidance_history: { period: string; amount?: number }[];
 }
 
-export interface MdmHealthPoint {
-  snapshot_date: string;
-  mdm_health_score: number;
-  golden_record_coverage_pct: number;
-  avg_match_confidence: number;
-  steward_sla_compliance_pct: number;
-  source_consistency_pct: number;
-  backlog_count: number;
-}
-
 export async function getOperational(): Promise<OperationalResponse> {
   return (await apiClient.get<OperationalResponse>("/api/v1/analytics/operational")).data;
 }
@@ -285,8 +275,4 @@ export async function getSprints(maxHours = 40): Promise<{ sprints: SprintPlan[]
 
 export async function getRoi(): Promise<RoiResponse> {
   return (await apiClient.get<RoiResponse>("/api/v1/analytics/roi")).data;
-}
-
-export async function getMdmHealth(days = 56): Promise<{ data: MdmHealthPoint[]; days: number }> {
-  return (await apiClient.get("/api/v1/analytics/mdm-health", { params: { days } })).data;
 }
