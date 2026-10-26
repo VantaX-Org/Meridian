@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import report_history as rh
+from api.services import rbac
 from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1/reports", tags=["report-library"],
@@ -142,13 +143,24 @@ async def list_history(request: Request, kind: Optional[str] = Query(None, max_l
     return ReportFilePage(total=int(total), limit=limit, offset=offset, items=items)
 
 
+def content_disposition(file_name: str) -> str:
+    """An attachment header that cannot be broken out of: an ASCII-only ``filename`` (anything else,
+    quotes, CR/LF and separators included, becomes ``_``) and the exact name as RFC 5987 ``filename*``."""
+    from urllib.parse import quote
+
+    ascii_name = "".join(c if (c.isascii() and c.isalnum()) or c in "._-" else "_" for c in file_name)[:200] or "report"
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(file_name, safe='')}"
+
+
 @router.get("/history/{file_id}/download")
-async def download_history(file_id: str, db: AsyncSession = Depends(get_db),
+async def download_history(file_id: str, request: Request, db: AsyncSession = Depends(get_db),
                            tenant: Tenant = Depends(get_tenant)) -> Response:
+    from api.routes.reports import _audit_export
+
     tid = await _rls(db, tenant)
     fid = _parse_id(file_id, "Report")
     row = (await db.execute(text(
-        "SELECT file_name, content_type, storage_key, content FROM report_files "
+        "SELECT kind, version_id, params, file_name, content_type, storage_key, content FROM report_files "
         "WHERE id = CAST(:id AS uuid) AND tenant_id = CAST(:t AS uuid)"), {"id": fid, "t": tid})).first()
     if not row:
         raise HTTPException(status_code=404, detail="Report not found.")
@@ -157,8 +169,10 @@ async def download_history(file_id: str, db: AsyncSession = Depends(get_db),
     except Exception as e:
         logger.warning("stored report %s unreadable (%s)", fid, type(e).__name__)
         raise HTTPException(status_code=404, detail="The stored file is no longer available.")
+    # The same report.export audit row as a direct download (api/routes/reports.py).
+    await _audit_export(request, tenant, row.kind, row.version_id, (row.params or {}).get("module"))
     return Response(content=data, media_type=row.content_type,
-                    headers={"Content-Disposition": f'attachment; filename="{row.file_name}"'})
+                    headers={"Content-Disposition": content_disposition(row.file_name)})
 
 
 @router.delete("/history/{file_id}", status_code=204)
@@ -293,6 +307,10 @@ async def _validated(body: ScheduleIn, db: AsyncSession, tid: str) -> dict:
                                    "AND id = ANY(CAST(:ids AS uuid[]))"), {"t": tid, "ids": users})).scalar()
         if n != len(users):
             raise HTTPException(status_code=422, detail="One or more recipients are not active users.")
+        # A report goes only to people allowed to download it (the worker checks again at send time).
+        allowed = await db.run_sync(lambda s: rbac.active_users_holding_sync(s, tid, users, "export"))
+        if len(allowed) != len(users):
+            raise HTTPException(status_code=422, detail="One or more recipients do not have the export permission.")
     if channels:
         n = (await db.execute(text("SELECT count(*) FROM alert_channels WHERE tenant_id = CAST(:t AS uuid) "
                                    "AND id = ANY(CAST(:ids AS uuid[]))"), {"t": tid, "ids": channels})).scalar()

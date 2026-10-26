@@ -353,8 +353,8 @@ async def finding_records(
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     if await _scope_of(db, version_id) is None:
         raise HTTPException(status_code=404, detail="Version not found")
-    p = {"v": version_id, "cid": check_id}
-    where = "version_id = :v AND check_id = :cid"
+    p = {"t": str(tenant.id), "v": version_id, "cid": check_id}
+    where = "tenant_id = CAST(:t AS uuid) AND version_id = :v AND check_id = :cid"
     if grain:
         where += " AND grain = :grain"
         p["grain"] = grain

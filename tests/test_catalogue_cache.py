@@ -15,6 +15,14 @@ def test_catalogue_is_stored_against_the_snapshot():
     assert "system_info" in SRC, "stored in the snapshot's own metadata"
 
 
+def test_the_snapshot_cache_is_read_and_written_for_the_tenant_only():
+    # RLS is the second line: every ddic_snapshots query also carries tenant_id
+    for fn in ("def _stored_catalogue", "def _store_catalogue"):
+        body = SRC[SRC.index(fn):]
+        body = body[:body.index("\n\n\n")]
+        assert "AND tenant_id = CAST(:t AS uuid)" in body, fn
+
+
 def test_a_stored_catalogue_is_returned_without_planning():
     body = SRC[SRC.index("def _catalogue_for"):SRC.index("return built")]
     assert "if cached:" in body, "must return the stored copy before planning"

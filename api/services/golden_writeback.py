@@ -59,7 +59,7 @@ SYSTEM_LABELS = {
 # users row when the actor is one; actor_email keeps the id either way.
 AUDIT_SQL = (
     "INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, method, path, "
-    "status_code, after_json) VALUES (:t, (SELECT id FROM users WHERE CAST(id AS text) = :u), "
+    "status_code, after_json) VALUES (:t, (SELECT id FROM users WHERE CAST(id AS text) = :u AND tenant_id = :t), "
     "NULLIF(:u, ''), :a, 'golden_writeback_request', :ei, :m, :p, 200, CAST(:af AS jsonb))"
 )
 

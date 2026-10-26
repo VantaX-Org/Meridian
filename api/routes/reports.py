@@ -37,11 +37,13 @@ def _store_in_history(tenant_id: str, kind: str, data: bytes, file_name: str, co
 
     try:
         with tenant_session(get_sync_engine(), tenant_id) as session:
-            if user_id and not session.execute(text("SELECT 1 FROM users WHERE id = CAST(:u AS uuid)"),
-                                               {"u": user_id}).scalar():
+            if user_id and not session.execute(text("SELECT 1 FROM users WHERE id = CAST(:u AS uuid) "
+                                                    "AND tenant_id = CAST(:t AS uuid)"),
+                                               {"u": user_id, "t": str(tenant_id)}).scalar():
                 user_id = None  # created_by is a users FK; a dev or service caller has no row
-            if version_id and not session.execute(text("SELECT 1 FROM analysis_versions WHERE id = CAST(:v AS uuid)"),
-                                                  {"v": version_id}).scalar():
+            if version_id and not session.execute(text("SELECT 1 FROM analysis_versions WHERE id = CAST(:v AS uuid) "
+                                                       "AND tenant_id = CAST(:t AS uuid)"),
+                                                  {"v": version_id, "t": str(tenant_id)}).scalar():
                 version_id = None
             store_report_file(session, tenant_id, kind=kind, data=data, file_name=file_name,
                               content_type=content_type, version_id=version_id, params=params, source="download",
