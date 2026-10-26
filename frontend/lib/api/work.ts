@@ -251,6 +251,11 @@ export async function downloadFixSheet(f: RecordFilter): Promise<void> {
   await downloadBlob("/api/v1/work/export", clean(f), "fix-sheet.xlsx");
 }
 
+/** One workbook, a sheet per object, with each record's value at risk. */
+export async function downloadFixSheetByObject(f: RecordFilter): Promise<void> {
+  await downloadBlob("/api/v1/work/export/per-object", clean(f), "records-to-fix-by-object.xlsx");
+}
+
 export async function importFixSheet(file: File, version_id?: string):
   Promise<{ updated: number; rows: number; skipped: string[]; draft_batch_id?: string | null }> {
   const form = new FormData();

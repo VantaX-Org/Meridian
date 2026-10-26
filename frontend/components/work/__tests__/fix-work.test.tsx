@@ -26,6 +26,7 @@ vi.mock("@/lib/api/work", async () => {
     ...actual, getWorkSummary: vi.fn(), getWorkGroups: vi.fn(), getWorkRecords: vi.fn(), getWorkRecord: vi.fn(),
     decide: vi.fn(), acceptAllInGroup: vi.fn(), setGroupValue: vi.fn(), buildWorklist: vi.fn(), importFixSheet: vi.fn(),
     downloadFixSheet: vi.fn(),
+  downloadFixSheetByObject: vi.fn(),
   };
 });
 
