@@ -213,15 +213,21 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             description="Email addresses",
         ),
         ExtractionTarget(
-            source="TB003",
-            fields=["BU_GROUP", "TXT30"],
+            source="TB001",
+            fields=["BU_GROUP", "NRRNG", "XEXST"],
             description="BP groupings",
             is_config=True,
         ),
         ExtractionTarget(
+            source="TB003",
+            fields=["ROLE", "ROLECATEGORY"],
+            description="BP roles",
+            is_config=True,
+        ),
+        ExtractionTarget(
             source="TBZ9",
-            fields=["RLTYP", "RLTXT"],
-            description="BP role categories",
+            fields=["RELTYP", "RLTP1", "RLTP2"],
+            description="BP relationship categories",
             is_config=True,
         ),
     ],
@@ -478,8 +484,8 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     # ------------------------------------------------------------------
     "production_planning": [
         ExtractionTarget(
-            source="PLKOD",
-            fields=["PLNNR", "PLNTY", "WERKS", "KTEXT", "STATU", "LOEKZ", "ERNAM", "ERDAT"],
+            source="PLKO",
+            fields=["PLNNR", "PLNTY", "PLNAL", "WERKS", "KTEXT", "STATU", "VERWE", "LOEKZ", "ANNAM", "ANDAT"],
             description="Routing / task list header",
         ),
         ExtractionTarget(
@@ -705,7 +711,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ExtractionTarget(
             source="KNVK",
             fields=["PARNR", "KUNNR", "LIFNR", "NAME1"],
-            description="Customer-vendor relationship data",
+            description="Contact persons (customer and vendor)",
         ),
         ExtractionTarget(
             source="KNKK",
@@ -720,7 +726,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ExtractionTarget(
             source="KONV",
             fields=["KNUMV", "KPOSN", "STUNR", "ZAEHK", "KSCHL", "KWERT"],
-            description="Pricing condition records",
+            description="Document conditions (pricing per sales/purchasing document)",
         ),
         ExtractionTarget(
             source="NAST",

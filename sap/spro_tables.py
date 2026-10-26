@@ -281,8 +281,8 @@ SPRO_REGISTRY: dict[str, list[SPROEntry]] = {
     # -----------------------------------------------------------------
     "business_partner": [
         {
-            "table": "TB003",
-            "fields": ["BU_GROUP", "TXT30"],
+            "table": "TB001",
+            "fields": ["BU_GROUP", "NRRNG", "XEXST"],
             "description": "BP grouping",
             "config_context": (
                 "Defines business partner groupings that control number range assignment, "
@@ -300,13 +300,13 @@ SPRO_REGISTRY: dict[str, list[SPROEntry]] = {
             "read_method": "rfc_read_table",
         },
         {
-            "table": "TBZ9",
-            "fields": ["RLTYP", "RLTXT"],
-            "description": "BP role categories",
+            "table": "TB003",
+            "fields": ["ROLE", "ROLECATEGORY"],
+            "description": "BP roles",
             "config_context": (
-                "Defines the categories of roles that can be assigned to business partners "
-                "(e.g. customer, vendor, contact person, employee). Role categories "
-                "determine which views and relationship types are available."
+                "Defines the roles that can be assigned to business partners "
+                "(e.g. customer, vendor, contact person, employee), each mapped to a "
+                "role category. Roles determine which views and data segments are available."
             ),
             "governs_fields": ["BUT100.RLTYP"],
             "impacts_features": [
