@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, ConfirmDialog, DataTable, Dialog, ExplorerPage, Field, Menu, PageHeader, Pill, Select, Input, Switch, asyncStateOf, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel, updateAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest, type AlertReportPack,
@@ -137,7 +138,7 @@ export default function NotificationsAdminPage() {
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Notifications" meta="Where Meridian sends alerts and digests outside the app: email, Slack, Teams or a webhook. Add a channel, then send it a test" actions={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined} />}
+        header={<PageHeader tabs={<SettingsTabs />} title="Notifications" meta="Where Meridian sends alerts and digests outside the app: email, Slack, Teams or a webhook. Add a channel, then send it a test" actions={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined} />}
         summary={<p className="m-text-body m-ink-3">Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>. A board pack channel gets the board pack and the analyst workbook for the latest finished run: weekly on Monday mornings, or monthly on the 1st.</p>}
         state={asyncStateOf(q, () => items.length === 0, true)}
         emptyProps={{ title: "No alert channels", detail: "Add email, Slack, Teams or a webhook to send critical alerts and digests.", action: canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined }}

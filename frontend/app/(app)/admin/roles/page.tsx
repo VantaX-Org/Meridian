@@ -253,12 +253,13 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
   const grantsQ = useQuery({ queryKey: ["grants", user.id], queryFn: () => listGrants(user.id) });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const systems = systemsQ.data ?? [];
-  const done = () => { qc.invalidateQueries({ queryKey: ["grants", user.id] }); qc.invalidateQueries({ queryKey: ["user-effective", user.id] }); };
+  // A grant changes what the Users list shows for this person (their roles and scope), so it refetches too.
+  const done = () => { qc.invalidateQueries({ queryKey: ["grants", user.id] }); qc.invalidateQueries({ queryKey: ["user-effective", user.id] }); qc.invalidateQueries({ queryKey: queryKeys.users() }); };
   const add = useMutation({ mutationFn: (g: Parameters<typeof addGrant>[1]) => addGrant(user.id, g), onSuccess: done, onError: (e) => toast.error(`Grant not added. ${apiErrorMessage(e)}`) });
   const rem = useMutation({ mutationFn: (id: string) => deleteGrant(user.id, id), onSuccess: () => { setRemoving(null); done(); }, onError: (e) => toast.error(`Grant not removed. ${apiErrorMessage(e)}`) });
   const conv = useMutation({
     mutationFn: (confirm: boolean) => convertObjectApprovals(user.id, confirm),
-    onSuccess: (r) => { setResult(r); if (r.confirmed) { setConverted(true); done(); qc.invalidateQueries({ queryKey: queryKeys.users() }); } },
+    onSuccess: (r) => { setResult(r); if (r.confirmed) { setConverted(true); done(); } },
     onError: (e) => toast.error(`Not converted. ${apiErrorMessage(e)}`),
   });
   const legacy = !converted && user.permissions && Object.keys(user.permissions).length > 0;

@@ -15,7 +15,19 @@ import SystemPage from "../page";
 let tab: string | null = null;
 let extract: string | null = null;
 // one object for the life of the file, as Next hands out, so a URL-state hook does not see a new URL on every render
-const searchParams = { get: (k: string) => (k === "tab" ? tab : k === "extract" ? extract : null), toString: () => (tab ? `tab=${tab}` : "") };
+// built over a real URLSearchParams so every reader the page uses (get, getAll, has, toString) behaves as in Next
+const currentParams = (): URLSearchParams => {
+  const p = new URLSearchParams();
+  if (tab) p.set("tab", tab);
+  if (extract) p.set("extract", extract);
+  return p;
+};
+const searchParams = {
+  get: (k: string) => currentParams().get(k),
+  getAll: (k: string) => currentParams().getAll(k),
+  has: (k: string) => currentParams().has(k),
+  toString: () => currentParams().toString(),
+};
 vi.mock("next/navigation", () => ({
   useParams: () => ({ systemId: "s1" }),
   usePathname: () => "/systems/s1",

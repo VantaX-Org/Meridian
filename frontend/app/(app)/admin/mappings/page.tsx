@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, ConfirmDialog, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
@@ -84,7 +85,7 @@ export default function AdminMappingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Field mapping" meta="Which column in your files holds each standard SAP field. Type your column header next to a field and save the row" />
+      <PageHeader tabs={<SettingsTabs />} title="Field mapping" meta="Which column in your files holds each standard SAP field. Type your column header next to a field and save the row" />
       <Notice tone="info">A standard field with no customer column is skipped by every check that needs it.</Notice>
 
       <div className="flex gap-4">

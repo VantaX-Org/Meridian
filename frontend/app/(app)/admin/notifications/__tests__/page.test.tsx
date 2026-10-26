@@ -6,6 +6,8 @@ import type { AlertChannel } from "@/lib/api/notifications";
 import NotificationsAdminPage from "../page";
 
 vi.mock("@/lib/permissions", async (orig) => ({ ...(await orig<typeof import("@/lib/permissions")>()), usePermissions: () => ({ has: () => true, loading: false }) }));
+// The Settings tab strip reads the signed-in nav; this suite tests the channel manager only.
+vi.mock("@/hooks/use-nav", () => ({ useVisibleNav: () => [] }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/admin/notifications",

@@ -100,9 +100,23 @@ export const SETTINGS_ITEMS: readonly NavItem[] = [
  * page. Every surface that renders a nav href (Rail, the command palette,
  * sign-in's post-login redirect) must call this instead of re-deriving the
  * `/home/` check itself — that duplication is how the three surfaces drifted.
+ * Pass the viewer's `can` (and their home role, `useRole().homeRole`): without it a steward who may neither
+ * approve nor apply, or a data owner who only approves, is sent to a Fix work page they cannot use.
  */
-export function resolveNavHref(href: string, role: Role): string {
-  return href.startsWith("/home/") ? homeHrefForRole(role) : href;
+export function resolveNavHref(href: string, role: Role, can?: (action: string) => boolean): string {
+  return href.startsWith("/home/") ? homeHrefForRole(role, can) : href;
+}
+
+/** The Settings page: its nav children are tabs of it (`settingsTabs`), so the More menu lists it once. */
+export const SETTINGS_HREF = "/admin/settings";
+
+/**
+ * The tab strip of Settings and its children, from the visible nav: the Settings page itself (as Overview) and each
+ * child the viewer may open. Empty when the viewer cannot see Settings.
+ */
+export function settingsTabs(groups: readonly NavGroup[]): NavItem[] {
+  const settings = flattenNav(groups.flatMap((g) => g.items)).find((i) => i.href === SETTINGS_HREF);
+  return settings ? [{ ...settings, label: "Overview", children: undefined }, ...(settings.children ?? [])] : [];
 }
 
 /** DESIGN.md §1.1: the index bar holds at most this many pills before More (the main group's size). */

@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as api from "@/lib/api/golden-writeback";
+import * as usersApi from "@/lib/api/users";
 import type { WritebackPreview, WritebackRequest, WritebackTarget } from "@/lib/api/golden-writeback";
 import { GoldenWriteback } from "../golden-writeback";
 
@@ -9,6 +10,9 @@ const role = vi.hoisted(() => ({ denied: new Set<string>() }));
 vi.mock("@/hooks/use-role", () => ({
   useRole: () => ({ can: (p: string) => !role.denied.has(p) }),
 }));
+// requested_by is the simulating user's id (api/routes/golden_writeback.py stores the JWT subject).
+const me = vi.hoisted(() => ({ id: "alice" }));
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: me.id, email: `${me.id}@x.com`, name: me.id, role: "data_steward" } }) }));
 
 const planned: WritebackTarget = {
   system_id: "s1", system_name: "S4C PRD", system_type: "s4hana_cloud", supported: true, method: "odata_patch", reason: null,
@@ -40,7 +44,38 @@ const simulated: WritebackRequest = {
 describe("GoldenWriteback", () => {
   beforeEach(() => {
     role.denied = new Set();
+    me.id = "alice";
     vi.restoreAllMocks();
+  });
+
+  it("offers Simulate again, not Request approval, when someone else simulated, and names them", async () => {
+    me.id = "bob";
+    vi.spyOn(api, "getWritebackRequests").mockResolvedValue({ requests: [simulated] });
+    vi.spyOn(api, "getWritebackPreview").mockResolvedValue(preview);
+    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([{ id: "alice", name: "Alice Ng", email: "alice@x.com", role: "data_steward" }]);
+    const submit = vi.spyOn(api, "submitWriteback");
+    const simulate = vi.spyOn(api, "requestWriteback").mockResolvedValue({ ...simulated, requested_by: "bob", status: "simulating" });
+    renderWithQuery(<GoldenWriteback recordId="g1" status="golden" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Write back to SAP" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(await within(drawer).findByText(/Alice Ng simulated this write-back, so only they can request approval/)).toBeInTheDocument();
+    expect(within(drawer).queryByRole("button", { name: "Request approval" })).toBeNull();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Simulate again" }));
+    await waitFor(() => expect(simulate).toHaveBeenCalledWith("g1"));
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("says another user simulated when this role cannot list people", async () => {
+    me.id = "bob";
+    role.denied = new Set(["assign"]);
+    vi.spyOn(api, "getWritebackRequests").mockResolvedValue({ requests: [simulated] });
+    vi.spyOn(api, "getWritebackPreview").mockResolvedValue(preview);
+    const people = vi.spyOn(usersApi, "getAssignableUsers");
+    renderWithQuery(<GoldenWriteback recordId="g1" status="golden" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Write back to SAP" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(await within(drawer).findByText(/Another user simulated this write-back/)).toBeInTheDocument();
+    expect(people).not.toHaveBeenCalled();
   });
 
   it("shows target systems and per-field support, then simulates", async () => {

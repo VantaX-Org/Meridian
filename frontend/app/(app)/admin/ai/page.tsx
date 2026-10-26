@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, ConfirmDialog, ErrorState, Field, Notice, PageHeader, Select, Skeleton, Input, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -30,7 +31,7 @@ export default function AdminAIPage() {
   if (!allowed) {
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="AI" meta="Which language model writes summaries and fix proposals" />
+        <PageHeader tabs={<SettingsTabs />} title="AI" meta="Which language model writes summaries and fix proposals" />
         {note("Only administrators change the language model. Ask an administrator to change the provider, model or endpoint.")}
       </div>
     );
@@ -54,7 +55,7 @@ export default function AdminAIPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="AI" meta="Choose which language model writes summaries and fix proposals. Test the connection, then save" />
+      <PageHeader tabs={<SettingsTabs />} title="AI" meta="Choose which language model writes summaries and fix proposals. Test the connection, then save" />
 
       <div className="flex gap-4">
         <div className="flex flex-col gap-1">

@@ -6,7 +6,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, Drawer, ErrorState, Mono, Notice, Pill, Skeleton, toast, type PillTone } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
+import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
+import { getAssignableUsers } from "@/lib/api/users";
+import { queryKeys } from "@/lib/query-keys";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import {
@@ -128,6 +131,7 @@ export function WritebackStatusLine({ request }: { request: WritebackRequest }) 
 export function GoldenWriteback({ recordId, status }: { recordId: string; status: string }) {
   const qc = useQueryClient();
   const { can } = useRole();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const isGolden = status === "golden";
 
@@ -160,13 +164,25 @@ export function GoldenWriteback({ recordId, status }: { recordId: string; status
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
-  if (!isGolden) return null;
-
   const latest = requests.data?.requests[0];
   const current = latest && !CLOSED.includes(latest.status) ? latest : undefined;
+  // The API stores the simulating user's id (the JWT subject) and lets only that user submit it.
+  const simulatedByOther = current?.status === "simulated" && current.requested_by !== user?.id;
+  // Who simulated, by name where this role may list people (assign); otherwise "Another user".
+  const people = useQuery({
+    queryKey: queryKeys.usersAssignable(),
+    queryFn: getAssignableUsers,
+    enabled: open && simulatedByOther && can("assign"),
+    meta: { ignoreError: true },
+  });
+
+  if (!isGolden) return null;
+
   const targets = current?.targets ?? preview.data?.targets ?? [];
   const busy = current ? ["pending_approval", ...RUNNING].includes(current.status) : false;
-  const canSubmit = current?.status === "simulated" && (current.counts.would_change ?? 0) > 0;
+  const hasChanges = current?.status === "simulated" && (current.counts.would_change ?? 0) > 0;
+  const canSubmit = hasChanges && !simulatedByOther;
+  const simulator = people.data?.find((p) => p.id === current?.requested_by)?.name || "Another user";
 
   const footer = (
     <div className="flex w-full justify-end gap-2">
@@ -219,8 +235,13 @@ export function GoldenWriteback({ recordId, status }: { recordId: string; status
                   Waiting in the <Link className="m-ink-accent underline" href="/inbox">inbox</Link>. You cannot approve a write-back you requested.
                 </p>
               ) : null}
-              {current.status === "simulated" && !canSubmit ? (
+              {current.status === "simulated" && !hasChanges ? (
                 <p className="m-text-meta m-ink-3">The simulation found nothing to change in SAP.</p>
+              ) : null}
+              {hasChanges && simulatedByOther ? (
+                <p className="m-text-meta m-ink-3">
+                  {simulator} simulated this write-back, so only they can request approval. Simulate again to request it yourself.
+                </p>
               ) : null}
               {current.error ? <p className="m-text-meta m-ink-3">{current.error}</p> : null}
             </div>

@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 let pathname = "/systems";
 let searchParams = new URLSearchParams("");
 let role = "admin";
+const ALL_PERMS = ["approve", "apply", "assign", "upload", "view", "manage_users", "manage_settings", "view_audit"];
+let perms = ALL_PERMS;
 
 vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
@@ -13,7 +15,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/context/auth-context", () => ({
-  useAuth: () => ({ user: { id: "u1", email: "a@b.com", name: "A", role, permissions: ["approve", "apply", "assign", "upload", "view", "manage_users", "manage_settings", "view_audit"] } }),
+  useAuth: () => ({ user: { id: "u1", email: "a@b.com", name: "A", role, permissions: perms } }),
 }));
 
 vi.mock("@/context/licence-context", () => ({
@@ -46,6 +48,7 @@ describe("Rail (the index bar)", () => {
     pathname = "/systems";
     searchParams = new URLSearchParams("");
     role = "admin";
+    perms = ALL_PERMS;
   });
 
   it("folds the Settings tabs under one Settings link and lists Audit log once", async () => {
@@ -217,5 +220,33 @@ describe("Rail (the index bar)", () => {
   it("brand home link keeps its accessible name", async () => {
     renderRail();
     expect(await screen.findByRole("link", { name: "Meridian" })).toBeInTheDocument();
+  });
+
+  it.each(["/admin/settings", "/admin/triage", "/admin/licence", "/admin/billing"])(
+    "on Settings tab %s the More button is active and Settings is the current entry in the panel",
+    async (path) => {
+      pathname = path;
+      renderRail();
+      const button = await screen.findByRole("button", { name: "More" });
+      expect(button).toHaveAttribute("data-active", "true");
+      fireEvent.click(button);
+      const panel = screen.getByRole("group", { name: "More pages" });
+      const current = within(panel).getAllByRole("link", { current: "page" });
+      expect(current.map((a) => a.textContent)).toEqual(["Settings"]);
+    },
+  );
+
+  it.each([
+    // A steward who may neither approve nor apply cannot use Fix work: the brand opens the steward home.
+    ["data_steward", ["view"], "/home/steward"],
+    // A data owner approves but cannot apply: the brand opens Fix work's approvals tab.
+    ["data_owner", ["view", "approve"], "/fix?tab=batches"],
+    ["data_steward", ["view", "approve", "apply"], "/fix"],
+    ["admin", ALL_PERMS, "/home/lead"],
+  ])("%s with %j: the brand opens %s", async (r, p, href) => {
+    role = r;
+    perms = p;
+    renderRail();
+    expect(await screen.findByRole("link", { name: "Meridian" })).toHaveAttribute("href", href);
   });
 });

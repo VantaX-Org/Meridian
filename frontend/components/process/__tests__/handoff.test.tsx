@@ -61,6 +61,15 @@ describe("HandToSteward", () => {
   });
 
   it("dates the default due date a week out", () => {
-    expect(dateInDays(7, new Date(2026, 9, 26))).toBe("2026-11-02");
+    expect(dateInDays(7, new Date(Date.UTC(2026, 9, 26, 12)))).toBe("2026-11-02");
+  });
+
+  it("counts days from the UTC date the API compares against, not the local date", () => {
+    // 23:30 on 26 October in UTC-8 is already 27 October in UTC: today's minimum is the 27th.
+    const lateEveningWestOfUtc = new Date(Date.UTC(2026, 9, 27, 7, 30));
+    expect(dateInDays(0, lateEveningWestOfUtc)).toBe("2026-10-27");
+    // 08:00 on 27 October in UTC+10 is still 26 October in UTC.
+    expect(dateInDays(0, new Date(Date.UTC(2026, 9, 26, 22)))).toBe("2026-10-26");
+    expect(dateInDays(7, new Date(Date.UTC(2026, 11, 28, 23, 59)))).toBe("2027-01-04");
   });
 });

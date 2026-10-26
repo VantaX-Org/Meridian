@@ -310,7 +310,7 @@ export default function SystemsPage() {
       }}
       errorProps={{ error: error, onRetry: () => refetch() }}
     />
-    <ConnectSystemDialog open={connecting} onOpenChange={openConnect} />
+    <ConnectSystemDialog open={connecting && canConnect} onOpenChange={openConnect} />
     </>
   );
 }
