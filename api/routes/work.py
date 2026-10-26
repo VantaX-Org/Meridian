@@ -948,6 +948,103 @@ async def export_sheet(
     return xlsx_response(data, xlsx_filename("fix-sheet", vid))
 
 
+_PER_OBJECT_COLUMNS = [
+    ("module", "Object"), ("record_key", "Record"), ("name", "Name"), ("check_id", "Check"),
+    ("severity", "Severity"), ("message", "Issue"), ("field", "Field"), ("current_value", "Current value"),
+    ("suggested_value", "Suggested value"), ("value_at_risk", "Value at risk"),
+    ("new_value", "New value"), ("decision", "Decision"), ("reason", "Reason"),
+]
+
+
+@router.get("/export/per-object")
+async def export_per_object(
+    request: Request,
+    version_id: Optional[uuid.UUID] = None,
+    check_id: Optional[str] = None,
+    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$", description="blocking = critical or high"),
+    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
+    assigned: Optional[str] = None,
+    proposed: Optional[bool] = None,
+    due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    part: Optional[str] = Query(None, max_length=200),
+    system: Optional[str] = Query(None, max_length=100),
+    q: Optional[str] = Query(None, max_length=200),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("export")),
+):
+    """One workbook, a sheet per object: the records to fix and what each is worth.
+
+    Built for a steward working one object at a time: the Summary sheet ranks objects by value at
+    risk, and each object's sheet carries its records with the same New value / Decision / Reason
+    columns as /work/export, so it can be filled in and imported straight back.
+
+    Value at risk is the check's cost at risk shared across its failing records. It is an
+    attribution, not a saving: the same value is reported by every record the check fails on, so
+    per-object totals are meaningful but must not be summed across objects for the same check.
+    """
+    from api.services.branded_xlsx import ROW_CAP, ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
+
+    await _rls(db, tenant)
+    vid, _ = await _run(db, tenant, version_id)
+    where, p = _records_where(tenant, vid, request, None, check_id, severity, status, assigned, proposed, q, due, part,
+                              system)
+    check_filter = "AND fr.check_id = :c" if check_id else ""
+    rows = (await db.execute(text(f"""
+        WITH auto AS (
+            SELECT f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
+              FROM findings f, jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array'
+                                                         THEN f.record_fixes ELSE '[]'::jsonb END) e
+             WHERE f.version_id = CAST(:v AS uuid) AND e->>'proposed_value' IS NOT NULL)
+        SELECT w.module, w.record_key, w.name, fr.check_id, f.severity, f.details->>'message' AS message,
+               f.details->>'field_checked' AS field,
+               fr.field_values ->> (f.details->>'field_checked') AS current_value,
+               COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
+                        f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
+                 AS suggested_value,
+               CASE WHEN COALESCE(f.affected_count, 0) > 0
+                    THEN ROUND(COALESCE(f.cost_at_risk, 0)::numeric / f.affected_count, 2) ELSE 0 END
+                 AS value_at_risk
+          FROM work_records w
+          JOIN finding_records fr ON fr.version_id = w.version_id AND fr.module = w.module AND fr.record_key = w.record_key
+          JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
+          LEFT JOIN auto a ON a.check_id = fr.check_id AND a.record_key = fr.record_key
+         WHERE {' AND '.join(where)} {check_filter}
+         ORDER BY w.module, w.sev_rank, w.record_key, fr.check_id
+         LIMIT :lim"""), {**p, "lim": ROW_CAP + 1})).mappings().all()
+
+    by_object: dict[str, list[dict]] = {}
+    for r in rows:
+        by_object.setdefault(r["module"], []).append(dict(r))
+
+    cols = [ColumnSpec(key=k, header=h, kind="money" if k == "value_at_risk" else
+                       ("mono" if k in ("record_key", "check_id", "field") else "text"))
+            for k, h in _PER_OBJECT_COLUMNS]
+    sheets = [SheetSpec(
+        title="Summary",
+        note="Records to fix per object, ranked by value at risk. Value at risk is an attribution of "
+             "each check's cost across its failing records, not a saving.",
+        columns=[ColumnSpec(key="module", header="Object", kind="text"),
+                 ColumnSpec(key="records", header="Records", kind="int"),
+                 ColumnSpec(key="checks", header="Checks", kind="int"),
+                 ColumnSpec(key="critical", header="Critical", kind="int"),
+                 ColumnSpec(key="value_at_risk", header="Value at risk", kind="money")],
+        rows=[{"module": m,
+               "records": len(v),
+               "checks": len({x["check_id"] for x in v}),
+               "critical": sum(1 for x in v if x["severity"] == "critical"),
+               "value_at_risk": round(sum(float(x["value_at_risk"] or 0) for x in v), 2)}
+              for m, v in sorted(by_object.items(), key=lambda kv: -sum(float(x["value_at_risk"] or 0) for x in kv[1]))],
+    )]
+    for mod, items in sorted(by_object.items()):
+        sheets.append(SheetSpec(title=mod, rows=items, columns=cols,
+                                note="Fill in New value, or a Decision (fix / not an issue / accept risk) "
+                                     "with a Reason, then import this workbook back."))
+    data = build_workbook(tenant_name=tenant.name, run_label=None, run_id=vid,
+                          title="Records to fix by object", sheets=sheets)
+    return xlsx_response(data, xlsx_filename("records-to-fix-by-object", vid))
+
+
 @router.post("/import")
 async def import_sheet(
     request: Request,
@@ -975,28 +1072,38 @@ async def import_sheet(
         wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     except Exception:
         raise HTTPException(status_code=422, detail="The workbook could not be read.")
-    if SHEET not in wb.sheetnames:
-        raise HTTPException(status_code=422, detail=f"No '{SHEET}' sheet: export the fix sheet from Meridian first.")
-    it = wb[SHEET].iter_rows(values_only=True)
-    header = [str(h or "").strip() for h in next(it, ())]
-    col = {key: header.index(h) for key, h in _SHEET_COLUMNS if h in header}
-    if not {"module", "record_key", "check_id", "new_value", "decision"} <= set(col):
-        raise HTTPException(status_code=422, detail="The sheet's columns were changed: export a fresh fix sheet.")
+    # Any sheet with the required columns is importable: the per-object workbook has one sheet per
+    # object, and a steward fills those in directly rather than a single combined sheet.
+    required = {"module", "record_key", "check_id", "new_value", "decision"}
+    sheets = []
+    for name in wb.sheetnames:
+        it = wb[name].iter_rows(values_only=True)
+        header = [str(h or "").strip() for h in next(it, ())]
+        col = {key: header.index(h) for key, h in _SHEET_COLUMNS if h in header}
+        if required <= set(col):
+            sheets.append((name, it, col))
+    if not sheets:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No sheet has the fix-sheet columns: export one from Meridian first "
+                   f"(expected headers incl. {', '.join(sorted(required))}).")
     items, skipped = [], []
-    for n, row in enumerate(it, start=2):
-        cell = lambda k: (None if k not in col or col[k] >= len(row) or row[col[k]] is None else str(row[col[k]]).strip())
-        new, decision, reason = cell("new_value"), (cell("decision") or "").lower(), cell("reason")
-        if not new and not decision:
-            continue
-        action = "edit" if new else DECISIONS.get(decision)
-        if action is None:
-            skipped.append(f"row {n}: decision '{decision}' is not fix, not an issue or accept risk")
-            continue
-        if action in ("not_an_issue", "accept_risk") and not reason:
-            skipped.append(f"row {n}: a sign-off needs a reason")
-            continue
-        items.append(Decision(module=cell("module") or "", record_key=cell("record_key") or "",
-                              check_id=cell("check_id"), action=action, value=new, note=reason))
+    for sheet_name, it, col in sheets:
+        for n, row in enumerate(it, start=2):
+            cell = lambda k: (None if k not in col or col[k] >= len(row) or row[col[k]] is None
+                              else str(row[col[k]]).strip())
+            new, decision, reason = cell("new_value"), (cell("decision") or "").lower(), cell("reason")
+            if not new and not decision:
+                continue
+            action = "edit" if new else DECISIONS.get(decision)
+            if action is None:
+                skipped.append(f"{sheet_name} row {n}: decision '{decision}' is not fix, not an issue or accept risk")
+                continue
+            if action in ("not_an_issue", "accept_risk") and not reason:
+                skipped.append(f"{sheet_name} row {n}: a sign-off needs a reason")
+                continue
+            items.append(Decision(module=cell("module") or "", record_key=cell("record_key") or "",
+                                  check_id=cell("check_id"), action=action, value=new, note=reason))
     if not items:
         return {"updated": 0, "rows": 0, "skipped": skipped[:50]}
     if len(items) > MAX_IMPORT:
